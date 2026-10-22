@@ -1,0 +1,29 @@
+name: Feature
+description: Change what the system does
+labels: [enhancement]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What problem this solves, and for whom.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: One EARS sentence per line (see docs/specs/README.md). These become requirements in the spec.
+      placeholder: WHEN a member submits a percentage split, the API SHALL reject it unless the percentages sum to exactly 100.
+    validations:
+      required: true
+  - type: input
+    id: capabilities
+    attributes:
+      label: Affected capabilities
+      placeholder: e.g. ledger, sync
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: What this issue deliberately does not change.

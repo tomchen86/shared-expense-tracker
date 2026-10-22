@@ -1,0 +1,26 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # This name is the required status check in .github/rulesets/main-integrity.json.
+    name: check
+    # A template repository has no project to check yet.
+    if: ${{ !github.event.repository.is_template }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Add your toolchain setup here, e.g. actions/setup-node, actions/setup-python, actions/setup-go.
+      - name: Lint, format check, typecheck, tests, requirement trace
+        run: bash scripts/check.sh
