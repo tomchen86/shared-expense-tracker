@@ -5,6 +5,7 @@
 # Exit 0 means the merge settings and rulesets are in place and active. It does not compare rule
 # contents or prove behavior: the six permission checks in PLAYBOOK chapter 3 do that.
 set -euo pipefail
+export GH_PAGER=cat  # in a terminal, gh would otherwise stop each output in a pager
 cd "$(dirname "$0")/.."
 fail() { echo "setup-github: $*" >&2; exit 1; }
 
