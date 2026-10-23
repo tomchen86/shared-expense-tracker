@@ -16,7 +16,7 @@ bash scripts/check.sh            # lint, format check, typecheck, tests, require
 | How the parts fit together | `docs/architecture.md` |
 | Why it is built this way | `docs/adr/` |
 | Where it is going | `docs/roadmap.md` |
-| Plans for later phases | `docs/proposals/` |
+| Plan for each phase | `docs/proposals/` |
 | Plans, progress, discussion | GitHub Issues and the Project board |
 | Rules for AI agents | `AGENTS.md` |
 | Step-by-step procedures for AI agents | `skills/` |
