@@ -1,6 +1,6 @@
 # Shared Expense Tracker
 
-Lets couples and small groups record what they spend together and split the costs between them.
+A simple bookkeeping app for everyday expenses, alone or together with a partner or friends. No sign-up by default, it works offline and keeps data on your device, and shared ledgers sync once you are online.
 
 ## Develop
 
@@ -16,7 +16,7 @@ bash scripts/check.sh            # lint, format check, typecheck, tests, require
 | How the parts fit together | `docs/architecture.md` |
 | Why it is built this way | `docs/adr/` |
 | Where it is going | `docs/roadmap.md` |
-| Plans for later phases | `docs/proposals/` |
+| Plan for each phase | `docs/proposals/` |
 | Plans, progress, discussion | GitHub Issues and the Project board |
 | Rules for AI agents | `AGENTS.md` |
 | Step-by-step procedures for AI agents | `skills/` |

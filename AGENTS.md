@@ -1,6 +1,6 @@
 # AGENTS.md
 
-A product that lets couples and small groups record shared expenses and split them between members.
+A bookkeeping app for personal and shared expenses: no sign-up by default, works offline with data kept on the device, and syncs shared ledgers with a partner or friends.
 
 ## Commands
 
@@ -32,7 +32,7 @@ A product that lets couples and small groups record shared expenses and split th
 
 ## Roles
 
-Three roles for each issue that changes behavior: spec author, implementer, reviewer. Play exactly one role per session, and hand off only through the repo: specs, tests, and the PR. If you wrote the spec or the tests for an issue in this session, do not implement it here. Changes that do not change behavior (typos, docs, refactors, dependency bumps) may be done in one session: make the change, open the PR, let CI run. The owner decides whether it also needs a reviewer session.
+Three roles for each issue that changes behavior: spec author, implementer, reviewer. Play exactly one role per session, and hand off only through the repo: specs, tests, and the PR. For such an issue, your task names your role; if it does not, ask the owner before you start. If you wrote the spec or the tests for an issue in this session, do not implement it here. Changes that do not change behavior (typos, docs, refactors, dependency bumps) may be done in one session: make the change, open the PR, let CI run. The owner decides whether it also needs a reviewer session.
 
 Specs and acceptance tests belong to the spec author. Their approved version is the branch `spec/<branch>`, named after the PR's branch; only the owner's account can push it, and review compares the PR against it.
 
@@ -69,3 +69,4 @@ The product moves in one capability at a time from the baseline: `/Users/tomchen
 - Spec author: the old specs are `openspec/specs/<capability>/spec.md` in `/Users/tomchen/Codespace/shared-expense-tracker` at commit `38ea0b4c`. Use them only as a reference: confirm each rule against the baseline's code and tests before writing it as a requirement, and use this repo's format and IDs.
 - Implementer: the baseline is your reference code. Move only what the spec requires; the stack and code layout follow the ADRs.
 - Split and settlement amounts and offline sync are level-2 areas (ADR-0001): when their code moves in, set a branch coverage threshold on those paths in the test config at the measured value. It only goes up.
+- When the first mobile code moves in, add checks to `scripts/check.sh` that enforce ADR-0002's platform rule: outside `apps/mobile/src/ui/`, no `Platform` imports and no `.ios` or `.android` files; inside it, no imports from capability directories.
