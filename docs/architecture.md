@@ -27,5 +27,6 @@ Name top-level directories only. File paths go stale.
 - The API only authorizes members and devices and exchanges sync events; it never applies bookkeeping rules, and each client checks the events it receives (ADR-0003).
 - The API stores data only in PostgreSQL, in tests too (ADR-0002).
 - On the phone, data lives in SQLite; zustand holds only screen state (ADR-0002).
+- Recording and changing data never needs the network; sync runs separately and never blocks a local save (ADR-0005).
 - Only `apps/mobile/src/ui/` knows which platform it runs on (ADR-0002).
 - Money is an integer in its currency's minor unit, paired with its currency code; each currency's decimal places come from a fixed table in `packages/domain`, never from the device (ADR-0004).
