@@ -8,13 +8,13 @@ A bookkeeping app for personal and shared expenses: no sign-up by default, works
 - `gh pr checks <N> --watch --fail-fast`: wait for CI; returns at the first failure.
 - `gh run view <run-id> --log-failed`: read only the failed steps. `gh run rerun <run-id> --failed` reruns failed jobs; use it for flaky infrastructure, never to retry a real test failure.
 - `gh pr update-branch <N>`: bring a PR branch up to date with the default branch.
-- Traced coverage (review-pr step 6): none yet, because there is no app code. The first migrated capability adds the command that runs only the tests citing requirement IDs with branch coverage on, plus the stack's own commands.
+- Traced coverage (review-pr step 6): `pnpm test:traced` runs only acceptance tests whose reported names cite requirement IDs, with branch coverage in `reports/coverage/`. `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, and `pnpm test` run the individual checks. No coverage threshold is set until a level-2 capability moves in.
 
 ## Where facts live
 
 - Structure (fields, types, API shapes, database constraints): the code, or files generated from it. Never restate it in prose.
 - Behavior: `docs/specs/<capability>/spec.md`, one `### Requirement:` per rule.
-- Acceptance tests: `tests/acceptance`
+- Acceptance tests: `apps/mobile/tests/acceptance`, `packages/domain/tests/acceptance`
   The tests that cite requirement IDs, as literal paths from the repo root; `scripts/spec-check.sh` reads this line from main's copy of this file. Keep a listed directory tracked with a `.gitkeep` when empty. All other tests live elsewhere and cite no IDs.
 - Reasons: `docs/adr/`. Overview: `docs/architecture.md`.
 - Direction: `docs/roadmap.md`. The owner decides it; do not edit it unless asked.

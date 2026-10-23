@@ -1,0 +1,6 @@
+packages:
+  - apps/mobile
+  - packages/domain
+
+# Keep local and CI installs on the same node_modules layout.
+enableGlobalVirtualStore: false

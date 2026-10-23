@@ -1,0 +1,8 @@
+{
+  "expo": {
+    "name": "Shared Expense Tracker",
+    "slug": "shared-expense-tracker",
+    "scheme": "shared-expense-tracker",
+    "plugins": ["expo-router"]
+  }
+}
