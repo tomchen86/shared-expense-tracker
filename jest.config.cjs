@@ -12,6 +12,10 @@ module.exports = {
     'default',
     ['jest-junit', { outputDirectory: '<rootDir>/reports/junit' }],
   ],
+  collectCoverage: true,
   coverageDirectory: '<rootDir>/reports/coverage',
   coverageReporters: ['text', 'json-summary', 'lcov'],
+  coverageThreshold: {
+    './packages/domain/src/ledger/money.ts': { branches: 100 },
+  },
 };

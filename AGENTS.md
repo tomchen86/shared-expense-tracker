@@ -8,7 +8,7 @@ A bookkeeping app for personal and shared expenses: no sign-up by default, works
 - `gh pr checks <N> --watch --fail-fast`: wait for CI; returns at the first failure.
 - `gh run view <run-id> --log-failed`: read only the failed steps. `gh run rerun <run-id> --failed` reruns failed jobs; use it for flaky infrastructure, never to retry a real test failure.
 - `gh pr update-branch <N>`: bring a PR branch up to date with the default branch.
-- Traced coverage (review-pr step 6): `pnpm test:traced` runs only acceptance tests whose reported names cite requirement IDs, with branch coverage in `reports/coverage/`. `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, and `pnpm test` run the individual checks. No coverage threshold is set until a level-2 capability moves in.
+- Traced coverage (review-pr step 6): `pnpm test:traced` runs only acceptance tests whose reported names cite requirement IDs, with branch coverage in `reports/coverage/`. `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, and `pnpm test` run the individual checks. Both test commands enforce the level-2 money branch coverage threshold in `jest.config.cjs`.
 
 ## Where facts live
 
