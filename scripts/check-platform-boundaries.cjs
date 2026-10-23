@@ -3,6 +3,25 @@ const ts = require('typescript');
 
 const inside = (file, directory) => file.startsWith(directory + path.sep);
 
+function propertyName(node) {
+  if (!node) return;
+  if (ts.isPropertyAccessExpression(node)) return node.name.text;
+  if (
+    ts.isElementAccessExpression(node) &&
+    ts.isStringLiteralLike(node.argumentExpression)
+  ) {
+    return node.argumentExpression.text;
+  }
+}
+
+function isProcessEnv(node) {
+  return (
+    propertyName(node) === 'env' &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === 'process'
+  );
+}
+
 function moduleReference(node) {
   if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
     return node.moduleSpecifier;
@@ -49,7 +68,7 @@ function checkPlatformBoundaries(mobile) {
   for (const file of files) {
     const inUi = inside(file, ui);
     const relative = path.relative(mobile, file);
-    if (!inUi && /\.(ios|android)(\.|$)/.test(path.basename(file))) {
+    if (!inUi && /\.(ios|android|native|web)(\.|$)/.test(path.basename(file))) {
       errors.push(`${relative}: platform files belong in src/ui/`);
     }
     if (!/\.[cm]?[jt]sx?$/.test(file)) continue;
@@ -59,16 +78,31 @@ function checkPlatformBoundaries(mobile) {
       ts.ScriptTarget.Latest,
       true,
     );
+    const report = (node, message) => {
+      const { line } = source.getLineAndCharacterOfPosition(
+        node.getStart(source),
+      );
+      errors.push(`${relative}:${line + 1}: ${message}`);
+    };
     function visit(node) {
+      if (!inUi) {
+        const expoOsAccess =
+          propertyName(node) === 'EXPO_OS' && isProcessEnv(node.expression);
+        const expoOsBinding =
+          ts.isVariableDeclaration(node) &&
+          isProcessEnv(node.initializer) &&
+          ts.isObjectBindingPattern(node.name) &&
+          node.name.elements.some(
+            (element) =>
+              (element.propertyName ?? element.name).text === 'EXPO_OS',
+          );
+        if (expoOsAccess || expoOsBinding) {
+          report(node, 'process.env.EXPO_OS belongs in src/ui/');
+        }
+      }
       const reference = moduleReference(node);
       if (reference && ts.isStringLiteralLike(reference)) {
         const specifier = reference.text;
-        const report = (message) => {
-          const { line } = source.getLineAndCharacterOfPosition(
-            reference.getStart(source),
-          );
-          errors.push(`${relative}:${line + 1}: ${message}`);
-        };
         if (inUi) {
           const resolved = ts.resolveModuleName(
             specifier,
@@ -77,7 +111,7 @@ function checkPlatformBoundaries(mobile) {
             ts.sys,
           ).resolvedModule?.resolvedFileName;
           if (resolved && inside(resolved, src) && !inside(resolved, ui)) {
-            report('src/ui/ must not import capability code');
+            report(reference, 'src/ui/ must not import capability code');
           }
         } else {
           const bindings =
@@ -103,6 +137,7 @@ function checkPlatformBoundaries(mobile) {
             /^react-native\/.*\bPlatform\b/.test(specifier)
           ) {
             report(
+              reference,
               'Platform belongs in src/ui/; use named React Native imports elsewhere',
             );
           }

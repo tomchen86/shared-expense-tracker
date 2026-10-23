@@ -23,8 +23,12 @@ JUnit reports go to `reports/junit/`; traced coverage includes branch counts in
 `reports/coverage/coverage-summary.json` and LCOV. With no acceptance tests yet,
 `pnpm test:traced` exits successfully without claiming coverage.
 
-Lint also checks the platform boundary in ADR-0002: platform files and `Platform`
-imports stay in mobile `src/ui/`, and UI cannot import capability code, including
+Domain source is typechecked using only ES2022 types. Its tests are checked separately
+with Jest and Node types, so test tooling cannot enable Node APIs in domain code.
+
+Lint also checks the platform boundary in ADR-0002: `.ios`, `.android`, `.native`, and
+`.web` files, `Platform` imports, and `process.env.EXPO_OS` checks stay in mobile
+`src/ui/`, and UI cannot import capability code, including
 through the `@/` alias. Outside UI, use named React Native imports so namespace,
 default, and dynamic imports cannot hide access to `Platform`.
 

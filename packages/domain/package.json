@@ -8,6 +8,6 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc6 --noEmit"
+    "typecheck": "tsc6 --noEmit && tsc6 --noEmit --project tsconfig.test.json"
   }
 }

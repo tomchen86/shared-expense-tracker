@@ -39,15 +39,41 @@ test.each([
   ]);
 });
 
-test.each(['app/screen.ios.tsx', 'src/ledger/icon.android.png'])(
-  'rejects platform file %s outside UI',
-  (file) => {
-    write(file, '');
-    expect(checkPlatformBoundaries(mobile)).toEqual([
-      expect.stringContaining('platform files belong in src/ui/'),
-    ]);
-  },
-);
+test.each([
+  'app/screen.ios.tsx',
+  'src/ledger/icon.android.png',
+  'app/screen.native.tsx',
+  'src/ledger/icon.web.png',
+])('rejects platform file %s outside UI', (file) => {
+  write(file, '');
+  expect(checkPlatformBoundaries(mobile)).toEqual([
+    expect.stringContaining('platform files belong in src/ui/'),
+  ]);
+});
+
+test.each([
+  'const platform = process.env.EXPO_OS;',
+  "const platform = process.env['EXPO_OS'];",
+  "const platform = process['env'].EXPO_OS;",
+  'const platform = process?.env?.EXPO_OS;',
+  'const { EXPO_OS: platform } = process.env;',
+])('rejects Expo platform access outside UI: %s', (code) => {
+  write('src/ledger/screen.tsx', code);
+  expect(checkPlatformBoundaries(mobile)).toEqual([
+    expect.stringContaining('process.env.EXPO_OS belongs in src/ui/'),
+  ]);
+});
+
+test('allows other environment variables and ignores platform names in strings and comments', () => {
+  write(
+    'src/ledger/config.ts',
+    `const endpoint = process.env.EXPO_PUBLIC_API_URL;
+     const description = 'process.env.EXPO_OS';
+     // process.env.EXPO_OS is restricted to UI.
+    `,
+  );
+  expect(checkPlatformBoundaries(mobile)).toEqual([]);
+});
 
 test.each([
   "import { value } from '../ledger/model';",
@@ -73,6 +99,8 @@ test('allows UI platform adapters, UI-to-UI imports, and capabilities using UI',
     "import { Platform } from 'react-native'; export const value = Platform.OS;",
   );
   write('src/ui/card.tsx', "export const value = 'card';");
+  write('src/ui/card.native.tsx', 'export const value = process.env.EXPO_OS;');
+  write('src/ui/card.web.tsx', 'export const value = process.env.EXPO_OS;');
   write(
     'src/ui/nested/button.tsx',
     "import { value } from '../card'; export { value };",
