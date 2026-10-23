@@ -8,13 +8,13 @@ A bookkeeping app for personal and shared expenses: no sign-up by default, works
 - `gh pr checks <N> --watch --fail-fast`: wait for CI; returns at the first failure.
 - `gh run view <run-id> --log-failed`: read only the failed steps. `gh run rerun <run-id> --failed` reruns failed jobs; use it for flaky infrastructure, never to retry a real test failure.
 - `gh pr update-branch <N>`: bring a PR branch up to date with the default branch.
-- Traced coverage (review-pr step 6): none yet, because there is no app code. The first migrated capability adds the command that runs only the tests citing requirement IDs with branch coverage on, plus the stack's own commands.
+- Traced coverage (review-pr step 6): `pnpm test:traced` runs only acceptance tests whose reported names cite requirement IDs, with branch coverage in `reports/coverage/`. `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, and `pnpm test` run the individual checks. No coverage threshold is set until a level-2 capability moves in.
 
 ## Where facts live
 
 - Structure (fields, types, API shapes, database constraints): the code, or files generated from it. Never restate it in prose.
 - Behavior: `docs/specs/<capability>/spec.md`, one `### Requirement:` per rule.
-- Acceptance tests: `tests/acceptance`
+- Acceptance tests: `apps/mobile/tests/acceptance`, `packages/domain/tests/acceptance`
   The tests that cite requirement IDs, as literal paths from the repo root; `scripts/spec-check.sh` reads this line from main's copy of this file. Keep a listed directory tracked with a `.gitkeep` when empty. All other tests live elsewhere and cite no IDs.
 - Reasons: `docs/adr/`. Overview: `docs/architecture.md`.
 - Direction: `docs/roadmap.md`. The owner decides it; do not edit it unless asked.
@@ -69,4 +69,4 @@ The product moves in one capability at a time from the baseline: `/Users/tomchen
 - Spec author: the old specs are `openspec/specs/<capability>/spec.md` in `/Users/tomchen/Codespace/shared-expense-tracker` at commit `38ea0b4c`. Use them only as a reference: confirm each rule against the baseline's code and tests before writing it as a requirement, and use this repo's format and IDs.
 - Implementer: the baseline is your reference code. Move only what the spec requires; the stack and code layout follow the ADRs.
 - Split and settlement amounts and offline sync are level-2 areas (ADR-0001): when their code moves in, set a branch coverage threshold on those paths in the test config at the measured value. It only goes up.
-- When the first mobile code moves in, add checks to `scripts/check.sh` that enforce ADR-0002's platform rule: outside `apps/mobile/src/ui/`, no `Platform` imports and no `.ios` or `.android` files; inside it, no imports from capability directories.
+- `pnpm lint` enforces ADR-0002's platform rule through `scripts/check-platform-boundaries.cjs`: outside `apps/mobile/src/ui/`, no `Platform` imports, no `process.env.EXPO_OS` checks, and no `.ios`, `.android`, `.native`, or `.web` files; inside it, no imports from capability directories.

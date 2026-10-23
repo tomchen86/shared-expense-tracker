@@ -11,4 +11,7 @@ rm -rf reports/junit && mkdir -p reports/junit
 # point. Keep this line when you replace the block.
 trap 'status=$?; python3 scripts/trace_check.py || status=1; exit "$status"' EXIT
 
-echo "No app yet: the first migrated capability replaces this line with lint, format check, typecheck, and tests."
+pnpm lint
+pnpm format:check
+pnpm typecheck
+pnpm test
