@@ -16,5 +16,5 @@ The rebuild proposal has the principle 「沒有網路也能記帳」: recording
 ## Consequences
 
 - Acceptance tests for these actions need no network.
-- A feature that depends on a server, such as cloud services or processing receipts in the cloud, fails on its own when the server can't be reached, and recording keeps working.
+- A feature that depends on a server, such as joining a shared ledger through an invite, cloud services, or processing receipts in the cloud, fails on its own when the server can't be reached, and recording keeps working.
 - Sync has to pick up the changes saved while offline. Writing a change, its pending upload, and the sync progress in one SQLite transaction (ADR-0002) makes that possible.
