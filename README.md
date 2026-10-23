@@ -1,6 +1,6 @@
 # Shared Expense Tracker
 
-Lets couples and small groups record what they spend together and split the costs between them.
+A simple bookkeeping app for everyday expenses, alone or together with a partner or friends. No sign-up by default, it works offline and keeps data on your device, and shared ledgers sync once you are online.
 
 ## Develop
 

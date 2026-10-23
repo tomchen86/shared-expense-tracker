@@ -1,6 +1,6 @@
 # AGENTS.md
 
-A product that lets couples and small groups record shared expenses and split them between members.
+A bookkeeping app for personal and shared expenses: no sign-up by default, works offline with data kept on the device, and syncs shared ledgers with a partner or friends.
 
 ## Commands
 
