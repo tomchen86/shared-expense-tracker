@@ -1,13 +1,13 @@
 ---
 name: start-phase
-description: Move a roadmap phase into Now by turning its proposal section into a milestone and parent issues. Use when the owner says a phase starts, or asks to plan the work for the next phase.
+description: Move a roadmap phase into Now by turning its proposal into a milestone and parent issues. Use when the owner says a phase starts, or asks to plan the work for the next phase.
 ---
 
 # Start a phase
 
 ## Steps
 
-1. Read the phase's section of its proposal (linked from `docs/roadmap.md`), plus the proposal's Principles and Open questions.
+1. Read the phase's proposal (linked from `docs/roadmap.md`). If it has none, write one with `skills/record-plan/SKILL.md` and continue once the owner has merged it.
 2. Settle the open questions that affect this phase with the owner:
    - Record each answer in the issue it affects.
    - Architecture-level decisions get an ADR (`docs/adr/template.md`).
@@ -21,7 +21,7 @@ description: Move a roadmap phase into Now by turning its proposal section into 
    - Parent issue: `gh issue create --title "<title>" --body-file <file> --label enhancement --milestone "<phase>"`
    - Sub-issue: the same, plus `--parent <parent number>`.
    - Order: `gh issue edit <N> --add-blocked-by <M>` when N cannot start before M is done.
-5. Move the phase's roadmap line to Now and make it link the milestone.
+5. Move the phase's roadmap line to Now and add the milestone link next to its proposal link.
 
 ## Closing a phase
 
