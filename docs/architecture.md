@@ -28,3 +28,4 @@ Name top-level directories only. File paths go stale.
 - The API stores data only in PostgreSQL, in tests too (ADR-0002).
 - On the phone, data lives in SQLite; zustand holds only screen state (ADR-0002).
 - Only `apps/mobile/src/ui/` knows which platform it runs on (ADR-0002).
+- Money is an integer in its currency's minor unit, paired with its currency code; each currency's decimal places come from a fixed table in `packages/domain`, never from the device (ADR-0004).
