@@ -69,3 +69,4 @@ The product moves in one capability at a time from the baseline: `/Users/tomchen
 - Spec author: the old specs are `openspec/specs/<capability>/spec.md` in `/Users/tomchen/Codespace/shared-expense-tracker` at commit `38ea0b4c`. Use them only as a reference: confirm each rule against the baseline's code and tests before writing it as a requirement, and use this repo's format and IDs.
 - Implementer: the baseline is your reference code. Move only what the spec requires; the stack and code layout follow the ADRs.
 - Split and settlement amounts and offline sync are level-2 areas (ADR-0001): when their code moves in, set a branch coverage threshold on those paths in the test config at the measured value. It only goes up.
+- When the first mobile code moves in, add checks to `scripts/check.sh` that enforce ADR-0002's platform rule: outside `apps/mobile/src/ui/`, no `Platform` imports and no `.ios` or `.android` files; inside it, no imports from capability directories.
