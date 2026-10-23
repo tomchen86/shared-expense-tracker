@@ -83,12 +83,20 @@ test.each<[number, string, string]>([
   [1234, 'KWD', '1.234'],
   [LIMIT, 'USD', '9999999999.99'],
 ])(
-  '[LEDGER-5.1] formats %i in %s as %p, which parses back',
+  '[LEDGER-5.2] formats %i in %s as %p, which parses back',
   (amountMinor, currency, text) => {
     expect(formatAmount(amountMinor, currency)).toBe(text);
     expect(parseAmount(text, currency)).toBe(amountMinor);
   },
 );
+
+test.each<[number, string, string]>([
+  [0, 'USD', '0.00'],
+  [0, 'JPY', '0'],
+  [Number.MAX_SAFE_INTEGER, 'USD', '90071992547409.91'],
+])('[LEDGER-5.2] formats %i in %s as %p', (amountMinor, currency, text) => {
+  expect(formatAmount(amountMinor, currency)).toBe(text);
+});
 
 test.each<[number, string[], number[]]>([
   [1000, ['A', 'B', 'C'], [334, 333, 333]],
@@ -150,4 +158,14 @@ test.each([
   '',
 ])('[LEDGER-9.1] %p is not a valid expense date', (text) => {
   expect(isLocalDate(text)).toBe(false);
+});
+
+test.each<[number, string]>([
+  [-1, 'USD'],
+  [12.5, 'USD'],
+  [Number.MAX_SAFE_INTEGER + 1, 'USD'],
+  [100, 'XYZ'],
+  [100, 'usd'],
+])('[LEDGER-10.1] rejects formatting %p in %s', (amountMinor, currency) => {
+  expect(formatAmount(amountMinor, currency)).toBeUndefined();
 });

@@ -19,8 +19,11 @@ export function parseAmount(
   throw new Error(`Not implemented: parseAmount(${text}, ${currency})`);
 }
 
-/** Minor units as plain decimal text in the currency's decimal places. */
-export function formatAmount(amountMinor: number, currency: string): string {
+/** Minor units as plain decimal text, or undefined when the amount or currency is rejected. */
+export function formatAmount(
+  amountMinor: number,
+  currency: string,
+): string | undefined {
   throw new Error(`Not implemented: formatAmount(${amountMinor}, ${currency})`);
 }
 
