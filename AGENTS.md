@@ -32,7 +32,7 @@ A bookkeeping app for personal and shared expenses: no sign-up by default, works
 
 ## Roles
 
-Three roles for each issue that changes behavior: spec author, implementer, reviewer. Play exactly one role per session, and hand off only through the repo: specs, tests, and the PR. If you wrote the spec or the tests for an issue in this session, do not implement it here. Changes that do not change behavior (typos, docs, refactors, dependency bumps) may be done in one session: make the change, open the PR, let CI run. The owner decides whether it also needs a reviewer session.
+Three roles for each issue that changes behavior: spec author, implementer, reviewer. Play exactly one role per session, and hand off only through the repo: specs, tests, and the PR. For such an issue, your task names your role; if it does not, ask the owner before you start. If you wrote the spec or the tests for an issue in this session, do not implement it here. Changes that do not change behavior (typos, docs, refactors, dependency bumps) may be done in one session: make the change, open the PR, let CI run. The owner decides whether it also needs a reviewer session.
 
 Specs and acceptance tests belong to the spec author. Their approved version is the branch `spec/<branch>`, named after the PR's branch; only the owner's account can push it, and review compares the PR against it.
 

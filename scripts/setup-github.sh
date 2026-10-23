@@ -23,6 +23,8 @@ names=$(for f in .github/rulesets/*.json; do python3 -c 'import json, sys; print
 if [ "${1:-}" != --check ]; then
   # Squash merges only, and delete the branch once its PR merges.
   gh repo edit --enable-squash-merge --enable-merge-commit=false --enable-rebase-merge=false --delete-branch-on-merge
+  # The squash commit takes the PR's title and description, which describe the final diff; the branch's commit messages may describe drafts.
+  gh api -X PATCH "repos/$repo" -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY >/dev/null
 
   # Labels that sort release notes (.github/release.yml). --force updates existing ones.
   gh label create enhancement --color a2eeef --description "New feature or request" --force
@@ -45,10 +47,10 @@ if [ "${1:-}" != --check ]; then
 fi
 
 # Read back what GitHub has now.
-read -r squash_only delete_branch < <(gh api "repos/$repo" --jq '"\(.allow_squash_merge and (.allow_merge_commit | not) and (.allow_rebase_merge | not)) \(.delete_branch_on_merge)"')
-echo "squash merge only: $squash_only; delete branch on merge: $delete_branch"
+read -r squash_only delete_branch squash_message < <(gh api "repos/$repo" --jq '"\(.allow_squash_merge and (.allow_merge_commit | not) and (.allow_rebase_merge | not)) \(.delete_branch_on_merge) \(.squash_merge_commit_title == "PR_TITLE" and .squash_merge_commit_message == "PR_BODY")"')
+echo "squash merge only: $squash_only; delete branch on merge: $delete_branch; squash commit from the PR's title and description: $squash_message"
 wrong=0
-[ "$squash_only" = true ] && [ "$delete_branch" = true ] || wrong=1
+[ "$squash_only" = true ] && [ "$delete_branch" = true ] && [ "$squash_message" = true ] || wrong=1
 # Secret scanning blocks pushes that contain keys. Free on public repos; report its state.
 gh api "repos/$repo" --jq '"secret scanning: \(.security_and_analysis.secret_scanning.status // "unavailable"), push protection: \(.security_and_analysis.secret_scanning_push_protection.status // "unavailable")"'
 current=$(gh api "repos/$repo/rulesets" --jq '.[] | "\(.name)\t\(.enforcement)"')

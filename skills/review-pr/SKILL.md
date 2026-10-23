@@ -12,7 +12,7 @@ Take one PR at a time through the final stretch (update, check, report, merge). 
 ## Checklist
 
 1. The PR is marked ready (not a draft) and up to date with main. If it is behind, run `gh pr update-branch <N>` and refresh this worktree with `gh pr checkout <N> --detach`; send conflicts in specs or acceptance tests to the spec author, and code conflicts to the implementer. Wait for CI on the updated head: `gh pr checks <N> --watch --fail-fast`.
-2. The description has `Closes #<N>` or `No issue: <reason>`, and every template section is filled.
+2. The description has `Closes #<N>` or `No issue: <reason>`, every template section is filled, and it describes the final diff without the template's comments: it becomes the squash commit's message.
 3. The specs and acceptance tests are the ones the owner approved. With Git 2.43+, inside the PR's worktree, run main's copy of the check. Never take the script from the worktree's own files: the PR can edit them.
 
    ```bash
