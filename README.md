@@ -13,15 +13,15 @@ pnpm test:traced                  # only requirement-citing acceptance tests, wi
 pnpm --filter mobile start        # Expo development server
 ```
 
-The workspace contains the mobile toolchain and an empty domain module. Product routes
-and behavior arrive with their capability specs.
+The workspace contains the mobile toolchain and the shared domain module. Product routes
+arrive with their capability specs.
 
 Jest discovers `*.test.ts`, `*.test.tsx`, and `*.test.js` under each workspace's
 `src/` and `tests/`. Acceptance tests live in the directories listed in `AGENTS.md`;
 other tests cite no requirement IDs. Tooling tests live in `tests/tooling/`.
-JUnit reports go to `reports/junit/`; traced coverage includes branch counts in
-`reports/coverage/coverage-summary.json` and LCOV. With no acceptance tests yet,
-`pnpm test:traced` exits successfully without claiming coverage.
+JUnit reports go to `reports/junit/`; coverage includes branch counts in
+`reports/coverage/coverage-summary.json` and LCOV. Both `pnpm test` and
+`pnpm test:traced` enforce the level-2 money coverage threshold in `jest.config.cjs`.
 
 Domain source is typechecked using only ES2022 types. Its tests are checked separately
 with Jest and Node types, so test tooling cannot enable Node APIs in domain code.
