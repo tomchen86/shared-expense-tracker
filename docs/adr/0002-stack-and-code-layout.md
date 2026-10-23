@@ -20,12 +20,12 @@ The baseline already picks iOS and Android versions of its shared UI components 
   - `apps/api/src/<capability>/`: the capability's NestJS module, with its controllers, services, entities, and DTOs.
   - `apps/mobile/src/<capability>/`: the capability's SQLite tables and queries, screen state, screens, and components. UI and theme shared across capabilities live in `apps/mobile/src/ui/`.
   - `apps/mobile/app/`: Expo Router's route files. A route file only re-exports a screen from its capability directory, and a layout file only sets up navigation.
-  - `packages/domain/`: rules both apps must apply identically, such as money and split calculations, and the API's request and response types. Plain TypeScript with no framework dependencies. Both apps import it; neither redefines what it holds, and the API's DTO classes implement its types.
+  - `packages/domain/`: rules every client must apply identically, such as money and split calculations, and the API's request and response types. Plain TypeScript with no framework dependencies. Clients import all of it and redefine none of it. The API imports only the request and response types, which its DTO classes implement, and applies no bookkeeping rules (ADR-0003).
 - Differences between iOS and Android live only in `apps/mobile/src/ui/`. A component there has one props type and a default `.tsx` file, plus an `.ios.tsx` or `.android.tsx` file for each platform that differs, which Metro picks when it builds that platform. Code outside `ui/` never checks the platform; it tells a `ui/` component what to show. `ui/` imports nothing from capability directories.
 
 ## Consequences
 
-- A capability's spec maps to one directory in each app. A rule in `packages/domain` has one implementation and one set of tests, and a mismatch between the API and the app fails the typecheck.
+- A capability's spec maps to one directory in each app that implements it. A rule in `packages/domain` has one implementation and one set of tests, and a mismatch between the API and the app fails the typecheck.
 - On the phone, a change, its pending upload, and the sync progress can be written in one SQLite transaction, and a change rewrites only the rows it touches. Format changes ship as SQLite schema migrations.
 - Each mobile capability writes its own tables and queries, and its screens have to refresh when the data they show changes.
 - Capability code is written and tested once for both platforms; only `ui/` needs tests per platform.
