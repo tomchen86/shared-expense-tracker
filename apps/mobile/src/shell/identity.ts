@@ -7,6 +7,15 @@ export interface LocalIdentity {
   name: string;
 }
 
+export async function saveLocalName(
+  database: SqlExecutor,
+  name: string,
+): Promise<void> {
+  await database.run('UPDATE local_identity SET name = ? WHERE singleton = 1', [
+    name,
+  ]);
+}
+
 async function createUuid(transaction: SqlExecutor): Promise<string> {
   const [row] = await transaction.all<{ bytes: string }>(
     'SELECT lower(hex(randomblob(16))) AS bytes',

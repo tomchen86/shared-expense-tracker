@@ -1,1 +1,1 @@
-export { SecondaryTabScreen as default } from '../../../src/shell/secondary-tab-screen';
+export { SettingsScreen as default } from '../../../src/shell/settings-screen';
