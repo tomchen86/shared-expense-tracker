@@ -11,11 +11,13 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.17",
+    "@noble/hashes": "^2.4.0",
     "@shared-expense/domain": "workspace:*",
     "expo": "57.0.4",
     "expo-constants": "~57.0.22",
     "expo-linking": "57.0.2",
     "expo-router": "57.0.4",
+    "expo-sqlite": "~57.0.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.0",
@@ -27,8 +29,10 @@
   "devDependencies": {
     "@react-native/jest-preset": "0.86.0",
     "@react-native/metro-config": "0.86.0",
+    "@testing-library/react-native": "13.3.3",
     "@types/react": "19.2.17",
     "babel-preset-expo": "57.0.2",
-    "jest-expo": "57.0.2"
+    "jest-expo": "57.0.2",
+    "react-test-renderer": "19.2.3"
   }
 }

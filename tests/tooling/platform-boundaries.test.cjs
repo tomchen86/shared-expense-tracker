@@ -115,3 +115,59 @@ test('allows UI platform adapters, UI-to-UI imports, and capabilities using UI',
   );
   expect(checkPlatformBoundaries(mobile)).toEqual([]);
 });
+
+test.each([
+  "import { openDatabaseAsync } from 'expo-sqlite';",
+  "export * from 'expo-sqlite';",
+  "const sql = import('expo-sqlite');",
+  "const sql = require('expo-sqlite');",
+  "import { SQLiteDatabase } from 'expo-sqlite/build/SQLiteDatabase';",
+])('rejects SQLite access outside storage: %s', (code) => {
+  write('src/shell/database.ts', code);
+  expect(checkPlatformBoundaries(mobile)).toEqual([
+    expect.stringContaining('only src/storage/ may import expo-sqlite'),
+  ]);
+});
+
+test.each([
+  "import { value } from '../shell/model';",
+  "export { value } from '@/shell/model';",
+  "const model = import('@/shell/model');",
+])('rejects storage dependency on a capability: %s', (code) => {
+  write('src/shell/model.ts', 'export const value = 1;');
+  write('src/storage/connection.ts', code);
+  expect(checkPlatformBoundaries(mobile)).toEqual([
+    expect.stringContaining('src/storage/ must not import capability code'),
+  ]);
+});
+
+test.each([
+  "import { openNodeDatabase } from '../storage/node';",
+  "export * from '@/storage/node';",
+  "const sql = import('@/storage/node');",
+])('rejects the Node adapter in app code: %s', (code) => {
+  write('src/storage/node.ts', 'export const openNodeDatabase = () => {};');
+  write('src/shell/database.ts', code);
+  expect(checkPlatformBoundaries(mobile)).toEqual([
+    expect.stringContaining('only tests may import src/storage/node.ts'),
+  ]);
+});
+
+test('allows the phone adapter, capability queries through storage, and test-only Node adapter', () => {
+  write(
+    'src/storage/expo.ts',
+    "import { openDatabaseAsync } from 'expo-sqlite';",
+  );
+  write('src/storage/index.ts', 'export const database = {};');
+  write('src/storage/node.ts', 'export const openNodeDatabase = () => {};');
+  write('src/shell/model.ts', "import { database } from '@/storage';");
+  write(
+    'tests/storage/connection.test.ts',
+    "import { openNodeDatabase } from '@/storage/node';",
+  );
+  write(
+    'src/storage/database.test.ts',
+    "import { openNodeDatabase } from './node';",
+  );
+  expect(checkPlatformBoundaries(mobile)).toEqual([]);
+});
