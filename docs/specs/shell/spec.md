@@ -130,7 +130,7 @@ The mobile app SHALL 讓各分頁的根畫面只有一個原生標題列，顯�
 #### Scenario: 畫面內容
 
 - **WHEN** 顯示分頁的根畫面
-- **THEN** 畫面內容裡沒有「Groups」、「Expenses」、「Settings」這幾個字
+- **THEN** 畫面內容裡沒有一段文字剛好是「Groups」、「Expenses」或「Settings」；像「Archived Groups」這樣只是包含分頁名稱的文字不算
 
 ### Requirement: SHELL-10.1 iOS 的分頁根畫面用大標題
 
