@@ -5,7 +5,7 @@ module.exports = {
       testEnvironment: 'node',
       testMatch: ['<rootDir>/tests/tooling/**/*.test.cjs'],
     },
-    '<rootDir>/apps/mobile/jest.config.cjs',
+    ...require('./apps/mobile/jest.config.cjs').projects,
     '<rootDir>/packages/domain/jest.config.cjs',
   ],
   reporters: [
