@@ -14,4 +14,4 @@ trap 'status=$?; python3 scripts/trace_check.py || status=1; exit "$status"' EXI
 pnpm lint
 pnpm format:check
 pnpm typecheck
-pnpm test
+pnpm test --coverage

@@ -19,9 +19,11 @@ arrive with their capability specs.
 Jest discovers `*.test.ts`, `*.test.tsx`, and `*.test.js` under each workspace's
 `src/` and `tests/`. Acceptance tests live in the directories listed in `AGENTS.md`;
 other tests cite no requirement IDs. Tooling tests live in `tests/tooling/`.
-JUnit reports go to `reports/junit/`; coverage includes branch counts in
-`reports/coverage/coverage-summary.json` and LCOV. Both `pnpm test` and
-`pnpm test:traced` enforce the level-2 money coverage threshold in `jest.config.cjs`.
+JUnit reports go to `reports/junit/`. Run `pnpm test -- <test-path>` for focused
+tests without coverage. `bash scripts/check.sh` runs tests with `--coverage`, and
+`pnpm test:traced` collects coverage for acceptance tests. Both enforce the level-2
+money coverage threshold in `jest.config.cjs` and write branch counts to
+`reports/coverage/coverage-summary.json` and LCOV.
 
 Domain source is typechecked using only ES2022 types. Its tests are checked separately
 with Jest and Node types, so test tooling cannot enable Node APIs in domain code.
