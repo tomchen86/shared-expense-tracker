@@ -1,10 +1,13 @@
 // Stubs for the storage boundary that the shell acceptance tests use (ADR-0006).
 // The implementer replaces each body and adds the rest of the interface; these
-// signatures are what the tests call.
+// signatures are what the tests call. Per ADR-0006, the change that adds this
+// directory also makes `pnpm lint` enforce its import rules, as it does for
+// `ui/`: only `storage/` imports expo-sqlite, `storage/` imports nothing from
+// capability directories, and app code does not import `storage/node.ts`.
 
 /** The app's one SQLite database, reached through the small interface in ADR-0006. */
 export interface Database {
-  /** Closes the connection; closing it again does nothing. Whoever opened the database closes it. */
+  /** Closes the connection; closing it again does nothing. */
   close(): Promise<void>;
 }
 

@@ -27,10 +27,10 @@
   "devDependencies": {
     "@react-native/jest-preset": "0.86.0",
     "@react-native/metro-config": "0.86.0",
-    "@testing-library/react-native": "14.1.0",
+    "@testing-library/react-native": "13.3.3",
     "@types/react": "19.2.17",
     "babel-preset-expo": "57.0.2",
     "jest-expo": "57.0.2",
-    "test-renderer": "1.2.0"
+    "react-test-renderer": "19.2.3"
   }
 }

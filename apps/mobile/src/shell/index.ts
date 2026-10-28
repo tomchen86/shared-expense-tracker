@@ -1,8 +1,14 @@
 // Stubs for the shell's boundary in docs/specs/shell/spec.md. The implementer
 // replaces each body; these signatures are what the acceptance tests use.
+// The tests cannot see `app/_layout.tsx`: check on a phone that it wraps the
+// screens in LocalDataGate with the expo-sqlite database and
+// `development={__DEV__}`, and list that check in the PR's Verification.
 
 import type { ReactElement, ReactNode } from 'react';
 import type { Database } from '../storage';
+
+/** Every capability's migrations, in the order they run (ADR-0006). */
+export const appMigrations: readonly string[] = [];
 
 /** This phone's local identity. */
 export interface LocalIdentity {
@@ -13,7 +19,11 @@ export interface LocalIdentity {
 }
 
 export interface LocalDataGateProps {
-  /** Opens the app's database. The gate does not close it. */
+  /**
+   * Opens the app's database. The gate may close a database and open it again,
+   * for example to start over on a development build. The caller closes every
+   * database this returned when the app closes.
+   */
   openDatabase: () => Promise<Database>;
   /** Whether the app runs as a development build (`__DEV__` on the phone). */
   development: boolean;

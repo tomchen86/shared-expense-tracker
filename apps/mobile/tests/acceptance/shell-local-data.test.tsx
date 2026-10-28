@@ -6,6 +6,7 @@ import { Text } from 'react-native';
 import { render, screen } from '@testing-library/react-native';
 import {
   LocalDataGate,
+  appMigrations,
   useLocalIdentity,
   type LocalIdentity,
 } from '../../src/shell';
@@ -15,8 +16,14 @@ import { openNodeDatabase } from '../../src/storage/node';
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-// A migration that this version of the app does not have.
-const FROM_ANOTHER_VERSION = 'CREATE TABLE from_another_version (id TEXT)';
+// Migrations that this version of the app does not have.
+const FROM_A_NEWER_VERSION = 'CREATE TABLE from_a_newer_version (id TEXT)';
+const DIFFERENT_MIGRATION = 'CREATE TABLE from_a_different_migration (id TEXT)';
+
+const BUILDS = [
+  ['a development build', true],
+  ['another build', false],
+] as const;
 
 let directory: string;
 let file: string;
@@ -37,16 +44,20 @@ function ShowIdentity() {
   return <Text testID="identity">{JSON.stringify(useLocalIdentity())}</Text>;
 }
 
-/** Starts the app on the database file. The returned function closes the app. */
+/**
+ * Starts the app on the database file. The returned function closes the app
+ * and every database it opened.
+ */
 async function startApp({
   development = false,
   openDatabase = async (): Promise<Database> => openNodeDatabase(file),
 } = {}) {
-  let database: Database | undefined;
+  const databases: Database[] = [];
   const view = await render(
     <LocalDataGate
       openDatabase={async () => {
-        database = await openDatabase();
+        const database = await openDatabase();
+        databases.push(database);
         openDatabases.add(database);
         return database;
       }}
@@ -57,7 +68,7 @@ async function startApp({
   );
   return async () => {
     await view.unmount();
-    await database?.close();
+    for (const database of databases) await database.close();
   };
 }
 
@@ -79,11 +90,38 @@ function clearAppData() {
   }
 }
 
-/** Writes the database file as a version of the app with a migration this one lacks. */
-async function writeDatabaseFromAnotherVersion() {
+/**
+ * Starts this version once, then adds a migration to the database as a newer
+ * version would. Returns the identity this version created.
+ */
+async function writeDatabaseFromANewerVersion(): Promise<LocalIdentity> {
+  const closeApp = await startApp();
+  const identity = await readIdentity();
+  await closeApp();
   const database = openNodeDatabase(file);
-  await runMigrations(database, [FROM_ANOTHER_VERSION]);
+  await runMigrations(database, [...appMigrations, FROM_A_NEWER_VERSION]);
   await database.close();
+  return identity;
+}
+
+/** Writes a database whose first migration differs from this version's. */
+async function writeDatabaseWithADifferentMigration() {
+  const database = openNodeDatabase(file);
+  await runMigrations(database, [DIFFERENT_MIGRATION]);
+  await database.close();
+}
+
+/** Whether the closed database file has the table, read without the app. */
+function hasTable(name: string): boolean {
+  const database = new DatabaseSync(file, { readOnly: true });
+  try {
+    const row = database
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(name);
+    return row !== undefined;
+  } finally {
+    database.close();
+  }
 }
 
 async function expectLoadError() {
@@ -117,7 +155,7 @@ test('[SHELL-1.1] shows only the loading indicator while the local data opens', 
   expect(screen.queryByLabelText('Restoring local data')).toBeNull();
 });
 
-test('[SHELL-2.1] creates three different version 4 UUIDs and an empty name on first start', async () => {
+test('[SHELL-2.1] creates three different lowercase version 4 UUIDs and an empty name on first start', async () => {
   await startApp();
   const identity = await readIdentity();
 
@@ -153,48 +191,92 @@ test('[SHELL-3.1] keeps the same identity when the app is closed as soon as its 
   expect(after).toEqual(before);
 });
 
-test('[SHELL-4.1] shows the load error when the database cannot be opened', async () => {
-  await startApp({
-    openDatabase: () => Promise.reject(new Error('disk unavailable')),
-  });
+test.each(BUILDS)(
+  '[SHELL-4.1] shows the load error on %s when the database cannot be opened',
+  async (_build, development) => {
+    await startApp({
+      development,
+      openDatabase: () => Promise.reject(new Error('disk unavailable')),
+    });
 
-  await expectLoadError();
-});
+    await expectLoadError();
+  },
+);
 
-test('[SHELL-4.1] leaves a file that is not a database unchanged', async () => {
-  fs.writeFileSync(file, 'This file is not a SQLite database.');
+test.each(BUILDS)(
+  '[SHELL-4.1] leaves a file that is not a database unchanged on %s',
+  async (_build, development) => {
+    fs.writeFileSync(file, 'This file is not a SQLite database.');
+    const before = fs.readFileSync(file);
+
+    const closeApp = await startApp({ development });
+    await expectLoadError();
+    await closeApp();
+
+    expect(fs.readFileSync(file)).toEqual(before);
+  },
+);
+
+test.each(BUILDS)(
+  '[SHELL-4.1] leaves a read-only database unchanged on %s when its migrations cannot run',
+  async (_build, development) => {
+    fs.writeFileSync(file, ''); // An empty file is an empty SQLite database.
+    const before = fs.readFileSync(file);
+
+    const closeApp = await startApp({
+      development,
+      openDatabase: async () => openNodeDatabase(file, { readOnly: true }),
+    });
+    await expectLoadError();
+    await closeApp();
+
+    expect(fs.readFileSync(file)).toEqual(before);
+  },
+);
+
+test('[SHELL-4.1] leaves data from a newer version unchanged outside a development build', async () => {
+  await writeDatabaseFromANewerVersion();
   const before = fs.readFileSync(file);
 
-  await startApp();
-
+  const closeApp = await startApp({ development: false });
   await expectLoadError();
+  await closeApp();
+
   expect(fs.readFileSync(file)).toEqual(before);
 });
 
-test('[SHELL-4.1] leaves data from another version unchanged outside a development build', async () => {
-  await writeDatabaseFromAnotherVersion();
+test('[SHELL-4.1] leaves a database whose migration differs unchanged outside a development build', async () => {
+  await writeDatabaseWithADifferentMigration();
   const before = fs.readFileSync(file);
 
-  await startApp({ development: false });
-
+  const closeApp = await startApp({ development: false });
   await expectLoadError();
+  await closeApp();
+
   expect(fs.readFileSync(file)).toEqual(before);
 });
 
-test('[SHELL-5.1] starts over with a new identity on a development build', async () => {
-  await writeDatabaseFromAnotherVersion();
+test('[SHELL-5.1] starts over with a new identity on a development build when the data comes from a newer version', async () => {
+  const before = await writeDatabaseFromANewerVersion();
+
+  const closeApp = await startApp({ development: true });
+  const after = await readIdentity();
+  await closeApp();
+
+  for (const id of idsOf(after)) expect(id).toMatch(UUID_V4);
+  expect(after.userId).not.toBe(before.userId);
+  expect(after.personalSpaceId).not.toBe(before.personalSpaceId);
+  expect(after.personalParticipantId).not.toBe(before.personalParticipantId);
+  expect(hasTable('from_a_newer_version')).toBe(false);
+});
+
+test('[SHELL-5.1] starts over with a new identity on a development build when a migration differs', async () => {
+  await writeDatabaseWithADifferentMigration();
 
   const closeApp = await startApp({ development: true });
   const identity = await readIdentity();
   await closeApp();
 
   for (const id of idsOf(identity)) expect(id).toMatch(UUID_V4);
-  const database = new DatabaseSync(file, { readOnly: true });
-  const table = database
-    .prepare(
-      "SELECT name FROM sqlite_master WHERE name = 'from_another_version'",
-    )
-    .get();
-  database.close();
-  expect(table).toBeUndefined();
+  expect(hasTable('from_a_different_migration')).toBe(false);
 });
