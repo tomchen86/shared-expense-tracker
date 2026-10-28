@@ -41,16 +41,16 @@ WHILE 分析一個群組，the domain package SHALL 計入該群組每筆支出�
 
 ### Requirement: INSIGHTS-3.1 不計入日期無效或計入金額不是正整數的支出
 
-IF 支出的日期不是有效的支出日期（LEDGER-9.1），或它的計入金額（INSIGHTS-1.1、INSIGHTS-2.1）不是正整數，THEN the domain package SHALL 不計入這筆支出：它不算進任何總額，也不為它建立期間。
+IF 支出的日期不是有效的支出日期（LEDGER-9.1），或它的計入金額（INSIGHTS-1.1、INSIGHTS-2.1）不是 1 到 9,007,199,254,740,991 之間的整數，THEN the domain package SHALL 不計入這筆支出：它不算進任何總額，也不為它建立期間。
 
 #### Scenario: 日期無效
 
 - **WHEN** 支出的日期是 `2025-02-30`、`2025/01/05` 或空字串
 - **THEN** 都不計入，沒有任何期間
 
-#### Scenario: 金額不是正整數
+#### Scenario: 金額不在範圍內
 
-- **WHEN** 群組支出的金額是 0、-100 或 12.5
+- **WHEN** 群組支出的金額是 0、-100、12.5 或 9,007,199,254,740,992
 - **THEN** 都不計入，沒有任何期間
 
 #### Scenario: 自己的分攤額是 0
@@ -132,7 +132,7 @@ The domain package SHALL 在每個幣別內，把 `categoryId` 相同的支出�
 
 ### Requirement: INSIGHTS-7.1 類別的名稱和顏色
 
-The domain package SHALL 用對到的類別目前的名稱和顏色；有 `categoryId` 卻不在類別清單裡的支出不再依名稱比對，改用支出的類別快照；沒有快照、也對不到類別時，用支出存的類別名稱和灰色 `#808080`。
+The domain package SHALL 用對到的類別目前的名稱和顏色；有 `categoryId` 卻不在類別清單裡的支出不再依名稱比對。對不到類別的那一列，用合併的支出中有快照、日期最晚的那筆的類別快照；都沒有快照時，用日期最晚的那筆存的類別名稱和灰色 `#808080`。同一天有好幾筆可選時，依名稱、再依顏色的 Unicode 碼位順序，取最前的那個。
 
 #### Scenario: 類別改過名
 
@@ -144,14 +144,39 @@ The domain package SHALL 用對到的類別目前的名稱和顏色；有 `categ
 - **WHEN** 支出的 `categoryId` 是清單裡沒有的 `gone`，存的類別名稱是清單裡有的「Food」，快照是「Road Trip」、`#5678C8`
 - **THEN** 類別的名稱和顏色是 Road Trip、`#5678C8`
 
+#### Scenario: 名稱對不到但有快照
+
+- **WHEN** 支出沒有 `categoryId`，存的類別名稱「Misc」不在清單裡，快照是「Snacks」、`#333333`
+- **THEN** 類別的名稱和顏色是 Snacks、`#333333`
+
 #### Scenario: 沒有快照
 
-- **WHEN** 同上但沒有快照；或支出沒有 `categoryId`，存的類別名稱「Misc」不在清單裡，也沒有快照
+- **WHEN** 支出的 `categoryId` 是清單裡沒有的 `gone`，存的類別名稱是「Food」，沒有快照；或支出沒有 `categoryId`，存的類別名稱「Misc」不在清單裡，也沒有快照
 - **THEN** 分別是 Food、`#808080` 和 Misc、`#808080`
+
+#### Scenario: 合併的支出快照不同
+
+- **WHEN** 三筆 `categoryId` 都是清單裡沒有的 `gone`：2025-01-05 的 100 快照是「Snacks」、`#111111`，2025-01-20 的 200 快照是「Treats」、`#222222`，2025-02-10 的 300 快照是「Sweets」、`#333333`
+- **THEN** 2025 年 1 月是 Treats、`#222222` 300，2 月是 Sweets、`#333333` 300，2025 年是 Sweets、`#333333` 600
+
+#### Scenario: 較晚的那筆沒有快照
+
+- **WHEN** 兩筆 `categoryId` 都是 `gone`：2025-01-05 的快照是「Snacks」、`#111111`，2025-01-20 的沒有快照，存的類別名稱是「Old name」
+- **THEN** 類別的名稱和顏色是 Snacks、`#111111`
+
+#### Scenario: 同一天的快照不同
+
+- **WHEN** 兩筆 `categoryId` 都是 `gone`、日期相同，快照分別是「Treats」、`#222222` 和「Snacks」、`#111111`；或分別是「Snacks」、`#222222` 和「Snacks」、`#111111`
+- **THEN** 都是 Snacks、`#111111`
+
+#### Scenario: 都沒有快照、存的名稱不同
+
+- **WHEN** 三筆 `categoryId` 都是 `gone`、都沒有快照：2025-01-05 存的類別名稱是「Alpha」，2025-01-20 的兩筆是「Zeta」和「Yak」
+- **THEN** 類別的名稱和顏色是 Yak、`#808080`
 
 ### Requirement: INSIGHTS-8.1 類別的百分比和順序
 
-The domain package SHALL 以類別金額佔該幣別總額的百分比作為類別的百分比，不四捨五入，並依金額由大到小排列類別；金額相同時，依名稱的字母順序排列，不分大小寫。
+The domain package SHALL 以類別金額佔該幣別總額的百分比作為類別的百分比，不四捨五入，並依金額由大到小排列類別。金額相同時，依名稱轉成小寫後的 Unicode 碼位順序排列；轉成小寫後相同時，依名稱本身的碼位順序；名稱也相同時，依顏色的碼位順序。
 
 #### Scenario: 以該幣別的總額計
 
@@ -163,10 +188,15 @@ The domain package SHALL 以類別金額佔該幣別總額的百分比作為類�
 - **WHEN** Food 100、Travel 200
 - **THEN** 依序是 Travel 66.666…、Food 33.333…，不四捨五入
 
-#### Scenario: 金額相同
+#### Scenario: 金額相同時依名稱
 
-- **WHEN** 「Banana」500、「Coffee」900、「apple」500
-- **THEN** 依序是 Coffee、apple、Banana
+- **WHEN** 「Coffee」是 900，「Banana」、「apple」、「Fig」、「Éclair」、「餐飲」、「交通」、「😀」、「ｆ」都是 500
+- **THEN** 依序是 Coffee、apple、Banana、Fig、Éclair、交通、餐飲、ｆ、😀，在每台裝置上都一樣
+
+#### Scenario: 名稱只差大小寫或完全相同
+
+- **WHEN** 類別清單有兩個「Tea」，顏色是 `#FF0000` 和 `#00FF00`；它們和一筆存的類別名稱是「tea」、對不到類別的支出，金額都是 500
+- **THEN** 依序是 Tea `#00FF00`、Tea `#FF0000`、tea `#808080`
 
 ### Requirement: INSIGHTS-9.1 與上一個期間比較
 
@@ -234,3 +264,17 @@ IF 環圈圖有超過 5 個類別，THEN the domain package SHALL 只畫金額�
 
 - **WHEN** 偏好是 Donut，6 個類別的金額是 60、50、40、30、20、10
 - **THEN** 圖表是金額最大的 5 個類別加上 Others 10
+
+### Requirement: INSIGHTS-12.1 總額超過安全整數時拒絕計算
+
+IF 任何一個期間裡某個幣別的總額超過 9,007,199,254,740,991，THEN the domain package SHALL 拒絕計算，不回傳任何期間。
+
+#### Scenario: 剛好在上限
+
+- **WHEN** 2025 年 1 月有 9,007,199,254,740,990 USD 和 500 JPY，2 月有 1 USD
+- **THEN** 照常計算，2025 年的 USD 總額是 9,007,199,254,740,991，JPY 總額是 500
+
+#### Scenario: 年份的總額超過上限
+
+- **WHEN** 2025 年 1 月有 9,007,199,254,740,990 USD，2 月有 2 USD，兩個月份各自都沒有超過
+- **THEN** 拒絕計算，不回傳任何期間

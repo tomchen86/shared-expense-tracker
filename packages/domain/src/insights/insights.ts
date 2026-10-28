@@ -68,13 +68,13 @@ export interface Insights {
   years: InsightPeriod[];
 }
 
-/** Month and year periods with their per-currency totals, oldest first. */
+/** Month and year periods with their per-currency totals, oldest first, or undefined when a total is rejected. */
 export function buildInsights(input: {
   expenses: readonly InsightExpense[];
   categories: readonly InsightCategory[];
   context: InsightContext;
   chartPreference: InsightChartPreference;
-}): Insights {
+}): Insights | undefined {
   throw new Error(
     `Not implemented: buildInsights(${input.expenses.length} expenses)`,
   );

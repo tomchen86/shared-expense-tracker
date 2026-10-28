@@ -60,18 +60,24 @@ const share = (participant: string, amountMinor: number) => ({
   amountMinor,
 });
 
-const build = (
+type Options = {
+  context?: InsightContext;
+  categories?: InsightCategory[];
+  chartPreference?: InsightChartPreference;
+};
+
+const buildOrUndefined = (
   expenses: InsightExpense[],
   {
     context = GROUP,
     categories = CATEGORIES,
     chartPreference = 'auto',
-  }: {
-    context?: InsightContext;
-    categories?: InsightCategory[];
-    chartPreference?: InsightChartPreference;
-  } = {},
+  }: Options = {},
 ) => buildInsights({ expenses, categories, context, chartPreference });
+
+// Only INSIGHTS-12.1 expects no result.
+const build = (expenses: InsightExpense[], options?: Options) =>
+  buildOrUndefined(expenses, options)!;
 
 // Up to seven categories with their own colors.
 const CHART_CATEGORIES: InsightCategory[] = Array.from(
@@ -165,7 +171,7 @@ test.each(['2025-02-30', '2025/01/05', ''])(
   },
 );
 
-test.each([0, -100, 12.5])(
+test.each([0, -100, 12.5, Number.MAX_SAFE_INTEGER + 1])(
   '[INSIGHTS-3.1] leaves out a group expense of %p',
   (amountMinor) => {
     expect(build([expense({ amountMinor })])).toEqual(NOTHING);
@@ -394,6 +400,80 @@ test.each<[string, Partial<InsightExpense>, string]>([
   },
 );
 
+test('[INSIGHTS-7.1] uses the snapshot when the name matches no category', () => {
+  const [january] = build([
+    expense({
+      categoryName: 'Misc',
+      categorySnapshot: { name: 'Snacks', color: '#333333' },
+    }),
+  ]).months;
+
+  expect(rows(january)).toEqual([['Snacks', '#333333', 1000]]);
+});
+
+// An expense whose categoryId is not in the category list.
+const gone = (
+  date: string,
+  amountMinor: number,
+  categorySnapshot?: { name: string; color: string },
+  categoryName = 'Old name',
+) =>
+  expense({
+    date,
+    amountMinor,
+    categoryId: 'gone',
+    categoryName,
+    categorySnapshot,
+  });
+
+test('[INSIGHTS-7.1] uses the latest snapshot in each period', () => {
+  const insights = build([
+    gone('2025-01-20', 200, { name: 'Treats', color: '#222222' }),
+    gone('2025-01-05', 100, { name: 'Snacks', color: '#111111' }),
+    gone('2025-02-10', 300, { name: 'Sweets', color: '#333333' }),
+  ]);
+
+  expect(insights.months.map((period) => rows(period))).toEqual([
+    [['Treats', '#222222', 300]],
+    [['Sweets', '#333333', 300]],
+  ]);
+  expect(rows(insights.years[0])).toEqual([['Sweets', '#333333', 600]]);
+});
+
+test('[INSIGHTS-7.1] prefers a snapshot to a later expense without one', () => {
+  const [january] = build([
+    gone('2025-01-20', 200),
+    gone('2025-01-05', 100, { name: 'Snacks', color: '#111111' }),
+  ]).months;
+
+  expect(rows(january)).toEqual([['Snacks', '#111111', 300]]);
+});
+
+test.each([
+  ['name', { name: 'Treats', color: '#222222' }],
+  ['color', { name: 'Snacks', color: '#222222' }],
+])(
+  '[INSIGHTS-7.1] picks the same-day snapshot that sorts first by %s',
+  (_, other) => {
+    const [january] = build([
+      gone('2025-01-10', 100, other),
+      gone('2025-01-10', 200, { name: 'Snacks', color: '#111111' }),
+    ]).months;
+
+    expect(rows(january)).toEqual([['Snacks', '#111111', 300]]);
+  },
+);
+
+test('[INSIGHTS-7.1] without snapshots uses the latest stored name, first by code point on the same day', () => {
+  const [january] = build([
+    gone('2025-01-05', 100, undefined, 'Alpha'),
+    gone('2025-01-20', 100, undefined, 'Zeta'),
+    gone('2025-01-20', 100, undefined, 'Yak'),
+  ]).months;
+
+  expect(rows(january)).toEqual([['Yak', '#808080', 300]]);
+});
+
 test('[INSIGHTS-8.1] gives each category its percentage of the currency total, largest first', () => {
   const [january] = build([
     expense({
@@ -434,17 +514,50 @@ test('[INSIGHTS-8.1] does not round percentages', () => {
   expect(food.percent).toBeCloseTo(100 / 3, 10);
 });
 
-test('[INSIGHTS-8.1] orders categories with the same amount by name, ignoring case', () => {
+test('[INSIGHTS-8.1] orders equal amounts by lowercased name in code point order', () => {
   const [january] = build([
-    expense({ categoryName: 'Banana', amountMinor: 500 }),
+    ...['Banana', 'apple', 'Fig', 'Éclair', '餐飲', '交通', '😀', 'ｆ'].map(
+      (categoryName) => expense({ categoryName, amountMinor: 500 }),
+    ),
     expense({ categoryName: 'Coffee', amountMinor: 900 }),
-    expense({ categoryName: 'apple', amountMinor: 500 }),
   ]).months;
 
   expect(rows(january).map(([name]) => name)).toEqual([
     'Coffee',
     'apple',
     'Banana',
+    'Fig',
+    'Éclair',
+    '交通',
+    '餐飲',
+    'ｆ',
+    '😀',
+  ]);
+});
+
+test('[INSIGHTS-8.1] breaks remaining ties by the name as written, then by color', () => {
+  const [january] = build(
+    [
+      expense({ categoryName: 'tea', amountMinor: 500 }),
+      expense({ categoryId: 'tea-red', categoryName: 'Tea', amountMinor: 500 }),
+      expense({
+        categoryId: 'tea-green',
+        categoryName: 'Tea',
+        amountMinor: 500,
+      }),
+    ],
+    {
+      categories: [
+        { id: 'tea-red', name: 'Tea', color: '#FF0000' },
+        { id: 'tea-green', name: 'Tea', color: '#00FF00' },
+      ],
+    },
+  ).months;
+
+  expect(rows(january)).toEqual([
+    ['Tea', '#00FF00', 500],
+    ['Tea', '#FF0000', 500],
+    ['tea', '#808080', 500],
   ]);
 });
 
@@ -618,4 +731,31 @@ test('[INSIGHTS-11.1] a donut of 6 categories puts the sixth in Others', () => {
     ['Category 5', 20],
     ['Others', 10],
   ]);
+});
+
+test('[INSIGHTS-12.1] totals up to the safe integer limit', () => {
+  const insights = build([
+    expense({ date: '2025-01-10', amountMinor: Number.MAX_SAFE_INTEGER - 1 }),
+    expense({ date: '2025-01-11', currency: 'JPY', amountMinor: 500 }),
+    expense({ date: '2025-02-10', amountMinor: 1 }),
+  ]);
+
+  expect(keyedTotals(insights.years)).toEqual([
+    [
+      '2025',
+      [
+        ['JPY', 500],
+        ['USD', Number.MAX_SAFE_INTEGER],
+      ],
+    ],
+  ]);
+});
+
+test('[INSIGHTS-12.1] rejects a year whose total passes the limit', () => {
+  expect(
+    buildOrUndefined([
+      expense({ date: '2025-01-10', amountMinor: Number.MAX_SAFE_INTEGER - 1 }),
+      expense({ date: '2025-02-10', amountMinor: 2 }),
+    ]),
+  ).toBeUndefined();
 });
