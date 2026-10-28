@@ -14,4 +14,7 @@ module.exports = {
   ],
   coverageDirectory: '<rootDir>/reports/coverage',
   coverageReporters: ['text', 'json-summary', 'lcov'],
+  coverageThreshold: {
+    './packages/domain/src/ledger/money.ts': { branches: 100 },
+  },
 };

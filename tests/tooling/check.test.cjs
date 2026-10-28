@@ -17,7 +17,7 @@ beforeEach(() => {
   fs.writeFileSync(
     path.join(root, 'bin/pnpm'),
     `#!/usr/bin/env bash
-echo "$1" >> steps
+echo "$*" >> steps
 if [ "$1" = "$FAIL_STEP" ]; then exit 7; fi
 `,
   );
@@ -47,8 +47,10 @@ test.each(['', 'lint', 'format:check', 'typecheck', 'test', 'trace'])(
       },
       encoding: 'utf8',
     });
-    const steps = ['lint', 'format:check', 'typecheck', 'test'];
-    const failingStep = steps.indexOf(failure);
+    const steps = ['lint', 'format:check', 'typecheck', 'test --coverage'];
+    const failingStep = steps.findIndex(
+      (step) => step.split(' ')[0] === failure,
+    );
     expect(result.stderr).toBe('');
     expect(result.status).toBe(failure === 'trace' ? 1 : failure ? 7 : 0);
     expect(
