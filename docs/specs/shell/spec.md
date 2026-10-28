@@ -279,7 +279,7 @@ IF 欄位的文字去掉頭尾空白後和存著的名字相同，THEN the mobil
 
 ### Requirement: SHELL-20.1 清空名字時在欄位下方提示
 
-IF 已經存過名字，而欄位的文字去掉頭尾空白後是空的，THEN the mobile app SHALL 不儲存、不跳出提示框，在名字欄位下方顯示「Please enter your name」並讓螢幕閱讀器念出來，直到存好一個名字；欄位保留使用者輸入的內容。
+IF 已經存過名字，而欄位的文字去掉頭尾空白後是空的，THEN the mobile app SHALL 不儲存、不跳出提示框，在名字欄位下方顯示「Please enter your name」並讓螢幕閱讀器念出來，直到下一次失焦或按 Return 時欄位有非空白的文字；欄位保留使用者輸入的內容。
 
 #### Scenario: 清空後失焦
 
@@ -295,6 +295,16 @@ IF 已經存過名字，而欄位的文字去掉頭尾空白後是空的，THEN 
 
 - **WHEN** 出現「Please enter your name」之後，輸入「Sam」並讓欄位失焦
 - **THEN** 名字存成「Sam」，「Please enter your name」消失
+
+#### Scenario: 改回原本的名字
+
+- **WHEN** 出現「Please enter your name」之後，輸入「Taylor」並讓欄位失焦
+- **THEN** 不儲存，「Please enter your name」消失
+
+#### Scenario: 新的名字存不進去
+
+- **WHEN** 出現「Please enter your name」之後，資料庫無法寫入時輸入「Sam」並讓欄位失焦
+- **THEN** 跳出「Unable to Save Settings」，「Please enter your name」消失，名字仍是「Taylor」
 
 ### Requirement: SHELL-21.1 儲存中鎖住名字欄位
 

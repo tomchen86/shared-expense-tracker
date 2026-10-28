@@ -316,6 +316,33 @@ test('[SHELL-20.1] stops asking once a name is saved', async () => {
   await expectNameInUse('Sam');
 });
 
+test('[SHELL-20.1] stops asking without saving when the saved name is typed back', async () => {
+  await startSettings();
+  await enterName('Taylor');
+  await enterName('');
+  expect(screen.getByText(ASK_FOR_NAME)).toBeOnTheScreen();
+  failWrites();
+
+  await enterName('Taylor');
+
+  expect(screen.queryByText(ASK_FOR_NAME)).toBeNull();
+  expect(alerts()).toEqual([]);
+});
+
+test('[SHELL-20.1] stops asking when a typed name fails to save', async () => {
+  await startSettings();
+  await enterName('Taylor');
+  await enterName('');
+  expect(screen.getByText(ASK_FOR_NAME)).toBeOnTheScreen();
+  failWrites();
+
+  await enterName('Sam');
+
+  expect(alerts()).toEqual([SAVE_FAILED]);
+  expect(screen.queryByText(ASK_FOR_NAME)).toBeNull();
+  await expectNameInUse('Taylor');
+});
+
 test('[SHELL-21.1] locks the name field until the name is saved', async () => {
   await startSettings();
   const writes = holdWrites();
