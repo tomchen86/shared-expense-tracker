@@ -24,7 +24,7 @@ Take one PR at a time through the final stretch (update, check, report, merge). 
 5. "Rules discovered during implementation": each must already be in the spec with a test, added by the spec author before it was implemented. Send back any behavior a user or another component would notice that exists only in the code.
 6. Traced coverage (its command is in `AGENTS.md`): run only the tests that cite IDs, with coverage on, and list the new branches none of them executes. Each is a missing requirement, dead code, or defensive code. Read function and branch coverage, not line coverage. For text-only documentation changes that do not affect code, tests, or how they run, report `N/A` with a reason instead. Refactors and dependency updates do not qualify for this exception.
 7. Read every change to `AGENTS.md`, `CLAUDE.md`, `skills/`, `.github/`, `scripts/`, test configuration, and dependency files line by line. The first three are the instructions for every later session.
-8. Report to the owner: what changed, the risks, the reviewed head SHA, the spec SHA step 3 compared it with, and the Merge commands below, filled in. Cite code with links pinned to that SHA: `gh browse <path>:<line> --commit <sha> --no-browser`.
+8. Post the report as a PR comment: what changed, the risks, the reviewed head SHA, and the spec SHA step 3 compared it with. Cite code with links pinned to that SHA: `gh browse <path>:<line> --commit <sha> --no-browser`. Give the owner a brief summary, the comment's link, and the Merge commands below, filled in; never put those commands in the comment.
 
 ## Merge
 
