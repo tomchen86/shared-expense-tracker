@@ -5,6 +5,7 @@ const shared = {
       pattern.replace('react-native|', '@noble/hashes|react-native|'),
     ),
   moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
+  coveragePathIgnorePatterns: ['/node_modules/', '/tests/'],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
