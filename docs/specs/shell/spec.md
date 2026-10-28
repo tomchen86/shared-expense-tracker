@@ -134,7 +134,7 @@ The mobile app SHALL 讓各分頁的根畫面只有一個原生標題列，顯�
 
 ### Requirement: SHELL-10.1 iOS 的分頁根畫面用大標題
 
-WHERE iOS，the mobile app SHALL 讓各分頁根畫面的標題是可收合的原生大標題。
+WHERE iOS，the mobile app SHALL 讓各分頁根畫面的標題是原生大標題。
 
 #### Scenario: 分頁根畫面
 
