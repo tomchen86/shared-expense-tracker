@@ -42,6 +42,7 @@ function moduleReference(node) {
 function checkPlatformBoundaries(mobile) {
   const src = path.join(mobile, 'src');
   const ui = path.join(src, 'ui');
+  const storage = path.join(src, 'storage');
   const config = ts.readConfigFile(
     path.join(mobile, 'tsconfig.json'),
     ts.sys.readFile,
@@ -67,6 +68,10 @@ function checkPlatformBoundaries(mobile) {
 
   for (const file of files) {
     const inUi = inside(file, ui);
+    const inStorage = inside(file, storage);
+    const isTest =
+      inside(file, path.join(mobile, 'tests')) ||
+      /\.(test|spec)\.[cm]?[jt]sx?$/.test(file);
     const relative = path.relative(mobile, file);
     if (!inUi && /\.(ios|android|native|web)(\.|$)/.test(path.basename(file))) {
       errors.push(`${relative}: platform files belong in src/ui/`);
@@ -103,13 +108,24 @@ function checkPlatformBoundaries(mobile) {
       const reference = moduleReference(node);
       if (reference && ts.isStringLiteralLike(reference)) {
         const specifier = reference.text;
+        const resolved = ts.resolveModuleName(specifier, file, options, ts.sys)
+          .resolvedModule?.resolvedFileName;
+        if (!inStorage && /^expo-sqlite(?:\/|$)/.test(specifier)) {
+          report(reference, 'only src/storage/ may import expo-sqlite');
+        }
+        if (
+          inStorage &&
+          resolved &&
+          inside(resolved, src) &&
+          !inside(resolved, storage) &&
+          !inside(resolved, ui)
+        ) {
+          report(reference, 'src/storage/ must not import capability code');
+        }
+        if (!isTest && resolved === path.join(storage, 'node.ts')) {
+          report(reference, 'only tests may import src/storage/node.ts');
+        }
         if (inUi) {
-          const resolved = ts.resolveModuleName(
-            specifier,
-            file,
-            options,
-            ts.sys,
-          ).resolvedModule?.resolvedFileName;
           if (resolved && inside(resolved, src) && !inside(resolved, ui)) {
             report(reference, 'src/ui/ must not import capability code');
           }

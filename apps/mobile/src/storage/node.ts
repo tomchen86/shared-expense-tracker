@@ -1,8 +1,5 @@
-// Stub for the Node implementation of the storage interface, which tests use in
-// place of expo-sqlite (ADR-0006). Only tests import this file, so the app bundle
-// never includes node:sqlite.
-
-import type { Database } from './index';
+import { DatabaseSync } from 'node:sqlite';
+import { createDatabase, type Database, type SqlValue } from './database';
 
 export interface NodeDatabaseOptions {
   /** Opens the file for reading only, so every write fails. */
@@ -14,7 +11,22 @@ export function openNodeDatabase(
   path: string,
   options: NodeDatabaseOptions = {},
 ): Database {
-  throw new Error(
-    `Not implemented: openNodeDatabase(${path}, readOnly: ${options.readOnly === true})`,
-  );
+  const connection = new DatabaseSync(path, options);
+  return createDatabase({
+    exec: async (sql) => {
+      connection.exec(sql);
+    },
+    run: async (sql, parameters = []) => {
+      const result = connection.prepare(sql).run(...parameters);
+      return {
+        changes: Number(result.changes),
+        lastInsertRowId: Number(result.lastInsertRowid),
+      };
+    },
+    all: async <T>(sql: string, parameters: readonly SqlValue[] = []) =>
+      connection.prepare(sql).all(...parameters) as T[],
+    close: async () => {
+      connection.close();
+    },
+  });
 }
