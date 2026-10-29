@@ -8,7 +8,11 @@ import {
 } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { initializeDatabase, type Database } from '../storage';
-import { ensureLocalIdentity, type LocalIdentity } from './identity';
+import {
+  ensureLocalIdentity,
+  saveLocalName,
+  type LocalIdentity,
+} from './identity';
 import { appMigrations } from './migrations';
 
 interface LocalData {
@@ -16,7 +20,11 @@ interface LocalData {
   identity: LocalIdentity;
 }
 
-const LocalDataContext = createContext<LocalData | null>(null);
+interface LocalDataContextValue extends LocalData {
+  saveName: (name: string) => Promise<void>;
+}
+
+const LocalDataContext = createContext<LocalDataContextValue | null>(null);
 
 export interface LocalDataGateProps {
   /** The caller closes the returned connections when the app closes. */
@@ -60,8 +68,23 @@ export function LocalDataGate({
   }, [openDatabase, development]);
 
   if (startup.status === 'ready') {
+    const { database } = startup.data;
+    async function saveName(name: string) {
+      await saveLocalName(database, name);
+      setStartup((current) =>
+        current.status === 'ready' && current.data.database === database
+          ? {
+              ...current,
+              data: {
+                ...current.data,
+                identity: { ...current.data.identity, name },
+              },
+            }
+          : current,
+      );
+    }
     return (
-      <LocalDataContext.Provider value={startup.data}>
+      <LocalDataContext.Provider value={{ ...startup.data, saveName }}>
         {children}
       </LocalDataContext.Provider>
     );
@@ -80,7 +103,7 @@ export function LocalDataGate({
   );
 }
 
-function useLocalData(): LocalData {
+function useLocalData(): LocalDataContextValue {
   const data = useContext(LocalDataContext);
   if (!data)
     throw new Error('Local data is only available inside LocalDataGate');
@@ -92,6 +115,9 @@ export function useLocalIdentity(): LocalIdentity {
 }
 export function useLocalDatabase(): Database {
   return useLocalData().database;
+}
+export function useSaveLocalName(): LocalDataContextValue['saveName'] {
+  return useLocalData().saveName;
 }
 
 const styles = StyleSheet.create({

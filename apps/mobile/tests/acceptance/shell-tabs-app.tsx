@@ -1,6 +1,9 @@
 import * as path from 'node:path';
 // Before expo-router itself, so the expo-linking mock it installs takes effect.
-import { renderRouter } from 'expo-router/testing-library';
+import {
+  renderRouter,
+  type MockContextConfig,
+} from 'expo-router/testing-library';
 import { router } from 'expo-router';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 
@@ -13,16 +16,24 @@ const APP = path.join(__dirname, '../../app');
 
 export const TAB_NAMES = ['Groups', 'Expenses', 'Settings'];
 
-/** Starts the app at `url` and waits until its local data has opened. */
-export async function startApp(url = '/') {
-  const app = renderRouter(APP, { initialUrl: url });
+type Routes = Extract<MockContextConfig, { appDir: string }>['overrides'];
+
+/**
+ * Starts the app at `url` and waits until its local data has opened. `routes`
+ * adds test-only screens, keyed like `./name.tsx` under `app/`.
+ */
+export async function startApp(url = '/', routes?: Routes) {
+  const app = renderRouter(routes ? { appDir: APP, overrides: routes } : APP, {
+    initialUrl: url,
+  });
   await waitFor(() =>
     expect(screen.queryByLabelText('Restoring local data')).toBeNull(),
   );
   return app;
 }
 
-function nativeViews(name: RegExp, root = screen.UNSAFE_root) {
+/** Host views by native component name, in tree order. */
+export function nativeViews(name: RegExp, root = screen.UNSAFE_root) {
   return root.findAll(
     (node) => typeof node.type === 'string' && name.test(node.type),
   );
