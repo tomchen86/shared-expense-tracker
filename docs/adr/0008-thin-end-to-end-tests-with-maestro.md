@@ -1,4 +1,4 @@
-# ADR-0007: Thin end-to-end tests with Maestro
+# ADR-0008: Thin end-to-end tests with Maestro
 
 - Date: 2026-10-29
 - Status: Proposed
@@ -25,6 +25,8 @@ Tools:
 
 - Maestro (CLI 2.12.0) drives a built app from outside, through the accessibility tree, with flows written in YAML. It adds nothing to the app, works with Expo Go and with builds, and runs iOS 26 simulators on macOS. Expo's E2E guide and EAS Workflows use it. `maestro test --format junit` reports each flow as a test case named after the flow's `name` (or its file name) and adds a `failure` element when the flow fails, so the trace check reads its reports as they are. It waits by watching the screen, not by knowing when the app is idle, and it sees appearance only in screenshots.
 - Detox (20.51.4) runs Jest tests against a build and waits until the JavaScript thread and animations are idle. Set up for Expo, it adds native test code through a config plugin during `expo prebuild`, so it tests a build, not Expo Go. It officially supports React Native 0.77 to 0.84; the app is on 0.86.
+- Appium (3.9.0) drives the app from outside through WebDriver, in any language, and most device clouds support it. It needs a server, a driver per platform, and WebDriverAgent built for iOS, and tests have to wait for the screen themselves.
+- XCUITest and Espresso are Apple's and Google's own frameworks: two suites, in Swift and Kotlin, in UI test targets that the generated native projects do not have, so a config plugin would have to add them.
 
 Builds:
 
