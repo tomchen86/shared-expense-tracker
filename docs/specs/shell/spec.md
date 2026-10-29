@@ -2,7 +2,7 @@
 
 ## Purpose
 
-App 外殼：開啟本機資料、開啟期間的載入畫面、打不開時的錯誤畫面、這支手機的本機身分，載入後的分頁列、各分頁自己的堆疊和返回按鈕，Settings 根畫面上的名字、外觀選項和入口列，以及 app 的深淺色和半透明表面。本機資料是手機上的 SQLite 資料庫；開啟時依序跑 migration，還沒有本機身分時再建立一個（ADR-0006）。開發版是指 `__DEV__` 為真的 build。分頁的根畫面是分頁堆疊最底下的畫面，也就是選中分頁時最先看到的畫面。名字是本機身分裡存著的名字。外觀選項是存在本機資料裡的 System、Light 或 Dark；app 的外觀是 app 現在用淺色還是深色：外觀選項是 Light 或 Dark 時就是它，是 System 時跟著手機。跟著外觀的顏色是指淺色和深色時不同的顏色，或是由系統依外觀決定的顏色。「降低透明度」是 iOS 輔助使用裡的同名設定。毛玻璃是看得到後面模糊內容的半透明表面；玻璃是 iOS 26 起的 Liquid Glass。
+App 外殼：開啟本機資料、開啟期間的載入畫面、打不開時的錯誤畫面、這支手機的本機身分，載入後的分頁列、各分頁自己的堆疊和返回按鈕，Settings 根畫面上的名字、外觀選項和入口列，以及 app 的深淺色和半透明表面。本機資料是手機上的 SQLite 資料庫；開啟時依序跑 migration，還沒有本機身分時再建立一個（ADR-0006）。開發版是指 `__DEV__` 為真的 build。分頁的根畫面是分頁堆疊最底下的畫面，也就是選中分頁時最先看到的畫面。名字是本機身分裡存著的名字。外觀選項是存在本機資料裡的 System、Light 或 Dark；app 的外觀是 app 現在用淺色還是深色：外觀選項是 Light 或 Dark 時就是它，是 System 時跟著手機。跟著外觀的顏色是指淺色和深色時不同的顏色，或是由系統依外觀決定的顏色。「降低透明度」是 iOS 輔助使用裡的同名設定。毛玻璃是看得到後面模糊內容的半透明表面；玻璃是 iOS 26 起的 Liquid Glass。app 自己加的毛玻璃或玻璃，不包括分頁列、標題列、分段控制這些系統元件本身畫的。
 
 ## Requirements
 
@@ -397,7 +397,7 @@ The mobile app SHALL 在 Settings 根畫面的 PROFILE 和 APP 區塊之間顯�
 
 ### Requirement: SHELL-27.1 (manual) iOS 的外觀選擇器
 
-WHERE iOS，the mobile app SHALL 把 Appearance 單選群組顯示成 large 大小的系統分段控制：點一個選項就選它，拖曳滑塊再放開時吸附到最近的選項並選它，拖曳時顯示系統的 Liquid Glass 效果。
+WHERE iOS，the mobile app SHALL 把 Appearance 單選群組顯示成 large 大小的系統分段控制：點一個選項就選它，拖曳滑塊再放開時吸附到最近的選項並選它；沒開「降低透明度」時，拖曳會顯示系統的 Liquid Glass 效果。
 
 #### Scenario: 點選
 
@@ -495,7 +495,7 @@ IF 外觀選項存不進去，THEN the mobile app SHALL 跳出標題「Unable to
 
 ### Requirement: SHELL-34.1 顏色跟著外觀
 
-The mobile app SHALL 讓畫面的背景、文字、區塊、分隔線和提示文字都用跟著 app 外觀的顏色，每段文字都指定顏色；本機資料的載入和錯誤畫面用跟著手機外觀的顏色。
+The mobile app SHALL 讓畫面的背景、文字、區塊、分隔線和提示文字都用跟著 app 外觀的顏色，每段文字都指定顏色；本機資料的載入和錯誤畫面用跟著手機外觀的顏色。使用者資料裡的顏色，例如分類的顏色，不在這條規則裡。
 
 #### Scenario: 分頁的根畫面
 
@@ -523,17 +523,17 @@ WHERE iOS，WHILE 沒有開「降低透明度」，the mobile app SHALL 讓 Sett
 
 ### Requirement: SHELL-36.1 iOS 開著「降低透明度」時不透明
 
-WHERE iOS，WHILE 開著「降低透明度」，the mobile app SHALL 讓畫面上沒有毛玻璃或玻璃，區塊都改用不透明的顏色；app 啟動時只問系統一次，之後跟著系統的變更通知立即切換。
+WHERE iOS，WHILE 開著「降低透明度」，the mobile app SHALL 讓畫面上沒有 app 自己加的毛玻璃或玻璃，區塊都改用不透明的顏色；app 啟動時只問系統一次，之後跟著系統的變更通知立即切換。
 
 #### Scenario: 開著
 
 - **WHEN** iOS 上開著「降低透明度」，打開 Settings
-- **THEN** PROFILE 和 APP 區塊不透明，畫面上沒有毛玻璃或玻璃
+- **THEN** PROFILE 和 APP 區塊不透明，畫面上沒有 app 自己加的毛玻璃或玻璃
 
 #### Scenario: 執行中打開
 
 - **WHEN** Settings 開著時，在系統打開「降低透明度」
-- **THEN** 區塊立即變成不透明，畫面上沒有毛玻璃
+- **THEN** 區塊立即變成不透明，畫面上沒有 app 自己加的毛玻璃
 
 #### Scenario: 執行中關掉
 
@@ -552,7 +552,7 @@ WHERE iOS，IF 系統回答不了有沒有開「降低透明度」，THEN the mo
 #### Scenario: 問不到
 
 - **WHEN** iOS 上問「降低透明度」時發生錯誤
-- **THEN** app 照常顯示畫面，Settings 的區塊不透明，畫面上沒有毛玻璃或玻璃
+- **THEN** app 照常顯示畫面，Settings 的區塊不透明，畫面上沒有 app 自己加的毛玻璃或玻璃
 
 #### Scenario: 之後收到通知
 
@@ -561,9 +561,9 @@ WHERE iOS，IF 系統回答不了有沒有開「降低透明度」，THEN the mo
 
 ### Requirement: SHELL-38.1 Android 用不透明的表面
 
-WHERE Android，the mobile app SHALL 不用毛玻璃或玻璃，區塊都用不透明的顏色。
+WHERE Android，the mobile app SHALL 不自己加毛玻璃或玻璃，區塊都用不透明的顏色。
 
 #### Scenario: 打開 Settings
 
 - **WHEN** Android 上打開 Settings
-- **THEN** 畫面上沒有毛玻璃或玻璃，PROFILE 和 APP 區塊不透明
+- **THEN** 畫面上沒有 app 自己加的毛玻璃或玻璃，PROFILE 和 APP 區塊不透明

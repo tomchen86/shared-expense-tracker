@@ -253,7 +253,7 @@ testColorsFollowTheAppearance((open) => {
   mockOpen = open;
 });
 
-test('[SHELL-38.1] shows no blur or glass, and opaque sections, on Android', async () => {
+test('[SHELL-38.1] adds no blur or glass of its own, and keeps the sections opaque, on Android', async () => {
   await startSettings();
 
   expect(translucentViews()).toHaveLength(0);

@@ -109,7 +109,7 @@ test('[SHELL-35.1] puts blur behind the PROFILE and APP sections while Reduce Tr
   expect(sectionsWithoutBlur()).toEqual([]);
 });
 
-test('[SHELL-36.1] shows no blur or glass while Reduce Transparency is on', async () => {
+test('[SHELL-36.1] adds no blur or glass of its own while Reduce Transparency is on', async () => {
   fakeReduceTransparency(true);
   await startApp('/settings');
 

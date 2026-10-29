@@ -334,7 +334,11 @@ export function isOpaque(background: unknown) {
 
 // Blur and glass
 
-/** Native views that let blurred content through: expo-blur, expo-glass-effect, UIVisualEffectView. */
+/**
+ * Blur and glass the app adds itself: native views such as expo-blur,
+ * expo-glass-effect, or UIVisualEffectView. The glass that system components such
+ * as the tab bar draw for themselves is not among them.
+ */
 export const translucentViews = (root = screen.UNSAFE_root) =>
   nativeViews(/blur|glass|visualeffect/i, root);
 
