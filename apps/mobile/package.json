@@ -13,26 +13,26 @@
     "@expo/metro-runtime": "~57.0.17",
     "@noble/hashes": "^2.4.0",
     "@shared-expense/domain": "workspace:*",
-    "expo": "57.0.4",
+    "expo": "57.0.31",
     "expo-constants": "~57.0.22",
-    "expo-linking": "57.0.2",
-    "expo-router": "57.0.4",
+    "expo-linking": "57.0.13",
+    "expo-router": "57.0.29",
     "expo-sqlite": "~57.0.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-native": "0.86.0",
-    "react-native-reanimated": "4.5.0",
+    "react-native": "0.86.3",
+    "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "5.7.0",
-    "react-native-screens": "4.25.2",
-    "react-native-worklets": "^0.10.0"
+    "react-native-screens": "4.26.2",
+    "react-native-worklets": "^0.10.1"
   },
   "devDependencies": {
-    "@react-native/jest-preset": "0.86.0",
-    "@react-native/metro-config": "0.86.0",
+    "@react-native/jest-preset": "0.86.3",
+    "@react-native/metro-config": "0.86.3",
     "@testing-library/react-native": "13.3.3",
     "@types/react": "19.2.17",
-    "babel-preset-expo": "57.0.2",
-    "jest-expo": "57.0.2",
+    "babel-preset-expo": "57.0.16",
+    "jest-expo": "57.0.6",
     "react-test-renderer": "19.2.3"
   }
 }
