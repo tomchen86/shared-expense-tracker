@@ -164,7 +164,11 @@ test('development reset clears views, triggers, quoted names, and foreign-key cy
     await database.all(
       "SELECT name FROM sqlite_master WHERE type IN ('table', 'view', 'trigger') ORDER BY name",
     ),
-  ).toEqual([{ name: '_migrations' }, { name: 'local_identity' }]);
+  ).toEqual([
+    { name: '_migrations' },
+    { name: 'categories' },
+    { name: 'local_identity' },
+  ]);
   expect(await database.all('PRAGMA foreign_keys')).toEqual([
     { foreign_keys: 1 },
   ]);
