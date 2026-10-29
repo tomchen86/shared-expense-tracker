@@ -306,7 +306,7 @@ WHEN app 重新啟動，the mobile app SHALL 保留新增的分類，以及分�
 
 ### Requirement: CATEGORIES-18.1 儲存中不能關閉表單
 
-WHILE 分類正在儲存，the mobile app SHALL 停用 Cancel 和 Add 或 Save，也不讓分類表單因為往下滑或按 Android 的返回鍵而關閉，直到存好或存不進去為止。
+WHILE 分類正在儲存，the mobile app SHALL 停用 Cancel 和 Add 或 Save，直到存好或存不進去為止。
 
 #### Scenario: 新增中
 
@@ -323,11 +323,6 @@ WHILE 分類正在儲存，the mobile app SHALL 停用 Cancel 和 Add 或 Save�
 - **WHEN** 資料庫無法寫入時按 Add
 - **THEN** 存不進去之後，Cancel 和 Add 都恢復可以按
 
-#### Scenario: 往下滑或按返回鍵
-
-- **WHEN** 儲存中往下滑表單，或在 Android 上按返回鍵
-- **THEN** 表單不關閉；存好後才關閉
-
 ### Requirement: CATEGORIES-19.1 建立預設分類失敗時當作本機資料打不開
 
 IF 建立預設分類（CATEGORIES-6.1）失敗，THEN the mobile app SHALL 和本機資料打不開時一樣（SHELL-4.1），顯示「Unable to Load Local Data」和「Your data was not changed.」，不顯示 app 的畫面，並讓本機資料保持開啟前的樣子，不留下任何一個預設分類。
@@ -341,3 +336,12 @@ IF 建立預設分類（CATEGORIES-6.1）失敗，THEN the mobile app SHALL 和�
 
 - **WHEN** 寫入恢復後再啟動 app
 - **THEN** 九個預設分類依序都在
+
+### Requirement: CATEGORIES-20.1 (manual) 儲存中不能往下滑或按返回鍵關閉表單
+
+WHILE 分類正在儲存，the mobile app SHALL 不讓分類表單因為往下滑或按 Android 的返回鍵而關閉。
+
+#### Scenario: 往下滑或按返回鍵
+
+- **WHEN** 儲存還沒完成時往下滑表單，或在 Android 上按返回鍵
+- **THEN** 表單不關閉；存好後才關閉
