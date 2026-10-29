@@ -4,9 +4,15 @@ name: Opens a Settings row with one tap while the keyboard is open
 - launchApp:
     clearState: true
 - extendedWaitUntil:
-    visible: Settings
+    visible:
+      text: Expenses
+      selected: true
     timeout: 30000
+- waitForAnimationToEnd
 - tapOn: Settings
+- assertVisible:
+    text: Settings
+    selected: true
 - tapOn:
     id: settings-name
 - inputText: Taylor

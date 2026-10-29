@@ -4,9 +4,15 @@ name: Keeps the saved name after a restart
 - launchApp:
     clearState: true
 - extendedWaitUntil:
-    visible: Settings
+    visible:
+      text: Expenses
+      selected: true
     timeout: 30000
+- waitForAnimationToEnd
 - tapOn: Settings
+- assertVisible:
+    text: Settings
+    selected: true
 - tapOn:
     id: settings-name
 - inputText: Taylor
@@ -15,8 +21,11 @@ name: Keeps the saved name after a restart
 - stopApp
 - launchApp
 - extendedWaitUntil:
-    visible: Settings
+    visible:
+      text: Expenses
+      selected: true
     timeout: 30000
+- waitForAnimationToEnd
 - tapOn: Settings
 - assertVisible:
     id: settings-name
