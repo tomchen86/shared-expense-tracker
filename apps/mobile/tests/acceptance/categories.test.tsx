@@ -17,29 +17,33 @@ import {
   startApp,
   tab,
 } from './shell-tabs-app';
-import type { Database, SqlExecutor } from '../../src/storage';
+import type { Database, SqlExecutor, SqlValue } from '../../src/storage';
 
 // Runs on iOS. The phone database is a file each test chooses (ADR-0006), so a
-// test can restart the app on the same data. After the app has started, a test
-// can hold or fail its writes, as a slow or full disk would. The category form
-// may be a sheet on Manage Categories or a screen of its own, and its buttons
-// views or native navigation bar items; the helpers find them either way.
+// test can restart the app on the same data. A test can hold or fail writes, as
+// a slow or full disk would, or fail only the writes that store a given value.
+// The category form may be a sheet on Manage Categories or a screen of its own,
+// and its buttons views or native navigation bar items; the helpers find them
+// either way.
 
 let mockFile = '';
-let mockBeforeWrite = (): Promise<void> => Promise.resolve();
+let mockBeforeWrite: (
+  sql: string,
+  parameters?: readonly SqlValue[],
+) => Promise<void> = () => Promise.resolve();
 
 /** Puts every write, in a transaction or not, behind `mockBeforeWrite`. */
 function mockGatedWrites(database: Database): Database {
-  const gated =
-    <A extends unknown[], R>(write: (...args: A) => Promise<R>) =>
-    async (...args: A): Promise<R> => {
-      await mockBeforeWrite();
-      return write(...args);
-    };
   const gate = <T extends SqlExecutor>(executor: T): T => ({
     ...executor,
-    exec: gated(executor.exec),
-    run: gated(executor.run),
+    exec: async (sql: string) => {
+      await mockBeforeWrite(sql);
+      return executor.exec(sql);
+    },
+    run: async (sql: string, parameters?: readonly SqlValue[]) => {
+      await mockBeforeWrite(sql, parameters);
+      return executor.run(sql, parameters);
+    },
   });
   return {
     ...gate(database),
@@ -124,6 +128,16 @@ function allowWrites() {
 
 function failWrites() {
   mockBeforeWrite = () => Promise.reject(new Error('disk full'));
+}
+
+/** Fails each write that stores the name of Uncategorized, the last default category. */
+function failWritesOfUncategorized() {
+  mockBeforeWrite = (sql, parameters = []) =>
+    [sql, ...parameters].some(
+      (value) => typeof value === 'string' && value.includes('Uncategorized'),
+    )
+      ? Promise.reject(new Error('disk full'))
+      : Promise.resolve();
 }
 
 /** Holds every write until the test lets the writes through. */
@@ -762,4 +776,81 @@ test('[CATEGORIES-17.1] keeps added, renamed and recolored categories after the 
     ...replacing(2, ['Groceries', '#43A047']),
     ['Gym', '#C62828'],
   ]);
+});
+
+test('[CATEGORIES-18.1] disables Cancel and Add until a new category is saved', async () => {
+  await openManageCategories();
+  await openNewCategory();
+  fireEvent.changeText(nameField(), 'Gym');
+  const writes = holdWrites();
+
+  await press('Add');
+
+  expect(formButton('Cancel').disabled).toBe(true);
+  expect(formButton('Add').disabled).toBe(true);
+  await press('Cancel');
+  expect(showsTitle('New Category')).toBe(true);
+  await writes.release();
+  await settle();
+  await expectFormClosed();
+  expect(categoryList()).toEqual([...DEFAULTS, ['Gym', '#43A047']]);
+});
+
+test('[CATEGORIES-18.1] disables Cancel and Save until an edit is saved', async () => {
+  await openManageCategories();
+  await openCategory('Shopping');
+  fireEvent.changeText(nameField(), 'Groceries');
+  const writes = holdWrites();
+
+  await press('Save');
+
+  expect(formButton('Cancel').disabled).toBe(true);
+  expect(formButton('Save').disabled).toBe(true);
+  await writes.release();
+  await settle();
+  await expectFormClosed();
+  expect(categoryList()).toEqual(replacing(2, ['Groceries', '#FBC02D']));
+});
+
+test('[CATEGORIES-18.1] enables Cancel and Add again once the save fails', async () => {
+  await openManageCategories();
+  await openNewCategory();
+  fireEvent.changeText(nameField(), 'Gym');
+  failWrites();
+
+  await press('Add');
+
+  expect(formButton('Cancel').disabled).toBe(false);
+  expect(formButton('Add').disabled).toBe(false);
+});
+
+test('[CATEGORIES-19.1] shows the load error and leaves the data as it was when a default category cannot be created', async () => {
+  fs.writeFileSync(mockFile, ''); // An empty file is an empty SQLite database.
+  const before = fs.readFileSync(mockFile);
+  failWritesOfUncategorized();
+
+  const app = await startApp('/settings');
+
+  expect(
+    await screen.findByText('Unable to Load Local Data'),
+  ).toBeOnTheScreen();
+  expect(screen.getByText('Your data was not changed.')).toBeOnTheScreen();
+  expect(nativeViews(/^RNSTabsHost/)).toEqual([]);
+  app.unmount();
+  await settle();
+  expect(fs.readFileSync(mockFile)).toEqual(before);
+});
+
+test('[CATEGORIES-19.1] creates all nine default categories on the next start once writes recover', async () => {
+  failWritesOfUncategorized();
+  const app = await startApp('/settings');
+  expect(
+    await screen.findByText('Unable to Load Local Data'),
+  ).toBeOnTheScreen();
+  app.unmount();
+  allowWrites();
+
+  await openManageCategories();
+
+  expect(categoryList()).toEqual(DEFAULTS);
 });

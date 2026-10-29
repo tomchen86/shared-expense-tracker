@@ -303,3 +303,41 @@ WHEN app 重新啟動，the mobile app SHALL 保留新增的分類，以及分�
 
 - **WHEN** 新增用 `#C62828` 的「Gym」，把 Shopping 改名為「Groceries」並改用 `#43A047`，然後重新啟動 app
 - **THEN** Manage Categories 依序是 Food & Dining、Transportation、Groceries、Entertainment、Bills & Utilities、Health、Travel、Other、Uncategorized、Gym，顏色都和重新啟動前一樣
+
+### Requirement: CATEGORIES-18.1 儲存中不能關閉表單
+
+WHILE 分類正在儲存，the mobile app SHALL 停用 Cancel 和 Add 或 Save，也不讓分類表單因為往下滑或按 Android 的返回鍵而關閉，直到存好或存不進去為止。
+
+#### Scenario: 新增中
+
+- **WHEN** 輸入「Gym」按 Add，儲存還沒完成
+- **THEN** Cancel 和 Add 都停用，表單仍開著；存好後表單關閉，多了「Gym」
+
+#### Scenario: 編輯中
+
+- **WHEN** 把 Shopping 改名為「Groceries」按 Save，儲存還沒完成
+- **THEN** Cancel 和 Save 都停用；存好後表單關閉，第三列是「Groceries」
+
+#### Scenario: 存不進去之後
+
+- **WHEN** 資料庫無法寫入時按 Add
+- **THEN** 存不進去之後，Cancel 和 Add 都恢復可以按
+
+#### Scenario: 往下滑或按返回鍵
+
+- **WHEN** 儲存中往下滑表單，或在 Android 上按返回鍵
+- **THEN** 表單不關閉；存好後才關閉
+
+### Requirement: CATEGORIES-19.1 建立預設分類失敗時當作本機資料打不開
+
+IF 建立預設分類（CATEGORIES-6.1）失敗，THEN the mobile app SHALL 和本機資料打不開時一樣（SHELL-4.1），顯示「Unable to Load Local Data」和「Your data was not changed.」，不顯示 app 的畫面，並讓本機資料保持開啟前的樣子，不留下任何一個預設分類。
+
+#### Scenario: 第一次啟動時寫不進分類
+
+- **WHEN** 第一次啟動時，寫入最後一個預設分類 Uncategorized 失敗
+- **THEN** 顯示這兩行訊息，本機資料的檔案內容和開啟前完全一樣
+
+#### Scenario: 恢復後再啟動
+
+- **WHEN** 寫入恢復後再啟動 app
+- **THEN** 九個預設分類依序都在
