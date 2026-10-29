@@ -1,0 +1,23 @@
+appId: com.tomchen.sharedexpensetracker
+name: Keeps the saved name after a restart
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: Settings
+    timeout: 30000
+- tapOn: Settings
+- tapOn:
+    id: settings-name
+- inputText: Taylor
+- pressKey: Enter
+- waitForAnimationToEnd
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: Settings
+    timeout: 30000
+- tapOn: Settings
+- assertVisible:
+    id: settings-name
+    text: Taylor

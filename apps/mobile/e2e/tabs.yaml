@@ -1,0 +1,12 @@
+appId: com.tomchen.sharedexpensetracker
+name: Opens on the tabs with Expenses selected
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- assertVisible: Groups
+- assertVisible: Settings

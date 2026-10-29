@@ -9,6 +9,7 @@ A bookkeeping app for personal and shared expenses: no sign-up by default, works
 - `gh run view <run-id> --log-failed`: read only the failed steps. `gh run rerun <run-id> --failed` reruns failed jobs; use it for flaky infrastructure, never to retry a real test failure.
 - `gh pr update-branch <N>`: bring a PR branch up to date with the default branch.
 - Traced coverage (review-pr step 6): `pnpm test:traced` runs only acceptance tests whose reported names cite requirement IDs, with branch coverage in `reports/coverage/`. `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, and `pnpm test` run the individual checks. `bash scripts/check.sh` runs tests with `--coverage`; it and `pnpm test:traced` enforce the level-2 money branch coverage threshold in `jest.config.cjs`. Plain `pnpm test` supports focused runs without collecting coverage.
+- E2E flows on the iOS simulator (ADR-0008; needs Xcode and Maestro): `pnpm --filter mobile exec expo run:ios --device <udid>` builds the debug build that iOS hand checks use, installs it on a simulator of your own (`xcrun simctl create`), and starts Metro. To run the flows on it, start Metro again with `EXPO_PUBLIC_E2E=1 pnpm --filter mobile exec expo start`, which keeps LogBox out of their way, then run `MAESTRO_CLI_NO_ANALYTICS=1 maestro test --device <udid> apps/mobile/e2e`. `bash scripts/e2e-ios.sh` runs them on a Release build, as the `e2e` workflow does after each merge to `main`.
 
 ## Where facts live
 
@@ -66,6 +67,7 @@ Once per issue that changes behavior:
 - Make the failing tests pass. Never edit `docs/specs/` or the acceptance tests, not even to add a line. Clean merges of main's changes are allowed. Put your own tests elsewhere, without requirement IDs. If a test looks wrong, stop and explain why.
 - The spec author's updates arrive on `spec/<branch>`: take them with `git fetch --no-tags origin refs/heads/spec/<branch> && git merge FETCH_HEAD`. Never resolve a conflict in specs or acceptance tests yourself: the spec author resolves it on `spec/<branch>`, then you merge that update.
 - Behavior the spec does not cover: if a user or another component would notice the choice (for example, who gets the remainder of an uneven split), stop and ask the spec author in a PR comment (`gh pr comment <N> --body "<question>"`), and meanwhile work on the parts that do not depend on the answer. Decide internal details yourself.
+- Check by hand on iOS with the debug build from `expo run:ios` (Commands); Android hand checks stay in Expo Go. When the PR changes `apps/mobile` outside `apps/mobile/tests/`, flows included, run the E2E flows on that build before marking it ready, and record under Verification the commit they ran on and each flow's result. This holds for changes made in one session too. A flow that fails without a code change is fixed or removed, never rerun until it passes.
 - When the tests pass: fill the PR's What changed and Verification sections, then mark it ready for review with `gh pr ready <N>`.
 - Never merge, and never push to the default branch.
 

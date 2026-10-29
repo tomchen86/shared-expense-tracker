@@ -1,0 +1,16 @@
+appId: com.tomchen.sharedexpensetracker
+name: Opens a Settings row with one tap while the keyboard is open
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: Settings
+    timeout: 30000
+- tapOn: Settings
+- tapOn:
+    id: settings-name
+- inputText: Taylor
+- tapOn: Archived Groups
+- assertVisible: Back
+- assertNotVisible:
+    id: settings-name

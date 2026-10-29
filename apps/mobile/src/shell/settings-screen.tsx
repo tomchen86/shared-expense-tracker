@@ -86,6 +86,7 @@ export function SettingsScreen() {
               placeholderTextColor="#767680"
               returnKeyType="done"
               style={styles.input}
+              testID="settings-name"
               value={name}
             />
             {needsName && <Text style={styles.error}>{ASK_FOR_NAME}</Text>}
