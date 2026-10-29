@@ -24,10 +24,12 @@ Take one PR at a time through the final stretch (update, check, report, merge). 
 5. "Rules discovered during implementation": each must already be in the spec with a test, added by the spec author before it was implemented. Send back any behavior a user or another component would notice that exists only in the code.
 6. Traced coverage (its command is in `AGENTS.md`): run only the tests that cite IDs, with coverage on, and list the new branches none of them executes. Each is a missing requirement, dead code, or defensive code. Read function and branch coverage, not line coverage. For text-only documentation changes that do not affect code, tests, or how they run, report `N/A` with a reason instead. Refactors and dependency updates do not qualify for this exception.
 7. Read every change to `AGENTS.md`, `CLAUDE.md`, `skills/`, `.github/`, `scripts/`, test configuration, and dependency files line by line. The first three are the instructions for every later session.
-8. E2E record (ADR-0008): when the PR changes `apps/mobile` outside `apps/mobile/tests/`, flows included, Verification names the commit the E2E flows ran on and each flow's result. Check that the record is there and that none of the PR's own later commits changes those paths; merges from main do not count. This prints nothing when the record still holds:
+8. E2E record (ADR-0008): when the PR changes `apps/mobile` outside `apps/mobile/tests/`, or changes an E2E flow, Verification names the commit the flows ran on and each flow's result. Check that the record is there and that none of the PR's own later commits changes those paths; merges from main do not count. Both logs print nothing when the record still holds:
 
    ```bash
-   git fetch -q --no-tags origin refs/heads/main && git log --no-merges --oneline <recorded commit>..HEAD ^FETCH_HEAD -- apps/mobile ':!apps/mobile/tests'
+   git fetch -q --no-tags origin refs/heads/main
+   git log --no-merges --oneline <recorded commit>..HEAD ^FETCH_HEAD -- apps/mobile ':!apps/mobile/tests'
+   git log --no-merges --oneline <recorded commit>..HEAD ^FETCH_HEAD -- apps/mobile/tests/acceptance/e2e
    ```
 
    Send a missing or outdated record back to the implementer.

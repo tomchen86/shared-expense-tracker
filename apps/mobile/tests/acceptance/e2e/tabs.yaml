@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: Opens on the tabs with Expenses selected
+name: '[SHELL-6.1] Opens on the tabs with Expenses selected'
 ---
 - launchApp:
     clearState: true
