@@ -8,4 +8,7 @@ export const appMigrations: readonly string[] = [
     name TEXT NOT NULL,
     CHECK (userId <> personalSpaceId AND userId <> personalParticipantId AND personalSpaceId <> personalParticipantId)
   )`,
+  `ALTER TABLE local_identity
+    ADD COLUMN appearance TEXT NOT NULL DEFAULT 'system'
+    CHECK (appearance IN ('system', 'light', 'dark'))`,
 ];
