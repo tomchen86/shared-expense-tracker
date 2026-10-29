@@ -158,6 +158,7 @@ export function CategoryForm({
         </View>
 
         <ScrollView
+          automaticallyAdjustKeyboardInsets
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
