@@ -1,4 +1,5 @@
 import { createUuid, type SqlExecutor } from '../storage';
+import type { AppearanceOption } from '../ui/appearance';
 
 export interface LocalIdentity {
   userId: string;
@@ -16,6 +17,24 @@ export async function saveLocalName(
   ]);
 }
 
+export async function readLocalAppearance(
+  executor: SqlExecutor,
+): Promise<AppearanceOption> {
+  const [row] = await executor.all<{ appearance: AppearanceOption }>(
+    'SELECT appearance FROM local_identity WHERE singleton = 1',
+  );
+  return row ? row.appearance : 'system';
+}
+
+export async function saveLocalAppearance(
+  database: SqlExecutor,
+  appearance: AppearanceOption,
+): Promise<void> {
+  await database.run(
+    'UPDATE local_identity SET appearance = ? WHERE singleton = 1',
+    [appearance],
+  );
+}
 export async function ensureLocalIdentity(
   transaction: SqlExecutor,
 ): Promise<LocalIdentity> {
