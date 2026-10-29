@@ -345,3 +345,17 @@ WHILE 分類正在儲存，the mobile app SHALL 不讓分類表單因為往下�
 
 - **WHEN** 儲存還沒完成時往下滑表單，或在 Android 上按返回鍵
 - **THEN** 表單不關閉；存好後才關閉
+
+### Requirement: CATEGORIES-21.1 儲存中鎖住名稱和顏色
+
+WHILE 分類正在儲存，the mobile app SHALL 讓名稱欄位不能編輯，點顏色也不改選，直到存好或存不進去為止。
+
+#### Scenario: 新增中
+
+- **WHEN** 輸入「Gym」按 Add，儲存還沒完成
+- **THEN** 名稱欄位不能編輯；點「Select color #C62828」之後選取的仍是 `#43A047`；存好後表單關閉，多了用 `#43A047` 的「Gym」
+
+#### Scenario: 存不進去之後
+
+- **WHEN** 資料庫無法寫入時按 Add
+- **THEN** 存不進去之後，名稱欄位恢復可以編輯，點「Select color #C62828」就改選它
