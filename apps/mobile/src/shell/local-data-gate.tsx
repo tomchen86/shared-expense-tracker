@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ensureDefaultCategories } from '../categories/repository';
 import { initializeDatabase, type Database } from '../storage';
 import { applyAppearanceOption, type AppearanceOption } from '../ui/appearance';
 import {
@@ -69,10 +70,12 @@ export function LocalDataGate({
         database,
         appMigrations,
         development,
-        async (transaction) => ({
-          identity: await ensureLocalIdentity(transaction),
-          appearance: await readLocalAppearance(transaction),
-        }),
+        async (transaction) => {
+          const localIdentity = await ensureLocalIdentity(transaction);
+          await ensureDefaultCategories(transaction);
+          const savedAppearance = await readLocalAppearance(transaction);
+          return { identity: localIdentity, appearance: savedAppearance };
+        },
       );
       await transparencyReady;
       if (!active) return;
