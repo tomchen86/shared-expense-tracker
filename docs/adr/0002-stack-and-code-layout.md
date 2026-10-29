@@ -1,7 +1,7 @@
 # ADR-0002: Stack and code layout
 
 - Date: 2026-10-23
-- Status: Accepted
+- Status: Accepted; its API framework and API layout are superseded by ADR-0007
 
 ## Context
 
