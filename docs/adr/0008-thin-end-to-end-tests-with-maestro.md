@@ -62,6 +62,7 @@ Where they run:
 - Hand checks on iOS take longer to start: the first debug build in each checkout takes minutes, and a change to native configuration needs a rebuild. JavaScript changes still reload through Metro.
 - Running the flows locally needs a Mac with Xcode and a simulator, as hand checks already do, plus Maestro.
 - The implementer's run uses a debug build and the one on `main` a release build, so a problem that only a release build has shows up after the merge.
+- A debug build loads its JavaScript from Metro, and its LogBox shows warnings over the bottom of the screen, where they can cover the tab bar. The change that adds the flows keeps LogBox out of their way, for example with `LogBox.ignoreAllLogs()` behind an environment variable, and says to start Metro before running them.
 - The change that adds the first flows also sets the bundle identifier in `app.json`, which both builds need, and changes the mobile app's `ios` script to `expo run:ios`. The owner picks the identifier, since it cannot change once a release ships.
 - Flows find elements by text, accessibility label, or `testID`, so screens may need `testID`s. These are internal details, not requirements.
 - Flows reach data only through the screens, so they stay few and short; rules stay in Jest.
