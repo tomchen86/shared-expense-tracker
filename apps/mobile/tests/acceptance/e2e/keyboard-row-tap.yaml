@@ -1,0 +1,20 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[SHELL-24.1] Opens a Settings row with one tap while the keyboard is open'
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- assertVisible:
+    text: Settings
+    selected: true
+- tapOn: Enter your name
+- inputText: Taylor
+- tapOn: Archived Groups
+- assertVisible: Back
+- assertNotVisible: Manage Categories
