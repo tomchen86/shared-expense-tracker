@@ -95,6 +95,22 @@ test('forwards native segment selection events and locks while disabled', () => 
   expect(onChange).not.toHaveBeenCalled();
 });
 
+test('locks by toggling the disabled modifier, keeping the same modifiers so the slide animation survives', () => {
+  const view = render(<AppearancePicker onChange={jest.fn()} value="system" />);
+  const unlocked = nativePicker().props.modifiers;
+
+  view.rerender(
+    <AppearancePicker disabled onChange={jest.fn()} value="system" />,
+  );
+  const locked = nativePicker().props.modifiers;
+
+  const types = (modifiers: { $type: string }[]) =>
+    modifiers.map((modifier) => modifier.$type);
+  expect(types(locked)).toEqual(types(unlocked));
+  expect(unlocked).toContainEqual({ $type: 'disabled', disabled: false });
+  expect(locked).toContainEqual({ $type: 'disabled', disabled: true });
+});
+
 test('remounts the native picker when a locked selection finishes without changing value', () => {
   const onChange = jest.fn();
   const view = render(<AppearancePicker onChange={onChange} value="system" />);

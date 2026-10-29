@@ -46,7 +46,9 @@ export function AppearancePicker({
     // The segmented style hides the label from VoiceOver too, so name the group.
     accessibilityElement('contain'),
     accessibilityLabel('Appearance'),
-    ...(disabled ? [disabledModifier(true)] : []),
+    // Toggle, never add or remove: @expo/ui wraps each modifier in an AnyView, so
+    // a change in their number rebuilds the control and cuts its slide short.
+    disabledModifier(disabled),
   ];
 
   function handleSelectionChange(index: number) {
