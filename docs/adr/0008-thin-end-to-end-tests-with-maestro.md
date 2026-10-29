@@ -47,7 +47,7 @@ Where they run:
 - Maestro is installed at a pinned version on the machine that runs the flows. It is not a dependency of the app.
 - The flows live in `apps/mobile/e2e/` and cite no requirement IDs, so they are not acceptance tests. `(manual)` requirements stay as they are, and hand checks continue for what the flows do not cover.
 - A workflow of their own runs them on a GitHub-hosted `macos-26` runner after each merge to `main`, and when started by hand. It runs outside PR checks, so it never blocks a merge, and it keeps Maestro's JUnit report and screenshots as the run's artifacts. It runs after each merge rather than nightly, so a failure points to the merge that caused it.
-- Implementers of a change to `apps/mobile` run the flows locally before marking the PR ready, and record the result under Verification.
+- When a PR changes `apps/mobile` outside its tests, the implementer runs the flows locally before marking it ready, and records under Verification the commit they ran on and each flow's result. The reviewer checks that this record is there and that no later commit changes `apps/mobile` outside its tests.
 - A flow that fails without a code change is fixed or removed, never rerun until it passes.
 - iOS comes first, since most of what only the native views show is iOS-only. Android flows, on an emulator, come when an Android behavior needs one.
 - Running the flows in every PR's checks is decided in a later ADR, once they have run on `main` for a month with no flaky failure. Only then can a flow cite a requirement ID and a `(manual)` requirement lose its tag: the trace check runs in every PR, so a requirement that only a flow covers would fail as untested in any run without the flows.
@@ -55,14 +55,14 @@ Where they run:
 ## Consequences
 
 - Each hand check that a flow covers becomes a command anyone can rerun, and every merge to `main` runs on a simulator with the real native views and `expo-sqlite`.
-- A change that breaks what a flow covers is found after it merges, unless its implementer ran the flows, and `main` stays broken until a fix merges. GitHub notifies whoever triggered the failed run, which after a merge is the owner.
+- A change that breaks what a flow covers and gets past the implementer's local run is found only after it merges, and `main` stays broken until a fix merges. GitHub notifies whoever triggered the failed run, which after a merge is the owner.
 - Every run builds the app natively, so a change that breaks the build shows up long before the first external release needs one. It also makes the workflow much slower than `check`.
-- Running the flows locally needs a Mac with Xcode and a simulator, as hand checks already do.
+- Running the flows locally needs a Mac with Xcode and a simulator, as hand checks already do, plus Maestro, and each such PR costs its implementer a local release build.
 - The change that adds the first flows sets the bundle identifier in `app.json`. The owner picks it, since it cannot change once a release ships.
 - Flows find elements by text, accessibility label, or `testID`, so screens may need `testID`s. These are internal details, not requirements.
 - Flows reach data only through the screens, so they stay few and short; rules stay in Jest.
 - The look of native views, such as Liquid Glass and the picker, is still checked by eye, with the flows' screenshots as an aid.
 - Flows and hand checks run different builds of the same code: a release build and Expo Go.
-- The change that adds the flows also writes down in `AGENTS.md` and `skills/` how to run them, when, and what to do when one fails, since agents read their instructions there, not in ADRs.
+- The change that adds the flows also writes these steps into the Implementing section of `AGENTS.md` and into `skills/review-pr/SKILL.md`: how to run the flows, when, what Verification records, and what to do when one fails. Agents read their instructions there, not in ADRs.
 - If this repository becomes private, the workflow costs about $0.062 a minute.
 - The baseline's Detox setup is not moved.
