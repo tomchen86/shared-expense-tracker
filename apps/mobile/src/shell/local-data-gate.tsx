@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ensureDefaultCategories } from '../categories/repository';
 import { initializeDatabase, type Database } from '../storage';
 import {
   ensureLocalIdentity,
@@ -55,7 +56,11 @@ export function LocalDataGate({
         database,
         appMigrations,
         development,
-        ensureLocalIdentity,
+        async (transaction) => {
+          const localIdentity = await ensureLocalIdentity(transaction);
+          await ensureDefaultCategories(transaction);
+          return localIdentity;
+        },
       );
       if (active) setStartup({ status: 'ready', data: { database, identity } });
     }
