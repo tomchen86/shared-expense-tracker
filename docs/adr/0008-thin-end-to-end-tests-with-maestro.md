@@ -13,7 +13,7 @@ The mobile app's acceptance tests run in Jest on Node, in the `jest-expo/ios` an
 - the keyboard: tapping a row while it is open, and scrolling to every row at large text sizes;
 - `expo-sqlite` itself, which no test runs (ADR-0006).
 
-Two things cover these today. Implementers check by hand on simulators and record it under Verification: PRs #36, #38, and #40 did so in Expo Go 57.0.9 on an iPhone 17 with iOS 26.5. Each check runs once, on the commit at hand, and depends on someone remembering it: #38's simulator check predates its last change, and #40's Android check was done only after review pointed it out. A requirement no automated test can check is marked `(manual)`, such as CATEGORIES-20.1 on `spec/13-default-categories`, and the trace check only lists it as the pre-release checklist. No automated test repeats either kind of check.
+Two things cover these today. Implementers check by hand on simulators and record it under Verification: PRs #36, #38, and #40 did so in Expo Go 57.0.9 on an iPhone 17 with iOS 26.5. Each check runs once, on the commit at hand, and depends on someone remembering it: #38's simulator check predates its last change, and #40's Android check was done only after review pointed it out. A requirement no automated test can check is marked `(manual)`, such as CATEGORIES-20.1 from #13, and the trace check only lists it as the pre-release checklist. No automated test repeats either kind of check.
 
 The trace check reads the JUnit XML in `reports/junit/` from its own run, and fails any requirement that no passing test cites unless it is `(manual)`.
 
@@ -63,6 +63,6 @@ Where they run:
 - Flows reach data only through the screens, so they stay few and short; rules stay in Jest.
 - The look of native views, such as Liquid Glass and the picker, is still checked by eye, with the flows' screenshots as an aid.
 - Flows and hand checks run different builds of the same code: a release build and Expo Go.
-- The change that adds the flows also says in `AGENTS.md` how to run them.
+- The change that adds the flows also writes down in `AGENTS.md` and `skills/` how to run them, when, and what to do when one fails, since agents read their instructions there, not in ADRs.
 - If this repository becomes private, the workflow costs about $0.062 a minute.
 - The baseline's Detox setup is not moved.
