@@ -19,13 +19,18 @@ export const TAB_NAMES = ['Groups', 'Expenses', 'Settings'];
 type Routes = Extract<MockContextConfig, { appDir: string }>['overrides'];
 
 /**
- * Starts the app at `url` and waits until its local data has opened. `routes`
- * adds test-only screens, keyed like `./name.tsx` under `app/`.
+ * Starts the app at `url`. `routes` adds test-only screens, keyed like
+ * `./name.tsx` under `app/`.
  */
-export async function startApp(url = '/', routes?: Routes) {
-  const app = renderRouter(routes ? { appDir: APP, overrides: routes } : APP, {
+export function openApp(url = '/', routes?: Routes) {
+  return renderRouter(routes ? { appDir: APP, overrides: routes } : APP, {
     initialUrl: url,
   });
+}
+
+/** Starts the app as `openApp` does and waits until its local data has opened. */
+export async function startApp(url = '/', routes?: Routes) {
+  const app = openApp(url, routes);
   await waitFor(() =>
     expect(screen.queryByLabelText('Restoring local data')).toBeNull(),
   );
