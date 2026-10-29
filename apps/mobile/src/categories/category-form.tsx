@@ -158,7 +158,6 @@ export function CategoryForm({
         </View>
 
         <ScrollView
-          automaticallyAdjustKeyboardInsets
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
@@ -217,11 +216,7 @@ export function CategoryForm({
               })}
             </View>
           </View>
-          {allColorsUsed && (
-            <Text accessibilityLiveRegion="polite" style={styles.note}>
-              {ALL_COLORS_USED}
-            </Text>
-          )}
+          {allColorsUsed && <Text style={styles.note}>{ALL_COLORS_USED}</Text>}
         </ScrollView>
       </SafeAreaView>
     </Modal>

@@ -1,5 +1,8 @@
 import { DEFAULT_CATEGORIES } from '@shared-expense/domain';
-import type { Database, SqlExecutor } from '../storage';
+import { createUuid, type Database, type SqlExecutor } from '../storage';
+
+const UNCATEGORIZED_NAME =
+  DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1].name;
 
 export interface Category {
   id: string;
@@ -18,16 +21,7 @@ interface CategoryRow {
 export function isUncategorizedCategory(
   category: Pick<Category, 'name' | 'isDefault'>,
 ): boolean {
-  return category.isDefault && category.name === 'Uncategorized';
-}
-
-async function createUuid(executor: SqlExecutor): Promise<string> {
-  const [row] = await executor.all<{ bytes: string }>(
-    'SELECT lower(hex(randomblob(16))) AS bytes',
-  );
-  const hex = row.bytes;
-  const variant = ((parseInt(hex[16], 16) & 3) | 8).toString(16);
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20)}`;
+  return category.isDefault && category.name === UNCATEGORIZED_NAME;
 }
 
 export async function ensureDefaultCategories(
@@ -94,7 +88,7 @@ export async function updateCategory(
 ): Promise<void> {
   const result = await database.run(
     'UPDATE categories SET name = ?, color = ? WHERE id = ? AND NOT (isDefault = 1 AND name = ?)',
-    [input.name, input.color, input.id, 'Uncategorized'],
+    [input.name, input.color, input.id, UNCATEGORIZED_NAME],
   );
   if (result.changes === 0) {
     throw new Error('Category cannot be updated');

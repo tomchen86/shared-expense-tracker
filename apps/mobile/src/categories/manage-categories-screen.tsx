@@ -1,4 +1,11 @@
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
@@ -17,16 +24,17 @@ type FormState = { kind: 'add' } | { kind: 'edit'; category: Category };
 export function ManageCategoriesScreen() {
   const database = useLocalDatabase();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const loadedRef = useRef(false);
   const [formState, setFormState] = useState<FormState | null>(null);
 
   useEffect(() => {
+    loadedRef.current = false;
     let active = true;
     void listCategories(database)
       .then((rows) => {
         if (active) {
+          loadedRef.current = true;
           setCategories(rows);
-          setLoaded(true);
         }
       })
       .catch(() => undefined);
@@ -36,31 +44,38 @@ export function ManageCategoriesScreen() {
   }, [database]);
 
   const openAddForm = useCallback(() => {
-    if (loaded) {
+    if (loadedRef.current) {
       setFormState({ kind: 'add' });
       return;
     }
     void listCategories(database)
       .then((rows) => {
+        loadedRef.current = true;
         setCategories(rows);
-        setLoaded(true);
         setFormState({ kind: 'add' });
       })
       .catch(() => undefined);
-  }, [database, loaded]);
+  }, [database]);
 
   async function handleSave(input: { name: string; color: string }) {
     if (formState?.kind === 'edit') {
+      const editingId = formState.category.id;
       await updateCategory(database, {
-        id: formState.category.id,
+        id: editingId,
         name: input.name,
         color: input.color,
       });
+      setCategories((current) =>
+        current.map((category) =>
+          category.id === editingId
+            ? { ...category, name: input.name, color: input.color }
+            : category,
+        ),
+      );
     } else {
-      await createCategory(database, input);
+      const created = await createCategory(database, input);
+      setCategories((current) => [...current, created]);
     }
-    const refreshed = await listCategories(database);
-    setCategories(refreshed);
     setFormState(null);
   }
 
@@ -69,30 +84,30 @@ export function ManageCategoriesScreen() {
   const otherCategories = editingCategory
     ? categories.filter((category) => category.id !== editingCategory.id)
     : categories;
+  const screenOptions = useMemo(
+    () => ({
+      headerRight: () => (
+        <Pressable
+          accessibilityLabel="Add category"
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={openAddForm}
+          style={({ pressed }) => [
+            styles.addButton,
+            pressed && styles.addButtonPressed,
+          ]}
+        >
+          <Text accessible={false} style={styles.addIcon}>
+            +
+          </Text>
+        </Pressable>
+      ),
+    }),
+    [openAddForm],
+  );
 
-  return (
-    <SafeAreaView edges={['left', 'right']} style={styles.screen}>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <Pressable
-              accessibilityLabel="Add category"
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={openAddForm}
-              style={({ pressed }) => [
-                styles.addButton,
-                pressed && styles.addButtonPressed,
-              ]}
-            >
-              <Text accessible={false} style={styles.addIcon}>
-                +
-              </Text>
-            </Pressable>
-          ),
-        }}
-      />
-
+  const categoryRows = useMemo(
+    () => (
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
@@ -140,6 +155,15 @@ export function ManageCategoriesScreen() {
           })}
         </View>
       </ScrollView>
+    ),
+    [categories],
+  );
+
+  return (
+    <SafeAreaView edges={['left', 'right']} style={styles.screen}>
+      <Stack.Screen options={screenOptions} />
+
+      {categoryRows}
 
       {formState !== null && (
         <CategoryForm

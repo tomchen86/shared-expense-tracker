@@ -1,18 +1,33 @@
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { renderRouter } from 'expo-router/testing-library';
+import { Stack } from 'expo-router';
+import { Alert } from 'react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import { CategoryForm } from '../../src/categories/category-form';
 import {
+  ManageCategoriesScreen,
   createCategory,
   ensureDefaultCategories,
   isUncategorizedCategory,
   listCategories,
   updateCategory,
 } from '../../src/categories';
+import { LocalDataGate } from '../../src/shell';
 import { ensureLocalIdentity } from '../../src/shell/identity';
 import { appMigrations } from '../../src/shell/migrations';
-import { initializeDatabase, type Database } from '../../src/storage';
+import {
+  initializeDatabase,
+  type Database,
+  type SqlValue,
+} from '../../src/storage';
 import { openNodeDatabase } from '../../src/storage/node';
 
 const UUID_V4 =
@@ -133,4 +148,79 @@ test('blocks modal swipe dismissal and request-close while saving, and allows th
   expect(modal().props.allowSwipeDismissal).toBe(true);
   fireEvent(modal(), 'requestClose');
   expect(onCancel).toHaveBeenCalledTimes(1);
+});
+
+test('updates the list directly after creating or editing a category without re-reading', async () => {
+  const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  let failListReads = false;
+  const wrappedDatabase: Database = {
+    ...database,
+    all: async <T,>(sql: string, parameters?: readonly SqlValue[]) => {
+      if (failListReads && sql.includes('ORDER BY position ASC')) {
+        throw new Error('list read failed after write');
+      }
+      return database.all<T>(sql, parameters);
+    },
+  };
+
+  renderRouter(
+    {
+      _layout: () => (
+        <LocalDataGate
+          development={false}
+          openDatabase={async () => wrappedDatabase}
+        >
+          <Stack />
+        </LocalDataGate>
+      ),
+      index: ManageCategoriesScreen,
+    },
+    { initialUrl: '/' },
+  );
+
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: 'Shopping' })).toBeTruthy();
+  });
+
+  failListReads = true;
+
+  fireEvent.press(screen.getByRole('button', { name: 'Add category' }));
+  fireEvent.changeText(screen.getByLabelText('Category name'), 'Gym');
+  await act(async () => {
+    fireEvent.press(screen.getByRole('button', { name: 'Add' }));
+  });
+
+  await waitFor(() => {
+    expect(screen.queryByText('New Category')).toBeNull();
+  });
+  expect(alertSpy).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Gym' })).toBeTruthy();
+
+  fireEvent.press(screen.getByRole('button', { name: 'Shopping' }));
+  fireEvent.changeText(screen.getByLabelText('Category name'), 'Groceries');
+  await act(async () => {
+    fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+  });
+
+  await waitFor(() => {
+    expect(screen.queryByText('Edit Category')).toBeNull();
+  });
+  expect(alertSpy).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Groceries' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Shopping' })).toBeNull();
+
+  const persisted = await listCategories(database);
+  expect(persisted.map((category) => category.name)).toEqual([
+    'Food & Dining',
+    'Transportation',
+    'Groceries',
+    'Entertainment',
+    'Bills & Utilities',
+    'Health',
+    'Travel',
+    'Other',
+    'Uncategorized',
+    'Gym',
+  ]);
+  alertSpy.mockRestore();
 });
