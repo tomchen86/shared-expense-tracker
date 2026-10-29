@@ -26,7 +26,7 @@ function pickerSegments(picker = nativePicker()) {
     }));
 }
 
-test('configures a large native SwiftUI segmented control with System, Light, and Dark', () => {
+test('configures a large native SwiftUI segmented control named Appearance with System, Light, and Dark', () => {
   const onChange = jest.fn();
   const view = render(<AppearancePicker onChange={onChange} value="system" />);
 
@@ -37,6 +37,8 @@ test('configures a large native SwiftUI segmented control with System, Light, an
     expect.arrayContaining([
       { $type: 'pickerStyle', style: 'segmented' },
       { $type: 'controlSize', size: 'large' },
+      { $type: 'accessibilityElement', children: 'contain' },
+      { $type: 'accessibilityLabel', label: 'Appearance' },
     ]),
   );
   expect(pickerSegments(picker)).toEqual([

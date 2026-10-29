@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { Host, Picker, Text } from '@expo/ui/swift-ui';
 import {
+  accessibilityElement,
+  accessibilityLabel,
   controlSize,
   disabled as disabledModifier,
   pickerStyle,
@@ -41,6 +43,9 @@ export function AppearancePicker({
   const modifiers = [
     pickerStyle('segmented'),
     controlSize('large'),
+    // The segmented style hides the label from VoiceOver too, so name the group.
+    accessibilityElement('contain'),
+    accessibilityLabel('Appearance'),
     ...(disabled ? [disabledModifier(true)] : []),
   ];
 
