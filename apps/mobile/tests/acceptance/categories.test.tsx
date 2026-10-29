@@ -824,6 +824,36 @@ test('[CATEGORIES-18.1] enables Cancel and Add again once the save fails', async
   expect(formButton('Add').disabled).toBe(false);
 });
 
+test('[CATEGORIES-21.1] locks the name and the colors until a new category is saved', async () => {
+  await openManageCategories();
+  await openNewCategory();
+  fireEvent.changeText(nameField(), 'Gym');
+  const writes = holdWrites();
+
+  await press('Add');
+
+  expect(nameField()).toBeDisabled();
+  pressColor('Select color #C62828');
+  expect(selectedColor()).toBe('#43A047');
+  await writes.release();
+  await settle();
+  await expectFormClosed();
+  expect(categoryList()).toEqual([...DEFAULTS, ['Gym', '#43A047']]);
+});
+
+test('[CATEGORIES-21.1] unlocks the name and the colors once the save fails', async () => {
+  await openManageCategories();
+  await openNewCategory();
+  fireEvent.changeText(nameField(), 'Gym');
+  failWrites();
+
+  await press('Add');
+
+  expect(nameField()).toBeEnabled();
+  pressColor('Select color #C62828');
+  expect(selectedColor()).toBe('#C62828');
+});
+
 test('[CATEGORIES-19.1] shows the load error and leaves the data as it was when a default category cannot be created', async () => {
   fs.writeFileSync(mockFile, ''); // An empty file is an empty SQLite database.
   const before = fs.readFileSync(mockFile);
