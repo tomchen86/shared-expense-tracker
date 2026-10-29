@@ -3,6 +3,7 @@
     "name": "Shared Expense Tracker",
     "slug": "shared-expense-tracker",
     "scheme": "shared-expense-tracker",
+    "userInterfaceStyle": "automatic",
     "plugins": ["expo-router"]
   }
 }

@@ -11,6 +11,9 @@ import { appMigrations } from '../../src/shell/migrations';
 
 jest.mock('../../src/storage/expo', () => ({ openPhoneDatabase: jest.fn() }));
 jest.mock('expo-router', () => ({
+  DarkTheme: {},
+  DefaultTheme: {},
+  ThemeProvider: ({ children }: { children: unknown }) => children,
   Stack: function Stack() {
     const { Text } = jest.requireActual('react-native');
     const { useLocalIdentity } =

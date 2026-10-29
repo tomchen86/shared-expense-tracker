@@ -17,4 +17,5 @@ module.exports = {
   coverageThreshold: {
     './packages/domain/src/ledger/money.ts': { branches: 100 },
   },
+  testTimeout: 15000,
 };

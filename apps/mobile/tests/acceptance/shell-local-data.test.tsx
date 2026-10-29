@@ -133,7 +133,7 @@ async function expectLoadError() {
   expect(screen.queryByTestId('identity')).toBeNull();
 }
 
-test('[SHELL-1.1] shows only the loading indicator while the local data opens', async () => {
+test('[SHELL-1.2] shows only the loading indicator while the local data opens', async () => {
   let finishOpening!: () => void;
   const opening = new Promise<void>((resolve) => {
     finishOpening = resolve;

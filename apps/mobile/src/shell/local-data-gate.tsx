@@ -9,8 +9,16 @@ import {
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { ensureDefaultCategories } from '../categories/repository';
 import { initializeDatabase, type Database } from '../storage';
+import { applyAppearanceOption, type AppearanceOption } from '../ui/appearance';
+import {
+  ReduceTransparencyProvider,
+  useReduceTransparencyController,
+} from '../ui/reduce-transparency';
+import { useThemeColors } from '../ui/theme';
 import {
   ensureLocalIdentity,
+  readLocalAppearance,
+  saveLocalAppearance,
   saveLocalName,
   type LocalIdentity,
 } from './identity';
@@ -19,10 +27,12 @@ import { appMigrations } from './migrations';
 interface LocalData {
   database: Database;
   identity: LocalIdentity;
+  appearance: AppearanceOption;
 }
 
 interface LocalDataContextValue extends LocalData {
   saveName: (name: string) => Promise<void>;
+  saveAppearance: (appearance: AppearanceOption) => Promise<void>;
 }
 
 const LocalDataContext = createContext<LocalDataContextValue | null>(null);
@@ -44,25 +54,36 @@ export function LocalDataGate({
   development,
   children,
 }: LocalDataGateProps): ReactElement {
+  const transparency = useReduceTransparencyController();
+  const { waitUntilReady } = transparency;
+  const colors = useThemeColors();
   const [startup, setStartup] = useState<Startup>({ status: 'loading' });
 
   useEffect(() => {
     let active = true;
     setStartup({ status: 'loading' });
     async function open() {
+      const transparencyReady = waitUntilReady();
       const database = await openDatabase();
       if (!active) return;
-      const identity = await initializeDatabase(
+      const { identity, appearance } = await initializeDatabase(
         database,
         appMigrations,
         development,
         async (transaction) => {
           const localIdentity = await ensureLocalIdentity(transaction);
           await ensureDefaultCategories(transaction);
-          return localIdentity;
+          const savedAppearance = await readLocalAppearance(transaction);
+          return { identity: localIdentity, appearance: savedAppearance };
         },
       );
-      if (active) setStartup({ status: 'ready', data: { database, identity } });
+      await transparencyReady;
+      if (!active) return;
+      applyAppearanceOption(appearance);
+      setStartup({
+        status: 'ready',
+        data: { database, identity, appearance },
+      });
     }
     void open().catch(() => {
       if (active) setStartup({ status: 'error' });
@@ -70,7 +91,7 @@ export function LocalDataGate({
     return () => {
       active = false;
     };
-  }, [openDatabase, development]);
+  }, [openDatabase, development, waitUntilReady]);
 
   if (startup.status === 'ready') {
     const { database } = startup.data;
@@ -88,20 +109,46 @@ export function LocalDataGate({
           : current,
       );
     }
+    async function saveAppearance(appearance: AppearanceOption) {
+      await saveLocalAppearance(database, appearance);
+      applyAppearanceOption(appearance);
+      setStartup((current) =>
+        current.status === 'ready' && current.data.database === database
+          ? {
+              ...current,
+              data: {
+                ...current.data,
+                appearance,
+              },
+            }
+          : current,
+      );
+    }
     return (
-      <LocalDataContext.Provider value={{ ...startup.data, saveName }}>
-        {children}
-      </LocalDataContext.Provider>
+      <ReduceTransparencyProvider controller={transparency}>
+        <LocalDataContext.Provider
+          value={{ ...startup.data, saveName, saveAppearance }}
+        >
+          {children}
+        </LocalDataContext.Provider>
+      </ReduceTransparencyProvider>
     );
   }
   return (
-    <View style={styles.center}>
+    <View style={[styles.center, { backgroundColor: colors.background }]}>
       {startup.status === 'loading' ? (
-        <ActivityIndicator accessibilityLabel="Restoring local data" />
+        <ActivityIndicator
+          accessibilityLabel="Restoring local data"
+          color={colors.textMuted}
+        />
       ) : (
         <>
-          <Text accessibilityRole="header">Unable to Load Local Data</Text>
-          <Text>Your data was not changed.</Text>
+          <Text accessibilityRole="header" style={{ color: colors.text }}>
+            Unable to Load Local Data
+          </Text>
+          <Text style={{ color: colors.textMuted }}>
+            Your data was not changed.
+          </Text>
         </>
       )}
     </View>
@@ -123,6 +170,12 @@ export function useLocalDatabase(): Database {
 }
 export function useSaveLocalName(): LocalDataContextValue['saveName'] {
   return useLocalData().saveName;
+}
+export function useAppearanceOption(): AppearanceOption {
+  return useLocalData().appearance;
+}
+export function useSaveAppearanceOption(): LocalDataContextValue['saveAppearance'] {
+  return useLocalData().saveAppearance;
 }
 
 const styles = StyleSheet.create({

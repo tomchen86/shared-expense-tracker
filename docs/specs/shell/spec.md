@@ -2,13 +2,13 @@
 
 ## Purpose
 
-App 外殼：開啟本機資料、開啟期間的載入畫面、打不開時的錯誤畫面、這支手機的本機身分，載入後的分頁列、各分頁自己的堆疊和返回按鈕，以及 Settings 根畫面上的名字和入口列。本機資料是手機上的 SQLite 資料庫；開啟時依序跑 migration，還沒有本機身分時再建立一個（ADR-0006）。開發版是指 `__DEV__` 為真的 build。分頁的根畫面是分頁堆疊最底下的畫面，也就是選中分頁時最先看到的畫面。名字是本機身分裡存著的名字。
+App 外殼：開啟本機資料、開啟期間的載入畫面、打不開時的錯誤畫面、這支手機的本機身分，載入後的分頁列、各分頁自己的堆疊和返回按鈕，Settings 根畫面上的名字、外觀選項和入口列，以及 app 的深淺色和半透明表面。本機資料是手機上的 SQLite 資料庫；開啟時依序跑 migration，還沒有本機身分時再建立一個（ADR-0006）。開發版是指 `__DEV__` 為真的 build。分頁的根畫面是分頁堆疊最底下的畫面，也就是選中分頁時最先看到的畫面。名字是本機身分裡存著的名字。外觀選項是存在本機資料裡的 System、Light 或 Dark；app 的外觀是 app 現在用淺色還是深色：外觀選項是 Light 或 Dark 時就是它，是 System 時跟著手機。跟著外觀的顏色是指淺色和深色時不同的顏色，或是由系統依外觀決定的顏色。「降低透明度」是 iOS 輔助使用裡的同名設定。毛玻璃是看得到後面模糊內容的半透明表面；玻璃是 iOS 26 起的 Liquid Glass。app 自己加的毛玻璃或玻璃，不包括分頁列、標題列、分段控制這些系統元件本身畫的。
 
 ## Requirements
 
-### Requirement: SHELL-1.1 開啟本機資料時只顯示載入指示
+### Requirement: SHELL-1.2 載入期間只顯示載入指示
 
-WHILE 本機資料還在開啟，the mobile app SHALL 只顯示一個無障礙標籤為「Restoring local data」的載入指示，不顯示 app 的畫面。
+WHILE 本機資料還在開啟，或是在 iOS 上還不知道有沒有開「降低透明度」，the mobile app SHALL 只顯示一個無障礙標籤為「Restoring local data」的載入指示，不顯示 app 的畫面。
 
 #### Scenario: 還沒開好
 
@@ -17,7 +17,17 @@ WHILE 本機資料還在開啟，the mobile app SHALL 只顯示一個無障礙�
 
 #### Scenario: 開好之後
 
-- **WHEN** 本機資料開好了
+- **WHEN** 本機資料開好了，在 iOS 上也知道了有沒有開「降低透明度」
+- **THEN** 載入指示消失，顯示 app 的畫面
+
+#### Scenario: iOS 還不知道「降低透明度」
+
+- **WHEN** iOS 上本機資料開好了，但系統還沒回答有沒有開「降低透明度」
+- **THEN** 畫面上仍然只有載入指示；系統回答之後才顯示 app 的畫面
+
+#### Scenario: Android 不等「降低透明度」
+
+- **WHEN** Android 上本機資料開好了，系統一直沒回答有沒有開「降低透明度」
 - **THEN** 載入指示消失，顯示 app 的畫面
 
 ### Requirement: SHELL-2.1 還沒有本機身分時建立一個
@@ -221,7 +231,7 @@ WHERE Android，the mobile app SHALL 讓系統返回鍵在 Groups 或 Settings �
 - **WHEN** 在 Settings 的根畫面推入 Archived Groups，再按兩次返回鍵
 - **THEN** 第一次回到 Settings 的根畫面，第二次切到 Expenses
 
-### Requirement: SHELL-16.1 Settings 根畫面的內容
+### Requirement: SHELL-16.1 Settings 根畫面的 PROFILE 和 APP 區塊
 
 The mobile app SHALL 在 Settings 根畫面顯示 PROFILE 區塊和排在它後面的 APP 區塊：PROFILE 有「Your Name」名字欄位，下方說明「Used to identify you in shared expenses and balances.」；APP 有「Manage Categories」和「Archived Groups」兩列。
 
@@ -370,3 +380,190 @@ WHERE iOS，WHEN 分頁根畫面的內容比螢幕長並往上捲動，the mobil
 
 - **WHEN** iOS 上 Settings 根畫面的內容比螢幕長（例如字級放大），往上捲動
 - **THEN** 大標題收合成一般標題
+
+### Requirement: SHELL-26.1 Settings 根畫面的 APPEARANCE 區塊
+
+The mobile app SHALL 在 Settings 根畫面的 PROFILE 和 APP 區塊之間顯示 APPEARANCE 區塊，裡面是無障礙名稱為「Appearance」的單選群組，依序是「System」、「Light」、「Dark」三個選項，並標示現在的外觀選項；還沒選過時是 System。
+
+#### Scenario: 打開 Settings
+
+- **WHEN** 選中 Settings 分頁
+- **THEN** 由上而下依序看到「PROFILE」、「APPEARANCE」、「APP」三個區塊標題，APPEARANCE 裡依序是「System」、「Light」、「Dark」
+
+#### Scenario: 還沒選過
+
+- **WHEN** 第一次打開 app，選中 Settings 分頁
+- **THEN** 標示的是 System
+
+### Requirement: SHELL-27.1 (manual) iOS 的外觀選擇器
+
+WHERE iOS，the mobile app SHALL 把 Appearance 單選群組顯示成 large 大小的系統分段控制：點一個選項就選它，拖曳滑塊再放開時吸附到最近的選項並選它；沒開「降低透明度」時，拖曳會顯示系統的 Liquid Glass 效果。
+
+#### Scenario: 點選
+
+- **WHEN** iOS 26 上，在 Settings 根畫面點「Dark」
+- **THEN** 滑塊移到 Dark，app 變成深色
+
+#### Scenario: 拖曳
+
+- **WHEN** 把滑塊從 System 拖到 Light 和 Dark 之間、靠近 Dark 的地方再放開
+- **THEN** 滑塊吸附到 Dark，app 變成深色
+
+#### Scenario: 外觀
+
+- **WHEN** iOS 26 上沒有開「降低透明度」，拖曳滑塊
+- **THEN** 滑塊是 Liquid Glass；分段控制是 large 的高度，VoiceOver 念出「Appearance」和現在的選項
+
+### Requirement: SHELL-28.1 Android 的外觀選擇器
+
+WHERE Android，the mobile app SHALL 把 Appearance 單選群組的三個選項顯示成並排的按鈕，螢幕閱讀器把現在的選項念成已勾選。
+
+#### Scenario: 打開 Settings
+
+- **WHEN** Android 上選中 Settings 分頁
+- **THEN** APPEARANCE 裡是並排的「System」、「Light」、「Dark」三個按鈕，System 是已勾選
+
+### Requirement: SHELL-29.1 選 Light 或 Dark 時立即套用並存起來
+
+WHEN 使用者選 Light 或 Dark，the mobile app SHALL 立即讓 app 的外觀變成這個選項，不管手機用淺色還是深色，標示這個選項，並把它存成外觀選項；存好時不顯示任何提示。
+
+#### Scenario: 選 Dark
+
+- **WHEN** 手機是淺色，在 Settings 根畫面選「Dark」
+- **THEN** app 立即變成深色，標示 Dark，沒有任何提示
+
+#### Scenario: 選 Light
+
+- **WHEN** 手機是深色，選「Light」
+- **THEN** app 立即變成淺色，標示 Light
+
+### Requirement: SHELL-30.1 選 System 時跟著手機
+
+WHEN 使用者選 System，the mobile app SHALL 不再自己決定外觀，讓 app 的外觀跟著手機，手機之後切換淺色或深色時也立即跟著切換。
+
+#### Scenario: 從 Dark 選回 System
+
+- **WHEN** 手機是淺色，選了 Dark 之後再選「System」
+- **THEN** app 立即回到淺色，標示 System
+
+#### Scenario: 手機切換
+
+- **WHEN** 外觀選項是 System，手機從淺色切成深色，再切回淺色
+- **THEN** app 每次都立即跟著切換
+
+### Requirement: SHELL-31.1 啟動時就是存著的外觀
+
+WHEN app 啟動，the mobile app SHALL 在載入指示消失、第一次顯示 app 的畫面時，就已經是存著的外觀選項，Settings 也標示它。
+
+#### Scenario: 存著 Dark
+
+- **WHEN** 手機是淺色，選了 Dark 之後重新啟動 app
+- **THEN** 第一個畫面就是深色，Settings 標示 Dark
+
+#### Scenario: 還沒選過
+
+- **WHEN** 手機是深色，第一次啟動 app
+- **THEN** app 是深色，Settings 標示 System
+
+### Requirement: SHELL-32.1 儲存中鎖住外觀選擇器
+
+WHILE 外觀選項正在儲存，the mobile app SHALL 讓 Appearance 單選群組不能操作，所以一次選擇只存一次。
+
+#### Scenario: 儲存中
+
+- **WHEN** 選了「Dark」，儲存還沒完成
+- **THEN** 三個選項都不能選；存好後恢復可以選，標示 Dark
+
+#### Scenario: 儲存中點另一個選項
+
+- **WHEN** 選了「Dark」，儲存還沒完成時點「Light」
+- **THEN** 沒有任何反應；重新啟動 app 後，外觀選項是 Dark
+
+### Requirement: SHELL-33.1 外觀選項存不進去時提示
+
+IF 外觀選項存不進去，THEN the mobile app SHALL 跳出標題「Unable to Save Settings」、內容「Your settings could not be saved. Please try again.」的提示框，app 的外觀和標示的選項都維持原本的值，選擇器恢復可以操作。
+
+#### Scenario: 寫入失敗
+
+- **WHEN** 手機是淺色、外觀選項是 System，資料庫無法寫入時選「Dark」
+- **THEN** 跳出這個提示框一次，app 仍是淺色，標示 System，選項可以選
+
+#### Scenario: 再試一次
+
+- **WHEN** 寫入失敗後資料庫恢復，再選一次「Dark」
+- **THEN** app 變成深色；重新啟動 app 後，外觀選項是 Dark
+
+### Requirement: SHELL-34.1 顏色跟著外觀
+
+The mobile app SHALL 讓畫面的背景、文字、區塊、分隔線和提示文字都用跟著 app 外觀的顏色，每段文字都指定顏色；本機資料的載入和錯誤畫面用跟著手機外觀的顏色。使用者資料裡的顏色，例如分類的顏色，不在這條規則裡。
+
+#### Scenario: 分頁的根畫面
+
+- **WHEN** app 從淺色變成深色
+- **THEN** Groups、Expenses、Settings 的根畫面和標題列都只用跟著外觀的顏色，每段文字都指定了顏色
+
+#### Scenario: 載入畫面
+
+- **WHEN** 手機是淺色或深色，本機資料還在開啟
+- **THEN** 載入畫面有背景顏色，只用跟著手機外觀的顏色
+
+#### Scenario: 錯誤畫面
+
+- **WHEN** 手機是淺色或深色，本機資料打不開
+- **THEN** 錯誤畫面有背景顏色，背景和兩行字只用跟著手機外觀的顏色
+
+### Requirement: SHELL-35.1 iOS 的 Settings 區塊用毛玻璃
+
+WHERE iOS，WHILE 沒有開「降低透明度」，the mobile app SHALL 讓 Settings 根畫面的 PROFILE 和 APP 區塊用毛玻璃。
+
+#### Scenario: 沒開「降低透明度」
+
+- **WHEN** iOS 上沒有開「降低透明度」，打開 Settings
+- **THEN** PROFILE 和 APP 區塊都是毛玻璃
+
+### Requirement: SHELL-36.1 iOS 開著「降低透明度」時不透明
+
+WHERE iOS，WHILE 開著「降低透明度」，the mobile app SHALL 讓畫面上沒有 app 自己加的毛玻璃或玻璃，區塊都改用不透明的顏色；app 啟動時只問系統一次，之後跟著系統的變更通知立即切換。
+
+#### Scenario: 開著
+
+- **WHEN** iOS 上開著「降低透明度」，打開 Settings
+- **THEN** PROFILE 和 APP 區塊不透明，畫面上沒有 app 自己加的毛玻璃或玻璃
+
+#### Scenario: 執行中打開
+
+- **WHEN** Settings 開著時，在系統打開「降低透明度」
+- **THEN** 區塊立即變成不透明，畫面上沒有 app 自己加的毛玻璃
+
+#### Scenario: 執行中關掉
+
+- **WHEN** 開著「降低透明度」時打開 Settings，再在系統關掉它
+- **THEN** 區塊立即變成毛玻璃
+
+#### Scenario: 只問一次
+
+- **WHEN** app 啟動、打開 Settings，之後在系統切換「降低透明度」兩次
+- **THEN** app 只問過系統一次有沒有開「降低透明度」
+
+### Requirement: SHELL-37.1 iOS 問不到「降低透明度」時當成開著
+
+WHERE iOS，IF 系統回答不了有沒有開「降低透明度」，THEN the mobile app SHALL 當成開著，直到系統通知它的值。
+
+#### Scenario: 問不到
+
+- **WHEN** iOS 上問「降低透明度」時發生錯誤
+- **THEN** app 照常顯示畫面，Settings 的區塊不透明，畫面上沒有 app 自己加的毛玻璃或玻璃
+
+#### Scenario: 之後收到通知
+
+- **WHEN** 問不到之後，系統通知「降低透明度」是關著的
+- **THEN** 區塊變成毛玻璃
+
+### Requirement: SHELL-38.1 Android 用不透明的表面
+
+WHERE Android，the mobile app SHALL 不自己加毛玻璃或玻璃，區塊都用不透明的顏色。
+
+#### Scenario: 打開 Settings
+
+- **WHEN** Android 上打開 Settings
+- **THEN** 畫面上沒有 app 自己加的毛玻璃或玻璃，PROFILE 和 APP 區塊不透明
