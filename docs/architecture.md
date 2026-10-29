@@ -16,7 +16,7 @@ flowchart LR
 |---|---|---|
 | Mobile app | What a member does on the phone, including offline; syncs with the API | `apps/mobile` |
 | API | Authorizes members and devices, and stores and exchanges each shared ledger's sync events; applies no bookkeeping rules | `apps/api` |
-| Domain | Rules every client applies identically, and the API's request and response types | `packages/domain` |
+| Domain | Rules every client applies identically, and the API's request and response types with the functions that check them | `packages/domain` |
 
 Name top-level directories only. File paths go stale.
 
