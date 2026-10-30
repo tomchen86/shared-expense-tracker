@@ -1,5 +1,5 @@
 import { PlatformColor } from 'react-native';
-import { fireEvent, screen, within } from '@testing-library/react-native';
+import { fireEvent, within } from '@testing-library/react-native';
 import type { HeaderActionsProps } from '../../src/ui/header-actions';
 import {
   IN_A_TAB,
@@ -11,6 +11,7 @@ import {
   iconsIn,
   liftFinger,
   pressBarButton,
+  probeButton,
   probeColors,
   reportBottomInsets,
   showAddButton,
@@ -91,7 +92,7 @@ test('[SHELL-41.1] floats the + button at the bottom center as a 60×60 circle w
 test('[SHELL-41.1] names the + button Add expense when the screen gives no name', async () => {
   await showAddButton(IN_A_TAB, { onPress: jest.fn() });
 
-  expect(screen.getByRole('button', { name: 'Add expense' })).toBeOnTheScreen();
+  expect(probeButton('Add expense')).toBeOnTheScreen();
 });
 
 test('[SHELL-42.1] keeps the + button 16 above the tab bar, which the safe area of a tab includes', async () => {
@@ -119,7 +120,7 @@ test('[SHELL-42.1] moves the + button as soon as the bottom safe area changes', 
 test('[SHELL-43.1] runs the action of the + button once for each press', async () => {
   const onPress = jest.fn();
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress });
-  const button = screen.getByRole('button', { name: 'Add group' });
+  const button = probeButton('Add group');
 
   fireEvent.press(button);
   fireEvent.press(button);
@@ -147,7 +148,7 @@ test('[SHELL-43.1] runs a header action once for each press', async () => {
 
 test('[SHELL-44.1] draws the + as the SF Symbol plus in the text color, which the screen reader skips', async () => {
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
-  const button = screen.getByRole('button', { name: 'Add group' });
+  const button = probeButton('Add group');
 
   expect(
     iconsIn(button, 'ios').map(({ name, color }) => ({ name, color })),
@@ -157,7 +158,7 @@ test('[SHELL-44.1] draws the + as the SF Symbol plus in the text color, which th
 
 test('[SHELL-44.1] shrinks the + button to 0.96 while it is held and restores it on release', async () => {
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
-  const button = screen.getByRole('button', { name: 'Add group' });
+  const button = probeButton('Add group');
   expect(addButtonBox('Add group').scale).toBe(1);
 
   holdDown(button);
@@ -169,7 +170,7 @@ test('[SHELL-44.1] shrinks the + button to 0.96 while it is held and restores it
 
 test('[SHELL-44.1] gives one light haptic when the + button runs its action, not when the finger lands', async () => {
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
-  const button = screen.getByRole('button', { name: 'Add group' });
+  const button = probeButton('Add group');
 
   holdDown(button);
   expect(haptics.impactAsync).not.toHaveBeenCalled();
@@ -199,7 +200,7 @@ test('[SHELL-41.1] gives the + button an opaque surface while Reduce Transparenc
 
 test('[SHELL-34.1] colors the + button with colors that follow the appearance', async () => {
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
-  expect(screen.getByRole('button', { name: 'Add group' })).toBeOnTheScreen();
+  expect(probeButton('Add group')).toBeOnTheScreen();
   const light = probeColors();
   switchPhoneTo('dark');
   const dark = probeColors();

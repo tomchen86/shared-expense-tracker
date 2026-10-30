@@ -1,0 +1,43 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[GROUPS-4.1] [GROUPS-6.1] [GROUPS-8.1] [GROUPS-16.1] Asks for a name first, then creates a group that is still there after a restart'
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Groups
+- assertVisible: No groups yet. Tap + to create a group.
+- tapOn: Add group
+- assertVisible: Username Required
+- tapOn: Go to Settings
+- assertVisible:
+    text: Settings
+    selected: true
+- tapOn: Enter your name
+- inputText: Taylor
+- pressKey: Enter
+- waitForAnimationToEnd
+- tapOn: Groups
+- tapOn: Add group
+- assertVisible: New Group
+- waitForAnimationToEnd
+# The name field has the focus once New Group opens, so the keyboard types into it.
+- inputText: Brisbane
+- tapOn: Create
+- waitForAnimationToEnd
+- assertVisible: Open Brisbane
+- assertNotVisible: New Group
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Groups
+- assertVisible: Open Brisbane
