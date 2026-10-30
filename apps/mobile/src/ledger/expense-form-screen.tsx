@@ -205,7 +205,10 @@ function ExpenseEditor({ categories, expense }: LoadedForm) {
 
   const inputStyle = [styles.input, { color: colors.text }];
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View
+      collapsable={false}
+      style={{ flex: 1, backgroundColor: colors.background }}
+    >
       <HeaderActions
         cancel={{ label: 'Cancel', disabled: saving, onPress: close }}
         confirm={{

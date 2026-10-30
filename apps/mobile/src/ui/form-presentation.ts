@@ -1,9 +1,5 @@
-export const formScreenOptions = {
-  animation: 'slide_from_bottom' as const,
-};
-
 export const formPresentation = {
-  ...formScreenOptions,
+  animation: 'slide_from_bottom' as const,
   presentation: 'modal' as const,
-  headerShown: false,
+  headerShown: true,
 };

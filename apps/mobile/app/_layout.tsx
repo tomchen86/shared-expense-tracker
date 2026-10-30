@@ -8,7 +8,15 @@ function ThemedStack() {
   return (
     <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="expenses" options={formPresentation} />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="expenses/new"
+          options={{ ...formPresentation, title: 'New Expense' }}
+        />
+        <Stack.Screen
+          name="expenses/[id]/edit"
+          options={{ ...formPresentation, title: 'Edit Expense' }}
+        />
       </Stack>
     </ThemeProvider>
   );

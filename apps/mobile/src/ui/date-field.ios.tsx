@@ -3,6 +3,7 @@ import {
   datePickerStyle,
   disabled as disabledModifier,
   environment,
+  padding,
 } from '@expo/ui/swift-ui/modifiers';
 import { toLocalDate } from '@shared-expense/domain';
 import type { DateFieldProps } from './date-field';
@@ -19,7 +20,7 @@ export function DateField({
     <Host
       ignoreSafeArea="all"
       matchContents={{ vertical: true }}
-      style={{ width: '100%', padding: 16 }}
+      style={{ width: '100%' }}
     >
       <DatePicker
         title={label}
@@ -31,6 +32,7 @@ export function DateField({
           datePickerStyle('compact'),
           disabledModifier(disabled),
           environment('timeZone', timeZone),
+          padding({ horizontal: 16, vertical: 12 }),
         ]}
       />
     </Host>
