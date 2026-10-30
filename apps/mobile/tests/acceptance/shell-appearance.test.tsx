@@ -24,8 +24,9 @@ import {
 } from './shell-appearance-app';
 
 // Runs on iOS. The iOS Appearance picker is a native segmented control, which
-// these tests cannot operate (SHELL-27.1 is checked by hand); choosing an option
-// is tested on Android, where both platforms share the same code (ADR-0002).
+// these tests cannot operate (an E2E flow checks SHELL-39.1 and SHELL-40.1);
+// choosing an option is tested on Android, where both platforms share the same
+// code (ADR-0002).
 
 let mockOpen: () => Promise<Database>;
 

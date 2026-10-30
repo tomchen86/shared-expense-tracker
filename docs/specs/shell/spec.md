@@ -395,14 +395,9 @@ The mobile app SHALL 在 Settings 根畫面的 PROFILE 和 APP 區塊之間顯�
 - **WHEN** 第一次打開 app，選中 Settings 分頁
 - **THEN** 標示的是 System
 
-### Requirement: SHELL-27.1 (manual) iOS 的外觀選擇器
+### Requirement: SHELL-27.2 (manual) iOS 的外觀選擇器
 
-WHERE iOS，the mobile app SHALL 把 Appearance 單選群組顯示成 large 大小的系統分段控制：點一個選項就選它，拖曳滑塊再放開時吸附到最近的選項並選它；沒開「降低透明度」時，拖曳會顯示系統的 Liquid Glass 效果。
-
-#### Scenario: 點選
-
-- **WHEN** iOS 26 上，在 Settings 根畫面點「Dark」
-- **THEN** 滑塊移到 Dark，app 變成深色
+WHERE iOS，the mobile app SHALL 把 Appearance 單選群組顯示成 large 大小的系統分段控制，拖曳滑塊再放開時吸附到最近的選項並選它；沒開「降低透明度」時，拖曳會顯示系統的 Liquid Glass 效果。
 
 #### Scenario: 拖曳
 
@@ -412,7 +407,7 @@ WHERE iOS，the mobile app SHALL 把 Appearance 單選群組顯示成 large 大�
 #### Scenario: 外觀
 
 - **WHEN** iOS 26 上沒有開「降低透明度」，拖曳滑塊
-- **THEN** 滑塊是 Liquid Glass；分段控制是 large 的高度，VoiceOver 念出「Appearance」和現在的選項
+- **THEN** 滑塊是 Liquid Glass，分段控制是 large 的高度
 
 ### Requirement: SHELL-28.1 Android 的外觀選擇器
 
@@ -567,6 +562,24 @@ WHERE Android，the mobile app SHALL 不自己加毛玻璃或玻璃，區塊都�
 
 - **WHEN** Android 上打開 Settings
 - **THEN** 畫面上沒有 app 自己加的毛玻璃或玻璃，PROFILE 和 APP 區塊不透明
+
+### Requirement: SHELL-39.1 (e2e) iOS 上點一下就選中外觀選項
+
+WHERE iOS，WHEN 使用者在 Settings 根畫面點 Appearance 分段控制的一個選項，the mobile app SHALL 選中那個選項。
+
+#### Scenario: 點 Dark
+
+- **WHEN** iOS 上第一次打開 app，在 Settings 根畫面點「Dark」
+- **THEN** 選中的是 Dark，不再是 System；重新打開 app 後仍是 Dark
+
+### Requirement: SHELL-40.1 (e2e) iOS 外觀選擇器的無障礙資訊
+
+WHERE iOS，the mobile app SHALL 讓 Appearance 分段控制在無障礙功能裡是名稱為「Appearance」的群組，裡面是「System」、「Light」、「Dark」三個選項，現在的選項標示成已選取，讓 VoiceOver 念出來。
+
+#### Scenario: 打開 Settings
+
+- **WHEN** iOS 上第一次打開 app，選中 Settings 分頁
+- **THEN** 有一個名稱為「Appearance」的群組，裡面是「System」、「Light」、「Dark」，只有 System 標示成已選取
 
 ### Requirement: SHELL-41.1 + 按鈕的位置、大小和名稱
 
