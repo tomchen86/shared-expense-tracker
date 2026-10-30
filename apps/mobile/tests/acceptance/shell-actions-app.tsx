@@ -106,6 +106,44 @@ function scaleOf(transform: unknown) {
 const isRipple = (background: unknown) =>
   (background as { type?: string } | undefined)?.type === 'RippleAndroid';
 
+interface Ripple {
+  color?: unknown;
+  borderless?: boolean;
+  rippleRadius?: number;
+}
+
+/** Whether `ripple`, drawn by `view`, is a circle of radius 24 around the view's center. */
+function isRound24(view: HostView, ripple: Ripple) {
+  if (ripple.borderless === true) return ripple.rippleRadius === 24;
+  // A bounded ripple fills its view, which then has to be a 48 dp circle.
+  const style = styleOf(view);
+  return (
+    style.overflow === 'hidden' &&
+    Number(style.borderRadius ?? 0) >= 24 &&
+    style.width === 48 &&
+    style.height === 48
+  );
+}
+
+/**
+ * A ripple's color as React Native hands it to Android, already processed: a
+ * number is one fixed color; null leaves it to the system's default and an object
+ * to the platform, both of which follow the appearance.
+ */
+const fixedRippleColor = (color: unknown) =>
+  typeof color === 'number' && color >>> 24 !== 0 ? color >>> 0 : undefined;
+
+/** The Android ripples on `button` and the views inside it, as React Native hands them to the platform. */
+export const ripplesOn = (button: HostView) =>
+  hostViews(button).flatMap((view) =>
+    [view.props.nativeBackgroundAndroid, view.props.nativeForegroundAndroid]
+      .filter(isRipple)
+      .map((ripple: Ripple) => ({
+        fixedColor: fixedRippleColor(ripple.color),
+        round24: isRound24(view, ripple),
+      })),
+  );
+
 /**
  * How the + button named `name` sits on the test screen: the views from the button
  * out to the one placed over the screen with position absolute, and the views
