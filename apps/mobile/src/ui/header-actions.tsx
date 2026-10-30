@@ -10,8 +10,11 @@ export interface HeaderAction {
 export interface HeaderActionsProps {
   cancel?: HeaderAction;
   confirm?: HeaderAction;
-  /** The other actions, in a menu whose accessible name is `label`. */
-  menu?: { label: string; actions: HeaderAction[] };
+  /** The other actions, at most two, in a menu whose accessible name is `label`. */
+  menu?: {
+    label: string;
+    actions: [HeaderAction] | [HeaderAction, HeaderAction];
+  };
 }
 
 /** Puts the actions in the header of the screen that renders it. */

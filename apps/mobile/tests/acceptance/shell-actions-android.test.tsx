@@ -6,6 +6,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react-native';
+import type { HeaderActionsProps } from '../../src/ui/header-actions';
 import { useThemeColors } from '../../src/ui/theme';
 import {
   IN_A_TAB,
@@ -120,7 +121,7 @@ async function expectIcons(icons: Record<string, string>) {
 const groupActions = (
   members: { disabled?: boolean; onPress?: () => void } = {},
   remove: { disabled?: boolean; onPress?: () => void } = {},
-) => ({
+): HeaderActionsProps['menu'] => ({
   label: 'Group actions',
   actions: [
     { label: 'Members', onPress: jest.fn(), ...members },
@@ -209,12 +210,17 @@ test('[SHELL-46.1] shows a ripple and gives no haptic when the + button is press
   expect(haptics.selectionAsync).not.toHaveBeenCalled();
 });
 
-test('[SHELL-38.1] gives the + button an opaque surface and no glass', async () => {
+test('[SHELL-38.1] adds no glass to the + button', async () => {
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
   const box = addButtonBox('Add group');
 
   expect(translucentViews(box.placed ?? box.button)).toEqual([]);
-  expect(box.opaque).toBe(true);
+});
+
+test('[SHELL-41.1] gives the + button an opaque surface', async () => {
+  await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
+
+  expect(addButtonBox('Add group').opaque).toBe(true);
 });
 
 test('[SHELL-34.1] colors the + button and the header icons with colors that follow the appearance', async () => {
