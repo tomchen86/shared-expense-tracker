@@ -2,7 +2,7 @@
 
 ## Purpose
 
-App 外殼：開啟本機資料、開啟期間的載入畫面、打不開時的錯誤畫面、這支手機的本機身分，載入後的分頁列、各分頁自己的堆疊和返回按鈕，Settings 根畫面上的名字、外觀選項和入口列，以及 app 的深淺色和半透明表面。本機資料是手機上的 SQLite 資料庫；開啟時依序跑 migration，還沒有本機身分時再建立一個（ADR-0006）。開發版是指 `__DEV__` 為真的 build。分頁的根畫面是分頁堆疊最底下的畫面，也就是選中分頁時最先看到的畫面。名字是本機身分裡存著的名字。外觀選項是存在本機資料裡的 System、Light 或 Dark；app 的外觀是 app 現在用淺色還是深色：外觀選項是 Light 或 Dark 時就是它，是 System 時跟著手機。跟著外觀的顏色是指淺色和深色時不同的顏色，或是由系統依外觀決定的顏色。「降低透明度」是 iOS 輔助使用裡的同名設定。毛玻璃是看得到後面模糊內容的半透明表面；玻璃是 iOS 26 起的 Liquid Glass。app 自己加的毛玻璃或玻璃，不包括分頁列、標題列、分段控制這些系統元件本身畫的。
+App 外殼：開啟本機資料、開啟期間的載入畫面、打不開時的錯誤畫面、這支手機的本機身分，載入後的分頁列、各分頁自己的堆疊和返回按鈕，Settings 根畫面上的名字、外觀選項和入口列，app 的深淺色和半透明表面，以及各畫面共用的 + 按鈕和標題列動作。本機資料是手機上的 SQLite 資料庫；開啟時依序跑 migration，還沒有本機身分時再建立一個（ADR-0006）。開發版是指 `__DEV__` 為真的 build。分頁的根畫面是分頁堆疊最底下的畫面，也就是選中分頁時最先看到的畫面。名字是本機身分裡存著的名字。外觀選項是存在本機資料裡的 System、Light 或 Dark；app 的外觀是 app 現在用淺色還是深色：外觀選項是 Light 或 Dark 時就是它，是 System 時跟著手機。跟著外觀的顏色是指淺色和深色時不同的顏色，或是由系統依外觀決定的顏色。「降低透明度」是 iOS 輔助使用裡的同名設定。毛玻璃是看得到後面模糊內容的半透明表面；玻璃是 iOS 26 起的 Liquid Glass。app 自己加的毛玻璃或玻璃，不包括分頁列、標題列、分段控制這些系統元件本身畫的。+ 按鈕是畫面浮在底部的圓形按鈕；標題列動作是畫面放在自己標題列上的取消、確認，以及收進選單的其他動作；一個選單最多放兩個動作。它們的名稱、要執行的動作和是否停用，都由畫面決定。分頁裡的畫面是分頁堆疊上、看得到分頁列的畫面；分頁外的畫面是不在分頁堆疊上、看不到分頁列的畫面。下方安全區是畫面底部被系統擋住的高度，在 iOS 的分頁裡也包括分頁列。
 
 ## Requirements
 
@@ -580,3 +580,189 @@ WHERE iOS，the mobile app SHALL 讓 Appearance 分段控制在無障礙功能�
 
 - **WHEN** iOS 上第一次打開 app，選中 Settings 分頁
 - **THEN** 有一個名稱為「Appearance」的群組，裡面是「System」、「Light」、「Dark」，只有 System 標示成已選取
+
+### Requirement: SHELL-41.1 + 按鈕的位置、大小和名稱
+
+The mobile app SHALL 把 + 按鈕放在畫面底部的正中間，是 60×60 的圓形，表面沒有用玻璃時是不透明的顏色，角色是 button，無障礙名稱是畫面給的名稱，畫面沒給時是「Add expense」。
+
+#### Scenario: 畫面給了名稱
+
+- **WHEN** 畫面顯示名稱是「Add group」的 + 按鈕
+- **THEN** 畫面上有一個角色是 button、名稱是「Add group」的按鈕，是水平置中的 60×60 圓形
+
+#### Scenario: 畫面沒給名稱
+
+- **WHEN** 畫面顯示 + 按鈕，沒給名稱
+- **THEN** 按鈕的名稱是「Add expense」
+
+#### Scenario: 沒有玻璃
+
+- **WHEN** Android 上，或是 iOS 上開著「降低透明度」時，顯示 + 按鈕
+- **THEN** 按鈕的表面是不透明的顏色
+
+### Requirement: SHELL-42.1 + 按鈕和畫面底部的距離
+
+The mobile app SHALL 讓 + 按鈕的底邊和畫面底部的距離，在 iOS 上是下方安全區的高度加 16；在 Android 上，分頁裡的畫面是 16，分頁外的畫面是下方安全區的高度加 16。
+
+#### Scenario: iOS 的分頁裡
+
+- **WHEN** iOS 上分頁裡的畫面顯示 + 按鈕，下方安全區是分頁列加上 Home 指示條的 83
+- **THEN** 按鈕的底邊離畫面底部 99，也就是在分頁列上方 16
+
+#### Scenario: iOS 的分頁外
+
+- **WHEN** iOS 上分頁外的畫面顯示 + 按鈕，下方安全區是 34
+- **THEN** 按鈕的底邊離畫面底部 50
+
+#### Scenario: Android 的分頁裡
+
+- **WHEN** Android 上分頁裡的畫面顯示 + 按鈕，下方安全區是 24
+- **THEN** 按鈕的底邊離畫面底部 16；畫面在分頁列上方就結束，所以也是在分頁列上方 16
+
+#### Scenario: Android 的分頁外
+
+- **WHEN** Android 上分頁外的畫面顯示 + 按鈕，下方安全區是 24
+- **THEN** 按鈕的底邊離畫面底部 40
+
+#### Scenario: 安全區改變
+
+- **WHEN** iOS 上分頁外的畫面顯示 + 按鈕時，下方安全區從 34 變成 21，例如手機轉成橫向
+- **THEN** 按鈕的底邊立即改成離畫面底部 37
+
+### Requirement: SHELL-43.1 每按一次就執行一次
+
+WHEN 使用者按 + 按鈕或標題列的動作，the mobile app SHALL 每按一次就執行一次畫面給的動作。
+
+#### Scenario: 連按兩次 + 按鈕
+
+- **WHEN** 連按兩次 + 按鈕
+- **THEN** 畫面給的動作執行兩次
+
+#### Scenario: 標題列的動作
+
+- **WHEN** 按一次確認「Add」，再從選單選一次「Members」
+- **THEN** 「Add」和「Members」的動作各執行一次
+
+### Requirement: SHELL-44.1 iOS 的 + 按鈕圖示和按壓回饋
+
+WHERE iOS，the mobile app SHALL 讓 + 按鈕的圖示是文字顏色的 SF Symbol `plus`，按住時把按鈕縮成 0.96 倍，觸發動作時發出一次輕的觸覺回饋。
+
+#### Scenario: 圖示
+
+- **WHEN** iOS 上顯示 + 按鈕
+- **THEN** 圖示是文字顏色的 `plus`，螢幕閱讀器只念按鈕的名稱
+
+#### Scenario: 按住再放開
+
+- **WHEN** 按住 + 按鈕，再放開
+- **THEN** 按住時按鈕縮成 0.96 倍，放開後恢復原來的大小
+
+#### Scenario: 觸覺回饋
+
+- **WHEN** 按住 + 按鈕，再放開
+- **THEN** 手指碰到按鈕時沒有觸覺回饋，放開、觸發動作時發出一次輕的觸覺回饋
+
+### Requirement: SHELL-45.1 (manual) iOS 的 + 按鈕用玻璃
+
+WHERE iOS，WHILE 沒有開「降低透明度」，the mobile app SHALL 讓 + 按鈕在 iOS 26 起是會回應觸碰的 Liquid Glass，在更早的 iOS 是不透明的顏色。
+
+#### Scenario: iOS 26
+
+- **WHEN** iOS 26 上沒有開「降低透明度」，按住 + 按鈕
+- **THEN** 按鈕是 Liquid Glass，按住時玻璃有觸碰的效果
+
+#### Scenario: 更早的 iOS
+
+- **WHEN** iOS 18 上顯示 + 按鈕
+- **THEN** 按鈕是不透明的顏色
+
+### Requirement: SHELL-46.1 Android 的 + 按鈕圖示和按壓回饋
+
+WHERE Android，the mobile app SHALL 讓 + 按鈕的圖示是「+」字，按下時顯示 ripple，不發出觸覺回饋。
+
+#### Scenario: 圖示
+
+- **WHEN** Android 上顯示 + 按鈕
+- **THEN** 圖示是「+」字，螢幕閱讀器只念按鈕的名稱
+
+#### Scenario: 按下
+
+- **WHEN** 按一下 + 按鈕
+- **THEN** 按鈕顯示 ripple，沒有觸覺回饋
+
+### Requirement: SHELL-47.1 iOS 的標題列動作
+
+WHERE iOS，the mobile app SHALL 把畫面給的標題列動作放進原生標題列：取消是左邊 plain 樣式的文字按鈕，確認是右邊 prominent 樣式的文字按鈕，其他動作依序收進右邊一個圖示是 SF Symbol `ellipsis.circle` 的原生選單，選單的無障礙名稱是畫面給的名稱；確認和選單都有時，確認在最右邊。
+
+#### Scenario: 取消和確認
+
+- **WHEN** iOS 上畫面給取消「Cancel」和確認「Add」
+- **THEN** 標題列左邊是 plain 的「Cancel」，右邊是 prominent 的「Add」
+
+#### Scenario: 其他動作
+
+- **WHEN** 畫面給名稱是「Group actions」的選單，裡面依序是「Members」和「Delete」
+- **THEN** 標題列右邊是圖示 `ellipsis.circle`、名稱「Group actions」的選單，依序列出「Members」和「Delete」
+
+#### Scenario: 確認和選單
+
+- **WHEN** 畫面同時給確認「Save」和名稱是「Expense actions」的選單
+- **THEN** 標題列右邊由右而左是「Save」和選單
+
+### Requirement: SHELL-48.1 Android 的標題列動作
+
+WHERE Android，the mobile app SHALL 把畫面給的標題列動作顯示成至少 48×48 dp 的 Material Symbols 圖示按鈕，無障礙名稱是動作的名稱：取消是左邊的 `close`，確認是右邊強調色的 `check`，其他動作收進最右邊、名稱是選單名稱的 `more_vert`，按下後跳出標題是選單名稱的對話框，依序列出這些動作和「Cancel」。
+
+#### Scenario: 取消和確認
+
+- **WHEN** Android 上畫面給取消「Cancel」和確認「Add」
+- **THEN** 標題列左邊是名稱「Cancel」的 `close`，右邊是名稱「Add」、強調色的 `check`，兩個按鈕都至少 48×48 dp
+
+#### Scenario: 其他動作
+
+- **WHEN** 畫面給名稱是「Group actions」的選單，裡面依序是「Members」和「Delete」，然後按名稱「Group actions」的 `more_vert`
+- **THEN** 跳出標題「Group actions」的對話框，依序列出「Members」和「Delete」，另外有「Cancel」
+
+#### Scenario: 確認和選單
+
+- **WHEN** 畫面同時給確認「Save」和名稱是「Expense actions」的選單
+- **THEN** 標題列右邊由左而右是 `check` 和 `more_vert`
+
+#### Scenario: 按 Cancel
+
+- **WHEN** 在對話框按「Cancel」
+- **THEN** 對話框關掉，沒有執行任何動作
+
+### Requirement: SHELL-49.1 停用的標題列動作
+
+IF 畫面停用標題列的某個動作，THEN the mobile app SHALL 讓它不能按：iOS 上仍然顯示，按鈕和選單項目都是停用的樣子，選單本身一直能打開；Android 上圖示按鈕仍然顯示，不透明度是 38%，`more_vert` 的對話框不列出停用的動作，其他動作都停用時 `more_vert` 本身也停用。
+
+#### Scenario: iOS 的按鈕
+
+- **WHEN** iOS 上確認「Add」停用
+- **THEN** 「Add」顯示成停用的，按了沒有反應
+
+#### Scenario: iOS 的選單項目
+
+- **WHEN** iOS 上選單裡的「Delete」停用
+- **THEN** 選單照樣能打開，「Delete」是停用的，「Members」可以選
+
+#### Scenario: iOS 的動作都停用
+
+- **WHEN** iOS 上選單裡的「Members」和「Delete」都停用
+- **THEN** 選單照樣能打開，兩個動作都是停用的
+
+#### Scenario: Android 的按鈕
+
+- **WHEN** Android 上確認「Add」停用
+- **THEN** `check` 仍然顯示，不透明度 38%，按了沒有反應
+
+#### Scenario: Android 的對話框
+
+- **WHEN** Android 上選單裡的「Delete」停用，「Members」沒有停用
+- **THEN** 對話框只列出「Members」和「Cancel」
+
+#### Scenario: Android 的動作都停用
+
+- **WHEN** Android 上選單裡的「Members」和「Delete」都停用
+- **THEN** `more_vert` 仍然顯示，不透明度 38%，按了沒有反應
