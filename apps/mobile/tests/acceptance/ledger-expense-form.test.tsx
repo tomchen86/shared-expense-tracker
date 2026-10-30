@@ -74,44 +74,40 @@ jest.mock('../../src/storage/expo', () => ({
   openPhoneDatabase: () => mockOpen(),
 }));
 
-jest.mock(
-  'expo-localization',
-  () => {
-    const phone = () =>
-      jest.requireActual<typeof import('./ledger-expense-app')>(
-        './ledger-expense-app',
-      );
-    return {
-      getLocales: () => phone().phoneLocales(),
-      getCalendars: () => phone().phoneCalendars(),
-      useLocales: () => phone().phoneLocales(),
-      useCalendars: () => phone().phoneCalendars(),
-    };
-  },
-  { virtual: true },
-);
+// Not virtual: Jest caches how a module name resolves across the test files of a
+// worker, so a virtual mock of an installed package stops applying once another
+// file has loaded the real one.
+jest.mock('expo-localization', () => {
+  const phone = () =>
+    jest.requireActual<typeof import('./ledger-expense-app')>(
+      './ledger-expense-app',
+    );
+  return {
+    ...jest.requireActual<object>('expo-localization'),
+    getLocales: () => phone().phoneLocales(),
+    getCalendars: () => phone().phoneCalendars(),
+    useLocales: () => phone().phoneLocales(),
+    useCalendars: () => phone().phoneCalendars(),
+  };
+});
 
-jest.mock(
-  'expo-haptics',
-  () => ({
-    ImpactFeedbackStyle: {
-      Light: 'light',
-      Medium: 'medium',
-      Heavy: 'heavy',
-      Soft: 'soft',
-      Rigid: 'rigid',
-    },
-    NotificationFeedbackType: {
-      Success: 'success',
-      Warning: 'warning',
-      Error: 'error',
-    },
-    impactAsync: jest.fn(async () => undefined),
-    notificationAsync: jest.fn(async () => undefined),
-    selectionAsync: jest.fn(async () => undefined),
-  }),
-  { virtual: true },
-);
+jest.mock('expo-haptics', () => ({
+  ImpactFeedbackStyle: {
+    Light: 'light',
+    Medium: 'medium',
+    Heavy: 'heavy',
+    Soft: 'soft',
+    Rigid: 'rigid',
+  },
+  NotificationFeedbackType: {
+    Success: 'success',
+    Warning: 'warning',
+    Error: 'error',
+  },
+  impactAsync: jest.fn(async () => undefined),
+  notificationAsync: jest.fn(async () => undefined),
+  selectionAsync: jest.fn(async () => undefined),
+}));
 
 const DEFAULT_NAMES = [
   'Food & Dining',

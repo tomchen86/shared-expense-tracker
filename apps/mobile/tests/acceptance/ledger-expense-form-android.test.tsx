@@ -30,22 +30,20 @@ jest.mock('../../src/storage/expo', () => ({
   openPhoneDatabase: () => mockOpen(),
 }));
 
-jest.mock(
-  'expo-localization',
-  () => {
-    const phone = () =>
-      jest.requireActual<typeof import('./ledger-expense-app')>(
-        './ledger-expense-app',
-      );
-    return {
-      getLocales: () => phone().phoneLocales(),
-      getCalendars: () => phone().phoneCalendars(),
-      useLocales: () => phone().phoneLocales(),
-      useCalendars: () => phone().phoneCalendars(),
-    };
-  },
-  { virtual: true },
-);
+// Not virtual, as in the iOS file.
+jest.mock('expo-localization', () => {
+  const phone = () =>
+    jest.requireActual<typeof import('./ledger-expense-app')>(
+      './ledger-expense-app',
+    );
+  return {
+    ...jest.requireActual<object>('expo-localization'),
+    getLocales: () => phone().phoneLocales(),
+    getCalendars: () => phone().phoneCalendars(),
+    useLocales: () => phone().phoneLocales(),
+    useCalendars: () => phone().phoneCalendars(),
+  };
+});
 
 // Material Symbols drawn as images come from the symbol font on the phone. Here
 // each image is named after its symbol instead, as in the tab bar's tests.
