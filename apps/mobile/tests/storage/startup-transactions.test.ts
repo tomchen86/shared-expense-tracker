@@ -167,6 +167,9 @@ test('development reset clears views, triggers, quoted names, and foreign-key cy
   ).toEqual([
     { name: '_migrations' },
     { name: 'categories' },
+    { name: 'expense_payments' },
+    { name: 'expense_shares' },
+    { name: 'expenses' },
     { name: 'local_identity' },
   ]);
   expect(await database.all('PRAGMA foreign_keys')).toEqual([
