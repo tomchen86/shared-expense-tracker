@@ -4,6 +4,7 @@ import { act, fireEvent, screen, within } from '@testing-library/react-native';
 import { AddButton, type AddButtonProps } from '../../src/ui/add-button';
 import {
   HeaderActions,
+  type HeaderAction,
   type HeaderActionsProps,
 } from '../../src/ui/header-actions';
 import { nativeViews, navigationBars, startApp, tab } from './shell-tabs-app';
@@ -183,6 +184,8 @@ export function holdDown(view: HostView) {
 /** Lifts the finger, once React Native's shortest press has passed. */
 export async function liftFinger(view: HostView) {
   fireEvent(view, 'responderRelease', touch());
+  // renderRouter fakes the timers and Date, so this runs the press-out that
+  // React Native holds back until its shortest press has passed.
   await act(async () => {
     jest.advanceTimersByTime(500);
   });
@@ -239,6 +242,16 @@ export const iconNames = (root: HostView, platform: Platform) =>
   iconsIn(root, platform).map(({ name }) => name);
 
 // The header
+
+type Menu = NonNullable<HeaderActionsProps['menu']>;
+type Expect<T extends true> = T;
+
+/** A menu holds at most two actions, so its props type refuses a third. */
+export type MenuRefusesAThirdAction = Expect<
+  [HeaderAction, HeaderAction, HeaderAction] extends Menu['actions']
+    ? false
+    : true
+>;
 
 /** The test screen's navigation bar, the top one in the Groups tab. */
 export function probeBar() {

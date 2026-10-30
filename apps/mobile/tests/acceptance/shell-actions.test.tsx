@@ -1,5 +1,6 @@
 import { PlatformColor } from 'react-native';
 import { fireEvent, screen, within } from '@testing-library/react-native';
+import type { HeaderActionsProps } from '../../src/ui/header-actions';
 import {
   IN_A_TAB,
   OUTSIDE_THE_TABS,
@@ -68,7 +69,7 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-const MENU = {
+const MENU: HeaderActionsProps['menu'] = {
   label: 'Group actions',
   actions: [
     { label: 'Members', onPress: jest.fn() },
@@ -166,10 +167,13 @@ test('[SHELL-44.1] shrinks the + button to 0.96 while it is held and restores it
   expect(addButtonBox('Add group').scale).toBe(1);
 });
 
-test('[SHELL-44.1] gives one light haptic for each press of the + button', async () => {
+test('[SHELL-44.1] gives one light haptic when the + button runs its action, not when the finger lands', async () => {
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
+  const button = screen.getByRole('button', { name: 'Add group' });
 
-  fireEvent.press(screen.getByRole('button', { name: 'Add group' }));
+  holdDown(button);
+  expect(haptics.impactAsync).not.toHaveBeenCalled();
+  await liftFinger(button);
 
   expect(haptics.impactAsync.mock.calls).toEqual([
     [haptics.ImpactFeedbackStyle.Light],
@@ -178,13 +182,19 @@ test('[SHELL-44.1] gives one light haptic for each press of the + button', async
   expect(haptics.selectionAsync).not.toHaveBeenCalled();
 });
 
-test('[SHELL-36.1] gives the + button an opaque surface and no glass while Reduce Transparency is on', async () => {
+test('[SHELL-36.1] adds no glass to the + button while Reduce Transparency is on', async () => {
   fakeReduceTransparency(true);
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
   const box = addButtonBox('Add group');
 
   expect(translucentViews(box.placed ?? box.button)).toEqual([]);
-  expect(box.opaque).toBe(true);
+});
+
+test('[SHELL-41.1] gives the + button an opaque surface while Reduce Transparency is on', async () => {
+  fakeReduceTransparency(true);
+  await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
+
+  expect(addButtonBox('Add group').opaque).toBe(true);
 });
 
 test('[SHELL-34.1] colors the + button with colors that follow the appearance', async () => {
@@ -285,4 +295,25 @@ test('[SHELL-49.1] keeps the menu usable with a disabled action in it', async ()
   chooseFromMenu('Members');
   expect(remove).not.toHaveBeenCalled();
   expect(members).toHaveBeenCalledTimes(1);
+});
+
+test('[SHELL-49.1] keeps the menu usable when every action in it is disabled', async () => {
+  await showHeaderActions({
+    menu: {
+      label: 'Group actions',
+      actions: [
+        { label: 'Members', onPress: jest.fn(), disabled: true },
+        { label: 'Delete', onPress: jest.fn(), disabled: true },
+      ],
+    },
+  });
+
+  expect(barItems().right).toEqual([
+    {
+      menu: 'Group actions',
+      icon: 'ellipsis.circle',
+      disabled: false,
+      items: ['Members (disabled)', 'Delete (disabled)'],
+    },
+  ]);
 });
