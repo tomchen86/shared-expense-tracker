@@ -49,27 +49,23 @@ jest.mock('expo-symbols', () => ({
     uri: `material-symbol:${symbol}`,
   }),
 }));
-jest.mock(
-  'expo-haptics',
-  () => ({
-    ImpactFeedbackStyle: {
-      Light: 'light',
-      Medium: 'medium',
-      Heavy: 'heavy',
-      Soft: 'soft',
-      Rigid: 'rigid',
-    },
-    NotificationFeedbackType: {
-      Success: 'success',
-      Warning: 'warning',
-      Error: 'error',
-    },
-    impactAsync: jest.fn(async () => undefined),
-    notificationAsync: jest.fn(async () => undefined),
-    selectionAsync: jest.fn(async () => undefined),
-  }),
-  { virtual: true },
-);
+jest.mock('expo-haptics', () => ({
+  ImpactFeedbackStyle: {
+    Light: 'light',
+    Medium: 'medium',
+    Heavy: 'heavy',
+    Soft: 'soft',
+    Rigid: 'rigid',
+  },
+  NotificationFeedbackType: {
+    Success: 'success',
+    Warning: 'warning',
+    Error: 'error',
+  },
+  impactAsync: jest.fn(async () => undefined),
+  notificationAsync: jest.fn(async () => undefined),
+  selectionAsync: jest.fn(async () => undefined),
+}));
 
 const haptics = jest.requireMock('expo-haptics');
 
