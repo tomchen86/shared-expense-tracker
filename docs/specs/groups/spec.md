@@ -57,6 +57,11 @@ IF 使用者還沒存過名字時按「Add group」，THEN the mobile app SHALL 
 - **WHEN** 在提示框按「Go to Settings」
 - **THEN** 選中 Settings 分頁，顯示 Settings 的根畫面
 
+#### Scenario: Settings 分頁已經推入其他畫面
+
+- **WHEN** 在 Settings 分頁打開 Manage Categories，再回到 Groups 按「Add group」，在提示框按「Go to Settings」
+- **THEN** 選中 Settings 分頁，Settings 分頁的堆疊只剩 Settings 的根畫面
+
 #### Scenario: 按 Cancel
 
 - **WHEN** 在提示框按「Cancel」
@@ -106,7 +111,7 @@ WHILE New Group 的名稱去掉頭尾空白後是空的，the mobile app SHALL �
 
 ### Requirement: GROUPS-8.1 按 Create 或 Return 時建立群組
 
-WHEN 使用者按 Create，或在名稱欄位按 Return，而名稱去掉頭尾空白後不是空的，the mobile app SHALL 以去掉頭尾空白的名稱存下一個新的群組，存好後關閉 New Group，回到 Groups 根畫面，把這個群組列在最下面；名稱不限長度，也可以和其他群組相同，建立中再按 Create 或 Return 不會再建立一次。
+WHEN 使用者按 Create，或在名稱欄位按 Return，而名稱去掉頭尾空白後不是空的，the mobile app SHALL 以去掉頭尾空白的名稱存下一個新的群組，存好後關閉 New Group，回到 Groups 根畫面，把這個群組列在最下面。
 
 #### Scenario: 去掉頭尾空白
 
@@ -122,21 +127,6 @@ WHEN 使用者按 Create，或在名稱欄位按 Return，而名稱去掉頭尾�
 
 - **WHEN** 名稱只有「   」時按 Return
 - **THEN** 沒有建立群組，New Group 仍開著
-
-#### Scenario: 很長的名稱
-
-- **WHEN** 一個一個輸入 300 個「a」，按 Create
-- **THEN** 存下的名稱是 300 個「a」
-
-#### Scenario: 同名的群組
-
-- **WHEN** 建立「Trip」之後再建立一個「Trip」
-- **THEN** Groups 根畫面有兩張「Trip」的卡片
-
-#### Scenario: 連按兩次
-
-- **WHEN** 輸入「Brisbane」後連按兩次 Create，第二次在存好之前
-- **THEN** 只建立了一個「Brisbane」
 
 ### Requirement: GROUPS-9.1 新群組的 ID 和唯一的成員
 
@@ -173,12 +163,22 @@ IF 使用者還沒存過名字時在 New Group 按 Create 或 Return，THEN the 
 
 ### Requirement: GROUPS-11.1 建立中鎖住 New Group
 
-WHILE 群組正在建立，the mobile app SHALL 停用 Cancel 和 Create，讓名稱欄位不能編輯，也不讓 New Group 因為往下滑或按 Android 的返回鍵而關閉，直到存好或存不進去為止。
+WHILE 群組正在建立，the mobile app SHALL 停用 Cancel 和 Create，讓名稱欄位不能編輯，再按 Create 或 Return 也不再建立一次，也不讓 New Group 因為往下滑或按 Android 的返回鍵而關閉，直到存好或存不進去為止。
 
 #### Scenario: 建立中
 
 - **WHEN** 輸入「Brisbane」按 Create，還沒存好
 - **THEN** Cancel 和 Create 都停用，名稱欄位不能編輯，New Group 仍開著；存好後 New Group 關閉，多了「Brisbane」
+
+#### Scenario: 連按兩次
+
+- **WHEN** 輸入「Brisbane」後連按兩次 Create，第二次在存好之前
+- **THEN** 只建立了一個「Brisbane」
+
+#### Scenario: 建立中按 Return
+
+- **WHEN** 輸入「Brisbane」按 Create，存好之前在名稱欄位按 Return
+- **THEN** 只建立了一個「Brisbane」
 
 #### Scenario: 往下滑或按返回鍵
 
@@ -289,3 +289,17 @@ WHEN app 重新啟動，the mobile app SHALL 保留每個群組、它們建立�
 
 - **WHEN** 依序建立「Brisbane」和「Tokyo」後重新啟動 app
 - **THEN** Groups 根畫面由上而下是 Brisbane、Tokyo；兩個群組的 ID、名稱和成員都和重新啟動前一樣
+
+### Requirement: GROUPS-17.1 群組名稱不限長度，也可以重複
+
+The mobile app SHALL 讓群組名稱不限長度，也可以和其他群組的名稱相同。
+
+#### Scenario: 很長的名稱
+
+- **WHEN** 一個一個輸入 300 個「a」，按 Create
+- **THEN** 存下的名稱是 300 個「a」
+
+#### Scenario: 同名的群組
+
+- **WHEN** 建立「Trip」之後再建立一個「Trip」
+- **THEN** Groups 根畫面有兩張「Trip」的卡片

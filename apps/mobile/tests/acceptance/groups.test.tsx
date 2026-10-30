@@ -17,6 +17,7 @@ import {
   navigationBars,
   selectedTab,
   tab,
+  tapTab,
 } from './shell-tabs-app';
 import {
   CREATE_FAILED,
@@ -206,6 +207,26 @@ test('[GROUPS-4.1] goes to the Settings root from the name alert', async () => {
   expect(navigationBarTitles(tab('Settings'))).toEqual(['Settings']);
 });
 
+test('[GROUPS-4.1] goes to the Settings root from the name alert when Settings has another screen open', async () => {
+  await startGroupsApp();
+  await tapTab('Settings');
+  fireEvent.press(screen.getByRole('button', { name: 'Manage Categories' }));
+  await waitFor(() =>
+    expect(navigationBarTitles(tab('Settings'))).toEqual([
+      'Settings',
+      'Manage Categories',
+    ]),
+  );
+  await settle();
+  await tapTab('Groups');
+  await pressAddGroup();
+
+  await pressAlertButton(alert, 'Go to Settings');
+
+  expect(selectedTab()).toBe('Settings');
+  expect(navigationBarTitles(tab('Settings'))).toEqual(['Settings']);
+});
+
 test('[GROUPS-4.1] stays on the Groups root when the name alert is cancelled', async () => {
   const app = await startGroupsApp();
   await pressAddGroup();
@@ -342,63 +363,6 @@ test('[GROUPS-8.1] creates nothing when Return is pressed with only spaces as th
   expect(newGroupIsOpen()).toBe(true);
   expect(await storedGroups(file)).toEqual([]);
   expect(alertsShown(alert)).toEqual([]);
-});
-
-test('[GROUPS-8.1] keeps a name of 300 characters in full', async () => {
-  await startWithName();
-  await openNewGroup();
-  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-
-  await user.type(nameField(), 'a'.repeat(300));
-  expect(nameField()).toHaveDisplayValue('a'.repeat(300), AS_TYPED);
-  await press('Create');
-
-  await expectNewGroupClosed();
-  expect(await storedNames()).toEqual(['a'.repeat(300)]);
-});
-
-test('[GROUPS-8.1] creates a second group with the same name', async () => {
-  await startWithName();
-
-  await createGroup('Trip');
-  await createGroup('Trip');
-
-  expect(cardNames()).toEqual(['Open Trip', 'Open Trip']);
-  const [first, second] = await storedGroups(file);
-  expect([first.name, second.name]).toEqual(['Trip', 'Trip']);
-  expect(first.id).not.toBe(second.id);
-});
-
-test('[GROUPS-8.1] creates one group when Create is pressed twice before it is saved', async () => {
-  await startWithName();
-  await openNewGroup();
-  typeName('Brisbane');
-  const create = titleBarAction('Create');
-
-  act(() => {
-    create.press();
-    create.press();
-  });
-  await settle();
-
-  await expectNewGroupClosed();
-  expect(cardNames()).toEqual(['Open Brisbane']);
-  expect(await storedNames()).toEqual(['Brisbane']);
-});
-
-test('[GROUPS-8.1] ignores Return while the group is being created', async () => {
-  await startWithName();
-  await openNewGroup();
-  typeName('Brisbane');
-  const writes = holdWrites();
-
-  await press('Create');
-  await pressReturn();
-  await writes.release();
-  await settle();
-
-  await expectNewGroupClosed();
-  expect(await storedNames()).toEqual(['Brisbane']);
 });
 
 test('[GROUPS-9.1] makes you the only member of a new group, with new version 4 IDs', async () => {
@@ -540,6 +504,38 @@ test('[GROUPS-11.1] unlocks Cancel, Create, the name and swiping down once the s
   expect(titleBarAction('Create').disabled).toBe(false);
   expect(nameField()).toBeEnabled();
   expect(refusesSwipeDown(newGroupScreen())).toBe(false);
+});
+
+test('[GROUPS-11.1] creates one group when Create is pressed twice before it is saved', async () => {
+  await startWithName();
+  await openNewGroup();
+  typeName('Brisbane');
+  const create = titleBarAction('Create');
+
+  act(() => {
+    create.press();
+    create.press();
+  });
+  await settle();
+
+  await expectNewGroupClosed();
+  expect(cardNames()).toEqual(['Open Brisbane']);
+  expect(await storedNames()).toEqual(['Brisbane']);
+});
+
+test('[GROUPS-11.1] ignores Return while the group is being created', async () => {
+  await startWithName();
+  await openNewGroup();
+  typeName('Brisbane');
+  const writes = holdWrites();
+
+  await press('Create');
+  await pressReturn();
+  await writes.release();
+  await settle();
+
+  await expectNewGroupClosed();
+  expect(await storedNames()).toEqual(['Brisbane']);
 });
 
 test('[GROUPS-12.1] alerts, keeps New Group with its name, and leaves the local data as it was when nothing can be written', async () => {
@@ -764,6 +760,31 @@ test('[GROUPS-16.1] keeps the groups, their order and their members after a rest
   expect(before.map((group) => group.name)).toEqual(['Brisbane', 'Tokyo']);
   expect(before.map((group) => group.members.length)).toEqual([1, 1]);
   expect(await storedGroups(file)).toEqual(before);
+});
+
+test('[GROUPS-17.1] keeps a name of 300 characters in full', async () => {
+  await startWithName();
+  await openNewGroup();
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+  await user.type(nameField(), 'a'.repeat(300));
+  expect(nameField()).toHaveDisplayValue('a'.repeat(300), AS_TYPED);
+  await press('Create');
+
+  await expectNewGroupClosed();
+  expect(await storedNames()).toEqual(['a'.repeat(300)]);
+});
+
+test('[GROUPS-17.1] creates a second group with the same name', async () => {
+  await startWithName();
+
+  await createGroup('Trip');
+  await createGroup('Trip');
+
+  expect(cardNames()).toEqual(['Open Trip', 'Open Trip']);
+  const [first, second] = await storedGroups(file);
+  expect([first.name, second.name]).toEqual(['Trip', 'Trip']);
+  expect(first.id).not.toBe(second.id);
 });
 
 test('[SHELL-25.1] puts the Groups root content in the scroll view its large title follows', async () => {

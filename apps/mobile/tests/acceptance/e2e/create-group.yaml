@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[GROUPS-4.1] [GROUPS-6.1] [GROUPS-8.1] [GROUPS-16.1] Asks for a name first, then creates a group that is still there after a restart'
+name: '[GROUPS-4.1] [GROUPS-6.1] [GROUPS-8.1] [GROUPS-13.1] [GROUPS-16.1] Asks for a name first, closes New Group when it is swiped down, then creates a group that is still there after a restart'
 ---
 - launchApp:
     clearState: true
@@ -26,6 +26,18 @@ name: '[GROUPS-4.1] [GROUPS-6.1] [GROUPS-8.1] [GROUPS-16.1] Asks for a name firs
 - assertVisible: New Group
 - waitForAnimationToEnd
 # The name field has the focus once New Group opens, so the keyboard types into it.
+- inputText: Tokyo
+# Dragging the sheet down by its title closes it, whatever its height.
+- swipe:
+    from:
+      text: New Group
+    direction: DOWN
+- waitForAnimationToEnd
+- assertNotVisible: New Group
+- assertVisible: No groups yet. Tap + to create a group.
+- tapOn: Add group
+- assertVisible: New Group
+- waitForAnimationToEnd
 - inputText: Brisbane
 - tapOn: Create
 - waitForAnimationToEnd
