@@ -787,6 +787,19 @@ test('[GROUPS-17.1] creates a second group with the same name', async () => {
   expect(first.id).not.toBe(second.id);
 });
 
+test('[GROUPS-18.1] shows a long name on one line of its card, cut off at the end', async () => {
+  await startWithName();
+  const name = 'a'.repeat(300);
+
+  await createGroup(name);
+
+  // Jest lays nothing out, so the test reads what the card asks the native text for.
+  const shown = within(cards()[0]).getByText(name);
+  expect(shown.props.numberOfLines).toBe(1);
+  expect(shown.props.ellipsizeMode ?? 'tail').toBe('tail');
+  expect(cardNames()).toEqual([`Open ${name}`]);
+});
+
 test('[SHELL-25.1] puts the Groups root content in the scroll view its large title follows', async () => {
   await startWithName();
   await createGroup('Brisbane');

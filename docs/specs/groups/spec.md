@@ -303,3 +303,12 @@ The mobile app SHALL 讓群組名稱不限長度，也可以和其他群組的�
 
 - **WHEN** 建立「Trip」之後再建立一個「Trip」
 - **THEN** Groups 根畫面有兩張「Trip」的卡片
+
+### Requirement: GROUPS-18.1 卡片上的群組名稱只佔一行
+
+The mobile app SHALL 在群組的卡片上只用一行顯示群組名稱，放不下時在結尾以「…」截斷；卡片的無障礙名稱仍是完整的「Open <群組名稱>」。
+
+#### Scenario: 很長的名稱
+
+- **WHEN** 建立名稱是 300 個「a」的群組
+- **THEN** 卡片上的名稱只佔一行，放不下的部分在結尾截斷；卡片的無障礙名稱是「Open 」加上完整的 300 個「a」
