@@ -334,6 +334,16 @@ export function formScreen(): HostView {
 export const isSheet = () =>
   SHEETS.includes(formScreen().props.stackPresentation);
 
+/** How many expense forms are open, one above another. */
+export const formCount = () => formBars().length;
+
+/** Whether the open form sits inside a tab, above the tab bar rather than over it. */
+export function formIsInATab() {
+  for (let outer = formScreen().parent; outer; outer = outer.parent)
+    if (/^RNSTabsScreen/.test(String(outer.type))) return true;
+  return false;
+}
+
 export async function expectForm(title: 'New Expense' | 'Edit Expense') {
   await waitFor(() => expect(formTitle()).toBe(title));
   await waitFor(() =>

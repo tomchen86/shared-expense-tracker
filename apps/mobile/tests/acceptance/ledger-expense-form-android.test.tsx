@@ -6,6 +6,8 @@ import {
   expectFormClosed,
   fillForm,
   formBarSides,
+  formIsInATab,
+  formScreen,
   formTitle,
   openNewExpense,
   phoneDatabase,
@@ -54,6 +56,9 @@ jest.mock('expo-symbols', () => ({
   }),
 }));
 
+/** The ways Android shows a screen rising from the bottom. */
+const FROM_THE_BOTTOM = ['slide_from_bottom', 'fade_from_bottom'];
+
 let directory: string;
 let alerts: ReturnType<typeof watchAlerts>;
 
@@ -70,6 +75,19 @@ beforeEach(() => {
 afterEach(() => {
   jest.restoreAllMocks();
   fs.rmSync(directory, { recursive: true, force: true });
+});
+
+test('[LEDGER-12.1] opens New Expense rising from the bottom over the tab bar on Android', async () => {
+  await startExpenses();
+
+  await openNewExpense();
+
+  expect(FROM_THE_BOTTOM).toContain(formScreen().props.stackAnimation);
+  // Android draws no title bar on a form sheet (react-native-screens), which would
+  // leave the form without its Cancel and Add.
+  expect(formScreen().props.stackPresentation).not.toBe('formSheet');
+  expect(formIsInATab()).toBe(false);
+  expect(formBarSides()).toEqual({ left: ['Cancel'], right: ['Add'] });
 });
 
 test('[LEDGER-13.1] puts Cancel at the left and Add at the right of the header on Android', async () => {

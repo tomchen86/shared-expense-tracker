@@ -173,7 +173,7 @@ IF 要轉回文字的金額不是 0 到 9,007,199,254,740,991 之間的整數，
 
 ### Requirement: LEDGER-11.1 Expenses 分頁的 + 按鈕打開 New Expense
 
-The mobile app SHALL 在 Expenses 分頁的根畫面放一個 + 按鈕，畫面沒有另外給它名稱，所以名稱是「Add expense」（SHELL-41.1）；按一下就打開 New Expense。
+The mobile app SHALL 在 Expenses 分頁的根畫面放一個 + 按鈕，畫面沒有另外給它名稱，所以名稱是「Add expense」（SHELL-41.1）；按一下就打開 New Expense，連按兩次也只打開一個。
 
 #### Scenario: 打開 app
 
@@ -185,19 +185,29 @@ The mobile app SHALL 在 Expenses 分頁的根畫面放一個 + 按鈕，畫面�
 - **WHEN** 按「Add expense」
 - **THEN** 打開 New Expense，目前的網址是 `/expenses/new`
 
-### Requirement: LEDGER-12.1 支出表單的網址
+#### Scenario: 連按兩次
 
-The mobile app SHALL 以網址 `/expenses/new` 打開 New Expense，以 `/expenses/<支出的 ID>/edit` 打開這筆支出的 Edit Expense；支出表單是蓋住分頁列的 sheet，導覽列標題是「New Expense」或「Edit Expense」。
+- **WHEN** 連按兩次「Add expense」
+- **THEN** 只打開一個 New Expense；按一次 Cancel 就回到 Expenses 的根畫面
+
+### Requirement: LEDGER-12.1 支出表單的網址和呈現
+
+The mobile app SHALL 以網址 `/expenses/new` 打開 New Expense，以 `/expenses/<支出的 ID>/edit` 打開這筆支出的 Edit Expense；支出表單的導覽列標題是「New Expense」或「Edit Expense」，從畫面底部升起並蓋住分頁列，在 iOS 上是 sheet，在 Android 上是有自己標題列的全螢幕畫面。
 
 #### Scenario: New Expense
 
-- **WHEN** 在 Expenses 分頁開啟 `/expenses/new`
+- **WHEN** iOS 上在 Expenses 分頁開啟 `/expenses/new`
 - **THEN** 顯示導覽列標題是「New Expense」的 sheet
 
 #### Scenario: Edit Expense
 
 - **WHEN** 存下「Coffee run」之後，開啟 `/expenses/<它的 ID>/edit`
 - **THEN** 顯示導覽列標題是「Edit Expense」的 sheet，標題欄位是「Coffee run」
+
+#### Scenario: Android
+
+- **WHEN** Android 上按「Add expense」
+- **THEN** New Expense 從畫面底部升起，蓋住分頁列，標題列上有「Cancel」和「Add」
 
 ### Requirement: LEDGER-13.1 支出表單的內容
 
@@ -405,9 +415,9 @@ WHEN 使用者在 New Expense 按 Add，the mobile app SHALL 存下一筆新的�
 - **WHEN** 連按兩次 Add，第二次在儲存完成之前
 - **THEN** 只多一筆支出
 
-### Requirement: LEDGER-22.1 按 Save 存下修改
+### Requirement: LEDGER-22.1 按 Save 存下個人支出的修改
 
-WHEN 使用者在 Edit Expense 按 Save，the mobile app SHALL 照 LEDGER-21.1 的規則，用表單上的金額、標題、分類、日期和備註更新這筆支出，保留它的 ID、幣別和所屬的空間，付款和分攤改成個人 participant 的新金額，然後關閉表單。
+WHEN 使用者在個人支出的 Edit Expense 按 Save，the mobile app SHALL 照 LEDGER-21.1 的規則，用表單上的金額、標題、分類、日期和備註更新這筆支出，保留它的 ID、幣別和所屬的空間，付款和分攤改成個人 participant 的新金額，然後關閉表單。
 
 #### Scenario: 改金額
 
@@ -520,6 +530,11 @@ IF 支出存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable
 - **WHEN** 資料庫無法寫入時，把「Coffee run」的金額改成「12.50」後按 Save
 - **THEN** 跳出這個提示框；按 Cancel 再按 Discard 後，支出仍是 875 USD
 
+#### Scenario: 寫到一半才失敗
+
+- **WHEN** 存下一筆支出的寫入裡，前面的成功、後面的失敗，不論是在第幾筆寫入失敗
+- **THEN** 存著的支出和按 Add 或 Save 之前一樣，沒有只存了一半的支出；恢復後再按一次，存下完整的一筆
+
 ### Requirement: LEDGER-27.1 本機資料保存的支出
 
 The mobile app SHALL 在本機資料保存每筆支出的 ID、標題、金額、幣別、日期、分類（分類的 ID，以及最後一次存檔時分類的名稱和顏色）、有的話還有備註、所屬的空間（個人空間或某個群組）、付款和分攤，重新啟動 app 後都還在。
@@ -563,9 +578,9 @@ The mobile app SHALL 讓存著的支出依日期從新到舊排列；同一天�
 - **WHEN** 把 D 的日期改成 `2025-01-02`
 - **THEN** 順序是 D、E
 
-### Requirement: LEDGER-29.1 (manual) 手機上的今天和日期選擇器
+### Requirement: LEDGER-29.1 (manual) 手機上的今天、地區幣別和日期選擇器
 
-WHERE iPhone 或 Android 手機，the mobile app SHALL 讓 New Expense 的日期是手機時區的今天，日期選擇器選不到今天以後的日子，選了哪一天，日期欄位就顯示哪一天。
+WHERE iPhone 或 Android 手機，the mobile app SHALL 讓 New Expense 的日期是手機時區的今天、幣別是手機地區的幣別，日期選擇器選不到今天以後的日子，選了哪一天，日期欄位就顯示哪一天。
 
 #### Scenario: 當地比 UTC 早一天
 
@@ -576,6 +591,11 @@ WHERE iPhone 或 Android 手機，the mobile app SHALL 讓 New Expense 的日期
 
 - **WHEN** 手機的時區設成 `America/Los_Angeles`，在當地晚上（UTC 已經是隔天）打開 New Expense
 - **THEN** 日期是當地的今天
+
+#### Scenario: 手機地區的幣別
+
+- **WHEN** 手機的地區設成日本，打開 New Expense
+- **THEN** 表單上是「JPY」，金額欄位的名稱是「Amount in JPY」
 
 #### Scenario: 選日期
 

@@ -162,14 +162,27 @@ export function failWrites() {
   beforeWrite = () => Promise.reject(new Error('disk full'));
 }
 
-/** Holds every write until the test lets the writes through. */
+/** Lets the next `count` writes through and fails every write after them, as a disk that fills up does. */
+export function failWritesAfter(count: number) {
+  let left = count;
+  beforeWrite = () =>
+    left-- > 0 ? Promise.resolve() : Promise.reject(new Error('disk full'));
+}
+
+/** Holds every write until the test lets the writes through or fails them. */
 export function holdWrites() {
   let release!: () => void;
-  const held = new Promise<void>((resolve) => {
+  let fail!: (error: Error) => void;
+  const held = new Promise<void>((resolve, reject) => {
     release = resolve;
+    fail = reject;
   });
+  held.catch(() => undefined);
   beforeWrite = () => held;
-  return { release: () => act(async () => release()) };
+  return {
+    release: () => act(async () => release()),
+    fail: () => act(async () => fail(new Error('disk full'))),
+  };
 }
 
 // renderRouter fakes the global timers; Node's own module keeps the real ones.

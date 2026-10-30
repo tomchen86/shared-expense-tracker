@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { processColor } from 'react-native';
-import { act, within } from '@testing-library/react-native';
+import { act, fireEvent, waitFor, within } from '@testing-library/react-native';
 import {
   DISCARD_CHANGES,
   SAVE_FAILED,
@@ -27,6 +27,7 @@ import {
   formBarSides,
   formButton,
   formCategory,
+  formCount,
   formCurrency,
   formScreen,
   formTitle,
@@ -55,6 +56,7 @@ import {
   allowWrites,
   colorsInBoth,
   failWrites,
+  failWritesAfter,
   fakePhoneAppearance,
   fixedColors,
   holdWrites,
@@ -173,6 +175,34 @@ async function addExpenseIn(currency: string, amount: string) {
   return onlyExpense();
 }
 
+/**
+ * Presses Add or Save with writes failing after the first one, then after the
+ * first two, and so on until the save goes through, so the save fails partway at
+ * each write it makes. After each failure, `check` looks at the stored expenses.
+ */
+async function saveFailingPartway(
+  name: 'Add' | 'Save',
+  check: () => Promise<void>,
+) {
+  for (let written = 1; written <= 50; written += 1) {
+    const shown = alerts.shown().length;
+    failWritesAfter(written);
+    await press(name);
+    await waitFor(() =>
+      expect(formTitle() === undefined || alerts.shown().length > shown).toBe(
+        true,
+      ),
+    );
+    if (formTitle() === undefined) {
+      allowWrites();
+      return;
+    }
+    expect(alerts.shown().at(-1)).toEqual(SAVE_FAILED);
+    await check();
+  }
+  throw new Error('The save never went through');
+}
+
 test('[LEDGER-11.1] puts the Add expense button on the Expenses root', async () => {
   await startExpenses();
 
@@ -185,6 +215,20 @@ test('[LEDGER-11.1] opens New Expense at /expenses/new when Add expense is press
   await openNewExpense();
 
   expect(app.getPathname()).toBe('/expenses/new');
+});
+
+test('[LEDGER-11.1] opens one New Expense when Add expense is pressed twice', async () => {
+  await startExpenses();
+  const button = addExpenseButton();
+
+  fireEvent.press(button);
+  fireEvent.press(button);
+  await settle();
+
+  await expectForm('New Expense');
+  expect(formCount()).toBe(1);
+  await press('Cancel');
+  await expectFormClosed();
 });
 
 test('[LEDGER-12.1] opens New Expense at /expenses/new as a sheet over the tabs', async () => {
@@ -862,6 +906,58 @@ test('[LEDGER-26.1] reports an edit that cannot be saved and leaves the expense 
   await alerts.choose('Discard');
   await expectFormClosed();
   expect((await onlyExpense()).amountMinor).toBe(875);
+});
+
+test('[LEDGER-26.1] leaves no half-saved expense when adding fails partway through', async () => {
+  await startExpenses();
+  const identity = await readIdentity();
+  await openNewExpense();
+  await fillForm({
+    amount: '8.75',
+    title: 'Coffee run',
+    note: 'Morning treat',
+  });
+
+  await saveFailingPartway('Add', async () =>
+    expect(await storedExpenses()).toEqual([]),
+  );
+
+  await expectFormClosed();
+  expect(await storedExpenses()).toEqual([
+    personalExpense(identity, {
+      title: 'Coffee run',
+      amountMinor: 875,
+      currency: 'USD',
+      date: '2026-10-30',
+      category: await categoryNamed('Food & Dining'),
+      note: 'Morning treat',
+    }),
+  ]);
+});
+
+test('[LEDGER-26.1] leaves the expense as it was when an edit fails partway through', async () => {
+  await startExpenses();
+  const identity = await readIdentity();
+  await addExpense();
+  const before = await storedExpenses();
+  await openEditExpense(before[0].id);
+  await fillForm({ amount: '12.50', category: 'Shopping', note: 'Lunch too' });
+
+  await saveFailingPartway('Save', async () =>
+    expect(await storedExpenses()).toEqual(before),
+  );
+
+  await expectFormClosed();
+  expect(await storedExpenses()).toEqual([
+    personalExpense(identity, {
+      title: 'Coffee run',
+      amountMinor: 1250,
+      currency: 'USD',
+      date: '2026-10-30',
+      category: await categoryNamed('Shopping'),
+      note: 'Lunch too',
+    }),
+  ]);
 });
 
 test('[LEDGER-27.1] keeps every field of the expenses after the app restarts', async () => {
