@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react';
-
 export interface HeaderAction {
   /** The text of an iOS button or of a menu item, and the accessible name. */
   label: string;
@@ -15,5 +13,4 @@ export interface HeaderActionsProps {
 }
 
 /** Puts the actions in the header of the screen that renders it. */
-export const HeaderActions: (props: HeaderActionsProps) => ReactNode = () =>
-  null;
+export { HeaderActions } from './header-actions.android';
