@@ -1,4 +1,4 @@
-import { Alert, type AlertButton } from 'react-native';
+import { Alert, type AlertButton, type AlertOptions } from 'react-native';
 import {
   fireEvent,
   renderHook,
@@ -19,6 +19,7 @@ import {
   probeButton,
   probeColors,
   reportBottomInsets,
+  ripplesOn,
   showAddButton,
   showAddButtonAndHeaderActions,
   showHeaderActions,
@@ -83,12 +84,13 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-/** The last dialog the app showed: its title and the texts of its buttons. */
+/** The last dialog the app showed: its title, the texts of its buttons, and how it closes. */
 function lastDialog() {
-  const [title, , buttons = []] = (alert.mock.calls.at(-1) ?? []) as [
+  const [title, , buttons = [], options] = (alert.mock.calls.at(-1) ?? []) as [
     string?,
     string?,
     AlertButton[]?,
+    AlertOptions?,
   ];
   const texts = buttons.map((button) => button.text);
   return {
@@ -97,6 +99,10 @@ function lastDialog() {
     cancels: texts.filter((text) => text === 'Cancel').length,
     press: (text: string) =>
       buttons.find((button) => button.text === text)?.onPress?.(),
+    /** Whether the back button and a tap outside close the dialog. */
+    cancelable: options?.cancelable === true,
+    /** Closes the dialog as the back button or a tap outside does. */
+    dismiss: () => options?.onDismiss?.(),
   };
 }
 
@@ -366,4 +372,57 @@ test('[SHELL-49.1] disables the menu button when every action in it is disabled'
   expect(iconOpacity(button)).toBeCloseTo(0.38);
   fireEvent.press(button);
   expect(alert).not.toHaveBeenCalled();
+});
+
+const ALL_HEADER_ACTIONS = () => ({
+  cancel: { label: 'Cancel', onPress: jest.fn() },
+  confirm: { label: 'Add', onPress: jest.fn() },
+  menu: groupActions(),
+});
+const HEADER_BUTTONS = ['Cancel', 'Add', 'Group actions'];
+
+test('[SHELL-50.1] gives each header button a round ripple of radius 24', async () => {
+  await showHeaderActions(ALL_HEADER_ACTIONS());
+
+  for (const name of HEADER_BUTTONS)
+    expect({
+      name,
+      round: ripplesOn(headerButton(name)).map(({ round24 }) => round24),
+    }).toEqual({ name, round: [true] });
+});
+
+test('[SHELL-50.1] colors the ripples of the header buttons to follow the appearance', async () => {
+  await showHeaderActions(ALL_HEADER_ACTIONS());
+  const colors = () =>
+    HEADER_BUTTONS.map((name) =>
+      ripplesOn(headerButton(name)).map(({ fixedColor }) => fixedColor),
+    );
+  const light = colors();
+  switchPhoneTo('dark');
+  const dark = colors();
+
+  expect(light.map((ripples) => ripples.length)).toEqual([1, 1, 1]);
+  // The same fixed color in both appearances; none means the system picks it.
+  expect(
+    HEADER_BUTTONS.filter(
+      (_, index) =>
+        light[index][0] !== undefined && light[index][0] === dark[index][0],
+    ),
+  ).toEqual([]);
+});
+
+test('[SHELL-51.1] lets the back button or a tap outside close the dialog without running an action', async () => {
+  const members = jest.fn();
+  const remove = jest.fn();
+  await showHeaderActions({
+    menu: groupActions({ onPress: members }, { onPress: remove }),
+  });
+
+  fireEvent.press(headerButton('Group actions'));
+  const dialog = lastDialog();
+  expect(dialog.cancelable).toBe(true);
+  dialog.dismiss();
+
+  expect(members).not.toHaveBeenCalled();
+  expect(remove).not.toHaveBeenCalled();
 });
