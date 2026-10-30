@@ -766,3 +766,31 @@ IF 畫面停用標題列的某個動作，THEN the mobile app SHALL 讓它不能
 
 - **WHEN** Android 上選單裡的「Members」和「Delete」都停用
 - **THEN** `more_vert` 仍然顯示，不透明度 38%，按了沒有反應
+
+### Requirement: SHELL-50.1 Android 標題列按鈕的 ripple
+
+WHERE Android，WHEN 使用者按下標題列上沒有停用的圖示按鈕，the mobile app SHALL 在按鈕上顯示半徑 24 dp 的圓形 ripple，顏色跟著 app 的外觀。
+
+#### Scenario: 按下
+
+- **WHEN** Android 上按下標題列的 `close`、`check` 或 `more_vert`
+- **THEN** 按鈕上出現以按鈕中心為圓心、半徑 24 dp 的圓形 ripple
+
+#### Scenario: 深色
+
+- **WHEN** app 是深色時按下這些按鈕
+- **THEN** ripple 的顏色和淺色時不同，或是由系統依外觀決定
+
+### Requirement: SHELL-51.1 Android 選單的對話框可以直接關掉
+
+WHERE Android，WHILE `more_vert` 的對話框開著，WHEN 使用者按返回鍵或點對話框外面，the mobile app SHALL 關掉對話框，不執行任何動作。
+
+#### Scenario: 按返回鍵
+
+- **WHEN** Android 上 `more_vert` 的對話框開著時按返回鍵
+- **THEN** 對話框關掉，「Members」和「Delete」都沒有執行
+
+#### Scenario: 點外面
+
+- **WHEN** 對話框開著時點對話框外面
+- **THEN** 對話框關掉，沒有執行任何動作
