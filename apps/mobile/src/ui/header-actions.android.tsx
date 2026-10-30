@@ -27,6 +27,7 @@ function ActionButton({
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
+      android_ripple={{ borderless: true, radius: 24 }}
       style={[styles.button, disabled && styles.disabled]}
     >
       <View
@@ -62,13 +63,18 @@ export function HeaderActions({ cancel, confirm, menu }: HeaderActionsProps) {
                 color={colors.text}
                 disabled={enabledActions.length === 0}
                 onPress={() =>
-                  Alert.alert(menu.label, undefined, [
-                    ...enabledActions.map((action) => ({
-                      text: action.label,
-                      onPress: action.onPress,
-                    })),
-                    { text: 'Cancel', style: 'cancel' },
-                  ])
+                  Alert.alert(
+                    menu.label,
+                    undefined,
+                    [
+                      ...enabledActions.map((action) => ({
+                        text: action.label,
+                        onPress: action.onPress,
+                      })),
+                      { text: 'Cancel', style: 'cancel' },
+                    ],
+                    { cancelable: true },
+                  )
                 }
               />
             )}
