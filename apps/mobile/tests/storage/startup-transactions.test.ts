@@ -10,6 +10,8 @@ import {
 import { openNodeDatabase } from '../../src/storage/node';
 import { ensureLocalIdentity } from '../../src/shell/identity';
 import { appMigrations } from '../../src/shell/migrations';
+import { groupMigrations } from '../../src/groups/migrations';
+import { listGroups } from '../../src/groups';
 
 const original =
   "CREATE TABLE original (value TEXT); INSERT INTO original VALUES ('keep me')";
@@ -167,6 +169,8 @@ test('development reset clears views, triggers, quoted names, and foreign-key cy
   ).toEqual([
     { name: '_migrations' },
     { name: 'categories' },
+    { name: 'group_members' },
+    { name: 'groups' },
     { name: 'local_identity' },
   ]);
   expect(await database.all('PRAGMA foreign_keys')).toEqual([
@@ -196,4 +200,31 @@ test('development mode cannot reset a read-only database and leaves its old data
   ).rejects.toThrow('readonly');
   await database.close();
   expect(readFileSync(file)).toEqual(before);
+});
+
+test('adding group storage preserves existing identity, appearance, categories and migration records', async () => {
+  const previous = appMigrations.slice(0, -groupMigrations.length);
+  await initializeDatabase(database, previous, false, ensureLocalIdentity);
+  await database.run(
+    "UPDATE local_identity SET name = 'Taylor', appearance = 'dark'",
+  );
+  await database.run(
+    "INSERT INTO categories (id, name, color, isDefault, position) VALUES ('category', 'Travel', '#123456', 0, 1)",
+  );
+  const identity = await database.all('SELECT * FROM local_identity');
+  const categories = await database.all('SELECT * FROM categories');
+  const records = await database.all(
+    'SELECT * FROM _migrations ORDER BY position',
+  );
+
+  await initializeDatabase(database, appMigrations, false, ensureLocalIdentity);
+
+  expect(await database.all('SELECT * FROM local_identity')).toEqual(identity);
+  expect(await database.all('SELECT * FROM categories')).toEqual(categories);
+  expect(
+    await database.all('SELECT * FROM _migrations ORDER BY position LIMIT ?', [
+      previous.length,
+    ]),
+  ).toEqual(records);
+  expect(await listGroups(database)).toEqual([]);
 });

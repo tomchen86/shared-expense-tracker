@@ -2,7 +2,6 @@ import { Alert, type AlertButton, type AlertOptions } from 'react-native';
 import {
   fireEvent,
   renderHook,
-  screen,
   waitFor,
   within,
 } from '@testing-library/react-native';
@@ -17,6 +16,7 @@ import {
   iconNames,
   iconOpacity,
   iconsIn,
+  probeButton,
   probeColors,
   reportBottomInsets,
   ripplesOn,
@@ -50,27 +50,23 @@ jest.mock('expo-symbols', () => ({
     uri: `material-symbol:${symbol}`,
   }),
 }));
-jest.mock(
-  'expo-haptics',
-  () => ({
-    ImpactFeedbackStyle: {
-      Light: 'light',
-      Medium: 'medium',
-      Heavy: 'heavy',
-      Soft: 'soft',
-      Rigid: 'rigid',
-    },
-    NotificationFeedbackType: {
-      Success: 'success',
-      Warning: 'warning',
-      Error: 'error',
-    },
-    impactAsync: jest.fn(async () => undefined),
-    notificationAsync: jest.fn(async () => undefined),
-    selectionAsync: jest.fn(async () => undefined),
-  }),
-  { virtual: true },
-);
+jest.mock('expo-haptics', () => ({
+  ImpactFeedbackStyle: {
+    Light: 'light',
+    Medium: 'medium',
+    Heavy: 'heavy',
+    Soft: 'soft',
+    Rigid: 'rigid',
+  },
+  NotificationFeedbackType: {
+    Success: 'success',
+    Warning: 'warning',
+    Error: 'error',
+  },
+  impactAsync: jest.fn(async () => undefined),
+  notificationAsync: jest.fn(async () => undefined),
+  selectionAsync: jest.fn(async () => undefined),
+}));
 
 const haptics = jest.requireMock('expo-haptics');
 
@@ -149,7 +145,7 @@ test('[SHELL-41.1] floats the + button at the bottom center as a 60×60 circle w
 test('[SHELL-41.1] names the + button Add expense when the screen gives no name', async () => {
   await showAddButton(IN_A_TAB, { onPress: jest.fn() });
 
-  expect(screen.getByRole('button', { name: 'Add expense' })).toBeOnTheScreen();
+  expect(probeButton('Add expense')).toBeOnTheScreen();
 });
 
 test('[SHELL-42.1] keeps the + button 16 above the bottom of a tab, which ends above the tab bar', async () => {
@@ -169,7 +165,7 @@ test('[SHELL-42.1] keeps the + button 16 above the bottom safe area outside the 
 test('[SHELL-43.1] runs the action of the + button once for each press', async () => {
   const onPress = jest.fn();
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress });
-  const button = screen.getByRole('button', { name: 'Add group' });
+  const button = probeButton('Add group');
 
   fireEvent.press(button);
   fireEvent.press(button);
@@ -198,7 +194,7 @@ test('[SHELL-43.1] runs a header action once for each press', async () => {
 
 test('[SHELL-46.1] draws the + as the text +, which the screen reader skips', async () => {
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
-  const button = screen.getByRole('button', { name: 'Add group' });
+  const button = probeButton('Add group');
 
   expect(
     within(button).getByText('+', { includeHiddenElements: true }),
@@ -210,7 +206,7 @@ test('[SHELL-46.1] shows a ripple and gives no haptic when the + button is press
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
 
   expect(addButtonBox('Add group').ripple).toBe(true);
-  fireEvent.press(screen.getByRole('button', { name: 'Add group' }));
+  fireEvent.press(probeButton('Add group'));
   expect(haptics.impactAsync).not.toHaveBeenCalled();
   expect(haptics.notificationAsync).not.toHaveBeenCalled();
   expect(haptics.selectionAsync).not.toHaveBeenCalled();
@@ -243,7 +239,7 @@ test('[SHELL-34.1] colors the + button and the header icons with colors that fol
     Add: 'check',
     'Group actions': 'more_vert',
   });
-  expect(screen.getByRole('button', { name: 'Add group' })).toBeOnTheScreen();
+  expect(probeButton('Add group')).toBeOnTheScreen();
   const light = probeColors();
   switchPhoneTo('dark');
   const dark = probeColors();

@@ -63,6 +63,13 @@ export const showAddButtonAndHeaderActions = (
 
 const probe = () => screen.getByTestId('actions-probe');
 
+/**
+ * A button on the test screen, by its accessible name. The app's own screens,
+ * such as the Expenses root and its Add expense button, stay mounted beside it.
+ */
+export const probeButton = (name: string) =>
+  within(probe()).getByRole('button', { name });
+
 // The safe area
 
 /**
@@ -150,7 +157,7 @@ export const ripplesOn = (button: HostView) =>
  * inside the button.
  */
 export function addButtonBox(name: string) {
-  const button = screen.getByRole('button', { name });
+  const button = probeButton(name);
   const screenRoot = probe();
   const outward: HostView[] = [];
   for (
