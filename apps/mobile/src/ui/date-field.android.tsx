@@ -18,7 +18,8 @@ export function DateField({
     <View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${label}, ${value}`}
+        accessibilityLabel={label}
+        accessibilityValue={{ text: value }}
         accessibilityState={{ disabled }}
         disabled={disabled}
         onPress={() => setOpen(true)}
