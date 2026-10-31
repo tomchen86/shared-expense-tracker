@@ -578,9 +578,9 @@ The mobile app SHALL 讓存著的支出依日期從新到舊排列；同一天�
 - **WHEN** 把 D 的日期改成 `2025-01-02`
 - **THEN** 順序是 D、E
 
-### Requirement: LEDGER-29.2 (manual) 手機上的今天、地區幣別和日期
+### Requirement: LEDGER-29.3 (manual) 手機上的今天、地區幣別和日期
 
-WHERE iPhone 或 Android 手機，the mobile app SHALL 讓 New Expense 的日期是手機時區的今天、幣別是手機地區的幣別，日期欄位用手機地區的日期格式顯示日期（LEDGER-30.1），日期選擇器選不到今天以後的日子，選了哪一天，日期欄位就顯示哪一天。
+WHERE iPhone 或 Android 手機，the mobile app SHALL 讓 New Expense 的日期是手機時區的今天、幣別是手機地區的幣別，日期欄位用手機地區的日期格式顯示日期（LEDGER-30.1），日期選擇器選不到今天以後的日子，選了哪一天，日期欄位就顯示哪一天。手機地區的日期格式由各個平台自己決定，iPhone 和 Android 可以不一樣。
 
 #### Scenario: 當地比 UTC 早一天
 
@@ -597,10 +597,10 @@ WHERE iPhone 或 Android 手機，the mobile app SHALL 讓 New Expense 的日期
 - **WHEN** 手機的地區設成日本，打開 New Expense
 - **THEN** 表單上是「JPY」，金額欄位的名稱是「Amount in JPY」
 
-#### Scenario: 兩個平台的日期格式一樣
+#### Scenario: 兩個平台各用自己的日期格式
 
 - **WHEN** iPhone 和 Android 手機的語言和地區都設成繁體中文（台灣），打開 New Expense
-- **THEN** 兩邊的日期欄位都用同一種格式顯示今天，例如「2026年10月30日」
+- **THEN** 兩邊的日期欄位各自用平台的中等長度日期格式顯示今天，例如 iPhone 是「2026年10月30日」，Android 是「2026/10/30」
 
 #### Scenario: 選日期
 
