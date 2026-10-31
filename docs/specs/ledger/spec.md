@@ -225,7 +225,7 @@ The mobile app SHALL 讓支出表單的標題列有取消「Cancel」和確認�
 
 ### Requirement: LEDGER-14.1 打開 New Expense 時的內容
 
-WHEN 打開 New Expense，the mobile app SHALL 讓金額、標題和備註都是空的，分類是依儲存的順序排第一的分類（CATEGORIES-7.1），日期是今天。
+WHEN 打開 New Expense，the mobile app SHALL 讓金額、標題和備註都是空的，分類是依儲存的順序排第一的分類（CATEGORIES-7.2），日期是今天。
 
 #### Scenario: 第一次啟動
 

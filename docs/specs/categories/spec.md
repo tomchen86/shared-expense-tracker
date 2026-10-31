@@ -2,7 +2,7 @@
 
 ## Purpose
 
-支出的分類：色盤、預設分類、分類名稱和顏色的規則，以及 Settings 裡 Manage Categories 畫面上的新增、改名和改色。色盤、預設分類，以及名稱和顏色的規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002）；domain 只和交給它的其他分類比對。手機 app 把分類存在本機資料裡（ADR-0006）。每個分類有一個名稱和色盤上的一個顏色。分類表單是新增或編輯分類時開啟的表單。其他任何分類是指本機資料裡的所有分類，編輯時不含正在編輯的那一個。字元數是 UTF-16 code unit 的個數，也就是 JavaScript 字串的長度，所以 😀 這類 emoji 算兩個字元。
+支出的分類：色盤、預設分類、分類名稱和顏色的規則、分類的範圍，以及在 Manage Categories 和 Group Categories 上新增、改名和改色。色盤、預設分類，以及名稱和顏色的規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002）；domain 只和交給它的其他分類比對。手機 app 把分類存在本機資料裡（ADR-0006）。每個分類有一個名稱和色盤上的一個顏色。分類的範圍是個人範圍或一個群組的範圍：預設分類是每個範圍共用的同一組分類，個人分類屬於個人範圍，群組分類屬於一個群組的範圍。管理分類的畫面以個人範圍開啟時是 Manage Categories，以群組範圍開啟時是 Group Categories（CATEGORIES-22.1、23.1），兩者只差在列出哪些分類，以及新增的分類屬於哪個範圍。分類表單是在這個畫面新增或編輯分類時開啟的表單。其他任何分類是指本機資料裡的所有分類，不分範圍（ADR-0009），編輯時不含正在編輯的那一個。字元數是 UTF-16 code unit 的個數，也就是 JavaScript 字串的長度，所以 😀 這類 emoji 算兩個字元。
 
 ## Requirements
 
@@ -115,9 +115,9 @@ WHEN app 開啟本機資料時裡面還沒有任何分類，the mobile app SHALL
 - **WHEN** 第一次啟動後重新啟動 app
 - **THEN** 仍是這九個分類，沒有再建立一次
 
-### Requirement: CATEGORIES-7.1 Manage Categories 依儲存的順序列出分類
+### Requirement: CATEGORIES-7.2 依儲存的順序列出這個範圍的分類
 
-The mobile app SHALL 在 Manage Categories 的「CATEGORIES」下依儲存的順序列出每個分類，每一列有分類顏色的色點和分類名稱，並在導覽列放一個無障礙名稱是「Add category」的「+」按鈕。儲存的順序是建立的先後：預設分類在前，新增的分類依序排在後面，改名或改色不改變位置。
+The mobile app SHALL 在 Manage Categories 和 Group Categories 的「CATEGORIES」下依儲存的順序列出這個範圍的分類（CATEGORIES-22.1、23.1），每一列有分類顏色的色點和分類名稱，並在導覽列放一個無障礙名稱是「Add category」的「+」按鈕。儲存的順序是建立的先後：預設分類在前，新增的分類不論屬於哪個範圍，都依建立的先後排在後面，改名或改色不改變位置。
 
 #### Scenario: 打開 Manage Categories
 
@@ -133,6 +133,11 @@ The mobile app SHALL 在 Manage Categories 的「CATEGORIES」下依儲存的順
 
 - **WHEN** 把 Shopping 改名為「Groceries」
 - **THEN** 「Groceries」仍是第三列
+
+#### Scenario: 不同範圍的分類
+
+- **WHEN** 依序在 Manage Categories 新增「Gym」、在 Brisbane 的 Group Categories 新增「Flights」、在 Manage Categories 新增「Pets」
+- **THEN** Manage Categories 在 Uncategorized 後面依序是 Gym、Pets；Brisbane 的 Group Categories 在 Uncategorized 後面只有 Flights
 
 ### Requirement: CATEGORIES-8.1 開啟分類表單
 
@@ -153,6 +158,11 @@ WHEN 使用者點「Add category」或 Uncategorized 以外的分類，the mobil
 - **WHEN** 點「Shopping」
 - **THEN** 開啟「Edit Category」，名稱是「Shopping」，選取 `#FBC02D`
 
+#### Scenario: 其他範圍用掉的顏色
+
+- **WHEN** 在 Manage Categories 新增了用 `#43A047` 的「Gym」之後，在 Brisbane 的 Group Categories 點「Add category」
+- **THEN** 選取 `#00ACC1`
+
 ### Requirement: CATEGORIES-9.1 分類表單的內容
 
 The mobile app SHALL 讓分類表單有「Cancel」按鈕、新增時是「Add」而編輯時是「Save」的按鈕、「NAME」下無障礙名稱是「Category name」的名稱欄位，以及「COLOR」下依色盤順序排列的 13 個顏色按鈕：其他任何分類用的顏色停用，無障礙名稱是「Color <色碼> already in use」；其餘顏色的無障礙名稱是「Select color <色碼>」，點了就改選這個顏色；選取的顏色標示為已選取。
@@ -171,6 +181,11 @@ The mobile app SHALL 讓分類表單有「Cancel」按鈕、新增時是「Add�
 
 - **WHEN** 在「New Category」點「Select color #C62828」，再點「Color #D81B60 already in use」
 - **THEN** 選取的是 `#C62828`
+
+#### Scenario: 其他範圍的分類用的顏色
+
+- **WHEN** 在 Brisbane 的 Group Categories 新增了用 `#C62828` 的「Flights」之後，在 Manage Categories 開啟「New Category」
+- **THEN** 前九色和 `#C62828` 停用，例如「Color #C62828 already in use」；可以選的只有 `#43A047`、`#00ACC1`、`#9E9D24`
 
 ### Requirement: CATEGORIES-10.1 名稱欄位最多 50 個字元，空白時不能存
 
@@ -234,6 +249,11 @@ IF 按 Add 或 Save 時名稱和其他任何分類重複（CATEGORIES-4.1），T
 - **WHEN** 出現這句話之後，把名稱改成「food」
 - **THEN** 這句話消失
 
+#### Scenario: 其他範圍的分類的名稱
+
+- **WHEN** Brisbane 的 Group Categories 有「Flights」時，在 Tokyo 的 Group Categories 或 Manage Categories 新增「flights」
+- **THEN** 表單仍開著，顯示這句話；按 Cancel 後這個範圍沒有多出分類
+
 ### Requirement: CATEGORIES-13.1 13 色都被用了就不能新增
 
 IF 13 色都被其他任何分類用了，THEN the mobile app SHALL 讓「New Category」不選取任何顏色、停用 Add，並顯示「All category colors are already in use.」。
@@ -248,6 +268,11 @@ IF 13 色都被其他任何分類用了，THEN the mobile app SHALL 讓「New Ca
 - **WHEN** 13 色都被用了，開啟 Travel 的「Edit Category」
 - **THEN** `#3949AB` 沒有停用而且已選取，Save 可以按，不顯示這句話
 
+#### Scenario: 各範圍合起來用完 13 色
+
+- **WHEN** 在 Manage Categories 和 Brisbane 的 Group Categories 各新增兩個分類，用掉最後四色，再在 Tokyo 的 Group Categories 開啟「New Category」
+- **THEN** 13 個顏色都停用，沒有選取的顏色，顯示這句話
+
 ### Requirement: CATEGORIES-14.1 Uncategorized 不能編輯
 
 IF 分類是預設分類 Uncategorized，THEN the mobile app SHALL 讓它那一列不是可以按的按鈕，點了也不開啟分類表單；其他預設分類都可以點開編輯。
@@ -261,6 +286,11 @@ IF 分類是預設分類 Uncategorized，THEN the mobile app SHALL 讓它那一�
 
 - **WHEN** 點 Food & Dining、Transportation、Shopping、Entertainment、Bills & Utilities、Health、Travel 或 Other
 - **THEN** 開啟這個分類的「Edit Category」
+
+#### Scenario: 在 Group Categories 點 Uncategorized
+
+- **WHEN** 在 Brisbane 的 Group Categories 點「Uncategorized」那一列
+- **THEN** 沒有開啟分類表單
 
 ### Requirement: CATEGORIES-15.1 按 Cancel 時不儲存
 
@@ -359,3 +389,105 @@ WHILE 分類正在儲存，the mobile app SHALL 讓名稱欄位不能編輯，�
 
 - **WHEN** 資料庫無法寫入時按 Add
 - **THEN** 存不進去之後，名稱欄位恢復可以編輯，點「Select color #C62828」就改選它
+
+### Requirement: CATEGORIES-22.1 沒有指定群組時是個人範圍
+
+WHEN Manage Categories 開啟時網址沒有 `scopeKind=group`，例如從 Settings 開啟，the mobile app SHALL 以個人範圍開啟，標題是「Manage Categories」，只列出預設分類和個人分類。
+
+#### Scenario: 從 Settings 開啟
+
+- **WHEN** 在 Manage Categories 新增「Gym」、在 Brisbane 的 Group Categories 新增「Flights」之後，從 Settings 開啟 Manage Categories
+- **THEN** 標題是「Manage Categories」，列出九個預設分類和 Gym，沒有 Flights
+
+#### Scenario: 網址只有群組 ID
+
+- **WHEN** 以 `/settings/manage-categories?spaceId=<Brisbane 的群組 ID>` 開啟
+- **THEN** 一樣是個人範圍：標題是「Manage Categories」，列出九個預設分類和 Gym，沒有 Flights
+
+### Requirement: CATEGORIES-23.1 以群組的 ID 開啟時是群組範圍
+
+WHEN 以 `/settings/manage-categories?scopeKind=group&spaceId=<群組 ID>` 開啟，而這是本機資料裡一個群組的 ID，the mobile app SHALL 以這個群組的範圍開啟，標題是「Group Categories」，只列出預設分類和這個群組的分類。
+
+#### Scenario: 還沒有群組分類
+
+- **WHEN** 在 Manage Categories 新增「Gym」之後，以 `scopeKind=group` 和 Brisbane 的群組 ID 開啟
+- **THEN** 標題是「Group Categories」，只列出九個預設分類，沒有 Gym
+
+#### Scenario: 其他群組的分類
+
+- **WHEN** 在 Brisbane 的 Group Categories 新增「Flights」之後，開啟 Tokyo 的 Group Categories
+- **THEN** 只列出九個預設分類，沒有 Flights
+
+### Requirement: CATEGORIES-24.1 沒有群組 ID 時退回個人範圍
+
+IF 網址有 `scopeKind=group`，卻沒有 `spaceId` 或 `spaceId` 是空的，THEN the mobile app SHALL 以個人範圍開啟 Manage Categories（CATEGORIES-22.1）。
+
+#### Scenario: 沒有 spaceId
+
+- **WHEN** 有個人分類 Gym 和 Brisbane 的分類 Flights 時，以 `/settings/manage-categories?scopeKind=group` 或 `/settings/manage-categories?scopeKind=group&spaceId=` 開啟
+- **THEN** 標題是「Manage Categories」，列出九個預設分類和 Gym，沒有 Flights
+
+#### Scenario: 在這裡新增
+
+- **WHEN** 以 `/settings/manage-categories?scopeKind=group` 開啟後新增「Pets」
+- **THEN** Pets 是個人分類：從 Settings 開啟 Manage Categories 時列出 Pets
+
+### Requirement: CATEGORIES-25.1 找不到群組時顯示 Group not found.
+
+IF 網址有 `scopeKind=group`，`spaceId` 卻不是本機資料裡任何群組的 ID，THEN the mobile app SHALL 不開啟任何範圍：以「Group Categories」為標題，只顯示「Group not found.」，沒有「CATEGORIES」和任何分類，導覽列也沒有「Add category」按鈕。
+
+#### Scenario: 不存在的群組
+
+- **WHEN** 有 Brisbane 時，以 `scopeKind=group` 和一個不是任何群組 ID 的 UUID 開啟
+- **THEN** 標題是「Group Categories」，顯示「Group not found.」，沒有「CATEGORIES」、分類或「Add category」
+
+#### Scenario: 其他種類的 ID
+
+- **WHEN** `spaceId` 是你的個人空間 ID，或 Shopping 的分類 ID
+- **THEN** 一樣只顯示「Group not found.」
+
+### Requirement: CATEGORIES-26.1 在 Group Categories 新增的分類屬於這個群組
+
+WHEN 使用者在 Group Categories 新增分類，the mobile app SHALL 把它歸給這個群組：它只列在這個群組的 Group Categories，不列在 Manage Categories 或其他群組的 Group Categories，重新啟動後也一樣。
+
+#### Scenario: 新增群組分類
+
+- **WHEN** 在 Brisbane 的 Group Categories 新增「Flights」
+- **THEN** 表單關閉，Brisbane 的 Group Categories 最後一列是 Flights
+
+#### Scenario: 重新啟動
+
+- **WHEN** 新增之後重新啟動 app
+- **THEN** Brisbane 的 Group Categories 仍列出 Flights；Manage Categories 和 Tokyo 的 Group Categories 都沒有 Flights
+
+### Requirement: CATEGORIES-27.1 新增的分類記下建立者和空間
+
+WHEN 使用者新增分類，the mobile app SHALL 記下你的使用者 ID 作為它的建立者，並記下它的空間：個人分類是你的個人空間 ID，群組分類是這個群組的 ID。
+
+#### Scenario: 個人分類
+
+- **WHEN** 在 Manage Categories 新增「Gym」
+- **THEN** Gym 的建立者是你的使用者 ID，空間是你的個人空間 ID
+
+#### Scenario: 群組分類
+
+- **WHEN** 在 Brisbane 的 Group Categories 新增「Flights」
+- **THEN** Flights 的建立者是你的使用者 ID，空間是 Brisbane 的群組 ID
+
+### Requirement: CATEGORIES-28.1 升級前就有的分類算個人分類
+
+WHEN app 從分類還沒有範圍的版本升級，the mobile app SHALL 把升級前就有的非預設分類當作個人分類。
+
+#### Scenario: 升級
+
+- **WHEN** 升級前本機資料裡有九個預設分類和「Gym」，升級後建立 Brisbane
+- **THEN** Manage Categories 列出九個預設分類和 Gym；Brisbane 的 Group Categories 只列出九個預設分類
+
+### Requirement: CATEGORIES-29.1 每個範圍的預設分類都是同一組
+
+WHEN 使用者在 Manage Categories 或 Group Categories 改預設分類的名稱或顏色，the mobile app SHALL 在每個範圍都顯示改過的名稱和顏色。
+
+#### Scenario: 在 Group Categories 改
+
+- **WHEN** 在 Brisbane 的 Group Categories 把 Shopping 改名為「Groceries」並改用 `#43A047`
+- **THEN** Manage Categories 和 Tokyo 的 Group Categories 的第三列都是「Groceries」，色點是 `#43A047`

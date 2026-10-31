@@ -9,6 +9,10 @@ export interface Category {
   name: string;
   color: string;
   isDefault: boolean;
+  /** The user ID of whoever added the category. */
+  createdByUserId?: string;
+  /** The space the category belongs to: your personal space ID or a group ID. */
+  spaceId?: string;
 }
 
 interface CategoryRow {
