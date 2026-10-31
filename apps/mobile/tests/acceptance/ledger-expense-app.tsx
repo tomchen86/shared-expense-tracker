@@ -31,12 +31,14 @@ import type { DateFieldProps } from '../../src/ui/date-field';
 // The expense form tests start the whole app on a phone database file each test
 // chooses (ADR-0006), and read what the app stores through the ledger's
 // listExpenses, on a connection of their own. They stand in for the phone around
-// the app: its region's currency, the first locale expo-localization's getLocales
-// reports; its time zone, the one JavaScript reports through Intl (expo-localization's
-// getCalendars reports the same); and how iOS reports a swipe on a sheet. The
-// form's buttons may be native bar items or views, and the category list a screen
-// of its own or a view in the form; the helpers find them either way. The date
-// field is a ui/ component, DateField, whose props the tests read and call.
+// the app: its region's currency and date format, from the first locale
+// expo-localization's getLocales reports; its time zone, the one JavaScript reports
+// through Intl (expo-localization's getCalendars reports the same); and how iOS
+// reports a swipe on a sheet. The form's buttons may be native bar items or views,
+// and the category list a screen of its own or a view in the form; the helpers find
+// them either way. The date field is a ui/ component, DateField, whose props the
+// tests read and call; on Android, where it draws the date itself, they also read
+// what it shows.
 
 type HostView = ReturnType<typeof nativeViews>[number];
 
@@ -47,10 +49,15 @@ const REGIONS: Partial<Record<string, string>> = {
   TWD: 'TW',
   JPY: 'JP',
 };
-const phone = { currency: 'USD' as string | null, timeZone: 'Asia/Taipei' };
+const phone = {
+  currency: 'USD' as string | null,
+  language: null as string | null,
+  timeZone: 'Asia/Taipei',
+};
 
 export function resetPhone() {
   phone.currency = 'USD';
+  phone.language = null;
   phone.timeZone = 'Asia/Taipei';
 }
 
@@ -59,14 +66,26 @@ export function setRegionCurrency(currency: string | null) {
   phone.currency = currency;
 }
 
+/**
+ * The phone's first preferred language and region, as a BCP 47 tag such as
+ * `ja-JP`; unless set, English in the region of the currency.
+ */
+export function setPhoneLanguage(tag: string) {
+  phone.language = tag;
+}
+
 /** What expo-localization's getLocales reports. */
 export function phoneLocales() {
-  const region =
+  const currencyRegion =
     phone.currency === null ? null : (REGIONS[phone.currency] ?? null);
+  const languageTag =
+    phone.language ?? (currencyRegion === null ? 'en' : `en-${currencyRegion}`);
+  const [languageCode, ...rest] = languageTag.split('-');
+  const region = rest.find((part) => /^[A-Z]{2}$/.test(part)) ?? null;
   return [
     {
-      languageTag: region === null ? 'en' : `en-${region}`,
-      languageCode: 'en',
+      languageTag,
+      languageCode,
       languageScriptCode: null,
       regionCode: region,
       languageRegionCode: region,
@@ -418,6 +437,21 @@ export const dateField = () => dateFieldView().props as DateFieldProps;
 /** Chooses `date` in the date field's picker. */
 export function chooseDate(date: string) {
   act(() => dateField().onChange(date));
+}
+
+/**
+ * What a screen reader finds in a date field the app draws itself, as on Android:
+ * the element named exactly `Date`, and the value it reads with that name.
+ */
+export function dateFieldForScreenReaders() {
+  const named = within(dateFieldView()).getByLabelText('Date', {
+    exact: true,
+  });
+  return {
+    name: nameOf(named),
+    value:
+      named.props.accessibilityValue?.text ?? named.props['aria-valuetext'],
+  };
 }
 
 export const addExpenseButton = () =>
