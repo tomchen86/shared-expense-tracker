@@ -1,8 +1,12 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { within } from '@testing-library/react-native';
 import {
   DISCARD_CHANGES,
+  chooseDate,
+  dateFieldForScreenReaders,
+  dateFieldView,
   expectFormClosed,
   fillForm,
   formBarSides,
@@ -14,6 +18,7 @@ import {
   press,
   pressBack,
   resetPhone,
+  setPhoneLanguage,
   startExpenses,
   storedExpenses,
   watchAlerts,
@@ -140,4 +145,44 @@ test('[LEDGER-25.1] keeps the form open without asking when Back is pressed duri
   expect((await storedExpenses()).map((expense) => expense.title)).toEqual([
     'Coffee run',
   ]);
+});
+
+test('[LEDGER-13.1] names the date field Date on Android, leaving the date out of its name', async () => {
+  await startExpenses();
+
+  await openNewExpense();
+
+  expect(dateFieldForScreenReaders().name).toBe('Date');
+});
+
+test("[LEDGER-30.1] shows today in the phone region's date format and reads it with the name Date", async () => {
+  await startExpenses();
+
+  await openNewExpense();
+
+  expect(within(dateFieldView()).getByText('Oct 30, 2026')).toBeOnTheScreen();
+  expect(dateFieldForScreenReaders()).toEqual({
+    name: 'Date',
+    value: 'Oct 30, 2026',
+  });
+});
+
+test('[LEDGER-30.1] shows the date the way a phone in Japan writes it', async () => {
+  await startExpenses();
+  setPhoneLanguage('ja-JP');
+
+  await openNewExpense();
+
+  expect(within(dateFieldView()).getByText('2026/10/30')).toBeOnTheScreen();
+  expect(dateFieldForScreenReaders().value).toBe('2026/10/30');
+});
+
+test('[LEDGER-30.1] shows a chosen date in the same format', async () => {
+  await startExpenses();
+  await openNewExpense();
+
+  chooseDate('2024-12-25');
+
+  expect(within(dateFieldView()).getByText('Dec 25, 2024')).toBeOnTheScreen();
+  expect(dateFieldForScreenReaders().value).toBe('Dec 25, 2024');
 });
