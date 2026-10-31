@@ -8,8 +8,9 @@ import {
 } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack } from 'expo-router';
-import { useLocalDatabase } from '../shell';
+import { Stack, useLocalSearchParams } from 'expo-router';
+import { listGroups } from '../groups';
+import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { CategoryForm } from './category-form';
 import {
   createCategory,
@@ -23,6 +24,22 @@ type FormState = { kind: 'add' } | { kind: 'edit'; category: Category };
 
 export function ManageCategoriesScreen() {
   const database = useLocalDatabase();
+  const identity = useLocalIdentity();
+  const { scopeKind, spaceId } = useLocalSearchParams<{
+    scopeKind: string;
+    spaceId: string;
+  }>();
+  const groupId = scopeKind === 'group' && spaceId ? spaceId : undefined;
+  const managedSpaceId = groupId ?? identity.personalSpaceId;
+  const [checkedGroup, setCheckedGroup] = useState<{
+    id: string | undefined;
+    exists: boolean;
+  }>();
+  const groupExists = groupId
+    ? checkedGroup?.id === groupId
+      ? checkedGroup.exists
+      : undefined
+    : true;
   const [categories, setCategories] = useState<Category[]>([]);
   const loadedRef = useRef(false);
   const [formState, setFormState] = useState<FormState | null>(null);
@@ -30,18 +47,25 @@ export function ManageCategoriesScreen() {
   useEffect(() => {
     loadedRef.current = false;
     let active = true;
-    void listCategories(database)
-      .then((rows) => {
+    void Promise.all([
+      listCategories(database),
+      groupId ? listGroups(database) : Promise.resolve([]),
+    ])
+      .then(([rows, groups]) => {
         if (active) {
           loadedRef.current = true;
           setCategories(rows);
+          setCheckedGroup({
+            id: groupId,
+            exists: groups.some((group) => group.id === groupId),
+          });
         }
       })
       .catch(() => undefined);
     return () => {
       active = false;
     };
-  }, [database]);
+  }, [database, groupId]);
 
   const openAddForm = useCallback(() => {
     if (loadedRef.current) {
@@ -73,7 +97,11 @@ export function ManageCategoriesScreen() {
         ),
       );
     } else {
-      const created = await createCategory(database, input);
+      const created = await createCategory(database, {
+        ...input,
+        createdByUserId: identity.userId,
+        spaceId: managedSpaceId,
+      });
       setCategories((current) => [...current, created]);
     }
     setFormState(null);
@@ -86,24 +114,35 @@ export function ManageCategoriesScreen() {
     : categories;
   const screenOptions = useMemo(
     () => ({
-      headerRight: () => (
-        <Pressable
-          accessibilityLabel="Add category"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={openAddForm}
-          style={({ pressed }) => [
-            styles.addButton,
-            pressed && styles.addButtonPressed,
-          ]}
-        >
-          <Text accessible={false} style={styles.addIcon}>
-            +
-          </Text>
-        </Pressable>
-      ),
+      title: groupId ? 'Group Categories' : 'Manage Categories',
+      headerRight: groupExists
+        ? () => (
+            <Pressable
+              accessibilityLabel="Add category"
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={openAddForm}
+              style={({ pressed }) => [
+                styles.addButton,
+                pressed && styles.addButtonPressed,
+              ]}
+            >
+              <Text accessible={false} style={styles.addIcon}>
+                +
+              </Text>
+            </Pressable>
+          )
+        : undefined,
     }),
-    [openAddForm],
+    [openAddForm, groupId, groupExists],
+  );
+
+  const scopedCategories = useMemo(
+    () =>
+      categories.filter(
+        (category) => category.isDefault || category.spaceId === managedSpaceId,
+      ),
+    [categories, managedSpaceId],
   );
 
   const categoryRows = useMemo(
@@ -116,7 +155,7 @@ export function ManageCategoriesScreen() {
           CATEGORIES
         </Text>
         <View style={styles.section}>
-          {categories.map((category, index) => {
+          {scopedCategories.map((category, index) => {
             const uncategorized = isUncategorizedCategory(category);
             return (
               <Fragment key={category.id}>
@@ -156,16 +195,19 @@ export function ManageCategoriesScreen() {
         </View>
       </ScrollView>
     ),
-    [categories],
+    [scopedCategories],
   );
 
   return (
     <SafeAreaView edges={['left', 'right']} style={styles.screen}>
       <Stack.Screen options={screenOptions} />
 
-      {categoryRows}
+      {groupExists === false && (
+        <Text style={styles.content}>Group not found.</Text>
+      )}
+      {groupExists && categoryRows}
 
-      {formState !== null && (
+      {groupExists && formState !== null && (
         <CategoryForm
           editingCategory={editingCategory}
           onCancel={() => setFormState(null)}
