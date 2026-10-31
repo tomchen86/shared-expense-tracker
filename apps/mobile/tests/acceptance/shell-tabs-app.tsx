@@ -1,11 +1,18 @@
 import * as path from 'node:path';
 // Before expo-router itself, so the expo-linking mock it installs takes effect.
 import {
+  getMockContext,
   renderRouter,
   type MockContextConfig,
 } from 'expo-router/testing-library';
-import { router } from 'expo-router';
-import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { ExpoRoot, router } from 'expo-router';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 
 // The shell tab tests start the whole app and read what it hands to the native tab
 // bar and navigation bars: react-native-screens' host views, the part of them that
@@ -34,6 +41,17 @@ export async function startApp(url = '/', routes?: Routes) {
   await waitFor(() =>
     expect(screen.queryByLabelText('Restoring local data')).toBeNull(),
   );
+  return app;
+}
+
+/**
+ * Launches the app as a phone does, through the app's entry: ExpoRoot gets no
+ * URL of its own, so Expo Router asks the phone for the URL that opened the app.
+ * Waits until the tabs show, which they do once local data has opened.
+ */
+export async function launchApp() {
+  const app = render(<ExpoRoot context={getMockContext(APP)} />);
+  await waitFor(() => expect(tabs()).toHaveLength(3));
   return app;
 }
 

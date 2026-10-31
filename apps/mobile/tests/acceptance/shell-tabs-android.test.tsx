@@ -1,7 +1,8 @@
-import { BackHandler, DeviceEventEmitter } from 'react-native';
+import { BackHandler, DeviceEventEmitter, Linking } from 'react-native';
 import { act, screen, waitFor } from '@testing-library/react-native';
 import {
   TAB_NAMES,
+  launchApp,
   navigationBarTitles,
   push,
   selectedTab,
@@ -65,6 +66,14 @@ test('[SHELL-6.1] shows the Groups, Expenses and Settings tabs, always labelled,
     ['Expenses', 'labeled'],
     ['Settings', 'labeled'],
   ]);
+  expect(selectedTab()).toBe('Expenses');
+});
+
+test('[SHELL-6.1] selects Expenses when the app is opened from the home screen, without a URL', async () => {
+  jest.spyOn(Linking, 'getInitialURL').mockResolvedValue(null);
+
+  await launchApp();
+
   expect(selectedTab()).toBe('Expenses');
 });
 

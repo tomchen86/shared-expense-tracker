@@ -1,0 +1,14 @@
+diff --git a/build/link/linking.js b/build/link/linking.js
+index b9535b5c4648e2b49c19b255315bbfb59db063c5..fe53bcb2ae6bad93aa72e087d545a2503db22a84 100644
+--- a/build/link/linking.js
++++ b/build/link/linking.js
+@@ -78,7 +78,8 @@ function getRootURL() {
+     if (_rootURL === undefined) {
+         _rootURL = Linking.createURL('/');
+         if (isExpoGo) {
+-            _rootURL = (0, extractPathFromURL_1.parsePathFromExpoGoLink)(_rootURL);
++            // An empty Expo Go path still means the root, including on async Android startup.
++            _rootURL = (0, extractPathFromURL_1.parsePathFromExpoGoLink)(_rootURL) || '/';
+         }
+     }
+     return _rootURL;

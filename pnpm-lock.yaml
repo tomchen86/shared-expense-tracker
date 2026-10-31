@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  expo-router@57.0.29: 0b998395488f4f320abae6788d7716c2c0c4672d5ae33a037240f34df5e056eb
+
 importers:
 
   .:
@@ -94,7 +97,7 @@ importers:
         version: 57.0.2(expo@57.0.31)(react@19.2.3)
       expo-router:
         specifier: 57.0.29
-        version: 57.0.29(5710d23b9a3163162f6a8950b48e9be6)
+        version: 57.0.29(patch_hash=0b998395488f4f320abae6788d7716c2c0c4672d5ae33a037240f34df5e056eb)(5710d23b9a3163162f6a8950b48e9be6)
       expo-sqlite:
         specifier: ~57.0.4
         version: 57.0.4(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
@@ -4737,7 +4740,7 @@ snapshots:
       ws: 8.22.0
       zod: 3.25.76
     optionalDependencies:
-      expo-router: 57.0.29(5710d23b9a3163162f6a8950b48e9be6)
+      expo-router: 57.0.29(patch_hash=0b998395488f4f320abae6788d7716c2c0c4672d5ae33a037240f34df5e056eb)(5710d23b9a3163162f6a8950b48e9be6)
       react-native: 0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3)
     transitivePeerDependencies:
       - '@expo/dom-webview'
@@ -5026,7 +5029,7 @@ snapshots:
       react: 19.2.3
     optionalDependencies:
       '@expo/metro-runtime': 57.0.17(@expo/log-box@57.0.4)(expo@57.0.31)(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
-      expo-router: 57.0.29(5710d23b9a3163162f6a8950b48e9be6)
+      expo-router: 57.0.29(patch_hash=0b998395488f4f320abae6788d7716c2c0c4672d5ae33a037240f34df5e056eb)(5710d23b9a3163162f6a8950b48e9be6)
       react-dom: 19.2.3(react@19.2.3)
     transitivePeerDependencies:
       - supports-color
@@ -6626,7 +6629,7 @@ snapshots:
     dependencies:
       react-native: 0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3)
 
-  expo-router@57.0.29(5710d23b9a3163162f6a8950b48e9be6):
+  expo-router@57.0.29(patch_hash=0b998395488f4f320abae6788d7716c2c0c4672d5ae33a037240f34df5e056eb)(5710d23b9a3163162f6a8950b48e9be6):
     dependencies:
       '@expo/log-box': 57.0.4(@expo/dom-webview@57.0.1)(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
       '@expo/metro-runtime': 57.0.17(@expo/log-box@57.0.4)(expo@57.0.31)(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
