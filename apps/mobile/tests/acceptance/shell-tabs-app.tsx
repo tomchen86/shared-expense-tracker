@@ -47,9 +47,12 @@ export async function startApp(url = '/', routes?: Routes) {
 /**
  * Launches the app as a phone does, through the app's entry: ExpoRoot gets no
  * URL of its own, so Expo Router asks the phone for the URL that opened the app.
+ * Waits until the tabs show, which they do once local data has opened.
  */
-export function launchApp() {
-  return render(<ExpoRoot context={getMockContext(APP)} />);
+export async function launchApp() {
+  const app = render(<ExpoRoot context={getMockContext(APP)} />);
+  await waitFor(() => expect(tabs()).toHaveLength(3));
+  return app;
 }
 
 /** Host views by native component name, in tree order. */

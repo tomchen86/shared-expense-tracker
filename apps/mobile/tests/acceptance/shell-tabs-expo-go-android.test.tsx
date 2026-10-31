@@ -1,8 +1,12 @@
 // Expo Router looks for Expo Go once, when it loads, so this comes first.
 import './expo-go';
 import { Linking } from 'react-native';
-import { waitFor } from '@testing-library/react-native';
-import { launchApp, selectedTab, tabs } from './shell-tabs-app';
+import {
+  launchApp,
+  navigationBarTitles,
+  selectedTab,
+  tab,
+} from './shell-tabs-app';
 
 // Runs on Android only (apps/mobile/jest.config.cjs), in Expo Go, which serves the
 // app from Metro at 127.0.0.1:8093.
@@ -28,16 +32,29 @@ beforeEach(() => {
     .mockImplementation((path) => `exp://127.0.0.1:8093/--${path}`);
 });
 
-test.each(['exp://127.0.0.1:8093/--/', 'exp://127.0.0.1:8093'])(
-  '[SHELL-6.1] selects Expenses when Expo Go opens the app from %s',
-  async (url) => {
-    // Expo Go reports the URL it opened the app with.
-    jest.spyOn(Linking, 'getInitialURL').mockResolvedValue(url);
+/** Launches the app as Expo Go does when it reports opening the app from `url`. */
+async function launchFrom(url: string | null) {
+  jest.spyOn(Linking, 'getInitialURL').mockResolvedValue(url);
+  await launchApp();
+}
 
-    launchApp();
-    // The tabs show once local data has opened.
-    await waitFor(() => expect(tabs()).toHaveLength(3));
+test.each([
+  ['from its root entry', 'exp://127.0.0.1:8093/--/'],
+  ['from the project URL', 'exp://127.0.0.1:8093'],
+  // Expo Router stops waiting for the URL after 150 ms and goes on without one.
+  ['without reporting a URL', null],
+])(
+  '[SHELL-6.1] selects Expenses when Expo Go opens the app %s',
+  async (_, url) => {
+    await launchFrom(url);
 
     expect(selectedTab()).toBe('Expenses');
   },
 );
+
+test('[SHELL-11.1] selects the Groups tab at its root when Expo Go opens the app from /groups', async () => {
+  await launchFrom('exp://127.0.0.1:8093/--/groups');
+
+  expect(selectedTab()).toBe('Groups');
+  expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups']);
+});
