@@ -800,6 +800,17 @@ test('[GROUPS-18.1] shows a long name on one line of its card, cut off at the en
   expect(cardNames()).toEqual([`Open ${name}`]);
 });
 
+test('[GROUPS-19.1] asks the keyboard to capitalize each word, not to autocorrect, and to show a done key', async () => {
+  await startWithName();
+
+  await openNewGroup();
+
+  // Jest has no keyboard, so the test reads what the field asks the native keyboard for.
+  expect(nameField().props.autoCapitalize).toBe('words');
+  expect(nameField().props.autoCorrect).toBe(false);
+  expect(nameField().props.returnKeyType).toBe('done');
+});
+
 test('[SHELL-25.1] puts the Groups root content in the scroll view its large title follows', async () => {
   await startWithName();
   await createGroup('Brisbane');

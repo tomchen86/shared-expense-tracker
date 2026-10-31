@@ -312,3 +312,12 @@ The mobile app SHALL 在群組的卡片上只用一行顯示群組名稱，放�
 
 - **WHEN** 建立名稱是 300 個「a」的群組
 - **THEN** 卡片上的名稱只佔一行，放不下的部分在結尾截斷；卡片的無障礙名稱是「Open 」加上完整的 300 個「a」
+
+### Requirement: GROUPS-19.1 名稱欄位的鍵盤
+
+The mobile app SHALL 讓 New Group 名稱欄位的鍵盤把每個字的開頭自動大寫、不自動校正，並以完成鍵當 Return 鍵。
+
+#### Scenario: 輸入名稱
+
+- **WHEN** 開啟 New Group，用手機的鍵盤輸入「teh trip」
+- **THEN** 名稱欄位是「Teh Trip」：每個字的開頭都大寫，「teh」沒有被校正成「the」；鍵盤的 Return 鍵是完成鍵
