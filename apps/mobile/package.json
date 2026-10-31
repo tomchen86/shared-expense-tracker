@@ -20,6 +20,7 @@
     "expo-glass-effect": "~57.0.4",
     "expo-haptics": "~57.0.3",
     "expo-linking": "57.0.13",
+    "expo-localization": "~57.0.2",
     "expo-router": "57.0.29",
     "expo-sqlite": "~57.0.4",
     "expo-symbols": "~57.0.3",
