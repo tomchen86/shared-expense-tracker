@@ -1,5 +1,6 @@
 import { categoryMigrations } from '../categories/migrations';
 import { groupMigrations } from '../groups/migrations';
+import { expenseMigrations } from '../ledger/migrations';
 
 /** Every capability's SQL migrations, in the order they run (ADR-0006). */
 export const appMigrations: readonly string[] = [
@@ -16,4 +17,5 @@ export const appMigrations: readonly string[] = [
     ADD COLUMN appearance TEXT NOT NULL DEFAULT 'system'
     CHECK (appearance IN ('system', 'light', 'dark'))`,
   ...groupMigrations,
+  ...expenseMigrations,
 ];
