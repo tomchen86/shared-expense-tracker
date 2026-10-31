@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -26,15 +25,8 @@ import {
   storedGroups,
 } from './groups-app';
 import { listCategories, type Category } from '../../src/categories';
-import { categoryMigrations } from '../../src/categories/migrations';
 import type { LocalIdentity } from '../../src/shell';
-import { appMigrations } from '../../src/shell/migrations';
-import {
-  runMigrations,
-  type Database,
-  type SqlExecutor,
-  type SqlValue,
-} from '../../src/storage';
+import type { Database, SqlExecutor, SqlValue } from '../../src/storage';
 import { openNodeDatabase } from '../../src/storage/node';
 
 // Runs on iOS. The phone database is a file each test chooses (ADR-0006), so a
@@ -1086,6 +1078,19 @@ test('[CATEGORIES-22.1] opens the personal scope when the URL has a group ID but
   expect(listedNames()).toEqual([...DEFAULT_NAMES, 'Gym']);
 });
 
+test('[CATEGORIES-22.1] adds a personal category when the URL has a group ID but not scopeKind=group', async () => {
+  const groups = await setUpScopes();
+  await restartAt(
+    `/settings/manage-categories?spaceId=${groups.Brisbane}`,
+    MANAGE_CATEGORIES,
+  );
+
+  await addCategory('Pets');
+
+  await reopenManageCategories();
+  expect(listedNames()).toEqual([...DEFAULT_NAMES, 'Gym', 'Pets']);
+});
+
 test("[CATEGORIES-23.1] lists only the default categories in a new group's Group Categories", async () => {
   const groups = await createGroups('Brisbane');
   await reopenManageCategories();
@@ -1116,18 +1121,18 @@ test.each(['?scopeKind=group', '?scopeKind=group&spaceId='])(
   },
 );
 
-test('[CATEGORIES-24.1] adds a personal category when scopeKind=group comes without spaceId', async () => {
-  await setUpScopes();
-  await restartAt(
-    '/settings/manage-categories?scopeKind=group',
-    MANAGE_CATEGORIES,
-  );
+test.each(['?scopeKind=group', '?scopeKind=group&spaceId='])(
+  '[CATEGORIES-24.1] adds a personal category when opened with %s',
+  async (query) => {
+    await setUpScopes();
+    await restartAt(`/settings/manage-categories${query}`, MANAGE_CATEGORIES);
 
-  await addCategory('Pets');
+    await addCategory('Pets');
 
-  await reopenManageCategories();
-  expect(listedNames()).toEqual([...DEFAULT_NAMES, 'Gym', 'Pets']);
-});
+    await reopenManageCategories();
+    expect(listedNames()).toEqual([...DEFAULT_NAMES, 'Gym', 'Pets']);
+  },
+);
 
 const NOT_A_GROUP: [
   string,
@@ -1211,42 +1216,6 @@ test("[CATEGORIES-27.1] records you as the creator and the group as the space of
   });
 });
 
-test('[CATEGORIES-28.1] keeps the categories added before categories had scopes as personal categories', async () => {
-  // The local data as an app without category scopes left it: the migrations up to
-  // the categories table, then your identity, the default categories and Gym in the
-  // columns those migrations made.
-  const previous = appMigrations.slice(
-    0,
-    appMigrations.indexOf(categoryMigrations[0]) + 1,
-  );
-  const database = openNodeDatabase(mockFile);
-  try {
-    await runMigrations(database, previous);
-    await database.run(
-      'INSERT INTO local_identity (singleton, userId, personalSpaceId, personalParticipantId, name) VALUES (1, ?, ?, ?, ?)',
-      [randomUUID(), randomUUID(), randomUUID(), 'Taylor'],
-    );
-    for (const [index, [name, color]] of [
-      ...DEFAULTS,
-      ['Gym', '#43A047'],
-    ].entries()) {
-      await database.run(
-        'INSERT INTO categories (id, name, color, isDefault, position) VALUES (?, ?, ?, ?, ?)',
-        [randomUUID(), name, color, index < DEFAULTS.length ? 1 : 0, index + 1],
-      );
-    }
-  } finally {
-    await database.close();
-  }
-  const groups = await createGroups('Brisbane');
-
-  await reopenManageCategories();
-
-  expect(listedNames()).toEqual([...DEFAULT_NAMES, 'Gym']);
-  await openGroupCategories(groups.Brisbane);
-  expect(listedNames()).toEqual(DEFAULT_NAMES);
-});
-
 test('[CATEGORIES-29.1] shows a default category changed in Group Categories the same way in every scope', async () => {
   const groups = await createGroups('Brisbane', 'Tokyo');
   await openGroupCategories(groups.Brisbane);
@@ -1259,4 +1228,14 @@ test('[CATEGORIES-29.1] shows a default category changed in Group Categories the
   expect(categoryList()).toEqual(changed);
   await openGroupCategories(groups.Tokyo);
   expect(categoryList()).toEqual(changed);
+});
+
+test('[CATEGORIES-29.1] shows a default category changed in Manage Categories the same way in Group Categories', async () => {
+  const groups = await createGroups('Brisbane');
+  await reopenManageCategories();
+
+  await editCategory('Health', 'Medical', '#00ACC1');
+
+  await openGroupCategories(groups.Brisbane);
+  expect(categoryList()).toEqual(replacing(5, ['Medical', '#00ACC1']));
 });

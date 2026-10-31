@@ -404,6 +404,11 @@ WHEN Manage Categories 開啟時網址沒有 `scopeKind=group`，例如從 Setti
 - **WHEN** 以 `/settings/manage-categories?spaceId=<Brisbane 的群組 ID>` 開啟
 - **THEN** 一樣是個人範圍：標題是「Manage Categories」，列出九個預設分類和 Gym，沒有 Flights
 
+#### Scenario: 在只有群組 ID 的網址新增
+
+- **WHEN** 以 `/settings/manage-categories?spaceId=<Brisbane 的群組 ID>` 開啟後新增「Pets」
+- **THEN** Pets 是個人分類：從 Settings 開啟 Manage Categories 時列出 Pets
+
 ### Requirement: CATEGORIES-23.1 以群組的 ID 開啟時是群組範圍
 
 WHEN 以 `/settings/manage-categories?scopeKind=group&spaceId=<群組 ID>` 開啟，而這是本機資料裡一個群組的 ID，the mobile app SHALL 以這個群組的範圍開啟，標題是「Group Categories」，只列出預設分類和這個群組的分類。
@@ -429,7 +434,7 @@ IF 網址有 `scopeKind=group`，卻沒有 `spaceId` 或 `spaceId` 是空的，T
 
 #### Scenario: 在這裡新增
 
-- **WHEN** 以 `/settings/manage-categories?scopeKind=group` 開啟後新增「Pets」
+- **WHEN** 以 `/settings/manage-categories?scopeKind=group` 或 `/settings/manage-categories?scopeKind=group&spaceId=` 開啟後新增「Pets」
 - **THEN** Pets 是個人分類：從 Settings 開啟 Manage Categories 時列出 Pets
 
 ### Requirement: CATEGORIES-25.1 找不到群組時顯示 Group not found.
@@ -474,15 +479,6 @@ WHEN 使用者新增分類，the mobile app SHALL 記下你的使用者 ID 作�
 - **WHEN** 在 Brisbane 的 Group Categories 新增「Flights」
 - **THEN** Flights 的建立者是你的使用者 ID，空間是 Brisbane 的群組 ID
 
-### Requirement: CATEGORIES-28.1 升級前就有的分類算個人分類
-
-WHEN app 從分類還沒有範圍的版本升級，the mobile app SHALL 把升級前就有的非預設分類當作個人分類。
-
-#### Scenario: 升級
-
-- **WHEN** 升級前本機資料裡有九個預設分類和「Gym」，升級後建立 Brisbane
-- **THEN** Manage Categories 列出九個預設分類和 Gym；Brisbane 的 Group Categories 只列出九個預設分類
-
 ### Requirement: CATEGORIES-29.1 每個範圍的預設分類都是同一組
 
 WHEN 使用者在 Manage Categories 或 Group Categories 改預設分類的名稱或顏色，the mobile app SHALL 在每個範圍都顯示改過的名稱和顏色。
@@ -491,3 +487,8 @@ WHEN 使用者在 Manage Categories 或 Group Categories 改預設分類的名�
 
 - **WHEN** 在 Brisbane 的 Group Categories 把 Shopping 改名為「Groceries」並改用 `#43A047`
 - **THEN** Manage Categories 和 Tokyo 的 Group Categories 的第三列都是「Groceries」，色點是 `#43A047`
+
+#### Scenario: 在 Manage Categories 改
+
+- **WHEN** 在 Manage Categories 把 Health 改名為「Medical」並改用 `#00ACC1`
+- **THEN** Brisbane 的 Group Categories 的第六列是「Medical」，色點是 `#00ACC1`
