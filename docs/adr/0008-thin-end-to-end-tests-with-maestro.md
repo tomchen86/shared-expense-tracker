@@ -1,7 +1,7 @@
 # ADR-0008: Thin end-to-end tests with Maestro
 
 - Date: 2026-10-29
-- Status: Accepted; parts are superseded by ADR-0009
+- Status: Accepted; parts are superseded by ADR-0010
 
 ## Context
 

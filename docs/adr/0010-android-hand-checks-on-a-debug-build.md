@@ -1,4 +1,4 @@
-# ADR-0009: Android hand checks on a debug build
+# ADR-0010: Android hand checks on a debug build
 
 - Date: 2026-11-01
 - Status: Accepted
