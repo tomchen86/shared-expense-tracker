@@ -12,6 +12,6 @@ test('announces the date control by its field name and exposes the selected date
   );
 
   expect(screen.getByLabelText('Date')).toHaveAccessibilityValue({
-    text: '2026-10-30',
+    text: 'Oct 30, 2026',
   });
 });
