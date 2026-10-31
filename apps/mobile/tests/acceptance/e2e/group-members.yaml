@@ -1,0 +1,68 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[GROUPS-20.1] [GROUPS-22.1] [GROUPS-23.1] [GROUPS-25.1] [GROUPS-26.1] [GROUPS-29.1] [GROUPS-31.1] [GROUPS-34.1] [GROUPS-40.1] [GROUPS-41.1] Opens Members from the Group actions menu, adds a member, removes them from their action sheet, adds them back, swipes Members down, then renames the group'
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- tapOn: Enter your name
+- inputText: Taylor
+- pressKey: Enter
+- waitForAnimationToEnd
+- tapOn: Groups
+- tapOn: Add group
+- assertVisible: New Group
+- waitForAnimationToEnd
+- inputText: Brisbane
+- tapOn: Create
+- waitForAnimationToEnd
+- tapOn: Open Brisbane
+- assertVisible: No expenses in this group yet.
+# The native menu opens from its button, which is named after the menu.
+- tapOn: Group actions
+- tapOn: Members
+- waitForAnimationToEnd
+- assertVisible: Taylor (You)
+- tapOn: Add Member
+- waitForAnimationToEnd
+# The name field has the focus once Add Member opens, so the keyboard types into it.
+- inputText: Blake
+- tapOn: Add
+- waitForAnimationToEnd
+- assertVisible: Blake
+- tapOn: Blake
+- assertVisible: If removed, their historical payments and shares will be retained.
+- tapOn: Remove from Group
+- waitForAnimationToEnd
+- assertNotVisible: Blake
+- tapOn: Add Member
+- waitForAnimationToEnd
+- inputText: blake
+- tapOn: Add
+- assertVisible: Add Blake Back?
+- tapOn: Add Back
+- waitForAnimationToEnd
+- assertVisible: Blake
+# Dragging the sheet down by its title closes it, whatever its height.
+- swipe:
+    from:
+      text: Members
+    direction: DOWN
+- waitForAnimationToEnd
+- assertNotVisible: Taylor (You)
+- assertVisible: No expenses in this group yet.
+- tapOn: Group actions
+- tapOn: Rename Group
+- waitForAnimationToEnd
+# The name field has the focus and holds the group's name.
+- eraseText: 20
+- inputText: Tokyo
+- tapOn: Save
+- waitForAnimationToEnd
+- assertVisible: Tokyo
+- assertNotVisible: Rename Group
