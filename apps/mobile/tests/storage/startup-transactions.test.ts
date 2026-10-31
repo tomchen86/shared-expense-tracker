@@ -203,7 +203,10 @@ test('development mode cannot reset a read-only database and leaves its old data
 });
 
 test('adding group storage preserves existing identity, appearance, categories and migration records', async () => {
-  const previous = appMigrations.slice(0, -groupMigrations.length);
+  const previous = appMigrations.slice(
+    0,
+    appMigrations.indexOf(groupMigrations[0]),
+  );
   await initializeDatabase(database, previous, false, ensureLocalIdentity);
   await database.run(
     "UPDATE local_identity SET name = 'Taylor', appearance = 'dark'",
