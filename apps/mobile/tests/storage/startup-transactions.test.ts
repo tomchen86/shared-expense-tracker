@@ -12,6 +12,8 @@ import { ensureLocalIdentity } from '../../src/shell/identity';
 import { appMigrations } from '../../src/shell/migrations';
 import { groupMigrations } from '../../src/groups/migrations';
 import { listGroups } from '../../src/groups';
+import { expenseMigrations } from '../../src/ledger/migrations';
+import { listExpenses } from '../../src/ledger';
 
 const original =
   "CREATE TABLE original (value TEXT); INSERT INTO original VALUES ('keep me')";
@@ -169,6 +171,9 @@ test('development reset clears views, triggers, quoted names, and foreign-key cy
   ).toEqual([
     { name: '_migrations' },
     { name: 'categories' },
+    { name: 'expense_payments' },
+    { name: 'expense_shares' },
+    { name: 'expenses' },
     { name: 'group_members' },
     { name: 'groups' },
     { name: 'local_identity' },
@@ -203,7 +208,10 @@ test('development mode cannot reset a read-only database and leaves its old data
 });
 
 test('adding group storage preserves existing identity, appearance, categories and migration records', async () => {
-  const previous = appMigrations.slice(0, -groupMigrations.length);
+  const previous = appMigrations.slice(
+    0,
+    appMigrations.indexOf(groupMigrations[0]),
+  );
   await initializeDatabase(database, previous, false, ensureLocalIdentity);
   await database.run(
     "UPDATE local_identity SET name = 'Taylor', appearance = 'dark'",
@@ -227,4 +235,39 @@ test('adding group storage preserves existing identity, appearance, categories a
     ]),
   ).toEqual(records);
   expect(await listGroups(database)).toEqual([]);
+});
+
+test('adding expense storage preserves groups, identity and existing migration records', async () => {
+  const previous = appMigrations.filter(
+    (sql) => !expenseMigrations.includes(sql),
+  );
+  const identity = await initializeDatabase(
+    database,
+    previous,
+    false,
+    ensureLocalIdentity,
+  );
+  await database.run(
+    "INSERT INTO groups (id, name, position) VALUES ('trip', 'Trip', 0)",
+  );
+  await database.run(
+    "INSERT INTO group_members (id, groupId, userId, name) VALUES ('member', 'trip', ?, 'Taylor')",
+    [identity.userId],
+  );
+  const groups = await listGroups(database);
+  const records = await database.all(
+    'SELECT * FROM _migrations ORDER BY position',
+  );
+
+  await expect(
+    initializeDatabase(database, appMigrations, false, ensureLocalIdentity),
+  ).resolves.toEqual(identity);
+
+  expect(await listGroups(database)).toEqual(groups);
+  expect(
+    await database.all('SELECT * FROM _migrations ORDER BY position LIMIT ?', [
+      previous.length,
+    ]),
+  ).toEqual(records);
+  expect(await listExpenses(database)).toEqual([]);
 });
