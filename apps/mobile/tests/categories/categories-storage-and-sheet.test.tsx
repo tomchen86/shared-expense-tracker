@@ -49,13 +49,21 @@ afterEach(async () => {
 });
 
 test('assigns distinct v4 UUIDs to default and created categories and skips writes on a read-only restart', async () => {
-  await initializeDatabase(database, appMigrations, false, async (tx) => {
-    await ensureLocalIdentity(tx);
-    await ensureDefaultCategories(tx);
-  });
+  const identity = await initializeDatabase(
+    database,
+    appMigrations,
+    false,
+    async (tx) => {
+      const identity = await ensureLocalIdentity(tx);
+      await ensureDefaultCategories(tx);
+      return identity;
+    },
+  );
   const created = await createCategory(database, {
     name: 'Gym',
     color: '#43A047',
+    createdByUserId: identity.userId,
+    spaceId: identity.personalSpaceId,
   });
   const categories = await listCategories(database);
 
@@ -64,6 +72,7 @@ test('assigns distinct v4 UUIDs to default and created categories and skips writ
   expect(new Set(ids).size).toBe(10);
   for (const id of ids) expect(id).toMatch(UUID_V4);
   expect(created.id).toBe(ids[9]);
+  expect(categories[9]).toEqual(created);
 
   await database.close();
   const before = readFileSync(file);
@@ -74,6 +83,7 @@ test('assigns distinct v4 UUIDs to default and created categories and skips writ
       await ensureDefaultCategories(tx);
     }),
   ).resolves.toBeUndefined();
+  expect(await listCategories(database)).toEqual(categories);
   await database.close();
   expect(readFileSync(file)).toEqual(before);
 });

@@ -20,6 +20,8 @@ interface CategoryRow {
   name: string;
   color: string;
   isDefault: number;
+  createdByUserId: string | null;
+  spaceId: string | null;
 }
 
 export function isUncategorizedCategory(
@@ -54,19 +56,26 @@ export async function listCategories(
   database: SqlExecutor,
 ): Promise<Category[]> {
   const rows = await database.all<CategoryRow>(
-    'SELECT id, name, color, isDefault FROM categories ORDER BY position ASC',
+    'SELECT id, name, color, isDefault, createdByUserId, spaceId FROM categories ORDER BY position ASC',
   );
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
     color: row.color,
     isDefault: row.isDefault === 1,
+    createdByUserId: row.createdByUserId ?? undefined,
+    spaceId: row.spaceId ?? undefined,
   }));
 }
 
 export async function createCategory(
   database: Database,
-  input: { name: string; color: string },
+  input: {
+    name: string;
+    color: string;
+    createdByUserId: string;
+    spaceId: string;
+  },
 ): Promise<Category> {
   return database.transaction(async (transaction) => {
     const id = await createUuid(transaction);
@@ -74,14 +83,23 @@ export async function createCategory(
       'SELECT COALESCE(MAX(position), 0) + 1 AS nextPosition FROM categories',
     );
     await transaction.run(
-      'INSERT INTO categories (id, name, color, isDefault, position) VALUES (?, ?, ?, 0, ?)',
-      [id, input.name, input.color, row.nextPosition],
+      'INSERT INTO categories (id, name, color, isDefault, position, createdByUserId, spaceId) VALUES (?, ?, ?, 0, ?, ?, ?)',
+      [
+        id,
+        input.name,
+        input.color,
+        row.nextPosition,
+        input.createdByUserId,
+        input.spaceId,
+      ],
     );
     return {
       id,
       name: input.name,
       color: input.color,
       isDefault: false,
+      createdByUserId: input.createdByUserId,
+      spaceId: input.spaceId,
     };
   });
 }
