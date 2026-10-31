@@ -4,3 +4,7 @@ packages:
 
 # Keep local and CI installs on the same node_modules layout.
 enableGlobalVirtualStore: false
+
+patchedDependencies:
+  # Keep the Expo Go root path nonempty; recheck on Expo Router upgrades.
+  expo-router@57.0.29: patches/expo-router@57.0.29.patch
