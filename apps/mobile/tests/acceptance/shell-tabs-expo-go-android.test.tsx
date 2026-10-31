@@ -52,9 +52,11 @@ test.each([
   },
 );
 
-test('[SHELL-11.1] selects the Groups tab at its root when Expo Go opens the app from /groups', async () => {
-  await launchFrom('exp://127.0.0.1:8093/--/groups');
+// Settings, not Groups: Groups is the first tab, which is also selected when the
+// URL is ignored.
+test('[SHELL-11.1] selects the Settings tab at its root when Expo Go opens the app from /settings', async () => {
+  await launchFrom('exp://127.0.0.1:8093/--/settings');
 
-  expect(selectedTab()).toBe('Groups');
-  expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups']);
+  expect(selectedTab()).toBe('Settings');
+  expect(navigationBarTitles(tab('Settings'))).toEqual(['Settings']);
 });
