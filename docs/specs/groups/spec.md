@@ -392,19 +392,19 @@ The mobile app SHALL 在 Members 依加入的先後，由上而下列出群組�
 - **WHEN** 在 Brisbane 依序加入「Casey」和「Blake」
 - **THEN** 由上而下是「Taylor (You)」、「Casey」、「Blake」和「Add Member」；Casey 和 Blake 那兩列右邊有「›」，是名稱分別為「Casey」和「Blake」的按鈕
 
-### Requirement: GROUPS-25.1 點成員那一列跳出他的選單
+### Requirement: GROUPS-25.2 點成員那一列跳出他的選單
 
-WHEN 使用者在 Members 點成員那一列，the mobile app SHALL 跳出標題是這位成員的名稱的選單：別人的選單內容是「If removed, their historical payments and shares will be retained.」，依序是「Rename」、「Remove from Group」和「Cancel」；你的選單沒有內容，依序是「Rename」和「Cancel」。iOS 上選單是動作表（action sheet），「Remove from Group」是破壞性的樣式；Android 上選單是對話框。按 Cancel 時關閉選單，什麼都不改；Android 上按返回鍵或點對話框外面也一樣。
+WHEN 使用者在 Members 點成員那一列，the mobile app SHALL 跳出標題是這位成員的名稱的選單：別人的選單內容是「If removed, their historical payments and shares will be retained.」，依序是「Rename」、「Remove from Group」和「Cancel」；你的選單沒有內容，依序是「Rename」和「Cancel」。iOS 上選單是動作表（action sheet），選項由上而下排列，「Remove from Group」是破壞性的樣式；Android 上選單是對話框，選項放不下一排而直排時由上而下排列，排成一排時由右而左排列。按 Cancel 時關閉選單，什麼都不改；Android 上按返回鍵或點對話框外面也一樣。
 
 #### Scenario: iOS
 
 - **WHEN** iOS 上在 Members 點「Blake」
-- **THEN** 跳出標題「Blake」、內容是這句話的動作表，依序是「Rename」、破壞性的「Remove from Group」和「Cancel」
+- **THEN** 跳出標題「Blake」、內容是這句話的動作表，由上而下是「Rename」、破壞性的「Remove from Group」和「Cancel」
 
 #### Scenario: Android
 
 - **WHEN** Android 上在 Members 點「Blake」
-- **THEN** 跳出標題「Blake」、內容是這句話的對話框，依序是「Rename」、「Remove from Group」和「Cancel」
+- **THEN** 跳出標題「Blake」、內容是這句話的對話框；按鈕直排時由上而下是「Rename」、「Remove from Group」和「Cancel」，排成一排時由右而左是這個順序
 
 #### Scenario: 你的選單
 

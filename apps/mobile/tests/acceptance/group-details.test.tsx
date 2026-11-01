@@ -289,7 +289,7 @@ test('[GROUPS-24.1] lists the members in the order they joined, each other membe
     expect(within(membersButton(name)).getByText('›')).toBeOnTheScreen();
 });
 
-test("[GROUPS-25.1] opens an action sheet titled with the member's name when their row is tapped", async () => {
+test("[GROUPS-25.2] opens an action sheet titled with the member's name when their row is tapped", async () => {
   await startInMembers(['Blake']);
 
   const menu = await tapMember('Blake');
@@ -305,7 +305,7 @@ test("[GROUPS-25.1] opens an action sheet titled with the member's name when the
   expect(alertsShown()).toEqual([]);
 });
 
-test('[GROUPS-25.1] opens your own action sheet, titled with your member name and offering only Rename, when your row is tapped', async () => {
+test('[GROUPS-25.2] opens your own action sheet, titled with your member name and offering only Rename, when your row is tapped', async () => {
   await startInMembers(['Blake']);
 
   const menu = await tapMember('Taylor (You)');
@@ -319,7 +319,7 @@ test('[GROUPS-25.1] opens your own action sheet, titled with your member name an
   expect(menu?.message ?? '').toBe('');
 });
 
-test("[GROUPS-25.1] changes nothing when Cancel is chosen in a member's menu", async () => {
+test("[GROUPS-25.2] changes nothing when Cancel is chosen in a member's menu", async () => {
   await startInMembers(['Blake']);
   const before = localData(file);
 

@@ -22,6 +22,7 @@ import {
   ALREADY_EXISTS,
   NOT_FOUND,
   RETAINED,
+  type MemberMenu,
   addBackAlert,
   alertsShown,
   barAction,
@@ -174,7 +175,15 @@ test("[GROUPS-23.1] closes Members with Back, back on the group's screen", async
   expect(exitApp).not.toHaveBeenCalled();
 });
 
-test("[GROUPS-25.1] opens a dialog titled with the member's name when their row is tapped on Android", async () => {
+/**
+ * A dialog's buttons in the order Android shows them: top to bottom when they are
+ * stacked, right to left in a row. React Native gives the last button to the
+ * dialog's positive slot, which Android shows first in both layouts.
+ */
+const shownOrder = (menu: MemberMenu | undefined) =>
+  [...(menu?.items ?? [])].reverse();
+
+test("[GROUPS-25.2] opens a dialog titled with the member's name, Rename first, when their row is tapped on Android", async () => {
   await startInMembers(['Blake']);
 
   const menu = await tapMember('Blake');
@@ -183,26 +192,26 @@ test("[GROUPS-25.1] opens a dialog titled with the member's name when their row 
   expect(menu).toMatchObject({
     title: 'Blake',
     message: RETAINED,
-    items: ['Rename', 'Remove from Group', 'Cancel'],
     cancel: 'Cancel',
   });
+  expect(shownOrder(menu)).toEqual(['Rename', 'Remove from Group', 'Cancel']);
 });
 
-test('[GROUPS-25.1] opens your own dialog, titled with your member name and offering only Rename, when your row is tapped on Android', async () => {
+test('[GROUPS-25.2] opens your own dialog, titled with your member name and offering only Rename, when your row is tapped on Android', async () => {
   await startInMembers(['Blake']);
 
   const menu = await tapMember('Taylor (You)');
 
   expect(menu).toMatchObject({
     title: 'Taylor',
-    items: ['Rename', 'Cancel'],
     cancel: 'Cancel',
     cancelable: true,
   });
+  expect(shownOrder(menu)).toEqual(['Rename', 'Cancel']);
   expect(menu?.message ?? '').toBe('');
 });
 
-test("[GROUPS-25.1] lets Back or a tap outside close a member's dialog without changing anything", async () => {
+test("[GROUPS-25.2] lets Back or a tap outside close a member's dialog without changing anything", async () => {
   await startInMembers(['Blake']);
   const menu = await tapMember('Blake');
   expect(menu?.cancelable).toBe(true);
