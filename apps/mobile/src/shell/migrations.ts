@@ -16,6 +16,7 @@ export const appMigrations: readonly string[] = [
   `ALTER TABLE local_identity
     ADD COLUMN appearance TEXT NOT NULL DEFAULT 'system'
     CHECK (appearance IN ('system', 'light', 'dark'))`,
-  ...groupMigrations,
+  groupMigrations[0],
   ...expenseMigrations,
+  ...groupMigrations.slice(1),
 ];
