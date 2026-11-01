@@ -1,0 +1,34 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[LEDGER-11.1] [LEDGER-20.1] [LEDGER-24.1] [LEDGER-21.1] Adds an expense in the sheet, asking first when a change is swiped away'
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Add expense
+- assertVisible: New Expense
+- assertVisible:
+    text: Add
+    enabled: false
+- tapOn: Expense title
+- inputText: Coffee run
+- swipe:
+    start: 50%, 12%
+    end: 50%, 90%
+- assertVisible: Discard Changes?
+- tapOn: Keep Editing
+- assertVisible: New Expense
+- tapOn: Amount in .*
+- inputText: '8.75'
+- tapOn:
+    text: Add
+    enabled: true
+- waitForAnimationToEnd
+- assertNotVisible: New Expense
+- assertVisible:
+    text: Expenses
+    selected: true

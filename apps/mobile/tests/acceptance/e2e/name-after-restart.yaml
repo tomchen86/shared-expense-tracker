@@ -1,0 +1,29 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[SHELL-18.1] [SHELL-17.1] Keeps the name saved with Return after a restart'
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- assertVisible:
+    text: Settings
+    selected: true
+- tapOn: Enter your name
+- inputText: Taylor
+- pressKey: Enter
+- waitForAnimationToEnd
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- assertVisible: Taylor

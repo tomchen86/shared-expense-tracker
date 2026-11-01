@@ -7,4 +7,4 @@ changelog:
     - title: Fixes
       labels: [bug]
     - title: Other changes
-      labels: ["*"]
+      labels: ['*']

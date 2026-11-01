@@ -1,2 +1,9 @@
 reports/
 .DS_Store
+node_modules/
+.pnpm-store/
+.expo/
+dist/
+coverage/
+apps/mobile/android/
+apps/mobile/ios/

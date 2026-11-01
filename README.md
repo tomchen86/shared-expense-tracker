@@ -4,9 +4,35 @@ A simple bookkeeping app for everyday expenses, alone or together with a partner
 
 ## Develop
 
+Use Node from `.nvmrc`, pnpm from `package.json`, and Python 3 for the requirement trace.
+
 ```bash
+pnpm install
 bash scripts/check.sh            # lint, format check, typecheck, tests, requirement trace
+pnpm test:traced                  # only requirement-citing acceptance tests, with branch coverage
+pnpm --filter mobile start        # Expo development server
 ```
+
+The workspace contains the mobile toolchain and the shared domain module. Product routes
+arrive with their capability specs.
+
+Jest discovers `*.test.ts`, `*.test.tsx`, and `*.test.js` under each workspace's
+`src/` and `tests/`. Acceptance tests live in the directories listed in `AGENTS.md`;
+other tests cite no requirement IDs. Tooling tests live in `tests/tooling/`.
+JUnit reports go to `reports/junit/`. Run `pnpm test -- <test-path>` for focused
+tests without coverage. `bash scripts/check.sh` runs tests with `--coverage`, and
+`pnpm test:traced` collects coverage for acceptance tests. Both enforce the level-2
+money coverage threshold in `jest.config.cjs` and write branch counts to
+`reports/coverage/coverage-summary.json` and LCOV.
+
+Domain source is typechecked using only ES2022 types. Its tests are checked separately
+with Jest and Node types, so test tooling cannot enable Node APIs in domain code.
+
+Lint also checks the platform boundary in ADR-0002: `.ios`, `.android`, `.native`, and
+`.web` files, `Platform` imports, and `process.env.EXPO_OS` checks stay in mobile
+`src/ui/`, and UI cannot import capability code, including
+through the `@/` alias. Outside UI, use named React Native imports so namespace,
+default, and dynamic imports cannot hide access to `Platform`.
 
 ## Where things are
 

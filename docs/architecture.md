@@ -16,7 +16,7 @@ flowchart LR
 |---|---|---|
 | Mobile app | What a member does on the phone, including offline; syncs with the API | `apps/mobile` |
 | API | Authorizes members and devices, and stores and exchanges each shared ledger's sync events; applies no bookkeeping rules | `apps/api` |
-| Domain | Rules every client applies identically, and the API's request and response types | `packages/domain` |
+| Domain | Rules every client applies identically, and the API's request and response types with the functions that check them | `packages/domain` |
 
 Name top-level directories only. File paths go stale.
 
@@ -26,6 +26,10 @@ Name top-level directories only. File paths go stale.
 - A rule every client applies lives once, in `packages/domain`; no client redefines it (ADR-0002).
 - The API only authorizes members and devices and exchanges sync events; it never applies bookkeeping rules, and each client checks the events it receives (ADR-0003).
 - The API stores data only in PostgreSQL, in tests too (ADR-0002).
+- The API's code runs unchanged on Node and on Cloudflare Workers; only one entry file per runtime knows which (ADR-0007).
 - On the phone, data lives in SQLite; zustand holds only screen state (ADR-0002).
+- The phone keeps all its data in one SQLite database; every capability's migrations run in one app-wide order and never change once a release tag contains them (ADR-0006).
+- Only `apps/mobile/src/storage/` imports `expo-sqlite`; tests run the same migrations and queries on SQLite in Node (ADR-0006).
+- Recording and changing data never needs the network; sync runs separately and never blocks a local save (ADR-0005).
 - Only `apps/mobile/src/ui/` knows which platform it runs on (ADR-0002).
 - Money is an integer in its currency's minor unit, paired with its currency code; each currency's decimal places come from a fixed table in `packages/domain`, never from the device (ADR-0004).

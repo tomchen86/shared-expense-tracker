@@ -1,0 +1,51 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[SHELL-40.1] [SHELL-39.1] Selects Dark with one tap and keeps it after a restart'
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- assertVisible:
+    text: Settings
+    selected: true
+# Text matching ignores case, so only its options tell the group from the APPEARANCE heading.
+- assertVisible:
+    text: Appearance
+    containsDescendants:
+      - text: System
+        selected: true
+      - text: Light
+        selected: false
+      - text: Dark
+        selected: false
+- tapOn: Dark
+- assertVisible:
+    text: Dark
+    selected: true
+- assertVisible:
+    text: System
+    selected: false
+# The control marks a tapped option by itself, so only a restart shows that the app took it.
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- assertVisible:
+    text: Settings
+    selected: true
+- assertVisible:
+    text: Dark
+    selected: true
+- assertVisible:
+    text: System
+    selected: false

@@ -1,0 +1,12 @@
+node_modules/
+.pnpm-store/
+reports/
+dist/
+coverage/
+**/.expo/
+apps/mobile/android/
+apps/mobile/ios/
+pnpm-lock.yaml
+# Keep existing prose and generated GitHub rulesets in their authored format.
+**/*.md
+.github/rulesets/
