@@ -5,6 +5,7 @@
     "scheme": "shared-expense-tracker",
     "userInterfaceStyle": "automatic",
     "ios": { "bundleIdentifier": "com.tomchen.sharedexpensetracker" },
+    "android": { "package": "com.tomchen.sharedexpensetracker" },
     "plugins": ["expo-router"]
   }
 }
