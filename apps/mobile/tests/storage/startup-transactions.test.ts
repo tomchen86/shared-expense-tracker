@@ -212,12 +212,18 @@ test('adding group storage preserves existing identity, appearance, categories a
     0,
     appMigrations.indexOf(groupMigrations[0]),
   );
-  await initializeDatabase(database, previous, false, ensureLocalIdentity);
+  const localIdentity = await initializeDatabase(
+    database,
+    previous,
+    false,
+    ensureLocalIdentity,
+  );
   await database.run(
     "UPDATE local_identity SET name = 'Taylor', appearance = 'dark'",
   );
   await database.run(
-    "INSERT INTO categories (id, name, color, isDefault, position) VALUES ('category', 'Travel', '#123456', 0, 1)",
+    "INSERT INTO categories (id, name, color, isDefault, position, createdByUserId, spaceId) VALUES ('category', 'Travel', '#123456', 0, 1, ?, ?)",
+    [localIdentity.userId, localIdentity.personalSpaceId],
   );
   const identity = await database.all('SELECT * FROM local_identity');
   const categories = await database.all('SELECT * FROM categories');
@@ -238,8 +244,9 @@ test('adding group storage preserves existing identity, appearance, categories a
 });
 
 test('adding expense storage preserves groups, identity and existing migration records', async () => {
-  const previous = appMigrations.filter(
-    (sql) => !expenseMigrations.includes(sql),
+  const previous = appMigrations.slice(
+    0,
+    appMigrations.indexOf(expenseMigrations[0]),
   );
   const identity = await initializeDatabase(
     database,
