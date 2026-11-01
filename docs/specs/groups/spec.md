@@ -128,6 +128,11 @@ WHEN 使用者按 Create，或在名稱欄位按 Return，而名稱去掉頭尾�
 - **WHEN** 名稱只有「   」時按 Return
 - **THEN** 沒有建立群組，New Group 仍開著
 
+#### Scenario: 建立中切到別的分頁
+
+- **WHEN** Android 上輸入「Brisbane」按 Create，還沒存好時點 Settings 分頁
+- **THEN** 存好後回到 Groups 分頁，New Group 已經關閉，Groups 根畫面有「Brisbane」
+
 ### Requirement: GROUPS-9.1 新群組的 ID 和唯一的成員
 
 WHEN 群組建立，the mobile app SHALL 給它一個新的群組 ID，並把你加為它唯一的成員：一個新的成員 ID，使用者 ID 是你的使用者 ID，名稱是按 Create 或 Return 時的名字；群組 ID 和成員 ID 都是小寫的第 4 版 UUID，和本機資料裡其他任何 ID 都不同，所以成員 ID 也不是你的個人 participant ID。
@@ -515,6 +520,11 @@ WHEN 使用者在 Add Member 按 Add，或在名稱欄位按 Return，而名稱�
 - **WHEN** 輸入 300 個「a」，按 Add
 - **THEN** 存下的名稱是 300 個「a」
 
+#### Scenario: 儲存中切到別的分頁
+
+- **WHEN** Android 上在 Add Member 輸入「Blake」按 Add，還沒存好時點 Settings 分頁
+- **THEN** 存好後回到 Groups 分頁，Add Member 已經關閉，Members 列出 Blake
+
 ### Requirement: GROUPS-32.1 加入的成員的 ID
 
 WHEN 一位新的成員從 Add Member 加入群組，the mobile app SHALL 給他一個新的成員 ID，不給他使用者 ID；成員 ID 是小寫的第 4 版 UUID，和本機資料裡其他任何 ID 都不同。
@@ -591,6 +601,11 @@ IF 使用者在 Add Member 按 Add 或 Return 時，名稱不和群組的任何�
 
 - **WHEN** 移除 Blake 之後，把 Casey 改名為「BLAKE」再移除他，然後在 Add Member 輸入「blake」，按 Add，再按「Add Back」
 - **THEN** 提示框的標題是「Add BLAKE Back?」；回到 Brisbane 的是原本的 Casey，成員 ID 和移除之前一樣，名稱是「BLAKE」；原本的 Blake 仍是前成員
+
+#### Scenario: 最後被移除的人比較早加入
+
+- **WHEN** Brisbane 依序加入 Blake 和 Casey，移除 Casey 之後，把 Blake 改名為「casey」再移除他，然後在 Add Member 輸入「Casey」，按 Add，再按「Add Back」
+- **THEN** 提示框的標題是「Add casey Back?」；回到 Brisbane 的是原本的 Blake，成員 ID 和移除之前一樣，名稱是「casey」；原本的 Casey 仍是前成員
 
 #### Scenario: 重新啟動之後
 
@@ -693,6 +708,11 @@ WHEN 使用者在 Rename Member 按 Save 或在名稱欄位按 Return，而 Save
 - **WHEN** 把 Blak 改名為「Blake」之後重新啟動 app
 - **THEN** 他的名稱仍是「Blake」
 
+#### Scenario: 儲存中切到別的分頁
+
+- **WHEN** Android 上在 Blak 的 Rename Member 輸入「Blake」按 Save，還沒存好時點 Settings 分頁
+- **THEN** 存好後回到 Groups 分頁，Rename Member 已經關閉，Members 列出 Blake
+
 ### Requirement: GROUPS-39.1 成員的新名稱存不進去時提示
 
 IF 成員的新名稱存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable to Rename Member」、內容「The member could not be saved. Please try again.」的提示框，Rename Member 保持開啟並保留輸入，本機資料維持按下之前的樣子。
@@ -744,6 +764,11 @@ WHEN 使用者在 Rename Group 按 Save 或在名稱欄位按 Return，而 Save 
 
 - **WHEN** 把 Trip 改名為「Tokyo 2026」之後重新啟動 app
 - **THEN** Groups 根畫面有「Open Tokyo 2026」，沒有 Trip
+
+#### Scenario: 儲存中切到別的分頁
+
+- **WHEN** Android 上在 Trip 的 Rename Group 輸入「Tokyo」按 Save，還沒存好時點 Settings 分頁
+- **THEN** 存好後回到 Groups 分頁，Rename Group 已經關閉，群組的畫面的標題是「Tokyo」
 
 ### Requirement: GROUPS-42.1 群組的新名稱存不進去時提示
 
@@ -820,7 +845,7 @@ WHILE 名稱表單在儲存中，the mobile app SHALL 停用它的 Cancel 和確
 #### Scenario: 存不進去之後
 
 - **WHEN** Add Member、Rename Member 或 Rename Group 存不進去之後
-- **THEN** Cancel、確認和名稱欄位都恢復可以用，表單也能往下滑關閉
+- **THEN** Cancel、確認和名稱欄位都恢復可以用：可以修改名稱，按 Cancel 會關閉表單，表單也能往下滑關閉
 
 ### Requirement: GROUPS-45.1 名稱表單的鍵盤
 

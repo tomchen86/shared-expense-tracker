@@ -781,6 +781,32 @@ test('[GROUPS-34.1] asks about the most recently removed of the former members w
   expect(JSON.stringify(localData(file))).toContain(blake.id);
 });
 
+test('[GROUPS-34.1] asks about the most recently removed former member with the name, even one who joined earlier', async () => {
+  // Blake joins first but leaves last, so neither the order of joining nor of
+  // the rows picks him.
+  await startInMembers(['Blake', 'Casey']);
+  const blake = await storedMember(file, 'Brisbane', 'Blake');
+  const casey = await storedMember(file, 'Brisbane', 'Casey');
+  await removeMember('Casey');
+  await waitFor(() => expect(membersShown()).not.toContain('Casey'));
+  await renameMember('Blake', 'casey');
+  await removeMember('casey');
+  await waitFor(() => expect(membersShown()).not.toContain('casey'));
+  await openAddMember();
+
+  await submit('Add Member', 'Add', 'Casey');
+
+  expect(alertsShown()).toEqual([addBackAlert('casey')]);
+  await pressAlertButton('Add Back');
+  await expectClosed('Add Member');
+  await expectMembers(['Taylor (You)', 'casey', 'Add Member']);
+  const members = await storedMembers(file, 'Brisbane');
+  expect(members.map((member) => member.name)).toEqual(['Taylor', 'casey']);
+  expect(members[1]).toEqual({ ...blake, name: 'casey' });
+  // The first Casey stays a former member, kept in the local data.
+  expect(JSON.stringify(localData(file))).toContain(casey.id);
+});
+
 test('[GROUPS-34.1] adds a former member back with their member ID after a restart', async () => {
   const app = await startInMembers(['Blake']);
   const blake = await storedMember(file, 'Brisbane', 'Blake');
@@ -1493,6 +1519,11 @@ test('[GROUPS-44.1] unlocks Add Member once its save fails', async () => {
   expect(barAction('Add Member', 'Add').disabled).toBe(false);
   expect(memberNameField()).not.toBeDisabled();
   expect(refusesSwipeDown(screenOf('Add Member'))).toBe(false);
+  // Usable, not only enabled: the name takes typing, and Cancel closes the form.
+  fireEvent.changeText(memberNameField(), 'Blake K.');
+  expect(memberNameField()).toHaveDisplayValue('Blake K.', AS_TYPED);
+  await pressOnBar('Add Member', 'Cancel');
+  await expectClosed('Add Member');
 });
 
 test('[GROUPS-44.1] unlocks Rename Member once its save fails', async () => {
@@ -1509,6 +1540,10 @@ test('[GROUPS-44.1] unlocks Rename Member once its save fails', async () => {
   expect(barAction('Rename Member', 'Save').disabled).toBe(false);
   expect(memberNameField()).not.toBeDisabled();
   expect(refusesSwipeDown(screenOf('Rename Member'))).toBe(false);
+  fireEvent.changeText(memberNameField(), 'Blake K.');
+  expect(memberNameField()).toHaveDisplayValue('Blake K.', AS_TYPED);
+  await pressOnBar('Rename Member', 'Cancel');
+  await expectClosed('Rename Member');
 });
 
 test('[GROUPS-44.1] unlocks Rename Group once its save fails', async () => {
@@ -1527,6 +1562,10 @@ test('[GROUPS-44.1] unlocks Rename Group once its save fails', async () => {
   expect(barAction('Rename Group', 'Save').disabled).toBe(false);
   expect(groupNameField()).not.toBeDisabled();
   expect(refusesSwipeDown(screenOf('Rename Group'))).toBe(false);
+  fireEvent.changeText(groupNameField(), 'Kyoto');
+  expect(groupNameField()).toHaveDisplayValue('Kyoto', AS_TYPED);
+  await pressOnBar('Rename Group', 'Cancel');
+  await expectClosed('Rename Group');
 });
 
 test('[GROUPS-45.1] asks the keyboard of each name form to capitalize each word, not to autocorrect, and to show a done key', async () => {
