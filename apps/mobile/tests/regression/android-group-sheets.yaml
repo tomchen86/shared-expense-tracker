@@ -1,0 +1,49 @@
+appId: com.tomchen.sharedexpensetracker
+name: Android group sheets close without a detached-header native crash
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- tapOn: Settings
+- tapOn: Enter your name
+- inputText: Taylor
+- pressKey: Enter
+- tapOn: Groups
+- tapOn: Add group
+- assertVisible: New Group
+- inputText: Brisbane
+- tapOn: Create
+- assertVisible: Open Brisbane
+- tapOn: Open Brisbane
+- assertVisible: No expenses in this group yet.
+- tapOn: Group actions
+- tapOn: '(?i)Members'
+- assertVisible: 'Taylor.*You.*'
+- tapOn: Add Member
+- inputText: Blake
+- tapOn: Add
+- assertNotVisible: Add
+- assertVisible: Blake
+- tapOn: Blake
+- tapOn: '(?i)Rename'
+- assertVisible: Rename Member
+- eraseText: 20
+- inputText: Casey
+- tapOn: Save
+- assertNotVisible: Rename Member
+- assertVisible: Casey
+- tapOn: Close
+- tapOn: Group actions
+- tapOn: '(?i)Rename Group'
+- assertVisible: Rename Group
+- eraseText: 20
+- inputText: Tokyo
+- tapOn: Save
+- assertNotVisible: Rename Group
+- assertVisible: Tokyo
+- pressKey: Back
+- assertVisible: Open Tokyo
