@@ -1,1 +1,1 @@
-export { SecondaryTabScreen as default } from '../../../src/shell/secondary-tab-screen';
+export { GroupsScreen as default } from '../../../src/groups/groups-screen';

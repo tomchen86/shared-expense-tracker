@@ -1,1 +1,1 @@
-export { HomeScreen as default } from '../../../src/shell/home-screen';
+export { ManageCategoriesScreen as default } from '../../../src/categories/manage-categories-screen';

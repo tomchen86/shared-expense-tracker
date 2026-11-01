@@ -1,1 +1,1 @@
-export { HomeScreen as default } from '../../../src/shell/home-screen';
+export { ExpensesScreen as default } from '../../../src/ledger/expenses-screen';
