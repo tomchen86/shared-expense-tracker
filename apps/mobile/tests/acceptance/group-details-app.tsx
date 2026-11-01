@@ -42,10 +42,6 @@ export const RENAME_GROUP_FAILED = [
   'Unable to Rename Group',
   'Your group could not be saved. Please try again.',
 ];
-export const SETTINGS_FAILED = [
-  'Unable to Save Settings',
-  'Your settings could not be saved. Please try again.',
-];
 
 /** The title and message of the alert that asks to add the former member `name` back. */
 export const addBackAlert = (name: string) => [
@@ -275,6 +271,17 @@ export async function pressAlertButton(text: string) {
   await settle();
 }
 
+/** Whether Back or a tap outside closes the last alert on Android. */
+export const lastAlertCancelable = () =>
+  alerts().at(-1)?.[3]?.cancelable === true;
+
+/** Closes the last alert as Back or a tap outside does on Android, which runs its onDismiss, if it has one. */
+export async function dismissLastAlert() {
+  const options = alerts().at(-1)?.[3];
+  act(() => options?.onDismiss?.());
+  await settle();
+}
+
 // The group's screen
 
 export async function openGroup(name: string) {
@@ -320,13 +327,21 @@ export async function openMembers(group: string) {
   );
 }
 
-/** The buttons and the row marked (You) that Members shows itself, top to bottom. */
+/**
+ * The buttons that Members shows itself, top to bottom, and the row marked (You)
+ * when it is not a button, so the other tests still find it.
+ */
 function memberRows() {
   const members = screenOf('Members');
   const all = members.findAll(() => true);
+  const buttons = within(members).queryAllByRole('button');
+  const inAButton = (view: HostView) =>
+    buttons.some((button) => button.findAll((node) => node === view).length);
   return [
-    ...within(members).queryAllByText(/^.+ \(You\)$/),
-    ...within(members).queryAllByRole('button'),
+    ...within(members)
+      .queryAllByText(/^.+ \(You\)$/)
+      .filter((view) => !inAButton(view)),
+    ...buttons,
   ]
     .filter((view) => inContentOf(members, view))
     .sort((a, b) => all.indexOf(a) - all.indexOf(b));
@@ -364,7 +379,11 @@ export interface MemberMenu {
   items: string[];
   destructive: string[];
   cancel?: string;
+  /** Whether a tap outside the menu, or Back on Android, closes it. */
+  cancelable: boolean;
   choose: (item: string) => Promise<void>;
+  /** Closes the menu as a tap outside it, or Back on Android, does. */
+  dismiss: () => Promise<void>;
 }
 
 interface ActionSheetOptions {
@@ -388,26 +407,31 @@ function sheetMenu([options, callback]: [
   (index: number) => void,
 ]): MemberMenu {
   const destructive = [options.destructiveButtonIndex ?? []].flat();
+  const cancelIndex = options.cancelButtonIndex;
   return {
     title: options.title,
     message: options.message,
     items: options.options,
     destructive: destructive.map((index) => options.options[index]),
     cancel:
-      options.cancelButtonIndex === undefined
-        ? undefined
-        : options.options[options.cancelButtonIndex],
+      cancelIndex === undefined ? undefined : options.options[cancelIndex],
+    // iOS answers a tap outside an action sheet with its cancel button.
+    cancelable: cancelIndex !== undefined,
     choose: async (item) => {
       const index = options.options.indexOf(item);
       if (index < 0) throw new Error(`No ${item} in the action sheet`);
       act(() => callback(index));
       await settle();
     },
+    dismiss: async () => {
+      if (cancelIndex !== undefined) act(() => callback(cancelIndex));
+      await settle();
+    },
   };
 }
 
 function dialogMenu(call: Parameters<typeof Alert.alert>): MemberMenu {
-  const [title, message, buttons = []] = call;
+  const [title, message, buttons = [], options] = call;
   return {
     title,
     message,
@@ -416,10 +440,15 @@ function dialogMenu(call: Parameters<typeof Alert.alert>): MemberMenu {
       .filter((button) => button.style === 'destructive')
       .map((button) => button.text ?? ''),
     cancel: buttons.find((button) => button.style === 'cancel')?.text,
+    cancelable: options?.cancelable === true,
     choose: async (item) => {
       const button = buttons.find((candidate) => candidate.text === item);
       if (button === undefined) throw new Error(`No ${item} in the dialog`);
       act(() => button.onPress?.());
+      await settle();
+    },
+    dismiss: async () => {
+      act(() => options?.onDismiss?.());
       await settle();
     },
   };
@@ -478,8 +507,9 @@ export async function addMember(name: string) {
   await waitFor(() => expect(membersShown()).toHaveLength(rows + 1));
 }
 
-export async function openRenameMember(name: string) {
-  await chooseForMember(name, 'Rename');
+/** Opens Rename Member from the row `row`, which holds `name` (yours ends in " (You)"). */
+export async function openRenameMember(row: string, name = row) {
+  await chooseForMember(row, 'Rename');
   await expectOpen('Rename Member');
   await waitFor(() => expect(memberNameField().props.value ?? '').toBe(name));
 }

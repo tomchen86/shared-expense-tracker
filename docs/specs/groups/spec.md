@@ -2,7 +2,7 @@
 
 ## Purpose
 
-群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、Groups 分頁上每個群組的畫面，以及從群組的畫面打開的 Members、Add Member、Rename Member 和 Rename Group，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Add Member 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指按下 Create 或 Return 之後，群組存好或存不進去之前。Add Member、Rename Member 和 Rename Group 是名稱表單；儲存中是指在名稱表單按下確認、Return 或 Add Back 之後，存好或存不進去之前；移除中是指選了 Remove from Group 之後，存好或存不進去之前。
+群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、Groups 分頁上每個群組的畫面，以及從群組的畫面打開的 Members、Add Member、Rename Member 和 Rename Group，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Add Member 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Add Member、Rename Member 和 Rename Group 是名稱表單；儲存中是指名稱表單開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。
 
 ## Requirements
 
@@ -380,21 +380,21 @@ WHEN 使用者在 Group actions 選「Members」，the mobile app SHALL 開啟�
 
 ### Requirement: GROUPS-24.1 Members 列出群組的成員
 
-The mobile app SHALL 在 Members 依加入的先後，由上而下列出群組的每位成員，被移出後再加回來的排在最後：你那一列是你的成員名稱加上「 (You)」，不是按鈕；別人那一列是他的名稱和「›」，是角色為 button、無障礙名稱為他的名稱的按鈕；最後一列是角色為 button、名稱為「Add Member」的按鈕。
+The mobile app SHALL 在 Members 依加入的先後，由上而下列出群組的每位成員，被移出後再加回來的排在最後；每位成員那一列都是角色為 button 的按鈕，右邊有「›」：你那一列是你的成員名稱加上「 (You)」，無障礙名稱也是這樣；別人那一列是他的名稱，無障礙名稱是他的名稱；最後一列是角色為 button、名稱為「Add Member」的按鈕。
 
 #### Scenario: 只有你
 
 - **WHEN** 名字是「Taylor」，建立「Brisbane」後開啟它的 Members
-- **THEN** 由上而下是「Taylor (You)」和「Add Member」；「Taylor (You)」那一列不是按鈕
+- **THEN** 由上而下是「Taylor (You)」和「Add Member」；「Taylor (You)」那一列右邊有「›」，是名稱為「Taylor (You)」的按鈕
 
 #### Scenario: 三位成員
 
-- **WHEN** 在 Brisbane 依序加入「Blake」和「Casey」
-- **THEN** 由上而下是「Taylor (You)」、「Blake」、「Casey」和「Add Member」；Blake 和 Casey 那兩列右邊有「›」，是名稱分別為「Blake」和「Casey」的按鈕
+- **WHEN** 在 Brisbane 依序加入「Casey」和「Blake」
+- **THEN** 由上而下是「Taylor (You)」、「Casey」、「Blake」和「Add Member」；Casey 和 Blake 那兩列右邊有「›」，是名稱分別為「Casey」和「Blake」的按鈕
 
-### Requirement: GROUPS-25.1 點別人那一列跳出他的選單
+### Requirement: GROUPS-25.1 點成員那一列跳出他的選單
 
-WHEN 使用者在 Members 點別人那一列，the mobile app SHALL 跳出標題是他的名稱、內容是「If removed, their historical payments and shares will be retained.」的選單，依序是「Rename」、破壞性的「Remove from Group」和「Cancel」：iOS 上是動作表（action sheet），Android 上是對話框；按 Cancel 時關閉選單，什麼都不改。
+WHEN 使用者在 Members 點成員那一列，the mobile app SHALL 跳出標題是這位成員的名稱的選單：別人的選單內容是「If removed, their historical payments and shares will be retained.」，依序是「Rename」、「Remove from Group」和「Cancel」；你的選單沒有內容，依序是「Rename」和「Cancel」。iOS 上選單是動作表（action sheet），「Remove from Group」是破壞性的樣式；Android 上選單是對話框。按 Cancel 時關閉選單，什麼都不改；Android 上按返回鍵或點對話框外面也一樣。
 
 #### Scenario: iOS
 
@@ -404,12 +404,22 @@ WHEN 使用者在 Members 點別人那一列，the mobile app SHALL 跳出標題
 #### Scenario: Android
 
 - **WHEN** Android 上在 Members 點「Blake」
-- **THEN** 跳出標題「Blake」、內容是這句話的對話框，依序是「Rename」、破壞性的「Remove from Group」和「Cancel」
+- **THEN** 跳出標題「Blake」、內容是這句話的對話框，依序是「Rename」、「Remove from Group」和「Cancel」
+
+#### Scenario: 你的選單
+
+- **WHEN** 名字是「Taylor」，在 Members 點「Taylor (You)」
+- **THEN** 跳出標題「Taylor」、沒有內容的選單，依序是「Rename」和「Cancel」
 
 #### Scenario: 按 Cancel
 
 - **WHEN** 在 Blake 的選單按「Cancel」
 - **THEN** 選單關閉，Members 仍列出 Blake，Brisbane 的成員沒有改變
+
+#### Scenario: Android 上直接關掉
+
+- **WHEN** Android 上 Blake 的對話框開著時按返回鍵，或點對話框外面
+- **THEN** 對話框關閉，Members 仍列出 Blake，Brisbane 的成員沒有改變
 
 ### Requirement: GROUPS-26.1 選 Remove from Group 時移出群組
 
@@ -432,7 +442,7 @@ WHILE 有成員在移除中，the mobile app SHALL 停用 Close，讓每一列�
 #### Scenario: 移除中
 
 - **WHEN** 在 Blake 的選單選「Remove from Group」，還沒存好
-- **THEN** Close 停用；點「Casey」不跳出選單，按「Add Member」不開啟 Add Member；Members 仍開著；存好後 Blake 不在了，Close 恢復可以按
+- **THEN** Close 停用；點「Casey」或「Taylor (You)」都不跳出選單，按「Add Member」不開啟 Add Member；Members 仍開著；存好後 Blake 不在了，Close 恢復可以按
 
 #### Scenario: 往下滑或按返回鍵
 
@@ -535,8 +545,13 @@ IF 使用者在 Add Member 按 Add 或 Return 時，名稱和群組的某位成�
 
 #### Scenario: 改成別人的名稱
 
-- **WHEN** Brisbane 有 Taylor、Blake 和 Casey，在 Casey 的 Rename Member 把名稱改成「Blake」，按 Save
+- **WHEN** Brisbane 有 Taylor、Blake 和 Casey，在 Casey 的 Rename Member 把名稱改成「 blake 」，按 Save
 - **THEN** Rename Member 仍開著，名稱欄位下方顯示這句話；Casey 的名稱沒有改變
+
+#### Scenario: 按 Return
+
+- **WHEN** Brisbane 有 Taylor、Blake 和 Casey，在 Add Member 輸入「blake」，或在 Casey 的 Rename Member 輸入「Blake」，然後在名稱欄位按 Return
+- **THEN** 表單仍開著，名稱欄位下方顯示這句話；Brisbane 的成員沒有改變
 
 #### Scenario: 修改名稱
 
@@ -550,17 +565,32 @@ IF 使用者在 Add Member 按 Add 或 Return 時，名稱和群組的某位成�
 
 ### Requirement: GROUPS-34.1 和前成員同名時問要不要加回來
 
-IF 使用者在 Add Member 按 Add 或 Return 時，名稱不和群組的任何成員同名，但和這個群組的一位前成員同名，THEN the mobile app SHALL 先不儲存，跳出標題「Add <前成員的名稱> Back?」、內容「<前成員的名稱> was removed from this group before. Adding them back reconnects their past payments and shares.」的提示框，選項是「Cancel」和「Add Back」：按 Add Back 時讓他回到群組，沿用他原本的成員 ID 和名稱，存好後關閉 Add Member，回到 Members，把他列在最後；按 Cancel 時留在 Add Member，保留輸入。
+IF 使用者在 Add Member 按 Add 或 Return 時，名稱不和群組的任何成員同名，但和這個群組的前成員同名，THEN the mobile app SHALL 先不儲存，跳出標題「Add <前成員的名稱> Back?」、內容「<前成員的名稱> was removed from this group before. Adding them back reconnects their past payments and shares.」的提示框，選項是「Cancel」和「Add Back」，同名的前成員不只一位時問的是最近被移出的那一位：按 Add Back 時讓他回到群組，沿用他原本的成員 ID 和名稱，存好後關閉 Add Member，回到 Members，把他列在最後；按 Cancel 時留在 Add Member，保留輸入，Android 上按返回鍵或點提示框外面也一樣。
 
 #### Scenario: 加回來
 
 - **WHEN** Brisbane 有 Taylor、Blake 和 Casey，移除 Blake 之後，在 Add Member 輸入「blake」，按 Add，再按「Add Back」
 - **THEN** 先跳出標題「Add Blake Back?」、內容「Blake was removed from this group before. Adding them back reconnects their past payments and shares.」的提示框；按 Add Back 後 Add Member 關閉，Members 由上而下是「Taylor (You)」、「Casey」、「Blake」和「Add Member」；Blake 的成員 ID 和移除之前一樣，名稱是「Blake」
 
+#### Scenario: 按 Return
+
+- **WHEN** 移除 Blake 之後，在 Add Member 輸入「blake」，在名稱欄位按 Return
+- **THEN** 跳出「Add Blake Back?」的提示框，Blake 還沒有回到群組
+
 #### Scenario: 按 Cancel
 
 - **WHEN** 在這個提示框按「Cancel」
-- **THEN** Add Member 仍開著，名稱欄位是「blake」，Brisbane 的成員是 Taylor 和 Casey
+- **THEN** Add Member 仍開著，名稱欄位是「blake」而且可以編輯，Cancel 和 Add 都可以按；Brisbane 的成員是 Taylor 和 Casey
+
+#### Scenario: Android 上直接關掉
+
+- **WHEN** Android 上這個提示框開著時按返回鍵，或點提示框外面
+- **THEN** 提示框關閉，Add Member 仍開著，名稱欄位是「blake」；Brisbane 的成員是 Taylor 和 Casey
+
+#### Scenario: 同名的前成員不只一位
+
+- **WHEN** 移除 Blake 之後，把 Casey 改名為「BLAKE」再移除他，然後在 Add Member 輸入「blake」，按 Add，再按「Add Back」
+- **THEN** 提示框的標題是「Add BLAKE Back?」；回到 Brisbane 的是原本的 Casey，成員 ID 和移除之前一樣，名稱是「BLAKE」；原本的 Blake 仍是前成員
 
 #### Scenario: 重新啟動之後
 
@@ -598,12 +628,22 @@ IF 新的成員，或按 Add Back 時加回來的前成員，存不進本機資�
 
 ### Requirement: GROUPS-36.1 開啟 Rename Member
 
-WHEN 使用者在別人的選單選「Rename」，the mobile app SHALL 開啟從畫面底部升起、蓋在 Members 上的 Rename Member，標題是「Rename Member」，標題列有取消「Cancel」和確認「Save」（SHELL-47.1、SHELL-48.1），內容只有名稱欄位：名稱欄位的無障礙名稱是「Member name」，開啟時是他現在的名稱，並取得焦點。
+WHEN 使用者在成員的選單選「Rename」，the mobile app SHALL 開啟從畫面底部升起、蓋在 Members 上的 Rename Member，標題是「Rename Member」，標題列有取消「Cancel」和確認「Save」（SHELL-47.1、SHELL-48.1），內容只有名稱欄位：名稱欄位的無障礙名稱是「Member name」，開啟時是這位成員現在的名稱，並取得焦點，清空時顯示「Enter member name」。
 
 #### Scenario: 開啟
 
 - **WHEN** 在 Members 點「Blake」，選「Rename」
 - **THEN** Rename Member 從底部升起，蓋在 Members 上，標題是「Rename Member」，標題列的取消是「Cancel」、確認是「Save」；名稱欄位是「Blake」，已經取得焦點
+
+#### Scenario: 你的名稱
+
+- **WHEN** 名字是「Taylor」，在 Members 點「Taylor (You)」，選「Rename」
+- **THEN** Rename Member 的名稱欄位是「Taylor」
+
+#### Scenario: 清空名稱
+
+- **WHEN** 在 Blake 的 Rename Member 清空名稱
+- **THEN** 名稱欄位顯示「Enter member name」
 
 ### Requirement: GROUPS-37.1 名稱沒有改變或空白時停用 Save
 
@@ -643,6 +683,11 @@ WHEN 使用者在 Rename Member 按 Save 或在名稱欄位按 Return，而 Save
 - **WHEN** 移除 Blake 之後，在 Casey 的 Rename Member 輸入「Blake」，按 Save
 - **THEN** Casey 的名稱改成「Blake」
 
+#### Scenario: 改你的名稱
+
+- **WHEN** 名字是「Taylor」，在你的 Rename Member 輸入「Sam」，按 Save
+- **THEN** Rename Member 關閉，Members 由上而下是「Sam (You)」和「Add Member」；你在 Brisbane 的成員 ID 和使用者 ID 都沒有改變
+
 #### Scenario: 重新啟動
 
 - **WHEN** 把 Blak 改名為「Blake」之後重新啟動 app
@@ -650,12 +695,17 @@ WHEN 使用者在 Rename Member 按 Save 或在名稱欄位按 Return，而 Save
 
 ### Requirement: GROUPS-39.1 成員的新名稱存不進去時提示
 
-IF 成員的新名稱存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable to Rename Member」、內容「The member could not be saved. Please try again.」的提示框，Rename Member 保持開啟並保留輸入，成員的名稱維持原本的值。
+IF 成員的新名稱存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable to Rename Member」、內容「The member could not be saved. Please try again.」的提示框，Rename Member 保持開啟並保留輸入，本機資料維持按下之前的樣子。
 
 #### Scenario: 寫不進去
 
 - **WHEN** 資料庫無法寫入時，在 Blak 的 Rename Member 輸入「Blake」按 Save
-- **THEN** 跳出這個提示框，Rename Member 仍開著，名稱欄位是「Blake」，Save 可以再按；他的名稱仍是「Blak」
+- **THEN** 跳出這個提示框，Rename Member 仍開著，名稱欄位是「Blake」，Save 可以再按；本機資料和按 Save 之前一樣，他的名稱仍是「Blak」
+
+#### Scenario: 寫到一半失敗
+
+- **WHEN** 改名時的某一筆寫入失敗，在它之前的寫入都成功了，不論是哪一筆
+- **THEN** 跳出這個提示框，本機資料和按 Save 之前一樣
 
 #### Scenario: 再試一次
 
@@ -664,12 +714,17 @@ IF 成員的新名稱存不進本機資料，THEN the mobile app SHALL 跳出標
 
 ### Requirement: GROUPS-40.1 開啟 Rename Group
 
-WHEN 使用者在 Group actions 選「Rename Group」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Rename Group，標題是「Rename Group」，標題列有取消「Cancel」和確認「Save」（SHELL-47.1、SHELL-48.1），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位；名稱欄位的無障礙名稱是「Group name」，開啟時是群組現在的名稱，並取得焦點。
+WHEN 使用者在 Group actions 選「Rename Group」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Rename Group，標題是「Rename Group」，標題列有取消「Cancel」和確認「Save」（SHELL-47.1、SHELL-48.1），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位；名稱欄位的無障礙名稱是「Group name」，開啟時是群組現在的名稱，並取得焦點，清空時顯示「Group name」。
 
 #### Scenario: 開啟
 
 - **WHEN** 在 Brisbane 的畫面選 Group actions 的「Rename Group」
 - **THEN** Rename Group 從底部升起，蓋在 Brisbane 的畫面上，標題是「Rename Group」，標題列的取消是「Cancel」、確認是「Save」；由上而下是「GROUP DETAILS」、「Name」和名稱欄位，名稱欄位是「Brisbane」，已經取得焦點
+
+#### Scenario: 清空名稱
+
+- **WHEN** 在 Brisbane 的 Rename Group 清空名稱
+- **THEN** 名稱欄位顯示「Group name」
 
 ### Requirement: GROUPS-41.1 按 Save 或 Return 時存下群組的新名稱
 
@@ -692,12 +747,17 @@ WHEN 使用者在 Rename Group 按 Save 或在名稱欄位按 Return，而 Save 
 
 ### Requirement: GROUPS-42.1 群組的新名稱存不進去時提示
 
-IF 群組的新名稱存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable to Rename Group」、內容「Your group could not be saved. Please try again.」的提示框，Rename Group 保持開啟並保留輸入，群組的名稱維持原本的值。
+IF 群組的新名稱存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable to Rename Group」、內容「Your group could not be saved. Please try again.」的提示框，Rename Group 保持開啟並保留輸入，本機資料維持按下之前的樣子。
 
 #### Scenario: 寫不進去
 
 - **WHEN** 資料庫無法寫入時，在 Trip 的 Rename Group 輸入「Tokyo」按 Save
-- **THEN** 跳出這個提示框，Rename Group 仍開著，名稱欄位是「Tokyo」，Save 可以再按；群組的名稱仍是「Trip」
+- **THEN** 跳出這個提示框，Rename Group 仍開著，名稱欄位是「Tokyo」，Save 可以再按；本機資料和按 Save 之前一樣，群組的名稱仍是「Trip」
+
+#### Scenario: 寫到一半失敗
+
+- **WHEN** 改名時的某一筆寫入失敗，在它之前的寫入都成功了，不論是哪一筆
+- **THEN** 跳出這個提示框，本機資料和按 Save 之前一樣
 
 #### Scenario: 再試一次
 
@@ -730,7 +790,7 @@ WHEN 沒有在儲存中，而使用者在名稱表單按 Cancel、把它往下�
 
 ### Requirement: GROUPS-44.1 儲存中鎖住名稱表單
 
-WHILE 名稱表單在儲存中，the mobile app SHALL 停用它的 Cancel 和確認，讓名稱欄位不能編輯，再按確認或 Return 也不再儲存一次，也不讓表單因為往下滑或按 Android 的返回鍵而關閉，直到存好或存不進去為止。
+WHILE 名稱表單在儲存中，the mobile app SHALL 停用它的 Cancel 和確認，讓名稱欄位不能編輯，再按確認或 Return 也不再儲存一次、不再提示，也不讓表單因為往下滑或按 Android 的返回鍵而關閉，直到存好或存不進去為止。
 
 #### Scenario: 新增中
 
@@ -742,6 +802,11 @@ WHILE 名稱表單在儲存中，the mobile app SHALL 停用它的 Cancel 和確
 - **WHEN** 在 Add Member 輸入「Blake」後連按兩次 Add，或按 Add 後在存好之前按 Return，第二次都在存好之前
 - **THEN** 只加入一位 Blake，沒有顯示「A member with this name already exists.」
 
+#### Scenario: 加回來中
+
+- **WHEN** 在「Add Blake Back?」按「Add Back」，還沒存好
+- **THEN** Cancel 和 Add 都停用，名稱欄位不能編輯，Add Member 仍開著；這時按 Return 也不再問一次；存好後 Add Member 關閉，Blake 回到群組
+
 #### Scenario: 改名中
 
 - **WHEN** 在 Rename Member 或 Rename Group 按 Save，還沒存好
@@ -749,13 +814,13 @@ WHILE 名稱表單在儲存中，the mobile app SHALL 停用它的 Cancel 和確
 
 #### Scenario: 往下滑或按返回鍵
 
-- **WHEN** 還沒存好時往下滑表單，或在 Android 上按返回鍵
+- **WHEN** Add Member、Rename Member 或 Rename Group 還沒存好時往下滑它，或在 Android 上按返回鍵
 - **THEN** 表單不關閉；存好後才關閉
 
 #### Scenario: 存不進去之後
 
-- **WHEN** 存不進去之後
-- **THEN** Cancel、確認和名稱欄位都恢復可以用
+- **WHEN** Add Member、Rename Member 或 Rename Group 存不進去之後
+- **THEN** Cancel、確認和名稱欄位都恢復可以用，表單也能往下滑關閉
 
 ### Requirement: GROUPS-45.1 名稱表單的鍵盤
 
@@ -766,26 +831,16 @@ The mobile app SHALL 讓名稱表單的名稱欄位的鍵盤把每個字的開�
 - **WHEN** 在 Add Member、Rename Member 或 Rename Group，用手機的鍵盤輸入「teh trip」
 - **THEN** 名稱欄位是「Teh Trip」：每個字的開頭都大寫，「teh」沒有被校正成「the」；鍵盤的 Return 鍵是完成鍵
 
-### Requirement: GROUPS-46.1 你改名時一起改你在群組裡的成員名稱
+### Requirement: GROUPS-46.1 你在群組裡的名稱和你的名字分開
 
-WHEN 使用者在 Settings 存下新的名字（SHELL-18.1），the mobile app SHALL 在同一次儲存裡，把你在每個群組裡的成員名稱改成新的名字；名字存不進去時（SHELL-22.1），名字和你在每個群組裡的成員名稱都維持原本的值。
+The mobile app SHALL 讓你的名字和你在每個群組裡的成員名稱各自獨立：在 Settings 存下新的名字（SHELL-18.1）時，不改你在任何群組裡的成員名稱，之後建立的群組才用新的名字（GROUPS-9.1）；在 Rename Member 改你在一個群組裡的名稱時，不改你的名字，也不改你在其他群組裡的成員名稱。
 
-#### Scenario: 改名
+#### Scenario: 在 Settings 改名
 
-- **WHEN** 名字是「Taylor」，建立「Brisbane」和「Tokyo」之後，在 Settings 把名字改成「Sam」
-- **THEN** Brisbane 和 Tokyo 裡你的成員名稱都是「Sam」，Members 是「Sam (You)」；成員 ID 和使用者 ID 都沒有改變
+- **WHEN** 名字是「Taylor」，建立「Brisbane」之後，在 Settings 把名字改成「Sam」
+- **THEN** Brisbane 裡你的成員名稱仍是「Taylor」，Members 是「Taylor (You)」
 
-#### Scenario: 別人的名稱不變
+#### Scenario: 在群組裡改你的名稱
 
-- **WHEN** Brisbane 有 Blake，把名字改成「Sam」
-- **THEN** Blake 的名稱仍是「Blake」
-
-#### Scenario: 寫到一半失敗
-
-- **WHEN** 改名時的某一筆寫入失敗，在它之前的寫入都成功了，不論是哪一筆
-- **THEN** 跳出「Unable to Save Settings」；名字仍是「Taylor」，Brisbane 和 Tokyo 裡你的成員名稱也仍是「Taylor」
-
-#### Scenario: 重新啟動
-
-- **WHEN** 改名為「Sam」之後重新啟動 app
-- **THEN** Brisbane 裡你的成員名稱仍是「Sam」
+- **WHEN** 名字是「Taylor」，建立「Brisbane」和「Tokyo」之後，在 Brisbane 的 Members 把你的名稱改成「Sam」
+- **THEN** 你的名字仍是「Taylor」，Tokyo 裡你的成員名稱也仍是「Taylor」

@@ -3,7 +3,6 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { AccessibilityInfo, ActionSheetIOS, Alert } from 'react-native';
 import {
-  act,
   fireEvent,
   screen,
   userEvent,
@@ -52,7 +51,6 @@ import {
   RENAME_GROUP_FAILED,
   RENAME_MEMBER_FAILED,
   RETAINED,
-  SETTINGS_FAILED,
   addBackAlert,
   addMember,
   alertsShown,
@@ -273,20 +271,21 @@ test("[GROUPS-23.1] lets Members be swiped down, back on the group's screen", as
   expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups', 'Brisbane']);
 });
 
-test("[GROUPS-24.1] lists only you, marked (You), in a new group's Members", async () => {
+test("[GROUPS-24.1] lists only you, as a button marked (You) with a chevron, in a new group's Members", async () => {
   await startInMembers();
 
   await expectMembers(['Taylor (You)', 'Add Member']);
   expect(
-    within(screenOf('Members')).queryByRole('button', { name: /Taylor/ }),
-  ).toBeNull();
+    within(membersButton('Taylor (You)')).getByText('›'),
+  ).toBeOnTheScreen();
 });
 
 test('[GROUPS-24.1] lists the members in the order they joined, each other member as a button named after them, with a chevron', async () => {
-  await startInMembers(['Blake', 'Casey']);
+  // Not in alphabetical order, so a list sorted by name fails.
+  await startInMembers(['Casey', 'Blake']);
 
-  await expectMembers(['Taylor (You)', 'Blake', 'Casey', 'Add Member']);
-  for (const name of ['Blake', 'Casey'])
+  await expectMembers(['Taylor (You)', 'Casey', 'Blake', 'Add Member']);
+  for (const name of ['Casey', 'Blake'])
     expect(within(membersButton(name)).getByText('›')).toBeOnTheScreen();
 });
 
@@ -304,6 +303,20 @@ test("[GROUPS-25.1] opens an action sheet titled with the member's name when the
     cancel: 'Cancel',
   });
   expect(alertsShown()).toEqual([]);
+});
+
+test('[GROUPS-25.1] opens your own action sheet, titled with your member name and offering only Rename, when your row is tapped', async () => {
+  await startInMembers(['Blake']);
+
+  const menu = await tapMember('Taylor (You)');
+
+  expect(menu).toMatchObject({
+    title: 'Taylor',
+    items: ['Rename', 'Cancel'],
+    destructive: [],
+    cancel: 'Cancel',
+  });
+  expect(menu?.message ?? '').toBe('');
 });
 
 test("[GROUPS-25.1] changes nothing when Cancel is chosen in a member's menu", async () => {
@@ -357,6 +370,7 @@ test('[GROUPS-27.1] locks Members while a member is removed', async () => {
 
   expect(barAction('Members', 'Close').disabled).toBe(true);
   expect(await tapMember('Casey')).toBeUndefined();
+  expect(await tapMember('Taylor (You)')).toBeUndefined();
   fireEvent.press(membersButton('Add Member'));
   await settle();
   expect(isOpen('Add Member')).toBe(false);
@@ -602,7 +616,7 @@ test("[GROUPS-33.1] keeps Rename Member open when the new name is another member
   await startInMembers(['Blake', 'Casey']);
   await openRenameMember('Casey');
 
-  await submit('Rename Member', 'Save', 'Blake');
+  await submit('Rename Member', 'Save', ' blake ');
 
   expect(isOpen('Rename Member')).toBe(true);
   expect(inTreeOrder(memberNameField(), screen.getByText(ALREADY_EXISTS))).toBe(
@@ -626,6 +640,40 @@ test('[GROUPS-33.1] stops saying a member has the name once the name is edited',
   fireEvent.changeText(memberNameField(), 'Blake K.');
 
   expect(screen.queryByText(ALREADY_EXISTS)).toBeNull();
+});
+
+test("[GROUPS-33.1] says a member has the name when Return is pressed in Add Member with a member's name", async () => {
+  await startInMembers(['Blake', 'Casey']);
+  await openAddMember();
+  fireEvent.changeText(memberNameField(), 'blake');
+
+  await pressReturn(memberNameField());
+
+  expect(isOpen('Add Member')).toBe(true);
+  expect(screen.getByText(ALREADY_EXISTS)).toBeOnTheScreen();
+  expect(alertsShown()).toEqual([]);
+  expect(await storedMemberNames(file, 'Brisbane')).toEqual([
+    'Taylor',
+    'Blake',
+    'Casey',
+  ]);
+});
+
+test("[GROUPS-33.1] says a member has the name when Return is pressed in Rename Member with another member's name", async () => {
+  await startInMembers(['Blake', 'Casey']);
+  await openRenameMember('Casey');
+  fireEvent.changeText(memberNameField(), 'Blake');
+
+  await pressReturn(memberNameField());
+
+  expect(isOpen('Rename Member')).toBe(true);
+  expect(screen.getByText(ALREADY_EXISTS)).toBeOnTheScreen();
+  expect(alertsShown()).toEqual([]);
+  expect(await storedMemberNames(file, 'Brisbane')).toEqual([
+    'Taylor',
+    'Blake',
+    'Casey',
+  ]);
 });
 
 test('[GROUPS-33.1] says a member has the name, without asking to add anyone back, when a member and a former member both have it', async () => {
@@ -683,10 +731,54 @@ test('[GROUPS-34.1] stays in Add Member with the name when Cancel is pressed ins
 
   expect(isOpen('Add Member')).toBe(true);
   expect(memberNameField()).toHaveDisplayValue('blake', AS_TYPED);
+  // Asking is not saving, so nothing stays locked.
+  expect(memberNameField()).not.toBeDisabled();
+  expect(barAction('Add Member', 'Cancel').disabled).toBe(false);
+  expect(barAction('Add Member', 'Add').disabled).toBe(false);
+  expect(refusesSwipeDown(screenOf('Add Member'))).toBe(false);
   expect(await storedMemberNames(file, 'Brisbane')).toEqual([
     'Taylor',
     'Casey',
   ]);
+});
+
+test('[GROUPS-34.1] asks to add a former member back when Return is pressed with their name', async () => {
+  await startInMembers(['Blake']);
+  await removeMember('Blake');
+  await waitFor(() => expect(membersShown()).not.toContain('Blake'));
+  await openAddMember();
+  fireEvent.changeText(memberNameField(), 'blake');
+
+  await pressReturn(memberNameField());
+
+  expect(alertsShown()).toEqual([addBackAlert('Blake')]);
+  expect(lastAlertButtons()).toEqual(['Cancel', 'Add Back']);
+  expect(isOpen('Add Member')).toBe(true);
+  expect(await storedMemberNames(file, 'Brisbane')).toEqual(['Taylor']);
+});
+
+test('[GROUPS-34.1] asks about the most recently removed of the former members with the name', async () => {
+  await startInMembers(['Blake', 'Casey']);
+  const blake = await storedMember(file, 'Brisbane', 'Blake');
+  const casey = await storedMember(file, 'Brisbane', 'Casey');
+  await removeMember('Blake');
+  await waitFor(() => expect(membersShown()).not.toContain('Blake'));
+  await renameMember('Casey', 'BLAKE');
+  await removeMember('BLAKE');
+  await waitFor(() => expect(membersShown()).not.toContain('BLAKE'));
+  await openAddMember();
+
+  await submit('Add Member', 'Add', 'blake');
+
+  expect(alertsShown()).toEqual([addBackAlert('BLAKE')]);
+  await pressAlertButton('Add Back');
+  await expectClosed('Add Member');
+  await expectMembers(['Taylor (You)', 'BLAKE', 'Add Member']);
+  const members = await storedMembers(file, 'Brisbane');
+  expect(members.map((member) => member.name)).toEqual(['Taylor', 'BLAKE']);
+  expect(members[1]).toEqual({ ...casey, name: 'BLAKE' });
+  // The first Blake stays a former member, kept in the local data.
+  expect(JSON.stringify(localData(file))).toContain(blake.id);
 });
 
 test('[GROUPS-34.1] adds a former member back with their member ID after a restart', async () => {
@@ -695,6 +787,9 @@ test('[GROUPS-34.1] adds a former member back with their member ID after a resta
   await removeMember('Blake');
   await waitFor(() => expect(membersShown()).not.toContain('Blake'));
   await restart(app);
+  // Restarting here keeps the app's modules loaded, so the former member must be
+  // in the local data, as a restart of the phone's app would need.
+  expect(JSON.stringify(localData(file))).toContain(blake.id);
   await openWithMembers('Brisbane', []);
   await openAddMember();
 
@@ -831,6 +926,27 @@ test('[GROUPS-36.1] opens Rename Member over Members with Cancel, Save and the n
   expect(textsOn('Rename Member')).toEqual([]);
 });
 
+test('[GROUPS-36.1] opens Rename Member with your member name, without (You), from your own row', async () => {
+  await startInMembers();
+
+  await chooseForMember('Taylor (You)', 'Rename');
+
+  await expectOpen('Rename Member');
+  await waitFor(() =>
+    expect(memberNameField()).toHaveDisplayValue('Taylor', AS_TYPED),
+  );
+});
+
+test('[GROUPS-36.1] shows Enter member name in Rename Member once the name is cleared', async () => {
+  await startInMembers(['Blake']);
+  await openRenameMember('Blake');
+
+  fireEvent.changeText(memberNameField(), '');
+
+  expect(memberNameField()).toHaveDisplayValue('', AS_TYPED);
+  expect(memberNameField().props.placeholder).toBe('Enter member name');
+});
+
 test('[GROUPS-37.1] disables Save in Rename Member until the name differs from what it was', async () => {
   await startInMembers(['Blake']);
   await openRenameMember('Blake');
@@ -940,6 +1056,21 @@ test("[GROUPS-38.1] keeps a member's new name after a restart", async () => {
   ]);
 });
 
+test('[GROUPS-38.1] saves your new member name, with the same member ID and user ID', async () => {
+  await startInMembers();
+  const [you] = await storedMembers(file, 'Brisbane');
+  await openRenameMember('Taylor (You)', 'Taylor');
+  fireEvent.changeText(memberNameField(), 'Sam');
+
+  await pressOnBar('Rename Member', 'Save');
+
+  await expectClosed('Rename Member');
+  await expectMembers(['Sam (You)', 'Add Member']);
+  expect(await storedMembers(file, 'Brisbane')).toEqual([
+    { ...you, name: 'Sam' },
+  ]);
+});
+
 test('[GROUPS-39.1] says the member could not be saved, and keeps Rename Member open with the new name', async () => {
   await startInMembers(['Blak']);
   await openRenameMember('Blak');
@@ -1023,6 +1154,18 @@ test("[GROUPS-40.1] opens Rename Group over the group's screen with Cancel, Save
   ).toBe(true);
   expect(groupNameField()).toHaveDisplayValue('Brisbane', AS_TYPED);
   expect(groupNameField().props.autoFocus).toBe(true);
+});
+
+test('[GROUPS-40.1] shows Group name in Rename Group once the name is cleared', async () => {
+  await startWithName();
+  await createGroup('Brisbane');
+  await openGroup('Brisbane');
+  await openRenameGroup('Brisbane');
+
+  fireEvent.changeText(groupNameField(), '');
+
+  expect(groupNameField()).toHaveDisplayValue('', AS_TYPED);
+  expect(groupNameField().props.placeholder).toBe('Group name');
 });
 
 test("[GROUPS-41.1] saves the group's new name, trimmed, in its title and on its card", async () => {
@@ -1274,6 +1417,28 @@ test('[GROUPS-44.1] adds one member when Add or Return is pressed again before t
   ]);
 });
 
+test('[GROUPS-44.1] locks Add Member while a former member is added back, without asking again', async () => {
+  await startInMembers(['Blake']);
+  await removeMember('Blake');
+  await waitFor(() => expect(membersShown()).not.toContain('Blake'));
+  await openAddMember();
+  await submit('Add Member', 'Add', 'blake');
+  const writes = holdWrites();
+
+  await pressAlertButton('Add Back');
+
+  expect(barAction('Add Member', 'Cancel').disabled).toBe(true);
+  expect(barAction('Add Member', 'Add').disabled).toBe(true);
+  expect(memberNameField()).toBeDisabled();
+  expect(refusesSwipeDown(screenOf('Add Member'))).toBe(true);
+  await pressReturn(memberNameField());
+  expect(alertsShown()).toEqual([addBackAlert('Blake')]);
+  await writes.release();
+  await settle();
+  await expectClosed('Add Member');
+  await expectMembers(['Taylor (You)', 'Blake', 'Add Member']);
+});
+
 test('[GROUPS-44.1] locks Rename Member while the new name is saved', async () => {
   await startInMembers(['Blak']);
   await openRenameMember('Blak');
@@ -1314,7 +1479,7 @@ test('[GROUPS-44.1] locks Rename Group while the new name is saved', async () =>
   );
 });
 
-test('[GROUPS-44.1] unlocks a name form once its save fails', async () => {
+test('[GROUPS-44.1] unlocks Add Member once its save fails', async () => {
   await startInMembers();
   await openAddMember();
   fireEvent.changeText(memberNameField(), 'Blake');
@@ -1328,6 +1493,40 @@ test('[GROUPS-44.1] unlocks a name form once its save fails', async () => {
   expect(barAction('Add Member', 'Add').disabled).toBe(false);
   expect(memberNameField()).not.toBeDisabled();
   expect(refusesSwipeDown(screenOf('Add Member'))).toBe(false);
+});
+
+test('[GROUPS-44.1] unlocks Rename Member once its save fails', async () => {
+  await startInMembers(['Blak']);
+  await openRenameMember('Blak');
+  fireEvent.changeText(memberNameField(), 'Blake');
+  const writes = holdWrites();
+  await pressOnBar('Rename Member', 'Save');
+
+  await writes.fail();
+  await settle();
+
+  expect(barAction('Rename Member', 'Cancel').disabled).toBe(false);
+  expect(barAction('Rename Member', 'Save').disabled).toBe(false);
+  expect(memberNameField()).not.toBeDisabled();
+  expect(refusesSwipeDown(screenOf('Rename Member'))).toBe(false);
+});
+
+test('[GROUPS-44.1] unlocks Rename Group once its save fails', async () => {
+  await startWithName();
+  await createGroup('Trip');
+  await openGroup('Trip');
+  await openRenameGroup('Trip');
+  fireEvent.changeText(groupNameField(), 'Tokyo');
+  const writes = holdWrites();
+  await pressOnBar('Rename Group', 'Save');
+
+  await writes.fail();
+  await settle();
+
+  expect(barAction('Rename Group', 'Cancel').disabled).toBe(false);
+  expect(barAction('Rename Group', 'Save').disabled).toBe(false);
+  expect(groupNameField()).not.toBeDisabled();
+  expect(refusesSwipeDown(screenOf('Rename Group'))).toBe(false);
 });
 
 test('[GROUPS-45.1] asks the keyboard of each name form to capitalize each word, not to autocorrect, and to show a done key', async () => {
@@ -1362,67 +1561,36 @@ test('[GROUPS-45.1] asks the keyboard of each name form to capitalize each word,
 
 // Your name in the groups
 
-test('[GROUPS-46.1] changes your member name in every group when you save a new name', async () => {
+test('[GROUPS-46.1] leaves your member name in each group as it was when you save a new name in Settings', async () => {
   await startWithName('Taylor');
   await createGroup('Brisbane');
-  await createGroup('Tokyo');
   const before = await storedGroups(file);
 
   await saveName('Sam');
 
-  expect(await storedGroups(file)).toEqual(
-    before.map((group) => ({
-      ...group,
-      members: group.members.map((member) => ({ ...member, name: 'Sam' })),
-    })),
-  );
+  expect(await storedGroups(file)).toEqual(before);
   await openWithMembers('Brisbane', []);
-  await expectMembers(['Sam (You)', 'Add Member']);
+  await expectMembers(['Taylor (You)', 'Add Member']);
 });
 
-test("[GROUPS-46.1] leaves other members' names as they were when you save a new name", async () => {
-  await startInMembers(['Blake']);
-
-  await saveName('Sam');
-
-  expect(await storedMemberNames(file, 'Brisbane')).toEqual(['Sam', 'Blake']);
-});
-
-test('[GROUPS-46.1] leaves your name and your member names as they were whichever write of the new name fails', async () => {
-  await startWithName('Taylor');
-  await createGroup('Brisbane');
-  await createGroup('Tokyo');
-  await tapTab('Settings');
-  const before = localData(file);
-  const field = () => screen.getByLabelText('Your name');
-  fireEvent.changeText(field(), 'Sam');
-
-  let writesThrough = 0;
-  for (; writesThrough < 20; writesThrough += 1) {
-    clearAlerts();
-    failWritesAfter(writesThrough);
-    act(() => {
-      fireEvent(field(), 'submitEditing', { nativeEvent: { text: 'Sam' } });
-    });
-    await settle();
-    if (alertsShown().length === 0) break;
-    expect(alertsShown()).toEqual([SETTINGS_FAILED]);
-    expect(localData(file)).toEqual(before);
-  }
-
-  expect(writesThrough).toBeGreaterThan(0);
-  expect(await storedMemberNames(file, 'Brisbane')).toEqual(['Sam']);
-  expect(await storedMemberNames(file, 'Tokyo')).toEqual(['Sam']);
-});
-
-test('[GROUPS-46.1] keeps your new member name after a restart', async () => {
+test('[GROUPS-46.1] leaves your name and your member names in other groups as they were when you rename yourself in a group', async () => {
   const app = await startWithName('Taylor');
   await createGroup('Brisbane');
-  await saveName('Sam');
+  await createGroup('Tokyo');
+  await openWithMembers('Brisbane', []);
+  await openRenameMember('Taylor (You)', 'Taylor');
+  fireEvent.changeText(memberNameField(), 'Sam');
 
+  await pressOnBar('Rename Member', 'Save');
+
+  await expectMembers(['Sam (You)', 'Add Member']);
+  expect(await storedMemberNames(file, 'Tokyo')).toEqual(['Taylor']);
+  await tapTab('Settings');
+  expect(screen.getByLabelText('Your name')).toHaveDisplayValue('Taylor');
+  // Your name is read back from the local data after a restart.
   await restart(app);
-
-  expect(await storedMemberNames(file, 'Brisbane')).toEqual(['Sam']);
+  await tapTab('Settings');
+  expect(screen.getByLabelText('Your name')).toHaveDisplayValue('Taylor');
 });
 
 // The shell's rules on the new screens

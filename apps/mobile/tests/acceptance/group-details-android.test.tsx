@@ -22,14 +22,18 @@ import {
   ALREADY_EXISTS,
   NOT_FOUND,
   RETAINED,
+  addBackAlert,
   alertsShown,
+  barAction,
   barTitled,
+  dismissLastAlert,
   expectClosed,
   expectOpen,
   groupNameField,
   headerButtons,
   isOpen,
   lastAlertButtons,
+  lastAlertCancelable,
   memberNameField,
   membersShown,
   openAddMember,
@@ -175,13 +179,42 @@ test("[GROUPS-25.1] opens a dialog titled with the member's name when their row 
 
   const menu = await tapMember('Blake');
 
+  // Android's dialog ignores a button's style, so there is no destructive one to check.
   expect(menu).toMatchObject({
     title: 'Blake',
     message: RETAINED,
     items: ['Rename', 'Remove from Group', 'Cancel'],
-    destructive: ['Remove from Group'],
     cancel: 'Cancel',
   });
+});
+
+test('[GROUPS-25.1] opens your own dialog, titled with your member name and offering only Rename, when your row is tapped on Android', async () => {
+  await startInMembers(['Blake']);
+
+  const menu = await tapMember('Taylor (You)');
+
+  expect(menu).toMatchObject({
+    title: 'Taylor',
+    items: ['Rename', 'Cancel'],
+    cancel: 'Cancel',
+    cancelable: true,
+  });
+  expect(menu?.message ?? '').toBe('');
+});
+
+test("[GROUPS-25.1] lets Back or a tap outside close a member's dialog without changing anything", async () => {
+  await startInMembers(['Blake']);
+  const menu = await tapMember('Blake');
+  expect(menu?.cancelable).toBe(true);
+
+  await menu?.dismiss();
+
+  expect(membersShown()).toEqual(['Taylor (You)', 'Blake', 'Add Member']);
+  expect(isOpen('Rename Member')).toBe(false);
+  expect(await storedMemberNames(file, 'Brisbane')).toEqual([
+    'Taylor',
+    'Blake',
+  ]);
 });
 
 test('[GROUPS-27.1] keeps Members open when Back is pressed while a member is removed', async () => {
@@ -199,6 +232,25 @@ test('[GROUPS-27.1] keeps Members open when Back is pressed while a member is re
   );
   expect(isOpen('Members')).toBe(true);
   expect(exitApp).not.toHaveBeenCalled();
+});
+
+test('[GROUPS-34.1] stays in Add Member with the name when Back or a tap outside closes the alert that asks to add a former member back', async () => {
+  await startInMembers(['Blake']);
+  await removeMember('Blake');
+  await waitFor(() => expect(membersShown()).not.toContain('Blake'));
+  await openAddMember();
+  fireEvent.changeText(memberNameField(), 'blake');
+  await pressOnBar('Add Member', 'Add');
+  expect(alertsShown().at(-1)).toEqual(addBackAlert('Blake'));
+  expect(lastAlertCancelable()).toBe(true);
+
+  await dismissLastAlert();
+
+  expect(isOpen('Add Member')).toBe(true);
+  expect(memberNameField()).toHaveDisplayValue('blake');
+  expect(memberNameField()).not.toBeDisabled();
+  expect(barAction('Add Member', 'Add').disabled).toBe(false);
+  expect(await storedMemberNames(file, 'Brisbane')).toEqual(['Taylor']);
 });
 
 test('[GROUPS-29.1] opens Add Member rising from the bottom with Cancel on the left and Add on the right on Android', async () => {
@@ -269,7 +321,7 @@ test('[GROUPS-43.1] closes each name form with Back without saving', async () =>
   expect(exitApp).not.toHaveBeenCalled();
 });
 
-test('[GROUPS-44.1] keeps a name form open when Back is pressed while it saves', async () => {
+test('[GROUPS-44.1] keeps Add Member open when Back is pressed while it saves', async () => {
   await startInMembers();
   await openAddMember();
   fireEvent.changeText(memberNameField(), 'Blake');
@@ -287,6 +339,46 @@ test('[GROUPS-44.1] keeps a name form open when Back is pressed while it saves',
     'Taylor',
     'Blake',
   ]);
+  expect(exitApp).not.toHaveBeenCalled();
+});
+
+test('[GROUPS-44.1] keeps Rename Member open when Back is pressed while it saves', async () => {
+  await startInMembers(['Blak']);
+  await openRenameMember('Blak');
+  fireEvent.changeText(memberNameField(), 'Blake');
+  const writes = holdWrites();
+  await pressOnBar('Rename Member', 'Save');
+
+  await pressBack();
+
+  expect(isOpen('Rename Member')).toBe(true);
+  await writes.release();
+  await settle();
+  await expectClosed('Rename Member');
+  expect(isOpen('Members')).toBe(true);
+  expect(await storedMemberNames(file, 'Brisbane')).toEqual([
+    'Taylor',
+    'Blake',
+  ]);
+  expect(exitApp).not.toHaveBeenCalled();
+});
+
+test('[GROUPS-44.1] keeps Rename Group open when Back is pressed while it saves', async () => {
+  await startWithName();
+  await createGroup('Trip');
+  await openGroup('Trip');
+  await openRenameGroup('Trip');
+  fireEvent.changeText(groupNameField(), 'Tokyo');
+  const writes = holdWrites();
+  await pressOnBar('Rename Group', 'Save');
+
+  await pressBack();
+
+  expect(isOpen('Rename Group')).toBe(true);
+  await writes.release();
+  await settle();
+  await expectClosed('Rename Group');
+  expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups', 'Tokyo']);
   expect(exitApp).not.toHaveBeenCalled();
 });
 
