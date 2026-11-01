@@ -4,7 +4,12 @@ import * as path from 'node:path';
 import { Alert, BackHandler, DeviceEventEmitter } from 'react-native';
 import { act, fireEvent, waitFor, within } from '@testing-library/react-native';
 import type { Database } from '../../src/storage';
-import { navigationBarTitles, selectedTab, tab } from './shell-tabs-app';
+import {
+  navigationBarTitles,
+  selectedTab,
+  tab,
+  tapTab,
+} from './shell-tabs-app';
 import { createGroup, saveName, startGroupsApp } from './groups-app';
 import {
   allowWrites,
@@ -289,6 +294,65 @@ test('[GROUPS-40.1] opens Rename Group rising from the bottom with Cancel on the
     left: ['Cancel'],
     right: ['Save'],
   });
+});
+
+// On Android the forms are in the Groups tab's stack, so the tab bar stays
+// reachable while one saves.
+
+test('[GROUPS-31.1] closes Add Member once the new member is saved, even when Settings was selected while it saved', async () => {
+  await startInMembers();
+  await openAddMember();
+  fireEvent.changeText(memberNameField(), 'Blake');
+  const writes = holdWrites();
+  await pressOnBar('Add Member', 'Add');
+  await tapTab('Settings');
+
+  await writes.release();
+  await settle();
+  await tapTab('Groups');
+
+  await expectClosed('Add Member');
+  await waitFor(() =>
+    expect(membersShown()).toEqual(['Taylor (You)', 'Blake', 'Add Member']),
+  );
+});
+
+test("[GROUPS-38.1] closes Rename Member once the member's new name is saved, even when Settings was selected while it saved", async () => {
+  await startInMembers(['Blak']);
+  await openRenameMember('Blak');
+  fireEvent.changeText(memberNameField(), 'Blake');
+  const writes = holdWrites();
+  await pressOnBar('Rename Member', 'Save');
+  await tapTab('Settings');
+
+  await writes.release();
+  await settle();
+  await tapTab('Groups');
+
+  await expectClosed('Rename Member');
+  await waitFor(() =>
+    expect(membersShown()).toEqual(['Taylor (You)', 'Blake', 'Add Member']),
+  );
+});
+
+test("[GROUPS-41.1] closes Rename Group once the group's new name is saved, even when Settings was selected while it saved", async () => {
+  await startWithName();
+  await createGroup('Trip');
+  await openGroup('Trip');
+  await openRenameGroup('Trip');
+  fireEvent.changeText(groupNameField(), 'Tokyo');
+  const writes = holdWrites();
+  await pressOnBar('Rename Group', 'Save');
+  await tapTab('Settings');
+
+  await writes.release();
+  await settle();
+  await tapTab('Groups');
+
+  await expectClosed('Rename Group');
+  await waitFor(() =>
+    expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups', 'Tokyo']),
+  );
 });
 
 test('[GROUPS-43.1] closes each name form with Back without saving', async () => {
