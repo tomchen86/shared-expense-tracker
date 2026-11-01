@@ -25,11 +25,11 @@ type FormState = { kind: 'add' } | { kind: 'edit'; category: Category };
 export function ManageCategoriesScreen() {
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
-  const { scopeKind, spaceId } = useLocalSearchParams<{
-    scopeKind: string;
-    spaceId: string;
-  }>();
-  const groupId = scopeKind === 'group' && spaceId ? spaceId : undefined;
+  const { scopeKind, spaceId } = useLocalSearchParams();
+  const groupId =
+    scopeKind === 'group' && typeof spaceId === 'string' && spaceId
+      ? spaceId
+      : undefined;
   const managedSpaceId = groupId ?? identity.personalSpaceId;
   const [checkedGroup, setCheckedGroup] = useState<{
     id: string | undefined;
