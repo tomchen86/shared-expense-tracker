@@ -19,7 +19,7 @@ A debug build from `expo run:android` works as the iOS one does in ADR-0008: it 
 ## Consequences
 
 - Android hand checks see the app's own native code, so they no longer report bugs that only Expo Go has.
-- Each Android hand check builds the app, so a change that breaks the Android build shows up at the next one, not before the first release.
+- Each Android hand check builds the app, so a change that breaks the Android build shows up at the next one rather than at the first release.
 - Android hand checks take longer to start: the first build in each checkout takes minutes, a change to native configuration needs a rebuild, and the build and the emulator use more disk and memory than Expo Go. JavaScript changes still reload through Metro.
 - Implementers who check Android need the Android SDK, a JDK, and an emulator.
 - Expo Go can still open the app, but no hand check relies on it.
