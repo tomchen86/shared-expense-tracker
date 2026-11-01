@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { useLocalDatabase } from '../shell';
 import { GroupedSection } from '../ui/grouped-section';
@@ -68,6 +68,7 @@ function NameEditor({
   member?: GroupMember;
 }) {
   const database = useLocalDatabase();
+  const navigation = useNavigation();
   const colors = useThemeColors();
   const isGroup = form === 'Rename Group';
   const adding = form === 'Add Member';
@@ -82,8 +83,8 @@ function NameEditor({
   const canSave = !!name.trim() && (adding || name.trim() !== initialName);
   usePreventRemove(saving, () => {});
   useEffect(() => {
-    if (status === 'saved') router.back();
-  }, [status]);
+    if (status === 'saved') navigation.goBack();
+  }, [navigation, status]);
 
   function showDuplicate() {
     setDuplicate(true);
@@ -156,7 +157,7 @@ function NameEditor({
           label: 'Cancel',
           disabled: saving,
           onPress: () => {
-            if (!submitting.current) router.back();
+            if (!submitting.current) navigation.goBack();
           },
         }}
         confirm={{
