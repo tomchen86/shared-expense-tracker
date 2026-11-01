@@ -4,7 +4,12 @@ import * as path from 'node:path';
 import { Alert, BackHandler, DeviceEventEmitter } from 'react-native';
 import { act, fireEvent, within } from '@testing-library/react-native';
 import type { Database } from '../../src/storage';
-import { navigationBarTitles, selectedTab, tab } from './shell-tabs-app';
+import {
+  navigationBarTitles,
+  selectedTab,
+  tab,
+  tapTab,
+} from './shell-tabs-app';
 import {
   cardNames,
   createGroup,
@@ -113,6 +118,25 @@ test("[GROUPS-6.1] puts Cancel on the left and Create on the right of New Group'
   // Android draws no title bar on a form sheet (react-native-screens), which would
   // leave New Group without its title bar actions.
   expect(newGroupScreen().props.stackPresentation).not.toBe('formSheet');
+});
+
+test('[GROUPS-8.1] closes New Group once the group is created, even when Settings was selected while it saved', async () => {
+  // On Android, New Group is in the Groups tab's stack, so the tab bar stays
+  // reachable while the group is created.
+  await startWithName();
+  await openNewGroup();
+  typeName('Brisbane');
+  const writes = holdWrites();
+  await press('Create');
+  await tapTab('Settings');
+
+  await writes.release();
+  await settle();
+  await tapTab('Groups');
+
+  await expectNewGroupClosed();
+  expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups']);
+  expect(cardNames()).toEqual(['Open Brisbane']);
 });
 
 test('[GROUPS-11.1] keeps New Group open when Back is pressed while the group is created', async () => {

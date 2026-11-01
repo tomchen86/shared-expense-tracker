@@ -7,7 +7,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { Stack, useNavigation } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { GroupedSection } from '../ui/grouped-section';
@@ -18,6 +18,7 @@ import { useRequireName } from './use-require-name';
 
 export function NewGroupScreen() {
   const database = useLocalDatabase();
+  const navigation = useNavigation();
   const identity = useLocalIdentity();
   const requireName = useRequireName();
   const colors = useThemeColors();
@@ -30,8 +31,8 @@ export function NewGroupScreen() {
   usePreventRemove(saving, () => {});
   // Release the navigation guard before dismissing the successfully saved form.
   useEffect(() => {
-    if (status === 'saved') router.back();
-  }, [status]);
+    if (status === 'saved') navigation.goBack();
+  }, [navigation, status]);
 
   async function submit() {
     if (submitting.current || !name.trim() || requireName()) return;
@@ -57,7 +58,7 @@ export function NewGroupScreen() {
         cancel={{
           label: 'Cancel',
           disabled: saving,
-          onPress: () => router.back(),
+          onPress: () => navigation.goBack(),
         }}
         confirm={{
           label: 'Create',

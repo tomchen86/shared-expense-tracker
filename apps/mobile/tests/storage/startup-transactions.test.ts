@@ -261,7 +261,10 @@ test('adding expense storage preserves groups, identity and existing migration r
     "INSERT INTO group_members (id, groupId, userId, name) VALUES ('member', 'trip', ?, 'Taylor')",
     [identity.userId],
   );
-  const groups = await listGroups(database);
+  const groups = await database.all('SELECT * FROM groups');
+  const members = await database.all(
+    'SELECT id, groupId, userId, name FROM group_members',
+  );
   const records = await database.all(
     'SELECT * FROM _migrations ORDER BY position',
   );
@@ -270,11 +273,64 @@ test('adding expense storage preserves groups, identity and existing migration r
     initializeDatabase(database, appMigrations, false, ensureLocalIdentity),
   ).resolves.toEqual(identity);
 
-  expect(await listGroups(database)).toEqual(groups);
+  expect(await database.all('SELECT * FROM groups')).toEqual(groups);
+  expect(
+    await database.all('SELECT id, groupId, userId, name FROM group_members'),
+  ).toEqual(members);
   expect(
     await database.all('SELECT * FROM _migrations ORDER BY position LIMIT ?', [
       previous.length,
     ]),
   ).toEqual(records);
   expect(await listExpenses(database)).toEqual([]);
+});
+
+test('adding member lifecycle storage preserves existing members, their order and migration records', async () => {
+  const previous = appMigrations.slice(
+    0,
+    appMigrations.indexOf(groupMigrations[1]),
+  );
+  const identity = await initializeDatabase(
+    database,
+    previous,
+    false,
+    ensureLocalIdentity,
+  );
+  await database.exec(`
+    INSERT INTO groups VALUES ('trip', 'Trip', 1), ('home', 'Home', 2);
+    INSERT INTO group_members (id, groupId, userId, name) VALUES
+      ('taylor', 'trip', 'user-taylor', 'Taylor'),
+      ('casey', 'trip', 'user-casey', 'Casey'),
+      ('blake', 'trip', 'user-blake', 'Blake'),
+      ('sam', 'home', 'user-sam', 'Sam');
+  `);
+  const members = await database.all(
+    'SELECT id, groupId, userId, name FROM group_members ORDER BY rowid',
+  );
+  const records = await database.all(
+    'SELECT * FROM _migrations ORDER BY position',
+  );
+
+  await expect(
+    initializeDatabase(database, appMigrations, false, ensureLocalIdentity),
+  ).resolves.toEqual(identity);
+  expect(
+    await database.all(
+      'SELECT id, groupId, userId, name FROM group_members ORDER BY position',
+    ),
+  ).toEqual(members);
+  expect(
+    (await listGroups(database)).map((group) => [
+      group.name,
+      group.members.map((member) => member.name),
+    ]),
+  ).toEqual([
+    ['Trip', ['Taylor', 'Casey', 'Blake']],
+    ['Home', ['Sam']],
+  ]);
+  expect(
+    await database.all('SELECT * FROM _migrations ORDER BY position LIMIT ?', [
+      previous.length,
+    ]),
+  ).toEqual(records);
 });

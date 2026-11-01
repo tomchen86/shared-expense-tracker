@@ -10,4 +10,17 @@ export const groupMigrations: readonly string[] = [
     userId TEXT NOT NULL,
     name TEXT NOT NULL
   )`,
+  `CREATE TABLE group_members_next (
+    id TEXT PRIMARY KEY NOT NULL,
+    groupId TEXT NOT NULL REFERENCES groups(id),
+    userId TEXT,
+    name TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    removed INTEGER NOT NULL DEFAULT 0 CHECK (removed IN (0, 1)),
+    UNIQUE (groupId, position)
+  );
+  INSERT INTO group_members_next (id, groupId, userId, name, position)
+    SELECT id, groupId, userId, name, rowid FROM group_members;
+  DROP TABLE group_members;
+  ALTER TABLE group_members_next RENAME TO group_members`,
 ];
