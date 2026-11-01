@@ -64,6 +64,7 @@ import {
   switchPhoneTo,
   textsWithoutColor,
 } from './shell-appearance-app';
+import { createGroup, saveName, storedGroups } from './groups-app';
 import { push, selectedTab } from './shell-tabs-app';
 import type { Database } from '../../src/storage';
 
@@ -141,12 +142,13 @@ const PALETTE = [
 const AS_TYPED = { normalizer: (text: string) => text };
 
 let directory: string;
+let file: string;
 let alerts: ReturnType<typeof watchAlerts>;
 
 beforeEach(() => {
   jest.clearAllMocks();
   directory = fs.mkdtempSync(path.join(os.tmpdir(), 'expenses-'));
-  const file = path.join(directory, 'app.db');
+  file = path.join(directory, 'app.db');
   mockOpen = async () => phoneDatabase(file);
   allowWrites();
   resetPhone();
@@ -426,7 +428,7 @@ test('[LEDGER-16.1] shows the current name of a renamed category', async () => {
   expect(formCategory()).toBe('Groceries');
 });
 
-test("[LEDGER-17.1] lists the categories in their stored order with the form's category selected", async () => {
+test("[LEDGER-17.2] lists the categories in their stored order with the form's category selected", async () => {
   await startExpenses();
   await openNewExpense();
 
@@ -437,7 +439,7 @@ test("[LEDGER-17.1] lists the categories in their stored order with the form's c
   );
 });
 
-test('[LEDGER-17.1] lists a new category after Uncategorized', async () => {
+test('[LEDGER-17.2] lists a new category after Uncategorized', async () => {
   await startExpenses();
   await addCategory('Gym');
   await openNewExpense();
@@ -448,7 +450,23 @@ test('[LEDGER-17.1] lists a new category after Uncategorized', async () => {
   expect(categoryOptions(names).map(([name]) => name)).toEqual(names);
 });
 
-test('[LEDGER-17.1] selects the category pressed and goes back to the form', async () => {
+test("[LEDGER-17.2] lists only the personal space's categories, without a group's", async () => {
+  await startExpenses();
+  await saveName('Taylor');
+  await createGroup('Brisbane');
+  const [brisbane] = await storedGroups(file);
+  await addCategory('Flights', brisbane.id);
+  await editCategory('Shopping', 'Groceries', undefined, brisbane.id);
+  await openNewExpense();
+
+  await openCategoryList();
+
+  expect(categoryOptions([...DEFAULT_NAMES, 'Flights', 'Groceries'])).toEqual(
+    DEFAULT_NAMES.map((name) => [name, name === 'Food & Dining']),
+  );
+});
+
+test('[LEDGER-17.2] selects the category pressed and goes back to the form', async () => {
   await startExpenses();
   await openNewExpense();
 
@@ -462,7 +480,7 @@ test('[LEDGER-17.1] selects the category pressed and goes back to the form', asy
   ).toEqual([['Shopping', true]]);
 });
 
-test('[LEDGER-17.1] keeps the category when the list is cancelled', async () => {
+test('[LEDGER-17.2] keeps the category when the list is cancelled', async () => {
   await startExpenses();
   await openNewExpense();
   await openCategoryList();

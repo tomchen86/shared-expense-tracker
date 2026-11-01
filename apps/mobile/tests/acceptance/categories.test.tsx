@@ -18,11 +18,19 @@ import {
   tab,
 } from './shell-tabs-app';
 import {
+  CREATE_FAILED,
+  alertsShown,
   createGroup,
+  expectNewGroupOpen,
+  localData,
+  newGroupIsOpen,
+  press as pressNewGroupButton,
+  pressAddGroup,
   readIdentity,
   saveName,
   startGroupsApp,
   storedGroups,
+  typeName,
 } from './groups-app';
 import { listCategories, type Category } from '../../src/categories';
 import type { LocalIdentity } from '../../src/shell';
@@ -489,19 +497,33 @@ async function storedCategories(): Promise<Category[]> {
 const storedCategory = async (name: string) =>
   (await storedCategories()).find((category) => category.name === name);
 
-test('[CATEGORIES-6.1] lists the nine default categories in order with their colors on first start', async () => {
+/** The stored categories of a scope, by its space ID, as [name, color] in their stored order. */
+const namesAndColorsIn = async (spaceId: string) =>
+  (await storedCategories())
+    .filter((category) => category.spaceId === spaceId)
+    .map(({ name, color }) => [name, color]);
+
+test('[CATEGORIES-6.2] lists the nine default categories in order with their colors on first start', async () => {
   await openManageCategories();
 
   expect(categoryList()).toEqual(DEFAULTS);
 });
 
-test('[CATEGORIES-6.1] does not create the default categories again when the app restarts', async () => {
+test('[CATEGORIES-6.2] does not create the default categories again when the app restarts', async () => {
   const app = await openManageCategories();
   app.unmount();
 
   await openManageCategories();
 
   expect(categoryList()).toEqual(DEFAULTS);
+});
+
+test('[CATEGORIES-6.2] gives the nine default categories your personal space on first start', async () => {
+  running = await startGroupsApp('/groups');
+  const identity = await readIdentity();
+
+  expect(await namesAndColorsIn(identity.personalSpaceId)).toEqual(DEFAULTS);
+  expect(await storedCategories()).toHaveLength(DEFAULTS.length);
 });
 
 test('[CATEGORIES-7.2] lists the categories under CATEGORIES, with Add category in the navigation bar', async () => {
@@ -543,7 +565,7 @@ test('[CATEGORIES-7.2] keeps the stored order in each scope when categories of o
   expect(listedNames()).toEqual([...DEFAULT_NAMES, 'Flights']);
 });
 
-test('[CATEGORIES-8.1] opens New Category with an empty name and the first unused color selected', async () => {
+test('[CATEGORIES-8.2] opens New Category with an empty name and the first unused color selected', async () => {
   await openManageCategories();
 
   await openNewCategory();
@@ -552,7 +574,7 @@ test('[CATEGORIES-8.1] opens New Category with an empty name and the first unuse
   expect(selectedColor()).toBe('#43A047');
 });
 
-test('[CATEGORIES-8.1] selects the next unused color once a new category takes the first', async () => {
+test('[CATEGORIES-8.2] selects the next unused color once a new category takes the first', async () => {
   await openManageCategories();
   await addCategory('Gym');
 
@@ -561,7 +583,7 @@ test('[CATEGORIES-8.1] selects the next unused color once a new category takes t
   expect(selectedColor()).toBe('#00ACC1');
 });
 
-test('[CATEGORIES-8.1] opens Edit Category with the name and color of the category pressed', async () => {
+test('[CATEGORIES-8.2] opens Edit Category with the name and color of the category pressed', async () => {
   await openManageCategories();
 
   await openCategory('Shopping');
@@ -570,7 +592,7 @@ test('[CATEGORIES-8.1] opens Edit Category with the name and color of the catego
   expect(selectedColor()).toBe('#FBC02D');
 });
 
-test('[CATEGORIES-8.1] selects the first color that no category of any scope uses', async () => {
+test("[CATEGORIES-8.2] selects the first color this scope leaves unused, whatever another scope's categories use", async () => {
   const groups = await createGroups('Brisbane');
   await reopenManageCategories();
   await addCategory('Gym', '#43A047');
@@ -578,10 +600,10 @@ test('[CATEGORIES-8.1] selects the first color that no category of any scope use
 
   await openNewCategory();
 
-  expect(selectedColor()).toBe('#00ACC1');
+  expect(selectedColor()).toBe('#43A047');
 });
 
-test('[CATEGORIES-9.1] shows Cancel, Add, the name field and the 13 colors, with used colors disabled', async () => {
+test('[CATEGORIES-9.2] shows Cancel, Add, the name field and the 13 colors, with used colors disabled', async () => {
   await openManageCategories();
 
   await openNewCategory();
@@ -600,7 +622,7 @@ test('[CATEGORIES-9.1] shows Cancel, Add, the name field and the 13 colors, with
   expect(colorButtons()).toEqual(expectedColors(DEFAULT_COLORS, '#43A047'));
 });
 
-test("[CATEGORIES-9.1] shows Save and leaves the category's own color available when editing", async () => {
+test("[CATEGORIES-9.2] shows Save and leaves the category's own color available when editing", async () => {
   await openManageCategories();
 
   await openCategory('Shopping');
@@ -614,7 +636,7 @@ test("[CATEGORIES-9.1] shows Save and leaves the category's own color available 
   );
 });
 
-test('[CATEGORIES-9.1] selects a color when it is pressed, but not a used one', async () => {
+test('[CATEGORIES-9.2] selects a color when it is pressed, but not a used one', async () => {
   await openManageCategories();
   await openNewCategory();
 
@@ -624,7 +646,7 @@ test('[CATEGORIES-9.1] selects a color when it is pressed, but not a used one', 
   expect(colorButtons()).toEqual(expectedColors(DEFAULT_COLORS, '#C62828'));
 });
 
-test("[CATEGORIES-9.1] disables the color of another scope's category", async () => {
+test("[CATEGORIES-9.2] leaves the color of another scope's category free", async () => {
   const groups = await createGroups('Brisbane');
   await openGroupCategories(groups.Brisbane);
   await addCategory('Flights', '#C62828');
@@ -632,9 +654,7 @@ test("[CATEGORIES-9.1] disables the color of another scope's category", async ()
 
   await openNewCategory();
 
-  expect(colorButtons()).toEqual(
-    expectedColors([...DEFAULT_COLORS, '#C62828'], '#43A047'),
-  );
+  expect(colorButtons()).toEqual(expectedColors(DEFAULT_COLORS, '#43A047'));
 });
 
 test('[CATEGORIES-10.1] disables Add until the name has more than spaces', async () => {
@@ -667,7 +687,7 @@ test('[CATEGORIES-10.1] keeps 50 characters when 51 are typed into the name', as
   expect(nameField()).toHaveDisplayValue('a'.repeat(50), AS_TYPED);
 });
 
-test('[CATEGORIES-11.1] adds the trimmed name in the selected color and closes the form', async () => {
+test('[CATEGORIES-11.2] adds the trimmed name in the selected color and closes the form', async () => {
   await openManageCategories();
   await openNewCategory();
   fireEvent.changeText(nameField(), ' Gym ');
@@ -679,7 +699,7 @@ test('[CATEGORIES-11.1] adds the trimmed name in the selected color and closes t
   expect(categoryList()).toEqual([...DEFAULTS, ['Gym', '#C62828']]);
 });
 
-test('[CATEGORIES-11.1] renames and recolors a default category', async () => {
+test('[CATEGORIES-11.2] renames and recolors a default category', async () => {
   await openManageCategories();
 
   await editCategory('Shopping', 'Groceries', '#43A047');
@@ -687,7 +707,7 @@ test('[CATEGORIES-11.1] renames and recolors a default category', async () => {
   expect(categoryList()).toEqual(replacing(2, ['Groceries', '#43A047']));
 });
 
-test("[CATEGORIES-11.1] saves a change of letter case to the category's own name", async () => {
+test("[CATEGORIES-11.2] saves a change of letter case to the category's own name", async () => {
   await openManageCategories();
   await openCategory('Shopping');
   fireEvent.changeText(nameField(), 'SHOPPING');
@@ -698,7 +718,7 @@ test("[CATEGORIES-11.1] saves a change of letter case to the category's own name
   expect(categoryList()).toEqual(replacing(2, ['SHOPPING', '#FBC02D']));
 });
 
-test('[CATEGORIES-11.1] adds one category when Add is pressed twice before the save finishes', async () => {
+test('[CATEGORIES-11.2] adds one category when Add is pressed twice before the save finishes', async () => {
   await openManageCategories();
   await openNewCategory();
   fireEvent.changeText(nameField(), 'Gym');
@@ -716,7 +736,25 @@ test('[CATEGORIES-11.1] adds one category when Add is pressed twice before the s
   expect(categoryList()).toEqual([...DEFAULTS, ['Gym', '#43A047']]);
 });
 
-test('[CATEGORIES-12.1] keeps New Category open and says below the name that the name exists', async () => {
+test.each(["Tokyo's Group Categories", MANAGE_CATEGORIES])(
+  "[CATEGORIES-11.2] adds a category in %s with the name of Brisbane's category",
+  async (where) => {
+    const groups = await createGroups('Brisbane', 'Tokyo');
+    await openGroupCategories(groups.Brisbane);
+    await addCategory('Flights');
+    if (where === MANAGE_CATEGORIES) await reopenManageCategories();
+    else await openGroupCategories(groups.Tokyo);
+    await openNewCategory();
+    fireEvent.changeText(nameField(), 'flights');
+
+    await press('Add');
+
+    await expectFormClosed();
+    expect(listedNames()).toEqual([...DEFAULT_NAMES, 'flights']);
+  },
+);
+
+test('[CATEGORIES-12.2] keeps New Category open and says below the name that the name exists', async () => {
   await openManageCategories();
   await openNewCategory();
   fireEvent.changeText(nameField(), 'food & dining');
@@ -738,7 +776,7 @@ test('[CATEGORIES-12.1] keeps New Category open and says below the name that the
   expect(categoryList()).toEqual(DEFAULTS);
 });
 
-test("[CATEGORIES-12.1] keeps Edit Category open when the name is another category's", async () => {
+test("[CATEGORIES-12.2] keeps Edit Category open when the name is another category's", async () => {
   await openManageCategories();
   await openCategory('Shopping');
   fireEvent.changeText(nameField(), ' travel ');
@@ -753,7 +791,7 @@ test("[CATEGORIES-12.1] keeps Edit Category open when the name is another catego
   expect(categoryList()).toEqual(DEFAULTS);
 });
 
-test('[CATEGORIES-12.1] stops saying the name exists once the name is edited', async () => {
+test('[CATEGORIES-12.2] stops saying the name exists once the name is edited', async () => {
   await openManageCategories();
   await openNewCategory();
   fireEvent.changeText(nameField(), 'food & dining');
@@ -765,28 +803,7 @@ test('[CATEGORIES-12.1] stops saying the name exists once the name is edited', a
   expect(screen.queryByText(ALREADY_EXISTS)).toBeNull();
 });
 
-test.each(["Tokyo's Group Categories", MANAGE_CATEGORIES])(
-  "[CATEGORIES-12.1] says the name exists in %s when Brisbane's category has it",
-  async (where) => {
-    const groups = await createGroups('Brisbane', 'Tokyo');
-    await openGroupCategories(groups.Brisbane);
-    await addCategory('Flights');
-    if (where === MANAGE_CATEGORIES) await reopenManageCategories();
-    else await openGroupCategories(groups.Tokyo);
-    await openNewCategory();
-    fireEvent.changeText(nameField(), 'flights');
-
-    await press('Add');
-
-    expect(showsTitle('New Category')).toBe(true);
-    expect(screen.getByText(ALREADY_EXISTS)).toBeOnTheScreen();
-    await press('Cancel');
-    await expectFormClosed();
-    expect(categoryList()).toEqual(DEFAULTS);
-  },
-);
-
-test('[CATEGORIES-13.1] selects no color, disables Add and says so once all 13 colors are used', async () => {
+test('[CATEGORIES-13.2] selects no color, disables Add and says so once all 13 colors are used', async () => {
   await openManageCategories();
   await useAllColors();
 
@@ -798,7 +815,7 @@ test('[CATEGORIES-13.1] selects no color, disables Add and says so once all 13 c
   expect(formButton('Add').disabled).toBe(true);
 });
 
-test('[CATEGORIES-13.1] lets a category keep its own color once all 13 colors are used', async () => {
+test('[CATEGORIES-13.2] lets a category keep its own color once all 13 colors are used', async () => {
   await openManageCategories();
   await useAllColors();
 
@@ -814,20 +831,18 @@ test('[CATEGORIES-13.1] lets a category keep its own color once all 13 colors ar
   expect(screen.queryByText(ALL_COLORS_USED)).toBeNull();
 });
 
-test('[CATEGORIES-13.1] counts the colors of every scope toward all 13', async () => {
-  const groups = await createGroups('Brisbane', 'Tokyo');
+test("[CATEGORIES-13.2] leaves a group's colors free once Manage Categories uses all 13", async () => {
+  const groups = await createGroups('Brisbane');
   await reopenManageCategories();
-  await addCategory('Gym');
-  await addCategory('Pets');
+  await useAllColors();
   await openGroupCategories(groups.Brisbane);
-  await addCategory('Flights');
-  await addCategory('Hotels');
-  await openGroupCategories(groups.Tokyo);
 
   await openNewCategory();
 
-  expect(colorButtons()).toEqual(expectedColors(PALETTE));
-  expect(screen.getByText(ALL_COLORS_USED)).toBeOnTheScreen();
+  expect(selectedColor()).toBe('#43A047');
+  expect(screen.queryByText(ALL_COLORS_USED)).toBeNull();
+  fireEvent.changeText(nameField(), 'Garden');
+  expect(formButton('Add').disabled).toBe(false);
 });
 
 test('[CATEGORIES-14.1] opens no form when Uncategorized is pressed', async () => {
@@ -1058,7 +1073,7 @@ test('[CATEGORIES-19.1] creates all nine default categories on the next start on
   expect(categoryList()).toEqual(DEFAULTS);
 });
 
-test('[CATEGORIES-22.1] lists the default and personal categories, without group categories, when opened from Settings', async () => {
+test('[CATEGORIES-22.2] lists the default and personal categories, without group categories, when opened from Settings', async () => {
   await setUpScopes();
 
   await reopenManageCategories();
@@ -1067,7 +1082,7 @@ test('[CATEGORIES-22.1] lists the default and personal categories, without group
   expect(listedNames()).toEqual([...DEFAULT_NAMES, 'Gym']);
 });
 
-test('[CATEGORIES-22.1] opens the personal scope when the URL has a group ID but not scopeKind=group', async () => {
+test('[CATEGORIES-22.2] opens the personal scope when the URL has a group ID but not scopeKind=group', async () => {
   const groups = await setUpScopes();
 
   await restartAt(
@@ -1078,7 +1093,7 @@ test('[CATEGORIES-22.1] opens the personal scope when the URL has a group ID but
   expect(listedNames()).toEqual([...DEFAULT_NAMES, 'Gym']);
 });
 
-test('[CATEGORIES-22.1] adds a personal category when the URL has a group ID but not scopeKind=group', async () => {
+test('[CATEGORIES-22.2] adds a personal category when the URL has a group ID but not scopeKind=group', async () => {
   const groups = await setUpScopes();
   await restartAt(
     `/settings/manage-categories?spaceId=${groups.Brisbane}`,
@@ -1091,7 +1106,7 @@ test('[CATEGORIES-22.1] adds a personal category when the URL has a group ID but
   expect(listedNames()).toEqual([...DEFAULT_NAMES, 'Gym', 'Pets']);
 });
 
-test("[CATEGORIES-23.1] lists only the default categories in a new group's Group Categories", async () => {
+test("[CATEGORIES-23.2] lists only the group's own nine default categories in a new group's Group Categories", async () => {
   const groups = await createGroups('Brisbane');
   await reopenManageCategories();
   await addCategory('Gym');
@@ -1102,7 +1117,7 @@ test("[CATEGORIES-23.1] lists only the default categories in a new group's Group
   expect(categoryList()).toEqual(DEFAULTS);
 });
 
-test("[CATEGORIES-23.1] leaves another group's categories out of Group Categories", async () => {
+test("[CATEGORIES-23.2] leaves another group's categories out of Group Categories", async () => {
   const groups = await setUpScopes();
 
   await openGroupCategories(groups.Tokyo);
@@ -1216,26 +1231,62 @@ test("[CATEGORIES-27.1] records you as the creator and the group as the space of
   });
 });
 
-test('[CATEGORIES-29.1] shows a default category changed in Group Categories the same way in every scope', async () => {
+test('[CATEGORIES-30.1] gives a new group nine default categories of its own', async () => {
+  const groups = await createGroups('Brisbane');
+  const identity = await readIdentity();
+
+  await openGroupCategories(groups.Brisbane);
+
+  expect(categoryList()).toEqual(DEFAULTS);
+  expect(await namesAndColorsIn(groups.Brisbane)).toEqual(DEFAULTS);
+  expect(await namesAndColorsIn(identity.personalSpaceId)).toEqual(DEFAULTS);
+});
+
+test('[CATEGORIES-30.1] gives a new group the default categories, not the personal ones as you changed them', async () => {
+  await reopenManageCategories();
+  await editCategory('Shopping', 'Groceries', '#43A047');
+
+  const groups = await createGroups('Brisbane');
+
+  expect(await namesAndColorsIn(groups.Brisbane)).toEqual(DEFAULTS);
+});
+
+test('[CATEGORIES-30.1] creates no group and no categories when a category of the new group cannot be written', async () => {
+  running = await startGroupsApp('/groups');
+  await saveName('Taylor');
+  await pressAddGroup();
+  await expectNewGroupOpen();
+  typeName('Brisbane');
+  const before = localData(mockFile);
+  failWritesOfUncategorized();
+
+  await pressNewGroupButton('Create');
+
+  expect(alertsShown(alert)).toEqual([CREATE_FAILED]);
+  expect(newGroupIsOpen()).toBe(true);
+  expect(localData(mockFile)).toEqual(before);
+});
+
+test('[CATEGORIES-31.1] changes a default category in Group Categories for that group only', async () => {
   const groups = await createGroups('Brisbane', 'Tokyo');
   await openGroupCategories(groups.Brisbane);
 
   await editCategory('Shopping', 'Groceries', '#43A047');
 
-  const changed = replacing(2, ['Groceries', '#43A047']);
-  expect(categoryList()).toEqual(changed);
+  expect(categoryList()).toEqual(replacing(2, ['Groceries', '#43A047']));
   await reopenManageCategories();
-  expect(categoryList()).toEqual(changed);
+  expect(categoryList()).toEqual(DEFAULTS);
   await openGroupCategories(groups.Tokyo);
-  expect(categoryList()).toEqual(changed);
+  expect(categoryList()).toEqual(DEFAULTS);
 });
 
-test('[CATEGORIES-29.1] shows a default category changed in Manage Categories the same way in Group Categories', async () => {
+test('[CATEGORIES-31.1] changes a default category in Manage Categories for the personal scope only', async () => {
   const groups = await createGroups('Brisbane');
   await reopenManageCategories();
 
   await editCategory('Health', 'Medical', '#00ACC1');
 
-  await openGroupCategories(groups.Brisbane);
   expect(categoryList()).toEqual(replacing(5, ['Medical', '#00ACC1']));
+  await openGroupCategories(groups.Brisbane);
+  expect(categoryList()).toEqual(DEFAULTS);
 });
