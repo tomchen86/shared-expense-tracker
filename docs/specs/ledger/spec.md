@@ -642,8 +642,8 @@ The mobile app SHALL 在支出清單上，依 LEDGER-28.1 的順序由上而下�
 
 #### Scenario: 同一天
 
-- **WHEN** 依序新增日期都是 `2025-01-01` 的「D」和「E」
-- **THEN** 卡片由上而下是 E、D
+- **WHEN** 依序新增日期都是 `2025-01-01` 的「E」、「F」和「D」
+- **THEN** 卡片由上而下是 D、F、E
 
 #### Scenario: 新增之後
 
@@ -704,7 +704,7 @@ The mobile app SHALL 在卡片上只用一行顯示標題，放不下時在結�
 
 ### Requirement: LEDGER-35.1 Your Total Share 依幣別加總卡片金額
 
-The mobile app SHALL 在支出清單的卡片上方，為卡片用到的每個幣別各顯示一行「Your Total Share: <這個幣別所有卡片金額的總和>」，依幣別代碼排序；沒有卡片時只顯示一行「Your Total Share: —」。
+The mobile app SHALL 在支出清單的卡片上方，為卡片用到的每個幣別各顯示一行「Your Total Share: <這個幣別所有卡片金額的總和>」，依幣別代碼排序；沒有卡片時只顯示一行「Your Total Share: —」；這幾行是文字，不是按鈕。
 
 #### Scenario: 一個幣別
 
@@ -715,6 +715,11 @@ The mobile app SHALL 在支出清單的卡片上方，為卡片用到的每個�
 
 - **WHEN** 依序新增日期相同的 30 AUD、875 USD、1200 JPY
 - **THEN** 卡片由上而下是 JPY、USD、AUD 的支出；卡片上方由上而下是「Your Total Share: A$0.30」、「Your Total Share: ¥1,200」、「Your Total Share: $8.75」
+
+#### Scenario: 不是按鈕
+
+- **WHEN** 有 875 USD 的支出時點「Your Total Share: $8.75」
+- **THEN** 它不在任何按鈕裡，點了沒有反應
 
 #### Scenario: 沒有支出
 
@@ -814,7 +819,7 @@ IF 明細網址裡的 ID 不是任何支出的 ID，THEN the mobile app SHALL �
 
 ### Requirement: LEDGER-40.1 金額和日期用手機地區的格式
 
-The mobile app SHALL 讓卡片、Your Total Share 和明細，用手機地區的貨幣格式和幣別的小數位數（LEDGER-1.1）顯示金額，讓卡片和明細用手機地區的日期格式（LEDGER-30.1）顯示支出的日期。
+The mobile app SHALL 讓卡片、Your Total Share 和明細，用手機地區的貨幣格式和幣別的小數位數（LEDGER-1.1）顯示金額，讓卡片和明細用手機地區的日期格式（LEDGER-30.1）顯示支出的日期，日期不因手機的時區提早或延後一天。
 
 #### Scenario: 英文（美國）
 
@@ -836,9 +841,14 @@ The mobile app SHALL 讓卡片、Your Total Share 和明細，用手機地區的
 - **WHEN** 有一筆 999,999,999,999 USD 的支出
 - **THEN** 卡片和明細的金額都是「$9,999,999,999.99」
 
+#### Scenario: UTC 以西的時區
+
+- **WHEN** 手機的時區是 `America/Los_Angeles`，新增日期是 `2026-10-25` 的支出
+- **THEN** 卡片和明細的日期都是「Oct 25, 2026」，不是前一天的「Oct 24, 2026」
+
 ### Requirement: LEDGER-41.1 (manual) 手機上的金額和日期格式
 
-WHERE iPhone 或 Android 手機，the mobile app SHALL 讓卡片、Your Total Share 和明細，依手機的語言和地區顯示金額和日期（LEDGER-40.1），日期不因手機的時區提早或延後一天；格式由各個平台決定，iPhone 和 Android 可以不一樣。
+WHERE iPhone 或 Android 手機，the mobile app SHALL 讓卡片、Your Total Share 和明細，依手機的語言和地區顯示金額和日期（LEDGER-40.1）；格式由各個平台決定，iPhone 和 Android 可以不一樣。
 
 #### Scenario: 英文（美國）
 
@@ -855,11 +865,6 @@ WHERE iPhone 或 Android 手機，the mobile app SHALL 讓卡片、Your Total Sh
 - **WHEN** 有 USD 的支出時，把手機的語言和地區從英文（美國）改成繁體中文（台灣），再打開 app
 - **THEN** USD 的金額改用台灣的格式，例如「US$8.75」
 
-#### Scenario: 時區在 UTC 以西或以東
-
-- **WHEN** 手機的時區設成 `America/Los_Angeles` 或 `Asia/Tokyo`，新增日期是 `2026-10-25` 的支出
-- **THEN** 卡片和明細的日期都是 2026 年 10 月 25 日，不是前一天或後一天
-
 ### Requirement: LEDGER-42.1 (manual) 最後一張卡片不被 + 按鈕擋住
 
 WHERE iPhone 或 Android 手機，WHEN 支出清單捲到最底，the mobile app SHALL 讓最後一張卡片整張露在 + 按鈕上方。
@@ -868,3 +873,12 @@ WHERE iPhone 或 Android 手機，WHEN 支出清單捲到最底，the mobile app
 
 - **WHEN** 有 20 筆支出，把支出清單捲到最底
 - **THEN** 最後一張卡片整張在 + 按鈕上方，沒有被擋住
+
+### Requirement: LEDGER-43.1 讀完支出之前不顯示沒有支出的樣子
+
+WHILE 支出清單還沒讀完存著的支出，the mobile app SHALL 不顯示 LEDGER-32.1 的提示和「Your Total Share: —」。
+
+#### Scenario: 開啟 app
+
+- **WHEN** 有 Coffee run 時開啟 app，支出清單還沒讀完存著的支出
+- **THEN** 支出清單沒有「No expenses to display. Add a personal expense or get involved in a group expense.」和「Your Total Share: —」；讀完之後顯示 Coffee run 的卡片

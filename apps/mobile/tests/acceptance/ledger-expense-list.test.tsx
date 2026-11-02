@@ -19,6 +19,7 @@ import {
   press,
   resetPhone,
   restart,
+  setPhoneClock,
   setPhoneLanguage,
   setRegionCurrency,
   startExpenses,
@@ -167,10 +168,11 @@ test('[LEDGER-31.1] lists the personal expenses newest date first', async () => 
 
 test('[LEDGER-31.1] lists the expense added later first on the same date', async () => {
   await startExpenses();
-  await addExpense({ title: 'D', date: '2025-01-01' });
   await addExpense({ title: 'E', date: '2025-01-01' });
+  await addExpense({ title: 'F', date: '2025-01-01' });
+  await addExpense({ title: 'D', date: '2025-01-01' });
 
-  expect(cardTitles()).toEqual(['E', 'D']);
+  expect(cardTitles()).toEqual(['D', 'F', 'E']);
 });
 
 test('[LEDGER-31.1] shows a new expense on top once New Expense closes', async () => {
@@ -219,6 +221,22 @@ test('[LEDGER-32.1] replaces the empty list text with the first card', async () 
 
   expect(cardTitles()).toEqual(['Coffee run']);
   expect(linesIn(expensesRoot())).not.toContain(EMPTY_LIST);
+});
+
+test('[LEDGER-43.1] never shows the empty list while the stored expenses load', async () => {
+  const first = await startExpenses();
+  await addExpense();
+  await first.unmount();
+  await settle();
+  const reads = holdReads();
+
+  await startExpenses();
+
+  expect(screen.queryByText(EMPTY_LIST)).toBeNull();
+  expect(totalShareLines()).not.toContain('Your Total Share: —');
+  await reads.release();
+  await waitFor(() => expect(cardTitles()).toEqual(['Coffee run']));
+  expect(screen.queryByText(EMPTY_LIST)).toBeNull();
 });
 
 // Cards
@@ -298,6 +316,24 @@ test('[LEDGER-35.1] shows a line for each currency, above the cards, by currency
   expect(lines.indexOf('Your Total Share: $8.75')).toBeLessThan(
     lines.indexOf('Ramen'),
   );
+});
+
+test('[LEDGER-35.1] shows Your Total Share as text that does nothing when pressed', async () => {
+  const app = await startExpenses();
+  await addExpense();
+  expect(totalShareLines()).toEqual(['Your Total Share: $8.75']);
+
+  const buttons = within(expensesRoot()).queryAllByRole('button');
+  expect(
+    buttons
+      .filter((button) =>
+        linesIn(button).some((line) => line.startsWith('Your Total Share')),
+      )
+      .map(readOut),
+  ).toEqual([]);
+  await fireEvent.press(screen.getByText('Your Total Share: $8.75'));
+  await settle();
+  expect(app.getPathname()).toBe('/');
 });
 
 test('[LEDGER-35.1] shows a dash before there are expenses', async () => {
@@ -522,10 +558,14 @@ test('[LEDGER-39.1] never shows Expense not found. while details opened at their
   const expense = await onlyExpense();
   await first.unmount();
   await settle();
+  const reads = holdReads();
 
   await startExpensesAt(`/expenses/${expense.id}`);
+  await waitFor(() => expect(detailBars()).toHaveLength(1));
+  await settle();
 
   expect(screen.queryByText(NOT_FOUND)).toBeNull();
+  await reads.release();
   await expectDetails('Coffee run');
   expect(screen.queryByText(NOT_FOUND)).toBeNull();
 });
@@ -588,7 +628,37 @@ test('[LEDGER-40.1] shows the largest amount in full on the card and the details
   expect(detailLines()).toContain('$9,999,999,999.99');
 });
 
+test('[LEDGER-40.1] shows the date of an expense on a phone west of UTC', async () => {
+  // jest.config.cjs runs the tests in America/Los_Angeles, where a date read
+  // as UTC midnight falls on the day before.
+  expect(new Date(2026, 9, 25).getTimezoneOffset()).toBeGreaterThan(0);
+  await startExpenses();
+  setPhoneClock('America/Los_Angeles', '2026-10-30T19:00:00Z');
+
+  await addExpense({ date: '2026-10-25' });
+
+  expect(linesIn(card('Coffee run'))).toContain('Oct 25, 2026');
+  await openDetails('Coffee run');
+  expect(detailLines()).toContain('Oct 25, 2026');
+});
+
 // The shell's rules on these screens
+
+test('[SHELL-13.1] shows only a back arrow named Back on the details', async () => {
+  await startExpenses();
+  await addExpense();
+
+  await openDetails('Coffee run');
+
+  const pushed = detailBars()[0]?.props;
+  // The native stack hides the back title with backButtonDisplayMode on iOS 14
+  // and later, and with backTitleVisible when it knows no iOS version, as in Jest.
+  expect(pushed).toMatchObject(
+    pushed?.backButtonDisplayMode === undefined
+      ? { backTitle: 'Back', backTitleVisible: false }
+      : { backTitle: 'Back', backButtonDisplayMode: 'minimal' },
+  );
+});
 
 test('[SHELL-25.1] puts the expense list in the scroll view the Expenses large title follows', async () => {
   await startExpenses();
