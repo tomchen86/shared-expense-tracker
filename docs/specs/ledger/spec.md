@@ -223,9 +223,9 @@ The mobile app SHALL 讓支出表單的標題列有取消「Cancel」和確認�
 - **WHEN** 打開一筆 JPY 支出的 Edit Expense
 - **THEN** 標題列有「Cancel」和「Save」，金額欄位前面是「JPY」，名稱是「Amount in JPY」
 
-### Requirement: LEDGER-14.1 打開 New Expense 時的內容
+### Requirement: LEDGER-14.2 打開 New Expense 時的內容
 
-WHEN 打開 New Expense，the mobile app SHALL 讓金額、標題和備註都是空的，分類是個人空間的分類中依儲存的順序排第一的那一個（CATEGORIES-7.2），日期是今天。
+WHEN 打開 New Expense，the mobile app SHALL 讓金額、標題和備註都是空的，分類是個人空間未封存的分類中依儲存的順序排第一的那一個（CATEGORIES-7.3），日期是今天。
 
 #### Scenario: 第一次啟動
 
@@ -236,6 +236,11 @@ WHEN 打開 New Expense，the mobile app SHALL 讓金額、標題和備註都是
 
 - **WHEN** 在 Manage Categories 把 Food & Dining 改名為「Meals」，再打開 New Expense
 - **THEN** 分類是「Meals」
+
+#### Scenario: 第一個分類封存了
+
+- **WHEN** 封存有支出使用的 Food & Dining，再打開 New Expense
+- **THEN** 分類是「Transportation」
 
 #### Scenario: 當地已經是隔天
 
@@ -295,9 +300,9 @@ WHEN 打開某筆支出的 Edit Expense，the mobile app SHALL 以這筆支出�
 - **WHEN** 存下 Shopping 的支出之後，把 Shopping 改名為「Groceries」，再打開這筆支出的 Edit Expense
 - **THEN** 分類是「Category, Groceries」
 
-### Requirement: LEDGER-17.2 從清單選分類
+### Requirement: LEDGER-17.3 從清單選分類
 
-WHEN 使用者按分類按鈕，the mobile app SHALL 打開標題是「Category」的清單，依儲存的順序列出個人空間的每個分類（CATEGORIES-7.2），並把表單上選的那一個標示為已選取；按一個分類就選它並回到表單，按「Cancel」就回到表單、分類不變。
+WHEN 使用者按分類按鈕，the mobile app SHALL 打開標題是「Category」的清單，依儲存的順序列出個人空間每個未封存的分類（CATEGORIES-7.3），並把表單上選的那一個標示為已選取，表單上的分類已封存時沒有標示為已選取的分類；按一個分類就選它並回到表單，按「Cancel」就回到表單、分類不變，所以沒有改選時，存檔後支出仍用那個已封存的分類。
 
 #### Scenario: 打開清單
 
@@ -323,6 +328,21 @@ WHEN 使用者按分類按鈕，the mobile app SHALL 打開標題是「Category�
 
 - **WHEN** 打開清單後按「Cancel」
 - **THEN** 回到表單，分類按鈕仍是「Category, Food & Dining」
+
+#### Scenario: 封存的分類
+
+- **WHEN** 封存有支出使用的 Gym 之後，在 New Expense 打開清單
+- **THEN** 清單依序是九個預設分類，沒有 Gym
+
+#### Scenario: 支出的分類封存了
+
+- **WHEN** Gym 封存之後，打開一筆 Gym 支出的 Edit Expense，再打開清單
+- **THEN** 分類按鈕是「Category, Gym」；清單沒有 Gym，也沒有標示為已選取的分類；按 Cancel 後分類按鈕仍是「Category, Gym」
+
+#### Scenario: 沒有改選就存檔
+
+- **WHEN** 在這筆支出的 Edit Expense 把標題改成「Spin class」，按 Save
+- **THEN** 支出存的分類仍是 Gym 的 ID、名稱和顏色
 
 ### Requirement: LEDGER-18.1 日期最晚是今天
 

@@ -7,6 +7,7 @@ import {
   DISCARD_CHANGES,
   SAVE_FAILED,
   addCategory,
+  archiveCategory,
   addExpense,
   addExpenseButton,
   amountField,
@@ -291,7 +292,7 @@ test("[LEDGER-13.1] shows Save and the expense's own currency on Edit Expense", 
   ).toBe(true);
 });
 
-test('[LEDGER-14.1] opens New Expense empty, with the first category and today', async () => {
+test('[LEDGER-14.2] opens New Expense empty, with the first category and today', async () => {
   await startExpenses();
 
   await openNewExpense();
@@ -303,7 +304,7 @@ test('[LEDGER-14.1] opens New Expense empty, with the first category and today',
   expect(dateField().value).toBe('2026-10-30');
 });
 
-test('[LEDGER-14.1] picks the first category by its current name', async () => {
+test('[LEDGER-14.2] picks the first category by its current name', async () => {
   await startExpenses();
   await editCategory('Food & Dining', 'Meals');
 
@@ -312,7 +313,17 @@ test('[LEDGER-14.1] picks the first category by its current name', async () => {
   expect(formCategory()).toBe('Meals');
 });
 
-test('[LEDGER-14.1] dates a new expense by the local calendar where it is already the next day', async () => {
+test('[LEDGER-14.2] picks the first category that is not archived', async () => {
+  await startExpenses();
+  await addExpense();
+  await archiveCategory('Food & Dining');
+
+  await openNewExpense();
+
+  expect(formCategory()).toBe('Transportation');
+});
+
+test('[LEDGER-14.2] dates a new expense by the local calendar where it is already the next day', async () => {
   await startExpenses();
   setPhoneClock('Australia/Sydney', '2025-01-01T13:30:00Z');
 
@@ -321,7 +332,7 @@ test('[LEDGER-14.1] dates a new expense by the local calendar where it is alread
   expect(dateField().value).toBe('2025-01-02');
 });
 
-test('[LEDGER-14.1] dates a new expense by the local calendar where it is still the previous day', async () => {
+test('[LEDGER-14.2] dates a new expense by the local calendar where it is still the previous day', async () => {
   await startExpenses();
   setPhoneClock('America/Los_Angeles', '2025-01-01T05:00:00Z');
 
@@ -428,7 +439,7 @@ test('[LEDGER-16.1] shows the current name of a renamed category', async () => {
   expect(formCategory()).toBe('Groceries');
 });
 
-test("[LEDGER-17.2] lists the categories in their stored order with the form's category selected", async () => {
+test("[LEDGER-17.3] lists the categories in their stored order with the form's category selected", async () => {
   await startExpenses();
   await openNewExpense();
 
@@ -439,7 +450,7 @@ test("[LEDGER-17.2] lists the categories in their stored order with the form's c
   );
 });
 
-test('[LEDGER-17.2] lists a new category after Uncategorized', async () => {
+test('[LEDGER-17.3] lists a new category after Uncategorized', async () => {
   await startExpenses();
   await addCategory('Gym');
   await openNewExpense();
@@ -450,7 +461,7 @@ test('[LEDGER-17.2] lists a new category after Uncategorized', async () => {
   expect(categoryOptions(names).map(([name]) => name)).toEqual(names);
 });
 
-test("[LEDGER-17.2] lists only the personal space's categories, without a group's", async () => {
+test("[LEDGER-17.3] lists only the personal space's categories, without a group's", async () => {
   await startExpenses();
   await saveName('Taylor');
   await createGroup('Brisbane');
@@ -466,7 +477,7 @@ test("[LEDGER-17.2] lists only the personal space's categories, without a group'
   );
 });
 
-test('[LEDGER-17.2] selects the category pressed and goes back to the form', async () => {
+test('[LEDGER-17.3] selects the category pressed and goes back to the form', async () => {
   await startExpenses();
   await openNewExpense();
 
@@ -480,7 +491,7 @@ test('[LEDGER-17.2] selects the category pressed and goes back to the form', asy
   ).toEqual([['Shopping', true]]);
 });
 
-test('[LEDGER-17.2] keeps the category when the list is cancelled', async () => {
+test('[LEDGER-17.3] keeps the category when the list is cancelled', async () => {
   await startExpenses();
   await openNewExpense();
   await openCategoryList();
@@ -490,6 +501,52 @@ test('[LEDGER-17.2] keeps the category when the list is cancelled', async () => 
   expect(isCategoryListOpen()).toBe(false);
   expect(formTitle()).toBe('New Expense');
   expect(formCategory()).toBe('Food & Dining');
+});
+
+/** Adds Gym, a Gym expense titled Gym session, then archives Gym; returns the expense. */
+async function archiveGymWithAnExpense() {
+  await addCategory('Gym');
+  await addExpense({ title: 'Gym session', category: 'Gym' });
+  await archiveCategory('Gym');
+  return onlyExpense();
+}
+
+test('[LEDGER-17.3] leaves an archived category out of the list', async () => {
+  await startExpenses();
+  await archiveGymWithAnExpense();
+  await openNewExpense();
+
+  await openCategoryList();
+
+  expect(categoryOptions([...DEFAULT_NAMES, 'Gym'])).toEqual(
+    DEFAULT_NAMES.map((name) => [name, name === 'Food & Dining']),
+  );
+});
+
+test("[LEDGER-17.3] marks no category selected when the expense's category is archived", async () => {
+  await startExpenses();
+  const expense = await archiveGymWithAnExpense();
+  await openEditExpense(expense.id);
+  expect(formCategory()).toBe('Gym');
+
+  await openCategoryList();
+
+  expect(categoryOptions([...DEFAULT_NAMES, 'Gym'])).toEqual(
+    DEFAULT_NAMES.map((name) => [name, false]),
+  );
+  await cancelCategoryList();
+  expect(formCategory()).toBe('Gym');
+});
+
+test('[LEDGER-17.3] keeps an archived category when the expense is saved without choosing another', async () => {
+  await startExpenses();
+  const expense = await archiveGymWithAnExpense();
+
+  await editExpense(expense.id, { title: 'Spin class' });
+
+  const saved = await onlyExpense();
+  expect(saved.title).toBe('Spin class');
+  expect(saved.category).toEqual(await categoryNamed('Gym'));
 });
 
 test('[LEDGER-18.1] offers no date after today on New Expense and Edit Expense', async () => {
