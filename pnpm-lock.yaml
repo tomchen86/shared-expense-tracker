@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  pretty-format@30.5.1: 44881ee25d5f0166db9d23cb06032b0dc871dd44ddc1548d87045526c0666830
+
 importers:
 
   .:
@@ -5466,7 +5469,7 @@ snapshots:
       jest-util: 30.5.1
       jest-validate: 30.5.1
       jest-watcher: 30.5.2
-      pretty-format: 30.5.1
+      pretty-format: 30.5.1(patch_hash=44881ee25d5f0166db9d23cb06032b0dc871dd44ddc1548d87045526c0666830)
       slash: 3.0.0
     transitivePeerDependencies:
       - babel-plugin-macros
@@ -6100,7 +6103,7 @@ snapshots:
     dependencies:
       jest-matcher-utils: 30.5.2
       picocolors: 1.1.1
-      pretty-format: 30.5.1
+      pretty-format: 30.5.1(patch_hash=44881ee25d5f0166db9d23cb06032b0dc871dd44ddc1548d87045526c0666830)
       react: 19.3.0
       react-native: 0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0)
       react-test-renderer: 19.3.0(react@19.3.0)
@@ -6155,7 +6158,7 @@ snapshots:
   '@types/jest@30.0.0':
     dependencies:
       expect: 30.5.2
-      pretty-format: 30.5.1
+      pretty-format: 30.5.1(patch_hash=44881ee25d5f0166db9d23cb06032b0dc871dd44ddc1548d87045526c0666830)
 
   '@types/jsdom@21.1.7':
     dependencies:
@@ -7523,7 +7526,7 @@ snapshots:
       jest-snapshot: 30.5.2
       jest-util: 30.5.1
       p-limit: 3.1.0
-      pretty-format: 30.5.1
+      pretty-format: 30.5.1(patch_hash=44881ee25d5f0166db9d23cb06032b0dc871dd44ddc1548d87045526c0666830)
       pure-rand: 7.0.1
       slash: 3.0.0
       stack-utils: 2.0.6
@@ -7572,7 +7575,7 @@ snapshots:
       jest-util: 30.5.1
       jest-validate: 30.5.1
       parse-json: 5.2.0
-      pretty-format: 30.5.1
+      pretty-format: 30.5.1(patch_hash=44881ee25d5f0166db9d23cb06032b0dc871dd44ddc1548d87045526c0666830)
       slash: 3.0.0
       strip-json-comments: 3.1.1
     optionalDependencies:
@@ -7586,7 +7589,7 @@ snapshots:
       '@jest/diff-sequences': 30.5.0
       '@jest/get-type': 30.5.0
       chalk: 4.1.2
-      pretty-format: 30.5.1
+      pretty-format: 30.5.1(patch_hash=44881ee25d5f0166db9d23cb06032b0dc871dd44ddc1548d87045526c0666830)
 
   jest-docblock@30.5.0:
     dependencies:
@@ -7599,7 +7602,7 @@ snapshots:
       chalk: 4.1.2
       jest-regex-util: 30.5.0
       jest-util: 30.5.1
-      pretty-format: 30.5.1
+      pretty-format: 30.5.1(patch_hash=44881ee25d5f0166db9d23cb06032b0dc871dd44ddc1548d87045526c0666830)
 
   jest-environment-jsdom@30.5.2:
     dependencies:
@@ -7703,14 +7706,14 @@ snapshots:
   jest-leak-detector@30.5.1:
     dependencies:
       '@jest/get-type': 30.5.0
-      pretty-format: 30.5.1
+      pretty-format: 30.5.1(patch_hash=44881ee25d5f0166db9d23cb06032b0dc871dd44ddc1548d87045526c0666830)
 
   jest-matcher-utils@30.5.2:
     dependencies:
       '@jest/get-type': 30.5.0
       chalk: 4.1.2
       jest-diff: 30.5.2
-      pretty-format: 30.5.1
+      pretty-format: 30.5.1(patch_hash=44881ee25d5f0166db9d23cb06032b0dc871dd44ddc1548d87045526c0666830)
 
   jest-message-util@29.7.0:
     dependencies:
@@ -7733,7 +7736,7 @@ snapshots:
       graceful-fs: 4.2.11
       jest-util: 30.5.1
       picomatch: 4.0.7
-      pretty-format: 30.5.1
+      pretty-format: 30.5.1(patch_hash=44881ee25d5f0166db9d23cb06032b0dc871dd44ddc1548d87045526c0666830)
       slash: 3.0.0
       stack-utils: 2.0.6
 
@@ -7846,7 +7849,7 @@ snapshots:
       jest-matcher-utils: 30.5.2
       jest-message-util: 30.5.1
       jest-util: 30.5.1
-      pretty-format: 30.5.1
+      pretty-format: 30.5.1(patch_hash=44881ee25d5f0166db9d23cb06032b0dc871dd44ddc1548d87045526c0666830)
       semver: 7.8.5
       synckit: 0.11.13
     transitivePeerDependencies:
@@ -7886,7 +7889,7 @@ snapshots:
       camelcase: 6.3.0
       chalk: 4.1.2
       leven: 3.1.0
-      pretty-format: 30.5.1
+      pretty-format: 30.5.1(patch_hash=44881ee25d5f0166db9d23cb06032b0dc871dd44ddc1548d87045526c0666830)
 
   jest-watch-select-projects@2.0.0:
     dependencies:
@@ -8687,7 +8690,7 @@ snapshots:
       ansi-styles: 5.2.0
       react-is: 18.3.1
 
-  pretty-format@30.5.1:
+  pretty-format@30.5.1(patch_hash=44881ee25d5f0166db9d23cb06032b0dc871dd44ddc1548d87045526c0666830):
     dependencies:
       '@jest/react-is-18': react-is@18.3.1
       '@jest/react-is-19': react-is@19.3.1
