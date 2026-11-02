@@ -38,10 +38,61 @@ export async function startApp(url = '/', routes?: Routes) {
 }
 
 /** Host views by native component name, in tree order. */
-export function nativeViews(name: RegExp, root = screen.UNSAFE_root) {
-  return root.findAll(
+export function nativeViews(name: RegExp, root = screen.container) {
+  return root.queryAll(
     (node) => typeof node.type === 'string' && name.test(node.type),
+    { includeSelf: true },
   );
+}
+
+type HostView = ReturnType<typeof nativeViews>[number];
+type Fiber = NonNullable<HostView['unstable_fiber']>;
+
+function* fibersUnder(fiber: Fiber): Generator<Fiber> {
+  for (let child = fiber.child; child; child = child.sibling) {
+    yield child;
+    yield* fibersUnder(child);
+  }
+}
+
+/** The fiber React holds for `view` now; the one a view keeps may be from an earlier render. */
+function currentFiber(view: HostView) {
+  const own = view.unstable_fiber;
+  if (own === null) throw new Error('Not a native view');
+  let top = own;
+  while (top.return) top = top.return;
+  // Both versions of the root fiber hold the FiberRoot, which knows the current one.
+  for (const fiber of fibersUnder(top.stateNode.current))
+    if (fiber.stateNode === own.stateNode) return fiber;
+  throw new Error('The view is no longer on screen');
+}
+
+/**
+ * The components inside `root` whose type `matches`, in tree order: the props each
+ * last rendered with, and its outermost native view. RNTL 14 shows native views
+ * only, so this reads React's fiber tree, as react-test-renderer did.
+ */
+export function componentsIn(
+  root: HostView,
+  matches: (type: unknown) => boolean,
+) {
+  return [...fibersUnder(currentFiber(root))]
+    .filter((fiber) => matches(fiber.type))
+    .map((fiber) => {
+      let native: Fiber | undefined;
+      for (const inner of fibersUnder(fiber))
+        if (typeof inner.type === 'string') {
+          native = inner;
+          break;
+        }
+      const view = root.queryAll(
+        (candidate) =>
+          native !== undefined &&
+          candidate.unstable_fiber?.stateNode === native.stateNode,
+        { includeSelf: true },
+      )[0];
+      return { props: fiber.memoizedProps, view };
+    });
 }
 
 export function tabBar() {
@@ -73,7 +124,7 @@ export async function tapTab(name: string) {
   const bar = tabBar();
   const selectedScreenKey = tab(name).props.screenKey;
   await act(async () => {
-    fireEvent(bar, 'tabSelected', {
+    await fireEvent(bar, 'tabSelected', {
       nativeEvent: {
         selectedScreenKey,
         provenance: bar.props.navStateRequest.baseProvenance + 1,
@@ -94,12 +145,12 @@ export async function push(url: string) {
  * The navigation bars on screen inside `root`, each stack's bottom screen first.
  * Pass a tab to get its stack.
  */
-export function navigationBars(root = screen.UNSAFE_root) {
+export function navigationBars(root = screen.container) {
   return nativeViews(/^RNSScreenStackHeaderConfig$/, root).filter(
     (bar) => bar.props.hidden !== true,
   );
 }
 
-export function navigationBarTitles(root = screen.UNSAFE_root) {
+export function navigationBarTitles(root = screen.container) {
   return navigationBars(root).map((bar) => bar.props.title);
 }

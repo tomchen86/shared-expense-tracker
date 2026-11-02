@@ -8,6 +8,3 @@ allowBuilds:
 
 # Keep local and CI installs on the same node_modules layout.
 enableGlobalVirtualStore: false
-
-patchedDependencies:
-  pretty-format@30.5.1: patches/pretty-format@30.5.1.patch

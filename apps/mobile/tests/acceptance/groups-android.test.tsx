@@ -125,7 +125,7 @@ test('[GROUPS-8.1] closes New Group once the group is created, even when Setting
   // reachable while the group is created.
   await startWithName();
   await openNewGroup();
-  typeName('Brisbane');
+  await typeName('Brisbane');
   const writes = holdWrites();
   await press('Create');
   await tapTab('Settings');
@@ -142,7 +142,7 @@ test('[GROUPS-8.1] closes New Group once the group is created, even when Setting
 test('[GROUPS-11.1] keeps New Group open when Back is pressed while the group is created', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('Brisbane');
+  await typeName('Brisbane');
   const writes = holdWrites();
   await press('Create');
 
@@ -161,7 +161,7 @@ test('[GROUPS-11.1] keeps New Group open when Back is pressed while the group is
 test('[GROUPS-13.1] closes New Group without creating a group when Back is pressed', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('Brisbane');
+  await typeName('Brisbane');
 
   await pressBack();
 
@@ -175,7 +175,7 @@ test('[GROUPS-13.1] closes New Group without creating a group when Back is press
 test("[GROUPS-15.1] goes back from a group's screen to the Groups root with Back", async () => {
   await startWithName();
   await createGroup('Brisbane');
-  fireEvent.press(
+  await fireEvent.press(
     within(groupsRoot()).getByRole('button', { name: 'Open Brisbane' }),
   );
   await settle();
@@ -192,10 +192,10 @@ test('[SHELL-34.1] uses colors that follow the appearance on the Groups list and
   await startWithName();
   await createGroup('Brisbane');
   await openNewGroup();
-  typeName('Tokyo');
+  await typeName('Tokyo');
 
   const light = { colors: fixedColors(), uncolored: textsWithoutColor() };
-  switchPhoneTo('dark');
+  await switchPhoneTo('dark');
   const dark = { colors: fixedColors(), uncolored: textsWithoutColor() };
 
   expect(colorsInBoth(light.colors, dark.colors)).toEqual([]);

@@ -126,7 +126,7 @@ test('blocks modal swipe dismissal and request-close while saving, and allows th
       }),
   );
 
-  render(
+  await render(
     <CategoryForm
       editingCategory={null}
       onCancel={onCancel}
@@ -135,21 +135,26 @@ test('blocks modal swipe dismissal and request-close while saving, and allows th
     />,
   );
 
-  const modal = () =>
-    screen.UNSAFE_root.find((node) => String(node.type) === 'Modal');
+  const modal = () => {
+    const modals = screen.container.queryAll(
+      (node) => String(node.type) === 'Modal',
+    );
+    expect(modals).toHaveLength(1);
+    return modals[0];
+  };
 
   expect(modal().props.allowSwipeDismissal).toBe(true);
-  fireEvent(modal(), 'requestClose');
+  await fireEvent(modal(), 'requestClose');
   expect(onCancel).toHaveBeenCalledTimes(1);
 
   onCancel.mockClear();
-  fireEvent.changeText(screen.getByLabelText('Category name'), 'Gym');
+  await fireEvent.changeText(screen.getByLabelText('Category name'), 'Gym');
   await act(async () => {
-    fireEvent.press(screen.getByRole('button', { name: 'Add' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Add' }));
   });
 
   expect(modal().props.allowSwipeDismissal).toBe(false);
-  fireEvent(modal(), 'requestClose');
+  await fireEvent(modal(), 'requestClose');
   expect(onCancel).not.toHaveBeenCalled();
 
   await act(async () => {
@@ -157,7 +162,7 @@ test('blocks modal swipe dismissal and request-close while saving, and allows th
   });
 
   expect(modal().props.allowSwipeDismissal).toBe(true);
-  fireEvent(modal(), 'requestClose');
+  await fireEvent(modal(), 'requestClose');
   expect(onCancel).toHaveBeenCalledTimes(1);
 });
 
@@ -195,10 +200,10 @@ test('updates the list directly after creating or editing a category without re-
 
   failListReads = true;
 
-  fireEvent.press(screen.getByRole('button', { name: 'Add category' }));
-  fireEvent.changeText(screen.getByLabelText('Category name'), 'Gym');
+  await fireEvent.press(screen.getByRole('button', { name: 'Add category' }));
+  await fireEvent.changeText(screen.getByLabelText('Category name'), 'Gym');
   await act(async () => {
-    fireEvent.press(screen.getByRole('button', { name: 'Add' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Add' }));
   });
 
   await waitFor(() => {
@@ -207,10 +212,13 @@ test('updates the list directly after creating or editing a category without re-
   expect(alertSpy).not.toHaveBeenCalled();
   expect(screen.getByRole('button', { name: 'Gym' })).toBeTruthy();
 
-  fireEvent.press(screen.getByRole('button', { name: 'Shopping' }));
-  fireEvent.changeText(screen.getByLabelText('Category name'), 'Groceries');
+  await fireEvent.press(screen.getByRole('button', { name: 'Shopping' }));
+  await fireEvent.changeText(
+    screen.getByLabelText('Category name'),
+    'Groceries',
+  );
   await act(async () => {
-    fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
   });
 
   await waitFor(() => {
@@ -295,10 +303,10 @@ test.each(['matching', 'different'])(
     expect(categoryReads).toBe(1);
     expect(groupReads).toBe(0);
 
-    fireEvent.press(screen.getByRole('button', { name: 'Add category' }));
-    fireEvent.changeText(screen.getByLabelText('Category name'), 'Pets');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add category' }));
+    await fireEvent.changeText(screen.getByLabelText('Category name'), 'Pets');
     await act(async () => {
-      fireEvent.press(screen.getByRole('button', { name: 'Add' }));
+      await fireEvent.press(screen.getByRole('button', { name: 'Add' }));
     });
 
     expect(screen.getByRole('button', { name: 'Pets' })).toBeTruthy();

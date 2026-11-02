@@ -94,9 +94,9 @@ test('[SHELL-30.1] lets iOS switch the app between light and dark while the opti
     .mock.calls.filter(([choice]) => choice === 'light' || choice === 'dark');
   expect(chosen).toEqual([]);
 
-  switchPhoneTo('dark');
+  await switchPhoneTo('dark');
   expect(appAppearance()).toBe('dark');
-  switchPhoneTo('light');
+  await switchPhoneTo('light');
   expect(appAppearance()).toBe('light');
 });
 
@@ -122,7 +122,7 @@ test('[SHELL-36.1] makes the sections opaque as soon as Reduce Transparency is t
   await startApp('/settings');
   expect(sectionsWithoutBlur()).toEqual([]);
 
-  changeReduceTransparency(true);
+  await changeReduceTransparency(true);
 
   expect(translucentViews()).toHaveLength(0);
   expect(sectionsNotOpaque()).toEqual([]);
@@ -132,15 +132,15 @@ test('[SHELL-36.1] brings the blur back as soon as Reduce Transparency is turned
   fakeReduceTransparency(true);
   await startApp('/settings');
 
-  changeReduceTransparency(false);
+  await changeReduceTransparency(false);
 
   expect(sectionsWithoutBlur()).toEqual([]);
 });
 
 test('[SHELL-36.1] asks iOS about Reduce Transparency only once', async () => {
   await startApp('/settings');
-  changeReduceTransparency(true);
-  changeReduceTransparency(false);
+  await changeReduceTransparency(true);
+  await changeReduceTransparency(false);
 
   expect(sectionsWithoutBlur()).toEqual([]);
   expect(reduceTransparencyQuestions()).toBe(1);
@@ -159,7 +159,7 @@ test('[SHELL-37.1] follows iOS once it reports Reduce Transparency is off', asyn
   fakeReduceTransparency('error');
   await startApp('/settings');
 
-  changeReduceTransparency(false);
+  await changeReduceTransparency(false);
 
   expect(sectionsWithoutBlur()).toEqual([]);
 });

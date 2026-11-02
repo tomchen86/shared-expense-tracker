@@ -106,25 +106,25 @@ async function expectNameInUse(name: string) {
 const nameField = () => screen.getByLabelText('Your name');
 
 /** Losing focus: the native field reports the end of editing and a blur together. */
-function leaveNameField() {
+async function leaveNameField() {
   const field = nameField();
-  act(() => {
-    fireEvent(field, 'endEditing', { nativeEvent: {} });
-    fireEvent(field, 'blur', { nativeEvent: {} });
+  await act(async () => {
+    await fireEvent(field, 'endEditing', { nativeEvent: {} });
+    await fireEvent(field, 'blur', { nativeEvent: {} });
   });
 }
 
 /** Return also takes the focus from a single-line field unless it keeps it. */
-function pressReturn() {
+async function pressReturn() {
   const field = nameField();
   const keepsFocus =
     field.props.submitBehavior === 'submit' ||
     field.props.blurOnSubmit === false;
-  act(() => {
-    fireEvent(field, 'submitEditing', { nativeEvent: {} });
+  await act(async () => {
+    await fireEvent(field, 'submitEditing', { nativeEvent: {} });
     if (keepsFocus) return;
-    fireEvent(field, 'endEditing', { nativeEvent: {} });
-    fireEvent(field, 'blur', { nativeEvent: {} });
+    await fireEvent(field, 'endEditing', { nativeEvent: {} });
+    await fireEvent(field, 'blur', { nativeEvent: {} });
   });
 }
 
@@ -137,8 +137,8 @@ const settle = () =>
   act(() => new Promise<void>((resolve) => nextTurn(resolve)));
 
 async function enterName(text: string, finish = leaveNameField) {
-  fireEvent.changeText(nameField(), text);
-  finish();
+  await fireEvent.changeText(nameField(), text);
+  await finish();
   await settle();
 }
 
@@ -226,7 +226,7 @@ test('[SHELL-17.1] shows an empty name field with Enter your name before a name 
 test('[SHELL-17.1] shows the saved name after the app restarts', async () => {
   const app = await startSettings();
   await enterName('Taylor');
-  app.unmount();
+  await app.unmount();
 
   await startSettings();
 
@@ -346,9 +346,9 @@ test('[SHELL-20.1] stops asking when a typed name fails to save', async () => {
 test('[SHELL-21.1] locks the name field until the name is saved', async () => {
   await startSettings();
   const writes = holdWrites();
-  fireEvent.changeText(nameField(), 'Taylor');
+  await fireEvent.changeText(nameField(), 'Taylor');
 
-  pressReturn();
+  await pressReturn();
   await waitFor(() => expect(nameField()).toBeDisabled());
   await writes.release();
   await settle();
@@ -360,11 +360,11 @@ test('[SHELL-21.1] locks the name field until the name is saved', async () => {
 test('[SHELL-21.1] saves once when Return and losing focus both come during one save', async () => {
   await startSettings();
   const writes = holdWrites();
-  fireEvent.changeText(nameField(), 'Taylor');
+  await fireEvent.changeText(nameField(), 'Taylor');
 
-  act(() => {
-    fireEvent(nameField(), 'submitEditing', { nativeEvent: {} });
-    fireEvent(nameField(), 'blur', { nativeEvent: {} });
+  await act(async () => {
+    await fireEvent(nameField(), 'submitEditing', { nativeEvent: {} });
+    await fireEvent(nameField(), 'blur', { nativeEvent: {} });
   });
   await writes.fail();
   await settle();
@@ -391,7 +391,7 @@ test('[SHELL-22.1] saves the typed name when Return is pressed again after a fai
   await enterName('Taylor');
   allowWrites();
 
-  pressReturn();
+  await pressReturn();
   await settle();
 
   await expectNameInUse('Taylor');
@@ -405,7 +405,7 @@ test.each([
   async (row, url) => {
     const app = await startSettings();
 
-    fireEvent.press(screen.getByText(row));
+    await fireEvent.press(screen.getByText(row));
 
     await waitFor(() =>
       expect(navigationBarTitles(tab('Settings'))).toEqual(['Settings', row]),

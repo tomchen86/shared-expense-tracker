@@ -66,16 +66,16 @@ export function fakePhoneAppearance(mode: Scheme) {
 }
 
 /** The phone switches between light and dark mode, as from Control Center. */
-export function switchPhoneTo(mode: Scheme) {
-  act(() => {
+export async function switchPhoneTo(mode: Scheme) {
+  await act(() => {
     phone.mode = mode;
     notifyAppearance();
   });
 }
 
 /** The app's process ends, and with it the appearance the app chose for itself. */
-export function endAppProcess(app: { unmount: () => void }) {
-  app.unmount();
+export async function endAppProcess(app: { unmount: () => Promise<void> }) {
+  await app.unmount();
   phone.appChoice = undefined;
 }
 
@@ -121,8 +121,10 @@ export const answerReduceTransparency = (enabled: boolean) =>
   act(async () => answerLater?.(enabled));
 
 /** The user turns Reduce Transparency on or off in iOS Settings while the app runs. */
-export function changeReduceTransparency(enabled: boolean) {
-  act(() => transparencyListeners.forEach((listener) => listener(enabled)));
+export async function changeReduceTransparency(enabled: boolean) {
+  await act(() =>
+    transparencyListeners.forEach((listener) => listener(enabled)),
+  );
 }
 
 /** How many times the app has asked whether Reduce Transparency is on. */
@@ -224,7 +226,7 @@ export const appearanceOption = (name: string) =>
 
 /** Taps an Appearance option and lets the app answer. */
 export async function chooseAppearance(name: string) {
-  fireEvent.press(appearanceOption(name));
+  await fireEvent.press(appearanceOption(name));
   await settle();
 }
 
@@ -274,13 +276,13 @@ function describeView(view: HostView) {
 }
 
 const hostViews = (root: HostView) =>
-  root.findAll((view) => typeof view.type === 'string');
+  root.queryAll((view) => typeof view.type === 'string', { includeSelf: true });
 
 /**
  * The fixed colors on screen, keyed by where they are used: the view, counted in
  * screen order among views of its kind, and the property.
  */
-export function fixedColors(root = screen.UNSAFE_root) {
+export function fixedColors(root = screen.container) {
   const found = new Map<string, { color: number; where: string }>();
   const counts = new Map<unknown, number>();
   for (const view of hostViews(root)) {
@@ -319,7 +321,7 @@ function insideText(view: HostView) {
 }
 
 /** Texts left in the platform's default color, which is the same in light and dark mode. */
-export const textsWithoutColor = (root = screen.UNSAFE_root) =>
+export const textsWithoutColor = (root = screen.container) =>
   hostViews(root)
     .filter((view) => isText(view) && !insideText(view))
     .filter((view) => StyleSheet.flatten(view.props.style)?.color == null)
@@ -352,7 +354,7 @@ export function isOpaque(background: unknown) {
  * expo-glass-effect, or UIVisualEffectView. The glass that system components such
  * as the tab bar draw for themselves is not among them.
  */
-export const translucentViews = (root = screen.UNSAFE_root) =>
+export const translucentViews = (root = screen.container) =>
   nativeViews(/blur|glass|visualeffect/i, root);
 
 function holds(outer: HostView, view: HostView) {
@@ -420,7 +422,7 @@ async function localDataScreens(
       uncolored: textsWithoutColor(),
       background: backgroundBehind(view),
     });
-    endAppProcess(app);
+    await endAppProcess(app);
   }
   return shown;
 }
@@ -436,7 +438,7 @@ export function testColorsFollowTheAppearance(
     await startApp('/settings');
     for (const name of TAB_ROOTS) await tapTab(name);
     const light = tabRootColors();
-    switchPhoneTo('dark');
+    await switchPhoneTo('dark');
     const dark = tabRootColors();
 
     expect(colorsInBoth(light.colors, dark.colors)).toEqual([]);
