@@ -15,6 +15,7 @@ name: '[SHELL-24.1] Opens a Settings row with one tap while the keyboard is open
     selected: true
 - tapOn: Enter your name
 - inputText: Taylor
-- tapOn: Archived Groups
+# The row's accessible name goes on with the number of archived groups (GROUPS-51.1).
+- tapOn: Archived Groups.*
 - assertVisible: Back
 - assertNotVisible: Manage Categories

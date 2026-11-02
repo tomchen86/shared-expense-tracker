@@ -2,13 +2,13 @@
 
 ## Purpose
 
-群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、Groups 分頁上每個群組的畫面，以及從群組的畫面打開的 Members、Add Member、Rename Member 和 Rename Group，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Add Member 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Add Member、Rename Member 和 Rename Group 是名稱表單；儲存中是指名稱表單開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。
+群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Add Member、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Add Member 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Add Member、Rename Member 和 Rename Group 是名稱表單；儲存中是指名稱表單開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。
 
 ## Requirements
 
-### Requirement: GROUPS-1.1 還沒有群組時顯示提示
+### Requirement: GROUPS-1.2 沒有未封存的群組時顯示提示
 
-WHILE 本機資料裡沒有群組，the mobile app SHALL 在 Groups 根畫面顯示「No groups yet. Tap + to create a group.」。
+WHILE 本機資料裡沒有未封存的群組，the mobile app SHALL 在 Groups 根畫面顯示「No groups yet. Tap + to create a group.」。
 
 #### Scenario: 第一次打開 Groups
 
@@ -20,9 +20,14 @@ WHILE 本機資料裡沒有群組，the mobile app SHALL 在 Groups 根畫面顯
 - **WHEN** 建立「Brisbane」
 - **THEN** 這句話消失，只有 Brisbane 的卡片
 
-### Requirement: GROUPS-2.1 依建立的先後列出群組
+#### Scenario: 封存唯一的群組
 
-The mobile app SHALL 在 Groups 根畫面依建立的先後，由上而下列出每個群組的卡片；卡片顯示群組名稱，是角色為 button、無障礙名稱為「Open <群組名稱>」的按鈕。
+- **WHEN** 只有 Brisbane 時封存它
+- **THEN** 又顯示這句話，沒有任何群組的卡片
+
+### Requirement: GROUPS-2.2 依建立的先後列出未封存的群組
+
+The mobile app SHALL 在 Groups 根畫面依建立的先後，由上而下列出每個未封存群組的卡片，不列出封存的群組；卡片顯示群組名稱，是角色為 button、無障礙名稱為「Open <群組名稱>」的按鈕。
 
 #### Scenario: 三個群組
 
@@ -33,6 +38,11 @@ The mobile app SHALL 在 Groups 根畫面依建立的先後，由上而下列出
 
 - **WHEN** 建立「Brisbane」之後，把手機的時間調回前一天，再建立「Tokyo」
 - **THEN** Tokyo 仍排在 Brisbane 下面
+
+#### Scenario: 封存其中一個
+
+- **WHEN** 依序建立「Brisbane」、「Tokyo」、「Paris」，封存 Tokyo
+- **THEN** 由上而下是 Brisbane 和 Paris 的卡片
 
 ### Requirement: GROUPS-3.1 Groups 根畫面有 Add group 按鈕
 
@@ -350,9 +360,9 @@ IF 群組的畫面的網址裡的 ID 不是任何群組的群組 ID，THEN the m
 - **WHEN** 點「Open Brisbane」
 - **THEN** 推入的畫面一開始和讀完 Brisbane 之後，都沒有顯示「Group not found.」
 
-### Requirement: GROUPS-22.1 群組的畫面的 Group actions 選單
+### Requirement: GROUPS-22.2 群組的畫面的 Group actions 選單
 
-The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group actions」的選單，依序是「Members」和「Rename Group」（SHELL-47.1、SHELL-48.1）。
+The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group actions」的選單（SHELL-47.1、SHELL-48.1）：未封存的群組依序是「Members」和「Rename Group」，封存的群組只有「Members」。
 
 #### Scenario: iOS
 
@@ -363,6 +373,11 @@ The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group ac
 
 - **WHEN** Android 上在 Brisbane 的畫面按「Group actions」
 - **THEN** 跳出標題「Group actions」的對話框，依序列出「Members」、「Rename Group」和「Cancel」
+
+#### Scenario: 封存的群組
+
+- **WHEN** 封存 Brisbane 之後，在 iOS 上開啟它的畫面，或在 Android 上按它的「Group actions」
+- **THEN** iOS 的選單只列出「Members」；Android 的對話框依序列出「Members」和「Cancel」
 
 ### Requirement: GROUPS-23.1 開啟和關閉 Members
 
@@ -383,9 +398,9 @@ WHEN 使用者在 Group actions 選「Members」，the mobile app SHALL 開啟�
 - **WHEN** 在 iOS 上把 Members 往下滑，或在 Android 上按返回鍵
 - **THEN** Members 關閉，顯示 Brisbane 的畫面
 
-### Requirement: GROUPS-24.1 Members 列出群組的成員
+### Requirement: GROUPS-24.2 未封存群組的 Members 列出成員
 
-The mobile app SHALL 在 Members 依加入的先後，由上而下列出群組的每位成員，被移出後再加回來的排在最後；每位成員那一列都是角色為 button 的按鈕，右邊有「›」：你那一列是你的成員名稱加上「 (You)」，無障礙名稱也是這樣；別人那一列是他的名稱，無障礙名稱是他的名稱；最後一列是角色為 button、名稱為「Add Member」的按鈕。
+The mobile app SHALL 在未封存群組的 Members 依加入的先後，由上而下列出群組的每位成員，被移出後再加回來的排在最後；每位成員那一列都是角色為 button 的按鈕，右邊有「›」：你那一列是你的成員名稱加上「 (You)」，無障礙名稱也是這樣；別人那一列是他的名稱，無障礙名稱是他的名稱；最後一列是角色為 button、名稱為「Add Member」的按鈕。
 
 #### Scenario: 只有你
 
@@ -397,9 +412,9 @@ The mobile app SHALL 在 Members 依加入的先後，由上而下列出群組�
 - **WHEN** 在 Brisbane 依序加入「Casey」和「Blake」
 - **THEN** 由上而下是「Taylor (You)」、「Casey」、「Blake」和「Add Member」；Casey 和 Blake 那兩列右邊有「›」，是名稱分別為「Casey」和「Blake」的按鈕
 
-### Requirement: GROUPS-25.1 點成員那一列跳出他的選單
+### Requirement: GROUPS-25.2 在未封存群組的 Members 點成員那一列跳出他的選單
 
-WHEN 使用者在 Members 點成員那一列，the mobile app SHALL 跳出標題是這位成員的名稱的選單：別人的選單內容是「If removed, their historical payments and shares will be retained.」，依序是「Rename」、「Remove from Group」和「Cancel」；你的選單沒有內容，依序是「Rename」和「Cancel」。iOS 上選單是動作表（action sheet），「Remove from Group」是破壞性的樣式；Android 上選單是對話框。按 Cancel 時關閉選單，什麼都不改；Android 上按返回鍵或點對話框外面也一樣。
+WHEN 使用者在未封存群組的 Members 點成員那一列，the mobile app SHALL 跳出標題是這位成員的名稱的選單：別人的選單內容是「If removed, their historical payments and shares will be retained.」，依序是「Rename」、「Remove from Group」和「Cancel」；你的選單沒有內容，依序是「Rename」和「Cancel」。iOS 上選單是動作表（action sheet），「Remove from Group」是破壞性的樣式；Android 上選單是對話框。按 Cancel 時關閉選單，什麼都不改；Android 上按返回鍵或點對話框外面也一樣。
 
 #### Scenario: iOS
 
@@ -869,3 +884,269 @@ The mobile app SHALL 讓你的名字和你在每個群組裡的成員名稱各�
 
 - **WHEN** 名字是「Taylor」，建立「Brisbane」和「Tokyo」之後，在 Brisbane 的 Members 把你的名稱改成「Sam」
 - **THEN** 你的名字仍是「Taylor」，Tokyo 裡你的成員名稱也仍是「Taylor」
+
+### Requirement: GROUPS-47.1 (e2e) 左滑群組的卡片露出 Archive
+
+WHEN 使用者在 Groups 根畫面把群組的卡片往左滑，the mobile app SHALL 在卡片右邊露出顯示「Archive」的按鈕，它的無障礙名稱是「Archive <群組名稱>」。
+
+#### Scenario: 左滑
+
+- **WHEN** 在 Groups 根畫面把 Brisbane 的卡片往左滑
+- **THEN** 卡片右邊露出「Archive」，它的無障礙名稱是「Archive Brisbane」
+
+### Requirement: GROUPS-48.1 按 Archive 時封存群組
+
+WHEN 使用者按群組的卡片露出的「Archive」，或使用卡片上名稱是「Archive group」的輔助功能動作，the mobile app SHALL 不另外確認，就把這個群組存成封存的，群組 ID、名稱和成員都不變，存好後才把它的卡片移出 Groups 根畫面。
+
+#### Scenario: 卡片的輔助功能動作
+
+- **WHEN** 有 Brisbane 和 Tokyo
+- **THEN** 兩張卡片都有名稱是「Archive group」的輔助功能動作
+
+#### Scenario: 封存
+
+- **WHEN** 有 Brisbane 和 Tokyo，Brisbane 的成員是 Taylor 和 Blake，對 Brisbane 的卡片使用「Archive group」
+- **THEN** 沒有跳出提示框；Groups 根畫面只剩 Tokyo；本機資料裡 Brisbane 的群組 ID、名稱和成員都和封存之前一樣
+
+#### Scenario: 存好之前
+
+- **WHEN** 封存 Brisbane 還沒存好
+- **THEN** Brisbane 的卡片仍在 Groups 根畫面；存好後才移出
+
+#### Scenario: 按 Archive
+
+- **WHEN** 左滑 Brisbane 的卡片，按「Archive」
+- **THEN** Brisbane 移出 Groups 根畫面
+
+### Requirement: GROUPS-49.1 封存後顯示通知
+
+WHEN 群組存成封存的，the mobile app SHALL 在 Groups 根畫面顯示「Group archived · Find it in Settings」並讓螢幕閱讀器念出來，4.5 秒後收起；收起之前又有群組存成封存的，就從那時起重新算 4.5 秒。
+
+#### Scenario: 封存 Brisbane
+
+- **WHEN** 封存 Brisbane
+- **THEN** 存好時顯示「Group archived · Find it in Settings」，螢幕閱讀器念出來；過了 4.4 秒仍顯示，到 4.5 秒時收起
+
+#### Scenario: 接著封存另一個
+
+- **WHEN** 封存 Brisbane 3 秒後封存 Tokyo
+- **THEN** 這句話一直顯示，到 Tokyo 存好之後 4.5 秒才收起
+
+#### Scenario: 還沒存好
+
+- **WHEN** 封存 Brisbane 還沒存好
+- **THEN** 不顯示這句話
+
+### Requirement: GROUPS-50.1 封存存不進去時提示
+
+IF 封存存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable to Archive Group」、內容「The group could not be saved as archived. Please try again.」的提示框，不顯示「Group archived · Find it in Settings」，群組的卡片留在 Groups 根畫面，本機資料維持封存之前的樣子。
+
+#### Scenario: 寫不進去
+
+- **WHEN** 資料庫無法寫入時封存 Brisbane
+- **THEN** 跳出這個提示框，沒有顯示通知；Brisbane 的卡片仍在 Groups 根畫面，本機資料和封存之前一樣
+
+#### Scenario: 寫到一半失敗
+
+- **WHEN** 封存時的某一筆寫入失敗，在它之前的寫入都成功了，不論是哪一筆
+- **THEN** 跳出這個提示框，本機資料和封存之前一樣
+
+#### Scenario: 再試一次
+
+- **WHEN** 失敗後資料庫恢復，再封存一次 Brisbane
+- **THEN** Brisbane 移出 Groups 根畫面，顯示「Group archived · Find it in Settings」
+
+### Requirement: GROUPS-51.1 Settings 的 Archived Groups 列顯示封存群組的數量
+
+The mobile app SHALL 在 Settings 根畫面「Archived Groups」那一列的文字右邊顯示封存群組的數量，沒有封存群組時是「0」；這一列的無障礙名稱是「Archived groups, <數量>」。
+
+#### Scenario: 還沒有封存
+
+- **WHEN** 第一次啟動 app，選中 Settings 分頁
+- **THEN** 「Archived Groups」右邊是「0」，這一列的無障礙名稱是「Archived groups, 0」
+
+#### Scenario: 封存兩個
+
+- **WHEN** 封存 Brisbane 和 Tokyo 之後選中 Settings 分頁
+- **THEN** 「Archived Groups」右邊是「2」，這一列的無障礙名稱是「Archived groups, 2」
+
+#### Scenario: 還原一個
+
+- **WHEN** 在 Archived Groups 還原 Tokyo，再返回 Settings 的根畫面
+- **THEN** 「Archived Groups」右邊是「1」，這一列的無障礙名稱是「Archived groups, 1」
+
+### Requirement: GROUPS-52.1 Archived Groups 列出封存的群組
+
+The mobile app SHALL 在 Archived Groups 依建立的先後，由上而下列出每個封存群組的卡片，不列出未封存的群組；沒有封存群組時只顯示「No archived groups.」。
+
+#### Scenario: 還沒有封存
+
+- **WHEN** 有 Brisbane，沒有封存任何群組時打開 Archived Groups
+- **THEN** 只顯示「No archived groups.」，沒有任何卡片
+
+#### Scenario: 依建立的先後
+
+- **WHEN** 依序建立 Brisbane、Tokyo、Paris，先封存 Paris 再封存 Brisbane，然後打開 Archived Groups
+- **THEN** 由上而下是 Brisbane 和 Paris 的卡片，沒有 Tokyo，也沒有「No archived groups.」
+
+### Requirement: GROUPS-53.1 封存群組的卡片
+
+The mobile app SHALL 讓封存群組的卡片由上而下顯示群組名稱和「Archived group」，名稱只佔一行、放不下時在結尾以「…」截斷；卡片是角色為 button、無障礙名稱為完整的「Open <群組名稱>」的按鈕，卡片之外另有一個顯示「Restore」、無障礙名稱為「Restore <群組名稱>」的按鈕。
+
+#### Scenario: 封存的 Brisbane
+
+- **WHEN** 封存 Brisbane 之後打開 Archived Groups
+- **THEN** 卡片由上而下是「Brisbane」和「Archived group」，是名稱為「Open Brisbane」的按鈕；卡片之外有顯示「Restore」、名稱為「Restore Brisbane」的按鈕
+
+#### Scenario: 很長的名稱
+
+- **WHEN** 封存名稱是 300 個「a」的群組
+- **THEN** 卡片上的名稱只佔一行，放不下的部分在結尾截斷；卡片的無障礙名稱是「Open 」加上完整的 300 個「a」，Restore 按鈕的是「Restore 」加上完整的 300 個「a」
+
+### Requirement: GROUPS-54.1 點封存群組的卡片在 Settings 分頁推入群組的畫面
+
+WHEN 使用者點封存群組的卡片，the mobile app SHALL 在 Settings 分頁推入這個群組的畫面，網址是 `/settings/archived-groups/<群組 ID>`，標題是群組名稱，分頁列仍選中 Settings；從這個畫面返回時回到 Archived Groups，從它打開的 Members 和名稱表單也都蓋在它上面，留在 Settings 分頁。
+
+#### Scenario: 點卡片
+
+- **WHEN** 封存 Brisbane 之後，在 Archived Groups 點「Open Brisbane」
+- **THEN** 分頁列仍選中 Settings，Settings 分頁的堆疊由下而上是「Settings」根畫面、「Archived Groups」和「Brisbane」，網址是 `/settings/archived-groups/` 加上 Brisbane 的群組 ID；Groups 分頁的堆疊仍只有「Groups」根畫面
+
+#### Scenario: 返回
+
+- **WHEN** 在這個畫面返回，或在 Android 上按返回鍵
+- **THEN** 回到 Archived Groups，分頁列仍選中 Settings
+
+#### Scenario: 打開 Members
+
+- **WHEN** 在這個畫面選 Group actions 的「Members」
+- **THEN** Members 蓋在 Brisbane 的畫面上，分頁列仍選中 Settings
+
+#### Scenario: 還原後新增成員和改名
+
+- **WHEN** 在這個畫面按「Restore Group」，從 Members 加入「Blake」，再從 Group actions 把群組改名為「Tokyo」
+- **THEN** Add Member 和 Rename Group 都蓋在這個畫面上，分頁列一直選中 Settings；群組的名稱是 Tokyo，成員是 Taylor 和 Blake
+
+### Requirement: GROUPS-55.1 封存群組的畫面顯示唯讀的提示和 Restore Group
+
+WHILE 群組已封存，the mobile app SHALL 在它的畫面最上面顯示「Archived group. Expenses and allocations are read-only.」，下面是角色為 button、名稱為「Restore Group」的按鈕。
+
+#### Scenario: 從 Archived Groups 打開
+
+- **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面
+- **THEN** 由上而下是「Archived group. Expenses and allocations are read-only.」、「Restore Group」按鈕和「No expenses in this group yet.」
+
+#### Scenario: 以網址在 Groups 分頁打開
+
+- **WHEN** 封存 Brisbane 之後，以 `/groups/` 加上 Brisbane 的群組 ID 開啟 app
+- **THEN** Groups 分頁上 Brisbane 的畫面也顯示這句話和「Restore Group」按鈕
+
+#### Scenario: 未封存的群組
+
+- **WHEN** 打開未封存的 Tokyo 的畫面
+- **THEN** 沒有這句話，也沒有「Restore Group」
+
+### Requirement: GROUPS-56.1 封存群組的 Members 只能看
+
+WHILE 群組已封存，the mobile app SHALL 在它的 Members 依加入的先後，由上而下列出每位成員，你那一列是你的成員名稱加上「 (You)」，別人那一列是他的名稱；成員列都不是按鈕、右邊沒有「›」，點了不跳出選單，也沒有「Add Member」。
+
+#### Scenario: 封存的 Brisbane
+
+- **WHEN** 名字是「Taylor」，Brisbane 依序加入 Casey 和 Blake，封存之後打開它的 Members
+- **THEN** 由上而下是「Taylor (You)」、「Casey」和「Blake」；Members 的內容裡沒有任何按鈕和「›」，也沒有「Add Member」
+
+#### Scenario: 點成員
+
+- **WHEN** 在封存的 Brisbane 的 Members 點「Blake」或「Taylor (You)」
+- **THEN** 沒有跳出選單或提示框，Members 仍開著
+
+#### Scenario: 還原之後
+
+- **WHEN** 還原 Brisbane 之後打開它的 Members
+- **THEN** 成員列又是按鈕，最後一列是「Add Member」（GROUPS-24.2）
+
+### Requirement: GROUPS-57.1 按 Restore 或 Restore Group 時還原群組
+
+WHEN 使用者在 Archived Groups 按群組的「Restore」，或在封存群組的畫面按「Restore Group」，the mobile app SHALL 不另外確認，只拿掉這個群組的封存標記，存好後把它移出 Archived Groups，讓它回到 Groups 根畫面上依建立的先後該在的位置；在群組的畫面還原時，畫面不再顯示唯讀的提示和「Restore Group」。
+
+#### Scenario: 在 Archived Groups 還原
+
+- **WHEN** 依序建立 Brisbane、Tokyo、Paris，封存 Tokyo，再建立 Rome，然後在 Archived Groups 按「Restore Tokyo」
+- **THEN** 沒有跳出提示框；Archived Groups 只顯示「No archived groups.」；Groups 根畫面由上而下是 Brisbane、Tokyo、Paris、Rome
+
+#### Scenario: 在群組的畫面還原
+
+- **WHEN** 從 Archived Groups 打開封存的 Tokyo，按「Restore Group」
+- **THEN** 畫面不再顯示唯讀的提示和「Restore Group」，Group actions 依序是「Members」和「Rename Group」；返回 Archived Groups 時只顯示「No archived groups.」
+
+#### Scenario: 只拿掉封存標記
+
+- **WHEN** Brisbane 有成員 Blake 和前成員 Casey，封存之後還原
+- **THEN** 本機資料和封存之前完全一樣
+
+#### Scenario: 在 Groups 分頁還原
+
+- **WHEN** 有 Brisbane、Tokyo、Paris，以網址在 Groups 分頁打開封存的 Tokyo，按「Restore Group」，再返回
+- **THEN** Groups 根畫面由上而下是 Brisbane、Tokyo、Paris
+
+### Requirement: GROUPS-58.1 還原存不進去時提示
+
+IF 還原存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable to Restore Group」、內容「The group could not be restored. Please try again.」的提示框，群組仍是封存的：Archived Groups 仍列出它，群組的畫面仍顯示唯讀的提示和「Restore Group」，本機資料維持還原之前的樣子。
+
+#### Scenario: 在 Archived Groups 寫不進去
+
+- **WHEN** 資料庫無法寫入時，在 Archived Groups 按「Restore Brisbane」
+- **THEN** 跳出這個提示框；Archived Groups 仍列出 Brisbane，本機資料和還原之前一樣
+
+#### Scenario: 在群組的畫面寫不進去
+
+- **WHEN** 資料庫無法寫入時，在封存的 Brisbane 的畫面按「Restore Group」
+- **THEN** 跳出這個提示框，畫面仍顯示唯讀的提示和「Restore Group」
+
+#### Scenario: 寫到一半失敗
+
+- **WHEN** 還原時的某一筆寫入失敗，在它之前的寫入都成功了，不論是哪一筆
+- **THEN** 跳出這個提示框，本機資料和還原之前一樣
+
+#### Scenario: 再試一次
+
+- **WHEN** 失敗後資料庫恢復，再按一次「Restore Brisbane」
+- **THEN** Brisbane 移出 Archived Groups，回到 Groups 根畫面
+
+### Requirement: GROUPS-59.1 封存中和還原中不會再做一次
+
+WHILE 群組在封存中，the mobile app SHALL 不再封存它一次，所以再按 Archive 或再用「Archive group」都不再儲存、不跳出提示框；WHILE 群組在還原中，SHALL 停用它的「Restore」和「Restore Group」；兩者都到存好或存不進去為止。
+
+#### Scenario: 封存中再封存
+
+- **WHEN** 封存 Brisbane 還沒存好時，再對它的卡片使用一次「Archive group」
+- **THEN** 存好後 Brisbane 移出 Groups 根畫面，沒有跳出提示框
+
+#### Scenario: 在 Archived Groups 還原中
+
+- **WHEN** 按「Restore Brisbane」，還沒存好
+- **THEN** 「Restore Brisbane」停用，再按也沒有反應；存好後 Brisbane 移出 Archived Groups，沒有跳出提示框
+
+#### Scenario: 在群組的畫面還原中
+
+- **WHEN** 在封存的 Brisbane 的畫面按「Restore Group」，還沒存好
+- **THEN** 「Restore Group」停用；存好後唯讀的提示消失
+
+#### Scenario: 存不進去之後
+
+- **WHEN** 還原存不進去之後
+- **THEN** 「Restore」和「Restore Group」都恢復可以按
+
+### Requirement: GROUPS-60.1 重新啟動後保留封存和還原
+
+WHEN app 重新啟動，the mobile app SHALL 保留每個群組有沒有封存。
+
+#### Scenario: 封存後重新啟動
+
+- **WHEN** 依序建立 Brisbane、Tokyo、Paris，封存 Tokyo 之後重新啟動 app
+- **THEN** Groups 根畫面由上而下是 Brisbane 和 Paris；Archived Groups 只列出 Tokyo
+
+#### Scenario: 還原後重新啟動
+
+- **WHEN** 還原 Tokyo 之後重新啟動 app
+- **THEN** Groups 根畫面由上而下是 Brisbane、Tokyo、Paris；Archived Groups 只顯示「No archived groups.」
