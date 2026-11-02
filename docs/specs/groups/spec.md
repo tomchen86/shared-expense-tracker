@@ -930,7 +930,7 @@ WHEN 群組存成封存的，the mobile app SHALL 在 Groups 根畫面顯示「G
 #### Scenario: 接著封存另一個
 
 - **WHEN** 封存 Brisbane 3 秒後封存 Tokyo
-- **THEN** 這句話一直顯示，到 Tokyo 存好之後 4.5 秒才收起
+- **THEN** Tokyo 存好時螢幕閱讀器再念一次；這句話一直顯示，到 Tokyo 存好之後 4.5 秒才收起
 
 #### Scenario: 還沒存好
 
@@ -986,8 +986,8 @@ The mobile app SHALL 在 Archived Groups 依建立的先後，由上而下列出
 
 #### Scenario: 依建立的先後
 
-- **WHEN** 依序建立 Brisbane、Tokyo、Paris，先封存 Paris 再封存 Brisbane，然後打開 Archived Groups
-- **THEN** 由上而下是 Brisbane 和 Paris 的卡片，沒有 Tokyo，也沒有「No archived groups.」
+- **WHEN** 依序建立 Tokyo、Brisbane、Lisbon、Paris，依序封存 Brisbane、Tokyo、Paris，然後打開 Archived Groups
+- **THEN** 由上而下是 Tokyo、Brisbane 和 Paris 的卡片，沒有 Lisbon，也沒有「No archived groups.」
 
 ### Requirement: GROUPS-53.1 封存群組的卡片
 
@@ -1024,8 +1024,8 @@ WHEN 使用者點封存群組的卡片，the mobile app SHALL 在 Settings 分�
 
 #### Scenario: 還原後新增成員和改名
 
-- **WHEN** 在這個畫面按「Restore Group」，從 Members 加入「Blake」，再從 Group actions 把群組改名為「Tokyo」
-- **THEN** Add Member 和 Rename Group 都蓋在這個畫面上，分頁列一直選中 Settings；群組的名稱是 Tokyo，成員是 Taylor 和 Blake
+- **WHEN** 在這個畫面按「Restore Group」，從 Members 加入「Blake」並把他改名為「Casey」，再從 Group actions 把群組改名為「Tokyo」
+- **THEN** Add Member、Rename Member 和 Rename Group 都蓋在這個畫面上，分頁列一直選中 Settings；群組的名稱是 Tokyo，成員是 Taylor 和 Casey
 
 ### Requirement: GROUPS-55.1 封存群組的畫面顯示唯讀的提示和 Restore Group
 

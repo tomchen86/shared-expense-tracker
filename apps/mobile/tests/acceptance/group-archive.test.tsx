@@ -56,10 +56,12 @@ import {
   goBackFrom,
   groupNameField,
   isOpen,
+  memberNameField,
   membersShown,
   openAddMember,
   openGroup,
   openMembers,
+  openRenameMember,
   openWithMembers,
   pressOnBar,
   removeMember,
@@ -261,6 +263,7 @@ test('[GROUPS-49.1] counts the 4.5 seconds again when another group is archived 
 
   await archiveByAction('Tokyo');
 
+  expect(announcements()).toEqual([NOTICE, NOTICE]);
   await wait(4400);
   expect(noticeShown()).toBe(true);
   await wait(100);
@@ -383,16 +386,23 @@ test('[GROUPS-52.1] says there are no archived groups when none is', async () =>
 });
 
 test('[GROUPS-52.1] lists only the archived groups, in the order they were created', async () => {
-  await startWithGroups(['Brisbane', 'Tokyo', 'Paris']);
-  await archiveByAction('Paris');
-  // A minute apart, so a list in the order they were archived differs.
-  await wait(60_000);
+  await startWithGroups(['Tokyo', 'Brisbane', 'Lisbon', 'Paris']);
+  // A minute apart, so a list in the order they were archived, oldest or newest
+  // first, differs, and so does a list in the order of their names.
   await archiveByAction('Brisbane');
+  await wait(60_000);
+  await archiveByAction('Tokyo');
+  await wait(60_000);
+  await archiveByAction('Paris');
 
   await openArchivedGroups();
 
   await waitFor(() =>
-    expect(archivedCardNames()).toEqual(['Open Brisbane', 'Open Paris']),
+    expect(archivedCardNames()).toEqual([
+      'Open Tokyo',
+      'Open Brisbane',
+      'Open Paris',
+    ]),
   );
   expect(textsOn('Archived Groups')).not.toContain(NO_ARCHIVED);
 });
@@ -476,7 +486,7 @@ test("[GROUPS-54.1] opens Members over an archived group's screen on the Setting
   expect(selectedTab()).toBe('Settings');
 });
 
-test('[GROUPS-54.1] keeps Add Member and Rename Group on the Settings tab once the group is restored there', async () => {
+test('[GROUPS-54.1] keeps Add Member, Rename Member and Rename Group on the Settings tab once the group is restored there', async () => {
   await startWithGroups(['Brisbane']);
   await openArchived('Brisbane');
   await pressRestoreGroup('Brisbane');
@@ -494,6 +504,18 @@ test('[GROUPS-54.1] keeps Add Member and Rename Group on the Settings tab once t
   await pressOnBar('Add Member', 'Cancel');
   await expectClosed('Add Member');
   await addMember('Blake');
+  await openRenameMember('Blake');
+  expect(navigationBarTitles(tab('Settings'))).toEqual([
+    'Settings',
+    'Archived Groups',
+    'Brisbane',
+    'Members',
+    'Rename Member',
+  ]);
+  await fireEvent.changeText(memberNameField(), 'Casey');
+  await pressOnBar('Rename Member', 'Save');
+  await expectClosed('Rename Member');
+  await waitFor(() => expect(membersShown()).toContain('Casey'));
   await pressOnBar('Members', 'Close');
   await expectClosed('Members');
   await chooseGroupAction('Brisbane', 'Rename Group');
@@ -517,7 +539,7 @@ test('[GROUPS-54.1] keeps Add Member and Rename Group on the Settings tab once t
   );
   expect(selectedTab()).toBe('Settings');
   expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups']);
-  expect(await storedMemberNames(file, 'Tokyo')).toEqual(['Taylor', 'Blake']);
+  expect(await storedMemberNames(file, 'Tokyo')).toEqual(['Taylor', 'Casey']);
 });
 
 // An archived group's screen
@@ -897,14 +919,29 @@ test('[GROUPS-60.1] keeps a restored group on the Groups root after a restart', 
 
 // Appearance
 
-test("[SHELL-34.1] uses colors that follow the appearance on the archive notice, Archived Groups and an archived group's screen", async () => {
+// The notice is checked on the Groups root, the only place GROUPS-49.1 shows it.
+
+test('[SHELL-34.1] uses colors that follow the appearance on the archive notice', async () => {
+  await startWithGroups(['Brisbane']);
+  await archiveByAction('Brisbane');
+  expect(noticeShown()).toBe(true);
+
+  const light = { colors: fixedColors(), uncolored: textsWithoutColor() };
+  await switchPhoneTo('dark');
+  expect(noticeShown()).toBe(true);
+  const dark = { colors: fixedColors(), uncolored: textsWithoutColor() };
+
+  expect(colorsInBoth(light.colors, dark.colors)).toEqual([]);
+  expect([...light.uncolored, ...dark.uncolored]).toEqual([]);
+});
+
+test("[SHELL-34.1] uses colors that follow the appearance on Archived Groups and an archived group's screen", async () => {
   await startWithGroups(['Brisbane']);
   await archiveByAction('Brisbane');
   await openArchivedGroups();
   await waitFor(() => expect(archivedCardNames()).toEqual(['Open Brisbane']));
   await openArchivedGroup('Brisbane');
   await waitFor(() => expect(textsOn('Brisbane')).toContain(READ_ONLY));
-  expect(noticeShown()).toBe(true);
 
   const light = { colors: fixedColors(), uncolored: textsWithoutColor() };
   await switchPhoneTo('dark');
@@ -914,7 +951,17 @@ test("[SHELL-34.1] uses colors that follow the appearance on the archive notice,
   expect([...light.uncolored, ...dark.uncolored]).toEqual([]);
 });
 
-test("[SHELL-36.1] adds no blur or glass of its own to the archive notice, Archived Groups or an archived group's screen while Reduce Transparency is on", async () => {
+test('[SHELL-36.1] adds no blur or glass of its own to the archive notice while Reduce Transparency is on', async () => {
+  fakeReduceTransparency(true);
+  await startWithGroups(['Brisbane']);
+
+  await archiveByAction('Brisbane');
+
+  expect(noticeShown()).toBe(true);
+  expect(translucentViews()).toEqual([]);
+});
+
+test("[SHELL-36.1] adds no blur or glass of its own to Archived Groups or an archived group's screen while Reduce Transparency is on", async () => {
   fakeReduceTransparency(true);
   await startWithGroups(['Brisbane']);
 
@@ -924,6 +971,5 @@ test("[SHELL-36.1] adds no blur or glass of its own to the archive notice, Archi
   await openArchivedGroup('Brisbane');
   await waitFor(() => expect(textsOn('Brisbane')).toContain(READ_ONLY));
 
-  expect(noticeShown()).toBe(true);
   expect(translucentViews()).toEqual([]);
 });

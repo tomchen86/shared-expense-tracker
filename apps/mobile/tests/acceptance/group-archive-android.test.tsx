@@ -132,7 +132,16 @@ test("[GROUPS-54.1] goes back from an archived group's screen to Archived Groups
   expect(exitApp).not.toHaveBeenCalled();
 });
 
-test("[SHELL-38.1] adds no blur or glass to the archive notice, Archived Groups or an archived group's screen on Android", async () => {
+test('[SHELL-38.1] adds no blur or glass to the archive notice on Android', async () => {
+  await startWithGroups(['Brisbane']);
+
+  await archiveByAction('Brisbane');
+
+  expect(noticeShown()).toBe(true);
+  expect(translucentViews()).toEqual([]);
+});
+
+test("[SHELL-38.1] adds no blur or glass to Archived Groups or an archived group's screen on Android", async () => {
   await startWithGroups(['Brisbane']);
 
   await archiveByAction('Brisbane');
@@ -141,6 +150,5 @@ test("[SHELL-38.1] adds no blur or glass to the archive notice, Archived Groups 
   await openArchivedGroup('Brisbane');
   await waitFor(() => expect(textsOn('Brisbane')).toContain(READ_ONLY));
 
-  expect(noticeShown()).toBe(true);
   expect(translucentViews()).toEqual([]);
 });
