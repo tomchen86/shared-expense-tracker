@@ -187,6 +187,11 @@ The mobile app SHALL 讓分類表單有「Cancel」按鈕、新增時是「Add�
 - **WHEN** 在 Brisbane 的 Group Categories 新增了用 `#C62828` 的「Flights」之後，在 Manage Categories 開啟「New Category」
 - **THEN** 只有前九色停用；`#C62828` 是「Select color #C62828」，可以選
 
+#### Scenario: 編輯時其他範圍的分類用的顏色
+
+- **WHEN** 在 Manage Categories 新增了用 `#43A047` 的「Gym」之後，在 Brisbane 的 Group Categories 開啟 Shopping 的「Edit Category」，點「Select color #43A047」
+- **THEN** 選取的是 `#43A047`；停用的只有其他八個預設分類的顏色
+
 ### Requirement: CATEGORIES-10.1 名稱欄位最多 50 個字元，空白時不能存
 
 The mobile app SHALL 讓名稱欄位最多接受 50 個字元，並在名稱去掉頭尾空白後是空的時停用 Add 或 Save。
@@ -234,6 +239,11 @@ WHEN 使用者按 Add 或 Save，而名稱沒有和這個範圍的其他分類�
 
 - **WHEN** Brisbane 的 Group Categories 有「Flights」時，在 Tokyo 的 Group Categories 或 Manage Categories 新增「flights」
 - **THEN** 表單關閉，這個範圍的最後一列是「flights」
+
+#### Scenario: 改名成其他範圍的分類的名稱
+
+- **WHEN** Manage Categories 有「Gym」時，在 Brisbane 的 Group Categories 把 Shopping 改名為「gym」，按 Save
+- **THEN** 表單關閉，第三列是「gym」，不算重複
 
 ### Requirement: CATEGORIES-12.2 名稱重複時在名稱欄位下方提示
 

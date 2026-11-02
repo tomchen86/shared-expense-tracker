@@ -657,6 +657,23 @@ test("[CATEGORIES-9.2] leaves the color of another scope's category free", async
   expect(colorButtons()).toEqual(expectedColors(DEFAULT_COLORS, '#43A047'));
 });
 
+test("[CATEGORIES-9.2] leaves the color of another scope's category free when editing", async () => {
+  const groups = await createGroups('Brisbane');
+  await reopenManageCategories();
+  await addCategory('Gym', '#43A047');
+  await openGroupCategories(groups.Brisbane);
+  await openCategory('Shopping');
+
+  pressColor('Select color #43A047');
+
+  expect(colorButtons()).toEqual(
+    expectedColors(
+      DEFAULT_COLORS.filter((color) => color !== '#FBC02D'),
+      '#43A047',
+    ),
+  );
+});
+
 test('[CATEGORIES-10.1] disables Add until the name has more than spaces', async () => {
   await openManageCategories();
   await openNewCategory();
@@ -753,6 +770,17 @@ test.each(["Tokyo's Group Categories", MANAGE_CATEGORIES])(
     expect(listedNames()).toEqual([...DEFAULT_NAMES, 'flights']);
   },
 );
+
+test("[CATEGORIES-11.2] renames Brisbane's Shopping to the name of a personal category", async () => {
+  const groups = await createGroups('Brisbane');
+  await reopenManageCategories();
+  await addCategory('Gym', '#43A047');
+  await openGroupCategories(groups.Brisbane);
+
+  await editCategory('Shopping', 'gym');
+
+  expect(categoryList()).toEqual(replacing(2, ['gym', '#FBC02D']));
+});
 
 test('[CATEGORIES-12.2] keeps New Category open and says below the name that the name exists', async () => {
   await openManageCategories();
@@ -1240,6 +1268,8 @@ test('[CATEGORIES-30.1] gives a new group nine default categories of its own', a
   expect(categoryList()).toEqual(DEFAULTS);
   expect(await namesAndColorsIn(groups.Brisbane)).toEqual(DEFAULTS);
   expect(await namesAndColorsIn(identity.personalSpaceId)).toEqual(DEFAULTS);
+  const ids = (await storedCategories()).map(({ id }) => id);
+  expect(new Set(ids).size).toBe(ids.length);
 });
 
 test('[CATEGORIES-30.1] gives a new group the default categories, not the personal ones as you changed them', async () => {
