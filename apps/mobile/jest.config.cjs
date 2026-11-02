@@ -5,6 +5,9 @@ const shared = {
       pattern.replace('react-native|', '@noble/hashes|react-native|'),
     ),
   moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
+  // Fake timers keep the real Intl: tests set the phone's time zone by spying on
+  // Intl.DateTimeFormat.prototype, which a faked DateTimeFormat bypasses.
+  fakeTimers: { doNotFake: ['Intl'] },
   coveragePathIgnorePatterns: ['/node_modules/', '/tests/'],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',

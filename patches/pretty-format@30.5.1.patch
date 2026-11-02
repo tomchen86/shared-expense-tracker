@@ -1,0 +1,13 @@
+diff --git a/build/index.js b/build/index.js
+index f4fa8f1ca4717c8156786c757b16bafa5397b189..bea5c3ecb83dc08eb4c6dd5054ef631077dab08f 100644
+--- a/build/index.js
++++ b/build/index.js
+@@ -303,7 +303,7 @@ const FRAGMENT_NODE = 11;
+ const ELEMENT_REGEXP = /^((HTML|SVG)\w*)?Element$/;
+ const testHasAttribute = val => {
+   try {
+-    return typeof val.hasAttribute === 'function' && val.hasAttribute('is');
++    return typeof val?.hasAttribute === 'function' && val.hasAttribute('is');
+   } catch {
+     return false;
+   }

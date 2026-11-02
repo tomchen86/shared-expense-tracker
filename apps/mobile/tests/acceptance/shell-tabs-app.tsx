@@ -30,7 +30,7 @@ export function openApp(url = '/', routes?: Routes) {
 
 /** Starts the app as `openApp` does and waits until its local data has opened. */
 export async function startApp(url = '/', routes?: Routes) {
-  const app = openApp(url, routes);
+  const app = await openApp(url, routes);
   await waitFor(() =>
     expect(screen.queryByLabelText('Restoring local data')).toBeNull(),
   );
