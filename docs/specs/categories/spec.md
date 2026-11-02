@@ -2,7 +2,7 @@
 
 ## Purpose
 
-支出的分類：色盤、預設分類、分類名稱和顏色的規則、分類的範圍，以及在 Manage Categories 和 Group Categories 上新增、改名和改色。色盤、預設分類，以及名稱和顏色的規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002）；domain 只和交給它的其他分類比對。手機 app 把分類存在本機資料裡（ADR-0006）。每個分類有一個名稱和色盤上的一個顏色。分類的範圍是個人範圍或一個群組的範圍：預設分類是每個範圍共用的同一組分類，個人分類屬於個人範圍，群組分類屬於一個群組的範圍。管理分類的畫面以個人範圍開啟時是 Manage Categories，以群組範圍開啟時是 Group Categories（CATEGORIES-22.1、23.1），兩者只差在列出哪些分類，以及新增的分類屬於哪個範圍。分類表單是在這個畫面新增或編輯分類時開啟的表單。其他任何分類是指本機資料裡的所有分類，不分範圍（ADR-0009），編輯時不含正在編輯的那一個。字元數是 UTF-16 code unit 的個數，也就是 JavaScript 字串的長度，所以 😀 這類 emoji 算兩個字元。
+支出的分類：色盤、預設分類、分類名稱和顏色的規則、分類的範圍，以及在 Manage Categories 和 Group Categories 上新增、改名和改色。色盤、預設分類，以及名稱和顏色的規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002）；domain 只和交給它的其他分類比對。手機 app 把分類存在本機資料裡（ADR-0006）。每個分類有一個名稱和色盤上的一個顏色，並且只屬於一個範圍。範圍就是空間：個人範圍是你的個人空間，群組範圍是一個群組（ADR-0011）。每個範圍一開始都有自己的一份預設分類（CATEGORIES-6.2、30.1），之後在這個範圍新增的分類也屬於它；個人分類是屬於個人範圍的分類，群組分類是屬於一個群組範圍的分類。管理分類的畫面以個人範圍開啟時是 Manage Categories，以群組範圍開啟時是 Group Categories（CATEGORIES-22.2、23.2），兩者只差在管理哪個範圍的分類。分類表單是在這個畫面新增或編輯分類時開啟的表單。這個範圍的其他分類是指本機資料裡和它屬於同一個範圍的分類，編輯時不含正在編輯的那一個。字元數是 UTF-16 code unit 的個數，也就是 JavaScript 字串的長度，所以 😀 這類 emoji 算兩個字元。
 
 ## Requirements
 
@@ -101,14 +101,14 @@ The domain package SHALL 把色盤上沒有被任何其他分類使用的顏色�
 - **WHEN** 其他分類用了全部 13 色
 - **THEN** 沒有可用的顏色
 
-### Requirement: CATEGORIES-6.1 還沒有分類時建立預設分類
+### Requirement: CATEGORIES-6.2 個人範圍還沒有分類時建立預設分類
 
-WHEN app 開啟本機資料時裡面還沒有任何分類，the mobile app SHALL 依序建立九個預設分類（CATEGORIES-2.1）。
+WHEN app 開啟本機資料時個人範圍還沒有任何分類，the mobile app SHALL 替個人範圍依序建立九個預設分類（CATEGORIES-2.1）。
 
 #### Scenario: 第一次啟動
 
 - **WHEN** app 第一次啟動，打開 Manage Categories
-- **THEN** 依序列出九個預設分類，名稱和顏色都和 CATEGORIES-2.1 一樣
+- **THEN** 依序列出九個預設分類，名稱和顏色都和 CATEGORIES-2.1 一樣；它們的空間都是你的個人空間 ID
 
 #### Scenario: 重新啟動
 
@@ -117,7 +117,7 @@ WHEN app 開啟本機資料時裡面還沒有任何分類，the mobile app SHALL
 
 ### Requirement: CATEGORIES-7.2 依儲存的順序列出這個範圍的分類
 
-The mobile app SHALL 在 Manage Categories 和 Group Categories 的「CATEGORIES」下依儲存的順序列出這個範圍的分類（CATEGORIES-22.1、23.1），每一列有分類顏色的色點和分類名稱，並在導覽列放一個無障礙名稱是「Add category」的「+」按鈕。儲存的順序是建立的先後：預設分類在前，新增的分類不論屬於哪個範圍，都依建立的先後排在後面，改名或改色不改變位置。
+The mobile app SHALL 在 Manage Categories 和 Group Categories 的「CATEGORIES」下依儲存的順序列出這個範圍的分類（CATEGORIES-22.2、23.2），每一列有分類顏色的色點和分類名稱，並在導覽列放一個無障礙名稱是「Add category」的「+」按鈕。儲存的順序是建立的先後：這個範圍的預設分類在前，之後在這個範圍新增的分類依建立的先後排在後面，改名或改色不改變位置。
 
 #### Scenario: 打開 Manage Categories
 
@@ -139,9 +139,9 @@ The mobile app SHALL 在 Manage Categories 和 Group Categories 的「CATEGORIES
 - **WHEN** 依序在 Manage Categories 新增「Gym」、在 Brisbane 的 Group Categories 新增「Flights」、在 Manage Categories 新增「Pets」
 - **THEN** Manage Categories 在 Uncategorized 後面依序是 Gym、Pets；Brisbane 的 Group Categories 在 Uncategorized 後面只有 Flights
 
-### Requirement: CATEGORIES-8.1 開啟分類表單
+### Requirement: CATEGORIES-8.2 開啟分類表單
 
-WHEN 使用者點「Add category」或 Uncategorized 以外的分類，the mobile app SHALL 開啟分類表單：點「Add category」時標題是「New Category」，名稱是空的，選取和其他任何分類比對後的第一個可用的顏色（CATEGORIES-5.1）；點分類時標題是「Edit Category」，帶入這個分類的名稱和顏色。
+WHEN 使用者點「Add category」或 Uncategorized 以外的分類，the mobile app SHALL 開啟分類表單：點「Add category」時標題是「New Category」，名稱是空的，選取和這個範圍的其他分類比對後的第一個可用的顏色（CATEGORIES-5.1）；點分類時標題是「Edit Category」，帶入這個分類的名稱和顏色。
 
 #### Scenario: 新增
 
@@ -158,14 +158,14 @@ WHEN 使用者點「Add category」或 Uncategorized 以外的分類，the mobil
 - **WHEN** 點「Shopping」
 - **THEN** 開啟「Edit Category」，名稱是「Shopping」，選取 `#FBC02D`
 
-#### Scenario: 其他範圍用掉的顏色
+#### Scenario: 其他範圍用的顏色
 
 - **WHEN** 在 Manage Categories 新增了用 `#43A047` 的「Gym」之後，在 Brisbane 的 Group Categories 點「Add category」
-- **THEN** 選取 `#00ACC1`
+- **THEN** 選取 `#43A047`
 
-### Requirement: CATEGORIES-9.1 分類表單的內容
+### Requirement: CATEGORIES-9.2 分類表單的內容
 
-The mobile app SHALL 讓分類表單有「Cancel」按鈕、新增時是「Add」而編輯時是「Save」的按鈕、「NAME」下無障礙名稱是「Category name」的名稱欄位，以及「COLOR」下依色盤順序排列的 13 個顏色按鈕：其他任何分類用的顏色停用，無障礙名稱是「Color <色碼> already in use」；其餘顏色的無障礙名稱是「Select color <色碼>」，點了就改選這個顏色；選取的顏色標示為已選取。
+The mobile app SHALL 讓分類表單有「Cancel」按鈕、新增時是「Add」而編輯時是「Save」的按鈕、「NAME」下無障礙名稱是「Category name」的名稱欄位，以及「COLOR」下依色盤順序排列的 13 個顏色按鈕：這個範圍的其他分類用的顏色停用，無障礙名稱是「Color <色碼> already in use」；其餘顏色的無障礙名稱是「Select color <色碼>」，點了就改選這個顏色；選取的顏色標示為已選取。
 
 #### Scenario: New Category
 
@@ -185,7 +185,12 @@ The mobile app SHALL 讓分類表單有「Cancel」按鈕、新增時是「Add�
 #### Scenario: 其他範圍的分類用的顏色
 
 - **WHEN** 在 Brisbane 的 Group Categories 新增了用 `#C62828` 的「Flights」之後，在 Manage Categories 開啟「New Category」
-- **THEN** 前九色和 `#C62828` 停用，例如「Color #C62828 already in use」；可以選的只有 `#43A047`、`#00ACC1`、`#9E9D24`
+- **THEN** 只有前九色停用；`#C62828` 是「Select color #C62828」，可以選
+
+#### Scenario: 編輯時其他範圍的分類用的顏色
+
+- **WHEN** 在 Manage Categories 新增了用 `#43A047` 的「Gym」之後，在 Brisbane 的 Group Categories 開啟 Shopping 的「Edit Category」，點「Select color #43A047」
+- **THEN** 選取的是 `#43A047`；停用的只有其他八個預設分類的顏色
 
 ### Requirement: CATEGORIES-10.1 名稱欄位最多 50 個字元，空白時不能存
 
@@ -206,9 +211,9 @@ The mobile app SHALL 讓名稱欄位最多接受 50 個字元，並在名稱去�
 - **WHEN** 在名稱欄位一個一個輸入 51 個「a」
 - **THEN** 欄位裡只有 50 個「a」
 
-### Requirement: CATEGORIES-11.1 按 Add 或 Save 時存下分類
+### Requirement: CATEGORIES-11.2 按 Add 或 Save 時存下分類
 
-WHEN 使用者按 Add 或 Save，而名稱沒有和其他任何分類重複，the mobile app SHALL 把去掉頭尾空白的名稱和選取的顏色存進本機資料，關閉表單，並在列表上顯示存好的分類；儲存完成前再按 Add 或 Save 不會再存一次。
+WHEN 使用者按 Add 或 Save，而名稱沒有和這個範圍的其他分類重複，the mobile app SHALL 把去掉頭尾空白的名稱和選取的顏色存進本機資料，關閉表單，並在列表上顯示存好的分類；儲存完成前再按 Add 或 Save 不會再存一次。
 
 #### Scenario: 新增
 
@@ -230,9 +235,19 @@ WHEN 使用者按 Add 或 Save，而名稱沒有和其他任何分類重複，th
 - **WHEN** 輸入「Gym」後連按兩次 Add，第二次在儲存完成之前
 - **THEN** 只多出一個「Gym」
 
-### Requirement: CATEGORIES-12.1 名稱重複時在名稱欄位下方提示
+#### Scenario: 其他範圍有同名的分類
 
-IF 按 Add 或 Save 時名稱和其他任何分類重複（CATEGORIES-4.1），THEN the mobile app SHALL 不儲存、不關閉表單、不跳出提示框，在名稱欄位下方顯示「A category with this name already exists.」並讓螢幕閱讀器念出來，直到名稱被修改。
+- **WHEN** Brisbane 的 Group Categories 有「Flights」時，在 Tokyo 的 Group Categories 或 Manage Categories 新增「flights」
+- **THEN** 表單關閉，這個範圍的最後一列是「flights」
+
+#### Scenario: 改名成其他範圍的分類的名稱
+
+- **WHEN** Manage Categories 有「Gym」時，在 Brisbane 的 Group Categories 把 Shopping 改名為「gym」，按 Save
+- **THEN** 表單關閉，第三列是「gym」，不算重複
+
+### Requirement: CATEGORIES-12.2 名稱重複時在名稱欄位下方提示
+
+IF 按 Add 或 Save 時名稱和這個範圍的其他分類重複（CATEGORIES-4.1），THEN the mobile app SHALL 不儲存、不關閉表單、不跳出提示框，在名稱欄位下方顯示「A category with this name already exists.」並讓螢幕閱讀器念出來，直到名稱被修改。
 
 #### Scenario: 新增同名的分類
 
@@ -249,14 +264,9 @@ IF 按 Add 或 Save 時名稱和其他任何分類重複（CATEGORIES-4.1），T
 - **WHEN** 出現這句話之後，把名稱改成「food」
 - **THEN** 這句話消失
 
-#### Scenario: 其他範圍的分類的名稱
+### Requirement: CATEGORIES-13.2 13 色都被用了就不能新增
 
-- **WHEN** Brisbane 的 Group Categories 有「Flights」時，在 Tokyo 的 Group Categories 或 Manage Categories 新增「flights」
-- **THEN** 表單仍開著，顯示這句話；按 Cancel 後這個範圍沒有多出分類
-
-### Requirement: CATEGORIES-13.1 13 色都被用了就不能新增
-
-IF 13 色都被其他任何分類用了，THEN the mobile app SHALL 讓「New Category」不選取任何顏色、停用 Add，並顯示「All category colors are already in use.」。
+IF 13 色都被這個範圍的其他分類用了，THEN the mobile app SHALL 讓「New Category」不選取任何顏色、停用 Add，並顯示「All category colors are already in use.」。
 
 #### Scenario: 用完 13 色
 
@@ -268,10 +278,10 @@ IF 13 色都被其他任何分類用了，THEN the mobile app SHALL 讓「New Ca
 - **WHEN** 13 色都被用了，開啟 Travel 的「Edit Category」
 - **THEN** `#3949AB` 沒有停用而且已選取，Save 可以按，不顯示這句話
 
-#### Scenario: 各範圍合起來用完 13 色
+#### Scenario: 其他範圍用完 13 色
 
-- **WHEN** 在 Manage Categories 和 Brisbane 的 Group Categories 各新增兩個分類，用掉最後四色，再在 Tokyo 的 Group Categories 開啟「New Category」
-- **THEN** 13 個顏色都停用，沒有選取的顏色，顯示這句話
+- **WHEN** 在 Manage Categories 新增四個分類用掉最後四色之後，在 Brisbane 的 Group Categories 開啟「New Category」
+- **THEN** 選取 `#43A047`，不顯示這句話；輸入「Garden」後 Add 可以按
 
 ### Requirement: CATEGORIES-14.1 Uncategorized 不能編輯
 
@@ -355,7 +365,7 @@ WHILE 分類正在儲存，the mobile app SHALL 停用 Cancel 和 Add 或 Save�
 
 ### Requirement: CATEGORIES-19.1 建立預設分類失敗時當作本機資料打不開
 
-IF 建立預設分類（CATEGORIES-6.1）失敗，THEN the mobile app SHALL 和本機資料打不開時一樣（SHELL-4.1），顯示「Unable to Load Local Data」和「Your data was not changed.」，不顯示 app 的畫面，並讓本機資料保持開啟前的樣子，不留下任何一個預設分類。
+IF 建立預設分類（CATEGORIES-6.2）失敗，THEN the mobile app SHALL 和本機資料打不開時一樣（SHELL-4.1），顯示「Unable to Load Local Data」和「Your data was not changed.」，不顯示 app 的畫面，並讓本機資料保持開啟前的樣子，不留下任何一個預設分類。
 
 #### Scenario: 第一次啟動時寫不進分類
 
@@ -390,9 +400,9 @@ WHILE 分類正在儲存，the mobile app SHALL 讓名稱欄位不能編輯，�
 - **WHEN** 資料庫無法寫入時按 Add
 - **THEN** 存不進去之後，名稱欄位恢復可以編輯，點「Select color #C62828」就改選它
 
-### Requirement: CATEGORIES-22.1 沒有指定群組時是個人範圍
+### Requirement: CATEGORIES-22.2 沒有指定群組時是個人範圍
 
-WHEN Manage Categories 開啟時網址沒有 `scopeKind=group`，例如從 Settings 開啟，the mobile app SHALL 以個人範圍開啟，標題是「Manage Categories」，只列出預設分類和個人分類。
+WHEN Manage Categories 開啟時網址沒有 `scopeKind=group`，例如從 Settings 開啟，the mobile app SHALL 以個人範圍開啟，標題是「Manage Categories」，只列出個人分類。
 
 #### Scenario: 從 Settings 開啟
 
@@ -409,14 +419,14 @@ WHEN Manage Categories 開啟時網址沒有 `scopeKind=group`，例如從 Setti
 - **WHEN** 以 `/settings/manage-categories?spaceId=<Brisbane 的群組 ID>` 開啟後新增「Pets」
 - **THEN** Pets 是個人分類：從 Settings 開啟 Manage Categories 時列出 Pets
 
-### Requirement: CATEGORIES-23.1 以群組的 ID 開啟時是群組範圍
+### Requirement: CATEGORIES-23.2 以群組的 ID 開啟時是群組範圍
 
-WHEN 以 `/settings/manage-categories?scopeKind=group&spaceId=<群組 ID>` 開啟，而這是本機資料裡一個群組的 ID，the mobile app SHALL 以這個群組的範圍開啟，標題是「Group Categories」，只列出預設分類和這個群組的分類。
+WHEN 以 `/settings/manage-categories?scopeKind=group&spaceId=<群組 ID>` 開啟，而這是本機資料裡一個群組的 ID，the mobile app SHALL 以這個群組的範圍開啟，標題是「Group Categories」，只列出這個群組的分類。
 
-#### Scenario: 還沒有群組分類
+#### Scenario: 還沒有新增群組分類
 
 - **WHEN** 在 Manage Categories 新增「Gym」之後，以 `scopeKind=group` 和 Brisbane 的群組 ID 開啟
-- **THEN** 標題是「Group Categories」，只列出九個預設分類，沒有 Gym
+- **THEN** 標題是「Group Categories」，只列出 Brisbane 的九個預設分類，沒有 Gym
 
 #### Scenario: 其他群組的分類
 
@@ -425,7 +435,7 @@ WHEN 以 `/settings/manage-categories?scopeKind=group&spaceId=<群組 ID>` 開�
 
 ### Requirement: CATEGORIES-24.1 沒有群組 ID 時退回個人範圍
 
-IF 網址有 `scopeKind=group`，卻沒有 `spaceId` 或 `spaceId` 是空的，THEN the mobile app SHALL 以個人範圍開啟 Manage Categories（CATEGORIES-22.1）。
+IF 網址有 `scopeKind=group`，卻沒有 `spaceId` 或 `spaceId` 是空的，THEN the mobile app SHALL 以個人範圍開啟 Manage Categories（CATEGORIES-22.2）。
 
 #### Scenario: 沒有 spaceId
 
@@ -479,16 +489,30 @@ WHEN 使用者新增分類，the mobile app SHALL 記下你的使用者 ID 作�
 - **WHEN** 在 Brisbane 的 Group Categories 新增「Flights」
 - **THEN** Flights 的建立者是你的使用者 ID，空間是 Brisbane 的群組 ID
 
-### Requirement: CATEGORIES-29.1 每個範圍的預設分類都是同一組
+### Requirement: CATEGORIES-30.1 建立群組時替群組建立預設分類
 
-WHEN 使用者在 Manage Categories 或 Group Categories 改預設分類的名稱或顏色，the mobile app SHALL 在每個範圍都顯示改過的名稱和顏色。
+WHEN 群組建立（GROUPS-8.1），the mobile app SHALL 在存下群組和成員的同一次寫入裡，替這個群組的範圍依序建立九個預設分類（CATEGORIES-2.1），所以其中任何一筆存不進去，就和群組存不進去一樣（GROUPS-12.1），不留下這次的群組、成員或分類。
+
+#### Scenario: 建立群組
+
+- **WHEN** 建立「Brisbane」
+- **THEN** Brisbane 的 Group Categories 依序列出九個預設分類，名稱和顏色都和 CATEGORIES-2.1 一樣；它們的空間都是 Brisbane 的群組 ID，ID 都和個人分類的不同
+
+#### Scenario: 分類存不進去
+
+- **WHEN** 建立「Brisbane」時，寫入它的 Uncategorized 失敗
+- **THEN** 跳出「Unable to Create Group」的提示框，New Group 仍開著；本機資料和按 Create 之前一樣，沒有群組，也沒有多出分類
+
+### Requirement: CATEGORIES-31.1 改名和改色只改這個範圍的分類
+
+WHEN 使用者在 Manage Categories 或 Group Categories 改分類的名稱或顏色，the mobile app SHALL 只改這個範圍的這個分類，其他範圍的分類都不變，包括同名的預設分類。
 
 #### Scenario: 在 Group Categories 改
 
 - **WHEN** 在 Brisbane 的 Group Categories 把 Shopping 改名為「Groceries」並改用 `#43A047`
-- **THEN** Manage Categories 和 Tokyo 的 Group Categories 的第三列都是「Groceries」，色點是 `#43A047`
+- **THEN** Brisbane 的第三列是「Groceries」，色點是 `#43A047`；Manage Categories 和 Tokyo 的 Group Categories 的第三列仍是「Shopping」，色點是 `#FBC02D`
 
 #### Scenario: 在 Manage Categories 改
 
 - **WHEN** 在 Manage Categories 把 Health 改名為「Medical」並改用 `#00ACC1`
-- **THEN** Brisbane 的 Group Categories 的第六列是「Medical」，色點是 `#00ACC1`
+- **THEN** Brisbane 的 Group Categories 的第六列仍是「Health」，色點是 `#F4511E`

@@ -72,7 +72,10 @@ export function LocalDataGate({
         development,
         async (transaction) => {
           const localIdentity = await ensureLocalIdentity(transaction);
-          await ensureDefaultCategories(transaction);
+          await ensureDefaultCategories(
+            transaction,
+            localIdentity.personalSpaceId,
+          );
           const savedAppearance = await readLocalAppearance(transaction);
           return { identity: localIdentity, appearance: savedAppearance };
         },

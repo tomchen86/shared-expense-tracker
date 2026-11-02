@@ -1,7 +1,7 @@
 # ADR-0009: Category names and colors are unique across the app
 
 - Date: 2026-10-31
-- Status: Accepted
+- Status: Superseded by ADR-0011
 
 ## Context
 

@@ -12,7 +12,7 @@ export interface Category {
   /** The user ID of whoever added the category. */
   createdByUserId?: string;
   /** The space the category belongs to: your personal space ID or a group ID. */
-  spaceId?: string;
+  spaceId: string;
 }
 
 interface CategoryRow {
@@ -21,7 +21,7 @@ interface CategoryRow {
   color: string;
   isDefault: number;
   createdByUserId: string | null;
-  spaceId: string | null;
+  spaceId: string;
 }
 
 export function isUncategorizedCategory(
@@ -32,11 +32,17 @@ export function isUncategorizedCategory(
 
 export async function ensureDefaultCategories(
   transaction: SqlExecutor,
+  spaceId: string,
 ): Promise<void> {
   const existing = await transaction.all<{ present: number }>(
-    'SELECT 1 AS present FROM categories LIMIT 1',
+    'SELECT 1 AS present FROM categories WHERE spaceId = ? LIMIT 1',
+    [spaceId],
   );
   if (existing.length > 0) return;
+
+  const [row] = await transaction.all<{ position: number }>(
+    'SELECT COALESCE(MAX(position), 0) AS position FROM categories',
+  );
 
   const ids = new Set<string>();
   while (ids.size < DEFAULT_CATEGORIES.length) {
@@ -46,17 +52,25 @@ export async function ensureDefaultCategories(
 
   for (const [index, category] of DEFAULT_CATEGORIES.entries()) {
     await transaction.run(
-      'INSERT INTO categories (id, name, color, isDefault, position) VALUES (?, ?, ?, 1, ?)',
-      [uniqueIds[index], category.name, category.color, index + 1],
+      'INSERT INTO categories (id, name, color, isDefault, position, spaceId) VALUES (?, ?, ?, 1, ?, ?)',
+      [
+        uniqueIds[index],
+        category.name,
+        category.color,
+        row.position + index + 1,
+        spaceId,
+      ],
     );
   }
 }
 
 export async function listCategories(
   database: SqlExecutor,
+  spaceId?: string,
 ): Promise<Category[]> {
   const rows = await database.all<CategoryRow>(
-    'SELECT id, name, color, isDefault, createdByUserId, spaceId FROM categories ORDER BY position ASC',
+    `SELECT id, name, color, isDefault, createdByUserId, spaceId FROM categories${spaceId === undefined ? '' : ' WHERE spaceId = ?'} ORDER BY position ASC`,
+    spaceId === undefined ? [] : [spaceId],
   );
   return rows.map((row) => ({
     id: row.id,
@@ -64,7 +78,7 @@ export async function listCategories(
     color: row.color,
     isDefault: row.isDefault === 1,
     createdByUserId: row.createdByUserId ?? undefined,
-    spaceId: row.spaceId ?? undefined,
+    spaceId: row.spaceId,
   }));
 }
 

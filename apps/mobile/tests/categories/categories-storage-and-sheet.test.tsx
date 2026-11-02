@@ -24,6 +24,7 @@ import {
 import { LocalDataGate } from '../../src/shell';
 import { ensureLocalIdentity } from '../../src/shell/identity';
 import { appMigrations } from '../../src/shell/migrations';
+import { categoryMigrations } from '../../src/categories/migrations';
 import {
   initializeDatabase,
   type Database,
@@ -56,7 +57,7 @@ test('assigns distinct v4 UUIDs to default and created categories and skips writ
     false,
     async (tx) => {
       const identity = await ensureLocalIdentity(tx);
-      await ensureDefaultCategories(tx);
+      await ensureDefaultCategories(tx, identity.personalSpaceId);
       return identity;
     },
   );
@@ -80,8 +81,8 @@ test('assigns distinct v4 UUIDs to default and created categories and skips writ
   database = openNodeDatabase(file, { readOnly: true });
   await expect(
     initializeDatabase(database, appMigrations, false, async (tx) => {
-      await ensureLocalIdentity(tx);
-      await ensureDefaultCategories(tx);
+      const identity = await ensureLocalIdentity(tx);
+      await ensureDefaultCategories(tx, identity.personalSpaceId);
     }),
   ).resolves.toBeUndefined();
   expect(await listCategories(database)).toEqual(categories);
@@ -91,8 +92,8 @@ test('assigns distinct v4 UUIDs to default and created categories and skips writ
 
 test('rejects updating the reserved Uncategorized row or a missing category id', async () => {
   await initializeDatabase(database, appMigrations, false, async (tx) => {
-    await ensureLocalIdentity(tx);
-    await ensureDefaultCategories(tx);
+    const identity = await ensureLocalIdentity(tx);
+    await ensureDefaultCategories(tx, identity.personalSpaceId);
   });
   const categories = await listCategories(database);
   const uncategorized = categories.find(isUncategorizedCategory)!;
@@ -114,6 +115,43 @@ test('rejects updating the reserved Uncategorized row or a missing category id',
   ).rejects.toThrow('Category cannot be updated');
 
   expect(await listCategories(database)).toEqual(categories);
+});
+
+test('resets the unreleased shared-category database on development startup', async () => {
+  const previousMigrations = appMigrations.map((sql) =>
+    sql === categoryMigrations[0]
+      ? sql.replace('spaceId TEXT NOT NULL', 'spaceId TEXT')
+      : sql,
+  );
+  await initializeDatabase(
+    database,
+    previousMigrations,
+    true,
+    ensureLocalIdentity,
+  );
+  await database.run(
+    "INSERT INTO categories (id, name, color, isDefault, position) VALUES ('shared', 'Shopping', '#FBC02D', 1, 1)",
+  );
+
+  const identity = await initializeDatabase(
+    database,
+    appMigrations,
+    true,
+    async (tx) => {
+      const identity = await ensureLocalIdentity(tx);
+      await ensureDefaultCategories(tx, identity.personalSpaceId);
+      return identity;
+    },
+  );
+
+  const categories = await listCategories(database);
+  expect(categories).toHaveLength(9);
+  expect(
+    categories.every(
+      (category) => category.spaceId === identity.personalSpaceId,
+    ),
+  ).toBe(true);
+  expect(categories.some((category) => category.id === 'shared')).toBe(false);
 });
 
 test('blocks modal swipe dismissal and request-close while saving, and allows them when idle', async () => {
@@ -253,7 +291,7 @@ test.each(['matching', 'different'])(
       false,
       async (tx) => {
         const identity = await ensureLocalIdentity(tx);
-        await ensureDefaultCategories(tx);
+        await ensureDefaultCategories(tx, identity.personalSpaceId);
         return identity;
       },
     );

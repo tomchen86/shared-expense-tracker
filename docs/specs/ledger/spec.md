@@ -225,7 +225,7 @@ The mobile app SHALL 讓支出表單的標題列有取消「Cancel」和確認�
 
 ### Requirement: LEDGER-14.1 打開 New Expense 時的內容
 
-WHEN 打開 New Expense，the mobile app SHALL 讓金額、標題和備註都是空的，分類是依儲存的順序排第一的分類（CATEGORIES-7.2），日期是今天。
+WHEN 打開 New Expense，the mobile app SHALL 讓金額、標題和備註都是空的，分類是個人空間的分類中依儲存的順序排第一的那一個（CATEGORIES-7.2），日期是今天。
 
 #### Scenario: 第一次啟動
 
@@ -295,9 +295,9 @@ WHEN 打開某筆支出的 Edit Expense，the mobile app SHALL 以這筆支出�
 - **WHEN** 存下 Shopping 的支出之後，把 Shopping 改名為「Groceries」，再打開這筆支出的 Edit Expense
 - **THEN** 分類是「Category, Groceries」
 
-### Requirement: LEDGER-17.1 從清單選分類
+### Requirement: LEDGER-17.2 從清單選分類
 
-WHEN 使用者按分類按鈕，the mobile app SHALL 打開標題是「Category」的清單，依儲存的順序列出每個分類，並把表單上選的那一個標示為已選取；按一個分類就選它並回到表單，按「Cancel」就回到表單、分類不變。
+WHEN 使用者按分類按鈕，the mobile app SHALL 打開標題是「Category」的清單，依儲存的順序列出個人空間的每個分類（CATEGORIES-7.2），並把表單上選的那一個標示為已選取；按一個分類就選它並回到表單，按「Cancel」就回到表單、分類不變。
 
 #### Scenario: 打開清單
 
@@ -308,6 +308,11 @@ WHEN 使用者按分類按鈕，the mobile app SHALL 打開標題是「Category�
 
 - **WHEN** 在 Manage Categories 新增「Gym」之後，在 New Expense 打開清單
 - **THEN** Gym 排在 Uncategorized 後面
+
+#### Scenario: 群組的分類
+
+- **WHEN** 建立「Brisbane」，在它的 Group Categories 新增「Flights」，並把 Shopping 改名為「Groceries」之後，在 New Expense 打開清單
+- **THEN** 清單依序是個人空間的九個預設分類，每個名稱只出現一次；沒有 Flights，也沒有 Groceries
 
 #### Scenario: 選分類
 

@@ -623,14 +623,20 @@ export async function cancelCategoryList() {
   await waitFor(() => expect(isCategoryListOpen()).toBe(false));
 }
 
-// Manage Categories, where categories are added and renamed
+// Manage Categories and Group Categories, where categories are added and renamed
 
-async function openManageCategories() {
+/** Opens Manage Categories from the Settings root, or a group's Group Categories by its URL. */
+async function openManageCategories(groupId?: string) {
   await tapTab('Settings');
-  await fireEvent.press(screen.getByText('Manage Categories'));
+  if (groupId === undefined)
+    await fireEvent.press(screen.getByText('Manage Categories'));
+  else
+    await push(
+      `/settings/manage-categories?scopeKind=group&spaceId=${groupId}`,
+    );
   await waitFor(() =>
     expect(navigationBars(tab('Settings')).at(-1)?.props.title).toBe(
-      'Manage Categories',
+      groupId === undefined ? 'Manage Categories' : 'Group Categories',
     ),
   );
   await settle();
@@ -655,13 +661,17 @@ async function backToExpenses() {
   await settle();
 }
 
-/** Renames a category in Manage Categories, recoloring it when `color` is given. */
+/**
+ * Renames a category in Manage Categories, or in the group's Group Categories when
+ * `groupId` is given, recoloring it when `color` is given.
+ */
 export async function editCategory(
   name: string,
   newName: string,
   color?: string,
+  groupId?: string,
 ) {
-  await openManageCategories();
+  await openManageCategories(groupId);
   await fireEvent.press(within(tab('Settings')).getByText(name));
   await fireEvent.changeText(
     await screen.findByLabelText('Category name'),
@@ -675,9 +685,9 @@ export async function editCategory(
   await backToExpenses();
 }
 
-/** Adds a category in Manage Categories. */
-export async function addCategory(name: string) {
-  await openManageCategories();
+/** Adds a category in Manage Categories, or in the group's Group Categories when `groupId` is given. */
+export async function addCategory(name: string, groupId?: string) {
+  await openManageCategories(groupId);
   await anyButton('Add category').press();
   await fireEvent.changeText(
     await screen.findByLabelText('Category name'),
