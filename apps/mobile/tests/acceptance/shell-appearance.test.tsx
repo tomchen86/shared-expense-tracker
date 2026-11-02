@@ -58,7 +58,7 @@ const showsOnlyTheLoadingIndicator = () => {
 
 test('[SHELL-1.2] keeps only the loading indicator until iOS answers whether Reduce Transparency is on', async () => {
   fakeReduceTransparency('later');
-  openApp('/settings');
+  await openApp('/settings');
   // The test database opens within these turns; only iOS's answer is missing.
   for (let turn = 0; turn < 5; turn++) await settle();
 

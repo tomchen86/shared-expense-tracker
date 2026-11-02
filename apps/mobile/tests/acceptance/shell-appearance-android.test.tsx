@@ -35,6 +35,14 @@ let mockOpen: () => Promise<Database>;
 jest.mock('../../src/storage/expo', () => ({
   openPhoneDatabase: () => mockOpen(),
 }));
+// Material Symbols reach the tab bar as images that expo-symbols draws from the
+// symbol font on the phone. Here each image is named after its symbol instead.
+jest.mock('expo-symbols', () => ({
+  ...jest.requireActual('expo-symbols'),
+  unstable_getMaterialSymbolSourceAsync: async (symbol: string) => ({
+    uri: `material-symbol:${symbol}`,
+  }),
+}));
 
 const SAVE_FAILED = [
   'Unable to Save Settings',

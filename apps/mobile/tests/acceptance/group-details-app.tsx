@@ -374,8 +374,8 @@ export const isEnabled = (view: HostView) => !isDisabled(view);
 
 /** A member's menu as the app shows it: an iOS action sheet or an Android dialog. */
 export interface MemberMenu {
-  title?: string;
-  message?: string;
+  title?: string | null;
+  message?: string | null;
   items: string[];
   destructive: string[];
   cancel?: string;

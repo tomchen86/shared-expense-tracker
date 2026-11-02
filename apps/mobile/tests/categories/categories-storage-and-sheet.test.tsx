@@ -174,7 +174,7 @@ test('updates the list directly after creating or editing a category without re-
     },
   };
 
-  renderRouter(
+  await renderRouter(
     {
       _layout: () => (
         <LocalDataGate
@@ -274,7 +274,7 @@ test.each(['matching', 'different'])(
       },
     };
 
-    renderRouter(
+    await renderRouter(
       {
         _layout: () => (
           <LocalDataGate

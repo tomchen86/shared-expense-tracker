@@ -413,7 +413,7 @@ async function localDataScreens(
   for (const mode of ['light', 'dark'] as const) {
     fakePhoneAppearance(mode);
     setOpen(open);
-    const app = openApp('/');
+    const app = await openApp('/');
     const view = await find();
     shown.push({
       colors: fixedColors(),
