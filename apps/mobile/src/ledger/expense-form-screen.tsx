@@ -44,13 +44,14 @@ export function EditExpenseScreen() {
 
 function ExpenseFormScreen({ expenseId }: { expenseId?: string }) {
   const database = useLocalDatabase();
+  const { personalSpaceId } = useLocalIdentity();
   const colors = useThemeColors();
   const [loaded, setLoaded] = useState<LoadedForm>();
   const [error, setError] = useState<unknown>();
   useEffect(() => {
     let active = true;
     void Promise.all([
-      listCategories(database),
+      listCategories(database, personalSpaceId),
       expenseId ? listExpenses(database) : Promise.resolve([] as Expense[]),
     ]).then(
       ([categories, expenses]) => {
@@ -67,7 +68,7 @@ function ExpenseFormScreen({ expenseId }: { expenseId?: string }) {
     return () => {
       active = false;
     };
-  }, [database, expenseId]);
+  }, [database, expenseId, personalSpaceId]);
   if (error) throw error;
   if (!loaded || (expenseId && !loaded.expense))
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;

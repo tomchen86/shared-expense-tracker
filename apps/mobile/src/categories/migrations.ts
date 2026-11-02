@@ -6,7 +6,7 @@ export const categoryMigrations: readonly string[] = [
     isDefault INTEGER NOT NULL CHECK (isDefault IN (0, 1)),
     position INTEGER NOT NULL UNIQUE,
     createdByUserId TEXT,
-    spaceId TEXT,
+    spaceId TEXT NOT NULL,
     CHECK (isDefault = 1 OR (createdByUserId IS NOT NULL AND spaceId IS NOT NULL))
   )`,
 ];
