@@ -74,7 +74,9 @@ test.each(['Add Member', 'Rename Member', 'Rename Group', 'New Group'])(
     await createGroup('Brisbane');
 
     await tapTab('Settings');
-    fireEvent.press(screen.getByRole('button', { name: 'Manage Categories' }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Manage Categories' }),
+    );
     await waitFor(() =>
       expect(navigationBarTitles(tab('Settings'))).toEqual([
         'Settings',
@@ -94,7 +96,7 @@ test.each(['Add Member', 'Rename Member', 'Rename Group', 'New Group'])(
       else await openRenameMember('Blake');
     }
 
-    fireEvent.changeText(
+    await fireEvent.changeText(
       form.endsWith('Group') ? groupNameField() : memberNameField(),
       'Updated',
     );

@@ -167,8 +167,8 @@ test('[SHELL-43.1] runs the action of the + button once for each press', async (
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress });
   const button = probeButton('Add group');
 
-  fireEvent.press(button);
-  fireEvent.press(button);
+  await fireEvent.press(button);
+  await fireEvent.press(button);
 
   expect(onPress).toHaveBeenCalledTimes(2);
 });
@@ -184,8 +184,8 @@ test('[SHELL-43.1] runs a header action once for each press', async () => {
     },
   });
 
-  fireEvent.press(headerButton('Add'));
-  fireEvent.press(headerButton('Group actions'));
+  await fireEvent.press(headerButton('Add'));
+  await fireEvent.press(headerButton('Group actions'));
   lastDialog().press('Members');
 
   expect(add).toHaveBeenCalledTimes(1);
@@ -206,7 +206,7 @@ test('[SHELL-46.1] shows a ripple and gives no haptic when the + button is press
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
 
   expect(addButtonBox('Add group').ripple).toBe(true);
-  fireEvent.press(probeButton('Add group'));
+  await fireEvent.press(probeButton('Add group'));
   expect(haptics.impactAsync).not.toHaveBeenCalled();
   expect(haptics.notificationAsync).not.toHaveBeenCalled();
   expect(haptics.selectionAsync).not.toHaveBeenCalled();
@@ -241,7 +241,7 @@ test('[SHELL-34.1] colors the + button and the header icons with colors that fol
   });
   expect(probeButton('Add group')).toBeOnTheScreen();
   const light = probeColors();
-  switchPhoneTo('dark');
+  await switchPhoneTo('dark');
   const dark = probeColors();
 
   expect(colorsInBoth(light.colors, dark.colors)).toEqual([]);
@@ -260,7 +260,7 @@ test('[SHELL-48.1] shows Cancel as close on the left and the confirm action as c
 
 test('[SHELL-48.1] draws the confirm action in the accent color', async () => {
   // Before the app starts: a hook's render becomes what `screen` queries.
-  const { accent } = renderHook(() => useThemeColors()).result.current;
+  const { accent } = (await renderHook(() => useThemeColors())).result.current;
   await showHeaderActions({
     cancel: { label: 'Cancel', onPress: jest.fn() },
     confirm: { label: 'Add', onPress: jest.fn() },
@@ -295,7 +295,7 @@ test('[SHELL-48.1] opens a dialog named after the menu that lists its actions in
 
   expect(headerButtons()).toEqual({ left: [], right: ['Group actions'] });
   await expectIcons({ 'Group actions': 'more_vert' });
-  fireEvent.press(headerButton('Group actions'));
+  await fireEvent.press(headerButton('Group actions'));
 
   expect(lastDialog()).toMatchObject({
     title: 'Group actions',
@@ -326,7 +326,7 @@ test('[SHELL-48.1] runs no action when Cancel is pressed in the dialog', async (
     menu: groupActions({ onPress: members }, { onPress: remove }),
   });
 
-  fireEvent.press(headerButton('Group actions'));
+  await fireEvent.press(headerButton('Group actions'));
   lastDialog().press('Cancel');
 
   expect(members).not.toHaveBeenCalled();
@@ -345,14 +345,14 @@ test('[SHELL-49.1] keeps a disabled confirm action on screen at 38% opacity and 
   expect(button).toBeDisabled();
   expect(iconOpacity(button)).toBeCloseTo(0.38);
   expect(iconOpacity(headerButton('Cancel'))).toBe(1);
-  fireEvent.press(button);
+  await fireEvent.press(button);
   expect(add).not.toHaveBeenCalled();
 });
 
 test('[SHELL-49.1] leaves a disabled action out of the dialog', async () => {
   await showHeaderActions({ menu: groupActions({}, { disabled: true }) });
 
-  fireEvent.press(headerButton('Group actions'));
+  await fireEvent.press(headerButton('Group actions'));
 
   expect(lastDialog()).toMatchObject({
     title: 'Group actions',
@@ -370,7 +370,7 @@ test('[SHELL-49.1] disables the menu button when every action in it is disabled'
 
   expect(button).toBeDisabled();
   expect(iconOpacity(button)).toBeCloseTo(0.38);
-  fireEvent.press(button);
+  await fireEvent.press(button);
   expect(alert).not.toHaveBeenCalled();
 });
 
@@ -398,7 +398,7 @@ test('[SHELL-50.1] colors the ripples of the header buttons to follow the appear
       ripplesOn(headerButton(name)).map(({ fixedColor }) => fixedColor),
     );
   const light = colors();
-  switchPhoneTo('dark');
+  await switchPhoneTo('dark');
   const dark = colors();
 
   expect(light.map((ripples) => ripples.length)).toEqual([1, 1, 1]);
@@ -418,7 +418,7 @@ test('[SHELL-51.1] lets the back button or a tap outside close the dialog withou
     menu: groupActions({ onPress: members }, { onPress: remove }),
   });
 
-  fireEvent.press(headerButton('Group actions'));
+  await fireEvent.press(headerButton('Group actions'));
   const dialog = lastDialog();
   expect(dialog.cancelable).toBe(true);
   dialog.dismiss();

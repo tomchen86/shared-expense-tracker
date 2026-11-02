@@ -141,7 +141,7 @@ test('[GROUPS-22.1] lists Members, Rename Group and Cancel in the Group actions 
   await createGroup('Brisbane');
   await openGroup('Brisbane');
 
-  fireEvent.press(
+  await fireEvent.press(
     within(barTitled('Brisbane')!).getByRole('button', {
       name: 'Group actions',
     }),
@@ -244,7 +244,7 @@ test('[GROUPS-34.1] stays in Add Member with the name when Back or a tap outside
   await removeMember('Blake');
   await waitFor(() => expect(membersShown()).not.toContain('Blake'));
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'blake');
+  await fireEvent.changeText(memberNameField(), 'blake');
   await pressOnBar('Add Member', 'Add');
   expect(alertsShown().at(-1)).toEqual(addBackAlert('Blake'));
   expect(lastAlertCancelable()).toBe(true);
@@ -302,7 +302,7 @@ test('[GROUPS-40.1] opens Rename Group rising from the bottom with Cancel on the
 test('[GROUPS-31.1] closes Add Member once the new member is saved, even when Settings was selected while it saved', async () => {
   await startInMembers();
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   const writes = holdWrites();
   await pressOnBar('Add Member', 'Add');
   await tapTab('Settings');
@@ -320,7 +320,7 @@ test('[GROUPS-31.1] closes Add Member once the new member is saved, even when Se
 test("[GROUPS-38.1] closes Rename Member once the member's new name is saved, even when Settings was selected while it saved", async () => {
   await startInMembers(['Blak']);
   await openRenameMember('Blak');
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   const writes = holdWrites();
   await pressOnBar('Rename Member', 'Save');
   await tapTab('Settings');
@@ -340,7 +340,7 @@ test("[GROUPS-41.1] closes Rename Group once the group's new name is saved, even
   await createGroup('Trip');
   await openGroup('Trip');
   await openRenameGroup('Trip');
-  fireEvent.changeText(groupNameField(), 'Tokyo');
+  await fireEvent.changeText(groupNameField(), 'Tokyo');
   const writes = holdWrites();
   await pressOnBar('Rename Group', 'Save');
   await tapTab('Settings');
@@ -359,13 +359,13 @@ test('[GROUPS-43.1] closes each name form with Back without saving', async () =>
   await startInMembers(['Blake']);
 
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'Casey');
+  await fireEvent.changeText(memberNameField(), 'Casey');
   await pressBack();
   await expectClosed('Add Member');
   expect(isOpen('Members')).toBe(true);
 
   await openRenameMember('Blake');
-  fireEvent.changeText(memberNameField(), 'Blake K.');
+  await fireEvent.changeText(memberNameField(), 'Blake K.');
   await pressBack();
   await expectClosed('Rename Member');
   expect(isOpen('Members')).toBe(true);
@@ -373,7 +373,7 @@ test('[GROUPS-43.1] closes each name form with Back without saving', async () =>
   await pressBack();
   await expectClosed('Members');
   await openRenameGroup('Brisbane');
-  fireEvent.changeText(groupNameField(), 'Tokyo');
+  await fireEvent.changeText(groupNameField(), 'Tokyo');
   await pressBack();
   await expectClosed('Rename Group');
 
@@ -388,7 +388,7 @@ test('[GROUPS-43.1] closes each name form with Back without saving', async () =>
 test('[GROUPS-44.1] keeps Add Member open when Back is pressed while it saves', async () => {
   await startInMembers();
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   const writes = holdWrites();
   await pressOnBar('Add Member', 'Add');
 
@@ -409,7 +409,7 @@ test('[GROUPS-44.1] keeps Add Member open when Back is pressed while it saves', 
 test('[GROUPS-44.1] keeps Rename Member open when Back is pressed while it saves', async () => {
   await startInMembers(['Blak']);
   await openRenameMember('Blak');
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   const writes = holdWrites();
   await pressOnBar('Rename Member', 'Save');
 
@@ -432,7 +432,7 @@ test('[GROUPS-44.1] keeps Rename Group open when Back is pressed while it saves'
   await createGroup('Trip');
   await openGroup('Trip');
   await openRenameGroup('Trip');
-  fireEvent.changeText(groupNameField(), 'Tokyo');
+  await fireEvent.changeText(groupNameField(), 'Tokyo');
   const writes = holdWrites();
   await pressOnBar('Rename Group', 'Save');
 
@@ -448,31 +448,31 @@ test('[GROUPS-44.1] keeps Rename Group open when Back is pressed while it saves'
 
 test("[SHELL-34.1] uses colors that follow the appearance on a group's screen, Members and the name forms on Android", async () => {
   await startInMembers(['Blake']);
-  const compare = () => {
+  const compare = async () => {
     const light = { colors: fixedColors(), uncolored: textsWithoutColor() };
-    switchPhoneTo('dark');
+    await switchPhoneTo('dark');
     const dark = { colors: fixedColors(), uncolored: textsWithoutColor() };
-    switchPhoneTo('light');
+    await switchPhoneTo('light');
     expect(colorsInBoth(light.colors, dark.colors)).toEqual([]);
     expect([...light.uncolored, ...dark.uncolored]).toEqual([]);
   };
 
-  compare();
+  await compare();
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   await pressOnBar('Add Member', 'Add');
   expect(textsOn('Add Member')).toContain(ALREADY_EXISTS);
-  compare();
+  await compare();
   await pressBack();
   await expectClosed('Add Member');
   await openRenameMember('Blake');
-  compare();
+  await compare();
   await pressBack();
   await expectClosed('Rename Member');
   await pressBack();
   await expectClosed('Members');
   await openRenameGroup('Brisbane');
-  compare();
+  await compare();
 });
 
 test("[SHELL-38.1] adds no blur or glass of its own to a group's screen, Members or the name forms on Android", async () => {

@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getLocales } from 'expo-localization';
@@ -85,7 +85,6 @@ function normalizeAmount(text: string) {
 function ExpenseEditor({ categories, expense }: LoadedForm) {
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
-  const navigation = useNavigation();
   const colors = useThemeColors();
   const today = toLocalDate(
     new Date(),
@@ -109,6 +108,7 @@ function ExpenseEditor({ categories, expense }: LoadedForm) {
   const [form, setForm] = useState(initial);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const savingRef = useRef(false);
   const closingRef = useRef(false);
   const mountedRef = useRef(true);
@@ -135,19 +135,20 @@ function ExpenseEditor({ categories, expense }: LoadedForm) {
   );
   const canSave = dirty && !!form.title.trim() && amountMinor !== undefined;
 
-  usePreventRemove(dirty || saving, ({ data }) => {
+  usePreventRemove((dirty || saving) && !leaving, ({ repeat }) => {
     if (savingRef.current) return;
+    // Expo Router blocks the action again unless the prevention is off when it repeats.
+    const leave = () => {
+      setLeaving(true);
+      repeat();
+    };
     if (closingRef.current) {
-      navigation.dispatch(data.action);
+      leave();
       return;
     }
     Alert.alert('Discard Changes?', 'Your changes will not be saved.', [
       { text: 'Keep Editing', style: 'cancel' },
-      {
-        text: 'Discard',
-        style: 'destructive',
-        onPress: () => navigation.dispatch(data.action),
-      },
+      { text: 'Discard', style: 'destructive', onPress: leave },
     ]);
   });
 

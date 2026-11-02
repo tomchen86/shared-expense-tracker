@@ -2,8 +2,9 @@ packages:
   - apps/mobile
   - packages/domain
 
+allowBuilds:
+  '@parcel/watcher': false
+  unrs-resolver: false
+
 # Keep local and CI installs on the same node_modules layout.
 enableGlobalVirtualStore: false
-
-patchedDependencies:
-  react-native-screens@4.26.2: patches/react-native-screens@4.26.2.patch

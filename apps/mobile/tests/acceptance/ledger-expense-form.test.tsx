@@ -223,8 +223,8 @@ test('[LEDGER-11.1] opens one New Expense when Add expense is pressed twice', as
   await startExpenses();
   const button = addExpenseButton();
 
-  fireEvent.press(button);
-  fireEvent.press(button);
+  await fireEvent.press(button);
+  await fireEvent.press(button);
   await settle();
 
   await expectForm('New Expense');
@@ -510,7 +510,7 @@ test('[LEDGER-18.1] saves the date chosen in the date field', async () => {
   await startExpenses();
   await openNewExpense();
 
-  chooseDate('2024-12-25');
+  await chooseDate('2024-12-25');
 
   expect(dateField().value).toBe('2024-12-25');
   await fillForm({ amount: '8.75', title: 'Coffee run' });
@@ -661,9 +661,9 @@ test('[LEDGER-21.1] adds one expense when Add is pressed twice before the save f
   const writes = holdWrites();
   const add = formButton('Add');
 
-  act(() => {
-    add.press();
-    add.press();
+  await act(async () => {
+    await add.press();
+    await add.press();
   });
   await writes.release();
   await settle();
@@ -1098,7 +1098,7 @@ test('[SHELL-34.1] colors the expense form and the category list with colors tha
   await openCategoryList();
   const lightList = appColors(categoryListView());
 
-  switchPhoneTo('dark');
+  await switchPhoneTo('dark');
   const darkList = appColors(categoryListView());
   await cancelCategoryList();
   const darkForm = appColors(formScreen());

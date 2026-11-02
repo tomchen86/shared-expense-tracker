@@ -35,6 +35,14 @@ let mockOpen: () => Promise<Database>;
 jest.mock('../../src/storage/expo', () => ({
   openPhoneDatabase: () => mockOpen(),
 }));
+// Material Symbols reach the tab bar as images that expo-symbols draws from the
+// symbol font on the phone. Here each image is named after its symbol instead.
+jest.mock('expo-symbols', () => ({
+  ...jest.requireActual('expo-symbols'),
+  unstable_getMaterialSymbolSourceAsync: async (symbol: string) => ({
+    uri: `material-symbol:${symbol}`,
+  }),
+}));
 
 const SAVE_FAILED = [
   'Unable to Save Settings',
@@ -65,8 +73,11 @@ const alerts = () => alert.mock.calls.map((call) => call.slice(0, 2));
 const startSettings = () => startApp('/settings');
 
 /** Starts the app again on the same database, as after closing it on the phone. */
-async function restart(app: { unmount: () => void }, url = '/settings') {
-  endAppProcess(app);
+async function restart(
+  app: { unmount: () => Promise<void> },
+  url = '/settings',
+) {
+  await endAppProcess(app);
   return startApp(url, { './appearance-probe.tsx': AppearanceProbe });
 }
 
@@ -160,9 +171,9 @@ test('[SHELL-30.1] follows the phone as it switches while the option is System',
   await chooseAppearance('Dark');
   await chooseAppearance('System');
 
-  switchPhoneTo('dark');
+  await switchPhoneTo('dark');
   expect(appAppearance()).toBe('dark');
-  switchPhoneTo('light');
+  await switchPhoneTo('light');
   expect(appAppearance()).toBe('light');
 });
 
@@ -192,7 +203,7 @@ test('[SHELL-32.1] locks the options while the choice is saved', async () => {
   await startSettings();
   const writes = holdWrites();
 
-  fireEvent.press(appearanceOption('Dark'));
+  await fireEvent.press(appearanceOption('Dark'));
   await settle();
 
   for (const option of ['System', 'Light', 'Dark'])
@@ -211,9 +222,9 @@ test('[SHELL-32.1] ignores another option while the choice is saved', async () =
   const app = await startSettings();
   const writes = holdWrites();
 
-  fireEvent.press(appearanceOption('Dark'));
+  await fireEvent.press(appearanceOption('Dark'));
   await settle();
-  fireEvent.press(appearanceOption('Light'));
+  await fireEvent.press(appearanceOption('Light'));
   await settle();
   await writes.release();
   await settle();

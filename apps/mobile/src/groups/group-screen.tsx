@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
@@ -37,9 +37,11 @@ export function GroupScreen() {
         />
       )}
       {group !== undefined && (
-        <Text style={[styles.message, { color: colors.textMuted }]}>
-          {group ? 'No expenses in this group yet.' : 'Group not found.'}
-        </Text>
+        <ScrollView contentInsetAdjustmentBehavior="automatic">
+          <Text style={[styles.message, { color: colors.textMuted }]}>
+            {group ? 'No expenses in this group yet.' : 'Group not found.'}
+          </Text>
+        </ScrollView>
       )}
     </View>
   );

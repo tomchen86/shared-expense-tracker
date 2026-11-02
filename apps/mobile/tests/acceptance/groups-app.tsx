@@ -1,4 +1,5 @@
 import {
+  componentsIn,
   nativeViews,
   navigationBars,
   push,
@@ -59,10 +60,10 @@ export async function readIdentity(): Promise<LocalIdentity> {
 export async function saveName(name: string) {
   await tapTab('Settings');
   const field = screen.getByLabelText('Your name');
-  fireEvent.changeText(field, name);
-  act(() => {
-    fireEvent(field, 'endEditing', { nativeEvent: {} });
-    fireEvent(field, 'blur', { nativeEvent: {} });
+  await fireEvent.changeText(field, name);
+  await act(async () => {
+    await fireEvent(field, 'endEditing', { nativeEvent: {} });
+    await fireEvent(field, 'blur', { nativeEvent: {} });
   });
   await settle();
   await tapTab('Groups');
@@ -70,7 +71,7 @@ export async function saveName(name: string) {
 
 /** Whether the views come in this order in the rendered tree. */
 export function inTreeOrder(...views: HostView[]) {
-  const all = screen.UNSAFE_root.findAll(() => true);
+  const all = screen.container.queryAll(() => true);
   const indexes = views.map((view) => all.indexOf(view));
   return indexes.every(
     (index, position) =>
@@ -98,12 +99,12 @@ export const addGroupButton = () =>
 
 /** The + buttons the Groups root shows through the shared component, by their names. */
 export const sharedAddButtons = () =>
-  within(groupsRoot())
-    .UNSAFE_queryAllByType(AddButton)
-    .map((button) => button.props.label);
+  componentsIn(groupsRoot(), (type) => type === AddButton).map(
+    ({ props }) => props.label,
+  );
 
 export async function pressAddGroup() {
-  fireEvent.press(addGroupButton());
+  await fireEvent.press(addGroupButton());
   await settle();
 }
 
@@ -209,7 +210,7 @@ export function headerButtons() {
 
 interface Control {
   disabled: boolean;
-  press: () => void;
+  press: () => Promise<void>;
 }
 
 /** Cancel or Create on New Group's title bar: an iOS bar button or an Android button. */
@@ -226,9 +227,9 @@ export function titleBarAction(name: 'Cancel' | 'Create'): Control {
     return {
       disabled,
       // The native bar reports a press by the button's ID, and none when disabled.
-      press: () => {
+      press: async () => {
         if (!disabled)
-          fireEvent(bar, 'pressHeaderBarButtonItem', {
+          await fireEvent(bar, 'pressHeaderBarButtonItem', {
             nativeEvent: { buttonId: item.buttonId },
           });
       },
@@ -240,15 +241,15 @@ export function titleBarAction(name: 'Cancel' | 'Create'): Control {
     button.props['aria-disabled'] === true;
   return {
     disabled,
-    press: () => {
-      if (!disabled) fireEvent.press(button);
+    press: async () => {
+      if (!disabled) await fireEvent.press(button);
     },
   };
 }
 
 /** Presses Cancel or Create and lets the save, if any, finish. */
 export async function press(name: 'Cancel' | 'Create') {
-  titleBarAction(name).press();
+  await titleBarAction(name).press();
   await settle();
 }
 
@@ -260,8 +261,8 @@ export const typeName = (text: string) =>
 /** Presses Return in the name field and lets the save, if any, finish. */
 export async function pressReturn() {
   const field = nameField();
-  act(() => {
-    fireEvent(field, 'submitEditing', {
+  await act(async () => {
+    await fireEvent(field, 'submitEditing', {
       nativeEvent: { text: field.props.value },
     });
   });
@@ -272,7 +273,7 @@ export async function pressReturn() {
 export async function createGroup(name: string) {
   await pressAddGroup();
   await expectNewGroupOpen();
-  typeName(name);
+  await typeName(name);
   await press('Create');
   await expectNewGroupClosed();
 }
@@ -295,7 +296,7 @@ export async function pressAlertButton(alert: jest.SpyInstance, text: string) {
     (candidate) => candidate.text === text,
   );
   if (button === undefined) throw new Error(`No ${text} in the last alert`);
-  act(() => button.onPress?.());
+  await act(() => button.onPress?.());
   await settle();
 }
 

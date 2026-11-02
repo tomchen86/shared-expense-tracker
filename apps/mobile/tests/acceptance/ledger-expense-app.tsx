@@ -12,6 +12,7 @@ import {
   within,
 } from '@testing-library/react-native';
 import {
+  componentsIn,
   nativeViews,
   navigationBars,
   push,
@@ -206,8 +207,8 @@ export async function startExpenses() {
 }
 
 /** Closes the app and starts it again on the same data. */
-export async function restart(app: { unmount: () => void }) {
-  app.unmount();
+export async function restart(app: { unmount: () => Promise<void> }) {
+  await app.unmount();
   await settle();
   return startExpenses();
 }
@@ -263,7 +264,7 @@ function presentedScreen(view: HostView): HostView | undefined {
 
 /** Whether the views come in this order in the rendered tree. */
 export function inTreeOrder(...views: HostView[]) {
-  const all = screen.UNSAFE_root.findAll(() => true);
+  const all = screen.container.queryAll(() => true);
   const indexes = views.map((view) => all.indexOf(view));
   return indexes.every(
     (index, position) =>
@@ -275,7 +276,7 @@ export function inTreeOrder(...views: HostView[]) {
 
 interface Control {
   disabled: boolean;
-  press: () => void;
+  press: () => Promise<void>;
 }
 
 interface BarItem {
@@ -301,9 +302,9 @@ function barControl(bar: HostView, name: string): Control | undefined {
     return {
       disabled,
       // The native bar sends no press for a disabled item.
-      press: () => {
+      press: async () => {
         if (!disabled)
-          fireEvent(bar, 'pressHeaderBarButtonItem', {
+          await fireEvent(bar, 'pressHeaderBarButtonItem', {
             nativeEvent: { buttonId: item.buttonId },
           });
       },
@@ -388,7 +389,7 @@ export function formButton(name: 'Cancel' | 'Add' | 'Save'): Control {
 
 /** Presses a button in the form's navigation bar and lets the save, if any, finish. */
 export async function press(name: 'Cancel' | 'Add' | 'Save') {
-  formButton(name).press();
+  await formButton(name).press();
   await settle();
 }
 
@@ -423,20 +424,24 @@ export const formCategory = () =>
   nameOf(categoryButton()).replace(/^Category, /, '');
 
 /** The form's date field, the ui/ DateField. */
-export function dateFieldView(): HostView {
-  const fields = formScreen().findAll(
-    (node) => typeof node.type === 'function' && node.type.name === 'DateField',
+function formDateField() {
+  const fields = componentsIn(
+    formScreen(),
+    (type) => typeof type === 'function' && type.name === 'DateField',
   );
   expect(fields).toHaveLength(1);
   return fields[0];
 }
 
+/** The native view the form's date field draws. */
+export const dateFieldView = (): HostView => formDateField().view;
+
 /** What the form tells its date field. */
-export const dateField = () => dateFieldView().props as DateFieldProps;
+export const dateField = () => formDateField().props as DateFieldProps;
 
 /** Chooses `date` in the date field's picker. */
-export function chooseDate(date: string) {
-  act(() => dateField().onChange(date));
+export async function chooseDate(date: string) {
+  await act(() => dateField().onChange(date));
 }
 
 /**
@@ -458,7 +463,7 @@ export const addExpenseButton = () =>
   within(tab('Expenses')).getByRole('button', { name: 'Add expense' });
 
 export async function openNewExpense() {
-  fireEvent.press(addExpenseButton());
+  await fireEvent.press(addExpenseButton());
   await expectForm('New Expense');
 }
 
@@ -483,11 +488,11 @@ export async function fillForm({
   category,
   date,
 }: ExpenseInput) {
-  if (amount !== undefined) fireEvent.changeText(amountField(), amount);
-  if (title !== undefined) fireEvent.changeText(titleField(), title);
-  if (note !== undefined) fireEvent.changeText(noteField(), note);
+  if (amount !== undefined) await fireEvent.changeText(amountField(), amount);
+  if (title !== undefined) await fireEvent.changeText(titleField(), title);
+  if (note !== undefined) await fireEvent.changeText(noteField(), note);
   if (category !== undefined) await chooseCategory(category);
-  if (date !== undefined) chooseDate(date);
+  if (date !== undefined) await chooseDate(date);
 }
 
 /** Adds an expense through New Expense: Coffee run for 8.75 unless `input` says otherwise. */
@@ -516,12 +521,12 @@ export async function editExpense(id: string, input: ExpenseInput) {
 export async function swipeFormDown() {
   const form = formScreen();
   if (form.props.preventNativeDismiss === true)
-    fireEvent(form, 'nativeDismissCancelled', {
+    await fireEvent(form, 'nativeDismissCancelled', {
       nativeEvent: { dismissCount: 1 },
     });
   else if (form.props.gestureEnabled === false)
-    fireEvent(form, 'gestureCancel', { nativeEvent: {} });
-  else fireEvent(form, 'dismissed', { nativeEvent: { dismissCount: 1 } });
+    await fireEvent(form, 'gestureCancel', { nativeEvent: {} });
+  else await fireEvent(form, 'dismissed', { nativeEvent: { dismissCount: 1 } });
   await settle();
 }
 
@@ -573,7 +578,7 @@ function categoryList(): { root: HostView; bar?: HostView } | undefined {
   if (bar !== undefined) return { root: screenAround(bar) ?? bar, bar };
   const header = screen.queryAllByRole('header', { name: 'Category' }).at(-1);
   if (header === undefined) return undefined;
-  return { root: screenAround(header) ?? screen.UNSAFE_root };
+  return { root: screenAround(header) ?? screen.container };
 }
 
 function listRoot() {
@@ -588,7 +593,7 @@ export const isCategoryListOpen = () => categoryList() !== undefined;
 export const categoryListView = () => listRoot();
 
 export async function openCategoryList() {
-  fireEvent.press(categoryButton());
+  await fireEvent.press(categoryButton());
   await waitFor(() => expect(isCategoryListOpen()).toBe(true));
   await settle();
 }
@@ -603,7 +608,7 @@ export function categoryOptions(names: readonly string[]) {
 
 export async function chooseCategory(name: string) {
   await openCategoryList();
-  fireEvent.press(within(listRoot()).getByRole('button', { name }));
+  await fireEvent.press(within(listRoot()).getByRole('button', { name }));
   await waitFor(() => expect(isCategoryListOpen()).toBe(false));
 }
 
@@ -614,7 +619,7 @@ export async function cancelCategoryList() {
     (list.bar && barControl(list.bar, 'Cancel')) ??
     barControl(list.root, 'Cancel');
   if (control === undefined) throw new Error('The category list has no Cancel');
-  control.press();
+  await control.press();
   await waitFor(() => expect(isCategoryListOpen()).toBe(false));
 }
 
@@ -624,7 +629,7 @@ export async function cancelCategoryList() {
 async function openManageCategories(groupId?: string) {
   await tapTab('Settings');
   if (groupId === undefined)
-    fireEvent.press(screen.getByText('Manage Categories'));
+    await fireEvent.press(screen.getByText('Manage Categories'));
   else
     await push(
       `/settings/manage-categories?scopeKind=group&spaceId=${groupId}`,
@@ -638,7 +643,7 @@ async function openManageCategories(groupId?: string) {
 }
 
 async function saveCategoryForm(name: 'Add' | 'Save') {
-  anyButton(name).press();
+  await anyButton(name).press();
   await settle();
   await waitFor(() =>
     expect(screen.queryByLabelText('Category name')).toBeNull(),
@@ -667,10 +672,13 @@ export async function editCategory(
   groupId?: string,
 ) {
   await openManageCategories(groupId);
-  fireEvent.press(within(tab('Settings')).getByText(name));
-  fireEvent.changeText(await screen.findByLabelText('Category name'), newName);
+  await fireEvent.press(within(tab('Settings')).getByText(name));
+  await fireEvent.changeText(
+    await screen.findByLabelText('Category name'),
+    newName,
+  );
   if (color !== undefined)
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByRole('button', { name: `Select color ${color}` }),
     );
   await saveCategoryForm('Save');
@@ -680,8 +688,11 @@ export async function editCategory(
 /** Adds a category in Manage Categories, or in the group's Group Categories when `groupId` is given. */
 export async function addCategory(name: string, groupId?: string) {
   await openManageCategories(groupId);
-  anyButton('Add category').press();
-  fireEvent.changeText(await screen.findByLabelText('Category name'), name);
+  await anyButton('Add category').press();
+  await fireEvent.changeText(
+    await screen.findByLabelText('Category name'),
+    name,
+  );
   await saveCategoryForm('Add');
   await backToExpenses();
 }

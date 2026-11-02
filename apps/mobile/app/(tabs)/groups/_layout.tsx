@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { formPresentation } from '../../../src/ui/form-presentation';
 
-export const unstable_settings = { initialRouteName: 'index' };
+export const unstable_settings = { anchor: 'index' };
 
 export default function GroupsLayout() {
   return (

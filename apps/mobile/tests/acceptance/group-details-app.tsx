@@ -110,16 +110,16 @@ export const refusesSwipeDown = (view: HostView) =>
 export async function swipeDown(title: string) {
   const sheet = screenOf(title);
   if (refusesSwipeDown(sheet)) return;
-  act(() => {
-    fireEvent(sheet, 'dismissed', { nativeEvent: { dismissCount: 1 } });
+  await act(async () => {
+    await fireEvent(sheet, 'dismissed', { nativeEvent: { dismissCount: 1 } });
   });
   await settle();
 }
 
 /** Goes back from the pushed screen titled `title`, which the native stack reports as dismissed. */
 export async function goBackFrom(title: string) {
-  act(() => {
-    fireEvent(screenOf(title), 'dismissed', {
+  await act(async () => {
+    await fireEvent(screenOf(title), 'dismissed', {
       nativeEvent: { dismissCount: 1 },
     });
   });
@@ -208,7 +208,7 @@ export function headerButtons(title: string) {
 
 interface Control {
   disabled: boolean;
-  press: () => void;
+  press: () => Promise<void>;
 }
 
 /** A button on the bar titled `title`: an iOS bar button or an Android header button. */
@@ -225,9 +225,9 @@ export function barAction(title: string, name: string): Control {
     return {
       disabled,
       // The native bar reports a press by the button's ID, and none when disabled.
-      press: () => {
+      press: async () => {
         if (!disabled)
-          fireEvent(bar, 'pressHeaderBarButtonItem', {
+          await fireEvent(bar, 'pressHeaderBarButtonItem', {
             nativeEvent: { buttonId: item.buttonId },
           });
       },
@@ -237,15 +237,15 @@ export function barAction(title: string, name: string): Control {
   const disabled = isDisabled(button);
   return {
     disabled,
-    press: () => {
-      if (!disabled) fireEvent.press(button);
+    press: async () => {
+      if (!disabled) await fireEvent.press(button);
     },
   };
 }
 
 /** Presses a button on the bar titled `title` and lets the save, if any, finish. */
 export async function pressOnBar(title: string, name: string) {
-  barAction(title, name).press();
+  await barAction(title, name).press();
   await settle();
 }
 
@@ -267,7 +267,7 @@ export async function pressAlertButton(text: string) {
     (candidate) => candidate.text === text,
   );
   if (button === undefined) throw new Error(`No ${text} in the last alert`);
-  act(() => button.onPress?.());
+  await act(() => button.onPress?.());
   await settle();
 }
 
@@ -278,14 +278,14 @@ export const lastAlertCancelable = () =>
 /** Closes the last alert as Back or a tap outside does on Android, which runs its onDismiss, if it has one. */
 export async function dismissLastAlert() {
   const options = alerts().at(-1)?.[3];
-  act(() => options?.onDismiss?.());
+  await act(() => options?.onDismiss?.());
   await settle();
 }
 
 // The group's screen
 
 export async function openGroup(name: string) {
-  fireEvent.press(
+  await fireEvent.press(
     within(groupsRoot()).getByRole('button', { name: `Open ${name}` }),
   );
   await settle();
@@ -305,13 +305,15 @@ export async function chooseGroupAction(group: string, action: string) {
     .find((candidate) => candidate.title === action);
   if (entry !== undefined) {
     if (!entry.disabled)
-      fireEvent(bar, 'pressHeaderBarButtonMenuItem', {
+      await fireEvent(bar, 'pressHeaderBarButtonMenuItem', {
         nativeEvent: { menuId: entry.menuId },
       });
     await settle();
     return;
   }
-  fireEvent.press(within(bar).getByRole('button', { name: 'Group actions' }));
+  await fireEvent.press(
+    within(bar).getByRole('button', { name: 'Group actions' }),
+  );
   await settle();
   await pressAlertButton(action);
 }
@@ -333,10 +335,13 @@ export async function openMembers(group: string) {
  */
 function memberRows() {
   const members = screenOf('Members');
-  const all = members.findAll(() => true);
+  const all = members.queryAll(() => true, { includeSelf: true });
   const buttons = within(members).queryAllByRole('button');
   const inAButton = (view: HostView) =>
-    buttons.some((button) => button.findAll((node) => node === view).length);
+    buttons.some(
+      (button) =>
+        button.queryAll((node) => node === view, { includeSelf: true }).length,
+    );
   return [
     ...within(members)
       .queryAllByText(/^.+ \(You\)$/)
@@ -374,8 +379,8 @@ export const isEnabled = (view: HostView) => !isDisabled(view);
 
 /** A member's menu as the app shows it: an iOS action sheet or an Android dialog. */
 export interface MemberMenu {
-  title?: string;
-  message?: string;
+  title?: string | null;
+  message?: string | null;
   items: string[];
   destructive: string[];
   cancel?: string;
@@ -420,11 +425,11 @@ function sheetMenu([options, callback]: [
     choose: async (item) => {
       const index = options.options.indexOf(item);
       if (index < 0) throw new Error(`No ${item} in the action sheet`);
-      act(() => callback(index));
+      await act(() => callback(index));
       await settle();
     },
     dismiss: async () => {
-      if (cancelIndex !== undefined) act(() => callback(cancelIndex));
+      if (cancelIndex !== undefined) await act(() => callback(cancelIndex));
       await settle();
     },
   };
@@ -444,11 +449,11 @@ function dialogMenu(call: Parameters<typeof Alert.alert>): MemberMenu {
     choose: async (item) => {
       const button = buttons.find((candidate) => candidate.text === item);
       if (button === undefined) throw new Error(`No ${item} in the dialog`);
-      act(() => button.onPress?.());
+      await act(() => button.onPress?.());
       await settle();
     },
     dismiss: async () => {
-      act(() => options?.onDismiss?.());
+      await act(() => options?.onDismiss?.());
       await settle();
     },
   };
@@ -458,7 +463,7 @@ function dialogMenu(call: Parameters<typeof Alert.alert>): MemberMenu {
 export async function tapMember(name: string): Promise<MemberMenu | undefined> {
   const sheetsBefore = actionSheets().length;
   const alertsBefore = alerts().length;
-  fireEvent.press(membersButton(name));
+  await fireEvent.press(membersButton(name));
   await settle();
   const sheet = actionSheets()[sheetsBefore];
   if (sheet !== undefined) return sheetMenu(sheet);
@@ -480,8 +485,8 @@ export const groupNameField = () => screen.getByLabelText('Group name');
 
 /** Presses Return in a name field and lets the save, if any, finish. */
 export async function pressReturn(field: HostView) {
-  act(() => {
-    fireEvent(field, 'submitEditing', {
+  await act(async () => {
+    await fireEvent(field, 'submitEditing', {
       nativeEvent: { text: field.props.value },
     });
   });
@@ -489,7 +494,7 @@ export async function pressReturn(field: HostView) {
 }
 
 export async function openAddMember() {
-  fireEvent.press(membersButton('Add Member'));
+  await fireEvent.press(membersButton('Add Member'));
   await settle();
   await expectOpen('Add Member');
 }
@@ -498,7 +503,7 @@ export async function openAddMember() {
 export async function addMember(name: string) {
   const rows = membersShown().length;
   await openAddMember();
-  fireEvent.changeText(memberNameField(), name);
+  await fireEvent.changeText(memberNameField(), name);
   const alertsBefore = alerts().length;
   await pressOnBar('Add Member', 'Add');
   if (alerts().length > alertsBefore && lastAlertButtons().includes('Add Back'))
@@ -517,7 +522,7 @@ export async function openRenameMember(row: string, name = row) {
 /** Renames the member `from` to `to` from Members. */
 export async function renameMember(from: string, to: string) {
   await openRenameMember(from);
-  fireEvent.changeText(memberNameField(), to);
+  await fireEvent.changeText(memberNameField(), to);
   await pressOnBar('Rename Member', 'Save');
   await expectClosed('Rename Member');
   await waitFor(() => expect(membersShown()).toContain(to.trim()));

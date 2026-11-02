@@ -116,7 +116,7 @@ async function startWithName(name = 'Taylor') {
 /** Starts the app with `name` saved, then restarts it at `url`. */
 async function restartWithName(url: string, name = 'Taylor') {
   const first = await startWithName(name);
-  first.unmount();
+  await first.unmount();
   return startGroupsApp(url);
 }
 
@@ -129,7 +129,7 @@ const storedNames = async () =>
   (await storedGroups(file)).map((group) => group.name);
 
 async function openCard(name: string) {
-  fireEvent.press(
+  await fireEvent.press(
     within(groupsRoot()).getByRole('button', { name: `Open ${name}` }),
   );
   await settle();
@@ -169,7 +169,7 @@ test('[GROUPS-2.1] keeps a group created after the phone clock went back below t
   jest.setSystemTime(new Date('2026-10-29T12:00:00Z'));
   await createGroup('Tokyo');
   expect(cardNames()).toEqual(['Open Brisbane', 'Open Tokyo']);
-  app.unmount();
+  await app.unmount();
 
   await startGroupsApp();
 
@@ -210,7 +210,9 @@ test('[GROUPS-4.1] goes to the Settings root from the name alert', async () => {
 test('[GROUPS-4.1] goes to the Settings root from the name alert when Settings has another screen open', async () => {
   await startGroupsApp();
   await tapTab('Settings');
-  fireEvent.press(screen.getByRole('button', { name: 'Manage Categories' }));
+  await fireEvent.press(
+    screen.getByRole('button', { name: 'Manage Categories' }),
+  );
   await waitFor(() =>
     expect(navigationBarTitles(tab('Settings'))).toEqual([
       'Settings',
@@ -254,8 +256,8 @@ test('[GROUPS-5.1] opens one New Group when Add group is pressed twice', async (
   await startWithName();
   const button = addGroupButton();
 
-  fireEvent.press(button);
-  fireEvent.press(button);
+  await fireEvent.press(button);
+  await fireEvent.press(button);
   await settle();
 
   await expectNewGroupOpen();
@@ -308,9 +310,9 @@ test('[GROUPS-7.1] disables Create until the name has more than spaces', async (
   await openNewGroup();
 
   expect(titleBarAction('Create').disabled).toBe(true);
-  typeName('   ');
+  await typeName('   ');
   expect(titleBarAction('Create').disabled).toBe(true);
-  typeName('Brisbane');
+  await typeName('Brisbane');
   expect(titleBarAction('Create').disabled).toBe(false);
 });
 
@@ -318,8 +320,8 @@ test('[GROUPS-7.1] disables Create again when the name is cleared', async () => 
   await startWithName();
   await openNewGroup();
 
-  typeName('Brisbane');
-  typeName('');
+  await typeName('Brisbane');
+  await typeName('');
 
   expect(titleBarAction('Create').disabled).toBe(true);
   expect(titleBarAction('Cancel').disabled).toBe(false);
@@ -329,7 +331,7 @@ test('[GROUPS-8.1] creates the group with the name trimmed, closes New Group, an
   const app = await startWithName();
   await createGroup('Tokyo');
   await openNewGroup();
-  typeName(' Brisbane ');
+  await typeName(' Brisbane ');
 
   await press('Create');
 
@@ -344,7 +346,7 @@ test('[GROUPS-8.1] creates the group with the name trimmed, closes New Group, an
 test('[GROUPS-8.1] creates the group when Return is pressed in the name field', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('Tokyo');
+  await typeName('Tokyo');
 
   await pressReturn();
 
@@ -356,7 +358,7 @@ test('[GROUPS-8.1] creates the group when Return is pressed in the name field', 
 test('[GROUPS-8.1] creates nothing when Return is pressed with only spaces as the name', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('   ');
+  await typeName('   ');
 
   await pressReturn();
 
@@ -409,7 +411,7 @@ test('[GROUPS-9.1] gives a later group new IDs and the name you have when you cr
 test('[GROUPS-10.1] asks for a name and creates nothing when Create is pressed before a name is saved', async () => {
   await startGroupsApp('/groups/new');
   await expectNewGroupOpen();
-  typeName('Brisbane');
+  await typeName('Brisbane');
 
   await press('Create');
 
@@ -421,7 +423,7 @@ test('[GROUPS-10.1] asks for a name and creates nothing when Create is pressed b
 test('[GROUPS-10.1] asks for a name when Return is pressed before a name is saved', async () => {
   await startGroupsApp('/groups/new');
   await expectNewGroupOpen();
-  typeName('Brisbane');
+  await typeName('Brisbane');
 
   await pressReturn();
 
@@ -432,7 +434,7 @@ test('[GROUPS-10.1] asks for a name when Return is pressed before a name is save
 test('[GROUPS-10.1] keeps New Group and its name when the name alert is cancelled', async () => {
   await startGroupsApp('/groups/new');
   await expectNewGroupOpen();
-  typeName('Brisbane');
+  await typeName('Brisbane');
   await press('Create');
 
   await pressAlertButton(alert, 'Cancel');
@@ -445,7 +447,7 @@ test('[GROUPS-10.1] keeps New Group and its name when the name alert is cancelle
 test('[GROUPS-10.1] closes New Group and goes to the Settings root from the name alert', async () => {
   await startGroupsApp('/groups/new');
   await expectNewGroupOpen();
-  typeName('Brisbane');
+  await typeName('Brisbane');
   await press('Create');
 
   await pressAlertButton(alert, 'Go to Settings');
@@ -460,7 +462,7 @@ test('[GROUPS-10.1] closes New Group and goes to the Settings root from the name
 test('[GROUPS-11.1] disables Cancel and Create and locks the name until the group is saved', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('Brisbane');
+  await typeName('Brisbane');
   const writes = holdWrites();
 
   await press('Create');
@@ -478,7 +480,7 @@ test('[GROUPS-11.1] disables Cancel and Create and locks the name until the grou
 test('[GROUPS-11.1] keeps New Group from being swiped down until the group is saved', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('Brisbane');
+  await typeName('Brisbane');
   const writes = holdWrites();
 
   await press('Create');
@@ -493,7 +495,7 @@ test('[GROUPS-11.1] keeps New Group from being swiped down until the group is sa
 test('[GROUPS-11.1] unlocks Cancel, Create, the name and swiping down once the save fails', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('Brisbane');
+  await typeName('Brisbane');
   const writes = holdWrites();
   await press('Create');
 
@@ -509,12 +511,12 @@ test('[GROUPS-11.1] unlocks Cancel, Create, the name and swiping down once the s
 test('[GROUPS-11.1] creates one group when Create is pressed twice before it is saved', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('Brisbane');
+  await typeName('Brisbane');
   const create = titleBarAction('Create');
 
-  act(() => {
-    create.press();
-    create.press();
+  await act(async () => {
+    await create.press();
+    await create.press();
   });
   await settle();
 
@@ -526,7 +528,7 @@ test('[GROUPS-11.1] creates one group when Create is pressed twice before it is 
 test('[GROUPS-11.1] ignores Return while the group is being created', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('Brisbane');
+  await typeName('Brisbane');
   const writes = holdWrites();
 
   await press('Create');
@@ -541,7 +543,7 @@ test('[GROUPS-11.1] ignores Return while the group is being created', async () =
 test('[GROUPS-12.1] alerts, keeps New Group with its name, and leaves the local data as it was when nothing can be written', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('Brisbane');
+  await typeName('Brisbane');
   const before = localData(file);
   failWrites();
 
@@ -557,7 +559,7 @@ test('[GROUPS-12.1] alerts, keeps New Group with its name, and leaves the local 
 test('[GROUPS-12.1] leaves the local data as it was whichever write of the new group fails', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('Brisbane');
+  await typeName('Brisbane');
   const before = localData(file);
 
   // Each attempt lets one more write through before the disk fills up, until
@@ -580,7 +582,7 @@ test('[GROUPS-12.1] leaves the local data as it was whichever write of the new g
 test('[GROUPS-12.1] creates the group once when Create is pressed again after writes recover', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('Brisbane');
+  await typeName('Brisbane');
   failWrites();
   await press('Create');
   allowWrites();
@@ -595,7 +597,7 @@ test('[GROUPS-12.1] creates the group once when Create is pressed again after wr
 test('[GROUPS-12.1] creates no group when New Group is cancelled after a failed save', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('Brisbane');
+  await typeName('Brisbane');
   failWrites();
   await press('Create');
   allowWrites();
@@ -610,7 +612,7 @@ test('[GROUPS-12.1] creates no group when New Group is cancelled after a failed 
 test('[GROUPS-13.1] closes New Group without creating a group when Cancel is pressed', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('Brisbane');
+  await typeName('Brisbane');
 
   await press('Cancel');
 
@@ -625,13 +627,13 @@ test('[GROUPS-13.1] closes New Group without creating a group when Cancel is pre
 test('[GROUPS-13.1] lets New Group be swiped down without creating a group', async () => {
   await startWithName();
   await openNewGroup();
-  typeName('Brisbane');
+  await typeName('Brisbane');
   const sheet = newGroupScreen();
   expect(refusesSwipeDown(sheet)).toBe(false);
 
   // A swipe down dismisses the native sheet, which reports it as dismissed.
-  act(() => {
-    fireEvent(sheet, 'dismissed', { nativeEvent: { dismissCount: 1 } });
+  await act(async () => {
+    await fireEvent(sheet, 'dismissed', { nativeEvent: { dismissCount: 1 } });
   });
   await settle();
 
@@ -664,7 +666,7 @@ test('[GROUPS-14.1] opens New Group over the Groups root at /groups/new, and clo
 test('[GROUPS-14.1] lists a group created in a New Group opened at /groups/new', async () => {
   await restartWithName('/groups/new');
   await expectNewGroupOpen();
-  typeName('Brisbane');
+  await typeName('Brisbane');
 
   await press('Create');
 
@@ -686,7 +688,7 @@ test("[GROUPS-14.1] has the URL /groups/<group ID> on a group's screen", async (
 test("[GROUPS-14.1] opens a group's screen over the Groups root at its URL", async () => {
   const first = await startWithName();
   await createGroup('Brisbane');
-  first.unmount();
+  await first.unmount();
   const [brisbane] = await storedGroups(file);
 
   const app = await startGroupsApp(`/groups/${brisbane.id}`);
@@ -717,7 +719,7 @@ test('[GROUPS-15.1] opens the later of two groups with the same name from its ca
   await createGroup('Trip');
   const [, later] = await storedGroups(file);
 
-  fireEvent.press(cards()[1]);
+  await fireEvent.press(cards()[1]);
   await settle();
 
   expect(app.getPathname()).toBe(`/groups/${later.id}`);
@@ -750,7 +752,7 @@ test('[GROUPS-16.1] keeps the groups, their order and their members after a rest
   await createGroup('Brisbane');
   await createGroup('Tokyo');
   const before = await storedGroups(file);
-  app.unmount();
+  await app.unmount();
 
   await startGroupsApp();
 
@@ -828,10 +830,10 @@ test('[SHELL-34.1] uses colors that follow the appearance on the Groups list and
   await startWithName();
   await createGroup('Brisbane');
   await openNewGroup();
-  typeName('Tokyo');
+  await typeName('Tokyo');
 
   const light = { colors: fixedColors(), uncolored: textsWithoutColor() };
-  switchPhoneTo('dark');
+  await switchPhoneTo('dark');
   const dark = { colors: fixedColors(), uncolored: textsWithoutColor() };
 
   expect(colorsInBoth(light.colors, dark.colors)).toEqual([]);

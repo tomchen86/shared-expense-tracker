@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { AppearancePicker } from '../../src/ui/appearance-picker';
 
 function nativePicker() {
-  const views = screen.UNSAFE_root.findAll(
+  const views = screen.container.queryAll(
     (node) =>
       typeof node.type === 'string' &&
       /^ViewManagerAdapter_ExpoUI/.test(String(node.type)) &&
@@ -14,11 +14,12 @@ function nativePicker() {
 
 function pickerSegments(picker = nativePicker()) {
   return picker
-    .findAll(
+    .queryAll(
       (node) =>
         typeof node.type === 'string' &&
         /^ViewManagerAdapter_ExpoUI/.test(String(node.type)) &&
         typeof node.props.text === 'string',
+      { includeSelf: true },
     )
     .map((node) => ({
       text: node.props.text,
@@ -26,9 +27,11 @@ function pickerSegments(picker = nativePicker()) {
     }));
 }
 
-test('configures a large native SwiftUI segmented control named Appearance with System, Light, and Dark', () => {
+test('configures a large native SwiftUI segmented control named Appearance with System, Light, and Dark', async () => {
   const onChange = jest.fn();
-  const view = render(<AppearancePicker onChange={onChange} value="system" />);
+  const view = await render(
+    <AppearancePicker onChange={onChange} value="system" />,
+  );
 
   const picker = nativePicker();
   expect(picker.props.label).toBe('Appearance');
@@ -47,59 +50,63 @@ test('configures a large native SwiftUI segmented control named Appearance with 
     { text: 'Dark', modifiers: [{ $type: 'tag', tag: 2 }] },
   ]);
 
-  view.rerender(<AppearancePicker onChange={onChange} value="light" />);
+  await view.rerender(<AppearancePicker onChange={onChange} value="light" />);
   expect(nativePicker().props.selection).toBe(1);
 
-  view.rerender(<AppearancePicker onChange={onChange} value="dark" />);
+  await view.rerender(<AppearancePicker onChange={onChange} value="dark" />);
   expect(nativePicker().props.selection).toBe(2);
 });
 
-test('forwards native segment selection events and locks while disabled', () => {
+test('forwards native segment selection events and locks while disabled', async () => {
   const onChange = jest.fn();
-  const view = render(<AppearancePicker onChange={onChange} value="system" />);
+  const view = await render(
+    <AppearancePicker onChange={onChange} value="system" />,
+  );
 
-  act(() => {
-    fireEvent(nativePicker(), 'selectionChange', {
+  await act(async () => {
+    await fireEvent(nativePicker(), 'selectionChange', {
       nativeEvent: { selection: 2 },
     });
   });
   expect(onChange).toHaveBeenCalledWith('dark');
 
-  act(() => {
-    fireEvent(nativePicker(), 'selectionChange', {
+  await act(async () => {
+    await fireEvent(nativePicker(), 'selectionChange', {
       nativeEvent: { selection: 1 },
     });
   });
   expect(onChange).toHaveBeenCalledWith('light');
 
-  act(() => {
-    fireEvent(nativePicker(), 'selectionChange', {
+  await act(async () => {
+    await fireEvent(nativePicker(), 'selectionChange', {
       nativeEvent: { selection: 0 },
     });
   });
   expect(onChange).toHaveBeenCalledWith('system');
 
   onChange.mockClear();
-  view.rerender(
+  await view.rerender(
     <AppearancePicker disabled onChange={onChange} value="system" />,
   );
   expect(nativePicker().props.modifiers).toEqual(
     expect.arrayContaining([{ $type: 'disabled', disabled: true }]),
   );
 
-  act(() => {
-    fireEvent(nativePicker(), 'selectionChange', {
+  await act(async () => {
+    await fireEvent(nativePicker(), 'selectionChange', {
       nativeEvent: { selection: 2 },
     });
   });
   expect(onChange).not.toHaveBeenCalled();
 });
 
-test('locks by toggling the disabled modifier, keeping the same modifiers so the slide animation survives', () => {
-  const view = render(<AppearancePicker onChange={jest.fn()} value="system" />);
+test('locks by toggling the disabled modifier, keeping the same modifiers so the slide animation survives', async () => {
+  const view = await render(
+    <AppearancePicker onChange={jest.fn()} value="system" />,
+  );
   const unlocked = nativePicker().props.modifiers;
 
-  view.rerender(
+  await view.rerender(
     <AppearancePicker disabled onChange={jest.fn()} value="system" />,
   );
   const locked = nativePicker().props.modifiers;
@@ -111,20 +118,22 @@ test('locks by toggling the disabled modifier, keeping the same modifiers so the
   expect(locked).toContainEqual({ $type: 'disabled', disabled: true });
 });
 
-test('remounts the native picker when a locked selection finishes without changing value', () => {
+test('remounts the native picker when a locked selection finishes without changing value', async () => {
   const onChange = jest.fn();
-  const view = render(<AppearancePicker onChange={onChange} value="system" />);
+  const view = await render(
+    <AppearancePicker onChange={onChange} value="system" />,
+  );
   const initialPicker = nativePicker();
 
-  act(() => {
-    fireEvent(initialPicker, 'selectionChange', {
+  await act(async () => {
+    await fireEvent(initialPicker, 'selectionChange', {
       nativeEvent: { selection: 2 },
     });
   });
-  view.rerender(
+  await view.rerender(
     <AppearancePicker disabled onChange={onChange} value="system" />,
   );
-  view.rerender(<AppearancePicker onChange={onChange} value="system" />);
+  await view.rerender(<AppearancePicker onChange={onChange} value="system" />);
 
   const resetPicker = nativePicker();
   expect(resetPicker).not.toBe(initialPicker);
