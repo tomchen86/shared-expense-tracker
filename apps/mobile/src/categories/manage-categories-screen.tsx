@@ -48,7 +48,7 @@ export function ManageCategoriesScreen() {
     loadedRef.current = false;
     let active = true;
     void Promise.all([
-      listCategories(database),
+      listCategories(database, managedSpaceId),
       groupId ? listGroups(database) : Promise.resolve([]),
     ])
       .then(([rows, groups]) => {
@@ -65,21 +65,21 @@ export function ManageCategoriesScreen() {
     return () => {
       active = false;
     };
-  }, [database, groupId]);
+  }, [database, groupId, managedSpaceId]);
 
   const openAddForm = useCallback(() => {
     if (loadedRef.current) {
       setFormState({ kind: 'add' });
       return;
     }
-    void listCategories(database)
+    void listCategories(database, managedSpaceId)
       .then((rows) => {
         loadedRef.current = true;
         setCategories(rows);
         setFormState({ kind: 'add' });
       })
       .catch(() => undefined);
-  }, [database]);
+  }, [database, managedSpaceId]);
 
   async function handleSave(input: { name: string; color: string }) {
     if (formState?.kind === 'edit') {
@@ -137,14 +137,6 @@ export function ManageCategoriesScreen() {
     [openAddForm, groupId, groupExists],
   );
 
-  const scopedCategories = useMemo(
-    () =>
-      categories.filter(
-        (category) => category.isDefault || category.spaceId === managedSpaceId,
-      ),
-    [categories, managedSpaceId],
-  );
-
   const categoryRows = useMemo(
     () => (
       <ScrollView
@@ -155,7 +147,7 @@ export function ManageCategoriesScreen() {
           CATEGORIES
         </Text>
         <View style={styles.section}>
-          {scopedCategories.map((category, index) => {
+          {categories.map((category, index) => {
             const uncategorized = isUncategorizedCategory(category);
             return (
               <Fragment key={category.id}>
@@ -195,7 +187,7 @@ export function ManageCategoriesScreen() {
         </View>
       </ScrollView>
     ),
-    [scopedCategories],
+    [categories],
   );
 
   return (

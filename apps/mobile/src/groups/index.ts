@@ -1,4 +1,5 @@
 import { createUuid, type Database, type SqlExecutor } from '../storage';
+import { ensureDefaultCategories } from '../categories/repository';
 import type { LocalIdentity } from '../shell';
 
 export interface GroupMember {
@@ -59,6 +60,7 @@ export async function createGroup(
       'INSERT INTO group_members (id, groupId, userId, name, position) VALUES (?, ?, ?, ?, 1)',
       [memberId, id, identity.userId, identity.name],
     );
+    await ensureDefaultCategories(transaction, id);
   });
 }
 
