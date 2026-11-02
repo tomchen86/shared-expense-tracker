@@ -203,7 +203,12 @@ export function ManageCategoriesScreen() {
       <Stack.Screen options={screenOptions} />
 
       {groupExists === false && (
-        <Text style={styles.content}>Group not found.</Text>
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={styles.content}
+        >
+          <Text>Group not found.</Text>
+        </ScrollView>
       )}
       {groupExists && categoryRows}
 
