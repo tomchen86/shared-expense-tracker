@@ -19,15 +19,18 @@ import {
 } from './shell-tabs-app';
 import {
   EMPTY_LIST,
+  allowReads,
   cardNames,
   cards,
   createGroup,
   groupsRoot,
+  holdReads,
   inTreeOrder,
   localData,
   saveName,
   startGroupsApp,
   storedGroups,
+  testDatabaseWithReads,
 } from './groups-app';
 import {
   allowWrites,
@@ -40,7 +43,6 @@ import {
   holdWrites,
   settle,
   switchPhoneTo,
-  testDatabase,
   textsWithoutColor,
   translucentViews,
 } from './shell-appearance-app';
@@ -112,8 +114,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   directory = fs.mkdtempSync(path.join(os.tmpdir(), 'group-archive-'));
   file = path.join(directory, 'app.db');
-  mockOpen = async () => testDatabase(file);
+  mockOpen = async () => testDatabaseWithReads(file);
   allowWrites();
+  allowReads();
   fakePhoneAppearance('light');
   fakeReduceTransparency(false);
   jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
@@ -405,6 +408,20 @@ test('[GROUPS-52.1] lists only the archived groups, in the order they were creat
     ]),
   );
   expect(textsOn('Archived Groups')).not.toContain(NO_ARCHIVED);
+});
+
+test('[GROUPS-52.1] never says there are no archived groups while the stored groups load', async () => {
+  await startWithGroups(['Brisbane']);
+  await archiveByAction('Brisbane');
+  const reads = holdReads();
+
+  await openArchivedGroups();
+  await settle();
+
+  expect(screen.queryByText(NO_ARCHIVED)).toBeNull();
+  await reads.release();
+  await waitFor(() => expect(archivedCardNames()).toEqual(['Open Brisbane']));
+  expect(screen.queryByText(NO_ARCHIVED)).toBeNull();
 });
 
 test('[GROUPS-53.1] shows the name and Archived group on the card of an archived group, with a Restore button of its own', async () => {

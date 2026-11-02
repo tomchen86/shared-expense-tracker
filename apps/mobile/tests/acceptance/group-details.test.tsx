@@ -12,20 +12,24 @@ import {
 import type { Database } from '../../src/storage';
 import {
   navigationBarTitles,
+  navigationBars,
   selectedTab,
   tab,
   tapTab,
 } from './shell-tabs-app';
 import {
+  allowReads,
   cardNames,
   createGroup,
   groupsRoot,
+  holdReads,
   inTreeOrder,
   localData,
   readIdentity,
   saveName,
   startGroupsApp,
   storedGroups,
+  testDatabaseWithReads,
 } from './groups-app';
 import {
   allowWrites,
@@ -38,7 +42,6 @@ import {
   holdWrites,
   settle,
   switchPhoneTo,
-  testDatabase,
   textsWithoutColor,
   translucentViews,
 } from './shell-appearance-app';
@@ -115,8 +118,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   directory = fs.mkdtempSync(path.join(os.tmpdir(), 'group-details-'));
   file = path.join(directory, 'app.db');
-  mockOpen = async () => testDatabase(file);
+  mockOpen = async () => testDatabaseWithReads(file);
   allowWrites();
+  allowReads();
   fakePhoneAppearance('light');
   fakeReduceTransparency(false);
   jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
@@ -193,12 +197,16 @@ test('[GROUPS-21.1] shows only Group not found., titled Group Details, for an ID
 test("[GROUPS-21.1] never shows Group not found. while an existing group's screen opens", async () => {
   await startWithName();
   await createGroup('Brisbane');
+  const reads = holdReads();
 
   await fireEvent.press(
     within(groupsRoot()).getByRole('button', { name: 'Open Brisbane' }),
   );
+  await waitFor(() => expect(navigationBars(tab('Groups'))).toHaveLength(2));
+  await settle();
 
   expect(screen.queryByText(NOT_FOUND)).toBeNull();
+  await reads.release();
   await waitFor(() => expect(textsOn('Brisbane')).toContain(NO_EXPENSES));
   expect(screen.queryByText(NOT_FOUND)).toBeNull();
 });
@@ -208,10 +216,15 @@ test('[GROUPS-21.1] never shows Group not found. while a group opened at its URL
   await createGroup('Brisbane');
   const [brisbane] = await storedGroups(file);
   await first.unmount();
+  await settle();
+  const reads = holdReads();
 
   await startGroupsApp(`/groups/${brisbane.id}`);
+  await waitFor(() => expect(navigationBars(tab('Groups'))).toHaveLength(2));
+  await settle();
 
   expect(screen.queryByText(NOT_FOUND)).toBeNull();
+  await reads.release();
   await waitFor(() => expect(textsOn('Brisbane')).toContain(NO_EXPENSES));
   expect(screen.queryByText(NOT_FOUND)).toBeNull();
 });

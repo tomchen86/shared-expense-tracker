@@ -25,6 +25,7 @@ import {
   USERNAME_REQUIRED,
   addGroupButton,
   alertsShown,
+  allowReads,
   barButtons,
   cardNames,
   cards,
@@ -32,6 +33,7 @@ import {
   expectNewGroupClosed,
   expectNewGroupOpen,
   groupsRoot,
+  holdReads,
   inTreeOrder,
   lastAlertButtons,
   localData,
@@ -49,6 +51,7 @@ import {
   sharedAddButtons,
   startGroupsApp,
   storedGroups,
+  testDatabaseWithReads,
   titleBarAction,
   typeName,
 } from './groups-app';
@@ -63,7 +66,6 @@ import {
   holdWrites,
   settle,
   switchPhoneTo,
-  testDatabase,
   textsWithoutColor,
   translucentViews,
 } from './shell-appearance-app';
@@ -94,8 +96,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   directory = fs.mkdtempSync(path.join(os.tmpdir(), 'groups-'));
   file = path.join(directory, 'app.db');
-  mockOpen = async () => testDatabase(file);
+  mockOpen = async () => testDatabaseWithReads(file);
   allowWrites();
+  allowReads();
   fakePhoneAppearance('light');
   fakeReduceTransparency(false);
   alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
@@ -149,6 +152,21 @@ test('[GROUPS-1.2] stops saying there are no groups once one is created', async 
 
   expect(within(groupsRoot()).queryByText(EMPTY_LIST)).toBeNull();
   expect(cardNames()).toEqual(['Open Brisbane']);
+});
+
+test('[GROUPS-1.2] never says there are no groups while the stored groups load', async () => {
+  const first = await startWithName();
+  await createGroup('Brisbane');
+  await first.unmount();
+  await settle();
+  const reads = holdReads();
+
+  await startGroupsApp();
+
+  expect(screen.queryByText(EMPTY_LIST)).toBeNull();
+  await reads.release();
+  await waitFor(() => expect(cardNames()).toEqual(['Open Brisbane']));
+  expect(screen.queryByText(EMPTY_LIST)).toBeNull();
 });
 
 test('[GROUPS-2.2] lists the groups in the order they were created, each a button showing its name', async () => {

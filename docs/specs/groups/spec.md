@@ -8,7 +8,7 @@
 
 ### Requirement: GROUPS-1.2 沒有未封存的群組時顯示提示
 
-WHILE 本機資料裡沒有未封存的群組，the mobile app SHALL 在 Groups 根畫面顯示「No groups yet. Tap + to create a group.」。
+WHILE 本機資料裡沒有未封存的群組，the mobile app SHALL 在 Groups 根畫面顯示「No groups yet. Tap + to create a group.」；Groups 根畫面讀完存著的群組之前，SHALL 不顯示這句話。
 
 #### Scenario: 第一次打開 Groups
 
@@ -24,6 +24,11 @@ WHILE 本機資料裡沒有未封存的群組，the mobile app SHALL 在 Groups 
 
 - **WHEN** 只有 Brisbane 時封存它
 - **THEN** 又顯示這句話，沒有任何群組的卡片
+
+#### Scenario: 讀完之前
+
+- **WHEN** 有 Brisbane 時開啟 app，Groups 根畫面還沒讀完存著的群組
+- **THEN** 沒有顯示這句話；讀完之後顯示 Brisbane 的卡片
 
 ### Requirement: GROUPS-2.2 依建立的先後列出未封存的群組
 
@@ -977,7 +982,7 @@ The mobile app SHALL 在 Settings 根畫面「Archived Groups」那一列的文�
 
 ### Requirement: GROUPS-52.1 Archived Groups 列出封存的群組
 
-The mobile app SHALL 在 Archived Groups 依建立的先後，由上而下列出每個封存群組的卡片，不列出未封存的群組；沒有封存群組時只顯示「No archived groups.」。
+The mobile app SHALL 在 Archived Groups 依建立的先後，由上而下列出每個封存群組的卡片，不列出未封存的群組；沒有封存群組時只顯示「No archived groups.」，但讀完存著的群組之前不顯示這句話。
 
 #### Scenario: 還沒有封存
 
@@ -988,6 +993,11 @@ The mobile app SHALL 在 Archived Groups 依建立的先後，由上而下列出
 
 - **WHEN** 依序建立 Tokyo、Brisbane、Lisbon、Paris，依序封存 Brisbane、Tokyo、Paris，然後打開 Archived Groups
 - **THEN** 由上而下是 Tokyo、Brisbane 和 Paris 的卡片，沒有 Lisbon，也沒有「No archived groups.」
+
+#### Scenario: 讀完之前
+
+- **WHEN** 封存 Brisbane 之後打開 Archived Groups，Archived Groups 還沒讀完存著的群組
+- **THEN** 沒有顯示「No archived groups.」；讀完之後顯示 Brisbane 的卡片
 
 ### Requirement: GROUPS-53.1 封存群組的卡片
 
