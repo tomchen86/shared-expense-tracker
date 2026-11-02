@@ -73,8 +73,11 @@ const alerts = () => alert.mock.calls.map((call) => call.slice(0, 2));
 const startSettings = () => startApp('/settings');
 
 /** Starts the app again on the same database, as after closing it on the phone. */
-async function restart(app: { unmount: () => void }, url = '/settings') {
-  endAppProcess(app);
+async function restart(
+  app: { unmount: () => Promise<void> },
+  url = '/settings',
+) {
+  await endAppProcess(app);
   return startApp(url, { './appearance-probe.tsx': AppearanceProbe });
 }
 
@@ -168,9 +171,9 @@ test('[SHELL-30.1] follows the phone as it switches while the option is System',
   await chooseAppearance('Dark');
   await chooseAppearance('System');
 
-  switchPhoneTo('dark');
+  await switchPhoneTo('dark');
   expect(appAppearance()).toBe('dark');
-  switchPhoneTo('light');
+  await switchPhoneTo('light');
   expect(appAppearance()).toBe('light');
 });
 
@@ -200,7 +203,7 @@ test('[SHELL-32.1] locks the options while the choice is saved', async () => {
   await startSettings();
   const writes = holdWrites();
 
-  fireEvent.press(appearanceOption('Dark'));
+  await fireEvent.press(appearanceOption('Dark'));
   await settle();
 
   for (const option of ['System', 'Light', 'Dark'])
@@ -219,9 +222,9 @@ test('[SHELL-32.1] ignores another option while the choice is saved', async () =
   const app = await startSettings();
   const writes = holdWrites();
 
-  fireEvent.press(appearanceOption('Dark'));
+  await fireEvent.press(appearanceOption('Dark'));
   await settle();
-  fireEvent.press(appearanceOption('Light'));
+  await fireEvent.press(appearanceOption('Light'));
   await settle();
   await writes.release();
   await settle();

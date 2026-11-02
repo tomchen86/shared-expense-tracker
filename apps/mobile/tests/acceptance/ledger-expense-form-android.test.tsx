@@ -181,7 +181,7 @@ test('[LEDGER-30.1] shows a chosen date in the same format', async () => {
   await startExpenses();
   await openNewExpense();
 
-  chooseDate('2024-12-25');
+  await chooseDate('2024-12-25');
 
   expect(within(dateFieldView()).getByText('Dec 25, 2024')).toBeOnTheScreen();
   expect(dateFieldForScreenReaders().value).toBe('Dec 25, 2024');

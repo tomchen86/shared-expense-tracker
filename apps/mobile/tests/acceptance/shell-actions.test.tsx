@@ -118,8 +118,8 @@ test('[SHELL-43.1] runs the action of the + button once for each press', async (
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress });
   const button = probeButton('Add group');
 
-  fireEvent.press(button);
-  fireEvent.press(button);
+  await fireEvent.press(button);
+  await fireEvent.press(button);
 
   expect(onPress).toHaveBeenCalledTimes(2);
 });
@@ -135,8 +135,8 @@ test('[SHELL-43.1] runs a header action once for each press', async () => {
     },
   });
 
-  pressBarButton('Add');
-  chooseFromMenu('Members');
+  await pressBarButton('Add');
+  await chooseFromMenu('Members');
 
   expect(add).toHaveBeenCalledTimes(1);
   expect(members).toHaveBeenCalledTimes(1);
@@ -157,7 +157,7 @@ test('[SHELL-44.1] shrinks the + button to 0.96 while it is held and restores it
   const button = probeButton('Add group');
   expect(addButtonBox('Add group').scale).toBe(1);
 
-  holdDown(button);
+  await holdDown(button);
   expect(addButtonBox('Add group').scale).toBeCloseTo(0.96);
 
   await liftFinger(button);
@@ -168,7 +168,7 @@ test('[SHELL-44.1] gives one light haptic when the + button runs its action, not
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
   const button = probeButton('Add group');
 
-  holdDown(button);
+  await holdDown(button);
   expect(haptics.impactAsync).not.toHaveBeenCalled();
   await liftFinger(button);
 
@@ -198,7 +198,7 @@ test('[SHELL-34.1] colors the + button with colors that follow the appearance', 
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
   expect(probeButton('Add group')).toBeOnTheScreen();
   const light = probeColors();
-  switchPhoneTo('dark');
+  await switchPhoneTo('dark');
   const dark = probeColors();
 
   expect(colorsInBoth(light.colors, dark.colors)).toEqual([]);
@@ -263,7 +263,7 @@ test('[SHELL-49.1] shows a disabled confirm action as disabled and ignores it', 
   expect(barItems().right).toEqual([
     { button: 'Add', variant: 'prominent', disabled: true },
   ]);
-  pressBarButton('Add');
+  await pressBarButton('Add');
   expect(add).not.toHaveBeenCalled();
 });
 
@@ -288,8 +288,8 @@ test('[SHELL-49.1] keeps the menu usable with a disabled action in it', async ()
       items: ['Members', 'Delete (disabled)'],
     },
   ]);
-  chooseFromMenu('Delete');
-  chooseFromMenu('Members');
+  await chooseFromMenu('Delete');
+  await chooseFromMenu('Members');
   expect(remove).not.toHaveBeenCalled();
   expect(members).toHaveBeenCalledTimes(1);
 });

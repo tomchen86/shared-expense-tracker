@@ -117,7 +117,7 @@ const AS_TYPED = { normalizer: (text: string) => text };
 let directory: string;
 let alert: jest.SpyInstance;
 /** The app the scope helpers started last; restarting ends it first. */
-let running: { unmount: () => void } | undefined;
+let running: { unmount: () => Promise<void> } | undefined;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -192,7 +192,7 @@ type NativeView = ReturnType<typeof nativeViews>[number];
 
 /** Whether the views come in this order in the rendered tree. */
 function inTreeOrder(...views: NativeView[]) {
-  const all = screen.UNSAFE_root.findAll(() => true);
+  const all = screen.container.queryAll(() => true);
   const indexes = views.map((view) => all.indexOf(view));
   return indexes.every(
     (index, position) =>
@@ -203,7 +203,7 @@ function inTreeOrder(...views: NativeView[]) {
 /** Starts the app and opens Manage Categories from the Settings root. */
 async function openManageCategories() {
   const app = await startApp('/settings');
-  fireEvent.press(screen.getByText('Manage Categories'));
+  await fireEvent.press(screen.getByText('Manage Categories'));
   await waitFor(() =>
     expect(navigationBarTitles(tab('Settings'))).toEqual([
       'Settings',
@@ -284,7 +284,7 @@ async function expectFormClosed() {
 
 interface Control {
   disabled: boolean;
-  press: () => void;
+  press: () => Promise<void>;
 }
 
 interface BarItem {
@@ -312,9 +312,9 @@ function barItem(name: string, bars: NativeView[]): Control | undefined {
     return {
       disabled,
       // A native bar item reports a press by its button ID, unless disabled.
-      press: () => {
+      press: async () => {
         if (!disabled)
-          fireEvent(bar, 'pressHeaderBarButtonItem', {
+          await fireEvent(bar, 'pressHeaderBarButtonItem', {
             nativeEvent: { buttonId: item.buttonId },
           });
       },
@@ -326,7 +326,7 @@ function barItem(name: string, bars: NativeView[]): Control | undefined {
 /** A button view inside `root`, by its accessible name. */
 function viewButton(
   name: string,
-  root = screen.UNSAFE_root,
+  root = screen.container,
 ): Control | undefined {
   const button = within(root).queryByRole('button', { name });
   if (button === null) return undefined;
@@ -359,7 +359,7 @@ function formButton(name: 'Cancel' | 'Add' | 'Save'): Control {
 
 /** Presses a form button and lets the save, if any, finish. */
 async function press(name: 'Cancel' | 'Add' | 'Save') {
-  formButton(name).press();
+  await formButton(name).press();
   await settle();
 }
 
@@ -399,28 +399,28 @@ const pressColor = (name: string) =>
   fireEvent.press(screen.getByRole('button', { name }));
 
 async function openNewCategory() {
-  addCategoryButton().press();
+  await addCategoryButton().press();
   await expectForm('New Category');
 }
 
 async function openCategory(name: string) {
-  fireEvent.press(screen.getByText(name));
+  await fireEvent.press(screen.getByText(name));
   await expectForm('Edit Category');
 }
 
 /** Adds a category, in the first available color unless `color` is given. */
 async function addCategory(name: string, color?: string) {
   await openNewCategory();
-  fireEvent.changeText(nameField(), name);
-  if (color !== undefined) pressColor(`Select color ${color}`);
+  await fireEvent.changeText(nameField(), name);
+  if (color !== undefined) await pressColor(`Select color ${color}`);
   await press('Add');
   await expectFormClosed();
 }
 
 async function editCategory(name: string, newName: string, color?: string) {
   await openCategory(name);
-  fireEvent.changeText(nameField(), newName);
-  if (color !== undefined) pressColor(`Select color ${color}`);
+  await fireEvent.changeText(nameField(), newName);
+  if (color !== undefined) await pressColor(`Select color ${color}`);
   await press('Save');
   await expectFormClosed();
 }
@@ -437,7 +437,7 @@ const listedNames = () => categoryList().map(([name]) => name);
 
 /** Ends the running app, if any, and starts it at `url` on the categories screen titled `title`. */
 async function restartAt(url: string, title: string) {
-  running?.unmount();
+  await running?.unmount();
   running = await startApp(url);
   await waitFor(() => expect(categoriesTitles()).toEqual([title]));
   await settle();
@@ -452,13 +452,13 @@ const openGroupCategories = (groupId: string) =>
 
 /** Restarts the app and opens Manage Categories from the Settings root. */
 async function reopenManageCategories() {
-  running?.unmount();
+  await running?.unmount();
   running = await openManageCategories();
 }
 
 /** Starts the app, saves your name and creates the groups; returns each group's ID by its name. */
 async function createGroups(...names: string[]) {
-  running?.unmount();
+  await running?.unmount();
   running = await startGroupsApp('/groups');
   await saveName('Taylor');
   for (const name of names) await createGroup(name);
@@ -497,7 +497,7 @@ test('[CATEGORIES-6.1] lists the nine default categories in order with their col
 
 test('[CATEGORIES-6.1] does not create the default categories again when the app restarts', async () => {
   const app = await openManageCategories();
-  app.unmount();
+  await app.unmount();
 
   await openManageCategories();
 
@@ -618,8 +618,8 @@ test('[CATEGORIES-9.1] selects a color when it is pressed, but not a used one', 
   await openManageCategories();
   await openNewCategory();
 
-  pressColor('Select color #C62828');
-  pressColor('Color #D81B60 already in use');
+  await pressColor('Select color #C62828');
+  await pressColor('Color #D81B60 already in use');
 
   expect(colorButtons()).toEqual(expectedColors(DEFAULT_COLORS, '#C62828'));
 });
@@ -642,9 +642,9 @@ test('[CATEGORIES-10.1] disables Add until the name has more than spaces', async
   await openNewCategory();
 
   expect(formButton('Add').disabled).toBe(true);
-  fireEvent.changeText(nameField(), '   ');
+  await fireEvent.changeText(nameField(), '   ');
   expect(formButton('Add').disabled).toBe(true);
-  fireEvent.changeText(nameField(), 'Gym');
+  await fireEvent.changeText(nameField(), 'Gym');
   expect(formButton('Add').disabled).toBe(false);
 });
 
@@ -652,7 +652,7 @@ test('[CATEGORIES-10.1] disables Save when the name is cleared', async () => {
   await openManageCategories();
   await openCategory('Shopping');
 
-  fireEvent.changeText(nameField(), '');
+  await fireEvent.changeText(nameField(), '');
 
   expect(formButton('Save').disabled).toBe(true);
 });
@@ -670,8 +670,8 @@ test('[CATEGORIES-10.1] keeps 50 characters when 51 are typed into the name', as
 test('[CATEGORIES-11.1] adds the trimmed name in the selected color and closes the form', async () => {
   await openManageCategories();
   await openNewCategory();
-  fireEvent.changeText(nameField(), ' Gym ');
-  pressColor('Select color #C62828');
+  await fireEvent.changeText(nameField(), ' Gym ');
+  await pressColor('Select color #C62828');
 
   await press('Add');
 
@@ -690,7 +690,7 @@ test('[CATEGORIES-11.1] renames and recolors a default category', async () => {
 test("[CATEGORIES-11.1] saves a change of letter case to the category's own name", async () => {
   await openManageCategories();
   await openCategory('Shopping');
-  fireEvent.changeText(nameField(), 'SHOPPING');
+  await fireEvent.changeText(nameField(), 'SHOPPING');
 
   await press('Save');
 
@@ -701,13 +701,13 @@ test("[CATEGORIES-11.1] saves a change of letter case to the category's own name
 test('[CATEGORIES-11.1] adds one category when Add is pressed twice before the save finishes', async () => {
   await openManageCategories();
   await openNewCategory();
-  fireEvent.changeText(nameField(), 'Gym');
+  await fireEvent.changeText(nameField(), 'Gym');
   const writes = holdWrites();
   const add = formButton('Add');
 
-  act(() => {
-    add.press();
-    add.press();
+  await act(async () => {
+    await add.press();
+    await add.press();
   });
   await writes.release();
   await settle();
@@ -719,7 +719,7 @@ test('[CATEGORIES-11.1] adds one category when Add is pressed twice before the s
 test('[CATEGORIES-12.1] keeps New Category open and says below the name that the name exists', async () => {
   await openManageCategories();
   await openNewCategory();
-  fireEvent.changeText(nameField(), 'food & dining');
+  await fireEvent.changeText(nameField(), 'food & dining');
 
   await press('Add');
 
@@ -741,7 +741,7 @@ test('[CATEGORIES-12.1] keeps New Category open and says below the name that the
 test("[CATEGORIES-12.1] keeps Edit Category open when the name is another category's", async () => {
   await openManageCategories();
   await openCategory('Shopping');
-  fireEvent.changeText(nameField(), ' travel ');
+  await fireEvent.changeText(nameField(), ' travel ');
 
   await press('Save');
 
@@ -756,11 +756,11 @@ test("[CATEGORIES-12.1] keeps Edit Category open when the name is another catego
 test('[CATEGORIES-12.1] stops saying the name exists once the name is edited', async () => {
   await openManageCategories();
   await openNewCategory();
-  fireEvent.changeText(nameField(), 'food & dining');
+  await fireEvent.changeText(nameField(), 'food & dining');
   await press('Add');
   expect(screen.getByText(ALREADY_EXISTS)).toBeOnTheScreen();
 
-  fireEvent.changeText(nameField(), 'food');
+  await fireEvent.changeText(nameField(), 'food');
 
   expect(screen.queryByText(ALREADY_EXISTS)).toBeNull();
 });
@@ -774,7 +774,7 @@ test.each(["Tokyo's Group Categories", MANAGE_CATEGORIES])(
     if (where === MANAGE_CATEGORIES) await reopenManageCategories();
     else await openGroupCategories(groups.Tokyo);
     await openNewCategory();
-    fireEvent.changeText(nameField(), 'flights');
+    await fireEvent.changeText(nameField(), 'flights');
 
     await press('Add');
 
@@ -794,7 +794,7 @@ test('[CATEGORIES-13.1] selects no color, disables Add and says so once all 13 c
 
   expect(colorButtons()).toEqual(expectedColors(PALETTE));
   expect(screen.getByText(ALL_COLORS_USED)).toBeOnTheScreen();
-  fireEvent.changeText(nameField(), 'Garden');
+  await fireEvent.changeText(nameField(), 'Garden');
   expect(formButton('Add').disabled).toBe(true);
 });
 
@@ -833,7 +833,7 @@ test('[CATEGORIES-13.1] counts the colors of every scope toward all 13', async (
 test('[CATEGORIES-14.1] opens no form when Uncategorized is pressed', async () => {
   await openManageCategories();
 
-  fireEvent.press(screen.getByText('Uncategorized'));
+  await fireEvent.press(screen.getByText('Uncategorized'));
   await settle();
 
   expect(showsTitle('Edit Category')).toBe(false);
@@ -859,7 +859,7 @@ test('[CATEGORIES-14.1] opens no form when Uncategorized is pressed in Group Cat
   const groups = await createGroups('Brisbane');
   await openGroupCategories(groups.Brisbane);
 
-  fireEvent.press(screen.getByText('Uncategorized'));
+  await fireEvent.press(screen.getByText('Uncategorized'));
   await settle();
 
   expect(showsTitle('Edit Category')).toBe(false);
@@ -869,7 +869,7 @@ test('[CATEGORIES-14.1] opens no form when Uncategorized is pressed in Group Cat
 test('[CATEGORIES-15.1] closes New Category without adding anything', async () => {
   await openManageCategories();
   await openNewCategory();
-  fireEvent.changeText(nameField(), 'Gym');
+  await fireEvent.changeText(nameField(), 'Gym');
 
   await press('Cancel');
 
@@ -882,8 +882,8 @@ test('[CATEGORIES-15.1] closes New Category without adding anything', async () =
 test('[CATEGORIES-15.1] closes Edit Category without changing the category', async () => {
   await openManageCategories();
   await openCategory('Shopping');
-  fireEvent.changeText(nameField(), 'Groceries');
-  pressColor('Select color #43A047');
+  await fireEvent.changeText(nameField(), 'Groceries');
+  await pressColor('Select color #43A047');
 
   await press('Cancel');
 
@@ -894,7 +894,7 @@ test('[CATEGORIES-15.1] closes Edit Category without changing the category', asy
 test('[CATEGORIES-16.1] reports a category that cannot be added and keeps the form as it was', async () => {
   await openManageCategories();
   await openNewCategory();
-  fireEvent.changeText(nameField(), 'Gym');
+  await fireEvent.changeText(nameField(), 'Gym');
   failWrites();
 
   await press('Add');
@@ -911,7 +911,7 @@ test('[CATEGORIES-16.1] reports a category that cannot be added and keeps the fo
 test('[CATEGORIES-16.1] adds the category when Add is pressed again after writes recover', async () => {
   await openManageCategories();
   await openNewCategory();
-  fireEvent.changeText(nameField(), 'Gym');
+  await fireEvent.changeText(nameField(), 'Gym');
   failWrites();
   await press('Add');
   allowWrites();
@@ -925,7 +925,7 @@ test('[CATEGORIES-16.1] adds the category when Add is pressed again after writes
 test('[CATEGORIES-16.1] reports a category that cannot be saved and leaves it unchanged', async () => {
   await openManageCategories();
   await openCategory('Shopping');
-  fireEvent.changeText(nameField(), 'Groceries');
+  await fireEvent.changeText(nameField(), 'Groceries');
   failWrites();
 
   await press('Save');
@@ -941,7 +941,7 @@ test('[CATEGORIES-17.1] keeps added, renamed and recolored categories after the 
   const app = await openManageCategories();
   await addCategory('Gym', '#C62828');
   await editCategory('Shopping', 'Groceries', '#43A047');
-  app.unmount();
+  await app.unmount();
 
   await openManageCategories();
 
@@ -954,7 +954,7 @@ test('[CATEGORIES-17.1] keeps added, renamed and recolored categories after the 
 test('[CATEGORIES-18.1] disables Cancel and Add until a new category is saved', async () => {
   await openManageCategories();
   await openNewCategory();
-  fireEvent.changeText(nameField(), 'Gym');
+  await fireEvent.changeText(nameField(), 'Gym');
   const writes = holdWrites();
 
   await press('Add');
@@ -972,7 +972,7 @@ test('[CATEGORIES-18.1] disables Cancel and Add until a new category is saved', 
 test('[CATEGORIES-18.1] disables Cancel and Save until an edit is saved', async () => {
   await openManageCategories();
   await openCategory('Shopping');
-  fireEvent.changeText(nameField(), 'Groceries');
+  await fireEvent.changeText(nameField(), 'Groceries');
   const writes = holdWrites();
 
   await press('Save');
@@ -988,7 +988,7 @@ test('[CATEGORIES-18.1] disables Cancel and Save until an edit is saved', async 
 test('[CATEGORIES-18.1] enables Cancel and Add again once the save fails', async () => {
   await openManageCategories();
   await openNewCategory();
-  fireEvent.changeText(nameField(), 'Gym');
+  await fireEvent.changeText(nameField(), 'Gym');
   failWrites();
 
   await press('Add');
@@ -1000,13 +1000,13 @@ test('[CATEGORIES-18.1] enables Cancel and Add again once the save fails', async
 test('[CATEGORIES-21.1] locks the name and the colors until a new category is saved', async () => {
   await openManageCategories();
   await openNewCategory();
-  fireEvent.changeText(nameField(), 'Gym');
+  await fireEvent.changeText(nameField(), 'Gym');
   const writes = holdWrites();
 
   await press('Add');
 
   expect(nameField()).toBeDisabled();
-  pressColor('Select color #C62828');
+  await pressColor('Select color #C62828');
   expect(selectedColor()).toBe('#43A047');
   await writes.release();
   await settle();
@@ -1017,13 +1017,13 @@ test('[CATEGORIES-21.1] locks the name and the colors until a new category is sa
 test('[CATEGORIES-21.1] unlocks the name and the colors once the save fails', async () => {
   await openManageCategories();
   await openNewCategory();
-  fireEvent.changeText(nameField(), 'Gym');
+  await fireEvent.changeText(nameField(), 'Gym');
   failWrites();
 
   await press('Add');
 
   expect(nameField()).toBeEnabled();
-  pressColor('Select color #C62828');
+  await pressColor('Select color #C62828');
   expect(selectedColor()).toBe('#C62828');
 });
 
@@ -1039,7 +1039,7 @@ test('[CATEGORIES-19.1] shows the load error and leaves the data as it was when 
   ).toBeOnTheScreen();
   expect(screen.getByText('Your data was not changed.')).toBeOnTheScreen();
   expect(nativeViews(/^RNSTabsHost/)).toEqual([]);
-  app.unmount();
+  await app.unmount();
   await settle();
   expect(fs.readFileSync(mockFile)).toEqual(before);
 });
@@ -1050,7 +1050,7 @@ test('[CATEGORIES-19.1] creates all nine default categories on the next start on
   expect(
     await screen.findByText('Unable to Load Local Data'),
   ).toBeOnTheScreen();
-  app.unmount();
+  await app.unmount();
   allowWrites();
 
   await openManageCategories();
@@ -1168,7 +1168,7 @@ test('[CATEGORIES-26.1] lists a category added in Group Categories last there', 
   const groups = await createGroups('Brisbane');
   await openGroupCategories(groups.Brisbane);
   await openNewCategory();
-  fireEvent.changeText(nameField(), 'Flights');
+  await fireEvent.changeText(nameField(), 'Flights');
 
   await press('Add');
 

@@ -45,7 +45,7 @@ test('the root layout waits for the phone database and closes it on unmount', as
     }),
   );
   const close = jest.spyOn(database, 'close');
-  const view = render(<RootLayout />);
+  const view = await render(<RootLayout />);
   expect(screen.getByLabelText('Restoring local data')).toBeOnTheScreen();
   expect(screen.queryByTestId('app-screen')).toBeNull();
   finishOpening(database);
@@ -55,7 +55,7 @@ test('the root layout waits for the phone database and closes it on unmount', as
   expect(await database.all('SELECT userId FROM local_identity')).toEqual([
     { userId: identity.userId },
   ]);
-  view.unmount();
+  await view.unmount();
   await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
 });
 
@@ -65,12 +65,12 @@ test('the root layout forwards __DEV__ and resets a mismatched development datab
     ...appMigrations,
     'CREATE TABLE newer (id INTEGER)',
   ]);
-  const view = render(<RootLayout />);
+  const view = await render(<RootLayout />);
   expect(await screen.findByTestId('app-screen')).toBeOnTheScreen();
   expect(
     await database.all("SELECT name FROM sqlite_master WHERE name = 'newer'"),
   ).toEqual([]);
-  view.unmount();
+  await view.unmount();
 });
 
 test('a pending phone connection is closed even when the layout unmounts before it opens', async () => {
@@ -81,15 +81,15 @@ test('a pending phone connection is closed even when the layout unmounts before 
     }),
   );
   const close = jest.spyOn(database, 'close');
-  const view = render(<RootLayout />);
-  view.unmount();
+  const view = await render(<RootLayout />);
+  await view.unmount();
   finishOpening(database);
   await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
 });
 
 test('Strict Mode shares one connection and does not close it while the screens are mounted', async () => {
   const close = jest.spyOn(database, 'close');
-  const view = render(
+  const view = await render(
     <StrictMode>
       <RootLayout />
     </StrictMode>,
@@ -97,17 +97,17 @@ test('Strict Mode shares one connection and does not close it while the screens 
   expect(await screen.findByTestId('app-screen')).toBeOnTheScreen();
   expect(open).toHaveBeenCalledTimes(1);
   expect(close).not.toHaveBeenCalled();
-  view.unmount();
+  await view.unmount();
   await waitFor(() => expect(close).toHaveBeenCalledTimes(1));
 });
 
 test('an open failure reaches the root error screen without rendering navigation', async () => {
   open.mockRejectedValue(new Error('device storage unavailable'));
-  const view = render(<RootLayout />);
+  const view = await render(<RootLayout />);
   expect(
     await screen.findByText('Unable to Load Local Data'),
   ).toBeOnTheScreen();
   expect(screen.getByText('Your data was not changed.')).toBeOnTheScreen();
   expect(screen.queryByTestId('app-screen')).toBeNull();
-  view.unmount();
+  await view.unmount();
 });

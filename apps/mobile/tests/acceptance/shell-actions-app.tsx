@@ -7,7 +7,13 @@ import {
   type HeaderAction,
   type HeaderActionsProps,
 } from '../../src/ui/header-actions';
-import { nativeViews, navigationBars, startApp, tab } from './shell-tabs-app';
+import {
+  componentsIn,
+  nativeViews,
+  navigationBars,
+  startApp,
+  tab,
+} from './shell-tabs-app';
 import {
   fixedColors,
   isOpaque,
@@ -83,14 +89,13 @@ export async function reportBottomInsets(...bottoms: number[]) {
     if (String(outer.type) === 'RNCSafeAreaProvider') providers.push(outer);
   expect(providers).toHaveLength(bottoms.length);
   await act(async () => {
-    providers.forEach((provider, index) =>
-      fireEvent(provider, 'insetsChange', {
+    for (const [index, provider] of providers.entries())
+      await fireEvent(provider, 'insetsChange', {
         nativeEvent: {
           insets: { top: 0, left: 0, right: 0, bottom: bottoms[index] },
           frame: { x: 0, y: 0, width: 390, height: 844 },
         },
-      }),
-    );
+      });
   });
 }
 
@@ -100,7 +105,7 @@ const styleOf = (view: HostView): Style =>
   StyleSheet.flatten(view.props.style) ?? {};
 
 const hostViews = (root: HostView) =>
-  root.findAll((view) => typeof view.type === 'string');
+  root.queryAll((view) => typeof view.type === 'string', { includeSelf: true });
 
 function scaleOf(transform: unknown) {
   if (!Array.isArray(transform)) return 1;
@@ -222,13 +227,13 @@ const touch = () => ({
 });
 
 /** Puts a finger on `view` and keeps it there. */
-export function holdDown(view: HostView) {
-  fireEvent(view, 'responderGrant', touch());
+export async function holdDown(view: HostView) {
+  await fireEvent(view, 'responderGrant', touch());
 }
 
 /** Lifts the finger, once React Native's shortest press has passed. */
 export async function liftFinger(view: HostView) {
-  fireEvent(view, 'responderRelease', touch());
+  await fireEvent(view, 'responderRelease', touch());
   // renderRouter fakes the timers and Date, so this runs the press-out that
   // React Native holds back until its shortest press has passed.
   await act(async () => {
@@ -256,24 +261,23 @@ const uriOf = (view: HostView) => {
  * which the Android tests name after their symbol.
  */
 export function iconsIn(root: HostView, platform: Platform): Icon[] {
-  const symbolViews = root
-    .findAll(
-      (node) =>
-        typeof node.type === 'function' && node.type.name === 'SymbolView',
-    )
-    .map((view) => {
-      const { name, tintColor } = view.props;
-      return {
-        name: typeof name === 'string' ? name : name?.[platform],
-        color: tintColor,
-        view,
-      };
-    });
+  const symbolViews = componentsIn(
+    root,
+    (type) => typeof type === 'function' && type.name === 'SymbolView',
+  ).map(({ props, view }) => {
+    const { name, tintColor } = props;
+    return {
+      name: typeof name === 'string' ? name : name?.[platform],
+      color: tintColor,
+      view,
+    };
+  });
   const images = root
-    .findAll(
+    .queryAll(
       (node) =>
         typeof node.type === 'string' &&
         uriOf(node).startsWith('material-symbol:'),
+      { includeSelf: true },
     )
     .map((view) => ({
       name: uriOf(view).replace('material-symbol:', ''),
@@ -352,26 +356,26 @@ export const barItems = () => ({
 });
 
 /** Presses an iOS bar button by its text, as the native bar reports a press. */
-export function pressBarButton(title: string) {
+export async function pressBarButton(title: string) {
   const item = [...barItemsOn('Left'), ...barItemsOn('Right')].find(
     (candidate) => candidate.type === 'button' && candidate.title === title,
   );
   if (item === undefined) throw new Error(`No ${title} in the navigation bar`);
   // The native bar sends no press for a disabled item.
   if (!item.disabled)
-    fireEvent(probeBar(), 'pressHeaderBarButtonItem', {
+    await fireEvent(probeBar(), 'pressHeaderBarButtonItem', {
       nativeEvent: { buttonId: item.buttonId },
     });
 }
 
 /** Chooses an item of the iOS menu by its text, as the native menu reports it. */
-export function chooseFromMenu(title: string) {
+export async function chooseFromMenu(title: string) {
   const entry = barItemsOn('Right')
     .flatMap((item) => item.menu?.items ?? [])
     .find((candidate) => candidate.title === title);
   if (entry === undefined) throw new Error(`No ${title} in the menu`);
   if (!entry.disabled)
-    fireEvent(probeBar(), 'pressHeaderBarButtonMenuItem', {
+    await fireEvent(probeBar(), 'pressHeaderBarButtonMenuItem', {
       nativeEvent: { menuId: entry.menuId },
     });
 }

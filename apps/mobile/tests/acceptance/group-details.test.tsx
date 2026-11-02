@@ -146,8 +146,8 @@ async function startInMembers(members: string[] = []) {
 }
 
 /** Restarts the app on the same data, on the Groups root. */
-function restart(app: { unmount: () => void }) {
-  app.unmount();
+async function restart(app: { unmount: () => Promise<void> }) {
+  await app.unmount();
   return startGroupsApp();
 }
 
@@ -166,7 +166,7 @@ const clearAlerts = () => jest.mocked(Alert.alert).mockClear();
 /** Types `name` in a name field and presses the form's confirm button. */
 async function submit(form: string, confirm: string, name: string) {
   const field = form === 'Rename Group' ? groupNameField() : memberNameField();
-  fireEvent.changeText(field, name);
+  await fireEvent.changeText(field, name);
   await pressOnBar(form, confirm);
 }
 
@@ -194,7 +194,7 @@ test("[GROUPS-21.1] never shows Group not found. while an existing group's scree
   await startWithName();
   await createGroup('Brisbane');
 
-  fireEvent.press(
+  await fireEvent.press(
     within(groupsRoot()).getByRole('button', { name: 'Open Brisbane' }),
   );
 
@@ -207,7 +207,7 @@ test('[GROUPS-21.1] never shows Group not found. while a group opened at its URL
   const first = await startWithName();
   await createGroup('Brisbane');
   const [brisbane] = await storedGroups(file);
-  first.unmount();
+  await first.unmount();
 
   await startGroupsApp(`/groups/${brisbane.id}`);
 
@@ -371,7 +371,7 @@ test('[GROUPS-27.1] locks Members while a member is removed', async () => {
   expect(barAction('Members', 'Close').disabled).toBe(true);
   expect(await tapMember('Casey')).toBeUndefined();
   expect(await tapMember('Taylor (You)')).toBeUndefined();
-  fireEvent.press(membersButton('Add Member'));
+  await fireEvent.press(membersButton('Add Member'));
   await settle();
   expect(isOpen('Add Member')).toBe(false);
   expect(isOpen('Members')).toBe(true);
@@ -485,13 +485,13 @@ test('[GROUPS-30.1] disables Add while the name is blank, and Return adds no one
   await openAddMember();
 
   expect(barAction('Add Member', 'Add').disabled).toBe(true);
-  fireEvent.changeText(memberNameField(), '   ');
+  await fireEvent.changeText(memberNameField(), '   ');
   expect(barAction('Add Member', 'Add').disabled).toBe(true);
   await pressReturn(memberNameField());
   expect(isOpen('Add Member')).toBe(true);
   expect(await storedMemberNames(file, 'Brisbane')).toEqual(['Taylor']);
 
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   expect(barAction('Add Member', 'Add').disabled).toBe(false);
 });
 
@@ -512,7 +512,7 @@ test('[GROUPS-31.1] adds a member with the name trimmed, listed last', async () 
 test('[GROUPS-31.1] adds a member when Return is pressed in the name field', async () => {
   await startInMembers(['Blake']);
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'Casey');
+  await fireEvent.changeText(memberNameField(), 'Casey');
 
   await pressReturn(memberNameField());
 
@@ -637,7 +637,7 @@ test('[GROUPS-33.1] stops saying a member has the name once the name is edited',
   await submit('Add Member', 'Add', 'Blake');
   expect(screen.getByText(ALREADY_EXISTS)).toBeOnTheScreen();
 
-  fireEvent.changeText(memberNameField(), 'Blake K.');
+  await fireEvent.changeText(memberNameField(), 'Blake K.');
 
   expect(screen.queryByText(ALREADY_EXISTS)).toBeNull();
 });
@@ -645,7 +645,7 @@ test('[GROUPS-33.1] stops saying a member has the name once the name is edited',
 test("[GROUPS-33.1] says a member has the name when Return is pressed in Add Member with a member's name", async () => {
   await startInMembers(['Blake', 'Casey']);
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'blake');
+  await fireEvent.changeText(memberNameField(), 'blake');
 
   await pressReturn(memberNameField());
 
@@ -662,7 +662,7 @@ test("[GROUPS-33.1] says a member has the name when Return is pressed in Add Mem
 test("[GROUPS-33.1] says a member has the name when Return is pressed in Rename Member with another member's name", async () => {
   await startInMembers(['Blake', 'Casey']);
   await openRenameMember('Casey');
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
 
   await pressReturn(memberNameField());
 
@@ -747,7 +747,7 @@ test('[GROUPS-34.1] asks to add a former member back when Return is pressed with
   await removeMember('Blake');
   await waitFor(() => expect(membersShown()).not.toContain('Blake'));
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'blake');
+  await fireEvent.changeText(memberNameField(), 'blake');
 
   await pressReturn(memberNameField());
 
@@ -866,7 +866,7 @@ test('[GROUPS-35.1] says the member could not be saved, and keeps Add Member ope
 test('[GROUPS-35.1] leaves the local data as it was whichever write of the new member fails', async () => {
   await startInMembers();
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   const before = localData(file);
 
   let writesThrough = 0;
@@ -891,7 +891,7 @@ test('[GROUPS-35.1] keeps a former member out of the group whichever write of ad
   await removeMember('Blake');
   await waitFor(() => expect(membersShown()).not.toContain('Blake'));
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   const before = localData(file);
 
   let writesThrough = 0;
@@ -967,7 +967,7 @@ test('[GROUPS-36.1] shows Enter member name in Rename Member once the name is cl
   await startInMembers(['Blake']);
   await openRenameMember('Blake');
 
-  fireEvent.changeText(memberNameField(), '');
+  await fireEvent.changeText(memberNameField(), '');
 
   expect(memberNameField()).toHaveDisplayValue('', AS_TYPED);
   expect(memberNameField().props.placeholder).toBe('Enter member name');
@@ -979,12 +979,12 @@ test('[GROUPS-37.1] disables Save in Rename Member until the name differs from w
 
   expect(barAction('Rename Member', 'Save').disabled).toBe(true);
   for (const unchanged of [' Blake ', '   ']) {
-    fireEvent.changeText(memberNameField(), unchanged);
+    await fireEvent.changeText(memberNameField(), unchanged);
     expect(barAction('Rename Member', 'Save').disabled).toBe(true);
     await pressReturn(memberNameField());
     expect(isOpen('Rename Member')).toBe(true);
   }
-  fireEvent.changeText(memberNameField(), 'BLAKE');
+  await fireEvent.changeText(memberNameField(), 'BLAKE');
   expect(barAction('Rename Member', 'Save').disabled).toBe(false);
   expect(await storedMemberNames(file, 'Brisbane')).toEqual([
     'Taylor',
@@ -1000,12 +1000,12 @@ test('[GROUPS-37.1] disables Save in Rename Group until the name differs from wh
 
   expect(barAction('Rename Group', 'Save').disabled).toBe(true);
   for (const unchanged of [' Brisbane ', '   ']) {
-    fireEvent.changeText(groupNameField(), unchanged);
+    await fireEvent.changeText(groupNameField(), unchanged);
     expect(barAction('Rename Group', 'Save').disabled).toBe(true);
     await pressReturn(groupNameField());
     expect(isOpen('Rename Group')).toBe(true);
   }
-  fireEvent.changeText(groupNameField(), 'brisbane');
+  await fireEvent.changeText(groupNameField(), 'brisbane');
   expect(barAction('Rename Group', 'Save').disabled).toBe(false);
   expect((await storedGroups(file)).map((group) => group.name)).toEqual([
     'Brisbane',
@@ -1033,7 +1033,7 @@ test("[GROUPS-38.1] saves a member's new name, trimmed, in the same place and wi
 test("[GROUPS-38.1] saves a member's new name when Return is pressed", async () => {
   await startInMembers(['Casey']);
   await openRenameMember('Casey');
-  fireEvent.changeText(memberNameField(), 'Casey Lee');
+  await fireEvent.changeText(memberNameField(), 'Casey Lee');
 
   await pressReturn(memberNameField());
 
@@ -1086,7 +1086,7 @@ test('[GROUPS-38.1] saves your new member name, with the same member ID and user
   await startInMembers();
   const [you] = await storedMembers(file, 'Brisbane');
   await openRenameMember('Taylor (You)', 'Taylor');
-  fireEvent.changeText(memberNameField(), 'Sam');
+  await fireEvent.changeText(memberNameField(), 'Sam');
 
   await pressOnBar('Rename Member', 'Save');
 
@@ -1115,7 +1115,7 @@ test('[GROUPS-39.1] says the member could not be saved, and keeps Rename Member 
 test("[GROUPS-39.1] leaves the local data as it was whichever write of a member's new name fails", async () => {
   await startInMembers(['Blak']);
   await openRenameMember('Blak');
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   const before = localData(file);
 
   let writesThrough = 0;
@@ -1188,7 +1188,7 @@ test('[GROUPS-40.1] shows Group name in Rename Group once the name is cleared', 
   await openGroup('Brisbane');
   await openRenameGroup('Brisbane');
 
-  fireEvent.changeText(groupNameField(), '');
+  await fireEvent.changeText(groupNameField(), '');
 
   expect(groupNameField()).toHaveDisplayValue('', AS_TYPED);
   expect(groupNameField().props.placeholder).toBe('Group name');
@@ -1226,7 +1226,7 @@ test("[GROUPS-41.1] saves the group's new name when Return is pressed", async ()
   await createGroup('Trip');
   await openGroup('Trip');
   await openRenameGroup('Trip');
-  fireEvent.changeText(groupNameField(), 'Kyoto');
+  await fireEvent.changeText(groupNameField(), 'Kyoto');
 
   await pressReturn(groupNameField());
 
@@ -1287,7 +1287,7 @@ test("[GROUPS-42.1] leaves the local data as it was whichever write of the group
   await createGroup('Trip');
   await openGroup('Trip');
   await openRenameGroup('Trip');
-  fireEvent.changeText(groupNameField(), 'Tokyo');
+  await fireEvent.changeText(groupNameField(), 'Tokyo');
   const before = localData(file);
 
   let writesThrough = 0;
@@ -1328,7 +1328,7 @@ test("[GROUPS-42.1] saves the group's new name when Save is pressed again after 
 test('[GROUPS-43.1] closes Add Member without adding anyone when Cancel is pressed', async () => {
   await startInMembers();
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
 
   await pressOnBar('Add Member', 'Cancel');
 
@@ -1342,7 +1342,7 @@ test('[GROUPS-43.1] closes Add Member without adding anyone when Cancel is press
 test('[GROUPS-43.1] closes Rename Member without renaming when Cancel is pressed', async () => {
   await startInMembers(['Blake']);
   await openRenameMember('Blake');
-  fireEvent.changeText(memberNameField(), 'Blake K.');
+  await fireEvent.changeText(memberNameField(), 'Blake K.');
 
   await pressOnBar('Rename Member', 'Cancel');
 
@@ -1359,7 +1359,7 @@ test('[GROUPS-43.1] closes Rename Group without renaming when Cancel is pressed'
   await createGroup('Trip');
   await openGroup('Trip');
   await openRenameGroup('Trip');
-  fireEvent.changeText(groupNameField(), 'Tokyo');
+  await fireEvent.changeText(groupNameField(), 'Tokyo');
 
   await pressOnBar('Rename Group', 'Cancel');
 
@@ -1375,14 +1375,14 @@ test('[GROUPS-43.1] lets each name form be swiped down without saving', async ()
   const before = localData(file);
 
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'Casey');
+  await fireEvent.changeText(memberNameField(), 'Casey');
   expect(refusesSwipeDown(screenOf('Add Member'))).toBe(false);
   await swipeDown('Add Member');
   await expectClosed('Add Member');
   expect(isOpen('Members')).toBe(true);
 
   await openRenameMember('Blake');
-  fireEvent.changeText(memberNameField(), 'Blake K.');
+  await fireEvent.changeText(memberNameField(), 'Blake K.');
   expect(refusesSwipeDown(screenOf('Rename Member'))).toBe(false);
   await swipeDown('Rename Member');
   await expectClosed('Rename Member');
@@ -1391,7 +1391,7 @@ test('[GROUPS-43.1] lets each name form be swiped down without saving', async ()
   await pressOnBar('Members', 'Close');
   await expectClosed('Members');
   await openRenameGroup('Brisbane');
-  fireEvent.changeText(groupNameField(), 'Tokyo');
+  await fireEvent.changeText(groupNameField(), 'Tokyo');
   expect(refusesSwipeDown(screenOf('Rename Group'))).toBe(false);
   await swipeDown('Rename Group');
   await expectClosed('Rename Group');
@@ -1403,7 +1403,7 @@ test('[GROUPS-43.1] lets each name form be swiped down without saving', async ()
 test('[GROUPS-44.1] locks Add Member while the new member is saved', async () => {
   await startInMembers();
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   const writes = holdWrites();
 
   await pressOnBar('Add Member', 'Add');
@@ -1422,13 +1422,13 @@ test('[GROUPS-44.1] locks Add Member while the new member is saved', async () =>
 test('[GROUPS-44.1] adds one member when Add or Return is pressed again before the save finishes', async () => {
   await startInMembers();
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   const writes = holdWrites();
 
   // The second press comes before React renders the locked form.
   const add = barAction('Add Member', 'Add');
-  add.press();
-  add.press();
+  await add.press();
+  await add.press();
   await settle();
   await pressReturn(memberNameField());
   await writes.release();
@@ -1468,7 +1468,7 @@ test('[GROUPS-44.1] locks Add Member while a former member is added back, withou
 test('[GROUPS-44.1] locks Rename Member while the new name is saved', async () => {
   await startInMembers(['Blak']);
   await openRenameMember('Blak');
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   const writes = holdWrites();
 
   await pressOnBar('Rename Member', 'Save');
@@ -1488,7 +1488,7 @@ test('[GROUPS-44.1] locks Rename Group while the new name is saved', async () =>
   await createGroup('Trip');
   await openGroup('Trip');
   await openRenameGroup('Trip');
-  fireEvent.changeText(groupNameField(), 'Tokyo');
+  await fireEvent.changeText(groupNameField(), 'Tokyo');
   const writes = holdWrites();
 
   await pressOnBar('Rename Group', 'Save');
@@ -1508,7 +1508,7 @@ test('[GROUPS-44.1] locks Rename Group while the new name is saved', async () =>
 test('[GROUPS-44.1] unlocks Add Member once its save fails', async () => {
   await startInMembers();
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   const writes = holdWrites();
   await pressOnBar('Add Member', 'Add');
 
@@ -1520,7 +1520,7 @@ test('[GROUPS-44.1] unlocks Add Member once its save fails', async () => {
   expect(memberNameField()).not.toBeDisabled();
   expect(refusesSwipeDown(screenOf('Add Member'))).toBe(false);
   // Usable, not only enabled: the name takes typing, and Cancel closes the form.
-  fireEvent.changeText(memberNameField(), 'Blake K.');
+  await fireEvent.changeText(memberNameField(), 'Blake K.');
   expect(memberNameField()).toHaveDisplayValue('Blake K.', AS_TYPED);
   await pressOnBar('Add Member', 'Cancel');
   await expectClosed('Add Member');
@@ -1529,7 +1529,7 @@ test('[GROUPS-44.1] unlocks Add Member once its save fails', async () => {
 test('[GROUPS-44.1] unlocks Rename Member once its save fails', async () => {
   await startInMembers(['Blak']);
   await openRenameMember('Blak');
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   const writes = holdWrites();
   await pressOnBar('Rename Member', 'Save');
 
@@ -1540,7 +1540,7 @@ test('[GROUPS-44.1] unlocks Rename Member once its save fails', async () => {
   expect(barAction('Rename Member', 'Save').disabled).toBe(false);
   expect(memberNameField()).not.toBeDisabled();
   expect(refusesSwipeDown(screenOf('Rename Member'))).toBe(false);
-  fireEvent.changeText(memberNameField(), 'Blake K.');
+  await fireEvent.changeText(memberNameField(), 'Blake K.');
   expect(memberNameField()).toHaveDisplayValue('Blake K.', AS_TYPED);
   await pressOnBar('Rename Member', 'Cancel');
   await expectClosed('Rename Member');
@@ -1551,7 +1551,7 @@ test('[GROUPS-44.1] unlocks Rename Group once its save fails', async () => {
   await createGroup('Trip');
   await openGroup('Trip');
   await openRenameGroup('Trip');
-  fireEvent.changeText(groupNameField(), 'Tokyo');
+  await fireEvent.changeText(groupNameField(), 'Tokyo');
   const writes = holdWrites();
   await pressOnBar('Rename Group', 'Save');
 
@@ -1562,7 +1562,7 @@ test('[GROUPS-44.1] unlocks Rename Group once its save fails', async () => {
   expect(barAction('Rename Group', 'Save').disabled).toBe(false);
   expect(groupNameField()).not.toBeDisabled();
   expect(refusesSwipeDown(screenOf('Rename Group'))).toBe(false);
-  fireEvent.changeText(groupNameField(), 'Kyoto');
+  await fireEvent.changeText(groupNameField(), 'Kyoto');
   expect(groupNameField()).toHaveDisplayValue('Kyoto', AS_TYPED);
   await pressOnBar('Rename Group', 'Cancel');
   await expectClosed('Rename Group');
@@ -1618,7 +1618,7 @@ test('[GROUPS-46.1] leaves your name and your member names in other groups as th
   await createGroup('Tokyo');
   await openWithMembers('Brisbane', []);
   await openRenameMember('Taylor (You)', 'Taylor');
-  fireEvent.changeText(memberNameField(), 'Sam');
+  await fireEvent.changeText(memberNameField(), 'Sam');
 
   await pressOnBar('Rename Member', 'Save');
 
@@ -1636,31 +1636,31 @@ test('[GROUPS-46.1] leaves your name and your member names in other groups as th
 
 test("[SHELL-34.1] uses colors that follow the appearance on a group's screen, Members and the name forms", async () => {
   await startInMembers(['Blake']);
-  const compare = () => {
+  const compare = async () => {
     const light = { colors: fixedColors(), uncolored: textsWithoutColor() };
-    switchPhoneTo('dark');
+    await switchPhoneTo('dark');
     const dark = { colors: fixedColors(), uncolored: textsWithoutColor() };
-    switchPhoneTo('light');
+    await switchPhoneTo('light');
     expect(colorsInBoth(light.colors, dark.colors)).toEqual([]);
     expect([...light.uncolored, ...dark.uncolored]).toEqual([]);
   };
 
-  compare();
+  await compare();
   await openAddMember();
-  fireEvent.changeText(memberNameField(), 'Blake');
+  await fireEvent.changeText(memberNameField(), 'Blake');
   await pressOnBar('Add Member', 'Add');
   expect(screen.getByText(ALREADY_EXISTS)).toBeOnTheScreen();
-  compare();
+  await compare();
   await pressOnBar('Add Member', 'Cancel');
   await expectClosed('Add Member');
   await openRenameMember('Blake');
-  compare();
+  await compare();
   await pressOnBar('Rename Member', 'Cancel');
   await expectClosed('Rename Member');
   await pressOnBar('Members', 'Close');
   await expectClosed('Members');
   await openRenameGroup('Brisbane');
-  compare();
+  await compare();
 });
 
 test("[SHELL-36.1] adds no blur or glass of its own to a group's screen, Members or the name forms while Reduce Transparency is on", async () => {
