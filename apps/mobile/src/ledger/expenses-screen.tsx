@@ -65,7 +65,7 @@ export function ExpensesScreen() {
                 <GroupedSection key={expense.id} style={styles.card}>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`${expense.title}, ${amount}, ${expense.category.name}, ${date}`}
+                    accessibilityLabel={`${expense.title}, ${amount}, ${expense.categoryLabel}, ${date}`}
                     onPress={() => router.navigate(`/expenses/${expense.id}`)}
                     style={({ pressed }) => [
                       styles.cardContent,
@@ -83,11 +83,23 @@ export function ExpensesScreen() {
                         {amount}
                       </Text>
                     </View>
-                    <Text
-                      style={[styles.metadata, { color: colors.textMuted }]}
-                    >
-                      {expense.category.name}
-                    </Text>
+                    <View style={styles.category}>
+                      <View
+                        accessible={false}
+                        style={[
+                          styles.dot,
+                          { backgroundColor: expense.category.color },
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles.categoryName,
+                          { color: colors.textMuted },
+                        ]}
+                      >
+                        {expense.categoryLabel}
+                      </Text>
+                    </View>
                     <Text
                       style={[styles.metadata, { color: colors.textMuted }]}
                     >
@@ -115,5 +127,13 @@ const styles = StyleSheet.create({
   main: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   title: { flex: 1, fontSize: 18, fontWeight: '700' },
   amount: { fontSize: 16, fontWeight: '600' },
+  category: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dot: { width: 12, height: 12, borderRadius: 6 },
+  categoryName: { flexShrink: 1, fontSize: 14 },
   metadata: { marginTop: 8, fontSize: 14 },
 });
