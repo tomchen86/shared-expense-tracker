@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { listGroups } from '../groups';
 import { categoryExpenseCounts } from '../ledger/expenses';
@@ -369,63 +369,67 @@ export function ManageCategoriesScreen() {
       )}
       {groupExists && movingCategory && (
         <Modal visible animationType="slide" onRequestClose={cancelMove}>
-          <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-            <View
-              style={[
-                styles.moveHeader,
-                { borderBottomColor: colors.separator },
-              ]}
+          <SafeAreaProvider>
+            <SafeAreaView
+              style={{ flex: 1, backgroundColor: colors.background }}
             >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Cancel"
-                disabled={updating}
-                accessibilityState={{ disabled: updating }}
-                onPress={cancelMove}
-                style={styles.cancel}
-              >
-                <Text style={{ color: colors.accent }}>Cancel</Text>
-              </Pressable>
-              <Text
-                accessibilityRole="header"
-                style={[styles.moveTitle, { color: colors.text }]}
-              >
-                Move {movingCategory.name} Expenses
-              </Text>
-            </View>
-            <ScrollView contentContainerStyle={styles.content}>
               <View
-                style={[styles.section, { backgroundColor: colors.surface }]}
+                style={[
+                  styles.moveHeader,
+                  { borderBottomColor: colors.separator },
+                ]}
               >
-                {activeCategories
-                  .filter((category) => category.id !== movingCategory.id)
-                  .map((category) => (
-                    <Pressable
-                      key={category.id}
-                      accessibilityRole="button"
-                      accessibilityLabel={category.name}
-                      accessibilityState={{ disabled: updating }}
-                      disabled={updating}
-                      onPress={() => move(category)}
-                      style={({ pressed }) => [
-                        styles.row,
-                        pressed && { backgroundColor: colors.pressedSurface },
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.colorDot,
-                          { backgroundColor: category.color },
-                        ]}
-                      />
-                      <Text style={[styles.rowLabel, { color: colors.text }]}>
-                        {category.name}
-                      </Text>
-                    </Pressable>
-                  ))}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel"
+                  disabled={updating}
+                  accessibilityState={{ disabled: updating }}
+                  onPress={cancelMove}
+                  style={styles.cancel}
+                >
+                  <Text style={{ color: colors.accent }}>Cancel</Text>
+                </Pressable>
+                <Text
+                  accessibilityRole="header"
+                  style={[styles.moveTitle, { color: colors.text }]}
+                >
+                  Move {movingCategory.name} Expenses
+                </Text>
               </View>
-            </ScrollView>
-          </SafeAreaView>
+              <ScrollView contentContainerStyle={styles.content}>
+                <View
+                  style={[styles.section, { backgroundColor: colors.surface }]}
+                >
+                  {activeCategories
+                    .filter((category) => category.id !== movingCategory.id)
+                    .map((category) => (
+                      <Pressable
+                        key={category.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={category.name}
+                        accessibilityState={{ disabled: updating }}
+                        disabled={updating}
+                        onPress={() => move(category)}
+                        style={({ pressed }) => [
+                          styles.row,
+                          pressed && { backgroundColor: colors.pressedSurface },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.colorDot,
+                            { backgroundColor: category.color },
+                          ]}
+                        />
+                        <Text style={[styles.rowLabel, { color: colors.text }]}>
+                          {category.name}
+                        </Text>
+                      </Pressable>
+                    ))}
+                </View>
+              </ScrollView>
+            </SafeAreaView>
+          </SafeAreaProvider>
         </Modal>
       )}
     </SafeAreaView>
