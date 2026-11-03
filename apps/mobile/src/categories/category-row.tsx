@@ -107,7 +107,9 @@ export function CategoryRow({
           onPress={remove}
           style={[styles.action, { backgroundColor: colors.error }]}
         >
-          <Text style={styles.actionText}>{action}</Text>
+          <Text style={[styles.actionText, { color: colors.background }]}>
+            {action}
+          </Text>
         </Pressable>
       )}
       <Animated.View
@@ -165,5 +167,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actionText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  actionText: { fontSize: 15, fontWeight: '600' },
 });
