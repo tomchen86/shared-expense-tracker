@@ -1,4 +1,4 @@
-import type { Share } from '@shared-expense/domain';
+import { splitEvenly, type Share } from '@shared-expense/domain';
 import { createUuid, type Database, type SqlExecutor } from '../storage';
 import type { LocalIdentity } from '../shell';
 
@@ -59,9 +59,11 @@ export async function listExpenses(database: SqlExecutor): Promise<Expense[]> {
   const rows = await database.all<ExpenseRow>(`
     SELECT e.*,
       (SELECT json_group_array(json_object('participant', participant, 'amountMinor', amountMinor))
-        FROM expense_payments WHERE expenseId = e.id) AS payments,
+        FROM (SELECT participant, amountMinor FROM expense_payments
+          WHERE expenseId = e.id ORDER BY position, rowid)) AS payments,
       (SELECT json_group_array(json_object('participant', participant, 'amountMinor', amountMinor))
-        FROM expense_shares WHERE expenseId = e.id) AS shares
+        FROM (SELECT participant, amountMinor FROM expense_shares
+          WHERE expenseId = e.id ORDER BY position, rowid)) AS shares
     FROM expenses AS e ORDER BY e.date DESC, e.rowid DESC
   `);
   return rows.map((row) => ({
@@ -102,22 +104,79 @@ export function subscribeToExpenses(database: Database, listener: () => void) {
   };
 }
 
-export async function savePersonalExpense(
+export interface GroupSplit {
+  groupId: string;
+  payerId: string;
+  participants: string[];
+}
+
+export class ArchivedExpenseError extends Error {}
+
+/** Save the expense and its ordered allocations together, or leave all of them unchanged. */
+export async function saveExpense(
   database: Database,
   identity: LocalIdentity,
   input: ExpenseInput,
   existing?: Expense,
+  split?: GroupSplit,
 ): Promise<void> {
   await database.transaction(async (transaction) => {
+    const spaceId = split?.groupId ?? identity.personalSpaceId;
+    let amountMinor = input.amountMinor;
+    let payments = [
+      { participant: identity.personalParticipantId, amountMinor },
+    ];
+    let shares = payments;
+    if (
+      existing &&
+      existing.spaceId !== identity.personalSpaceId &&
+      existing.spaceId !== spaceId
+    )
+      throw new Error('A group expense cannot change spaces');
+    if (split) {
+      const [group] = await transaction.all<{ archived: number }>(
+        'SELECT archived FROM groups WHERE id = ?',
+        [spaceId],
+      );
+      if (!group) throw new Error('Group not found');
+      if (group.archived) throw new ArchivedExpenseError();
+      const members = await transaction.all<{ id: string; removed: number }>(
+        'SELECT id, removed FROM group_members WHERE groupId = ?',
+        [spaceId],
+      );
+      const currentMembers = new Set(
+        members.filter((member) => !member.removed).map((member) => member.id),
+      );
+      const locked =
+        existing?.spaceId === spaceId &&
+        [...existing.payments, ...existing.shares].some(
+          (share) => !currentMembers.has(share.participant),
+        );
+      if (locked) {
+        amountMinor = existing.amountMinor;
+        payments = existing.payments;
+        shares = existing.shares;
+      } else {
+        if (
+          !currentMembers.has(split.payerId) ||
+          split.participants.some((id) => !currentMembers.has(id))
+        )
+          throw new Error('Member not found');
+        const allocations = splitEvenly(amountMinor, split.participants);
+        if (!allocations) throw new Error('Invalid split');
+        payments = [{ participant: split.payerId, amountMinor }];
+        shares = allocations;
+      }
+    }
     const [category] = await transaction.all<Expense['category']>(
-      'SELECT id, name, color FROM categories WHERE id = ?',
-      [input.categoryId],
+      'SELECT id, name, color FROM categories WHERE id = ? AND spaceId = ?',
+      [input.categoryId, spaceId],
     );
     if (!category) throw new Error('Category not found');
     const id = existing?.id ?? (await createUuid(transaction));
     const values = [
       input.title.trim(),
-      input.amountMinor,
+      amountMinor,
       input.date,
       category.id,
       category.name,
@@ -126,8 +185,8 @@ export async function savePersonalExpense(
     ];
     if (existing) {
       const result = await transaction.run(
-        'UPDATE expenses SET title = ?, amountMinor = ?, date = ?, categoryId = ?, categoryName = ?, categoryColor = ?, note = ? WHERE id = ?',
-        [...values, id],
+        'UPDATE expenses SET title = ?, amountMinor = ?, date = ?, categoryId = ?, categoryName = ?, categoryColor = ?, note = ?, spaceId = ? WHERE id = ?',
+        [...values, spaceId, id],
       );
       if (result.changes !== 1) throw new Error('Expense not found');
       await transaction.run(
@@ -140,17 +199,21 @@ export async function savePersonalExpense(
     } else {
       await transaction.run(
         'INSERT INTO expenses (title, amountMinor, date, categoryId, categoryName, categoryColor, note, id, currency, spaceId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [...values, id, input.currency, identity.personalSpaceId],
+        [...values, id, input.currency, spaceId],
       );
     }
-    await transaction.run(
-      'INSERT INTO expense_payments (expenseId, participant, amountMinor) VALUES (?, ?, ?)',
-      [id, identity.personalParticipantId, input.amountMinor],
-    );
-    await transaction.run(
-      'INSERT INTO expense_shares (expenseId, participant, amountMinor) VALUES (?, ?, ?)',
-      [id, identity.personalParticipantId, input.amountMinor],
-    );
+    for (const [table, allocations] of [
+      ['expense_payments', payments],
+      ['expense_shares', shares],
+    ] as const) {
+      for (const [position, share] of allocations.entries())
+        await transaction.run(
+          `INSERT INTO ${table} (expenseId, participant, amountMinor, position) VALUES (?, ?, ?, ?)`,
+          [id, share.participant, share.amountMinor, position],
+        );
+    }
   });
   listeners.get(database)?.forEach((listener) => listener());
 }
+
+export const savePersonalExpense = saveExpense;

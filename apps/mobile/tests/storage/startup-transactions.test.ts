@@ -15,7 +15,10 @@ import {
   groupMigrations,
 } from '../../src/groups/migrations';
 import { listGroups } from '../../src/groups';
-import { expenseMigrations } from '../../src/ledger/migrations';
+import {
+  expenseAllocationOrderMigration,
+  expenseMigrations,
+} from '../../src/ledger/migrations';
 import { listExpenses } from '../../src/ledger';
 
 const original =
@@ -375,4 +378,60 @@ test('adding member lifecycle storage preserves existing members, their order an
       previous.length,
     ]),
   ).toEqual(records);
+});
+
+test('adding allocation positions preserves stored amounts and insertion order within each expense', async () => {
+  const previous = appMigrations.slice(
+    0,
+    appMigrations.indexOf(expenseAllocationOrderMigration),
+  );
+  const identity = await initializeDatabase(
+    database,
+    previous,
+    false,
+    ensureLocalIdentity,
+  );
+  await database.run(
+    "INSERT INTO categories (id, name, color, isDefault, position, spaceId) VALUES ('food', 'Food', '#123456', 1, 0, ?)",
+    [identity.personalSpaceId],
+  );
+  await database.exec(`
+    INSERT INTO expenses (id, title, amountMinor, currency, date, categoryId, categoryName, categoryColor, spaceId) VALUES
+      ('dinner', 'Dinner', 10001, 'USD', '2026-10-30', 'food', 'Food', '#123456', 'trip'),
+      ('taxi', 'Taxi', 1, 'USD', '2026-10-29', 'food', 'Food', '#123456', 'trip');
+    INSERT INTO expense_payments VALUES ('dinner', 'z', 5001), ('taxi', 'm', 1), ('dinner', 'a', 5000);
+    INSERT INTO expense_shares VALUES ('dinner', 'z', 3334), ('taxi', 'a', 1), ('dinner', 'm', 3334), ('dinner', 'a', 3333);
+  `);
+  const before = await database.all('SELECT * FROM expenses ORDER BY id');
+  const records = await database.all(
+    'SELECT * FROM _migrations ORDER BY position',
+  );
+
+  await initializeDatabase(database, appMigrations, false, ensureLocalIdentity);
+
+  expect(await database.all('SELECT * FROM expenses ORDER BY id')).toEqual(
+    before,
+  );
+  expect(
+    await database.all('SELECT * FROM _migrations ORDER BY position LIMIT ?', [
+      previous.length,
+    ]),
+  ).toEqual(records);
+  const [dinner, taxi] = await listExpenses(database);
+  expect(dinner.payments).toEqual([
+    { participant: 'z', amountMinor: 5001 },
+    { participant: 'a', amountMinor: 5000 },
+  ]);
+  expect(dinner.shares).toEqual([
+    { participant: 'z', amountMinor: 3334 },
+    { participant: 'm', amountMinor: 3334 },
+    { participant: 'a', amountMinor: 3333 },
+  ]);
+  expect(taxi.shares).toEqual([{ participant: 'a', amountMinor: 1 }]);
+  expect(
+    await database.all(
+      'SELECT position FROM expense_shares WHERE expenseId = ? ORDER BY position',
+      ['dinner'],
+    ),
+  ).toEqual([{ position: 0 }, { position: 1 }, { position: 2 }]);
 });

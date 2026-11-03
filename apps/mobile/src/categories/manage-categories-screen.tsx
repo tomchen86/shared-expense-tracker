@@ -9,7 +9,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import {
+  router,
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+} from 'expo-router';
 import { listGroups } from '../groups';
 import { categoryExpenseCounts } from '../ledger/expenses';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
@@ -29,7 +34,15 @@ import {
 
 type FormState = { kind: 'add' } | { kind: 'edit'; category: Category };
 
-export function ManageCategoriesScreen() {
+export function ManageCategoriesSheet() {
+  return <ManageCategoriesScreen asSheet />;
+}
+
+export function ManageCategoriesScreen({
+  asSheet = false,
+}: {
+  asSheet?: boolean;
+} = {}) {
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
   const colors = useThemeColors();
@@ -42,12 +55,15 @@ export function ManageCategoriesScreen() {
   const [checkedGroup, setCheckedGroup] = useState<{
     id: string | undefined;
     exists: boolean;
+    archived: boolean;
   }>();
   const groupExists = groupId
     ? checkedGroup?.id === groupId
       ? checkedGroup.exists
       : undefined
     : true;
+  const groupArchived =
+    checkedGroup?.id === groupId && checkedGroup?.archived === true;
   const [categories, setCategories] = useState<Category[]>([]);
   const [expenseCounts, setExpenseCounts] = useState(new Map<string, number>());
   const loadedRef = useRef(false);
@@ -73,6 +89,9 @@ export function ManageCategoriesScreen() {
             setCheckedGroup({
               id: groupId,
               exists: groups.some((group) => group.id === groupId),
+              archived: groups.some(
+                (group) => group.id === groupId && group.archived,
+              ),
             });
           }
         })
@@ -241,6 +260,20 @@ export function ManageCategoriesScreen() {
   const screenOptions = useMemo(
     () => ({
       title: groupId ? 'Group Categories' : 'Manage Categories',
+      headerLeft: asSheet
+        ? () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              onPress={() =>
+                router.canGoBack() ? router.back() : router.replace('/')
+              }
+              style={styles.cancel}
+            >
+              <Text style={{ color: colors.accent }}>Close</Text>
+            </Pressable>
+          )
+        : undefined,
       headerRight: groupExists
         ? () => (
             <Pressable
@@ -263,7 +296,7 @@ export function ManageCategoriesScreen() {
           )
         : undefined,
     }),
-    [openAddForm, groupId, groupExists, colors.accent],
+    [openAddForm, groupId, groupExists, colors.accent, asSheet],
   );
 
   const activeCategories = categories.filter(
@@ -275,7 +308,7 @@ export function ManageCategoriesScreen() {
 
   function rows(items: Category[]) {
     return items.map((category, index) => (
-      <Fragment key={category.id}>
+      <Fragment key={`${category.id}-${groupArchived}`}>
         {index > 0 && (
           <View
             style={[styles.separator, { backgroundColor: colors.separator }]}
@@ -284,8 +317,10 @@ export function ManageCategoriesScreen() {
         <CategoryRow
           category={category}
           used={(expenseCounts.get(category.id) ?? 0) > 0}
+          readOnly={groupArchived && category.isArchived}
           onPress={
-            isUncategorizedCategory(category)
+            isUncategorizedCategory(category) ||
+            (groupArchived && category.isArchived)
               ? undefined
               : () =>
                   category.isArchived

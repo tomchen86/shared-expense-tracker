@@ -24,3 +24,17 @@ export const expenseMigrations: readonly string[] = [
     PRIMARY KEY (expenseId, participant)
   );`,
 ];
+
+/** Keep allocation order explicit, including allocations written before this migration. */
+export const expenseAllocationOrderMigration = `
+  ALTER TABLE expense_payments ADD COLUMN position INTEGER NOT NULL DEFAULT 0 CHECK (position >= 0);
+  ALTER TABLE expense_shares ADD COLUMN position INTEGER NOT NULL DEFAULT 0 CHECK (position >= 0);
+  UPDATE expense_payments SET position = (
+    SELECT COUNT(*) FROM expense_payments AS earlier
+    WHERE earlier.expenseId = expense_payments.expenseId AND earlier.rowid < expense_payments.rowid
+  );
+  UPDATE expense_shares SET position = (
+    SELECT COUNT(*) FROM expense_shares AS earlier
+    WHERE earlier.expenseId = expense_shares.expenseId AND earlier.rowid < expense_shares.rowid
+  );
+`;
