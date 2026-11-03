@@ -2266,14 +2266,11 @@ const addCategoryShown = () =>
   barItem('Add category', navigationBars()) !== undefined ||
   screen.queryByRole('button', { name: 'Add category' }) !== null;
 
-/** Those of `names` whose rows on the categories screen are buttons that can be pressed. */
-const pressableRows = (names: readonly string[]) =>
+/** Those of `names` whose rows on the categories screen are buttons, disabled ones too. */
+const rowButtons = (names: readonly string[]) =>
   names.filter(
     (name) =>
-      within(categoriesScreen()).queryByRole('button', {
-        name,
-        disabled: false,
-      }) !== null,
+      within(categoriesScreen()).queryByRole('button', { name }) !== null,
   );
 
 /**
@@ -2329,7 +2326,7 @@ test('[CATEGORIES-43.1] opens no form when a category of an archived group is pr
   }
 
   expect(screen.queryByLabelText('Category name')).toBeNull();
-  expect(pressableRows([...DEFAULT_NAMES, 'Flights'])).toEqual([]);
+  expect(rowButtons([...DEFAULT_NAMES, 'Flights'])).toEqual([]);
 });
 
 test('[CATEGORIES-43.1] offers Remove on no category of an archived group', async () => {
@@ -2350,6 +2347,7 @@ test('[CATEGORIES-43.1] turns read-only when the group is archived on the Groups
 
   expect(saysReadOnly()).toBe(true);
   expect(addCategoryShown()).toBe(false);
+  expect(screen.queryByRole('button', { name: 'About categories' })).toBeNull();
   expect(categoryList()).toEqual(DEFAULTS);
   expect(namesWithAction('Remove')).toEqual([]);
   await tapRow('Shopping');
@@ -2396,7 +2394,14 @@ test('[CATEGORIES-43.1] offers the actions again when the group is restored on t
 
   expect(saysReadOnly()).toBe(false);
   expect(addCategoryButton().disabled).toBe(false);
+  expect(
+    within(categoriesScreen()).getByRole('button', {
+      name: 'About categories',
+    }),
+  ).toBeOnTheScreen();
   expect(namesWithAction('Remove')).toEqual(namesWithout('Uncategorized'));
+  await openCategory('Shopping');
+  expect(nameField()).toHaveDisplayValue('Shopping', AS_TYPED);
 });
 
 test("[CATEGORIES-43.1] says read-only only on an archived group's Group Categories", async () => {
