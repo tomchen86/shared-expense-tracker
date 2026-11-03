@@ -326,7 +326,7 @@ export function ManageCategoriesScreen() {
           contentContainerStyle={styles.content}
         >
           {groupArchived && (
-            <Text style={[styles.readOnlyNotice, { color: colors.textMuted }]}>
+            <Text style={[styles.readOnlyNotice, { color: colors.text }]}>
               Archived group. Categories are read-only.
             </Text>
           )}

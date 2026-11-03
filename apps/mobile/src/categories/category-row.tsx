@@ -13,7 +13,7 @@ import { isUncategorizedCategory, type Category } from './repository';
 interface CategoryRowProps {
   category: Category;
   used: boolean;
-  readOnly?: boolean;
+  readOnly: boolean;
   onPress?: () => void;
   onRemove: () => void;
 }
@@ -23,7 +23,7 @@ const ACTION_WIDTH = 88;
 export function CategoryRow({
   category,
   used,
-  readOnly = false,
+  readOnly,
   onPress,
   onRemove,
 }: CategoryRowProps) {
