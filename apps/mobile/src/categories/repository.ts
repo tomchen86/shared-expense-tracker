@@ -1,5 +1,6 @@
 import { DEFAULT_CATEGORIES } from '@shared-expense/domain';
 import { createUuid, type Database, type SqlExecutor } from '../storage';
+import { moveExpensesToCategory } from '../ledger/expenses';
 
 const UNCATEGORIZED_NAME =
   DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1].name;
@@ -9,6 +10,7 @@ export interface Category {
   name: string;
   color: string;
   isDefault: boolean;
+  isArchived: boolean;
   /** The user ID of whoever added the category. */
   createdByUserId?: string;
   /** The space the category belongs to: your personal space ID or a group ID. */
@@ -20,6 +22,7 @@ interface CategoryRow {
   name: string;
   color: string;
   isDefault: number;
+  isArchived: number;
   createdByUserId: string | null;
   spaceId: string;
 }
@@ -69,7 +72,7 @@ export async function listCategories(
   spaceId?: string,
 ): Promise<Category[]> {
   const rows = await database.all<CategoryRow>(
-    `SELECT id, name, color, isDefault, createdByUserId, spaceId FROM categories${spaceId === undefined ? '' : ' WHERE spaceId = ?'} ORDER BY position ASC`,
+    `SELECT id, name, color, isDefault, isArchived, createdByUserId, spaceId FROM categories${spaceId === undefined ? '' : ' WHERE spaceId = ?'} ORDER BY position ASC`,
     spaceId === undefined ? [] : [spaceId],
   );
   return rows.map((row) => ({
@@ -77,6 +80,7 @@ export async function listCategories(
     name: row.name,
     color: row.color,
     isDefault: row.isDefault === 1,
+    isArchived: row.isArchived === 1,
     createdByUserId: row.createdByUserId ?? undefined,
     spaceId: row.spaceId,
   }));
@@ -112,9 +116,64 @@ export async function createCategory(
       name: input.name,
       color: input.color,
       isDefault: false,
+      isArchived: false,
       createdByUserId: input.createdByUserId,
       spaceId: input.spaceId,
     };
+  });
+}
+
+export async function setCategoryArchived(
+  database: SqlExecutor,
+  id: string,
+  archived: boolean,
+): Promise<void> {
+  const result = await database.run(
+    'UPDATE categories SET isArchived = ? WHERE id = ? AND NOT (isDefault = 1 AND name = ?)',
+    [archived ? 1 : 0, id, UNCATEGORIZED_NAME],
+  );
+  if (result.changes !== 1)
+    throw new Error('Category cannot be archived or restored');
+}
+
+export async function deleteCategory(
+  database: SqlExecutor,
+  id: string,
+): Promise<void> {
+  // The expense foreign key also prevents deleting a category that became used
+  // after the confirmation opened.
+  const result = await database.run(
+    'DELETE FROM categories WHERE id = ? AND NOT (isDefault = 1 AND name = ?)',
+    [id, UNCATEGORIZED_NAME],
+  );
+  if (result.changes !== 1) throw new Error('Category cannot be deleted');
+}
+
+export async function moveAndArchiveCategory(
+  database: Database,
+  sourceId: string,
+  targetId: string,
+): Promise<void> {
+  await database.transaction(async (transaction) => {
+    const [source] = await transaction.all<CategoryRow>(
+      'SELECT * FROM categories WHERE id = ?',
+      [sourceId],
+    );
+    const [target] = await transaction.all<CategoryRow>(
+      'SELECT * FROM categories WHERE id = ?',
+      [targetId],
+    );
+    if (
+      !source ||
+      !target ||
+      sourceId === targetId ||
+      source.isArchived ||
+      target.isArchived ||
+      source.spaceId !== target.spaceId
+    )
+      throw new Error('Categories cannot be moved');
+    await moveExpensesToCategory(transaction, sourceId, target);
+    await setCategoryArchived(transaction, sourceId, true);
   });
 }
 

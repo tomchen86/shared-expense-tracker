@@ -237,7 +237,11 @@ test('adding group storage preserves existing identity, appearance, categories a
   await initializeDatabase(database, appMigrations, false, ensureLocalIdentity);
 
   expect(await database.all('SELECT * FROM local_identity')).toEqual(identity);
-  expect(await database.all('SELECT * FROM categories')).toEqual(categories);
+  expect(
+    await database.all(
+      'SELECT id, name, color, isDefault, position, createdByUserId, spaceId FROM categories',
+    ),
+  ).toEqual(categories);
   expect(
     await database.all('SELECT * FROM _migrations ORDER BY position LIMIT ?', [
       previous.length,

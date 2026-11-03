@@ -1,7 +1,13 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { AccessibilityInfo, Alert, StyleSheet } from 'react-native';
+import {
+  AccessibilityInfo,
+  Alert,
+  StyleSheet,
+  processColor,
+  type AlertButton,
+} from 'react-native';
 import {
   act,
   fireEvent,
@@ -16,7 +22,27 @@ import {
   navigationBars,
   startApp,
   tab,
+  tapTab,
 } from './shell-tabs-app';
+import {
+  addExpense,
+  categoryOptions,
+  doAction as doActionIn,
+  editExpense,
+  nameOf,
+  namesWithAction as namesWithActionIn,
+  openCategoryList,
+  openNewExpense,
+  resetPhone,
+} from './ledger-expense-app';
+import {
+  backgroundBehind,
+  colorsInBoth,
+  fakePhoneAppearance,
+  fixedColors,
+  switchPhoneTo,
+  textsWithoutColor,
+} from './shell-appearance-app';
 import {
   CREATE_FAILED,
   alertsShown,
@@ -33,6 +59,7 @@ import {
   typeName,
 } from './groups-app';
 import { listCategories, type Category } from '../../src/categories';
+import { listExpenses, type Expense } from '../../src/ledger';
 import type { LocalIdentity } from '../../src/shell';
 import type { Database, SqlExecutor, SqlValue } from '../../src/storage';
 import { openNodeDatabase } from '../../src/storage/node';
@@ -79,6 +106,42 @@ jest.mock('../../src/storage/expo', () => ({
     >('../../src/storage/node');
     return mockGatedWrites(openNodeDatabase(mockFile));
   },
+}));
+
+// The tests that need expenses add them through New Expense, which reads the
+// phone's locale and calendar from expo-localization; ledger-expense-app stands in
+// for the phone, as in the expense form tests. Not virtual: Jest caches how a
+// module name resolves across the test files of a worker.
+jest.mock('expo-localization', () => {
+  const phone = () =>
+    jest.requireActual<typeof import('./ledger-expense-app')>(
+      './ledger-expense-app',
+    );
+  return {
+    ...jest.requireActual<object>('expo-localization'),
+    getLocales: () => phone().phoneLocales(),
+    getCalendars: () => phone().phoneCalendars(),
+    useLocales: () => phone().phoneLocales(),
+    useCalendars: () => phone().phoneCalendars(),
+  };
+});
+
+jest.mock('expo-haptics', () => ({
+  ImpactFeedbackStyle: {
+    Light: 'light',
+    Medium: 'medium',
+    Heavy: 'heavy',
+    Soft: 'soft',
+    Rigid: 'rigid',
+  },
+  NotificationFeedbackType: {
+    Success: 'success',
+    Warning: 'warning',
+    Error: 'error',
+  },
+  impactAsync: jest.fn(async () => undefined),
+  notificationAsync: jest.fn(async () => undefined),
+  selectionAsync: jest.fn(async () => undefined),
 }));
 
 const PALETTE = [
@@ -133,6 +196,7 @@ beforeEach(() => {
   directory = fs.mkdtempSync(path.join(os.tmpdir(), 'categories-'));
   mockFile = path.join(directory, 'app.db');
   allowWrites();
+  resetPhone();
   alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
 });
 
@@ -260,12 +324,23 @@ function firstText(view: NativeView): string | undefined {
  * form must be closed.
  */
 function categoryList() {
+  return categoryRows().map(({ category }) => category);
+}
+
+/** Each dot of the categories screen, top to bottom, with its row as [name, color]. */
+function categoryRows() {
   return nativeViews(/./, categoriesScreen())
     .filter((view) => PALETTE.includes(backgroundOf(view) ?? ''))
     .map((dot) => {
       let row = dot.parent;
       while (row !== null && firstText(row) === undefined) row = row.parent;
-      return [row === null ? undefined : firstText(row), backgroundOf(dot)];
+      return {
+        dot,
+        category: [
+          row === null ? undefined : firstText(row),
+          backgroundOf(dot),
+        ],
+      };
     });
 }
 
@@ -412,7 +487,7 @@ async function openNewCategory() {
 }
 
 async function openCategory(name: string) {
-  await fireEvent.press(screen.getByText(name));
+  await fireEvent.press(within(categoriesScreen()).getByText(name));
   await expectForm('Edit Category');
 }
 
@@ -526,7 +601,7 @@ test('[CATEGORIES-6.2] gives the nine default categories your personal space on 
   expect(await storedCategories()).toHaveLength(DEFAULTS.length);
 });
 
-test('[CATEGORIES-7.2] lists the categories under CATEGORIES, with Add category in the navigation bar', async () => {
+test('[CATEGORIES-7.3] lists the categories under CATEGORIES, with Add category in the navigation bar', async () => {
   await openManageCategories();
 
   const texts = ['CATEGORIES', ...DEFAULTS.map(([name]) => name)];
@@ -534,7 +609,7 @@ test('[CATEGORIES-7.2] lists the categories under CATEGORIES, with Add category 
   expect(addCategoryButton().disabled).toBe(false);
 });
 
-test('[CATEGORIES-7.2] lists a new category after Uncategorized', async () => {
+test('[CATEGORIES-7.3] lists a new category after Uncategorized', async () => {
   await openManageCategories();
 
   await addCategory('Gym');
@@ -542,7 +617,7 @@ test('[CATEGORIES-7.2] lists a new category after Uncategorized', async () => {
   expect(categoryList()).toEqual([...DEFAULTS, ['Gym', '#43A047']]);
 });
 
-test('[CATEGORIES-7.2] keeps a renamed category in its place', async () => {
+test('[CATEGORIES-7.3] keeps a renamed category in its place', async () => {
   await openManageCategories();
 
   await editCategory('Shopping', 'Groceries');
@@ -550,7 +625,7 @@ test('[CATEGORIES-7.2] keeps a renamed category in its place', async () => {
   expect(categoryList()).toEqual(replacing(2, ['Groceries', '#FBC02D']));
 });
 
-test('[CATEGORIES-7.2] keeps the stored order in each scope when categories of other scopes come between', async () => {
+test('[CATEGORIES-7.3] keeps the stored order in each scope when categories of other scopes come between', async () => {
   const groups = await createGroups('Brisbane');
   await reopenManageCategories();
   await addCategory('Gym');
@@ -980,7 +1055,7 @@ test('[CATEGORIES-16.1] reports a category that cannot be saved and leaves it un
   expect(categoryList()).toEqual(DEFAULTS);
 });
 
-test('[CATEGORIES-17.1] keeps added, renamed and recolored categories after the app restarts', async () => {
+test('[CATEGORIES-17.2] keeps added, renamed and recolored categories after the app restarts', async () => {
   const app = await openManageCategories();
   await addCategory('Gym', '#C62828');
   await editCategory('Shopping', 'Groceries', '#43A047');
@@ -1319,4 +1394,927 @@ test('[CATEGORIES-31.1] changes a default category in Manage Categories for the 
   expect(categoryList()).toEqual(replacing(5, ['Medical', '#00ACC1']));
   await openGroupCategories(groups.Brisbane);
   expect(categoryList()).toEqual(DEFAULTS);
+});
+
+// Removing, archiving, restoring and moving expenses. These tests add expenses
+// through New Expense on the Expenses tab while Manage Categories stays open on the
+// Settings tab, and do Remove and Delete as a screen reader does, through the rows'
+// accessibility actions; swiping a row is for the E2E flow (CATEGORIES-32.1). The
+// Move list may be a screen of its own or a view, and its Cancel a navigation bar
+// item or a view; the helpers find them either way.
+
+const DELETE_CATEGORY = [
+  'Delete Category?',
+  'This permanently removes the category.',
+];
+const archiveAlert = (name: string, used: string) => [
+  `Archive “${name}”?`,
+  `This category is used by ${used}. Existing expenses will keep their category, but it will no longer appear for new expenses.`,
+];
+const UPDATE_FAILED = [
+  'Unable to Update Category',
+  'Your change could not be saved. Please try again.',
+];
+const ARCHIVED_FOOTER =
+  'Archived categories remain on historical expenses and in Insights.';
+const ABOUT_CATEGORIES = [
+  'About Categories',
+  'Tap a category to edit it. Swipe left to remove a category. Categories used by expenses can be archived or moved, so historical classifications stay intact. Uncategorized is reserved and cannot be renamed or removed.',
+];
+const GYM = ['Gym', '#43A047'];
+const without = (name: string) => DEFAULTS.filter(([other]) => other !== name);
+const namesWithout = (name: string) =>
+  DEFAULT_NAMES.filter((other) => other !== name);
+
+/** Lets `count` writes through, then fails every write after them. */
+function failWritesAfter(count: number) {
+  let left = count;
+  mockBeforeWrite = () =>
+    left-- > 0 ? Promise.resolve() : Promise.reject(new Error('disk full'));
+}
+
+/** The stored expenses, read through the ledger's listExpenses. */
+async function storedExpenses(): Promise<Expense[]> {
+  const database = openNodeDatabase(mockFile);
+  try {
+    return await listExpenses(database);
+  } finally {
+    await database.close();
+  }
+}
+
+/** Adds an expense in `category` through New Expense, then goes back to the Settings tab. */
+async function spendOn(category: string, title = 'Coffee run') {
+  await tapTab('Expenses');
+  await addExpense({ title, category });
+  await tapTab('Settings');
+  await settle();
+}
+
+/** Changes the category of the expense titled `title` through its Edit Expense, then goes back to the Settings tab. */
+async function recategorize(title: string, category: string) {
+  const expense = (await storedExpenses()).find(
+    (candidate) => candidate.title === title,
+  );
+  if (expense === undefined) throw new Error(`No expense titled ${title}`);
+  await editExpense(expense.id, { category });
+  await tapTab('Settings');
+  await settle();
+}
+
+/** The accessible names of the categories screen's views that offer the screen reader action `label`. */
+const namesWithAction = (label: 'Remove' | 'Delete') =>
+  namesWithActionIn(categoriesScreen(), label);
+
+/** Does the screen reader action `label` of the categories screen's row named `name`. */
+const doAction = (name: string, label: 'Remove' | 'Delete') =>
+  doActionIn(categoriesScreen(), name, label);
+
+const lastAlertButtons = (): AlertButton[] =>
+  alert.mock.calls.at(-1)?.[2] ?? [];
+
+/** Presses a button of the last alert and lets what it starts finish. */
+async function chooseInAlert(text: string) {
+  const button = lastAlertButtons().find(
+    (candidate) => candidate.text === text,
+  );
+  if (button === undefined) throw new Error(`The last alert has no ${text}`);
+  await act(async () => button.onPress?.());
+  await settle();
+}
+
+/** Archives a category that expenses use: Remove, then Archive. */
+async function archive(name: string) {
+  await doAction(name, 'Remove');
+  await chooseInAlert('Archive');
+}
+
+const archivedHeader = () => within(categoriesScreen()).queryByText('ARCHIVED');
+
+/** What CATEGORIES and ARCHIVED list, top to bottom, as [name, color]. */
+function sections() {
+  const header = archivedHeader();
+  const isArchived = (dot: NativeView) =>
+    header !== null && inTreeOrder(header, dot);
+  const rows = categoryRows();
+  return {
+    active: rows
+      .filter(({ dot }) => !isArchived(dot))
+      .map(({ category }) => category),
+    archived: rows
+      .filter(({ dot }) => isArchived(dot))
+      .map(({ category }) => category),
+  };
+}
+
+/** The row of an archived category, a button named Restore and its name. */
+const restoreButton = (name: string) =>
+  within(categoriesScreen()).getByRole('button', { name: `Restore ${name}` });
+
+async function restore(name: string) {
+  await fireEvent.press(restoreButton(name));
+  await settle();
+}
+
+/** The personal category `name` as an expense stores it. */
+async function asStored(name: string) {
+  const category = (await storedCategories()).find(
+    (candidate) => candidate.name === name,
+  );
+  if (category === undefined) throw new Error(`No category named ${name}`);
+  return { id: category.id, name: category.name, color: category.color };
+}
+
+// The Move list
+
+const moveTitle = (name: string) => `Move ${name} Expenses`;
+
+const SCREEN = /^RNS(Modal)?Screen$/;
+
+/** The nearest native screen around `view`. */
+function screenAround(view: NativeView): NativeView | undefined {
+  for (let outer = view.parent; outer; outer = outer.parent)
+    if (SCREEN.test(String(outer.type))) return outer;
+  return undefined;
+}
+
+/**
+ * The open Move list of `name`: a screen with its title, or, drawn as a view, the
+ * nearest view around a header with its title that holds its Cancel and the
+ * categories to move to.
+ */
+function moveList(name: string): NativeView | undefined {
+  const title = moveTitle(name);
+  const bar = navigationBars()
+    .filter((candidate) => candidate.props.title === title)
+    .at(-1);
+  if (bar !== undefined) return screenAround(bar) ?? bar;
+  const header = screen.queryAllByRole('header', { name: title }).at(-1);
+  for (let outer = header?.parent; outer; outer = outer.parent) {
+    const buttons = within(outer).queryAllByRole('button').map(nameOf);
+    if (buttons.includes('Cancel') && buttons.some((it) => it !== 'Cancel'))
+      return outer;
+  }
+  return undefined;
+}
+
+function openMoveListOf(name: string) {
+  const list = moveList(name);
+  if (list === undefined) throw new Error(`${moveTitle(name)} is not open`);
+  return list;
+}
+
+/** Remove, then Move Expenses…, on the category `name`. */
+async function openMoveList(name: string) {
+  await doAction(name, 'Remove');
+  await chooseInAlert('Move Expenses…');
+  await waitFor(() => expect(moveList(name)).toBeDefined());
+  await settle();
+}
+
+/** The Move list's buttons named after `names`, in screen order, as [name, selected]. */
+function moveOptions(name: string, names: readonly string[]) {
+  return within(openMoveListOf(name))
+    .getAllByRole('button')
+    .map(
+      (button) =>
+        [
+          nameOf(button),
+          button.props.accessibilityState?.selected === true ||
+            button.props['aria-selected'] === true,
+        ] as const,
+    )
+    .filter(([option]) => names.includes(option));
+}
+
+const moveTarget = (name: string, target: string) =>
+  within(openMoveListOf(name)).getByRole('button', { name: target });
+
+/** Presses `target` in the Move list of `name` and lets the move finish. */
+async function moveTo(name: string, target: string) {
+  await fireEvent.press(moveTarget(name, target));
+  await settle();
+}
+
+async function cancelMoveList(name: string) {
+  const bars = navigationBars().filter(
+    (bar) => bar.props.title === moveTitle(name),
+  );
+  const control =
+    barItem('Cancel', bars) ?? viewButton('Cancel', openMoveListOf(name));
+  if (control === undefined)
+    throw new Error(`${moveTitle(name)} has no Cancel`);
+  await control.press();
+  await waitFor(() => expect(moveList(name)).toBeUndefined());
+}
+
+test('[CATEGORIES-7.3] leaves an archived category out of CATEGORIES and the others in their order', async () => {
+  running = await openManageCategories();
+  await spendOn('Health');
+
+  await archive('Health');
+
+  expect(sections().active).toEqual(without('Health'));
+});
+
+test('[CATEGORIES-8.2] skips the color of an archived category when New Category opens', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await archive('Gym');
+
+  await openNewCategory();
+
+  expect(selectedColor()).toBe('#00ACC1');
+});
+
+test("[CATEGORIES-9.2] keeps an archived category's color in use", async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await archive('Gym');
+
+  await openNewCategory();
+
+  expect(colorButtons()).toEqual(
+    expectedColors([...DEFAULT_COLORS, '#43A047'], '#00ACC1'),
+  );
+});
+
+test("[CATEGORIES-9.2] keeps an archived category's color in use when editing", async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await archive('Gym');
+
+  await openCategory('Shopping');
+
+  expect(colorButtons()).toEqual(
+    expectedColors(
+      [...DEFAULT_COLORS.filter((color) => color !== '#FBC02D'), '#43A047'],
+      '#FBC02D',
+    ),
+  );
+});
+
+test("[CATEGORIES-12.2] says the name exists when it is an archived category's", async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await archive('Gym');
+  await openNewCategory();
+  await fireEvent.changeText(nameField(), 'gym');
+
+  await press('Add');
+
+  expect(showsTitle('New Category')).toBe(true);
+  expect(screen.getByText(ALREADY_EXISTS)).toBeOnTheScreen();
+  await press('Cancel');
+  await expectFormClosed();
+  expect(sections()).toEqual({ active: DEFAULTS, archived: [GYM] });
+});
+
+test("[CATEGORIES-12.2] keeps Edit Category open when the name is an archived category's", async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await archive('Gym');
+  await openCategory('Shopping');
+  await fireEvent.changeText(nameField(), 'gym');
+
+  await press('Save');
+
+  expect(showsTitle('Edit Category')).toBe(true);
+  expect(screen.getByText(ALREADY_EXISTS)).toBeOnTheScreen();
+  await press('Cancel');
+  await expectFormClosed();
+  expect(sections()).toEqual({ active: DEFAULTS, archived: [GYM] });
+});
+
+test('[CATEGORIES-13.2] counts the colors of archived categories among the 13', async () => {
+  running = await openManageCategories();
+  await useAllColors();
+  await spendOn('Gym');
+  await archive('Gym');
+
+  await openNewCategory();
+
+  expect(colorButtons()).toEqual(expectedColors(PALETTE));
+  expect(selectedColor()).toBeUndefined();
+  expect(screen.getByText(ALL_COLORS_USED)).toBeOnTheScreen();
+});
+
+test('[CATEGORIES-17.2] keeps deletions, archives and restores after the app restarts', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await spendOn('Health');
+  await doAction('Other', 'Remove');
+  await chooseInAlert('Delete');
+  await archive('Gym');
+  await archive('Health');
+  await restore('Health');
+
+  await reopenManageCategories();
+
+  expect(sections()).toEqual({ active: without('Other'), archived: [GYM] });
+});
+
+test('[CATEGORIES-33.1] offers Remove on every category but Uncategorized', async () => {
+  running = await openManageCategories();
+
+  expect(namesWithAction('Remove')).toEqual(namesWithout('Uncategorized'));
+  expect(namesWithAction('Delete')).toEqual([]);
+});
+
+test("[CATEGORIES-33.1] offers Remove on a group's categories but its Uncategorized", async () => {
+  const groups = await createGroups('Brisbane');
+
+  await openGroupCategories(groups.Brisbane);
+
+  expect(namesWithAction('Remove')).toEqual(namesWithout('Uncategorized'));
+});
+
+test('[CATEGORIES-33.1] offers neither action on an archived category that expenses use', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+
+  await archive('Gym');
+
+  expect(restoreButton('Gym')).toBeOnTheScreen();
+  expect(namesWithAction('Remove')).toEqual(namesWithout('Uncategorized'));
+  expect(namesWithAction('Delete')).toEqual([]);
+});
+
+test('[CATEGORIES-33.1] offers Delete on an archived category once no expense uses it', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym', 'Gym session');
+  await archive('Gym');
+
+  await recategorize('Gym session', 'Shopping');
+
+  expect(namesWithAction('Delete')).toEqual(['Restore Gym']);
+});
+
+test('[CATEGORIES-34.1] asks before deleting a category no expense uses, then deletes it for good', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+
+  await doAction('Gym', 'Remove');
+
+  expect(alerts()).toEqual([DELETE_CATEGORY]);
+  expect(lastAlertButtons().map(({ text }) => text)).toEqual([
+    'Cancel',
+    'Delete',
+  ]);
+  expect(lastAlertButtons()[1].style).toBe('destructive');
+  await chooseInAlert('Delete');
+  expect(sections()).toEqual({ active: DEFAULTS, archived: [] });
+  expect((await storedCategories()).map(({ name }) => name)).not.toContain(
+    'Gym',
+  );
+  await openNewCategory();
+  expect(selectedColor()).toBe('#43A047');
+  await fireEvent.changeText(nameField(), 'Gym');
+  await press('Add');
+  await expectFormClosed();
+  expect(categoryList()).toEqual([...DEFAULTS, GYM]);
+});
+
+test('[CATEGORIES-34.1] deletes a default category, which New Expense no longer offers', async () => {
+  running = await openManageCategories();
+
+  await doAction('Other', 'Remove');
+  await chooseInAlert('Delete');
+
+  expect(sections().active).toEqual(without('Other'));
+  await tapTab('Expenses');
+  await openNewExpense();
+  await openCategoryList();
+  expect(categoryOptions(DEFAULT_NAMES).map(([name]) => name)).toEqual(
+    namesWithout('Other'),
+  );
+});
+
+test('[CATEGORIES-34.1] keeps the category when the deletion is cancelled', async () => {
+  running = await openManageCategories();
+  await doAction('Other', 'Remove');
+
+  await chooseInAlert('Cancel');
+
+  expect(sections()).toEqual({ active: DEFAULTS, archived: [] });
+});
+
+test("[CATEGORIES-34.1] deletes a group's category from that group only", async () => {
+  const groups = await createGroups('Brisbane', 'Tokyo');
+  await openGroupCategories(groups.Brisbane);
+
+  await doAction('Shopping', 'Remove');
+  await chooseInAlert('Delete');
+
+  expect(listedNames()).toEqual(namesWithout('Shopping'));
+  await reopenManageCategories();
+  expect(listedNames()).toEqual(DEFAULT_NAMES);
+  await openGroupCategories(groups.Tokyo);
+  expect(listedNames()).toEqual(DEFAULT_NAMES);
+});
+
+test('[CATEGORIES-34.1] asks to delete a category whose only expense moved away while Manage Categories was open', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym', 'Gym session');
+  await recategorize('Gym session', 'Shopping');
+
+  await doAction('Gym', 'Remove');
+
+  expect(alerts()).toEqual([DELETE_CATEGORY]);
+});
+
+test('[CATEGORIES-34.1] deletes an archived category that no expense uses any more', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym', 'Gym session');
+  await archive('Gym');
+  await recategorize('Gym session', 'Shopping');
+  alert.mockClear();
+
+  await doAction('Restore Gym', 'Delete');
+
+  expect(alerts()).toEqual([DELETE_CATEGORY]);
+  await chooseInAlert('Delete');
+  expect(sections()).toEqual({ active: DEFAULTS, archived: [] });
+  expect(archivedHeader()).toBeNull();
+});
+
+test('[CATEGORIES-35.1] asks to archive a category that one expense uses', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await reopenManageCategories();
+
+  await doAction('Gym', 'Remove');
+
+  expect(alerts()).toEqual([archiveAlert('Gym', '1 expense')]);
+  expect(lastAlertButtons().map(({ text }) => text)).toEqual([
+    'Cancel',
+    'Move Expenses…',
+    'Archive',
+  ]);
+});
+
+test('[CATEGORIES-35.1] counts two expenses in the plural', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await spendOn('Gym');
+
+  await doAction('Gym', 'Remove');
+
+  expect(alerts()).toEqual([archiveAlert('Gym', '2 expenses')]);
+});
+
+test('[CATEGORIES-35.1] counts an expense added while Manage Categories was open', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  expect(namesWithAction('Remove')).toContain('Gym');
+
+  await spendOn('Gym');
+  await doAction('Gym', 'Remove');
+
+  expect(alerts()).toEqual([archiveAlert('Gym', '1 expense')]);
+});
+
+test('[CATEGORIES-35.1] counts the expenses of a renamed category, which keep its old name', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await editCategory('Gym', 'Fitness');
+
+  await doAction('Fitness', 'Remove');
+
+  expect(alerts()).toEqual([archiveAlert('Fitness', '1 expense')]);
+});
+
+test('[CATEGORIES-35.1] changes nothing when archiving is cancelled', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  const before = localData(mockFile);
+  await doAction('Gym', 'Remove');
+
+  await chooseInAlert('Cancel');
+
+  expect(sections()).toEqual({ active: [...DEFAULTS, GYM], archived: [] });
+  expect(localData(mockFile)).toEqual(before);
+});
+
+test('[CATEGORIES-36.1] archives a category and leaves its expenses as they were', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym', 'Gym session');
+  await spendOn('Gym', 'Spin class');
+  const before = await storedExpenses();
+
+  await archive('Gym');
+
+  expect(sections()).toEqual({ active: DEFAULTS, archived: [GYM] });
+  expect(restoreButton('Gym')).toBeOnTheScreen();
+  expect(await storedExpenses()).toEqual(before);
+});
+
+test('[CATEGORIES-37.1] shows no ARCHIVED and no footer while nothing is archived', async () => {
+  running = await openManageCategories();
+
+  expect(archivedHeader()).toBeNull();
+  expect(screen.queryByText(ARCHIVED_FOOTER)).toBeNull();
+});
+
+test('[CATEGORIES-37.1] lists archived categories under ARCHIVED in their stored order, each with Restore, then the footer', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await spendOn('Health');
+
+  await archive('Gym');
+  await archive('Health');
+
+  expect(sections()).toEqual({
+    active: without('Health'),
+    archived: [
+      ['Health', '#F4511E'],
+      ['Gym', '#43A047'],
+    ],
+  });
+  const rows = [restoreButton('Health'), restoreButton('Gym')];
+  for (const row of rows)
+    expect(within(row).getByText('Restore')).toBeOnTheScreen();
+  expect(
+    inTreeOrder(
+      within(categoriesScreen()).getByText('Uncategorized'),
+      archivedHeader()!,
+      ...rows,
+      within(categoriesScreen()).getByText(ARCHIVED_FOOTER),
+    ),
+  ).toBe(true);
+});
+
+test("[CATEGORIES-37.1] shows a scope's archived categories in that scope only", async () => {
+  const groups = await createGroups('Brisbane');
+  await reopenManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await archive('Gym');
+
+  await openGroupCategories(groups.Brisbane);
+
+  expect(archivedHeader()).toBeNull();
+  expect(categoryList()).toEqual(DEFAULTS);
+});
+
+test('[CATEGORIES-38.1] restores an archived category to its place when it is pressed', async () => {
+  running = await openManageCategories();
+  await spendOn('Health');
+  await archive('Health');
+  const before = await storedExpenses();
+
+  await restore('Health');
+
+  expect(showsTitle('Edit Category')).toBe(false);
+  expect(sections()).toEqual({ active: DEFAULTS, archived: [] });
+  expect(archivedHeader()).toBeNull();
+  expect(await storedExpenses()).toEqual(before);
+  await tapTab('Expenses');
+  await openNewExpense();
+  await openCategoryList();
+  expect(categoryOptions(DEFAULT_NAMES).map(([name]) => name)).toEqual(
+    DEFAULT_NAMES,
+  );
+});
+
+test('[CATEGORIES-39.1] lists the other categories to move the expenses to, none selected', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+
+  await openMoveList('Gym');
+
+  expect(moveOptions('Gym', [...DEFAULT_NAMES, 'Gym'])).toEqual(
+    DEFAULT_NAMES.map((name) => [name, false]),
+  );
+});
+
+test("[CATEGORIES-39.1] leaves another scope's categories out of the Move list", async () => {
+  await createGroups('Brisbane');
+  await reopenManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+
+  await openMoveList('Gym');
+
+  expect(
+    moveOptions('Gym', [...DEFAULT_NAMES, 'Gym']).map(([name]) => name),
+  ).toEqual(DEFAULT_NAMES);
+});
+
+test('[CATEGORIES-39.1] leaves archived categories out of the Move list', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await spendOn('Health');
+  await archive('Health');
+
+  await openMoveList('Gym');
+
+  expect(
+    moveOptions('Gym', [...DEFAULT_NAMES, 'Gym']).map(([name]) => name),
+  ).toEqual(namesWithout('Health'));
+});
+
+test('[CATEGORIES-39.1] closes the Move list and changes nothing when it is cancelled', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  const before = localData(mockFile);
+  await openMoveList('Gym');
+
+  await cancelMoveList('Gym');
+
+  expect(sections()).toEqual({ active: [...DEFAULTS, GYM], archived: [] });
+  expect(localData(mockFile)).toEqual(before);
+});
+
+test('[CATEGORIES-40.1] moves every expense of the category to the one pressed, then archives it', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym', 'Gym session');
+  await spendOn('Gym', 'Spin class');
+  await spendOn('Health', 'Checkup');
+  const before = await storedExpenses();
+  const shopping = await asStored('Shopping');
+  await openMoveList('Gym');
+
+  await moveTo('Gym', 'Shopping');
+
+  expect(moveList('Gym')).toBeUndefined();
+  expect(await storedExpenses()).toEqual(
+    before.map((expense) =>
+      expense.title === 'Checkup'
+        ? expense
+        : { ...expense, category: shopping },
+    ),
+  );
+  expect(sections()).toEqual({ active: DEFAULTS, archived: [GYM] });
+  expect(namesWithAction('Delete')).toEqual(['Restore Gym']);
+});
+
+test('[CATEGORIES-40.1] stores the current name and color of the category moved to', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await editCategory('Shopping', 'Groceries', '#00ACC1');
+  await spendOn('Gym');
+  await openMoveList('Gym');
+
+  await moveTo('Gym', 'Groceries');
+
+  expect((await storedExpenses()).map(({ category }) => category)).toEqual([
+    await asStored('Groceries'),
+  ]);
+  expect(await asStored('Groceries')).toMatchObject({
+    name: 'Groceries',
+    color: '#00ACC1',
+  });
+});
+
+test('[CATEGORIES-40.1] moves once when a category is pressed twice before the save finishes', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await openMoveList('Gym');
+  const target = moveTarget('Gym', 'Shopping');
+  alert.mockClear();
+  const writes = holdWrites();
+
+  await act(async () => {
+    await fireEvent.press(target);
+    await fireEvent.press(target);
+  });
+  await writes.release();
+  await settle();
+
+  expect(alerts()).toEqual([]);
+  expect((await storedExpenses()).map(({ category }) => category.name)).toEqual(
+    ['Shopping'],
+  );
+  expect(sections()).toEqual({ active: DEFAULTS, archived: [GYM] });
+});
+
+test('[CATEGORIES-41.1] alerts and keeps the category when deleting cannot be written', async () => {
+  running = await openManageCategories();
+  await doAction('Other', 'Remove');
+  failWrites();
+
+  await chooseInAlert('Delete');
+
+  expect(alerts().at(-1)).toEqual(UPDATE_FAILED);
+  expect(sections()).toEqual({ active: DEFAULTS, archived: [] });
+});
+
+test('[CATEGORIES-41.1] alerts and keeps the category in CATEGORIES when archiving cannot be written', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await doAction('Gym', 'Remove');
+  failWrites();
+
+  await chooseInAlert('Archive');
+
+  expect(alerts().at(-1)).toEqual(UPDATE_FAILED);
+  expect(sections()).toEqual({ active: [...DEFAULTS, GYM], archived: [] });
+  expect(archivedHeader()).toBeNull();
+});
+
+test('[CATEGORIES-41.1] alerts and keeps the category archived when restoring cannot be written', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await archive('Gym');
+  failWrites();
+
+  await restore('Gym');
+
+  expect(alerts().at(-1)).toEqual(UPDATE_FAILED);
+  expect(sections()).toEqual({ active: DEFAULTS, archived: [GYM] });
+});
+
+test('[CATEGORIES-41.1] moves no expense and archives nothing whichever write of the move fails', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym', 'Gym session');
+  await spendOn('Gym', 'Spin class');
+  await openMoveList('Gym');
+  const before = localData(mockFile);
+
+  // Each attempt lets one more write through before the disk fills up, until
+  // every write of the move gets through.
+  let writesThrough = 0;
+  for (; writesThrough < 20; writesThrough += 1) {
+    alert.mockClear();
+    failWritesAfter(writesThrough);
+    await moveTo('Gym', 'Shopping');
+    if (moveList('Gym') === undefined) break;
+    expect(alerts()).toEqual([UPDATE_FAILED]);
+    expect(localData(mockFile)).toEqual(before);
+  }
+
+  expect(writesThrough).toBeGreaterThan(0);
+  expect((await storedExpenses()).map(({ category }) => category.name)).toEqual(
+    ['Shopping', 'Shopping'],
+  );
+  expect(sections()).toEqual({ active: DEFAULTS, archived: [GYM] });
+});
+
+test('[CATEGORIES-41.1] moves the expenses when the category is pressed again after writes recover', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await openMoveList('Gym');
+  failWrites();
+  await moveTo('Gym', 'Shopping');
+  expect(alerts().at(-1)).toEqual(UPDATE_FAILED);
+  expect(moveList('Gym')).toBeDefined();
+  allowWrites();
+
+  await moveTo('Gym', 'Shopping');
+
+  expect(moveList('Gym')).toBeUndefined();
+  expect((await storedExpenses()).map(({ category }) => category.name)).toEqual(
+    ['Shopping'],
+  );
+  expect(sections()).toEqual({ active: DEFAULTS, archived: [GYM] });
+});
+
+test('[CATEGORIES-42.1] explains categories from About categories by the CATEGORIES header', async () => {
+  running = await openManageCategories();
+  const about = within(categoriesScreen()).getByRole('button', {
+    name: 'About categories',
+  });
+  expect(
+    inTreeOrder(
+      within(categoriesScreen()).getByText('CATEGORIES'),
+      about,
+      within(categoriesScreen()).getByText('Food & Dining'),
+    ),
+  ).toBe(true);
+
+  await fireEvent.press(about);
+
+  expect(alerts()).toEqual([ABOUT_CATEGORIES]);
+});
+
+test('[CATEGORIES-42.1] explains categories in Group Categories too', async () => {
+  const groups = await createGroups('Brisbane');
+  await openGroupCategories(groups.Brisbane);
+  alert.mockClear();
+
+  await fireEvent.press(
+    within(categoriesScreen()).getByRole('button', {
+      name: 'About categories',
+    }),
+  );
+
+  expect(alerts()).toEqual([ABOUT_CATEGORIES]);
+});
+
+test('[CATEGORIES-42.1] has no About categories when the group is not found', async () => {
+  await createGroups('Brisbane');
+
+  await restartAt(
+    groupCategoriesUrl('3f0d6c1e-8b2a-4d5e-9f7a-1c2b3d4e5f60'),
+    GROUP_CATEGORIES,
+  );
+
+  expect(screen.getByText(GROUP_NOT_FOUND)).toBeOnTheScreen();
+  expect(screen.queryByRole('button', { name: 'About categories' })).toBeNull();
+});
+
+// SHELL-34.1 leaves out the colors of user data, such as a category's color.
+const PALETTE_COLORS = new Set(
+  PALETTE.map((color) => (processColor(color) as number) >>> 0),
+);
+
+/** The app's own colors inside `view` that stay the same in light and dark mode, and its texts left uncolored. */
+function appColors(view: NativeView) {
+  return {
+    colors: new Map(
+      [...fixedColors(view)].filter(
+        ([, { color }]) => !PALETTE_COLORS.has(color),
+      ),
+    ),
+    uncolored: textsWithoutColor(view),
+  };
+}
+
+/** The background behind `view` as 0xAARRGGBB, when the platform draws it the same in both modes. */
+function fixedBackgroundBehind(view: NativeView) {
+  const color = processColor(backgroundBehind(view) as string);
+  return typeof color === 'number' ? color >>> 0 : undefined;
+}
+
+/** The parts of the categories screen that archiving and About categories add, with Gym archived. */
+const archivedParts = () => [
+  archivedHeader()!,
+  restoreButton('Gym'),
+  within(categoriesScreen()).getByText(ARCHIVED_FOOTER),
+  within(categoriesScreen()).getByRole('button', { name: 'About categories' }),
+];
+
+/** The Move list of Health: its title when it is a view, and its buttons. */
+const moveListParts = () => [
+  ...screen.queryAllByRole('header', { name: moveTitle('Health') }),
+  ...within(openMoveListOf('Health')).getAllByRole('button'),
+];
+
+test('[SHELL-34.1] colors ARCHIVED, About categories and the Move list with colors that follow the appearance', async () => {
+  fakePhoneAppearance('light');
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await spendOn('Health');
+  await archive('Gym');
+  const lightParts = archivedParts().map(appColors);
+  const lightBehind = fixedBackgroundBehind(restoreButton('Gym'));
+  await openMoveList('Health');
+  const lightList = moveListParts().map(appColors);
+  const lightListBehind = fixedBackgroundBehind(
+    moveTarget('Health', 'Shopping'),
+  );
+
+  await switchPhoneTo('dark');
+  const darkList = moveListParts().map(appColors);
+  const darkListBehind = fixedBackgroundBehind(
+    moveTarget('Health', 'Shopping'),
+  );
+  await cancelMoveList('Health');
+  const darkParts = archivedParts().map(appColors);
+  const darkBehind = fixedBackgroundBehind(restoreButton('Gym'));
+
+  const inBoth = (light: typeof lightParts, dark: typeof lightParts) =>
+    light.flatMap((part, index) =>
+      colorsInBoth(part.colors, dark[index].colors),
+    );
+  expect(inBoth(lightParts, darkParts)).toEqual([]);
+  expect(inBoth(lightList, darkList)).toEqual([]);
+  expect(
+    [lightBehind, lightListBehind].filter(
+      (color, index) =>
+        color !== undefined && color === [darkBehind, darkListBehind][index],
+    ),
+  ).toEqual([]);
+  expect(
+    [...lightParts, ...darkParts, ...lightList, ...darkList].flatMap(
+      ({ uncolored }) => uncolored,
+    ),
+  ).toEqual([]);
 });

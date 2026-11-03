@@ -9,4 +9,6 @@ export const categoryMigrations: readonly string[] = [
     spaceId TEXT NOT NULL,
     CHECK (isDefault = 1 OR (createdByUserId IS NOT NULL AND spaceId IS NOT NULL))
   )`,
+  `ALTER TABLE categories ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0
+    CHECK (isArchived IN (0, 1))`,
 ];

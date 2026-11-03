@@ -34,6 +34,26 @@ interface ExpenseRow extends Omit<
   shares: string;
 }
 
+export async function categoryExpenseCounts(
+  database: SqlExecutor,
+): Promise<Map<string, number>> {
+  const rows = await database.all<{ categoryId: string; count: number }>(
+    'SELECT categoryId, COUNT(*) AS count FROM expenses GROUP BY categoryId',
+  );
+  return new Map(rows.map(({ categoryId, count }) => [categoryId, count]));
+}
+
+export async function moveExpensesToCategory(
+  transaction: SqlExecutor,
+  sourceId: string,
+  target: Expense['category'],
+): Promise<void> {
+  await transaction.run(
+    'UPDATE expenses SET categoryId = ?, categoryName = ?, categoryColor = ? WHERE categoryId = ?',
+    [target.id, target.name, target.color, sourceId],
+  );
+}
+
 /** Every stored expense, in the order of LEDGER-28.1. */
 export async function listExpenses(database: SqlExecutor): Promise<Expense[]> {
   const rows = await database.all<ExpenseRow>(`

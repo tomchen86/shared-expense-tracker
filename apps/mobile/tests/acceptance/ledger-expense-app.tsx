@@ -696,3 +696,54 @@ export async function addCategory(name: string, groupId?: string) {
   await saveCategoryForm('Add');
   await backToExpenses();
 }
+
+// Screen reader actions, such as Remove on a row of Manage Categories
+
+interface ScreenReaderAction {
+  name: string;
+  label?: string;
+}
+
+const actionsOf = (view: HostView): ScreenReaderAction[] =>
+  view.props.accessibilityActions ?? [];
+
+/** A view's screen reader action, by what the screen reader says for it. */
+const actionLabelled = (view: HostView, label: string) =>
+  actionsOf(view).find((action) => (action.label ?? action.name) === label);
+
+const viewsWithAction = (root: HostView, label: string) =>
+  root.queryAll(
+    (view) =>
+      typeof view.type === 'string' &&
+      actionLabelled(view, label) !== undefined,
+  );
+
+/** The accessible names of the views inside `root` that offer the screen reader action `label`, in screen order. */
+export const namesWithAction = (root: HostView, label: string) =>
+  viewsWithAction(root, label).map(nameOf);
+
+/** Does the screen reader action `label` of the view named `name` inside `root`, and lets what it starts finish. */
+export async function doAction(root: HostView, name: string, label: string) {
+  const view = viewsWithAction(root, label).find(
+    (candidate) => nameOf(candidate) === name,
+  );
+  if (view === undefined) throw new Error(`${name} offers no ${label}`);
+  await fireEvent(view, 'accessibilityAction', {
+    nativeEvent: { actionName: actionLabelled(view, label)!.name },
+  });
+  await settle();
+}
+
+/** Archives a category that expenses use: Remove on its row in Manage Categories, then Archive in the alert. */
+export async function archiveCategory(name: string) {
+  await openManageCategories();
+  await doAction(tab('Settings'), name, 'Remove');
+  const buttons: AlertButton[] =
+    jest.mocked(Alert.alert).mock.calls.at(-1)?.[2] ?? [];
+  const archive = buttons.find((button) => button.text === 'Archive');
+  if (archive === undefined)
+    throw new Error(`Removing ${name} offered no Archive`);
+  await act(async () => archive.onPress?.());
+  await settle();
+  await backToExpenses();
+}
