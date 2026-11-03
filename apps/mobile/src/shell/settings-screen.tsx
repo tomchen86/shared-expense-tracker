@@ -38,7 +38,7 @@ export function SettingsScreen() {
   const colors = useThemeColors();
   const identity = useLocalIdentity();
   const [groups] = useGroups();
-  const archivedCount = groups?.filter((group) => group.archived).length ?? 0;
+  const archivedCount = groups?.filter((group) => group.archived).length;
   const saveName = useSaveLocalName();
   const appearance = useAppearanceOption();
   const saveAppearance = useSaveAppearanceOption();
@@ -193,7 +193,11 @@ export function SettingsScreen() {
           />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Archived groups, ${archivedCount}`}
+            accessibilityLabel={
+              archivedCount === undefined
+                ? 'Archived groups'
+                : `Archived groups, ${archivedCount}`
+            }
             onPress={() => router.push('/settings/archived-groups')}
             style={({ pressed }) => [
               styles.row,
@@ -203,9 +207,11 @@ export function SettingsScreen() {
             <Text style={[styles.rowLabel, { color: colors.text }]}>
               Archived Groups
             </Text>
-            <Text style={{ color: colors.textMuted, fontSize: 17 }}>
-              {archivedCount}
-            </Text>
+            {archivedCount !== undefined && (
+              <Text style={{ color: colors.textMuted, fontSize: 17 }}>
+                {archivedCount}
+              </Text>
+            )}
             <Text
               accessible={false}
               style={[styles.chevron, { color: colors.textMuted }]}

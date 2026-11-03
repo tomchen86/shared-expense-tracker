@@ -7,7 +7,10 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { AddButton } from '../ui/add-button';
 import { GroupedSection } from '../ui/grouped-section';
@@ -21,6 +24,7 @@ import { useRequireName } from './use-require-name';
 export function GroupsScreen() {
   useTabRootBack('/');
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const requireName = useRequireName();
   const [groups, setGroups] = useGroups();
   const { pending, save } = useGroupArchive();
@@ -98,14 +102,14 @@ export function GroupsScreen() {
             </View>
           ))
         )}
-        {notice && (
-          <GroupedSection style={styles.notice}>
-            <Text style={{ color: colors.text, fontSize: 15 }}>
-              Group archived · Find it in Settings
-            </Text>
-          </GroupedSection>
-        )}
       </ScrollView>
+      {notice && (
+        <GroupedSection style={[styles.notice, { bottom: insets.bottom + 92 }]}>
+          <Text style={{ color: colors.text, fontSize: 15 }}>
+            Group archived · Find it in Settings
+          </Text>
+        </GroupedSection>
+      )}
       <AddButton
         label="Add group"
         onPress={() => {
@@ -121,7 +125,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 112 },
   empty: { textAlign: 'center', marginTop: 48, fontSize: 16 },
   card: { marginBottom: 12 },
-  notice: { padding: 16, marginTop: 16 },
+  notice: { position: 'absolute', left: 20, right: 20, padding: 16 },
   row: { padding: 16, minHeight: 56, justifyContent: 'center' },
   name: { fontSize: 17 },
 });
