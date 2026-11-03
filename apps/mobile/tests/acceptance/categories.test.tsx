@@ -2318,3 +2318,65 @@ test('[SHELL-34.1] colors ARCHIVED, About categories and the Move list with colo
     ),
   ).toEqual([]);
 });
+
+/** The open category form: the sheet or screen around its name field. */
+function categoryForm(): NativeView {
+  for (let outer = nameField().parent; outer; outer = outer.parent)
+    if (/^(Modal|RNS(Modal)?Screen)$/.test(String(outer.type))) return outer;
+  throw new Error('The category form is not a sheet or a screen');
+}
+
+/**
+ * What `part` shows that does not follow the appearance: the app's colors that stay
+ * the same when the phone turns from light to dark mode, and the texts left uncolored.
+ */
+async function notFollowing(part: () => NativeView) {
+  const light = appColors(part());
+  await switchPhoneTo('dark');
+  const dark = appColors(part());
+  return {
+    colors: colorsInBoth(light.colors, dark.colors),
+    uncolored: [...light.uncolored, ...dark.uncolored],
+  };
+}
+
+const FOLLOWS = { colors: [], uncolored: [] };
+
+test('[SHELL-34.1] colors Manage Categories, its navigation bar and its categories with colors that follow the appearance', async () => {
+  fakePhoneAppearance('light');
+  running = await openManageCategories();
+
+  expect(await notFollowing(categoriesScreen)).toEqual(FOLLOWS);
+});
+
+test('[SHELL-34.1] colors Group not found. with colors that follow the appearance', async () => {
+  fakePhoneAppearance('light');
+  await restartAt(
+    groupCategoriesUrl('3f0d6c1e-8b2a-4d5e-9f7a-1c2b3d4e5f60'),
+    GROUP_CATEGORIES,
+  );
+  expect(screen.getByText(GROUP_NOT_FOUND)).toBeOnTheScreen();
+
+  expect(await notFollowing(categoriesScreen)).toEqual(FOLLOWS);
+});
+
+test('[SHELL-34.1] colors the category form with colors that follow the appearance while it says the name exists', async () => {
+  fakePhoneAppearance('light');
+  running = await openManageCategories();
+  await openNewCategory();
+  await fireEvent.changeText(nameField(), 'Shopping');
+  await press('Add');
+  expect(screen.getByText(ALREADY_EXISTS)).toBeOnTheScreen();
+
+  expect(await notFollowing(categoryForm)).toEqual(FOLLOWS);
+});
+
+test('[SHELL-34.1] colors New Category with colors that follow the appearance once all 13 colors are used', async () => {
+  fakePhoneAppearance('light');
+  running = await openManageCategories();
+  await useAllColors();
+  await openNewCategory();
+  expect(screen.getByText(ALL_COLORS_USED)).toBeOnTheScreen();
+
+  expect(await notFollowing(categoryForm)).toEqual(FOLLOWS);
+});
