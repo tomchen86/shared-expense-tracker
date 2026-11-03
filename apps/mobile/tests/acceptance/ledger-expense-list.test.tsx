@@ -528,6 +528,28 @@ test('[LEDGER-38.1] opens one Edit Expense when Edit is pressed twice', async ()
   expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses', 'Expense']);
 });
 
+test('[LEDGER-44.1] shows the saved change on the list as soon as the details go back', async () => {
+  await startExpenses();
+  await addExpense();
+  await openDetails('Coffee run');
+  await pressEdit();
+  await expectForm('Edit Expense');
+  await fillForm({ amount: '9.25' });
+  await press('Save');
+  await expectFormClosed();
+  await waitFor(() => expect(detailLines()).toContain('$9.25'));
+  await settle();
+  // With reads held, the list shows only what it had before the details went back.
+  const reads = holdReads();
+
+  await goBackFromDetails();
+
+  expect(detailBars()).toEqual([]);
+  expect(linesIn(card('Coffee run'))).toContain('$9.25');
+  expect(totalShareLines()).toEqual(['Your Total Share: $9.25']);
+  await reads.release();
+});
+
 test('[LEDGER-39.1] shows only Expense not found., titled Expense, for an ID that is no expense', async () => {
   await startExpensesAt(`/expenses/${NO_EXPENSE_ID}`);
 

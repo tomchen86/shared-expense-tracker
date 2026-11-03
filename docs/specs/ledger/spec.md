@@ -848,7 +848,7 @@ The mobile app SHALL 讓卡片、Your Total Share 和明細，用手機地區的
 
 ### Requirement: LEDGER-41.1 (manual) 手機上的金額和日期格式
 
-WHERE iPhone 或 Android 手機，the mobile app SHALL 讓卡片、Your Total Share 和明細，依手機的語言和地區顯示金額和日期（LEDGER-40.1）；格式由各個平台決定，iPhone 和 Android 可以不一樣。
+WHERE iPhone 或 Android 手機，the mobile app SHALL 讓卡片、Your Total Share 和明細，依手機的語言和地區顯示金額和日期（LEDGER-40.1），在 UTC 以東的時區，日期也不提早一天；格式由各個平台決定，iPhone 和 Android 可以不一樣。
 
 #### Scenario: 英文（美國）
 
@@ -864,6 +864,11 @@ WHERE iPhone 或 Android 手機，the mobile app SHALL 讓卡片、Your Total Sh
 
 - **WHEN** 有 USD 的支出時，把手機的語言和地區從英文（美國）改成繁體中文（台灣），再打開 app
 - **THEN** USD 的金額改用台灣的格式，例如「US$8.75」
+
+#### Scenario: UTC 以東的時區
+
+- **WHEN** 手機的時區設成 `Asia/Tokyo`，新增日期是 `2026-10-25` 的支出
+- **THEN** 卡片和明細的日期都是 2026 年 10 月 25 日，不是前一天
 
 ### Requirement: LEDGER-42.1 (manual) 最後一張卡片不被 + 按鈕擋住
 
@@ -882,3 +887,12 @@ WHILE 支出清單還沒讀完存著的支出，the mobile app SHALL 不顯示 L
 
 - **WHEN** 有 Coffee run 時開啟 app，支出清單還沒讀完存著的支出
 - **THEN** 支出清單沒有「No expenses to display. Add a personal expense or get involved in a group expense.」和「Your Total Share: —」；讀完之後顯示 Coffee run 的卡片
+
+### Requirement: LEDGER-44.1 從明細返回時清單已經是新的
+
+WHEN 從明細打開的 Edit Expense 存好支出，the mobile app SHALL 在從明細返回之前，就讓明細底下的支出清單顯示存著的卡片和 Your Total Share，返回時不先出現修改前的內容。
+
+#### Scenario: 改了金額再返回
+
+- **WHEN** 在 875 USD 的 Coffee run 的明細按「Edit」，把金額改成「9.25」後按 Save，再從明細返回
+- **THEN** 支出清單一出現就是「$9.25」和「Your Total Share: $9.25」，沒有先出現「$8.75」
