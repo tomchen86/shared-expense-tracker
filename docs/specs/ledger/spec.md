@@ -225,7 +225,7 @@ The mobile app SHALL 讓支出表單的標題列有取消「Cancel」和確認�
 
 ### Requirement: LEDGER-14.2 打開 New Expense 時的內容
 
-WHEN 打開 New Expense，the mobile app SHALL 讓金額、標題和備註都是空的，分類是個人空間未封存的分類中依儲存的順序排第一的那一個（CATEGORIES-7.3），日期是今天。
+WHEN 打開 New Expense，the mobile app SHALL 讓金額、標題和備註都是空的，分類是個人空間未封存的分類中依儲存的順序排第一的那一個（CATEGORIES-7.4），日期是今天。
 
 #### Scenario: 第一次啟動
 
@@ -302,7 +302,7 @@ WHEN 打開某筆支出的 Edit Expense，the mobile app SHALL 以這筆支出�
 
 ### Requirement: LEDGER-17.3 從清單選分類
 
-WHEN 使用者按分類按鈕，the mobile app SHALL 打開標題是「Category」的清單，依儲存的順序列出個人空間每個未封存的分類（CATEGORIES-7.3），並把表單上選的那一個標示為已選取，表單上的分類已封存時沒有標示為已選取的分類；按一個分類就選它並回到表單，按「Cancel」就回到表單、分類不變，所以沒有改選時，存檔後支出仍用那個已封存的分類。
+WHEN 使用者按分類按鈕，the mobile app SHALL 打開標題是「Category」的清單，依儲存的順序列出個人空間每個未封存的分類（CATEGORIES-7.4），並把表單上選的那一個標示為已選取，表單上的分類已封存時沒有標示為已選取的分類；按一個分類就選它並回到表單，按「Cancel」就回到表單、分類不變，所以沒有改選時，存檔後支出仍用那個已封存的分類。
 
 #### Scenario: 打開清單
 

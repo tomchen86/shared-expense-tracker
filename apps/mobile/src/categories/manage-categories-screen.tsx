@@ -42,12 +42,15 @@ export function ManageCategoriesScreen() {
   const [checkedGroup, setCheckedGroup] = useState<{
     id: string | undefined;
     exists: boolean;
+    archived: boolean;
   }>();
   const groupExists = groupId
     ? checkedGroup?.id === groupId
       ? checkedGroup.exists
       : undefined
     : true;
+  const groupArchived =
+    !!groupId && checkedGroup?.id === groupId && checkedGroup.archived;
   const [categories, setCategories] = useState<Category[]>([]);
   const [expenseCounts, setExpenseCounts] = useState(new Map<string, number>());
   const loadedRef = useRef(false);
@@ -70,9 +73,11 @@ export function ManageCategoriesScreen() {
             loadedRef.current = true;
             setCategories(rows);
             setExpenseCounts(counts);
+            const group = groups.find((group) => group.id === groupId);
             setCheckedGroup({
               id: groupId,
-              exists: groups.some((group) => group.id === groupId),
+              exists: group !== undefined,
+              archived: group?.archived ?? false,
             });
           }
         })
@@ -241,29 +246,30 @@ export function ManageCategoriesScreen() {
   const screenOptions = useMemo(
     () => ({
       title: groupId ? 'Group Categories' : 'Manage Categories',
-      headerRight: groupExists
-        ? () => (
-            <Pressable
-              accessibilityLabel="Add category"
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={openAddForm}
-              style={({ pressed }) => [
-                styles.addButton,
-                pressed && styles.addButtonPressed,
-              ]}
-            >
-              <Text
-                accessible={false}
-                style={[styles.addIcon, { color: colors.accent }]}
+      headerRight:
+        groupExists && !groupArchived
+          ? () => (
+              <Pressable
+                accessibilityLabel="Add category"
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={openAddForm}
+                style={({ pressed }) => [
+                  styles.addButton,
+                  pressed && styles.addButtonPressed,
+                ]}
               >
-                +
-              </Text>
-            </Pressable>
-          )
-        : undefined,
+                <Text
+                  accessible={false}
+                  style={[styles.addIcon, { color: colors.accent }]}
+                >
+                  +
+                </Text>
+              </Pressable>
+            )
+          : undefined,
     }),
-    [openAddForm, groupId, groupExists, colors.accent],
+    [openAddForm, groupId, groupExists, groupArchived, colors.accent],
   );
 
   const activeCategories = categories.filter(
@@ -273,7 +279,7 @@ export function ManageCategoriesScreen() {
     (category) => category.isArchived,
   );
 
-  function rows(items: Category[]) {
+  function rows(items: Category[], readOnly = false) {
     return items.map((category, index) => (
       <Fragment key={category.id}>
         {index > 0 && (
@@ -284,6 +290,7 @@ export function ManageCategoriesScreen() {
         <CategoryRow
           category={category}
           used={(expenseCounts.get(category.id) ?? 0) > 0}
+          readOnly={readOnly}
           onPress={
             isUncategorizedCategory(category)
               ? undefined
@@ -318,6 +325,11 @@ export function ManageCategoriesScreen() {
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={styles.content}
         >
+          {groupArchived && (
+            <Text style={[styles.readOnlyNotice, { color: colors.text }]}>
+              Archived group. Categories are read-only.
+            </Text>
+          )}
           <View style={styles.sectionHeader}>
             <Text
               accessibilityRole="header"
@@ -325,23 +337,29 @@ export function ManageCategoriesScreen() {
             >
               CATEGORIES
             </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="About categories"
-              hitSlop={8}
-              style={styles.about}
-              onPress={() =>
-                Alert.alert(
-                  'About Categories',
-                  'Tap a category to edit it. Swipe left to remove a category. Categories used by expenses can be archived or moved, so historical classifications stay intact. Uncategorized is reserved and cannot be renamed or removed.',
-                )
-              }
-            >
-              <Text style={{ color: colors.accent }}>ⓘ</Text>
-            </Pressable>
+            {!groupArchived && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="About categories"
+                hitSlop={8}
+                style={styles.about}
+                onPress={() =>
+                  Alert.alert(
+                    'About Categories',
+                    'Tap a category to edit it. Swipe left to remove a category. Categories used by expenses can be archived or moved, so historical classifications stay intact. Uncategorized is reserved and cannot be renamed or removed.',
+                  )
+                }
+              >
+                <Text style={{ color: colors.accent }}>ⓘ</Text>
+              </Pressable>
+            )}
           </View>
-          <View style={[styles.section, { backgroundColor: colors.surface }]}>
-            {rows(activeCategories)}
+          {/* Reset open swipes when the group's archived state changes. */}
+          <View
+            key={groupArchived ? 'read-only' : 'editable'}
+            style={[styles.section, { backgroundColor: colors.surface }]}
+          >
+            {rows(activeCategories, groupArchived)}
           </View>
           {archivedCategories.length > 0 && (
             <View
@@ -447,6 +465,7 @@ export function ManageCategoriesScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 },
+  readOnlyNotice: { fontSize: 16, marginBottom: 20 },
   addButton: {
     minWidth: 36,
     minHeight: 36,

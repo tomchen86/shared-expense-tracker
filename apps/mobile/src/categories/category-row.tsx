@@ -13,6 +13,7 @@ import { isUncategorizedCategory, type Category } from './repository';
 interface CategoryRowProps {
   category: Category;
   used: boolean;
+  readOnly: boolean;
   onPress?: () => void;
   onRemove: () => void;
 }
@@ -22,6 +23,7 @@ const ACTION_WIDTH = 88;
 export function CategoryRow({
   category,
   used,
+  readOnly,
   onPress,
   onRemove,
 }: CategoryRowProps) {
@@ -98,7 +100,7 @@ export function CategoryRow({
     </>
   );
 
-  if (reserved) return <View style={styles.row}>{content}</View>;
+  if (reserved || readOnly) return <View style={styles.row}>{content}</View>;
 
   return (
     <View style={styles.swipe} {...responder.panHandlers}>

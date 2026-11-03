@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[CATEGORIES-32.1] Swipes a category left to remove it, finds nothing to swipe on Uncategorized, then swipes an archived category that no expense uses left to delete it'
+name: '[CATEGORIES-32.2] Swipes a category left to remove it, finds nothing to swipe on Uncategorized, then swipes an archived category that no expense uses left to delete it'
 ---
 - launchApp:
     clearState: true
