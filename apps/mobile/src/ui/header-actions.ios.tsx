@@ -1,7 +1,12 @@
 import { Stack } from 'expo-router';
 import type { HeaderActionsProps } from './header-actions';
 
-export function HeaderActions({ cancel, confirm, menu }: HeaderActionsProps) {
+export function HeaderActions({
+  cancel,
+  confirm,
+  edit,
+  menu,
+}: HeaderActionsProps) {
   return (
     <>
       <Stack.Toolbar placement="left">
@@ -17,6 +22,16 @@ export function HeaderActions({ cancel, confirm, menu }: HeaderActionsProps) {
         )}
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
+        {edit && (
+          <Stack.Toolbar.Button
+            variant="plain"
+            accessibilityLabel={edit.label}
+            disabled={edit.disabled}
+            onPress={edit.onPress}
+          >
+            {edit.label}
+          </Stack.Toolbar.Button>
+        )}
         {menu && (
           <Stack.Toolbar.Menu
             icon="ellipsis.circle"
