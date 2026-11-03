@@ -17,6 +17,7 @@ import {
   availableCategoryColors,
   categoryNameProblem,
 } from '@shared-expense/domain';
+import { useThemeColors } from '../ui/theme';
 import type { Category } from './repository';
 
 const ALREADY_EXISTS = 'A category with this name already exists.';
@@ -35,6 +36,7 @@ export function CategoryForm({
   onCancel,
   onSave,
 }: CategoryFormProps) {
+  const colors = useThemeColors();
   const freeColors = availableCategoryColors(otherCategories);
   const freeColorSet = new Set(freeColors);
 
@@ -110,8 +112,18 @@ export function CategoryForm({
       presentationStyle="pageSheet"
       visible
     >
-      <SafeAreaView style={styles.sheet}>
-        <View style={styles.header}>
+      <SafeAreaView
+        style={[styles.sheet, { backgroundColor: colors.background }]}
+      >
+        <View
+          style={[
+            styles.header,
+            {
+              borderBottomColor: colors.separator,
+              backgroundColor: colors.surface,
+            },
+          ]}
+        >
           <Pressable
             accessibilityLabel="Cancel"
             accessibilityRole="button"
@@ -125,12 +137,18 @@ export function CategoryForm({
             ]}
           >
             <Text
-              style={[styles.cancelText, isSaving && styles.disabledButtonText]}
+              style={[
+                styles.cancelText,
+                { color: isSaving ? colors.textMuted : colors.accent },
+              ]}
             >
               Cancel
             </Text>
           </Pressable>
-          <Text accessibilityRole="header" style={styles.headerTitle}>
+          <Text
+            accessibilityRole="header"
+            style={[styles.headerTitle, { color: colors.text }]}
+          >
             {title}
           </Text>
           <Pressable
@@ -149,7 +167,7 @@ export function CategoryForm({
             <Text
               style={[
                 styles.submitText,
-                submitDisabled && styles.disabledButtonText,
+                { color: submitDisabled ? colors.textMuted : colors.accent },
               ]}
             >
               {submitLabel}
@@ -162,8 +180,10 @@ export function CategoryForm({
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.sectionLabel}>NAME</Text>
-          <View style={styles.section}>
+          <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+            NAME
+          </Text>
+          <View style={[styles.section, { backgroundColor: colors.surface }]}>
             <TextInput
               accessibilityLabel="Category name"
               editable={!isSaving}
@@ -173,15 +193,33 @@ export function CategoryForm({
                 if (duplicateError) setDuplicateError(false);
               }}
               placeholder="Category name"
-              placeholderTextColor="#767680"
-              style={styles.input}
+              placeholderTextColor={colors.placeholder}
+              style={[styles.input, { color: colors.text }]}
               value={name}
             />
           </View>
-          {duplicateError && <Text style={styles.error}>{ALREADY_EXISTS}</Text>}
+          {duplicateError && (
+            <Text style={[styles.error, { color: colors.error }]}>
+              {ALREADY_EXISTS}
+            </Text>
+          )}
 
-          <Text style={[styles.sectionLabel, styles.nextSection]}>COLOR</Text>
-          <View style={[styles.section, styles.colorSection]}>
+          <Text
+            style={[
+              styles.sectionLabel,
+              styles.nextSection,
+              { color: colors.textMuted },
+            ]}
+          >
+            COLOR
+          </Text>
+          <View
+            style={[
+              styles.section,
+              styles.colorSection,
+              { backgroundColor: colors.surface },
+            ]}
+          >
             <View style={styles.colorGrid}>
               {CATEGORY_COLORS.map((color) => {
                 const available = freeColorSet.has(color);
@@ -211,13 +249,18 @@ export function CategoryForm({
                       { backgroundColor: color },
                       unavailable && styles.unavailableColorButton,
                       selected && styles.selectedColorButton,
+                      selected && { borderColor: colors.accent },
                     ]}
                   />
                 );
               })}
             </View>
           </View>
-          {allColorsUsed && <Text style={styles.note}>{ALL_COLORS_USED}</Text>}
+          {allColorsUsed && (
+            <Text style={[styles.note, { color: colors.textMuted }]}>
+              {ALL_COLORS_USED}
+            </Text>
+          )}
         </ScrollView>
       </SafeAreaView>
     </Modal>
@@ -225,7 +268,7 @@ export function CategoryForm({
 }
 
 const styles = StyleSheet.create({
-  sheet: { flex: 1, backgroundColor: '#f2f2f7' },
+  sheet: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -233,8 +276,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#c6c6c8',
-    backgroundColor: '#fff',
   },
   headerButton: {
     minWidth: 64,
@@ -248,21 +289,15 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   headerTitle: {
-    color: '#1c1c1e',
     fontSize: 17,
     fontWeight: '600',
   },
   cancelText: {
-    color: '#007aff',
     fontSize: 17,
   },
   submitText: {
-    color: '#007aff',
     fontSize: 17,
     fontWeight: '600',
-  },
-  disabledButtonText: {
-    color: '#99999d',
   },
   content: {
     paddingHorizontal: 20,
@@ -270,7 +305,6 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   sectionLabel: {
-    color: '#636366',
     fontSize: 13,
     marginLeft: 16,
     marginBottom: 8,
@@ -279,19 +313,16 @@ const styles = StyleSheet.create({
     marginTop: 28,
   },
   section: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     overflow: 'hidden',
   },
   input: {
-    color: '#1c1c1e',
     fontSize: 17,
     minHeight: 52,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   error: {
-    color: '#b42318',
     fontSize: 15,
     marginHorizontal: 16,
     marginTop: 8,
@@ -312,14 +343,12 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   selectedColorButton: {
-    borderColor: '#007aff',
     borderWidth: 3,
   },
   unavailableColorButton: {
     opacity: 0.22,
   },
   note: {
-    color: '#636366',
     fontSize: 13,
     marginHorizontal: 16,
     marginTop: 8,
