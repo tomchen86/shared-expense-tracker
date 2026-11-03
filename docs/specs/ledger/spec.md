@@ -2,7 +2,7 @@
 
 ## Purpose
 
-記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單和存著的支出。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期或備註有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。
+記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期或備註有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是 Your Total Share，下面是支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。手機地區的貨幣格式，是手機第一個偏好的語言和地區用來顯示一個幣別的金額的格式；手機地區的日期格式見 LEDGER-30.1。
 
 ## Requirements
 
@@ -650,3 +650,269 @@ The mobile app SHALL 讓日期欄位用手機地區的日期格式顯示日期�
 
 - **WHEN** 在日期欄位選 `2024-12-25`
 - **THEN** 日期欄位顯示「Dec 25, 2024」
+
+### Requirement: LEDGER-31.1 支出清單依序列出個人支出
+
+The mobile app SHALL 在支出清單上，依 LEDGER-28.1 的順序由上而下列出每筆個人支出的卡片；新增或修改支出之後回到支出清單，或重新啟動 app 之後，卡片都和存著的支出一致。
+
+#### Scenario: 不同的日期
+
+- **WHEN** 依序新增日期是 `2025-01-01` 的「A」、`2025-01-03` 的「B」、`2025-01-02` 的「C」
+- **THEN** 卡片由上而下是 B、C、A
+
+#### Scenario: 同一天
+
+- **WHEN** 依序新增日期都是 `2025-01-01` 的「E」、「F」和「D」
+- **THEN** 卡片由上而下是 D、F、E
+
+#### Scenario: 新增之後
+
+- **WHEN** 有「Coffee run」時，在 New Expense 新增日期是今天的「Lunch」
+- **THEN** 表單關閉後，卡片由上而下是 Lunch、Coffee run
+
+#### Scenario: 修改之後
+
+- **WHEN** 在 Edit Expense 把「Coffee run」的標題改成「Lunch」、金額改成「12.50」後按 Save
+- **THEN** 表單關閉後，卡片是「Lunch」和「$12.50」，沒有「Coffee run」
+
+#### Scenario: 重新啟動
+
+- **WHEN** 新增「Coffee run」和「Lunch」之後重新啟動 app
+- **THEN** 卡片由上而下仍是 Lunch、Coffee run
+
+### Requirement: LEDGER-32.1 沒有支出時顯示提示
+
+WHILE 本機資料裡沒有個人支出，the mobile app SHALL 在支出清單上顯示「No expenses to display. Add a personal expense or get involved in a group expense.」，沒有任何卡片。
+
+#### Scenario: 第一次啟動
+
+- **WHEN** 第一次啟動 app
+- **THEN** 支出清單顯示這句話，沒有卡片
+
+#### Scenario: 新增第一筆支出
+
+- **WHEN** 新增「Coffee run」
+- **THEN** 這句話消失，只有 Coffee run 的卡片
+
+### Requirement: LEDGER-33.1 卡片的內容
+
+The mobile app SHALL 讓每張卡片是一個按鈕，依序顯示支出的標題、卡片金額、分類現在的名稱和日期，不顯示付款人和備註；螢幕閱讀器把卡片讀成一個按鈕，依同樣的順序讀出這四項。個人支出的卡片金額是它的全額。
+
+#### Scenario: 一筆支出
+
+- **WHEN** 存過名字「Tom」之後，新增「Coffee run」：875 USD、Food & Dining、`2026-10-30`、備註「Morning treat」
+- **THEN** 卡片依序顯示「Coffee run」、「$8.75」、「Food & Dining」、「Oct 30, 2026」；卡片上沒有「Morning treat」、「Tom」或付款的字樣
+
+#### Scenario: 螢幕閱讀器
+
+- **WHEN** 螢幕閱讀器讀這張卡片
+- **THEN** 讀出一個按鈕，依序是「Coffee run」、「$8.75」、「Food & Dining」、「Oct 30, 2026」
+
+#### Scenario: 分類改了名
+
+- **WHEN** 新增 Shopping 的支出之後，在 Manage Categories 把 Shopping 改名為「Groceries」
+- **THEN** 卡片上的分類是「Groceries」
+
+### Requirement: LEDGER-34.1 卡片上的標題只佔一行
+
+The mobile app SHALL 在卡片上只用一行顯示標題，放不下時在結尾以「…」截斷；螢幕閱讀器仍讀出完整的標題。
+
+#### Scenario: 很長的標題
+
+- **WHEN** 新增標題是 200 個「a」的支出
+- **THEN** 卡片上的標題只佔一行，放不下的部分在結尾截斷；螢幕閱讀器讀出完整的 200 個「a」
+
+### Requirement: LEDGER-35.1 Your Total Share 依幣別加總卡片金額
+
+The mobile app SHALL 在支出清單的卡片上方，為卡片用到的每個幣別各顯示一行「Your Total Share: <這個幣別所有卡片金額的總和>」，依幣別代碼排序；沒有卡片時只顯示一行「Your Total Share: —」；這幾行是文字，不是按鈕。
+
+#### Scenario: 一個幣別
+
+- **WHEN** 有 875 USD 和 1250 USD 兩筆支出
+- **THEN** 卡片上方只有「Your Total Share: $21.25」
+
+#### Scenario: 幾個幣別
+
+- **WHEN** 依序新增日期相同的 30 AUD、875 USD、1200 JPY
+- **THEN** 卡片由上而下是 JPY、USD、AUD 的支出；卡片上方由上而下是「Your Total Share: A$0.30」、「Your Total Share: ¥1,200」、「Your Total Share: $8.75」
+
+#### Scenario: 不是按鈕
+
+- **WHEN** 有 875 USD 的支出時點「Your Total Share: $8.75」
+- **THEN** 它不在任何按鈕裡，點了沒有反應
+
+#### Scenario: 沒有支出
+
+- **WHEN** 第一次啟動 app
+- **THEN** 卡片上方只有「Your Total Share: —」
+
+#### Scenario: 修改之後
+
+- **WHEN** 把 875 USD 的支出的金額改成「12.50」
+- **THEN** 回到支出清單時是「Your Total Share: $12.50」
+
+#### Scenario: 總和超過單筆的上限
+
+- **WHEN** 有兩筆 999,999,999,999 USD 的支出
+- **THEN** 是「Your Total Share: $19,999,999,999.98」
+
+### Requirement: LEDGER-36.1 點卡片推入明細
+
+WHEN 使用者點卡片，the mobile app SHALL 在 Expenses 分頁推入這筆支出的明細，網址是 `/expenses/<支出的 ID>`，標題是「Expense」，分頁列仍選中 Expenses；連點兩次也只推入一個明細，返回或按 Android 的返回鍵就回到支出清單。
+
+#### Scenario: 點卡片
+
+- **WHEN** 有「Coffee run」和「Lunch」時，點 Lunch 的卡片
+- **THEN** 分頁列仍選中 Expenses，Expenses 分頁的堆疊由下而上是「Expenses」根畫面和「Expense」，明細是 Lunch 的，網址是 `/expenses/` 加上 Lunch 的 ID
+
+#### Scenario: 以網址開啟
+
+- **WHEN** 以 `/expenses/` 加上 Lunch 的 ID 開啟 app
+- **THEN** 選中 Expenses 分頁，Expenses 分頁的堆疊由下而上是「Expenses」根畫面和「Expense」，明細是 Lunch 的
+
+#### Scenario: 連點兩次
+
+- **WHEN** 連點兩次 Lunch 的卡片
+- **THEN** 只推入一個明細；返回一次就回到支出清單
+
+#### Scenario: 返回
+
+- **WHEN** 在明細返回，或在 Android 上按返回鍵
+- **THEN** 回到支出清單，分頁列仍選中 Expenses
+
+### Requirement: LEDGER-37.1 明細的內容
+
+The mobile app SHALL 在明細上依序顯示支出的標題、金額、「DETAILS」區塊裡的「Category」和分類現在的名稱、「Date」和日期，有備註時再顯示「NOTE」區塊和備註；標題和備註都完整顯示，不截斷。
+
+#### Scenario: 有備註
+
+- **WHEN** 打開「Coffee run」的明細：875 USD、Shopping、`2024-12-25`、備註「Morning treat」
+- **THEN** 依序顯示「Coffee run」、「$8.75」、「DETAILS」、「Category」、「Shopping」、「Date」、「Dec 25, 2024」、「NOTE」、「Morning treat」
+
+#### Scenario: 沒有備註
+
+- **WHEN** 打開沒有備註的支出的明細
+- **THEN** 沒有「NOTE」區塊
+
+#### Scenario: 分類改了名
+
+- **WHEN** 把 Shopping 改名為「Groceries」之後，打開這筆支出的明細
+- **THEN** 分類是「Groceries」
+
+#### Scenario: 很長的標題和備註
+
+- **WHEN** 打開標題是 200 個「a」、備註是 500 個「b」的支出的明細
+- **THEN** 標題和備註都完整顯示，沒有截斷
+
+### Requirement: LEDGER-38.1 明細的 Edit 打開 Edit Expense
+
+The mobile app SHALL 在明細的標題列放名稱是「Edit」的編輯動作（SHELL-52.1），按一下就打開這筆支出的 Edit Expense（LEDGER-12.1），連按兩次也只打開一個；Edit Expense 關閉後，明細顯示的是這筆支出存著的樣子。
+
+#### Scenario: 按 Edit
+
+- **WHEN** 在 Coffee run 的明細按「Edit」
+- **THEN** 打開 Coffee run 的 Edit Expense，網址是 `/expenses/<它的 ID>/edit`
+
+#### Scenario: 存下修改
+
+- **WHEN** 在 Edit Expense 把標題改成「Lunch」、金額改成「12.50」後按 Save
+- **THEN** 表單關閉，回到明細，明細顯示「Lunch」和「$12.50」
+
+#### Scenario: 連按兩次
+
+- **WHEN** 連按兩次「Edit」
+- **THEN** 只打開一個 Edit Expense；按一次 Cancel 就回到明細
+
+### Requirement: LEDGER-39.1 找不到支出時顯示「Expense not found.」
+
+IF 明細網址裡的 ID 不是任何支出的 ID，THEN the mobile app SHALL 讓明細的標題是「Expense」，只顯示「Expense not found.」，標題列沒有「Edit」；打開存在的支出時，SHALL 從推入明細到讀完支出都不顯示「Expense not found.」。
+
+#### Scenario: 不存在的支出
+
+- **WHEN** 以 `/expenses/00000000-0000-4000-8000-000000000000` 開啟 app
+- **THEN** 選中 Expenses 分頁，明細的標題是「Expense」，只顯示「Expense not found.」，標題列沒有「Edit」
+
+#### Scenario: 存在的支出
+
+- **WHEN** 點 Coffee run 的卡片，或以它的網址開啟 app
+- **THEN** 明細剛推入時和讀完 Coffee run 之後，都沒有顯示「Expense not found.」
+
+### Requirement: LEDGER-40.1 金額和日期用手機地區的格式
+
+The mobile app SHALL 讓卡片、Your Total Share 和明細，用手機地區的貨幣格式和幣別的小數位數（LEDGER-1.1）顯示金額，讓卡片和明細用手機地區的日期格式（LEDGER-30.1）顯示支出的日期，日期不因手機的時區提早或延後一天。
+
+#### Scenario: 英文（美國）
+
+- **WHEN** 手機第一個偏好的語言和地區是英文（美國），有日期是 `2026-10-30` 的 875 USD、30 AUD 和 1200 JPY 三筆支出
+- **THEN** 金額分別是「$8.75」、「A$0.30」和「¥1,200」，日期是「Oct 30, 2026」
+
+#### Scenario: 日文（日本）
+
+- **WHEN** 手機第一個偏好的語言和地區是日文（日本），有日期是 `2026-10-30` 的 1200 JPY 的支出
+- **THEN** 金額是「￥1,200」，日期是「2026/10/30」
+
+#### Scenario: 小數位數和地區的習慣不同
+
+- **WHEN** 手機第一個偏好的語言和地區是英文（美國），有 123456 IDR 和 1234 IQD 的支出
+- **THEN** 金額是「IDR 1,234.56」和「IQD 1.234」，小數位數照 LEDGER-1.1，不是「IDR 1,235」或「IQD 1」
+
+#### Scenario: 上限的金額
+
+- **WHEN** 有一筆 999,999,999,999 USD 的支出
+- **THEN** 卡片和明細的金額都是「$9,999,999,999.99」
+
+#### Scenario: UTC 以西的時區
+
+- **WHEN** 手機的時區是 `America/Los_Angeles`，新增日期是 `2026-10-25` 的支出
+- **THEN** 卡片和明細的日期都是「Oct 25, 2026」，不是前一天的「Oct 24, 2026」
+
+### Requirement: LEDGER-41.1 (manual) 手機上的金額和日期格式
+
+WHERE iPhone 或 Android 手機，the mobile app SHALL 讓卡片、Your Total Share 和明細，依手機的語言和地區顯示金額和日期（LEDGER-40.1），在 UTC 以東的時區，日期也不提早一天；格式由各個平台決定，iPhone 和 Android 可以不一樣。
+
+#### Scenario: 英文（美國）
+
+- **WHEN** 手機的語言和地區設成英文（美國），新增 8.75 USD 的支出
+- **THEN** 卡片和明細的金額是「$8.75」，日期是今天，例如「Oct 30, 2026」；Your Total Share 是「Your Total Share: $8.75」
+
+#### Scenario: 繁體中文（台灣）
+
+- **WHEN** 手機的語言和地區設成繁體中文（台灣），新增 8.75 TWD 的支出
+- **THEN** 金額用台灣的貨幣格式，例如「$8.75」；日期用平台的中等長度日期格式
+
+#### Scenario: 換了語言和地區
+
+- **WHEN** 有 USD 的支出時，把手機的語言和地區從英文（美國）改成繁體中文（台灣），再打開 app
+- **THEN** USD 的金額改用台灣的格式，例如「US$8.75」
+
+#### Scenario: UTC 以東的時區
+
+- **WHEN** 手機的時區設成 `Asia/Tokyo`，新增日期是 `2026-10-25` 的支出
+- **THEN** 卡片和明細的日期都是 2026 年 10 月 25 日，不是前一天
+
+### Requirement: LEDGER-42.1 (manual) 最後一張卡片不被 + 按鈕擋住
+
+WHERE iPhone 或 Android 手機，WHEN 支出清單捲到最底，the mobile app SHALL 讓最後一張卡片整張露在 + 按鈕上方。
+
+#### Scenario: 很多支出
+
+- **WHEN** 有 20 筆支出，把支出清單捲到最底
+- **THEN** 最後一張卡片整張在 + 按鈕上方，沒有被擋住
+
+### Requirement: LEDGER-43.1 讀完支出之前不顯示沒有支出的樣子
+
+WHILE 支出清單還沒讀完存著的支出，the mobile app SHALL 不顯示 LEDGER-32.1 的提示和「Your Total Share: —」。
+
+#### Scenario: 開啟 app
+
+- **WHEN** 有 Coffee run 時開啟 app，支出清單還沒讀完存著的支出
+- **THEN** 支出清單沒有「No expenses to display. Add a personal expense or get involved in a group expense.」和「Your Total Share: —」；讀完之後顯示 Coffee run 的卡片
+
+### Requirement: LEDGER-44.1 從明細返回時清單已經是新的
+
+WHEN 從明細打開的 Edit Expense 存好支出，the mobile app SHALL 在從明細返回之前，就讓明細底下的支出清單顯示存著的卡片和 Your Total Share，返回時不先出現修改前的內容。
+
+#### Scenario: 改了金額再返回
+
+- **WHEN** 在 875 USD 的 Coffee run 的明細按「Edit」，把金額改成「9.25」後按 Save，再從明細返回
+- **THEN** 支出清單一出現就是「$9.25」和「Your Total Share: $9.25」，沒有先出現「$8.75」
