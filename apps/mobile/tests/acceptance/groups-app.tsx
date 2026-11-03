@@ -18,15 +18,17 @@ import {
 } from '@testing-library/react-native';
 import { listGroups, type Group } from '../../src/groups';
 import { useLocalIdentity, type LocalIdentity } from '../../src/shell';
+import type { Database, SqlValue } from '../../src/storage';
 import { openNodeDatabase } from '../../src/storage/node';
 import { AddButton } from '../../src/ui/add-button';
-import { settle } from './shell-appearance-app';
+import { settle, testDatabase } from './shell-appearance-app';
 
 // The groups tests start the whole app on a phone database in a file of their own
 // (ADR-0006), so a test can restart the app on the same data, and they read the
 // groups back through listGroups, the groups capability's reader. They find New
 // Group by its title, wherever the app shows it, and press its title bar actions
 // as the native bar reports a press on iOS, or as React Native buttons on Android.
+// A test can hold the app's reads to see a screen before its groups arrive.
 
 type HostView = ReturnType<typeof nativeViews>[number];
 
@@ -298,6 +300,36 @@ export async function pressAlertButton(alert: jest.SpyInstance, text: string) {
   if (button === undefined) throw new Error(`No ${text} in the last alert`);
   await act(() => button.onPress?.());
   await settle();
+}
+
+// The phone database
+
+let beforeRead = () => Promise.resolve();
+
+/** The phone database in `file`, as testDatabase opens it, its reads behind a gate too. */
+export function testDatabaseWithReads(file: string): Database {
+  const database = testDatabase(file);
+  return {
+    ...database,
+    all: async <T,>(sql: string, parameters?: readonly SqlValue[]) => {
+      await beforeRead();
+      return database.all<T>(sql, parameters);
+    },
+  };
+}
+
+export function allowReads() {
+  beforeRead = () => Promise.resolve();
+}
+
+/** Holds every read outside a transaction until the test lets the reads through. */
+export function holdReads() {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  beforeRead = () => held;
+  return { release: () => act(async () => release()) };
 }
 
 // The local data

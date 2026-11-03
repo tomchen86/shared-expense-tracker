@@ -24,3 +24,6 @@ export const groupMigrations: readonly string[] = [
   DROP TABLE group_members;
   ALTER TABLE group_members_next RENAME TO group_members`,
 ];
+
+export const groupArchiveMigration = `ALTER TABLE groups
+  ADD COLUMN archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0, 1))`;

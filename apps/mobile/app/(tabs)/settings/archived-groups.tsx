@@ -1,1 +1,1 @@
-export { HomeScreen as default } from '../../../src/shell/home-screen';
+export { ArchivedGroupsScreen as default } from '../../../src/groups/archived-groups-screen';

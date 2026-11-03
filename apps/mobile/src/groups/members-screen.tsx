@@ -17,12 +17,17 @@ import { useThemeColors } from '../ui/theme';
 import { removeGroupMember, type GroupMember } from './index';
 import { useGroup } from './use-group';
 
-export function MembersScreen() {
+export function MembersScreen({
+  inSettings = false,
+}: {
+  inSettings?: boolean;
+}) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
   const colors = useThemeColors();
   const [group, setGroup] = useGroup(id);
+  const base = inSettings ? '/settings/archived-groups' : '/groups';
   const [removing, setRemoving] = useState(false);
   const removingRef = useRef(false);
   usePreventRemove(removing, () => {});
@@ -67,7 +72,7 @@ export function MembersScreen() {
           onPress: () => {
             if (!removingRef.current)
               router.navigate({
-                pathname: '/groups/rename-member',
+                pathname: `${base}/rename-member`,
                 params: { id, memberId: member.id },
               });
           },
@@ -108,6 +113,14 @@ export function MembersScreen() {
           {group?.members.map((member) => {
             const label =
               member.name + (member.userId === identity.userId ? ' (You)' : '');
+            if (group.archived)
+              return (
+                <View key={member.id} style={styles.row}>
+                  <Text style={[styles.name, { color: colors.text }]}>
+                    {label}
+                  </Text>
+                </View>
+              );
             return (
               <Pressable
                 key={member.id}
@@ -130,27 +143,29 @@ export function MembersScreen() {
               </Pressable>
             );
           })}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Add Member"
-            accessibilityState={{ disabled: removing }}
-            disabled={removing}
-            onPress={() => {
-              if (!removingRef.current)
-                router.navigate({
-                  pathname: '/groups/add-member',
-                  params: { id },
-                });
-            }}
-            style={({ pressed }) => [
-              styles.row,
-              pressed && { backgroundColor: colors.pressedSurface },
-            ]}
-          >
-            <Text style={[styles.name, { color: colors.accent }]}>
-              Add Member
-            </Text>
-          </Pressable>
+          {group && !group.archived && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add Member"
+              accessibilityState={{ disabled: removing }}
+              disabled={removing}
+              onPress={() => {
+                if (!removingRef.current)
+                  router.navigate({
+                    pathname: `${base}/add-member`,
+                    params: { id },
+                  });
+              }}
+              style={({ pressed }) => [
+                styles.row,
+                pressed && { backgroundColor: colors.pressedSurface },
+              ]}
+            >
+              <Text style={[styles.name, { color: colors.accent }]}>
+                Add Member
+              </Text>
+            </Pressable>
+          )}
         </GroupedSection>
       </ScrollView>
     </View>

@@ -25,6 +25,7 @@ import {
   USERNAME_REQUIRED,
   addGroupButton,
   alertsShown,
+  allowReads,
   barButtons,
   cardNames,
   cards,
@@ -32,6 +33,7 @@ import {
   expectNewGroupClosed,
   expectNewGroupOpen,
   groupsRoot,
+  holdReads,
   inTreeOrder,
   lastAlertButtons,
   localData,
@@ -49,6 +51,7 @@ import {
   sharedAddButtons,
   startGroupsApp,
   storedGroups,
+  testDatabaseWithReads,
   titleBarAction,
   typeName,
 } from './groups-app';
@@ -63,7 +66,6 @@ import {
   holdWrites,
   settle,
   switchPhoneTo,
-  testDatabase,
   textsWithoutColor,
   translucentViews,
 } from './shell-appearance-app';
@@ -94,8 +96,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   directory = fs.mkdtempSync(path.join(os.tmpdir(), 'groups-'));
   file = path.join(directory, 'app.db');
-  mockOpen = async () => testDatabase(file);
+  mockOpen = async () => testDatabaseWithReads(file);
   allowWrites();
+  allowReads();
   fakePhoneAppearance('light');
   fakeReduceTransparency(false);
   alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
@@ -135,14 +138,14 @@ async function openCard(name: string) {
   await settle();
 }
 
-test('[GROUPS-1.1] says there are no groups yet on the Groups root of a new app', async () => {
+test('[GROUPS-1.2] says there are no groups yet on the Groups root of a new app', async () => {
   await startGroupsApp();
 
   expect(within(groupsRoot()).getByText(EMPTY_LIST)).toBeOnTheScreen();
   expect(cards()).toEqual([]);
 });
 
-test('[GROUPS-1.1] stops saying there are no groups once one is created', async () => {
+test('[GROUPS-1.2] stops saying there are no groups once one is created', async () => {
   await startWithName();
 
   await createGroup('Brisbane');
@@ -151,7 +154,22 @@ test('[GROUPS-1.1] stops saying there are no groups once one is created', async 
   expect(cardNames()).toEqual(['Open Brisbane']);
 });
 
-test('[GROUPS-2.1] lists the groups in the order they were created, each a button showing its name', async () => {
+test('[GROUPS-1.2] never says there are no groups while the stored groups load', async () => {
+  const first = await startWithName();
+  await createGroup('Brisbane');
+  await first.unmount();
+  await settle();
+  const reads = holdReads();
+
+  await startGroupsApp();
+
+  expect(screen.queryByText(EMPTY_LIST)).toBeNull();
+  await reads.release();
+  await waitFor(() => expect(cardNames()).toEqual(['Open Brisbane']));
+  expect(screen.queryByText(EMPTY_LIST)).toBeNull();
+});
+
+test('[GROUPS-2.2] lists the groups in the order they were created, each a button showing its name', async () => {
   await startWithName();
 
   for (const name of ['Brisbane', 'Tokyo', 'Paris']) await createGroup(name);
@@ -162,7 +180,7 @@ test('[GROUPS-2.1] lists the groups in the order they were created, each a butto
   );
 });
 
-test('[GROUPS-2.1] keeps a group created after the phone clock went back below the earlier one', async () => {
+test('[GROUPS-2.2] keeps a group created after the phone clock went back below the earlier one', async () => {
   const app = await startWithName();
   jest.setSystemTime(new Date('2026-10-30T12:00:00Z'));
   await createGroup('Brisbane');

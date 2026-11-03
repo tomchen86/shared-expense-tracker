@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { formPresentation } from '../../../src/ui/form-presentation';
 
 export default function SettingsLayout() {
   return (
@@ -19,6 +20,26 @@ export default function SettingsLayout() {
       <Stack.Screen
         name="manage-categories"
         options={{ title: 'Manage Categories' }}
+      />
+      <Stack.Screen
+        name="archived-groups/[id]"
+        options={{ title: 'Group Details' }}
+      />
+      <Stack.Screen
+        name="archived-groups/members"
+        options={{ ...formPresentation, title: 'Members' }}
+      />
+      <Stack.Screen
+        name="archived-groups/add-member"
+        options={{ ...formPresentation, title: 'Add Member' }}
+      />
+      <Stack.Screen
+        name="archived-groups/rename-member"
+        options={{ ...formPresentation, title: 'Rename Member' }}
+      />
+      <Stack.Screen
+        name="archived-groups/rename"
+        options={{ ...formPresentation, title: 'Rename Group' }}
       />
     </Stack>
   );
