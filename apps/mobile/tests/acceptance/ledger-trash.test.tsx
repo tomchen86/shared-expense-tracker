@@ -11,6 +11,7 @@ import {
 import {
   addCategory,
   addExpense,
+  archiveCategory,
   nameOf,
   namesWithAction,
   resetPhone,
@@ -756,6 +757,21 @@ test('[LEDGER-77.1] shows the cards on Trash as the expense list does, without D
       includeHiddenElements: true,
     }),
   ).toBeNull();
+});
+
+test('[LEDGER-77.1] [LEDGER-78.1] shows an archived category as (Archived) on Trash and the read-only details', async () => {
+  await startExpenses();
+  await addGymExpense();
+  await deleteByAction('Squat rack');
+
+  await archiveCategory('Gym');
+
+  await openTrash();
+  await expectTrash(['Squat rack']);
+  expect(linesIn(trashCard('Squat rack'))).toContain('Gym (Archived)');
+  expect(readOut(trashCard('Squat rack'))).toContain('Gym (Archived)');
+  await openTrashed('Squat rack');
+  expect(expenseLines('Settings')).toContain('Gym (Archived)');
 });
 
 test('[LEDGER-77.1] lists only the expenses in the trash', async () => {

@@ -1182,7 +1182,7 @@ The mobile app SHALL 在 Settings 根畫面「Trash」那一列的文字右邊�
 
 ### Requirement: LEDGER-77.1 Trash 列出垃圾桶裡的支出
 
-The mobile app SHALL 在 Trash 依移到垃圾桶的先後，最後移入的在最上面，由上而下列出垃圾桶裡每筆個人支出的卡片；卡片顯示的內容和螢幕閱讀器讀出的，都和支出清單上的卡片一樣（LEDGER-33.1、LEDGER-34.1、LEDGER-40.1），但卡片不能左滑，也沒有「Delete expense」動作。垃圾桶裡沒有支出時，SHALL 只顯示「No deleted expenses.」，但讀完存著的支出之前不顯示這句話。
+The mobile app SHALL 在 Trash 依移到垃圾桶的先後，最後移入的在最上面，由上而下列出垃圾桶裡每筆個人支出的卡片；卡片顯示的內容和螢幕閱讀器讀出的，都和支出清單上的卡片一樣（LEDGER-33.2、LEDGER-34.1、LEDGER-40.1），但卡片不能左滑，也沒有「Delete expense」動作。垃圾桶裡沒有支出時，SHALL 只顯示「No deleted expenses.」，但讀完存著的支出之前不顯示這句話。
 
 #### Scenario: 依移入的先後
 
@@ -1204,6 +1204,11 @@ The mobile app SHALL 在 Trash 依移到垃圾桶的先後，最後移入的在�
 - **WHEN** 有 Coffee run 和 Lunch，只把 Lunch 移到垃圾桶
 - **THEN** Trash 只有 Lunch 的卡片
 
+#### Scenario: 分類封存了
+
+- **WHEN** Gym 唯一一筆支出 Squat rack 在垃圾桶裡時，封存 Gym
+- **THEN** Trash 上 Squat rack 的卡片的分類是「Gym (Archived)」，螢幕閱讀器也讀出「Gym (Archived)」
+
 #### Scenario: Trash 開著時
 
 - **WHEN** Trash 開著時，從 Expenses 分頁把 Lunch 移到垃圾桶，再選中 Settings 分頁
@@ -1221,7 +1226,7 @@ The mobile app SHALL 在 Trash 依移到垃圾桶的先後，最後移入的在�
 
 ### Requirement: LEDGER-78.1 點 Trash 的卡片推入唯讀明細
 
-WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推入這筆支出的唯讀明細，網址是 `/settings/trash/<支出的 ID>`，標題是「Expense」，最上面是「This expense is in the Trash.」，下面是名稱為「Restore」的按鈕，再下面依 LEDGER-37.1 顯示支出的內容；標題列沒有「Edit」，只有名稱是「Expense actions」的選單（SHELL-47.1、SHELL-48.1），裡面只有破壞性的「Delete Permanently」（SHELL-53.1）。連點兩次也只推入一個唯讀明細，返回時回到 Trash；從推入到讀完支出，都不顯示「Expense not found.」。唯讀明細跟著存著的支出：網址裡的 ID 不是垃圾桶裡的支出，或打開之後那一筆因為別處的操作（例如 Undo 提示的 Undo）離開了垃圾桶時，SHALL 只顯示「Expense not found.」，標題列沒有選單。
+WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推入這筆支出的唯讀明細，網址是 `/settings/trash/<支出的 ID>`，標題是「Expense」，最上面是「This expense is in the Trash.」，下面是名稱為「Restore」的按鈕，再下面依 LEDGER-37.2 顯示支出的內容；標題列沒有「Edit」，只有名稱是「Expense actions」的選單（SHELL-47.1、SHELL-48.1），裡面只有破壞性的「Delete Permanently」（SHELL-53.1）。連點兩次也只推入一個唯讀明細，返回時回到 Trash；從推入到讀完支出，都不顯示「Expense not found.」。唯讀明細跟著存著的支出：網址裡的 ID 不是垃圾桶裡的支出，或打開之後那一筆因為別處的操作（例如 Undo 提示的 Undo）離開了垃圾桶時，SHALL 只顯示「Expense not found.」，標題列沒有選單。
 
 #### Scenario: 點卡片
 
@@ -1257,6 +1262,11 @@ WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推�
 
 - **WHEN** Lunch 不在垃圾桶裡，以 `/settings/trash/` 加上 Lunch 的 ID 開啟 app
 - **THEN** 標題是「Expense」，只顯示「Expense not found.」，標題列沒有「Expense actions」
+
+#### Scenario: 分類封存了
+
+- **WHEN** Gym 唯一一筆支出 Squat rack 在垃圾桶裡時，封存 Gym，再打開 Squat rack 的唯讀明細
+- **THEN** 「Category」的分類是「Gym (Archived)」
 
 #### Scenario: 打開之後被 Undo 還原
 
