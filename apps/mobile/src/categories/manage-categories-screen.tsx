@@ -253,14 +253,17 @@ export function ManageCategoriesScreen() {
                 pressed && styles.addButtonPressed,
               ]}
             >
-              <Text accessible={false} style={styles.addIcon}>
+              <Text
+                accessible={false}
+                style={[styles.addIcon, { color: colors.accent }]}
+              >
                 +
               </Text>
             </Pressable>
           )
         : undefined,
     }),
-    [openAddForm, groupId, groupExists],
+    [openAddForm, groupId, groupExists, colors.accent],
   );
 
   const activeCategories = categories.filter(
@@ -275,10 +278,7 @@ export function ManageCategoriesScreen() {
       <Fragment key={category.id}>
         {index > 0 && (
           <View
-            style={[
-              styles.separator,
-              category.isArchived && { backgroundColor: colors.separator },
-            ]}
+            style={[styles.separator, { backgroundColor: colors.separator }]}
           />
         )}
         <CategoryRow
@@ -299,7 +299,10 @@ export function ManageCategoriesScreen() {
   }
 
   return (
-    <SafeAreaView edges={['left', 'right']} style={styles.screen}>
+    <SafeAreaView
+      edges={['left', 'right']}
+      style={[styles.screen, { backgroundColor: colors.background }]}
+    >
       <Stack.Screen options={screenOptions} />
 
       {groupExists === false && (
@@ -307,7 +310,7 @@ export function ManageCategoriesScreen() {
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={styles.content}
         >
-          <Text>Group not found.</Text>
+          <Text style={{ color: colors.text }}>Group not found.</Text>
         </ScrollView>
       )}
       {groupExists && (
@@ -316,7 +319,10 @@ export function ManageCategoriesScreen() {
           contentContainerStyle={styles.content}
         >
           <View style={styles.sectionHeader}>
-            <Text accessibilityRole="header" style={styles.sectionLabel}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.sectionLabel, { color: colors.textMuted }]}
+            >
               CATEGORIES
             </Text>
             <Pressable
@@ -334,7 +340,9 @@ export function ManageCategoriesScreen() {
               <Text style={{ color: colors.accent }}>ⓘ</Text>
             </Pressable>
           </View>
-          <View style={styles.section}>{rows(activeCategories)}</View>
+          <View style={[styles.section, { backgroundColor: colors.surface }]}>
+            {rows(activeCategories)}
+          </View>
           {archivedCategories.length > 0 && (
             <View
               style={[styles.archived, { backgroundColor: colors.background }]}
@@ -437,7 +445,7 @@ export function ManageCategoriesScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f2f2f7' },
+  screen: { flex: 1 },
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 },
   addButton: {
     minWidth: 36,
@@ -449,17 +457,15 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   addIcon: {
-    color: '#007aff',
     fontSize: 28,
     lineHeight: 30,
   },
   sectionLabel: {
-    color: '#636366',
     fontSize: 13,
     marginLeft: 16,
     marginBottom: 8,
   },
-  section: { backgroundColor: '#fff', borderRadius: 12, overflow: 'hidden' },
+  section: { borderRadius: 12, overflow: 'hidden' },
   row: {
     minHeight: 52,
     paddingHorizontal: 16,
@@ -473,7 +479,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginRight: 14,
   },
-  rowLabel: { color: '#1c1c1e', fontSize: 17, flex: 1 },
+  rowLabel: { fontSize: 17, flex: 1 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -498,7 +504,6 @@ const styles = StyleSheet.create({
   cancel: { minHeight: 48, minWidth: 64, justifyContent: 'center' },
   separator: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: '#c6c6c8',
     marginLeft: 50,
   },
 });
