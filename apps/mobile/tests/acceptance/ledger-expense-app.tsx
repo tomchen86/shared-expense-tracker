@@ -747,3 +747,13 @@ export async function archiveCategory(name: string) {
   await settle();
   await backToExpenses();
 }
+
+/** Restores an archived category: presses its Restore row in Manage Categories. */
+export async function restoreCategory(name: string) {
+  await openManageCategories();
+  await fireEvent.press(
+    within(tab('Settings')).getByRole('button', { name: `Restore ${name}` }),
+  );
+  await settle();
+  await backToExpenses();
+}
