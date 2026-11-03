@@ -1641,6 +1641,22 @@ test("[CATEGORIES-9.2] keeps an archived category's color in use", async () => {
   );
 });
 
+test("[CATEGORIES-9.2] keeps an archived category's color in use when editing", async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await archive('Gym');
+
+  await openCategory('Shopping');
+
+  expect(colorButtons()).toEqual(
+    expectedColors(
+      [...DEFAULT_COLORS.filter((color) => color !== '#FBC02D'), '#43A047'],
+      '#FBC02D',
+    ),
+  );
+});
+
 test("[CATEGORIES-12.2] says the name exists when it is an archived category's", async () => {
   running = await openManageCategories();
   await addCategory('Gym');
@@ -1652,6 +1668,23 @@ test("[CATEGORIES-12.2] says the name exists when it is an archived category's",
   await press('Add');
 
   expect(showsTitle('New Category')).toBe(true);
+  expect(screen.getByText(ALREADY_EXISTS)).toBeOnTheScreen();
+  await press('Cancel');
+  await expectFormClosed();
+  expect(sections()).toEqual({ active: DEFAULTS, archived: [GYM] });
+});
+
+test("[CATEGORIES-12.2] keeps Edit Category open when the name is an archived category's", async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await archive('Gym');
+  await openCategory('Shopping');
+  await fireEvent.changeText(nameField(), 'gym');
+
+  await press('Save');
+
+  expect(showsTitle('Edit Category')).toBe(true);
   expect(screen.getByText(ALREADY_EXISTS)).toBeOnTheScreen();
   await press('Cancel');
   await expectFormClosed();
@@ -1853,6 +1886,17 @@ test('[CATEGORIES-35.1] counts an expense added while Manage Categories was open
   expect(alerts()).toEqual([archiveAlert('Gym', '1 expense')]);
 });
 
+test('[CATEGORIES-35.1] counts the expenses of a renamed category, which keep its old name', async () => {
+  running = await openManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+  await editCategory('Gym', 'Fitness');
+
+  await doAction('Fitness', 'Remove');
+
+  expect(alerts()).toEqual([archiveAlert('Fitness', '1 expense')]);
+});
+
 test('[CATEGORIES-35.1] changes nothing when archiving is cancelled', async () => {
   running = await openManageCategories();
   await addCategory('Gym');
@@ -1959,6 +2003,19 @@ test('[CATEGORIES-39.1] lists the other categories to move the expenses to, none
   expect(moveOptions('Gym', [...DEFAULT_NAMES, 'Gym'])).toEqual(
     DEFAULT_NAMES.map((name) => [name, false]),
   );
+});
+
+test("[CATEGORIES-39.1] leaves another scope's categories out of the Move list", async () => {
+  await createGroups('Brisbane');
+  await reopenManageCategories();
+  await addCategory('Gym');
+  await spendOn('Gym');
+
+  await openMoveList('Gym');
+
+  expect(
+    moveOptions('Gym', [...DEFAULT_NAMES, 'Gym']).map(([name]) => name),
+  ).toEqual(DEFAULT_NAMES);
 });
 
 test('[CATEGORIES-39.1] leaves archived categories out of the Move list', async () => {

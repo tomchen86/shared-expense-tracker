@@ -34,6 +34,8 @@ name: '[CATEGORIES-32.1] Swipes a category left to remove it, finds nothing to s
 - waitForAnimationToEnd
 - tapOn: Remove
 - assertVisible: Delete Category\?
+# Pressing the revealed button closes the row.
+- assertNotVisible: Remove
 - tapOn: Delete
 - waitForAnimationToEnd
 - assertNotVisible: Other
@@ -58,7 +60,7 @@ name: '[CATEGORIES-32.1] Swipes a category left to remove it, finds nothing to s
 # Travel is archived and no expense uses it any more, so it can be deleted.
 - swipe:
     from:
-      text: Travel
+      text: Restore Travel
     direction: LEFT
 - waitForAnimationToEnd
 - tapOn: Delete
@@ -66,4 +68,4 @@ name: '[CATEGORIES-32.1] Swipes a category left to remove it, finds nothing to s
 - tapOn: Delete
 - waitForAnimationToEnd
 - assertNotVisible: ARCHIVED
-- assertNotVisible: Travel
+- assertNotVisible: Restore Travel

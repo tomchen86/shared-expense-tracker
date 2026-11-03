@@ -207,6 +207,11 @@ The mobile app SHALL 讓分類表單有「Cancel」按鈕、新增時是「Add�
 - **WHEN** 用 `#43A047` 的「Gym」封存之後，開啟「New Category」
 - **THEN** 前九色和「Color #43A047 already in use」停用，選取 `#00ACC1`
 
+#### Scenario: 編輯時封存的分類用的顏色停用
+
+- **WHEN** 用 `#43A047` 的「Gym」封存之後，開啟 Shopping 的「Edit Category」
+- **THEN** `#FBC02D` 沒有停用而且已選取；其他八個預設分類的顏色和「Color #43A047 already in use」停用
+
 ### Requirement: CATEGORIES-10.1 名稱欄位最多 50 個字元，空白時不能存
 
 The mobile app SHALL 讓名稱欄位最多接受 50 個字元，並在名稱去掉頭尾空白後是空的時停用 Add 或 Save。
@@ -283,6 +288,11 @@ IF 按 Add 或 Save 時名稱和這個範圍的其他分類重複（CATEGORIES-4
 
 - **WHEN** 「Gym」封存之後，在「New Category」輸入「gym」，按 Add
 - **THEN** 表單仍開著，顯示這句話；按 Cancel 後「CATEGORIES」下沒有 gym，「ARCHIVED」下仍是 Gym
+
+#### Scenario: 改成封存的分類的名稱
+
+- **WHEN** 「Gym」封存之後，把 Shopping 改名為「gym」，按 Save
+- **THEN** 表單仍開著，顯示這句話；按 Cancel 後 Shopping 沒有改變，「ARCHIVED」下仍是 Gym
 
 ### Requirement: CATEGORIES-13.2 13 色都被用了就不能新增
 
@@ -549,12 +559,12 @@ WHEN 使用者在 Manage Categories 或 Group Categories 改分類的名稱或�
 
 ### Requirement: CATEGORIES-32.1 (e2e) 往左滑露出 Remove 或 Delete
 
-WHEN 使用者在 Manage Categories 或 Group Categories 把「CATEGORIES」下 Uncategorized 以外的分類那一列往左滑，the mobile app SHALL 在那一列露出「Remove」按鈕，按了就移除這個分類（CATEGORIES-34.1、35.1）；把「ARCHIVED」下沒有支出使用的分類那一列往左滑時露出的是「Delete」，按了就刪除它（CATEGORIES-34.1）。Uncategorized 和有支出使用的已封存分類往左滑時不露出按鈕。
+WHEN 使用者在 Manage Categories 或 Group Categories 把「CATEGORIES」下 Uncategorized 以外的分類那一列往左滑，the mobile app SHALL 在那一列露出「Remove」按鈕，按了就移除這個分類（CATEGORIES-34.1、35.1）；把「ARCHIVED」下沒有支出使用的分類那一列往左滑時露出的是「Delete」，按了就刪除它（CATEGORIES-34.1）。按下露出的按鈕時，那一列就收回。Uncategorized 和有支出使用的已封存分類往左滑時不露出按鈕。
 
 #### Scenario: 往左滑移除
 
-- **WHEN** 在 Manage Categories 把 Other 往左滑，按「Remove」，再按 Delete
-- **THEN** 沒有 Other
+- **WHEN** 在 Manage Categories 把 Other 往左滑，按「Remove」
+- **THEN** Other 那一列收回，跳出「Delete Category?」；按 Delete 之後沒有 Other
 
 #### Scenario: Uncategorized
 
@@ -621,12 +631,12 @@ WHEN 使用者移除沒有支出使用的分類，或刪除「ARCHIVED」下沒�
 
 ### Requirement: CATEGORIES-35.1 移除有支出使用的分類時詢問封存
 
-WHEN 使用者移除有支出使用的分類，the mobile app SHALL 跳出標題「Archive “<名稱>”?」、內容「This category is used by <筆數> expenses. Existing expenses will keep their category, but it will no longer appear for new expenses.」的提示框，筆數是 1 時是「1 expense」，選項依序是「Cancel」、「Move Expenses…」和「Archive」；筆數是按下 Remove 那一刻本機資料裡使用這個分類的支出的筆數。按 Cancel 什麼都不變。
+WHEN 使用者移除有支出使用的分類，the mobile app SHALL 跳出標題「Archive “<名稱>”?」、內容「This category is used by <筆數> expenses. Existing expenses will keep their category, but it will no longer appear for new expenses.」的提示框，筆數是 1 時是「1 expense」，選項是「Cancel」、「Move Expenses…」和「Archive」；筆數是按下 Remove 那一刻本機資料裡使用這個分類的支出的筆數。按 Cancel 什麼都不變。
 
 #### Scenario: 一筆支出
 
 - **WHEN** 有一筆 Gym 的支出時移除 Gym
-- **THEN** 跳出「Archive “Gym”?」，內容是「This category is used by 1 expense. Existing expenses will keep their category, but it will no longer appear for new expenses.」，選項依序是 Cancel、Move Expenses…、Archive
+- **THEN** 跳出「Archive “Gym”?」，內容是「This category is used by 1 expense. Existing expenses will keep their category, but it will no longer appear for new expenses.」，選項是 Cancel、Move Expenses… 和 Archive
 
 #### Scenario: 兩筆支出
 
@@ -637,6 +647,11 @@ WHEN 使用者移除有支出使用的分類，the mobile app SHALL 跳出標題
 
 - **WHEN** Manage Categories 開著時，從 Expenses 分頁新增一筆 Gym 的支出，再移除 Gym
 - **THEN** 跳出「Archive “Gym”?」，內容是「This category is used by 1 expense. Existing expenses will keep their category, but it will no longer appear for new expenses.」
+
+#### Scenario: 分類改了名
+
+- **WHEN** 有一筆 Gym 的支出時把 Gym 改名為「Fitness」，再移除 Fitness
+- **THEN** 跳出「Archive “Fitness”?」，內容是「This category is used by 1 expense. Existing expenses will keep their category, but it will no longer appear for new expenses.」
 
 #### Scenario: 取消
 
@@ -688,6 +703,11 @@ WHEN 使用者在「Archive “<名稱>”?」選 Move Expenses…，the mobile 
 
 - **WHEN** 有 Gym 的支出時移除 Gym，選 Move Expenses…
 - **THEN** 打開「Move Gym Expenses」，依序是九個預設分類，沒有 Gym，沒有標示為已選取的
+
+#### Scenario: 其他範圍的分類
+
+- **WHEN** 建立「Brisbane」之後，有 Gym 的支出時移除 Gym，選 Move Expenses…
+- **THEN** 清單依序只有個人範圍的九個預設分類，沒有 Brisbane 的分類
 
 #### Scenario: 不列封存的分類
 
