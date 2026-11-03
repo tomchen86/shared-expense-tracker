@@ -345,7 +345,7 @@ test('[LEDGER-33.2] shows an archived category as <name> (Archived) on the card 
   );
   expect(dotColors(card('Coffee run'))).toEqual(['#FBC02D']);
   const [dot] = colorDots(card('Coffee run'));
-  expect(opacityIn(card('Coffee run'), dot)).toBe(1);
+  expect(opacityIn(expensesRoot(), dot)).toBe(1);
   expect(linesIn(card('Lunch'))).toContain('Food & Dining');
   expect(readOut(card('Lunch'))).not.toContain('(Archived)');
 });
