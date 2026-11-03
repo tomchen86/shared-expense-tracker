@@ -564,7 +564,7 @@ WHEN 使用者在 Manage Categories 或 Group Categories 改分類的名稱或�
 
 ### Requirement: CATEGORIES-32.3 (e2e) 往左滑露出 Remove 或 Delete
 
-WHEN 使用者在 Manage Categories 或 Group Categories 把「CATEGORIES」下 Uncategorized 以外的分類那一列往左滑，the mobile app SHALL 在那一列露出「Remove」按鈕，按了就移除這個分類（CATEGORIES-34.1、35.1）；把「ARCHIVED」下沒有支出使用的分類那一列往左滑時露出的是「Delete」，按了就刪除它（CATEGORIES-34.1）。按下露出的按鈕時，那一列就收回。Uncategorized、有支出使用的已封存分類，以及封存群組的 Group Categories 裡「ARCHIVED」下的分類，往左滑時都不露出按鈕。
+WHEN 使用者在 Manage Categories 或 Group Categories 把「CATEGORIES」下 Uncategorized 以外的分類那一列往左滑，the mobile app SHALL 在那一列露出「Remove」按鈕，按了就移除這個分類（CATEGORIES-34.1、35.1）；把「ARCHIVED」下沒有支出使用的分類那一列往左滑時露出的是「Delete」，按了就刪除它（CATEGORIES-34.1）。按下露出的按鈕時，那一列就收回。Uncategorized、有支出使用的已封存分類，以及封存群組的 Group Categories 裡「ARCHIVED」下的分類（CATEGORIES-45.1），往左滑時都不露出按鈕。
 
 #### Scenario: 往左滑移除
 
@@ -580,11 +580,6 @@ WHEN 使用者在 Manage Categories 或 Group Categories 把「CATEGORIES」下 
 
 - **WHEN** 把 Travel 唯一一筆支出搬到 Health 之後（CATEGORIES-40.1），把「ARCHIVED」下的 Travel 往左滑，按「Delete」，再按 Delete
 - **THEN** 沒有 Travel，也沒有「ARCHIVED」
-
-#### Scenario: 封存的群組
-
-- **WHEN** Brisbane 的 Gym 封存、也不再有支出使用之後封存 Brisbane，在它的 Group Categories 把「ARCHIVED」下的 Gym 往左滑
-- **THEN** 沒有露出「Delete」
 
 ### Requirement: CATEGORIES-33.3 螢幕閱讀器的 Remove 和 Delete 動作
 
@@ -810,3 +805,22 @@ The mobile app SHALL 在 Manage Categories 和 Group Categories 的「CATEGORIES
 
 - **WHEN** 以不是任何群組 ID 的 UUID 開啟 Group Categories
 - **THEN** 沒有「About categories」
+
+### Requirement: CATEGORIES-45.1 (manual) 封存群組「ARCHIVED」下的分類往左滑不露出按鈕
+
+WHILE 群組已封存，the mobile app SHALL 讓它的 Group Categories 裡「ARCHIVED」下的分類那一列往左滑時不露出任何按鈕，沒有支出使用的分類也一樣；群組封存之前已經往左滑開的那一列，回到這個畫面時也收回，不再露出「Delete」。群組還原之後，照 CATEGORIES-32.3 露出按鈕。
+
+#### Scenario: 往左滑
+
+- **WHEN** Brisbane 的 Gym 封存、也不再有支出使用之後封存 Brisbane，以網址開啟它的 Group Categories，把「ARCHIVED」下的 Gym 往左滑
+- **THEN** 沒有露出「Delete」或其他按鈕
+
+#### Scenario: 封存前已經滑開
+
+- **WHEN** Brisbane 的 Gym 封存、也不再有支出使用之後，Brisbane 的 Group Categories 開在 Settings 分頁時，把「ARCHIVED」下的 Gym 往左滑露出「Delete」，再到 Groups 分頁封存 Brisbane，然後切回 Settings 分頁
+- **THEN** Gym 那一列已經收回，沒有「Delete」
+
+#### Scenario: 還原之後
+
+- **WHEN** 還原 Brisbane 之後，在它的 Group Categories 把 Gym 往左滑
+- **THEN** 露出「Delete」
