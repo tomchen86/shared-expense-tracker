@@ -26,7 +26,7 @@ import {
   totalShareLines,
 } from './ledger-expense-list-app';
 import { allowWrites, settle } from './shell-appearance-app';
-import { push, tapTab } from './shell-tabs-app';
+import { tapTab } from './shell-tabs-app';
 import {
   expectClosed,
   groupNameField,
@@ -43,6 +43,8 @@ import {
   detailLinesOn,
   editOn,
   expectDetailsOn,
+  groupCard,
+  groupCardTitles,
   removeFromGroup,
   renameInGroup,
   restoreGroup,
@@ -421,17 +423,19 @@ test('[LEDGER-66.1] says Settled up when what you paid is your share', async () 
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
 });
 
-test('[LEDGER-66.1] shows $0.00 and Settled up on the details of a group expense you have no part in', async () => {
+test("[LEDGER-66.1] shows $0.00 and Settled up on the details of a group expense you have no part in, opened from the group's screen", async () => {
   await startWithGroups(BRISBANE);
   await addGroupExpense({
     group: 'Brisbane',
     payer: 'Casey',
     sharers: ['Blake'],
   });
-  const [dinner] = await storedExpenses();
+  await tapTab('Groups');
+  await openGroup('Brisbane');
+  await waitFor(() => expect(groupCardTitles('Brisbane')).toEqual(['Dinner']));
 
-  await push(`/expenses/${dinner.id}`);
-  await expectDetailsOn('Expenses', 'Dinner');
+  await fireEvent.press(groupCard('Brisbane', 'Dinner'));
+  await expectDetailsOn('Groups', 'Dinner');
 
   const expected = [
     'You paid',
@@ -441,7 +445,7 @@ test('[LEDGER-66.1] shows $0.00 and Settled up on the details of a group expense
     'Settled up',
     '$0.00',
   ];
-  expect(shownInOrder(detailLinesOn('Expenses'), expected)).toEqual(expected);
+  expect(shownInOrder(detailLinesOn('Groups'), expected)).toEqual(expected);
 });
 
 test('[LEDGER-66.1] lists the split in its stored order by current names, a former member by their name', async () => {

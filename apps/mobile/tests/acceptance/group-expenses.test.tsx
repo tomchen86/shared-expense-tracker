@@ -43,12 +43,14 @@ import {
 } from './group-archive-app';
 import {
   NO_GROUP_ID,
+  SHARED_HISTORY,
   addGroupExpense,
   addToGroup,
   archiveGroup,
   choosePayer,
   chooseSharers,
   detailBarsOn,
+  detailLinesOn,
   editOn,
   expectDetailsOn,
   groupAddButton,
@@ -328,6 +330,8 @@ test('[GROUPS-63.1] pushes the details on the Settings tab for an archived group
   expect(app.getPathname()).toBe(
     `/settings/archived-groups/expenses/${dinner.id}`,
   );
+  expect(detailLinesOn('Settings')).toContain(SHARED_HISTORY);
+  expect(editOn('Settings')?.disabled).toBe(true);
 });
 
 test("[GROUPS-63.1] goes back to the group's screen from the details", async () => {

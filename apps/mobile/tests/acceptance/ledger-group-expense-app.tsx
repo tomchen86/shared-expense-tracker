@@ -332,14 +332,30 @@ function openList(title: ListTitle) {
   return view;
 }
 
-/** The buttons of the open list, top to bottom, by name: its rows, then or before its Cancel or Done. */
-export const listButtons = (title: ListTitle) =>
-  within(openList(title)).getAllByRole('button').map(nameOf);
+/** The names of the buttons that the list's navigation bar holds as iOS bar items. */
+function barItemNames(title: ListTitle): string[] {
+  const bar = barTitled(title);
+  if (bar === undefined) return [];
+  return (['Left', 'Right'] as const).flatMap((side) =>
+    ((bar.props[`header${side}BarButtonItems`] as BarItem[] | undefined) ?? [])
+      .filter((item) => item.type === 'button')
+      .map((item) => item.accessibilityLabel || item.title || ''),
+  );
+}
+
+/**
+ * The buttons of the open list by name: those its navigation bar holds as iOS bar
+ * items, then its views top to bottom, so its rows and, as a view, its Cancel or Done.
+ */
+export const listButtons = (title: ListTitle) => [
+  ...barItemNames(title),
+  ...within(openList(title)).queryAllByRole('button').map(nameOf),
+];
 
 /** The rows of the open list, top to bottom, as [name, selected]. */
 export const listOptions = (title: ListTitle) =>
   within(openList(title))
-    .getAllByRole('button')
+    .queryAllByRole('button')
     .filter((button) => nameOf(button) !== CLOSERS[title])
     .map((button) => [nameOf(button), isSelected(button)] as const);
 

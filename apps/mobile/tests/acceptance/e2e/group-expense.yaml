@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-48.1] [LEDGER-49.1] [LEDGER-62.1] [LEDGER-54.1] [GROUPS-61.1] [LEDGER-65.1] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share"
+name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LEDGER-62.1] [LEDGER-54.1] [GROUPS-61.1] [LEDGER-65.1] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share"
 ---
 - launchApp:
     clearState: true
@@ -69,6 +69,19 @@ name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-48.1] [LEDGER-49.1] [LEDGER-62.1] [LE
 - waitForAnimationToEnd
 - tapOn: Flights
 - waitForAnimationToEnd
+- assertVisible: Category, Flights
+# The keyboard is down now, so the rows under the switch are in reach. Choosing the
+# group the form already has closes Select Group and keeps the inputs.
+- tapOn: Group, Brisbane
+- waitForAnimationToEnd
+- assertVisible: Select Group
+- tapOn:
+    text: Brisbane
+    selected: true
+- waitForAnimationToEnd
+- assertNotVisible: Select Group
+- assertVisible: Group, Brisbane
+- assertVisible: Dinner
 - assertVisible: Category, Flights
 - tapOn: Paid by, not selected
 - waitForAnimationToEnd

@@ -985,6 +985,11 @@ WHEN 使用者打開「Split with others」，或按「Group」，the mobile app
 - **WHEN** 打開開關後按「Cancel」
 - **THEN** 回到表單，開關仍開著，有「Group, not selected」
 
+#### Scenario: 選了群組之後取消
+
+- **WHEN** 選了 Brisbane 和付款人 Taylor 之後，按「Group, Brisbane」，再按「Cancel」
+- **THEN** 仍是「Group, Brisbane」和「Paid by, Taylor (You)」
+
 #### Scenario: 還沒有群組
 
 - **WHEN** 還沒有任何群組時打開開關
@@ -992,7 +997,7 @@ WHEN 使用者打開「Split with others」，或按「Group」，the mobile app
 
 ### Requirement: LEDGER-47.1 開關下面的 Group、Paid by 和 Split between
 
-WHILE「Split with others」開著，the mobile app SHALL 在開關下面放名稱是「Group, <群組名稱>」的按鈕，還沒選群組時是「Group, not selected」；選了群組之後，再依序放名稱是「Paid by, <付款人>」的按鈕，還沒選付款人時是「Paid by, not selected」，以及依分攤的人數名稱是「Split between, Choose people」、「Split between, 1 person」或「Split between, <人數> people」的按鈕。付款人是成員現在的名稱，你的成員後面加上「 (You)」；開關關著時，這三個按鈕都不顯示。
+WHILE「Split with others」開著，the mobile app SHALL 在開關下面放名稱是「Group, <群組名稱>」的按鈕，還沒選群組時是「Group, not selected」；選了群組之後，再依序放名稱是「Paid by, <付款人>」的按鈕，還沒選付款人時是「Paid by, not selected」，以及依分攤的人數名稱是「Split between, Choose people」、「Split between, 1 person」或「Split between, <人數> people」的按鈕。付款人是成員現在的名稱，你的成員後面加上「 (You)」，前成員是他存著的名稱；分攤的人數也算前成員。開關關著時，這三個按鈕都不顯示。
 
 #### Scenario: 還沒選群組
 
@@ -1008,6 +1013,11 @@ WHILE「Split with others」開著，the mobile app SHALL 在開關下面放名�
 
 - **WHEN** 選 Taylor 為付款人，再依序選 Casey 和 Taylor 分攤
 - **THEN** 是「Paid by, Taylor (You)」和「Split between, 2 people」；只選 Casey 時是「Split between, 1 person」
+
+#### Scenario: 有前成員
+
+- **WHEN** Casey 付款、依序分給 Blake、Taylor 和 Casey 的 Dinner，把 Casey 和 Blake 移出 Brisbane 之後，打開它的 Edit Expense
+- **THEN** 是「Paid by, Casey」和「Split between, 3 people」
 
 #### Scenario: 關掉開關
 
@@ -1303,8 +1313,8 @@ WHILE 修改的群組支出的付款人或分攤的人裡有前成員，the mobi
 
 #### Scenario: 付款人被移出
 
-- **WHEN** 把付款人 Casey 移出 Brisbane 之後，打開 Dinner 的 Edit Expense
-- **THEN** 金額欄位、「Paid by」和「Split between」都停用，有這句話
+- **WHEN** 把付款人 Casey 移出 Brisbane 之後，打開 Dinner 的 Edit Expense，把標題改成「Supper」後按 Save
+- **THEN** 打開時金額欄位、「Paid by」和「Split between」都停用，有這句話；存好之後標題是「Supper」，付款和分攤都和之前一樣
 
 #### Scenario: 加回來
 
@@ -1490,5 +1500,5 @@ WHERE iOS，WHEN 從支出表單打開 Select Group、Who Paid?、Split Between�
 
 #### Scenario: 從群組新增
 
-- **WHEN** iOS 上在 Brisbane 的畫面按「Add expense」，輸入金額和標題，從 Who Paid? 選付款人、從 Split Between 選分攤的人，從「+ Add New Category」新增「Flights」並選它，再按 Add
+- **WHEN** iOS 上在 Brisbane 的畫面按「Add expense」，輸入金額和標題，從「+ Add New Category」新增「Flights」並選它，按「Group, Brisbane」後在 Select Group 再按 Brisbane，從 Who Paid? 選付款人、從 Split Between 選分攤的人，再按 Add
 - **THEN** 每個清單和 Group Categories 都蓋在表單上，關閉後表單上的輸入都在；表單關閉後回到 Brisbane 的畫面，有這筆支出的卡片

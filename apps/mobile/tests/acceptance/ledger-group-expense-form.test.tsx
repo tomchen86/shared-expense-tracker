@@ -265,6 +265,20 @@ test('[LEDGER-46.1] keeps the switch on with no group when Select Group is cance
   expect(rowValue('Group')).toBe('not selected');
 });
 
+test('[LEDGER-46.1] keeps the group and the payer when Select Group is cancelled after a group is chosen', async () => {
+  await startWithGroups(BRISBANE);
+  await openNewExpense();
+  await chooseGroup('Brisbane');
+  await choosePayer('Taylor (You)');
+
+  await openRow('Group');
+  await closeList('Select Group');
+
+  expect(isSplitOn()).toBe(true);
+  expect(rowValue('Group')).toBe('Brisbane');
+  expect(rowValue('Paid by')).toBe('Taylor (You)');
+});
+
 test('[LEDGER-46.1] lists no groups when there are none yet', async () => {
   await startWithGroups();
   await openNewExpense();
@@ -318,6 +332,18 @@ test('[LEDGER-47.1] names the payer, with (You) for your member, and counts the 
   await toggleSharers('Taylor (You)');
   await closeList('Split Between');
   expect(rowValue('Split between')).toBe('1 person');
+});
+
+test('[LEDGER-47.1] names a payer removed from the group by their stored name, and still counts removed people in the split', async () => {
+  await startWithGroups(BRISBANE);
+  const dinner = await addDinner();
+  await removeFromGroup('Brisbane', 'Casey');
+  await removeFromGroup('Brisbane', 'Blake');
+
+  await openEditExpense(dinner.id);
+
+  expect(rowValue('Paid by')).toBe('Casey');
+  expect(rowValue('Split between')).toBe('3 people');
 });
 
 test('[LEDGER-47.1] hides Group, Paid by and Split between when the switch is turned off', async () => {
@@ -1151,7 +1177,7 @@ test('[LEDGER-60.1] saves the other changes and keeps the payments and shares as
   expect(saved.shares).toEqual(dinner.shares);
 });
 
-test('[LEDGER-60.1] locks the amount, the payer and the split when the payer was removed', async () => {
+test('[LEDGER-60.1] locks the amount, the payer and the split when the payer was removed, and still saves the other changes', async () => {
   await startWithGroups(BRISBANE);
   const dinner = await addDinner();
   await removeFromGroup('Brisbane', 'Casey');
@@ -1162,6 +1188,15 @@ test('[LEDGER-60.1] locks the amount, the payer and the split when the payer was
   expect(isDisabled(splitRow('Paid by'))).toBe(true);
   expect(isDisabled(splitRow('Split between'))).toBe(true);
   expect(within(formScreen()).getByText(FORMER_MEMBER_LOCK)).toBeOnTheScreen();
+
+  await fillForm({ title: 'Supper' });
+  await press('Save');
+
+  await expectFormClosed();
+  const saved = await onlyExpense();
+  expect(saved.title).toBe('Supper');
+  expect(saved.payments).toEqual(dinner.payments);
+  expect(saved.shares).toEqual(dinner.shares);
 });
 
 test('[LEDGER-60.1] unlocks them once the former member is added back', async () => {
