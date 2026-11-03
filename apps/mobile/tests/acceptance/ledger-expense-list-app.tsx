@@ -167,6 +167,20 @@ export const colorDots = (root: HostView) =>
 /** The colors of the color dots inside `root`, top to bottom. */
 export const dotColors = (root: HostView) => colorDots(root).map(backgroundOf);
 
+/** Whether a screen reader skips `view`: it has no name and is no accessibility element. */
+export const isUnread = (view: HostView) =>
+  nameOf(view) === '' && view.props.accessible !== true;
+
+/** The opacity `view` is drawn with inside `root`: its own and that of every view around it up to `root`. */
+export function opacityIn(root: HostView, view: HostView) {
+  let opacity = 1;
+  for (let at: HostView | null = view; at; at = at.parent) {
+    opacity *= StyleSheet.flatten(at.props.style)?.opacity ?? 1;
+    if (at === root) break;
+  }
+  return opacity;
+}
+
 /** The first native subview of `view`; components that render nothing add none. */
 function firstSubview(view: HostView): HostView | undefined {
   for (const child of view.children) {

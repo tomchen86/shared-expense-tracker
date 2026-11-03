@@ -49,7 +49,9 @@ import {
   goBackFromDetails,
   hasEdit,
   holdReads,
+  isUnread,
   linesIn,
+  opacityIn,
   openDetails,
   phoneDatabaseWithReads,
   pressEdit,
@@ -283,7 +285,7 @@ test('[LEDGER-33.2] shows the current name of a renamed category on the card', a
   expect(linesIn(card('Coffee run'))).not.toContain('Shopping');
 });
 
-test("[LEDGER-33.2] shows the category's color dot before its name on the card, without reading it out", async () => {
+test("[LEDGER-33.2] shows the category's color dot between the amount and the category's name on the card, without reading it out", async () => {
   await startExpenses();
 
   await addExpense();
@@ -291,7 +293,14 @@ test("[LEDGER-33.2] shows the category's color dot before its name on the card, 
   const shown = card('Coffee run');
   expect(dotColors(shown)).toEqual(['#D81B60']);
   const [dot] = colorDots(shown);
-  expect(inTreeOrder(dot, within(shown).getByText('Food & Dining'))).toBe(true);
+  expect(
+    inTreeOrder(
+      within(shown).getByText('$8.75'),
+      dot,
+      within(shown).getByText('Food & Dining'),
+    ),
+  ).toBe(true);
+  expect(isUnread(dot)).toBe(true);
   const unread = [
     'Coffee run',
     '$8.75',
@@ -335,21 +344,24 @@ test('[LEDGER-33.2] shows an archived category as <name> (Archived) on the card 
     expected,
   );
   expect(dotColors(card('Coffee run'))).toEqual(['#FBC02D']);
+  const [dot] = colorDots(card('Coffee run'));
+  expect(opacityIn(card('Coffee run'), dot)).toBe(1);
   expect(linesIn(card('Lunch'))).toContain('Food & Dining');
   expect(readOut(card('Lunch'))).not.toContain('(Archived)');
 });
 
-test('[LEDGER-33.2] adds (Archived) to the current name of a renamed category', async () => {
+test('[LEDGER-33.2] shows the current name and color of a renamed and recolored category once it is archived', async () => {
   watchAlerts();
   await startExpenses();
   await addExpense({ category: 'Shopping' });
-  await editCategory('Shopping', 'Groceries');
+  await editCategory('Shopping', 'Groceries', '#43A047');
 
   await archiveCategory('Groceries');
 
   await waitFor(() =>
     expect(linesIn(card('Coffee run'))).toContain('Groceries (Archived)'),
   );
+  expect(dotColors(card('Coffee run'))).toEqual(['#43A047']);
 });
 
 test('[LEDGER-33.2] drops (Archived) from the card once the category is restored', async () => {
@@ -562,7 +574,7 @@ test('[LEDGER-37.2] shows the current name of a renamed category on the details'
   expect(detailLines()).not.toContain('Shopping');
 });
 
-test("[LEDGER-37.2] shows the category's color dot between Category and its name on the details", async () => {
+test("[LEDGER-37.2] shows the category's color dot between Category and its name on the details, without reading it out", async () => {
   await startExpenses();
   await addExpense({ category: 'Shopping' });
 
@@ -578,6 +590,7 @@ test("[LEDGER-37.2] shows the category's color dot between Category and its name
       details.getByText('Shopping'),
     ),
   ).toBe(true);
+  expect(isUnread(dot)).toBe(true);
 });
 
 test('[LEDGER-37.2] shows the current color of a recolored category on the details', async () => {
@@ -601,6 +614,21 @@ test('[LEDGER-37.2] shows an archived category as <name> (Archived) on the detai
   const expected = ['DETAILS', 'Category', 'Shopping (Archived)', 'Date'];
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
   expect(dotColors(detailScreen())).toEqual(['#FBC02D']);
+  const [dot] = colorDots(detailScreen());
+  expect(opacityIn(detailScreen(), dot)).toBe(1);
+});
+
+test('[LEDGER-37.2] shows the current name and color of a renamed and recolored category once it is archived', async () => {
+  watchAlerts();
+  await startExpenses();
+  await addExpense({ category: 'Shopping' });
+  await editCategory('Shopping', 'Groceries', '#43A047');
+  await archiveCategory('Groceries');
+
+  await openDetails('Coffee run');
+
+  expect(detailLines()).toContain('Groceries (Archived)');
+  expect(dotColors(detailScreen())).toEqual(['#43A047']);
 });
 
 test('[LEDGER-37.2] follows the category being archived and restored while the details stay open', async () => {
