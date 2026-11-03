@@ -963,7 +963,7 @@ IF 封存存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable
 
 ### Requirement: GROUPS-51.1 Settings 的 Archived Groups 列顯示封存群組的數量
 
-The mobile app SHALL 在 Settings 根畫面「Archived Groups」那一列的文字右邊顯示封存群組的數量，沒有封存群組時是「0」；這一列的無障礙名稱是「Archived groups, <數量>」。
+The mobile app SHALL 在 Settings 根畫面「Archived Groups」那一列的文字右邊顯示封存群組的數量，沒有封存群組時是「0」，這一列的無障礙名稱是「Archived groups, <數量>」；Settings 根畫面讀完存著的群組之前，SHALL 不顯示數量，這一列的無障礙名稱是「Archived groups」。
 
 #### Scenario: 還沒有封存
 
@@ -979,6 +979,11 @@ The mobile app SHALL 在 Settings 根畫面「Archived Groups」那一列的文�
 
 - **WHEN** 在 Archived Groups 還原 Tokyo，再返回 Settings 的根畫面
 - **THEN** 「Archived Groups」右邊是「1」，這一列的無障礙名稱是「Archived groups, 1」
+
+#### Scenario: 讀完之前
+
+- **WHEN** 有封存的 Brisbane 時開啟 app 並選中 Settings 分頁，Settings 根畫面還沒讀完存著的群組
+- **THEN** 「Archived Groups」右邊沒有數量，這一列的無障礙名稱是「Archived groups」；讀完之後右邊是「1」，無障礙名稱是「Archived groups, 1」
 
 ### Requirement: GROUPS-52.1 Archived Groups 列出封存的群組
 

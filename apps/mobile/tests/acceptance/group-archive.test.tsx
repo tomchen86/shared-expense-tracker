@@ -375,6 +375,24 @@ test('[GROUPS-51.1] counts one fewer once a group is restored', async () => {
   expect(accessibleName(archivedGroupsRow())).toBe('Archived groups, 1');
 });
 
+test('[GROUPS-51.1] shows no count next to Archived Groups while the stored groups load', async () => {
+  const first = await startWithGroups(['Brisbane']);
+  await archiveByAction('Brisbane');
+  await first.unmount();
+  await settle();
+  const reads = holdReads();
+
+  await startGroupsApp();
+  await tapTab('Settings');
+  await settle();
+
+  expect(rowCounts()).toEqual([]);
+  expect(accessibleName(archivedGroupsRow())).toBe('Archived groups');
+  await reads.release();
+  await waitFor(() => expect(rowCounts()).toEqual(['1']));
+  expect(accessibleName(archivedGroupsRow())).toBe('Archived groups, 1');
+});
+
 // Archived Groups
 
 test('[GROUPS-52.1] says there are no archived groups when none is', async () => {
