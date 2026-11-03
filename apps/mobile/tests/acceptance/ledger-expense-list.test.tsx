@@ -207,14 +207,14 @@ test('[LEDGER-31.1] keeps the cards after the app restarts', async () => {
   await waitFor(() => expect(cardTitles()).toEqual(['Lunch', 'Coffee run']));
 });
 
-test('[LEDGER-32.1] shows the empty list text and no cards on the first start', async () => {
+test('[LEDGER-32.2] shows the empty list text and no cards on the first start', async () => {
   await startExpenses();
 
   await waitFor(() => expect(linesIn(expensesRoot())).toContain(EMPTY_LIST));
   expect(cards()).toEqual([]);
 });
 
-test('[LEDGER-32.1] replaces the empty list text with the first card', async () => {
+test('[LEDGER-32.2] replaces the empty list text with the first card', async () => {
   await startExpenses();
 
   await addExpense();

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-支出的分類：色盤、預設分類、分類名稱和顏色的規則、分類的範圍，以及在 Manage Categories 和 Group Categories 上新增、改名和改色。色盤、預設分類，以及名稱和顏色的規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002）；domain 只和交給它的其他分類比對。手機 app 把分類存在本機資料裡（ADR-0006）。每個分類有一個名稱和色盤上的一個顏色，並且只屬於一個範圍。範圍就是空間：個人範圍是你的個人空間，群組範圍是一個群組（ADR-0011）。每個範圍一開始都有自己的一份預設分類（CATEGORIES-6.2、30.1），之後在這個範圍新增的分類也屬於它；個人分類是屬於個人範圍的分類，群組分類是屬於一個群組範圍的分類。管理分類的畫面以個人範圍開啟時是 Manage Categories，以群組範圍開啟時是 Group Categories（CATEGORIES-22.2、23.2），兩者只差在管理哪個範圍的分類。分類表單是在這個畫面新增或編輯分類時開啟的表單。這個範圍的其他分類是指本機資料裡和它屬於同一個範圍的分類，包括封存的分類，編輯時不含正在編輯的那一個。分類可以封存：封存的分類列在「ARCHIVED」下，不再供新支出選用，但仍屬於它的範圍，用過它的支出照舊（CATEGORIES-36.1），點了就還原（CATEGORIES-38.1）。使用一個分類的支出是本機資料裡存著這個分類 ID 的支出（LEDGER-27.1）。移除分類是在「CATEGORIES」下的分類那一列往左滑按「Remove」，或做螢幕閱讀器的「Remove」動作（CATEGORIES-32.1、33.1）。字元數是 UTF-16 code unit 的個數，也就是 JavaScript 字串的長度，所以 😀 這類 emoji 算兩個字元。
+支出的分類：色盤、預設分類、分類名稱和顏色的規則、分類的範圍，以及在 Manage Categories 和 Group Categories 上新增、改名和改色。色盤、預設分類，以及名稱和顏色的規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002）；domain 只和交給它的其他分類比對。手機 app 把分類存在本機資料裡（ADR-0006）。每個分類有一個名稱和色盤上的一個顏色，並且只屬於一個範圍。範圍就是空間：個人範圍是你的個人空間，群組範圍是一個群組（ADR-0011）。每個範圍一開始都有自己的一份預設分類（CATEGORIES-6.2、30.1），之後在這個範圍新增的分類也屬於它；個人分類是屬於個人範圍的分類，群組分類是屬於一個群組範圍的分類。管理分類的畫面以個人範圍開啟時是 Manage Categories，以群組範圍開啟時是 Group Categories（CATEGORIES-22.2、23.3），兩者只差在管理哪個範圍的分類。分類表單是在這個畫面新增或編輯分類時開啟的表單。這個範圍的其他分類是指本機資料裡和它屬於同一個範圍的分類，包括封存的分類，編輯時不含正在編輯的那一個。分類可以封存：封存的分類列在「ARCHIVED」下，不再供新支出選用，但仍屬於它的範圍，用過它的支出照舊（CATEGORIES-36.1），點了就還原（CATEGORIES-38.1）。使用一個分類的支出是本機資料裡存著這個分類 ID 的支出（LEDGER-27.1）。移除分類是在「CATEGORIES」下的分類那一列往左滑按「Remove」，或做螢幕閱讀器的「Remove」動作（CATEGORIES-32.3、33.3）。字元數是 UTF-16 code unit 的個數，也就是 JavaScript 字串的長度，所以 😀 這類 emoji 算兩個字元。
 
 ## Requirements
 
@@ -117,7 +117,7 @@ WHEN app 開啟本機資料時個人範圍還沒有任何分類，the mobile app
 
 ### Requirement: CATEGORIES-7.3 依儲存的順序列出這個範圍的分類
 
-The mobile app SHALL 在 Manage Categories 和 Group Categories 的「CATEGORIES」下依儲存的順序列出這個範圍未封存的分類（CATEGORIES-22.2、23.2），每一列有分類顏色的色點和分類名稱，並在導覽列放一個無障礙名稱是「Add category」的「+」按鈕。儲存的順序是建立的先後：這個範圍的預設分類在前，之後在這個範圍新增的分類依建立的先後排在後面，改名、改色、封存或還原都不改變位置。
+The mobile app SHALL 在 Manage Categories 和 Group Categories 的「CATEGORIES」下依儲存的順序列出這個範圍未封存的分類（CATEGORIES-22.2、23.3），每一列有分類顏色的色點和分類名稱，並在導覽列放一個無障礙名稱是「Add category」的「+」按鈕。儲存的順序是建立的先後：這個範圍的預設分類在前，之後在這個範圍新增的分類依建立的先後排在後面，改名、改色、封存或還原都不改變位置。
 
 #### Scenario: 打開 Manage Categories
 
@@ -459,9 +459,9 @@ WHEN Manage Categories 開啟時網址沒有 `scopeKind=group`，例如從 Setti
 - **WHEN** 以 `/settings/manage-categories?spaceId=<Brisbane 的群組 ID>` 開啟後新增「Pets」
 - **THEN** Pets 是個人分類：從 Settings 開啟 Manage Categories 時列出 Pets
 
-### Requirement: CATEGORIES-23.2 以群組的 ID 開啟時是群組範圍
+### Requirement: CATEGORIES-23.3 以群組的 ID 開啟時是群組範圍
 
-WHEN 以 `/settings/manage-categories?scopeKind=group&spaceId=<群組 ID>` 開啟，而這是本機資料裡一個群組的 ID，the mobile app SHALL 以這個群組的範圍開啟，標題是「Group Categories」，只列出這個群組的分類。
+WHEN 以 `/settings/manage-categories?scopeKind=group&spaceId=<群組 ID>`，或支出表單打開的 `/manage-categories?scopeKind=group&spaceId=<群組 ID>`（LEDGER-62.1）開啟，而這是本機資料裡一個群組的 ID，the mobile app SHALL 以這個群組的範圍開啟，標題是「Group Categories」，只列出這個群組的分類。
 
 #### Scenario: 還沒有新增群組分類
 
@@ -472,6 +472,11 @@ WHEN 以 `/settings/manage-categories?scopeKind=group&spaceId=<群組 ID>` 開�
 
 - **WHEN** 在 Brisbane 的 Group Categories 新增「Flights」之後，開啟 Tokyo 的 Group Categories
 - **THEN** 只列出九個預設分類，沒有 Flights
+
+#### Scenario: 支出表單打開的網址
+
+- **WHEN** 以 `/manage-categories?scopeKind=group&spaceId=` 加上 Brisbane 的群組 ID 開啟
+- **THEN** 標題是「Group Categories」，只列出 Brisbane 的分類
 
 ### Requirement: CATEGORIES-24.1 沒有群組 ID 時退回個人範圍
 
@@ -557,9 +562,9 @@ WHEN 使用者在 Manage Categories 或 Group Categories 改分類的名稱或�
 - **WHEN** 在 Manage Categories 把 Health 改名為「Medical」並改用 `#00ACC1`
 - **THEN** Brisbane 的 Group Categories 的第六列仍是「Health」，色點是 `#F4511E`
 
-### Requirement: CATEGORIES-32.1 (e2e) 往左滑露出 Remove 或 Delete
+### Requirement: CATEGORIES-32.3 (e2e) 往左滑露出 Remove 或 Delete
 
-WHEN 使用者在 Manage Categories 或 Group Categories 把「CATEGORIES」下 Uncategorized 以外的分類那一列往左滑，the mobile app SHALL 在那一列露出「Remove」按鈕，按了就移除這個分類（CATEGORIES-34.1、35.1）；把「ARCHIVED」下沒有支出使用的分類那一列往左滑時露出的是「Delete」，按了就刪除它（CATEGORIES-34.1）。按下露出的按鈕時，那一列就收回。Uncategorized 和有支出使用的已封存分類往左滑時不露出按鈕。
+WHEN 使用者在 Manage Categories 或 Group Categories 把「CATEGORIES」下 Uncategorized 以外的分類那一列往左滑，the mobile app SHALL 在那一列露出「Remove」按鈕，按了就移除這個分類（CATEGORIES-34.1、35.1）；把「ARCHIVED」下沒有支出使用的分類那一列往左滑時露出的是「Delete」，按了就刪除它（CATEGORIES-34.1）。按下露出的按鈕時，那一列就收回。Uncategorized、有支出使用的已封存分類，以及封存群組的 Group Categories 裡「ARCHIVED」下的分類，往左滑時都不露出按鈕。
 
 #### Scenario: 往左滑移除
 
@@ -576,9 +581,14 @@ WHEN 使用者在 Manage Categories 或 Group Categories 把「CATEGORIES」下 
 - **WHEN** 把 Travel 唯一一筆支出搬到 Health 之後（CATEGORIES-40.1），把「ARCHIVED」下的 Travel 往左滑，按「Delete」，再按 Delete
 - **THEN** 沒有 Travel，也沒有「ARCHIVED」
 
-### Requirement: CATEGORIES-33.1 螢幕閱讀器的 Remove 和 Delete 動作
+#### Scenario: 封存的群組
 
-The mobile app SHALL 讓「CATEGORIES」下 Uncategorized 以外的每一列有螢幕閱讀器的「Remove」動作，「ARCHIVED」下沒有支出使用的每一列有「Delete」動作，做這個動作和按往左滑露出的按鈕一樣（CATEGORIES-32.1）；Uncategorized 和有支出使用的已封存分類沒有這兩個動作。
+- **WHEN** Brisbane 的 Gym 封存、也不再有支出使用之後封存 Brisbane，在它的 Group Categories 把「ARCHIVED」下的 Gym 往左滑
+- **THEN** 沒有露出「Delete」
+
+### Requirement: CATEGORIES-33.3 螢幕閱讀器的 Remove 和 Delete 動作
+
+The mobile app SHALL 讓「CATEGORIES」下 Uncategorized 以外的每一列有螢幕閱讀器的「Remove」動作，「ARCHIVED」下沒有支出使用的每一列有「Delete」動作，做這個動作和按往左滑露出的按鈕一樣（CATEGORIES-32.3）；Uncategorized、有支出使用的已封存分類，以及封存群組的 Group Categories 裡「ARCHIVED」下的分類，都沒有這兩個動作。
 
 #### Scenario: 第一次啟動
 
@@ -594,6 +604,11 @@ The mobile app SHALL 讓「CATEGORIES」下 Uncategorized 以外的每一列有�
 
 - **WHEN** Gym 封存之後，Manage Categories 開著時，從 Expenses 分頁把它唯一一筆支出改成 Shopping
 - **THEN** 「Restore Gym」有「Delete」
+
+#### Scenario: 封存的群組
+
+- **WHEN** Brisbane 的 Gym 封存、也不再有支出使用之後封存 Brisbane，打開它的 Group Categories
+- **THEN** 「ARCHIVED」下的 Gym 沒有「Delete」；還原 Brisbane 之後，「Restore Gym」有「Delete」
 
 ### Requirement: CATEGORIES-34.1 刪除沒有支出使用的分類
 
@@ -660,16 +675,16 @@ WHEN 使用者移除有支出使用的分類，the mobile app SHALL 跳出標題
 
 ### Requirement: CATEGORIES-36.1 選 Archive 時封存
 
-WHEN 使用者在「Archive “<名稱>”?」選 Archive，the mobile app SHALL 封存這個分類：它從「CATEGORIES」移到「ARCHIVED」下（CATEGORIES-37.1），不再供新支出選用（LEDGER-14.2、17.3），使用它的支出都不變。
+WHEN 使用者在「Archive “<名稱>”?」選 Archive，the mobile app SHALL 封存這個分類：它從「CATEGORIES」移到「ARCHIVED」下（CATEGORIES-37.2），不再供新支出選用（LEDGER-14.3、17.4），使用它的支出都不變。
 
 #### Scenario: 封存
 
 - **WHEN** 有兩筆 Gym 的支出時移除 Gym，選 Archive
 - **THEN** 「CATEGORIES」下沒有 Gym，「ARCHIVED」下有「Restore Gym」；兩筆支出存的分類仍是 Gym 的 ID、名稱和顏色
 
-### Requirement: CATEGORIES-37.1 ARCHIVED 列出這個範圍封存的分類
+### Requirement: CATEGORIES-37.2 ARCHIVED 列出這個範圍封存的分類
 
-WHILE 這個範圍有封存的分類，the mobile app SHALL 在「CATEGORIES」的分類下面顯示「ARCHIVED」，依儲存的順序列出這個範圍封存的分類，每一列有分類顏色的色點、分類名稱和「Restore」，無障礙名稱是「Restore <名稱>」；最後一列下面顯示「Archived categories remain on historical expenses and in Insights.」。這個範圍沒有封存的分類時，不顯示「ARCHIVED」和這句話。
+WHILE 這個範圍有封存的分類，the mobile app SHALL 在「CATEGORIES」的分類下面顯示「ARCHIVED」，依儲存的順序列出這個範圍封存的分類，每一列有分類顏色的色點、分類名稱和「Restore」，無障礙名稱是「Restore <名稱>」，封存群組的 Group Categories 裡這幾列只有色點和分類名稱，不是按鈕，無障礙名稱是分類名稱；最後一列下面顯示「Archived categories remain on historical expenses and in Insights.」。這個範圍沒有封存的分類時，不顯示「ARCHIVED」和這句話。
 
 #### Scenario: 沒有封存的分類
 
@@ -686,14 +701,24 @@ WHILE 這個範圍有封存的分類，the mobile app SHALL 在「CATEGORIES」�
 - **WHEN** 封存個人分類 Gym 之後，打開 Brisbane 的 Group Categories
 - **THEN** 沒有「ARCHIVED」
 
-### Requirement: CATEGORIES-38.1 點封存的分類就還原
+#### Scenario: 封存的群組
 
-WHEN 使用者點「ARCHIVED」下的分類，the mobile app SHALL 還原它，不開啟分類表單：它回到「CATEGORIES」下儲存的順序裡的位置（CATEGORIES-7.3），再供新支出選用，使用它的支出都不變。
+- **WHEN** Brisbane 的 Gym 封存之後封存 Brisbane，打開它的 Group Categories
+- **THEN** 「ARCHIVED」下是有色點的「Gym」，沒有「Restore」，也不是按鈕；最後一列下面仍是這句話
+
+### Requirement: CATEGORIES-38.2 點封存的分類就還原
+
+WHEN 使用者點「ARCHIVED」下的分類，the mobile app SHALL 還原它，不開啟分類表單：它回到「CATEGORIES」下儲存的順序裡的位置（CATEGORIES-7.3），再供新支出選用，使用它的支出都不變；在封存群組的 Group Categories 裡點了，什麼都不變。
 
 #### Scenario: 還原
 
 - **WHEN** 封存有支出使用的 Health 之後，點「Restore Health」
 - **THEN** 沒有開啟分類表單；Health 回到第六列，沒有「ARCHIVED」；New Expense 的分類清單又有 Health；支出都沒有改變
+
+#### Scenario: 封存的群組
+
+- **WHEN** Brisbane 的 Gym 封存之後封存 Brisbane，在它的 Group Categories 點「ARCHIVED」下的 Gym
+- **THEN** Gym 仍在「ARCHIVED」下，沒有開啟分類表單；還原 Brisbane 之後點「Restore Gym」，Gym 就還原
 
 ### Requirement: CATEGORIES-39.1 選 Move Expenses… 時列出可以搬去的分類
 

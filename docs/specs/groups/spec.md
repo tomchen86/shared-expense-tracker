@@ -2,7 +2,7 @@
 
 ## Purpose
 
-群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Add Member、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Add Member 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Add Member、Rename Member 和 Rename Group 是名稱表單；儲存中是指名稱表單開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。
+群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Add Member、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Add Member 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Add Member、Rename Member 和 Rename Group 是名稱表單；儲存中是指名稱表單開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組的支出（GROUPS-61.1），支出的卡片和明細見 ledger。
 
 ## Requirements
 
@@ -1165,3 +1165,136 @@ WHEN app 重新啟動，the mobile app SHALL 保留每個群組有沒有封存�
 
 - **WHEN** 還原 Tokyo 之後重新啟動 app
 - **THEN** Groups 根畫面由上而下是 Brisbane、Tokyo、Paris；Archived Groups 只顯示「No archived groups.」
+
+### Requirement: GROUPS-61.1 群組的畫面列出群組的支出
+
+WHILE 群組有支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 的順序列出這個群組每一筆支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.1、LEDGER-65.1），但卡片金額是支出的全額。
+
+#### Scenario: 兩筆支出
+
+- **WHEN** Brisbane 依序新增 `2026-10-29` 的「Taxi」和 `2026-10-30` 的「Dinner」
+- **THEN** Brisbane 的畫面由上而下是 Dinner 和 Taxi 的卡片，沒有「No expenses in this group yet.」
+
+#### Scenario: 卡片
+
+- **WHEN** Dinner 是 10001 USD、Food & Dining，依序分給 Blake、Taylor 和 Casey
+- **THEN** 卡片依序顯示「Dinner」、「$100.01」、「Food & Dining」、「Brisbane」、「Oct 30, 2026」
+
+#### Scenario: 和你無關的支出
+
+- **WHEN** Taxi 是 Casey 付款，只有 Blake 分攤
+- **THEN** Brisbane 的畫面有 Taxi 的卡片
+
+#### Scenario: 其他群組的支出
+
+- **WHEN** Tokyo 有一筆「Sushi」
+- **THEN** Brisbane 的畫面沒有 Sushi 的卡片
+
+#### Scenario: 封存的群組
+
+- **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面
+- **THEN** 唯讀的提示和「Restore Group」下面是 Dinner 和 Taxi 的卡片，卡片上是「Brisbane · Archived」
+
+#### Scenario: 重新啟動
+
+- **WHEN** 重新啟動 app 後打開 Brisbane 的畫面
+- **THEN** 仍是 Dinner 和 Taxi 的卡片
+
+### Requirement: GROUPS-62.1 讀完支出之前不顯示沒有支出的樣子
+
+WHILE 群組的畫面還沒讀完這個群組的支出，the mobile app SHALL 不顯示「No expenses in this group yet.」。
+
+#### Scenario: 打開群組
+
+- **WHEN** Brisbane 有 Dinner 時打開它的畫面，還沒讀完支出
+- **THEN** 沒有「No expenses in this group yet.」；讀完之後顯示 Dinner 的卡片
+
+### Requirement: GROUPS-63.1 點群組畫面上的卡片推入明細
+
+WHEN 使用者點群組的畫面上的卡片，the mobile app SHALL 在群組的畫面所在的分頁推入這筆支出的明細（LEDGER-37.1、LEDGER-66.1），標題是「Expense」，網址在 Groups 分頁是 `/groups/expenses/<支出的 ID>`，在 Settings 分頁是 `/settings/archived-groups/expenses/<支出的 ID>`，分頁列仍選中同一個分頁；連點兩次也只推入一個明細，返回或按 Android 的返回鍵就回到群組的畫面。
+
+#### Scenario: Groups 分頁
+
+- **WHEN** 在 Brisbane 的畫面點 Dinner 的卡片
+- **THEN** 分頁列仍選中 Groups，Groups 分頁的堆疊由下而上是「Groups」根畫面、「Brisbane」和「Expense」，網址是 `/groups/expenses/` 加上 Dinner 的 ID
+
+#### Scenario: Settings 分頁
+
+- **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面，點 Dinner 的卡片
+- **THEN** 分頁列仍選中 Settings，Settings 分頁的堆疊由下而上是「Settings」根畫面、「Archived Groups」、「Brisbane」和「Expense」，網址是 `/settings/archived-groups/expenses/` 加上 Dinner 的 ID
+
+#### Scenario: 返回
+
+- **WHEN** 在明細返回，或在 Android 上按返回鍵
+- **THEN** 回到 Brisbane 的畫面
+
+#### Scenario: 連點兩次
+
+- **WHEN** 連點兩次 Dinner 的卡片
+- **THEN** 只推入一個明細；返回一次就回到 Brisbane 的畫面
+
+### Requirement: GROUPS-64.1 群組的畫面的 + 按鈕
+
+WHILE 群組的畫面顯示的是未封存的群組，the mobile app SHALL 在畫面底部放名稱是「Add expense」的 + 按鈕（SHELL-41.1），按一下就以 `/expenses/new?groupId=<群組 ID>` 打開 New Expense（LEDGER-52.1），表單關閉後回到群組的畫面；封存的群組和找不到的群組的畫面都沒有 + 按鈕。
+
+#### Scenario: 打開 New Expense
+
+- **WHEN** 在 Brisbane 的畫面按「Add expense」
+- **THEN** 打開 New Expense，是「Group, Brisbane」
+
+#### Scenario: 存好之後
+
+- **WHEN** 選好付款人和分攤的人後按 Add
+- **THEN** 表單關閉，分頁列仍選中 Groups，回到 Brisbane 的畫面，畫面上有這筆支出的卡片
+
+#### Scenario: 封存的群組
+
+- **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面，或以 `/groups/` 加上它的群組 ID 開啟 app
+- **THEN** 畫面上沒有「Add expense」按鈕
+
+#### Scenario: 還原之後
+
+- **WHEN** 在 Settings 分頁上 Brisbane 的畫面按「Restore Group」
+- **THEN** 出現「Add expense」按鈕；按了打開 New Expense，是「Group, Brisbane」
+
+#### Scenario: 找不到的群組
+
+- **WHEN** 以 `/groups/00000000-0000-4000-8000-000000000000` 開啟 app
+- **THEN** 畫面上沒有「Add expense」按鈕
+
+### Requirement: GROUPS-65.1 存好支出後群組的畫面是新的
+
+WHEN 支出存好，the mobile app SHALL 讓群組的畫面再出現時就是存著的卡片，從明細返回或表單關閉時，不先出現存好之前的內容。
+
+#### Scenario: 從明細修改
+
+- **WHEN** 在 Brisbane 的畫面點 10001 USD 的 Dinner，在明細按「Edit」把金額改成「90.00」後按 Save，再從明細返回
+- **THEN** Brisbane 的畫面一出現就是「$90.00」，沒有先出現「$100.01」
+
+#### Scenario: 從 Expenses 分頁新增
+
+- **WHEN** Groups 分頁上開著 Brisbane 的畫面時，從 Expenses 分頁的 New Expense 新增一筆 Brisbane 的「Taxi」，再選 Groups 分頁
+- **THEN** Brisbane 的畫面有 Taxi 的卡片
+
+### Requirement: GROUPS-66.1 移出成員時不改支出
+
+WHEN 使用者把成員移出群組（GROUPS-26.1），the mobile app SHALL 不改這個群組的支出，他的付款和分攤的金額和成員 ID 都保留。
+
+#### Scenario: 移出分攤的人
+
+- **WHEN** Dinner 依序分給 Blake、Taylor 和 Casey，把 Blake 移出 Brisbane
+- **THEN** 存著的 Dinner 的付款和分攤都和移出之前一樣
+
+#### Scenario: 加回來
+
+- **WHEN** 再把 Blake 加回 Brisbane（GROUPS-34.1）
+- **THEN** Dinner 的分攤仍記在 Blake 原本的成員 ID 下，他又是 Brisbane 的成員
+
+### Requirement: GROUPS-67.1 (manual) 群組畫面最後一張卡片不被 + 按鈕擋住
+
+WHERE iPhone 或 Android 手機，WHEN 群組的畫面捲到最底，the mobile app SHALL 讓最後一張卡片整張露在 + 按鈕上方。
+
+#### Scenario: 很多支出
+
+- **WHEN** Brisbane 有 20 筆支出，把它的畫面捲到最底
+- **THEN** 最後一張卡片整張在 + 按鈕上方，沒有被擋住

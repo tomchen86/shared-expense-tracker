@@ -1209,7 +1209,7 @@ test('[CATEGORIES-22.2] adds a personal category when the URL has a group ID but
   expect(listedNames()).toEqual([...DEFAULT_NAMES, 'Gym', 'Pets']);
 });
 
-test("[CATEGORIES-23.2] lists only the group's own nine default categories in a new group's Group Categories", async () => {
+test("[CATEGORIES-23.3] lists only the group's own nine default categories in a new group's Group Categories", async () => {
   const groups = await createGroups('Brisbane');
   await reopenManageCategories();
   await addCategory('Gym');
@@ -1220,7 +1220,7 @@ test("[CATEGORIES-23.2] lists only the group's own nine default categories in a 
   expect(categoryList()).toEqual(DEFAULTS);
 });
 
-test("[CATEGORIES-23.2] leaves another group's categories out of Group Categories", async () => {
+test("[CATEGORIES-23.3] leaves another group's categories out of Group Categories", async () => {
   const groups = await setUpScopes();
 
   await openGroupCategories(groups.Tokyo);
@@ -1399,7 +1399,7 @@ test('[CATEGORIES-31.1] changes a default category in Manage Categories for the 
 // Removing, archiving, restoring and moving expenses. These tests add expenses
 // through New Expense on the Expenses tab while Manage Categories stays open on the
 // Settings tab, and do Remove and Delete as a screen reader does, through the rows'
-// accessibility actions; swiping a row is for the E2E flow (CATEGORIES-32.1). The
+// accessibility actions; swiping a row is for the E2E flow (CATEGORIES-32.3). The
 // Move list may be a screen of its own or a view, and its Cancel a navigation bar
 // item or a view; the helpers find them either way.
 
@@ -1720,14 +1720,14 @@ test('[CATEGORIES-17.2] keeps deletions, archives and restores after the app res
   expect(sections()).toEqual({ active: without('Other'), archived: [GYM] });
 });
 
-test('[CATEGORIES-33.1] offers Remove on every category but Uncategorized', async () => {
+test('[CATEGORIES-33.3] offers Remove on every category but Uncategorized', async () => {
   running = await openManageCategories();
 
   expect(namesWithAction('Remove')).toEqual(namesWithout('Uncategorized'));
   expect(namesWithAction('Delete')).toEqual([]);
 });
 
-test("[CATEGORIES-33.1] offers Remove on a group's categories but its Uncategorized", async () => {
+test("[CATEGORIES-33.3] offers Remove on a group's categories but its Uncategorized", async () => {
   const groups = await createGroups('Brisbane');
 
   await openGroupCategories(groups.Brisbane);
@@ -1735,7 +1735,7 @@ test("[CATEGORIES-33.1] offers Remove on a group's categories but its Uncategori
   expect(namesWithAction('Remove')).toEqual(namesWithout('Uncategorized'));
 });
 
-test('[CATEGORIES-33.1] offers neither action on an archived category that expenses use', async () => {
+test('[CATEGORIES-33.3] offers neither action on an archived category that expenses use', async () => {
   running = await openManageCategories();
   await addCategory('Gym');
   await spendOn('Gym');
@@ -1747,7 +1747,7 @@ test('[CATEGORIES-33.1] offers neither action on an archived category that expen
   expect(namesWithAction('Delete')).toEqual([]);
 });
 
-test('[CATEGORIES-33.1] offers Delete on an archived category once no expense uses it', async () => {
+test('[CATEGORIES-33.3] offers Delete on an archived category once no expense uses it', async () => {
   running = await openManageCategories();
   await addCategory('Gym');
   await spendOn('Gym', 'Gym session');
@@ -1924,14 +1924,14 @@ test('[CATEGORIES-36.1] archives a category and leaves its expenses as they were
   expect(await storedExpenses()).toEqual(before);
 });
 
-test('[CATEGORIES-37.1] shows no ARCHIVED and no footer while nothing is archived', async () => {
+test('[CATEGORIES-37.2] shows no ARCHIVED and no footer while nothing is archived', async () => {
   running = await openManageCategories();
 
   expect(archivedHeader()).toBeNull();
   expect(screen.queryByText(ARCHIVED_FOOTER)).toBeNull();
 });
 
-test('[CATEGORIES-37.1] lists archived categories under ARCHIVED in their stored order, each with Restore, then the footer', async () => {
+test('[CATEGORIES-37.2] lists archived categories under ARCHIVED in their stored order, each with Restore, then the footer', async () => {
   running = await openManageCategories();
   await addCategory('Gym');
   await spendOn('Gym');
@@ -1960,7 +1960,7 @@ test('[CATEGORIES-37.1] lists archived categories under ARCHIVED in their stored
   ).toBe(true);
 });
 
-test("[CATEGORIES-37.1] shows a scope's archived categories in that scope only", async () => {
+test("[CATEGORIES-37.2] shows a scope's archived categories in that scope only", async () => {
   const groups = await createGroups('Brisbane');
   await reopenManageCategories();
   await addCategory('Gym');
@@ -1973,7 +1973,7 @@ test("[CATEGORIES-37.1] shows a scope's archived categories in that scope only",
   expect(categoryList()).toEqual(DEFAULTS);
 });
 
-test('[CATEGORIES-38.1] restores an archived category to its place when it is pressed', async () => {
+test('[CATEGORIES-38.2] restores an archived category to its place when it is pressed', async () => {
   running = await openManageCategories();
   await spendOn('Health');
   await archive('Health');

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期或備註有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是 Your Total Share，下面是支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。手機地區的貨幣格式，是手機第一個偏好的語言和地區用來顯示一個幣別的金額的格式；手機地區的日期格式見 LEDGER-30.1。
+記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、和群組分攤、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。群組支出是屬於一個群組的空間的支出，付款和分攤都記在這個群組的成員的成員 ID 下；成員、你的成員、前成員和成員現在的名稱見 groups。你的 participant 是個人 participant，以及每個群組裡你的成員；一筆支出裡你付的，是它的付款裡你的 participant 的金額總和，你的份額是它的分攤裡你的 participant 的金額總和。和你有關的群組支出，是付款或分攤裡有你的 participant 的群組支出，分攤的金額是 0 也算。表單的空間在「Split with others」開著並選了群組時是那個群組，其他時候是個人空間；分攤的欄位是「Split with others」、群組、付款人和分攤的人；分攤的順序是分攤的人被選的先後（LEDGER-49.1），存下之後是存著的順序（LEDGER-58.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期、備註或分攤的欄位（LEDGER-59.1）有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是 Your Total Share，下面是支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。手機地區的貨幣格式，是手機第一個偏好的語言和地區用來顯示一個幣別的金額的格式；手機地區的日期格式見 LEDGER-30.1。
 
 ## Requirements
 
@@ -223,9 +223,9 @@ The mobile app SHALL 讓支出表單的標題列有取消「Cancel」和確認�
 - **WHEN** 打開一筆 JPY 支出的 Edit Expense
 - **THEN** 標題列有「Cancel」和「Save」，金額欄位前面是「JPY」，名稱是「Amount in JPY」
 
-### Requirement: LEDGER-14.2 打開 New Expense 時的內容
+### Requirement: LEDGER-14.3 打開 New Expense 時的內容
 
-WHEN 打開 New Expense，the mobile app SHALL 讓金額、標題和備註都是空的，分類是個人空間未封存的分類中依儲存的順序排第一的那一個（CATEGORIES-7.3），日期是今天。
+WHEN 打開 New Expense，the mobile app SHALL 讓金額、標題和備註都是空的，分類是表單的空間未封存的分類中依儲存的順序排第一的那一個（CATEGORIES-7.3），日期是今天。
 
 #### Scenario: 第一次啟動
 
@@ -241,6 +241,11 @@ WHEN 打開 New Expense，the mobile app SHALL 讓金額、標題和備註都是
 
 - **WHEN** 封存有支出使用的 Food & Dining，再打開 New Expense
 - **THEN** 分類是「Transportation」
+
+#### Scenario: 從群組打開
+
+- **WHEN** 在 Brisbane 的 Group Categories 把 Food & Dining 改名為「Meals」，再在 Brisbane 的畫面按「Add expense」（GROUPS-64.1）
+- **THEN** 分類是 Brisbane 的「Meals」；從 Expenses 分頁打開 New Expense 時，分類仍是個人空間的「Food & Dining」
 
 #### Scenario: 當地已經是隔天
 
@@ -300,14 +305,14 @@ WHEN 打開某筆支出的 Edit Expense，the mobile app SHALL 以這筆支出�
 - **WHEN** 存下 Shopping 的支出之後，把 Shopping 改名為「Groceries」，再打開這筆支出的 Edit Expense
 - **THEN** 分類是「Category, Groceries」
 
-### Requirement: LEDGER-17.3 從清單選分類
+### Requirement: LEDGER-17.4 從清單選分類
 
-WHEN 使用者按分類按鈕，the mobile app SHALL 打開標題是「Category」的清單，依儲存的順序列出個人空間每個未封存的分類（CATEGORIES-7.3），並把表單上選的那一個標示為已選取，表單上的分類已封存時沒有標示為已選取的分類；按一個分類就選它並回到表單，按「Cancel」就回到表單、分類不變，所以沒有改選時，存檔後支出仍用那個已封存的分類。
+WHEN 使用者按分類按鈕，the mobile app SHALL 打開標題是「Category」的清單，依儲存的順序列出表單的空間每個未封存的分類（CATEGORIES-7.3），最後是「+ Add New Category」按鈕（LEDGER-62.1），並把表單上選的那一個標示為已選取，表單上的分類已封存時沒有標示為已選取的分類；按一個分類就選它並回到表單，按「Cancel」就回到表單、分類不變，所以沒有改選時，存檔後支出仍用那個已封存的分類，在表單開著時才封存的也一樣。
 
 #### Scenario: 打開清單
 
 - **WHEN** 第一次啟動後，在 New Expense 按「Category, Food & Dining」
-- **THEN** 清單依序是九個預設分類，只有 Food & Dining 標示為已選取
+- **THEN** 清單依序是九個預設分類和「+ Add New Category」，只有 Food & Dining 標示為已選取
 
 #### Scenario: 新增的分類
 
@@ -318,6 +323,11 @@ WHEN 使用者按分類按鈕，the mobile app SHALL 打開標題是「Category�
 
 - **WHEN** 建立「Brisbane」，在它的 Group Categories 新增「Flights」，並把 Shopping 改名為「Groceries」之後，在 New Expense 打開清單
 - **THEN** 清單依序是個人空間的九個預設分類，每個名稱只出現一次；沒有 Flights，也沒有 Groceries
+
+#### Scenario: 選了群組
+
+- **WHEN** 同樣在 Brisbane 新增 Flights 並把 Shopping 改名為「Groceries」之後，在 New Expense 選了 Brisbane（LEDGER-46.1）再打開清單
+- **THEN** 清單依序是 Food & Dining、Transportation、Groceries、Entertainment、Bills & Utilities、Health、Travel、Other、Uncategorized、Flights 和「+ Add New Category」
 
 #### Scenario: 選分類
 
@@ -343,6 +353,16 @@ WHEN 使用者按分類按鈕，the mobile app SHALL 打開標題是「Category�
 
 - **WHEN** 在這筆支出的 Edit Expense 把標題改成「Spin class」，按 Save
 - **THEN** 支出存的分類仍是 Gym 的 ID、名稱和顏色
+
+#### Scenario: 表單開著時封存
+
+- **WHEN** 在一筆 Gym 支出的 Edit Expense，從「+ Add New Category」打開的 Manage Categories 移除 Gym 並選 Archive，按 Close，再把標題改成「Spin class」後按 Save
+- **THEN** 回到表單時分類按鈕仍是「Category, Gym」；支出存的分類仍是 Gym 的 ID
+
+#### Scenario: 搬走支出再封存
+
+- **WHEN** 改成在那裡對 Gym 選 Move Expenses… 並按 Shopping，按 Close，再把標題改成「Spin class」後按 Save
+- **THEN** 回到表單時分類按鈕仍是「Category, Gym」；支出存的分類是 Gym 的 ID
 
 ### Requirement: LEDGER-18.1 日期最晚是今天
 
@@ -421,9 +441,9 @@ WHILE 表單沒有變更、標題去掉頭尾空白後是空的，或金額不�
 - **WHEN** 把一筆 JPY 支出的金額改成「12.5」
 - **THEN** Save 停用
 
-### Requirement: LEDGER-21.1 按 Add 存下新的個人支出
+### Requirement: LEDGER-21.2 按 Add 存下新的個人支出
 
-WHEN 使用者在 New Expense 按 Add，the mobile app SHALL 存下一筆新的個人支出並關閉表單：標題和備註去掉頭尾空白，備註是空的就不存，金額是解析出來的最小單位整數，幣別、分類和日期是表單上的，付款和分攤都只有個人 participant 的全額；儲存完成前再按 Add 也只存一筆。
+WHEN 使用者在「Split with others」關著的 New Expense 按 Add，the mobile app SHALL 存下一筆新的個人支出並關閉表單：標題和備註去掉頭尾空白，備註是空的就不存，金額是解析出來的最小單位整數，幣別、分類和日期是表單上的，付款和分攤都只有個人 participant 的全額；儲存完成前再按 Add 也只存一筆。
 
 #### Scenario: 新增
 
@@ -440,9 +460,14 @@ WHEN 使用者在 New Expense 按 Add，the mobile app SHALL 存下一筆新的�
 - **WHEN** 連按兩次 Add，第二次在儲存完成之前
 - **THEN** 只多一筆支出
 
-### Requirement: LEDGER-22.1 按 Save 存下個人支出的修改
+#### Scenario: 開了又關
 
-WHEN 使用者在個人支出的 Edit Expense 按 Save，the mobile app SHALL 照 LEDGER-21.1 的規則，用表單上的金額、標題、分類、日期和備註更新這筆支出，保留它的 ID、幣別和所屬的空間，付款和分攤改成個人 participant 的新金額，然後關閉表單。
+- **WHEN** 打開「Split with others」選了 Brisbane，再關掉，然後輸入「8.75」和「Coffee run」按 Add
+- **THEN** 存下的是個人支出，付款和分攤都是個人 participant 的 875
+
+### Requirement: LEDGER-22.2 按 Save 存下個人支出的修改
+
+WHEN 使用者在個人支出的 Edit Expense，「Split with others」關著時按 Save，the mobile app SHALL 照 LEDGER-21.2 的規則，用表單上的金額、標題、分類、日期和備註更新這筆支出，保留它的 ID、幣別和所屬的空間，付款和分攤改成個人 participant 的新金額，然後關閉表單。
 
 #### Scenario: 改金額
 
@@ -680,9 +705,9 @@ The mobile app SHALL 在支出清單上，依 LEDGER-28.1 的順序由上而下�
 - **WHEN** 新增「Coffee run」和「Lunch」之後重新啟動 app
 - **THEN** 卡片由上而下仍是 Lunch、Coffee run
 
-### Requirement: LEDGER-32.1 沒有支出時顯示提示
+### Requirement: LEDGER-32.2 沒有支出時顯示提示
 
-WHILE 本機資料裡沒有個人支出，the mobile app SHALL 在支出清單上顯示「No expenses to display. Add a personal expense or get involved in a group expense.」，沒有任何卡片。
+WHILE 本機資料裡沒有支出清單要列出的支出（LEDGER-31.1、LEDGER-64.1），the mobile app SHALL 在支出清單上顯示「No expenses to display. Add a personal expense or get involved in a group expense.」，沒有任何卡片。
 
 #### Scenario: 第一次啟動
 
@@ -693,6 +718,16 @@ WHILE 本機資料裡沒有個人支出，the mobile app SHALL 在支出清單�
 
 - **WHEN** 新增「Coffee run」
 - **THEN** 這句話消失，只有 Coffee run 的卡片
+
+#### Scenario: 只有和你無關的群組支出
+
+- **WHEN** 只有一筆 Brisbane 的支出，Casey 付款，只有 Blake 分攤
+- **THEN** 支出清單顯示這句話，沒有卡片
+
+#### Scenario: 你有分攤的群組支出
+
+- **WHEN** 只有一筆 Brisbane 的支出，Casey 付款，Casey 和 Taylor 分攤
+- **THEN** 沒有這句話，只有它的卡片
 
 ### Requirement: LEDGER-33.1 卡片的內容
 
@@ -901,7 +936,7 @@ WHERE iPhone 或 Android 手機，WHEN 支出清單捲到最底，the mobile app
 
 ### Requirement: LEDGER-43.1 讀完支出之前不顯示沒有支出的樣子
 
-WHILE 支出清單還沒讀完存著的支出，the mobile app SHALL 不顯示 LEDGER-32.1 的提示和「Your Total Share: —」。
+WHILE 支出清單還沒讀完存著的支出，the mobile app SHALL 不顯示 LEDGER-32.2 的提示和「Your Total Share: —」。
 
 #### Scenario: 開啟 app
 
@@ -916,3 +951,544 @@ WHEN 從明細打開的 Edit Expense 存好支出，the mobile app SHALL 在從�
 
 - **WHEN** 在 875 USD 的 Coffee run 的明細按「Edit」，把金額改成「9.25」後按 Save，再從明細返回
 - **THEN** 支出清單一出現就是「$9.25」和「Your Total Share: $9.25」，沒有先出現「$8.75」
+
+### Requirement: LEDGER-45.1 「Split with others」開關
+
+The mobile app SHALL 在支出表單的備註欄位下面放一個名稱是「Split with others」的開關；打開 New Expense 時它是關著的，以群組的網址打開時除外（LEDGER-52.1），打開個人支出的 Edit Expense 時也是關著的。
+
+#### Scenario: New Expense
+
+- **WHEN** 第一次啟動後打開 New Expense
+- **THEN** 備註欄位下面是名稱「Split with others」、關著的開關；表單上沒有「Group」、「Paid by」和「Split between」
+
+#### Scenario: 個人支出的 Edit Expense
+
+- **WHEN** 打開「Coffee run」的 Edit Expense
+- **THEN** 「Split with others」關著
+
+### Requirement: LEDGER-46.1 打開開關時選群組
+
+WHEN 使用者打開「Split with others」，或按「Group」，the mobile app SHALL 打開標題是「Select Group」的清單，依建立的先後列出每個未封存的群組（GROUPS-2.2），每個群組是名稱為群組名稱的按鈕，表單上選的群組標示為已選取，並有「Cancel」按鈕；按一個群組就選它並回到表單，按 Cancel 就回到表單，選的群組不變，開關仍開著。
+
+#### Scenario: 打開開關
+
+- **WHEN** 依序建立 Brisbane、Tokyo、Paris 並封存 Tokyo 之後，在 New Expense 打開「Split with others」
+- **THEN** 打開「Select Group」，依序是 Brisbane 和 Paris，沒有標示為已選取的群組
+
+#### Scenario: 選群組
+
+- **WHEN** 按「Brisbane」
+- **THEN** 回到表單，開關開著，有「Group, Brisbane」；按「Group, Brisbane」時，Select Group 裡 Brisbane 標示為已選取
+
+#### Scenario: 取消
+
+- **WHEN** 打開開關後按「Cancel」
+- **THEN** 回到表單，開關仍開著，有「Group, not selected」
+
+#### Scenario: 還沒有群組
+
+- **WHEN** 還沒有任何群組時打開開關
+- **THEN** Select Group 沒有任何群組，只有「Cancel」
+
+### Requirement: LEDGER-47.1 開關下面的 Group、Paid by 和 Split between
+
+WHILE「Split with others」開著，the mobile app SHALL 在開關下面放名稱是「Group, <群組名稱>」的按鈕，還沒選群組時是「Group, not selected」；選了群組之後，再依序放名稱是「Paid by, <付款人>」的按鈕，還沒選付款人時是「Paid by, not selected」，以及依分攤的人數名稱是「Split between, Choose people」、「Split between, 1 person」或「Split between, <人數> people」的按鈕。付款人是成員現在的名稱，你的成員後面加上「 (You)」；開關關著時，這三個按鈕都不顯示。
+
+#### Scenario: 還沒選群組
+
+- **WHEN** 在 New Expense 打開開關，在 Select Group 按 Cancel
+- **THEN** 開關下面只有「Group, not selected」
+
+#### Scenario: 選了群組
+
+- **WHEN** 名字是「Taylor」，選了 Brisbane
+- **THEN** 開關下面依序是「Group, Brisbane」、「Paid by, not selected」和「Split between, Choose people」
+
+#### Scenario: 選了付款人和分攤的人
+
+- **WHEN** 選 Taylor 為付款人，再依序選 Casey 和 Taylor 分攤
+- **THEN** 是「Paid by, Taylor (You)」和「Split between, 2 people」；只選 Casey 時是「Split between, 1 person」
+
+#### Scenario: 關掉開關
+
+- **WHEN** 關掉「Split with others」
+- **THEN** 沒有「Group」、「Paid by」和「Split between」
+
+### Requirement: LEDGER-48.1 選付款人
+
+WHEN 使用者按「Paid by」，the mobile app SHALL 打開標題是「Who Paid?」的清單，依 GROUPS-24.2 的順序列出選的群組的每位成員，你那一列是你的成員名稱加上「 (You)」，別人那一列是他現在的名稱，每一列是按鈕，付款人標示為已選取，並有「Cancel」按鈕；按一位成員就選他為付款人並回到表單，按 Cancel 就回到表單、付款人不變。
+
+#### Scenario: 列出成員
+
+- **WHEN** 名字是「Taylor」，Brisbane 依序加入 Casey 和 Blake，在 New Expense 選 Brisbane 後按「Paid by, not selected」
+- **THEN** 打開「Who Paid?」，依序是「Taylor (You)」、「Casey」和「Blake」，沒有標示為已選取的成員
+
+#### Scenario: 選付款人
+
+- **WHEN** 按「Casey」
+- **THEN** 回到表單，有「Paid by, Casey」；再打開時 Casey 標示為已選取
+
+#### Scenario: 取消
+
+- **WHEN** 付款人是 Casey 時打開 Who Paid?，按 Cancel
+- **THEN** 回到表單，仍是「Paid by, Casey」
+
+#### Scenario: 不列出前成員
+
+- **WHEN** 把 Casey 移出 Brisbane 之後，在 New Expense 選 Brisbane 並按「Paid by, not selected」
+- **THEN** 依序是「Taylor (You)」和「Blake」
+
+### Requirement: LEDGER-49.1 選分攤的人
+
+WHEN 使用者按「Split between」，the mobile app SHALL 打開標題是「Split Between」的清單，依 GROUPS-24.2 的順序列出選的群組的每位成員，名稱同 LEDGER-48.1，每一列是按鈕，分攤的人標示為已選取，並有「Done」按鈕；按一位還不是分攤的人的成員，就把他加在分攤的順序的最後，按一位分攤的人就把他拿掉；按 Done 回到表單。
+
+#### Scenario: 選兩位
+
+- **WHEN** 在 Split Between 依序按「Casey」和「Taylor (You)」，再按 Done
+- **THEN** 按完時 Casey 和 Taylor (You) 標示為已選取，Blake 沒有；回到表單是「Split between, 2 people」，分攤的順序是 Casey、Taylor
+
+#### Scenario: 再按一次就拿掉
+
+- **WHEN** 再打開 Split Between，按「Casey」，再按 Done
+- **THEN** Casey 不再標示為已選取；是「Split between, 1 person」
+
+#### Scenario: 拿掉再選
+
+- **WHEN** 依序選 Casey、Taylor 和 Blake，拿掉 Casey，再選 Casey
+- **THEN** 分攤的順序是 Taylor、Blake、Casey
+
+#### Scenario: 不列出前成員
+
+- **WHEN** 把 Casey 移出 Brisbane 之後，在 New Expense 選 Brisbane 並按「Split between, Choose people」
+- **THEN** 依序是「Taylor (You)」和「Blake」
+
+### Requirement: LEDGER-50.1 換群組或關掉開關時清空付款人和分攤的人
+
+WHEN 使用者在 Select Group 選了和表單上不同的群組，或關掉「Split with others」，the mobile app SHALL 清空付款人和分攤的人，關掉開關時也清空選的群組；在 Select Group 選表單上同一個群組時，付款人和分攤的人都不變。
+
+#### Scenario: 換群組
+
+- **WHEN** 在 Brisbane 選了付款人和分攤的人之後，按「Group, Brisbane」改選 Tokyo
+- **THEN** 是「Group, Tokyo」、「Paid by, not selected」和「Split between, Choose people」
+
+#### Scenario: 選同一個群組
+
+- **WHEN** 在 Brisbane 選了 Taylor 付款、Casey 分攤之後，按「Group, Brisbane」再選 Brisbane
+- **THEN** 仍是「Paid by, Taylor (You)」和「Split between, 1 person」
+
+#### Scenario: 關掉再打開
+
+- **WHEN** 選好 Brisbane、付款人和分攤的人之後關掉開關，再打開
+- **THEN** Select Group 沒有標示為已選取的群組；選 Brisbane 後是「Paid by, not selected」和「Split between, Choose people」
+
+### Requirement: LEDGER-51.1 表單的空間改變時換分類
+
+WHEN 表單的空間改變，the mobile app SHALL 把表單上的分類換成新的空間裡和它同名（CATEGORIES-4.1）的未封存分類，新的空間沒有這樣的分類時，換成新的空間的 Uncategorized。
+
+#### Scenario: 有同名的分類
+
+- **WHEN** 在 New Expense 選 Shopping，再打開開關選 Brisbane
+- **THEN** 分類按鈕是「Category, Shopping」；選好付款人和分攤的人後按 Add，支出存的是 Brisbane 的 Shopping 的 ID
+
+#### Scenario: 名稱的大小寫不同
+
+- **WHEN** 個人空間有「Gym」，Brisbane 有「GYM」，選 Gym 後選 Brisbane
+- **THEN** 分類按鈕是「Category, GYM」
+
+#### Scenario: 沒有同名的分類
+
+- **WHEN** 選了個人空間的 Gym 之後選 Brisbane，而 Brisbane 沒有 Gym
+- **THEN** 分類按鈕是「Category, Uncategorized」，存的是 Brisbane 的 Uncategorized 的 ID
+
+#### Scenario: 同名的分類封存了
+
+- **WHEN** Brisbane 的 Shopping 封存之後，在 New Expense 選 Shopping 再選 Brisbane
+- **THEN** 分類按鈕是「Category, Uncategorized」
+
+#### Scenario: 換群組
+
+- **WHEN** Brisbane 和 Tokyo 都新增了「Flights」，在 Brisbane 選了 Flights 之後改選 Tokyo
+- **THEN** 分類按鈕是「Category, Flights」，存的是 Tokyo 的 Flights 的 ID
+
+#### Scenario: 關掉開關
+
+- **WHEN** 在 Brisbane 選了 Flights 之後關掉開關，而個人空間沒有 Flights
+- **THEN** 分類按鈕是「Category, Uncategorized」，存的是個人空間的 Uncategorized 的 ID
+
+### Requirement: LEDGER-52.1 以群組的網址打開 New Expense
+
+WHEN 以 `/expenses/new?groupId=<群組 ID>` 打開 New Expense，而這是未封存群組的群組 ID，the mobile app SHALL 讓「Split with others」開著並選了這個群組，付款人和分攤的人都還沒選；這不是任何群組的群組 ID，或群組已封存時，照 LEDGER-14.3 和 LEDGER-45.1 打開，開關關著。
+
+#### Scenario: 未封存的群組
+
+- **WHEN** 在 Brisbane 的 Group Categories 把 Food & Dining 改名為「Meals」之後，以 `/expenses/new?groupId=` 加上 Brisbane 的群組 ID 打開
+- **THEN** 開關開著，是「Group, Brisbane」、「Paid by, not selected」和「Split between, Choose people」，分類是「Meals」
+
+#### Scenario: 找不到的群組
+
+- **WHEN** 以 `/expenses/new?groupId=00000000-0000-4000-8000-000000000000` 打開
+- **THEN** 開關關著，分類是個人空間的「Food & Dining」
+
+#### Scenario: 封存的群組
+
+- **WHEN** 封存 Brisbane 之後，以 `/expenses/new?groupId=` 加上它的群組 ID 打開
+- **THEN** 開關關著；打開開關時，Select Group 沒有 Brisbane
+
+### Requirement: LEDGER-53.1 分攤還沒選好時停用 Add 或 Save
+
+WHILE「Split with others」開著，卻還沒選群組、付款人，或沒有任何一位分攤的人，the mobile app SHALL 停用 Add 或 Save（SHELL-49.1）。
+
+#### Scenario: 還沒選群組
+
+- **WHEN** 金額是「8.75」、標題是「Coffee」時打開開關，在 Select Group 按 Cancel
+- **THEN** Add 停用
+
+#### Scenario: 還沒選付款人
+
+- **WHEN** 選了 Brisbane，也選了 Casey 分攤，還沒選付款人
+- **THEN** Add 停用；選 Taylor 為付款人後 Add 可以按
+
+#### Scenario: 沒有分攤的人
+
+- **WHEN** 選了 Brisbane 和付款人，還沒選分攤的人
+- **THEN** Add 停用；在 Split Between 選了 Casey 又拿掉後，Add 仍停用
+
+#### Scenario: Edit Expense
+
+- **WHEN** 在群組支出的 Edit Expense 改了標題，再把分攤的人都拿掉
+- **THEN** Save 停用
+
+### Requirement: LEDGER-54.1 按 Add 存下群組支出
+
+WHEN 使用者在「Split with others」開著的 New Expense 按 Add，the mobile app SHALL 存下一筆屬於選的群組的新支出並關閉表單：標題、備註、金額、幣別、分類和日期照 LEDGER-21.2 的規則，付款只有付款人的全額，分攤是照 LEDGER-6.1 依分攤的順序把金額平均分給分攤的人，都記在他們的成員 ID 下；儲存完成前再按 Add 也只存一筆。
+
+#### Scenario: 除不盡
+
+- **WHEN** Brisbane 有 Taylor、Casey 和 Blake，輸入金額「100.01」、標題「Dinner」，Casey 付款，依序選 Blake、Taylor 和 Casey 分攤，按 Add
+- **THEN** 表單關閉；存下一筆空間是 Brisbane 的「Dinner」，10001 USD，付款是 Casey 的 10001，分攤依序是 Blake 3334、Taylor 3334、Casey 3333
+
+#### Scenario: 付款人不分攤
+
+- **WHEN** Taylor 付款，依序選 Casey 和 Blake 分攤
+- **THEN** 付款是 Taylor 的 10001，分攤依序是 Casey 5001、Blake 5000
+
+#### Scenario: 你沒有付款也沒有分攤
+
+- **WHEN** Casey 付款，只選 Blake 分攤
+- **THEN** 存下這筆支出，付款和分攤裡都沒有 Taylor
+
+#### Scenario: 金額比人數少
+
+- **WHEN** 金額是「0.01」，依序選 Casey 和 Blake 分攤
+- **THEN** 分攤依序是 Casey 1、Blake 0
+
+#### Scenario: 連按兩次
+
+- **WHEN** 連按兩次 Add，第二次在儲存完成之前
+- **THEN** 只多一筆支出
+
+### Requirement: LEDGER-55.1 打開群組支出的 Edit Expense
+
+WHEN 打開群組支出的 Edit Expense，the mobile app SHALL 照 LEDGER-16.1 帶入這筆支出，讓「Split with others」開著並選了它的群組，付款人是它的付款人，分攤的人依存下的順序是它的分攤的人，並停用開關和「Group」，所以不能換群組，也不能改成個人支出。
+
+#### Scenario: 帶入
+
+- **WHEN** 打開 Brisbane 的「Dinner」的 Edit Expense：Casey 付款，依序是 Blake、Taylor 和 Casey 分攤
+- **THEN** 開關開著且停用，「Group, Brisbane」停用，是「Paid by, Casey」和「Split between, 3 people」；Split Between 裡三位都標示為已選取
+
+#### Scenario: 成員改了名
+
+- **WHEN** 把 Casey 改名為「Cass」之後，打開 Dinner 的 Edit Expense
+- **THEN** 是「Paid by, Cass」
+
+#### Scenario: 分類清單
+
+- **WHEN** 在 Dinner 的 Edit Expense 打開分類清單
+- **THEN** 列出 Brisbane 的分類
+
+### Requirement: LEDGER-56.1 按 Save 存下群組支出的修改
+
+WHEN 使用者在群組支出的 Edit Expense 按 Save，the mobile app SHALL 照 LEDGER-21.2 的規則更新標題、備註、金額、分類和日期，保留它的 ID、幣別和群組，付款改成付款人的全額，分攤改成照 LEDGER-6.1 依分攤的順序把金額平均分給分攤的人，然後關閉表單。
+
+#### Scenario: 只改金額
+
+- **WHEN** Casey 付款、分攤依序是 Blake、Taylor、Casey 的 10001 USD 的 Dinner，金額改成「100.00」後按 Save
+- **THEN** 付款是 Casey 的 10000，分攤依序是 Blake 3334、Taylor 3333、Casey 3333
+
+#### Scenario: 改付款人
+
+- **WHEN** 把付款人改成 Taylor 後按 Save
+- **THEN** 付款是 Taylor 的 10001，分攤不變
+
+#### Scenario: 新選的人排在最後
+
+- **WHEN** 分攤依序是 Blake 和 Taylor 的 10001 USD 的支出，再選 Casey 後按 Save
+- **THEN** 分攤依序是 Blake 3334、Taylor 3334、Casey 3333
+
+#### Scenario: 拿掉再選
+
+- **WHEN** 分攤依序是 Blake、Taylor、Casey，拿掉 Blake 再選 Blake，並把標題改成「Supper」後按 Save
+- **THEN** 分攤依序是 Taylor 3334、Casey 3334、Blake 3333
+
+### Requirement: LEDGER-57.1 把個人支出改成群組支出
+
+WHEN 使用者在個人支出的 Edit Expense 打開「Split with others」，選好群組、付款人和分攤的人後按 Save，the mobile app SHALL 照 LEDGER-56.1 的規則把這筆支出存成屬於選的群組的支出，保留它的 ID 和幣別，然後關閉表單。
+
+#### Scenario: 改成群組支出
+
+- **WHEN** 把 875 USD 的「Coffee run」改成 Brisbane 的支出，Taylor 付款，依序選 Taylor 和 Casey 分攤，按 Save
+- **THEN** 仍只有這一筆支出，ID 不變，空間是 Brisbane，付款是 Taylor 的 875，分攤依序是 Taylor 438、Casey 437，分類是 Brisbane 的 Food & Dining
+
+#### Scenario: 再打開
+
+- **WHEN** 之後再打開它的 Edit Expense
+- **THEN** 「Split with others」開著且停用
+
+### Requirement: LEDGER-58.1 存下分攤的順序
+
+The mobile app SHALL 在本機資料保存群組支出的分攤的順序，重新啟動 app 之後，Edit Expense 和明細都還是照這個順序（LEDGER-55.1、56.1、66.1）。
+
+#### Scenario: 讀回存著的支出
+
+- **WHEN** 存下分攤依序是 Blake、Taylor、Casey 的 10001 USD 的 Dinner，重新啟動 app
+- **THEN** 存著的 Dinner 的分攤依序是 Blake、Taylor、Casey
+
+#### Scenario: 重新啟動之後改金額
+
+- **WHEN** 重新啟動之後，把 Dinner 的金額改成「100.00」後按 Save
+- **THEN** 分攤依序是 Blake 3334、Taylor 3333、Casey 3333
+
+### Requirement: LEDGER-59.1 分攤的欄位也是表單的欄位
+
+The mobile app SHALL 讓「Split with others」、群組、付款人和分攤的人（不管順序）任何一個和打開表單時不同，都算表單有變更（LEDGER-20.1、23.1、24.1），並在支出儲存中和其他欄位一樣不能操作（LEDGER-25.1）。
+
+#### Scenario: 只打開開關
+
+- **WHEN** 在 New Expense 只打開「Split with others」，在 Select Group 按 Cancel，再按表單的 Cancel
+- **THEN** 跳出「Discard Changes?」
+
+#### Scenario: 打開又關掉
+
+- **WHEN** 打開開關、選了 Brisbane 之後關掉開關，再按 Cancel
+- **THEN** 表單直接關閉，沒有提示框
+
+#### Scenario: 只改付款人
+
+- **WHEN** 在 Casey 付款的 Dinner 的 Edit Expense 只把付款人改成 Taylor
+- **THEN** Save 可以按；改回 Casey 後 Save 停用
+
+#### Scenario: 拿掉再選同一位
+
+- **WHEN** 只在 Split Between 拿掉 Blake 再選 Blake
+- **THEN** Save 停用
+
+#### Scenario: 儲存中
+
+- **WHEN** 選好群組、付款人和分攤的人後按 Add，儲存還沒完成
+- **THEN** 開關、「Group」、「Paid by」和「Split between」都不能操作
+
+### Requirement: LEDGER-60.1 有前成員時不能改金額和分攤
+
+WHILE 修改的群組支出的付款人或分攤的人裡有前成員，the mobile app SHALL 停用金額欄位、「Paid by」和「Split between」，在金額欄位下面顯示「Someone in this expense was removed from this group, so its amount and split can't be changed here. Other details can still be saved.」，按 Save 時付款和分攤都不變；標題、分類、日期和備註照常可以改。
+
+#### Scenario: 分攤的人被移出
+
+- **WHEN** 分攤依序是 Blake、Taylor、Casey 的 Dinner，把 Blake 移出 Brisbane 之後，打開它的 Edit Expense
+- **THEN** 金額欄位、「Paid by」和「Split between」都停用，金額欄位下面是這句話
+
+#### Scenario: 改其他欄位
+
+- **WHEN** 把標題改成「Supper」後按 Save
+- **THEN** 標題是「Supper」，付款和分攤都和之前一樣，Blake 的分攤也還在
+
+#### Scenario: 付款人被移出
+
+- **WHEN** 把付款人 Casey 移出 Brisbane 之後，打開 Dinner 的 Edit Expense
+- **THEN** 金額欄位、「Paid by」和「Split between」都停用，有這句話
+
+#### Scenario: 加回來
+
+- **WHEN** 把 Blake 加回 Brisbane（GROUPS-34.1）之後，打開 Dinner 的 Edit Expense
+- **THEN** 都可以操作，沒有這句話
+
+### Requirement: LEDGER-61.1 修改封存群組的支出時擋下
+
+IF 使用者在封存群組的支出的 Edit Expense 按 Save，THEN the mobile app SHALL 不儲存，跳出標題「Historical Shared Expense」、內容「Restore its group before editing this expense.」的提示框，表單保持開啟並保留輸入。
+
+#### Scenario: 封存之後
+
+- **WHEN** 封存 Brisbane 之後，以 `/expenses/<Dinner 的 ID>/edit` 打開，把標題改成「Supper」後按 Save
+- **THEN** 跳出這個提示框，表單仍開著，標題是「Supper」；存著的 Dinner 沒有改變
+
+#### Scenario: 還原之後
+
+- **WHEN** 還原 Brisbane 之後，再把 Dinner 的標題改成「Supper」並按 Save
+- **THEN** 表單關閉，Dinner 的標題是「Supper」
+
+### Requirement: LEDGER-62.1 從分類清單打開分類的畫面
+
+WHEN 使用者在分類清單按「+ Add New Category」，the mobile app SHALL 關閉分類清單，打開表單的空間的 Manage Categories 或 Group Categories（CATEGORIES-22.2、23.3），網址是 `/manage-categories`，表單的空間是群組時加上 `?scopeKind=group&spaceId=<群組 ID>`；它和支出表單一樣從畫面底部升起、蓋在表單上（LEDGER-12.1），標題列有取消「Close」和 CATEGORIES-7.3 的「Add category」，按 Close、往下滑或按 Android 的返回鍵時關閉它，回到表單，表單上的輸入都不變。
+
+#### Scenario: 個人空間
+
+- **WHEN** 在 New Expense 輸入「8.75」和「Coffee」，打開分類清單並按「+ Add New Category」
+- **THEN** 標題是「Manage Categories」的畫面蓋在 New Expense 上，標題列有「Close」和「Add category」，網址是 `/manage-categories`
+
+#### Scenario: 群組
+
+- **WHEN** 選了 Brisbane 之後，打開分類清單並按「+ Add New Category」
+- **THEN** 打開 Brisbane 的 Group Categories，網址是 `/manage-categories?scopeKind=group&spaceId=` 加上 Brisbane 的群組 ID
+
+#### Scenario: 新增分類後關閉
+
+- **WHEN** 在這裡新增「Gym」，再按 Close
+- **THEN** 回到 New Expense，金額是「8.75」，標題是「Coffee」，分類仍是「Category, Food & Dining」；打開分類清單時 Gym 排在 Uncategorized 後面
+
+#### Scenario: 改名
+
+- **WHEN** 表單上的分類是 Shopping 時，在這裡把 Shopping 改名為「Groceries」，再按 Close
+- **THEN** 分類按鈕是「Category, Groceries」
+
+#### Scenario: 往下滑或按返回鍵
+
+- **WHEN** iOS 上往下滑它，或在 Android 上按返回鍵
+- **THEN** 回到表單，輸入都不變
+
+### Requirement: LEDGER-63.1 表單開著時分類被刪除
+
+IF 表單開著時，表單上的分類被刪除（CATEGORIES-34.1），THEN the mobile app SHALL 把表單上的分類換成表單的空間的 Uncategorized。
+
+#### Scenario: 刪除新增的分類
+
+- **WHEN** 在 New Expense 從「+ Add New Category」新增「Gym」，關閉後選 Gym，再從「+ Add New Category」移除 Gym 並按 Delete，然後按 Close
+- **THEN** 分類按鈕是「Category, Uncategorized」；輸入金額和標題後按 Add，支出存的是個人空間的 Uncategorized 的 ID
+
+#### Scenario: 群組的分類
+
+- **WHEN** 在選了 Brisbane 的 New Expense，從「+ Add New Category」新增「Flights」並選它，再從「+ Add New Category」刪除 Flights
+- **THEN** 分類按鈕是「Category, Uncategorized」，是 Brisbane 的 Uncategorized
+
+### Requirement: LEDGER-64.1 支出清單也列出和你有關的群組支出
+
+The mobile app SHALL 在支出清單上，和個人支出一起依 LEDGER-28.1 的順序列出每筆和你有關的群組支出的卡片，封存的群組的也列出；和你無關的群組支出不列出。
+
+#### Scenario: 你分攤的
+
+- **WHEN** Brisbane 有一筆 Casey 付款、Taylor 和 Casey 分攤的「Dinner」
+- **THEN** 支出清單有 Dinner 的卡片
+
+#### Scenario: 只有你付款
+
+- **WHEN** Taylor 付款，只有 Casey 和 Blake 分攤
+- **THEN** 支出清單有這筆的卡片
+
+#### Scenario: 你分攤到 0
+
+- **WHEN** Casey 付款，0.01 USD 依序分給 Casey 和 Taylor
+- **THEN** 支出清單有這筆的卡片
+
+#### Scenario: 和你無關的
+
+- **WHEN** Casey 付款，只有 Blake 分攤
+- **THEN** 支出清單沒有這筆的卡片
+
+#### Scenario: 和個人支出排在一起
+
+- **WHEN** 依序新增日期是 `2025-01-02` 的個人支出「Coffee run」、`2025-01-03` 的 Brisbane 的「Dinner」、`2025-01-01` 的 Brisbane 的「Taxi」，Taylor 都有分攤
+- **THEN** 卡片由上而下是 Dinner、Coffee run、Taxi
+
+#### Scenario: 封存的群組
+
+- **WHEN** 封存 Brisbane
+- **THEN** Dinner 的卡片仍在
+
+### Requirement: LEDGER-65.1 群組支出的卡片
+
+The mobile app SHALL 讓群組支出的卡片在分類和日期之間顯示群組的名稱，群組已封存時是「<群組名稱> · Archived」，螢幕閱讀器也在同樣的位置讀出它；群組支出的卡片金額是你的份額，只有付款沒有分攤時是 0，所以 Your Total Share 也只算你的份額（LEDGER-35.1）。
+
+#### Scenario: 卡片
+
+- **WHEN** Brisbane 有 `2026-10-30` 的「Dinner」，10001 USD、Food & Dining，依序分給 Blake、Taylor 和 Casey
+- **THEN** 卡片依序顯示「Dinner」、「$33.34」、「Food & Dining」、「Brisbane」、「Oct 30, 2026」；螢幕閱讀器讀出一個按鈕，依序是這五項
+
+#### Scenario: 只有你付款
+
+- **WHEN** Taylor 付款，只有 Casey 和 Blake 分攤
+- **THEN** 卡片金額是「$0.00」
+
+#### Scenario: Your Total Share
+
+- **WHEN** 除了 Dinner，還有一筆 875 USD 的個人支出
+- **THEN** 是「Your Total Share: $42.09」
+
+#### Scenario: 封存和還原
+
+- **WHEN** 封存 Brisbane
+- **THEN** 卡片上是「Brisbane · Archived」；還原後是「Brisbane」
+
+#### Scenario: 群組改了名
+
+- **WHEN** 把 Brisbane 改名為「Sydney」
+- **THEN** 卡片上是「Sydney」
+
+### Requirement: LEDGER-66.1 群組支出的明細
+
+WHEN 打開群組支出的明細，the mobile app SHALL 依序顯示標題、全額，「YOUR POSITION」區塊裡的「You paid」和你付的、「Your share」和你的份額，以及你付的減你的份額大於 0 時的「You are owed」、小於 0 時的「You owe」、等於 0 時的「Settled up」和兩者差額的絕對值，然後是「PAID BY」和「SPLIT」區塊，依存下的順序每位付款人或分攤的人一列，是他現在的名稱（你的成員加上「 (You)」，前成員是他存著的名稱）和他的金額，再來是「DETAILS」區塊，在「Category」前面多一列「Group」和群組名稱，其餘照 LEDGER-37.1。
+
+#### Scenario: 你付的比份額多
+
+- **WHEN** 打開 Brisbane 的「Dinner」的明細：`2026-10-30`、Food & Dining、6000 USD，Taylor 付款，依序分給 Taylor、Casey 和 Blake
+- **THEN** 依序是「Dinner」、「$60.00」、「YOUR POSITION」、「You paid」、「$60.00」、「Your share」、「$20.00」、「You are owed」、「$40.00」、「PAID BY」、「Taylor (You)」、「$60.00」、「SPLIT」、「Taylor (You)」、「$20.00」、「Casey」、「$20.00」、「Blake」、「$20.00」、「DETAILS」、「Group」、「Brisbane」、「Category」、「Food & Dining」、「Date」、「Oct 30, 2026」
+
+#### Scenario: 你付的比份額少
+
+- **WHEN** 改成 Casey 付款
+- **THEN** 是「You paid」「$0.00」、「Your share」「$20.00」、「You owe」「$20.00」，PAID BY 是「Casey」「$60.00」
+
+#### Scenario: 剛好打平
+
+- **WHEN** 2000 USD，Taylor 付款，只有 Taylor 分攤
+- **THEN** 是「Settled up」「$0.00」
+
+#### Scenario: 和你無關
+
+- **WHEN** 從群組的畫面打開 Casey 付款、只有 Blake 分攤的支出的明細
+- **THEN** 是「You paid」「$0.00」、「Your share」「$0.00」、「Settled up」「$0.00」
+
+#### Scenario: 分攤的順序和名稱
+
+- **WHEN** 依序分給 Blake、Taylor 和 Casey，之後把 Casey 改名為「Cass」，把 Blake 移出 Brisbane
+- **THEN** SPLIT 依序是「Blake」、「Taylor (You)」、「Cass」
+
+#### Scenario: 備註
+
+- **WHEN** 備註是「Birthday」
+- **THEN** 「DETAILS」區塊後面是「NOTE」和「Birthday」
+
+#### Scenario: 以網址打開
+
+- **WHEN** 以 `/expenses/` 加上 Dinner 的 ID 開啟 app
+- **THEN** 顯示 Dinner 的明細，沒有「Expense not found.」
+
+### Requirement: LEDGER-67.1 封存群組的支出只能看
+
+WHILE 支出的群組已封存，the mobile app SHALL 在它的明細的金額下面顯示「Shared history」和「Payments and shares are preserved as read-only history. Restore this group before editing.」，在「DETAILS」的「Group」後面多一列「Status」和「Archived · Read-only」，並停用「Edit」（SHELL-49.1）；群組還原後不再顯示這些，Edit 恢復可以按。
+
+#### Scenario: 封存之後
+
+- **WHEN** 封存 Brisbane 之後，打開 Dinner 的明細
+- **THEN** 金額下面是「Shared history」和這句話，「Group」「Brisbane」後面是「Status」「Archived · Read-only」，Edit 停用
+
+#### Scenario: 還原之後
+
+- **WHEN** 還原 Brisbane 之後，打開 Dinner 的明細
+- **THEN** 沒有「Shared history」和「Status」，Edit 可以按
+
+### Requirement: LEDGER-68.1 (e2e) iOS 上從表單打開的清單和畫面蓋在表單上
+
+WHERE iOS，WHEN 從支出表單打開 Select Group、Who Paid?、Split Between、分類清單，或從「+ Add New Category」打開分類的畫面，the mobile app SHALL 讓它蓋在表單上，關閉後回到表單，表單上的輸入都不變。
+
+#### Scenario: 從群組新增
+
+- **WHEN** iOS 上在 Brisbane 的畫面按「Add expense」，輸入金額和標題，從 Who Paid? 選付款人、從 Split Between 選分攤的人，從「+ Add New Category」新增「Flights」並選它，再按 Add
+- **THEN** 每個清單和 Group Categories 都蓋在表單上，關閉後表單上的輸入都在；表單關閉後回到 Brisbane 的畫面，有這筆支出的卡片
