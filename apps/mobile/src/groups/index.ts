@@ -11,6 +11,7 @@ export interface GroupMember {
 export interface Group {
   id: string;
   name: string;
+  archived: boolean;
   members: GroupMember[];
 }
 
@@ -19,17 +20,23 @@ export async function listGroups(database: SqlExecutor): Promise<Group[]> {
   const rows = await database.all<{
     id: string;
     name: string;
+    archived: number;
     memberId: string | null;
     userId: string | null;
     memberName: string;
-  }>(`SELECT g.id, g.name, m.id AS memberId, m.userId, m.name AS memberName
+  }>(`SELECT g.id, g.name, g.archived, m.id AS memberId, m.userId, m.name AS memberName
       FROM groups g LEFT JOIN group_members m ON m.groupId = g.id AND m.removed = 0
       ORDER BY g.position, m.position`);
   const groups = new Map<string, Group>();
   for (const row of rows) {
     let group = groups.get(row.id);
     if (!group) {
-      group = { id: row.id, name: row.name, members: [] };
+      group = {
+        id: row.id,
+        name: row.name,
+        archived: row.archived === 1,
+        members: [],
+      };
       groups.set(row.id, group);
     }
     if (row.memberId !== null) {
@@ -41,6 +48,20 @@ export async function listGroups(database: SqlExecutor): Promise<Group[]> {
     }
   }
   return [...groups.values()];
+}
+
+export function setGroupArchived(
+  database: Database,
+  id: string,
+  archived: boolean,
+): Promise<void> {
+  return database.transaction(async (transaction) => {
+    const result = await transaction.run(
+      'UPDATE groups SET archived = ? WHERE id = ?',
+      [archived ? 1 : 0, id],
+    );
+    if (result.changes !== 1) throw new Error('Group not found');
+  });
 }
 
 export async function createGroup(

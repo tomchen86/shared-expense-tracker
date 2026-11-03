@@ -1,5 +1,5 @@
 import { categoryMigrations } from '../categories/migrations';
-import { groupMigrations } from '../groups/migrations';
+import { groupArchiveMigration, groupMigrations } from '../groups/migrations';
 import { expenseMigrations } from '../ledger/migrations';
 
 /** Every capability's SQL migrations, in the order they run (ADR-0006). */
@@ -19,5 +19,6 @@ export const appMigrations: readonly string[] = [
   groupMigrations[0],
   ...expenseMigrations,
   ...groupMigrations.slice(1),
+  groupArchiveMigration,
   ...categoryMigrations.slice(1),
 ];

@@ -10,7 +10,10 @@ import {
 import { openNodeDatabase } from '../../src/storage/node';
 import { ensureLocalIdentity } from '../../src/shell/identity';
 import { appMigrations } from '../../src/shell/migrations';
-import { groupMigrations } from '../../src/groups/migrations';
+import {
+  groupArchiveMigration,
+  groupMigrations,
+} from '../../src/groups/migrations';
 import { listGroups } from '../../src/groups';
 import { expenseMigrations } from '../../src/ledger/migrations';
 import { listExpenses } from '../../src/ledger';
@@ -277,7 +280,9 @@ test('adding expense storage preserves groups, identity and existing migration r
     initializeDatabase(database, appMigrations, false, ensureLocalIdentity),
   ).resolves.toEqual(identity);
 
-  expect(await database.all('SELECT * FROM groups')).toEqual(groups);
+  expect(await database.all('SELECT id, name, position FROM groups')).toEqual(
+    groups,
+  );
   expect(
     await database.all('SELECT id, groupId, userId, name FROM group_members'),
   ).toEqual(members);
@@ -287,6 +292,39 @@ test('adding expense storage preserves groups, identity and existing migration r
     ]),
   ).toEqual(records);
   expect(await listExpenses(database)).toEqual([]);
+});
+
+test('adding the archive flag preserves existing groups and migration records', async () => {
+  const previous = appMigrations.slice(
+    0,
+    appMigrations.indexOf(groupArchiveMigration),
+  );
+  const identity = await initializeDatabase(
+    database,
+    previous,
+    false,
+    ensureLocalIdentity,
+  );
+  await database.exec(
+    "INSERT INTO groups (id, name, position) VALUES ('trip', 'Trip', 1), ('home', 'Home', 2)",
+  );
+  const records = await database.all(
+    'SELECT * FROM _migrations ORDER BY position',
+  );
+
+  await expect(
+    initializeDatabase(database, appMigrations, false, ensureLocalIdentity),
+  ).resolves.toEqual(identity);
+
+  expect(await database.all('SELECT * FROM groups ORDER BY position')).toEqual([
+    { id: 'trip', name: 'Trip', position: 1, archived: 0 },
+    { id: 'home', name: 'Home', position: 2, archived: 0 },
+  ]);
+  expect(
+    await database.all('SELECT * FROM _migrations ORDER BY position LIMIT ?', [
+      previous.length,
+    ]),
+  ).toEqual(records);
 });
 
 test('adding member lifecycle storage preserves existing members, their order and migration records', async () => {
