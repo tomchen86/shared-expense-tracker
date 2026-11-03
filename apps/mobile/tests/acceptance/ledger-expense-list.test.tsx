@@ -10,21 +10,25 @@ import {
 } from '@testing-library/react-native';
 import {
   addExpense,
+  archiveCategory,
   editCategory,
   editExpense,
   expectForm,
   expectFormClosed,
   fillForm,
   formCount,
+  inTreeOrder,
   press,
   resetPhone,
   restart,
+  restoreCategory,
   setPhoneClock,
   setPhoneLanguage,
   setRegionCurrency,
   startExpenses,
   storedExpenses,
   titleField,
+  watchAlerts,
 } from './ledger-expense-app';
 import {
   EMPTY_LIST,
@@ -34,16 +38,20 @@ import {
   card,
   cardTitles,
   cards,
+  colorDots,
   detailBarItems,
   detailBars,
   detailLines,
   detailScreen,
+  dotColors,
   expectDetails,
   expensesRoot,
   goBackFromDetails,
   hasEdit,
   holdReads,
+  isUnread,
   linesIn,
+  opacityIn,
   openDetails,
   phoneDatabaseWithReads,
   pressEdit,
@@ -241,7 +249,7 @@ test('[LEDGER-43.1] never shows the empty list while the stored expenses load', 
 
 // Cards
 
-test('[LEDGER-33.1] shows the title, amount, category and date on the card, without the note or payer', async () => {
+test('[LEDGER-33.2] shows the title, amount, category and date on the card, without the note or payer', async () => {
   await startExpenses();
   await saveName('Tom');
   await tapTab('Expenses');
@@ -254,7 +262,7 @@ test('[LEDGER-33.1] shows the title, amount, category and date on the card, with
   expect(lines.join('\n')).not.toMatch(/Morning treat|Tom|paid/i);
 });
 
-test('[LEDGER-33.1] reads each card as one button with its title, amount, category and date', async () => {
+test('[LEDGER-33.2] reads each card as one button with its title, amount, category and date', async () => {
   await startExpenses();
 
   await addExpense();
@@ -265,7 +273,7 @@ test('[LEDGER-33.1] reads each card as one button with its title, amount, catego
   expect(shownInOrder([readOut(shown)], expected)).toEqual(expected);
 });
 
-test('[LEDGER-33.1] shows the current name of a renamed category on the card', async () => {
+test('[LEDGER-33.2] shows the current name of a renamed category on the card', async () => {
   await startExpenses();
   await addExpense({ category: 'Shopping' });
 
@@ -275,6 +283,102 @@ test('[LEDGER-33.1] shows the current name of a renamed category on the card', a
     expect(linesIn(card('Coffee run'))).toContain('Groceries'),
   );
   expect(linesIn(card('Coffee run'))).not.toContain('Shopping');
+});
+
+test("[LEDGER-33.2] shows the category's color dot between the amount and the category's name on the card, without reading it out", async () => {
+  await startExpenses();
+
+  await addExpense();
+
+  const shown = card('Coffee run');
+  expect(dotColors(shown)).toEqual(['#D81B60']);
+  const [dot] = colorDots(shown);
+  expect(
+    inTreeOrder(
+      within(shown).getByText('$8.75'),
+      dot,
+      within(shown).getByText('Food & Dining'),
+    ),
+  ).toBe(true);
+  expect(isUnread(dot)).toBe(true);
+  const unread = [
+    'Coffee run',
+    '$8.75',
+    'Food & Dining',
+    'Oct 30, 2026',
+  ].reduce((rest, text) => rest.replace(text, ''), readOut(shown));
+  expect(unread).toMatch(/^[\s,.;·–-]*$/);
+});
+
+test('[LEDGER-33.2] shows the current color of a recolored category on the card', async () => {
+  await startExpenses();
+  await addExpense({ category: 'Shopping' });
+
+  await editCategory('Shopping', 'Shopping', '#43A047');
+
+  await waitFor(() =>
+    expect(dotColors(card('Coffee run'))).toEqual(['#43A047']),
+  );
+});
+
+test('[LEDGER-33.2] shows an archived category as <name> (Archived) on the card and reads it out', async () => {
+  watchAlerts();
+  await startExpenses();
+  await addExpense({ title: 'Coffee run', category: 'Shopping' });
+  await addExpense({ title: 'Lunch' });
+
+  await archiveCategory('Shopping');
+
+  const expected = [
+    'Coffee run',
+    '$8.75',
+    'Shopping (Archived)',
+    'Oct 30, 2026',
+  ];
+  await waitFor(() =>
+    expect(shownInOrder(linesIn(card('Coffee run')), expected)).toEqual(
+      expected,
+    ),
+  );
+  expect(shownInOrder([readOut(card('Coffee run'))], expected)).toEqual(
+    expected,
+  );
+  expect(dotColors(card('Coffee run'))).toEqual(['#FBC02D']);
+  const [dot] = colorDots(card('Coffee run'));
+  expect(opacityIn(expensesRoot(), dot)).toBe(1);
+  expect(linesIn(card('Lunch'))).toContain('Food & Dining');
+  expect(readOut(card('Lunch'))).not.toContain('(Archived)');
+});
+
+test('[LEDGER-33.2] shows the current name and color of a renamed and recolored category once it is archived', async () => {
+  watchAlerts();
+  await startExpenses();
+  await addExpense({ category: 'Shopping' });
+  await editCategory('Shopping', 'Groceries', '#43A047');
+
+  await archiveCategory('Groceries');
+
+  await waitFor(() =>
+    expect(linesIn(card('Coffee run'))).toContain('Groceries (Archived)'),
+  );
+  expect(dotColors(card('Coffee run'))).toEqual(['#43A047']);
+});
+
+test('[LEDGER-33.2] drops (Archived) from the card once the category is restored', async () => {
+  watchAlerts();
+  await startExpenses();
+  await addExpense({ category: 'Shopping' });
+  await archiveCategory('Shopping');
+  await waitFor(() =>
+    expect(linesIn(card('Coffee run'))).toContain('Shopping (Archived)'),
+  );
+
+  await restoreCategory('Shopping');
+
+  await waitFor(() =>
+    expect(linesIn(card('Coffee run'))).toContain('Shopping'),
+  );
+  expect(readOut(card('Coffee run'))).not.toContain('(Archived)');
 });
 
 test('[LEDGER-34.1] shows the title on one line, cut at its end, and reads it in full', async () => {
@@ -424,7 +528,7 @@ test('[LEDGER-36.1] goes back from the details to the expense list', async () =>
 
 // The details
 
-test('[LEDGER-37.1] shows the title, amount, category, date and note in order on the details', async () => {
+test('[LEDGER-37.2] shows the title, amount, category, date and note in order on the details', async () => {
   await startExpenses();
   await addExpense({
     category: 'Shopping',
@@ -448,7 +552,7 @@ test('[LEDGER-37.1] shows the title, amount, category, date and note in order on
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
 });
 
-test('[LEDGER-37.1] leaves out the NOTE section for an expense without a note', async () => {
+test('[LEDGER-37.2] leaves out the NOTE section for an expense without a note', async () => {
   await startExpenses();
   await addExpense();
 
@@ -459,7 +563,7 @@ test('[LEDGER-37.1] leaves out the NOTE section for an expense without a note', 
   expect(detailLines()).not.toContain('NOTE');
 });
 
-test('[LEDGER-37.1] shows the current name of a renamed category on the details', async () => {
+test('[LEDGER-37.2] shows the current name of a renamed category on the details', async () => {
   await startExpenses();
   await addExpense({ category: 'Shopping' });
   await editCategory('Shopping', 'Groceries');
@@ -470,7 +574,81 @@ test('[LEDGER-37.1] shows the current name of a renamed category on the details'
   expect(detailLines()).not.toContain('Shopping');
 });
 
-test('[LEDGER-37.1] shows a long title and note in full on the details', async () => {
+test("[LEDGER-37.2] shows the category's color dot between Category and its name on the details, without reading it out", async () => {
+  await startExpenses();
+  await addExpense({ category: 'Shopping' });
+
+  await openDetails('Coffee run');
+
+  expect(dotColors(detailScreen())).toEqual(['#FBC02D']);
+  const [dot] = colorDots(detailScreen());
+  const details = within(detailScreen());
+  expect(
+    inTreeOrder(
+      details.getByText('Category'),
+      dot,
+      details.getByText('Shopping'),
+    ),
+  ).toBe(true);
+  expect(isUnread(dot)).toBe(true);
+});
+
+test('[LEDGER-37.2] shows the current color of a recolored category on the details', async () => {
+  await startExpenses();
+  await addExpense({ category: 'Shopping' });
+  await editCategory('Shopping', 'Shopping', '#43A047');
+
+  await openDetails('Coffee run');
+
+  expect(dotColors(detailScreen())).toEqual(['#43A047']);
+});
+
+test('[LEDGER-37.2] shows an archived category as <name> (Archived) on the details', async () => {
+  watchAlerts();
+  await startExpenses();
+  await addExpense({ category: 'Shopping' });
+  await archiveCategory('Shopping');
+
+  await openDetails('Coffee run');
+
+  const expected = ['DETAILS', 'Category', 'Shopping (Archived)', 'Date'];
+  expect(shownInOrder(detailLines(), expected)).toEqual(expected);
+  expect(dotColors(detailScreen())).toEqual(['#FBC02D']);
+  const [dot] = colorDots(detailScreen());
+  expect(opacityIn(detailScreen(), dot)).toBe(1);
+});
+
+test('[LEDGER-37.2] shows the current name and color of a renamed and recolored category once it is archived', async () => {
+  watchAlerts();
+  await startExpenses();
+  await addExpense({ category: 'Shopping' });
+  await editCategory('Shopping', 'Groceries', '#43A047');
+  await archiveCategory('Groceries');
+
+  await openDetails('Coffee run');
+
+  expect(detailLines()).toContain('Groceries (Archived)');
+  expect(dotColors(detailScreen())).toEqual(['#43A047']);
+});
+
+test('[LEDGER-37.2] follows the category being archived and restored while the details stay open', async () => {
+  watchAlerts();
+  await startExpenses();
+  await addExpense({ category: 'Shopping' });
+  await openDetails('Coffee run');
+
+  await archiveCategory('Shopping');
+
+  expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses', 'Expense']);
+  await waitFor(() => expect(detailLines()).toContain('Shopping (Archived)'));
+
+  await restoreCategory('Shopping');
+
+  await waitFor(() => expect(detailLines()).toContain('Shopping'));
+  expect(detailLines().join('\n')).not.toContain('(Archived)');
+});
+
+test('[LEDGER-37.2] shows a long title and note in full on the details', async () => {
   await startExpenses();
   await addExpense({ title: LONG_TITLE, note: LONG_NOTE });
 
