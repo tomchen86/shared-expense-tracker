@@ -16,6 +16,7 @@ import { AppearancePicker } from '../ui/appearance-picker';
 import { GroupedSection } from '../ui/grouped-section';
 import { useThemeColors } from '../ui/theme';
 import { useTabRootBack } from '../ui/use-tab-root-back';
+import { useGroups } from '../groups/use-groups';
 import {
   useAppearanceOption,
   useLocalIdentity,
@@ -36,6 +37,8 @@ export function SettingsScreen() {
   useTabRootBack('/');
   const colors = useThemeColors();
   const identity = useLocalIdentity();
+  const [groups] = useGroups();
+  const archivedCount = groups?.filter((group) => group.archived).length ?? 0;
   const saveName = useSaveLocalName();
   const appearance = useAppearanceOption();
   const saveAppearance = useSaveAppearanceOption();
@@ -190,7 +193,7 @@ export function SettingsScreen() {
           />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Archived Groups"
+            accessibilityLabel={`Archived groups, ${archivedCount}`}
             onPress={() => router.push('/settings/archived-groups')}
             style={({ pressed }) => [
               styles.row,
@@ -199,6 +202,9 @@ export function SettingsScreen() {
           >
             <Text style={[styles.rowLabel, { color: colors.text }]}>
               Archived Groups
+            </Text>
+            <Text style={{ color: colors.textMuted, fontSize: 17 }}>
+              {archivedCount}
             </Text>
             <Text
               accessible={false}
