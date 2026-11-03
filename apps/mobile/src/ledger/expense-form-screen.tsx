@@ -87,6 +87,9 @@ function ExpenseEditor({ categories, expense }: LoadedForm) {
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
   const colors = useThemeColors();
+  const activeCategories = categories.filter(
+    (category) => !category.isArchived,
+  );
   const today = toLocalDate(
     new Date(),
     Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -101,7 +104,7 @@ function ExpenseEditor({ categories, expense }: LoadedForm) {
         ? formatAmount(expense.amountMinor, expense.currency)!
         : '',
       title: expense?.title ?? '',
-      categoryId: expense?.category.id ?? categories[0].id,
+      categoryId: expense?.category.id ?? activeCategories[0].id,
       date: expense?.date ?? today,
       note: expense?.note ?? '',
     };
@@ -316,7 +319,7 @@ function ExpenseEditor({ categories, expense }: LoadedForm) {
           </View>
           <ScrollView contentContainerStyle={styles.content}>
             <GroupedSection>
-              {categories.map((item) => (
+              {activeCategories.map((item) => (
                 <Pressable
                   key={item.id}
                   accessibilityRole="button"

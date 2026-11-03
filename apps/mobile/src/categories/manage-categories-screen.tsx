@@ -1,21 +1,28 @@
+import { Fragment, useCallback, useMemo, useRef, useState } from 'react';
 import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { listGroups } from '../groups';
+import { categoryExpenseCounts } from '../ledger/expenses';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
+import { useThemeColors } from '../ui/theme';
 import { CategoryForm } from './category-form';
+import { CategoryRow } from './category-row';
 import {
   createCategory,
+  deleteCategory,
   isUncategorizedCategory,
   listCategories,
+  moveAndArchiveCategory,
+  setCategoryArchived,
   updateCategory,
   type Category,
 } from './repository';
@@ -25,6 +32,7 @@ type FormState = { kind: 'add' } | { kind: 'edit'; category: Category };
 export function ManageCategoriesScreen() {
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
+  const colors = useThemeColors();
   const { scopeKind, spaceId } = useLocalSearchParams();
   const groupId =
     scopeKind === 'group' && typeof spaceId === 'string' && spaceId
@@ -41,31 +49,39 @@ export function ManageCategoriesScreen() {
       : undefined
     : true;
   const [categories, setCategories] = useState<Category[]>([]);
+  const [expenseCounts, setExpenseCounts] = useState(new Map<string, number>());
   const loadedRef = useRef(false);
   const [formState, setFormState] = useState<FormState | null>(null);
+  const [movingCategory, setMovingCategory] = useState<Category | null>(null);
+  const updatingRef = useRef(false);
+  const [updating, setUpdating] = useState(false);
 
-  useEffect(() => {
-    loadedRef.current = false;
-    let active = true;
-    void Promise.all([
-      listCategories(database, managedSpaceId),
-      groupId ? listGroups(database) : Promise.resolve([]),
-    ])
-      .then(([rows, groups]) => {
-        if (active) {
-          loadedRef.current = true;
-          setCategories(rows);
-          setCheckedGroup({
-            id: groupId,
-            exists: groups.some((group) => group.id === groupId),
-          });
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, [database, groupId, managedSpaceId]);
+  useFocusEffect(
+    useCallback(() => {
+      loadedRef.current = false;
+      let active = true;
+      void Promise.all([
+        listCategories(database, managedSpaceId),
+        categoryExpenseCounts(database),
+        groupId ? listGroups(database) : Promise.resolve([]),
+      ])
+        .then(([rows, counts, groups]) => {
+          if (active) {
+            loadedRef.current = true;
+            setCategories(rows);
+            setExpenseCounts(counts);
+            setCheckedGroup({
+              id: groupId,
+              exists: groups.some((group) => group.id === groupId),
+            });
+          }
+        })
+        .catch(() => undefined);
+      return () => {
+        active = false;
+      };
+    }, [database, groupId, managedSpaceId]),
+  );
 
   const openAddForm = useCallback(() => {
     if (loadedRef.current) {
@@ -107,6 +123,116 @@ export function ManageCategoriesScreen() {
     setFormState(null);
   }
 
+  function updateFailed() {
+    Alert.alert(
+      'Unable to Update Category',
+      'Your change could not be saved. Please try again.',
+    );
+  }
+
+  async function update(write: () => Promise<void>, saved: () => void) {
+    if (updatingRef.current) return;
+    updatingRef.current = true;
+    setUpdating(true);
+    try {
+      await write();
+      saved();
+    } catch {
+      updateFailed();
+    } finally {
+      updatingRef.current = false;
+      setUpdating(false);
+    }
+  }
+
+  function showArchived(id: string, isArchived: boolean) {
+    setCategories((current) =>
+      current.map((category) =>
+        category.id === id ? { ...category, isArchived } : category,
+      ),
+    );
+  }
+
+  function archive(category: Category, archived: boolean) {
+    void update(
+      () => setCategoryArchived(database, category.id, archived),
+      () => showArchived(category.id, archived),
+    );
+  }
+
+  async function remove(category: Category) {
+    if (updatingRef.current) return;
+    updatingRef.current = true;
+    try {
+      const counts = await categoryExpenseCounts(database);
+      setExpenseCounts(counts);
+      const count = counts.get(category.id) ?? 0;
+      if (count === 0) {
+        Alert.alert(
+          'Delete Category?',
+          'This permanently removes the category.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: () =>
+                void update(
+                  () => deleteCategory(database, category.id),
+                  () =>
+                    setCategories((current) =>
+                      current.filter((item) => item.id !== category.id),
+                    ),
+                ),
+            },
+          ],
+        );
+      } else if (!category.isArchived) {
+        Alert.alert(
+          `Archive “${category.name}”?`,
+          `This category is used by ${count} ${count === 1 ? 'expense' : 'expenses'}. Existing expenses will keep their category, but it will no longer appear for new expenses.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Move Expenses…',
+              onPress: () => setMovingCategory(category),
+            },
+            { text: 'Archive', onPress: () => archive(category, true) },
+          ],
+        );
+      }
+    } catch {
+      updateFailed();
+    } finally {
+      updatingRef.current = false;
+    }
+  }
+
+  function move(target: Category) {
+    if (!movingCategory) return;
+    const sourceId = movingCategory.id;
+    void update(
+      () => moveAndArchiveCategory(database, sourceId, target.id),
+      () => {
+        showArchived(sourceId, true);
+        setExpenseCounts((current) => {
+          const next = new Map(current);
+          next.set(
+            target.id,
+            (next.get(target.id) ?? 0) + (next.get(sourceId) ?? 0),
+          );
+          next.delete(sourceId);
+          return next;
+        });
+        setMovingCategory(null);
+      },
+    );
+  }
+
+  function cancelMove() {
+    if (!updatingRef.current) setMovingCategory(null);
+  }
+
   const editingCategory =
     formState?.kind === 'edit' ? formState.category : null;
   const otherCategories = editingCategory
@@ -137,58 +263,40 @@ export function ManageCategoriesScreen() {
     [openAddForm, groupId, groupExists],
   );
 
-  const categoryRows = useMemo(
-    () => (
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.content}
-      >
-        <Text accessibilityRole="header" style={styles.sectionLabel}>
-          CATEGORIES
-        </Text>
-        <View style={styles.section}>
-          {categories.map((category, index) => {
-            const uncategorized = isUncategorizedCategory(category);
-            return (
-              <Fragment key={category.id}>
-                {index > 0 && <View style={styles.separator} />}
-                {uncategorized ? (
-                  <View style={styles.row}>
-                    <View
-                      style={[
-                        styles.colorDot,
-                        { backgroundColor: category.color },
-                      ]}
-                    />
-                    <Text style={styles.rowLabel}>{category.name}</Text>
-                  </View>
-                ) : (
-                  <Pressable
-                    accessibilityLabel={category.name}
-                    accessibilityRole="button"
-                    onPress={() => setFormState({ kind: 'edit', category })}
-                    style={({ pressed }) => [
-                      styles.row,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.colorDot,
-                        { backgroundColor: category.color },
-                      ]}
-                    />
-                    <Text style={styles.rowLabel}>{category.name}</Text>
-                  </Pressable>
-                )}
-              </Fragment>
-            );
-          })}
-        </View>
-      </ScrollView>
-    ),
-    [categories],
+  const activeCategories = categories.filter(
+    (category) => !category.isArchived,
   );
+  const archivedCategories = categories.filter(
+    (category) => category.isArchived,
+  );
+
+  function rows(items: Category[]) {
+    return items.map((category, index) => (
+      <Fragment key={category.id}>
+        {index > 0 && (
+          <View
+            style={[
+              styles.separator,
+              category.isArchived && { backgroundColor: colors.separator },
+            ]}
+          />
+        )}
+        <CategoryRow
+          category={category}
+          used={(expenseCounts.get(category.id) ?? 0) > 0}
+          onPress={
+            isUncategorizedCategory(category)
+              ? undefined
+              : () =>
+                  category.isArchived
+                    ? archive(category, false)
+                    : setFormState({ kind: 'edit', category })
+          }
+          onRemove={() => void remove(category)}
+        />
+      </Fragment>
+    ));
+  }
 
   return (
     <SafeAreaView edges={['left', 'right']} style={styles.screen}>
@@ -202,7 +310,54 @@ export function ManageCategoriesScreen() {
           <Text>Group not found.</Text>
         </ScrollView>
       )}
-      {groupExists && categoryRows}
+      {groupExists && (
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={styles.content}
+        >
+          <View style={styles.sectionHeader}>
+            <Text accessibilityRole="header" style={styles.sectionLabel}>
+              CATEGORIES
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="About categories"
+              hitSlop={8}
+              style={styles.about}
+              onPress={() =>
+                Alert.alert(
+                  'About Categories',
+                  'Tap a category to edit it. Swipe left to remove a category. Categories used by expenses can be archived or moved, so historical classifications stay intact. Uncategorized is reserved and cannot be renamed or removed.',
+                )
+              }
+            >
+              <Text style={{ color: colors.accent }}>ⓘ</Text>
+            </Pressable>
+          </View>
+          <View style={styles.section}>{rows(activeCategories)}</View>
+          {archivedCategories.length > 0 && (
+            <View
+              style={[styles.archived, { backgroundColor: colors.background }]}
+            >
+              <Text
+                accessibilityRole="header"
+                style={[styles.sectionLabel, { color: colors.textMuted }]}
+              >
+                ARCHIVED
+              </Text>
+              <View
+                style={[styles.section, { backgroundColor: colors.surface }]}
+              >
+                {rows(archivedCategories)}
+              </View>
+              <Text style={[styles.footer, { color: colors.textMuted }]}>
+                Archived categories remain on historical expenses and in
+                Insights.
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
 
       {groupExists && formState !== null && (
         <CategoryForm
@@ -211,6 +366,67 @@ export function ManageCategoriesScreen() {
           onSave={handleSave}
           otherCategories={otherCategories}
         />
+      )}
+      {groupExists && movingCategory && (
+        <Modal visible animationType="slide" onRequestClose={cancelMove}>
+          <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+            <View
+              style={[
+                styles.moveHeader,
+                { borderBottomColor: colors.separator },
+              ]}
+            >
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+                disabled={updating}
+                accessibilityState={{ disabled: updating }}
+                onPress={cancelMove}
+                style={styles.cancel}
+              >
+                <Text style={{ color: colors.accent }}>Cancel</Text>
+              </Pressable>
+              <Text
+                accessibilityRole="header"
+                style={[styles.moveTitle, { color: colors.text }]}
+              >
+                Move {movingCategory.name} Expenses
+              </Text>
+            </View>
+            <ScrollView contentContainerStyle={styles.content}>
+              <View
+                style={[styles.section, { backgroundColor: colors.surface }]}
+              >
+                {activeCategories
+                  .filter((category) => category.id !== movingCategory.id)
+                  .map((category) => (
+                    <Pressable
+                      key={category.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={category.name}
+                      accessibilityState={{ disabled: updating }}
+                      disabled={updating}
+                      onPress={() => move(category)}
+                      style={({ pressed }) => [
+                        styles.row,
+                        pressed && { backgroundColor: colors.pressedSurface },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.colorDot,
+                          { backgroundColor: category.color },
+                        ]}
+                      />
+                      <Text style={[styles.rowLabel, { color: colors.text }]}>
+                        {category.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+              </View>
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
       )}
     </SafeAreaView>
   );
@@ -254,7 +470,28 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   rowLabel: { color: '#1c1c1e', fontSize: 17, flex: 1 },
-  pressed: { backgroundColor: '#e5e5ea' },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  about: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  archived: { marginTop: 28 },
+  footer: { fontSize: 13, marginHorizontal: 16, marginTop: 8 },
+  moveHeader: {
+    minHeight: 56,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  moveTitle: { fontSize: 17, fontWeight: '600', flex: 1 },
+  cancel: { minHeight: 48, minWidth: 64, justifyContent: 'center' },
   separator: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: '#c6c6c8',

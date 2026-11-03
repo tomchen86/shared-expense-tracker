@@ -12,11 +12,12 @@ export const appMigrations: readonly string[] = [
     name TEXT NOT NULL,
     CHECK (userId <> personalSpaceId AND userId <> personalParticipantId AND personalSpaceId <> personalParticipantId)
   )`,
-  ...categoryMigrations,
+  categoryMigrations[0],
   `ALTER TABLE local_identity
     ADD COLUMN appearance TEXT NOT NULL DEFAULT 'system'
     CHECK (appearance IN ('system', 'light', 'dark'))`,
   groupMigrations[0],
   ...expenseMigrations,
   ...groupMigrations.slice(1),
+  ...categoryMigrations.slice(1),
 ];
