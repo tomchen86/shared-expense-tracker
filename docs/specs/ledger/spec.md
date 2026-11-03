@@ -1171,7 +1171,7 @@ The mobile app SHALL 在 Trash 依移到垃圾桶的先後，最後移入的在�
 
 ### Requirement: LEDGER-78.1 點 Trash 的卡片推入唯讀明細
 
-WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推入這筆支出的唯讀明細，網址是 `/settings/trash/<支出的 ID>`，標題是「Expense」，最上面是「This expense is in the Trash.」，下面是名稱為「Restore」的按鈕，再下面依 LEDGER-37.1 顯示支出的內容；標題列沒有「Edit」，只有名稱是「Expense actions」的選單（SHELL-47.1、SHELL-48.1），裡面只有破壞性的「Delete Permanently」（SHELL-53.1）。連點兩次也只推入一個唯讀明細，返回時回到 Trash；從推入到讀完支出，都不顯示「Expense not found.」。唯讀明細跟著存著的支出：網址裡的 ID 不是垃圾桶裡的支出，或打開之後那一筆離開了垃圾桶時，SHALL 只顯示「Expense not found.」，標題列沒有選單。
+WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推入這筆支出的唯讀明細，網址是 `/settings/trash/<支出的 ID>`，標題是「Expense」，最上面是「This expense is in the Trash.」，下面是名稱為「Restore」的按鈕，再下面依 LEDGER-37.1 顯示支出的內容；標題列沒有「Edit」，只有名稱是「Expense actions」的選單（SHELL-47.1、SHELL-48.1），裡面只有破壞性的「Delete Permanently」（SHELL-53.1）。連點兩次也只推入一個唯讀明細，返回時回到 Trash；從推入到讀完支出，都不顯示「Expense not found.」。唯讀明細跟著存著的支出：網址裡的 ID 不是垃圾桶裡的支出，或打開之後那一筆因為別處的操作（例如 Undo 提示的 Undo）離開了垃圾桶時，SHALL 只顯示「Expense not found.」，標題列沒有選單。
 
 #### Scenario: 點卡片
 

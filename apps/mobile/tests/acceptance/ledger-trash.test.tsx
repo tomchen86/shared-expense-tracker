@@ -552,6 +552,7 @@ test('[LEDGER-74.1] hides the notice once its expense is restored from Trash', a
   await deleteByAction('Coffee run');
   await openTrash();
   await openTrashed('Coffee run');
+  expect(noticeShown()).toBe(true);
 
   await pressRestore();
 
@@ -564,6 +565,7 @@ test('[LEDGER-74.1] hides the notice once its expense is deleted for good', asyn
   await deleteByAction('Coffee run');
   await openTrash();
   await openTrashed('Coffee run');
+  expect(noticeShown()).toBe(true);
 
   await chooseExpenseAction('Settings', 'Delete Permanently');
   await pressAlertButton('Delete');
@@ -577,6 +579,7 @@ test('[LEDGER-74.1] hides the notice once the trash is emptied', async () => {
   await deleteByAction('Coffee run');
   await openTrash();
   await expectTrash(['Coffee run']);
+  expect(noticeShown()).toBe(true);
 
   await pressEmptyTrash();
   await pressAlertButton('Empty Trash');
