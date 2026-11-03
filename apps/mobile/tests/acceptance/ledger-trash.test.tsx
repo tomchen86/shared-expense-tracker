@@ -12,6 +12,7 @@ import {
   addCategory,
   addExpense,
   nameOf,
+  namesWithAction,
   resetPhone,
   restart,
   startExpenses,
@@ -60,6 +61,7 @@ import {
   goBackFromTrashed,
   hasExpenseActions,
   lastAlertButtonStyles,
+  moveCategoryExpenses,
   movedAnnouncement,
   noticeLines,
   noticeShown,
@@ -256,14 +258,18 @@ test('[LEDGER-71.1] moves an expense to the trash without asking, and leaves it 
   expect(totalShareLines()).toEqual(['Your Total Share: $8.75']);
 });
 
-test('[LEDGER-71.1] shows the empty list text once the last card moves to the trash', async () => {
-  await startExpenses();
+test('[LEDGER-71.1] shows the empty list text once the last card moves to the trash, also after the app restarts', async () => {
+  const app = await startExpenses();
   await addExpense();
 
   await deleteByAction('Coffee run');
 
   await expectCards([]);
   expect(linesIn(expensesRoot())).toContain(EMPTY_LIST);
+  expect(totalShareLines()).toEqual(['Your Total Share: —']);
+  await restart(app);
+  await waitFor(() => expect(linesIn(expensesRoot())).toContain(EMPTY_LIST));
+  expect(cards()).toEqual([]);
   expect(totalShareLines()).toEqual(['Your Total Share: —']);
 });
 
@@ -280,6 +286,21 @@ test('[LEDGER-71.1] keeps the card on the list until the move to the trash is sa
   await writes.release();
   await settle();
   await expectCards(['Coffee run']);
+});
+
+test('[LEDGER-71.1] moves the expense once when Delete expense is used again before the move is saved', async () => {
+  await startWithTwo();
+  const writes = holdWrites();
+
+  await deleteByAction('Lunch');
+  await deleteByAction('Lunch');
+  await writes.release();
+  await settle();
+
+  await expectCards(['Coffee run']);
+  expect(announcements()).toEqual([movedAnnouncement('Lunch')]);
+  await openTrash();
+  await expectTrash(['Lunch']);
 });
 
 test('[LEDGER-71.1] keeps an expense in the trash after the app restarts', async () => {
@@ -315,6 +336,21 @@ test('[LEDGER-71.1] still counts an expense in the trash as using its category',
   await deleteByAction('Squat rack');
 
   expect(await removeCategory('Gym')).toEqual(ARCHIVE_GYM);
+});
+
+test('[LEDGER-71.1] lets Move Expenses… move an expense in the trash out of its category', async () => {
+  await startExpenses();
+  await addGymExpense();
+  await deleteByAction('Squat rack');
+
+  await moveCategoryExpenses('Gym', 'Shopping');
+
+  expect(namesWithAction(tab('Settings'), 'Delete')).toContain('Restore Gym');
+  await goBackFrom('Manage Categories');
+  await restoreFromTrash('Squat rack');
+  await tapTab('Expenses');
+  await expectCards(['Squat rack']);
+  expect(linesIn(card('Squat rack'))).toContain('Shopping');
 });
 
 // Delete on the details
@@ -363,6 +399,23 @@ test('[LEDGER-72.1] keeps the details open until the move to the trash is saved'
   await waitFor(() =>
     expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses']),
   );
+});
+
+test('[LEDGER-72.1] goes back once when Delete is chosen again before the move is saved', async () => {
+  await startWithTwo();
+  await openDetails('Lunch');
+  const writes = holdWrites();
+
+  await chooseExpenseAction('Expenses', 'Delete');
+  await chooseExpenseAction('Expenses', 'Delete');
+  await writes.release();
+  await settle();
+
+  await waitFor(() =>
+    expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses']),
+  );
+  expect(selectedTab()).toBe('Expenses');
+  expect(announcements()).toEqual([movedAnnouncement('Lunch')]);
 });
 
 test('[LEDGER-72.1] offers no Expense actions with Expense not found.', async () => {
@@ -491,6 +544,57 @@ test('[LEDGER-74.1] counts 5 seconds again when the screen reader is turned off'
   expect(noticeShown()).toBe(true);
   await wait(100);
   expect(noticeShown()).toBe(false);
+});
+
+test('[LEDGER-74.1] hides the notice once its expense is restored from Trash', async () => {
+  await startExpenses();
+  await addExpense();
+  await deleteByAction('Coffee run');
+  await openTrash();
+  await openTrashed('Coffee run');
+
+  await pressRestore();
+
+  expect(noticeShown()).toBe(false);
+});
+
+test('[LEDGER-74.1] hides the notice once its expense is deleted for good', async () => {
+  await startExpenses();
+  await addExpense();
+  await deleteByAction('Coffee run');
+  await openTrash();
+  await openTrashed('Coffee run');
+
+  await chooseExpenseAction('Settings', 'Delete Permanently');
+  await pressAlertButton('Delete');
+
+  expect(noticeShown()).toBe(false);
+});
+
+test('[LEDGER-74.1] hides the notice once the trash is emptied', async () => {
+  await startExpenses();
+  await addExpense();
+  await deleteByAction('Coffee run');
+  await openTrash();
+  await expectTrash(['Coffee run']);
+
+  await pressEmptyTrash();
+  await pressAlertButton('Empty Trash');
+
+  expect(noticeShown()).toBe(false);
+});
+
+test('[LEDGER-74.1] keeps the notice when another expense is restored from Trash', async () => {
+  await startWithTwo();
+  await deleteByAction('Lunch');
+  await deleteByAction('Coffee run');
+  await openTrash();
+  await openTrashed('Lunch');
+
+  await pressRestore();
+
+  expect(noticeShown()).toBe(true);
+  expect(undoButton('Coffee run')).not.toBeNull();
 });
 
 // Undo
@@ -808,6 +912,19 @@ test('[LEDGER-78.1] shows only Expense not found. at the Trash URL of an expense
   expect(hasExpenseActions('Settings')).toBe(false);
 });
 
+test('[LEDGER-78.1] shows only Expense not found. once Undo takes the expense out of the trash', async () => {
+  await startExpenses();
+  await addExpense();
+  await deleteByAction('Coffee run');
+  await openTrash();
+  await openTrashed('Coffee run');
+
+  await pressUndo('Coffee run');
+
+  await waitFor(() => expect(expenseLines('Settings')).toEqual([NOT_FOUND]));
+  expect(hasExpenseActions('Settings')).toBe(false);
+});
+
 test('[LEDGER-78.1] shows only Expense not found. at the Trash URL of an ID that is no expense', async () => {
   await startExpensesAt(`/settings/trash/${NO_EXPENSE_ID}`);
 
@@ -870,6 +987,27 @@ test('[LEDGER-79.1] keeps the read-only details open until the restore is saved'
   await waitFor(() =>
     expect(navigationBarTitles(tab('Settings'))).toEqual(['Settings', 'Trash']),
   );
+});
+
+test('[LEDGER-79.1] restores once and goes back once when Restore is pressed again before it is saved', async () => {
+  await startExpenses();
+  await addExpense();
+  await deleteByAction('Coffee run');
+  await openTrash();
+  await openTrashed('Coffee run');
+  const writes = holdWrites();
+
+  await pressRestore();
+  await pressRestore();
+  await writes.release();
+  await settle();
+
+  await waitFor(() =>
+    expect(navigationBarTitles(tab('Settings'))).toEqual(['Settings', 'Trash']),
+  );
+  await waitFor(() => expect(trashLines()).toEqual([NO_DELETED]));
+  await tapTab('Expenses');
+  await expectCards(['Coffee run']);
 });
 
 // Delete Permanently

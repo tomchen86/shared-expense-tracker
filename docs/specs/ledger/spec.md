@@ -2,7 +2,7 @@
 
 ## Purpose
 
-記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期或備註有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是 Your Total Share，下面是支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。手機地區的貨幣格式，是手機第一個偏好的語言和地區用來顯示一個幣別的金額的格式；手機地區的日期格式見 LEDGER-30.1。刪除支出是把它移到垃圾桶：本機資料把它標成在垃圾桶裡，它的其他資料都不變，所以垃圾桶裡的支出仍是存著的支出，仍算使用它的分類（CATEGORIES-34.1、35.1）；還原是拿掉這個標記，永久刪除是把這筆支出和它的付款、分攤從本機資料刪掉。Undo 提示是支出移到垃圾桶之後，顯示在畫面底部、可以按 Undo 的提示；Undo 時間是 5 秒，螢幕閱讀器開著時是 15 秒，螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。Trash 是 Settings 分頁上列出垃圾桶裡的支出的畫面；唯讀明細是在 Trash 點卡片後推入、顯示垃圾桶裡一筆支出的畫面。
+記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期或備註有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是 Your Total Share，下面是支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。手機地區的貨幣格式，是手機第一個偏好的語言和地區用來顯示一個幣別的金額的格式；手機地區的日期格式見 LEDGER-30.1。刪除支出是把它移到垃圾桶：本機資料把它標成在垃圾桶裡，它的其他資料都不變，所以垃圾桶裡的支出仍是存著的支出，仍算使用它的分類（CATEGORIES-34.1、35.1、40.1）；還原是拿掉這個標記，永久刪除是把這筆支出和它的付款、分攤從本機資料刪掉。Undo 提示是支出移到垃圾桶之後，顯示在畫面底部、可以按 Undo 的提示；Undo 時間是 5 秒，螢幕閱讀器開著時是 15 秒，螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。Trash 是 Settings 分頁上列出垃圾桶裡的支出的畫面；唯讀明細是在 Trash 點卡片後推入、顯示垃圾桶裡一筆支出的畫面。
 
 ## Requirements
 
@@ -924,7 +924,7 @@ WHEN 從明細打開的 Edit Expense 存好支出，the mobile app SHALL 在從�
 
 ### Requirement: LEDGER-70.1 (e2e) 左滑卡片露出 Delete
 
-WHEN 使用者在支出清單把卡片往左滑，the mobile app SHALL 在卡片右邊露出顯示「Delete」的按鈕，它的無障礙名稱是「Delete <標題> expense」；按下它就把這筆支出移到垃圾桶（LEDGER-71.1）。
+WHEN 使用者在支出清單把個人支出的卡片往左滑，the mobile app SHALL 在卡片右邊露出顯示「Delete」的按鈕，它的無障礙名稱是「Delete <標題> expense」；按下它就把這筆支出移到垃圾桶（LEDGER-71.1）。
 
 #### Scenario: 左滑
 
@@ -938,7 +938,7 @@ WHEN 使用者在支出清單把卡片往左滑，the mobile app SHALL 在卡片
 
 ### Requirement: LEDGER-71.1 刪除支出時移到垃圾桶
 
-WHEN 使用者按卡片左滑露出的「Delete」、使用卡片上名稱是「Delete expense」的輔助功能動作，或在明細的 Expense actions 選「Delete」（LEDGER-72.1），the mobile app SHALL 不另外確認，就把這筆支出移到垃圾桶，存好後才把它的卡片移出支出清單、不再把它算進 Your Total Share，沒有其他卡片時顯示 LEDGER-32.1 的提示；重新啟動 app 之後它仍在垃圾桶裡，以網址打開它的明細時，和 LEDGER-39.1 一樣只顯示「Expense not found.」，標題列沒有「Edit」和「Expense actions」。
+WHEN 使用者按個人支出的卡片左滑露出的「Delete」、使用個人支出的卡片上名稱是「Delete expense」的輔助功能動作，或在個人支出的明細的 Expense actions 選「Delete」（LEDGER-72.1），the mobile app SHALL 不另外確認，就把這筆支出移到垃圾桶，存好後才把它的卡片移出支出清單、不再把它算進 Your Total Share，沒有其他卡片時顯示 LEDGER-32.1 的提示，重新啟動 app 之後也一樣；存好之前再按一次或再用一次，也只移一次。重新啟動 app 之後它仍在垃圾桶裡，以網址打開它的明細時，和 LEDGER-39.1 一樣只顯示「Expense not found.」，標題列沒有「Edit」和「Expense actions」。
 
 #### Scenario: 卡片的輔助功能動作
 
@@ -952,13 +952,18 @@ WHEN 使用者按卡片左滑露出的「Delete」、使用卡片上名稱是「
 
 #### Scenario: 最後一筆
 
-- **WHEN** 只有 Coffee run 時把它移到垃圾桶
-- **THEN** 支出清單顯示「No expenses to display. Add a personal expense or get involved in a group expense.」和「Your Total Share: —」，沒有卡片
+- **WHEN** 只有 Coffee run 時把它移到垃圾桶，再重新啟動 app
+- **THEN** 移到垃圾桶之後和重新啟動之後，支出清單都顯示「No expenses to display. Add a personal expense or get involved in a group expense.」和「Your Total Share: —」，沒有卡片
 
 #### Scenario: 存好之前
 
 - **WHEN** 把 Lunch 移到垃圾桶，還沒存好
 - **THEN** Lunch 的卡片仍在支出清單上；存好後才移出
+
+#### Scenario: 存好之前再用一次
+
+- **WHEN** 對 Lunch 的卡片使用「Delete expense」，還沒存好時再用一次
+- **THEN** Lunch 只移到垃圾桶一次，螢幕閱讀器只念一次「Lunch moved to Trash. Undo available.」
 
 #### Scenario: 重新啟動
 
@@ -975,9 +980,14 @@ WHEN 使用者按卡片左滑露出的「Delete」、使用卡片上名稱是「
 - **WHEN** Gym 唯一一筆支出在垃圾桶裡時，在 Manage Categories 移除 Gym
 - **THEN** 跳出「Archive “Gym”?」，內容是「This category is used by 1 expense. Existing expenses will keep their category, but it will no longer appear for new expenses.」
 
+#### Scenario: 用 Move Expenses… 搬走
+
+- **WHEN** Gym 唯一一筆支出 Squat rack 在垃圾桶裡時，在 Manage Categories 移除 Gym，選「Move Expenses…」，再選 Shopping
+- **THEN** 「ARCHIVED」下的「Restore Gym」有「Delete」動作；在 Trash 還原 Squat rack 之後，它的卡片上的分類是「Shopping」
+
 ### Requirement: LEDGER-72.1 明細的 Expense actions 選單
 
-The mobile app SHALL 在明細的標題列、「Edit」的右邊放一個名稱是「Expense actions」的選單（SHELL-47.1、SHELL-48.1），裡面只有破壞性的「Delete」（SHELL-53.1）；選「Delete」時，SHALL 把這筆支出移到垃圾桶（LEDGER-71.1），存好後返回支出清單。
+The mobile app SHALL 在個人支出的明細的標題列、「Edit」的右邊放一個名稱是「Expense actions」的選單（SHELL-47.1、SHELL-48.1），裡面只有破壞性的「Delete」（SHELL-53.1）；選「Delete」時，SHALL 把這筆支出移到垃圾桶（LEDGER-71.1），存好後返回支出清單，存好之前再選一次也只返回一次。
 
 #### Scenario: iOS
 
@@ -998,6 +1008,11 @@ The mobile app SHALL 在明細的標題列、「Edit」的右邊放一個名稱�
 
 - **WHEN** 在 Lunch 的明細選「Delete」，還沒存好
 - **THEN** 明細仍開著，顯示 Lunch；存好後才返回支出清單
+
+#### Scenario: 存好之前再選一次
+
+- **WHEN** 在 Lunch 的明細選「Delete」，還沒存好時再選一次
+- **THEN** 存好後只返回一次：分頁列仍選中 Expenses，Expenses 分頁的堆疊只剩「Expenses」根畫面；螢幕閱讀器只念一次「Lunch moved to Trash. Undo available.」
 
 #### Scenario: 找不到支出
 
@@ -1028,9 +1043,9 @@ WHEN 支出移到垃圾桶並存好，the mobile app SHALL 在畫面底部顯示
 - **WHEN** 把 Coffee run 移到垃圾桶 3 秒後，再把 Lunch 移到垃圾桶
 - **THEN** Lunch 存好時螢幕閱讀器念出「Lunch moved to Trash. Undo available.」，提示的按鈕換成「Undo deletion of Lunch」，沒有「Undo deletion of Coffee run」；提示到 Lunch 存好之後 5 秒才收起，Coffee run 一直在垃圾桶裡
 
-### Requirement: LEDGER-74.1 Undo 提示顯示 Undo 時間後收起
+### Requirement: LEDGER-74.1 Undo 提示收起的時候
 
-The mobile app SHALL 讓 Undo 提示從那一筆存好時起顯示 Undo 時間後收起，那一筆支出留在垃圾桶裡；提示顯示時打開或關掉螢幕閱讀器，就從那時起依螢幕閱讀器現在的狀態，重新算這一筆完整的 Undo 時間。
+The mobile app SHALL 讓 Undo 提示從那一筆存好時起顯示 Undo 時間後收起，那一筆支出留在垃圾桶裡；提示顯示時打開或關掉螢幕閱讀器，就從那時起依螢幕閱讀器現在的狀態，重新算這一筆完整的 Undo 時間。提示收起之前，那一筆在 Trash 被還原、永久刪除或清空，SHALL 立刻收起提示。
 
 #### Scenario: 5 秒
 
@@ -1051,6 +1066,21 @@ The mobile app SHALL 讓 Undo 提示從那一筆存好時起顯示 Undo 時間�
 
 - **WHEN** 螢幕閱讀器開著，提示顯示 5 秒後關掉螢幕閱讀器
 - **THEN** 從那時起過了 4.9 秒仍顯示提示，到 5 秒時收起
+
+#### Scenario: 在 Trash 還原或永久刪除
+
+- **WHEN** 把 Coffee run 移到垃圾桶，提示還在時，在 Trash 打開它按「Restore」，或選「Delete Permanently」再按「Delete」
+- **THEN** 存好時提示就收起
+
+#### Scenario: 清空垃圾桶
+
+- **WHEN** 把 Coffee run 移到垃圾桶，提示還在時，在 Trash 清空垃圾桶
+- **THEN** 存好時提示就收起
+
+#### Scenario: 還原別筆
+
+- **WHEN** Lunch 已經在垃圾桶裡，把 Coffee run 移到垃圾桶，提示還在時，在 Trash 還原 Lunch
+- **THEN** Coffee run 的提示仍在
 
 ### Requirement: LEDGER-75.1 按 Undo 時還原支出
 
@@ -1141,7 +1171,7 @@ The mobile app SHALL 在 Trash 依移到垃圾桶的先後，最後移入的在�
 
 ### Requirement: LEDGER-78.1 點 Trash 的卡片推入唯讀明細
 
-WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推入這筆支出的唯讀明細，網址是 `/settings/trash/<支出的 ID>`，標題是「Expense」，最上面是「This expense is in the Trash.」，下面是名稱為「Restore」的按鈕，再下面依 LEDGER-37.1 顯示支出的內容；標題列沒有「Edit」，只有名稱是「Expense actions」的選單（SHELL-47.1、SHELL-48.1），裡面只有破壞性的「Delete Permanently」（SHELL-53.1）。連點兩次也只推入一個唯讀明細，返回時回到 Trash；從推入到讀完支出，都不顯示「Expense not found.」。網址裡的 ID 不是垃圾桶裡的支出時，SHALL 只顯示「Expense not found.」，標題列沒有選單。
+WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推入這筆支出的唯讀明細，網址是 `/settings/trash/<支出的 ID>`，標題是「Expense」，最上面是「This expense is in the Trash.」，下面是名稱為「Restore」的按鈕，再下面依 LEDGER-37.1 顯示支出的內容；標題列沒有「Edit」，只有名稱是「Expense actions」的選單（SHELL-47.1、SHELL-48.1），裡面只有破壞性的「Delete Permanently」（SHELL-53.1）。連點兩次也只推入一個唯讀明細，返回時回到 Trash；從推入到讀完支出，都不顯示「Expense not found.」。唯讀明細跟著存著的支出：網址裡的 ID 不是垃圾桶裡的支出，或打開之後那一筆離開了垃圾桶時，SHALL 只顯示「Expense not found.」，標題列沒有選單。
 
 #### Scenario: 點卡片
 
@@ -1178,9 +1208,14 @@ WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推�
 - **WHEN** Lunch 不在垃圾桶裡，以 `/settings/trash/` 加上 Lunch 的 ID 開啟 app
 - **THEN** 標題是「Expense」，只顯示「Expense not found.」，標題列沒有「Expense actions」
 
+#### Scenario: 打開之後被 Undo 還原
+
+- **WHEN** 把 Coffee run 移到垃圾桶，提示還在時打開它的唯讀明細，再按提示的「Undo」
+- **THEN** 唯讀明細只顯示「Expense not found.」，標題列沒有「Expense actions」
+
 ### Requirement: LEDGER-79.1 按 Restore 時從垃圾桶還原
 
-WHEN 使用者在唯讀明細按「Restore」，the mobile app SHALL 不另外確認，就把這筆支出從垃圾桶還原，存好後返回 Trash，讓它不再出現在 Trash，回到支出清單上依 LEDGER-28.1 該在的位置，再算進 Your Total Share。
+WHEN 使用者在唯讀明細按「Restore」，the mobile app SHALL 不另外確認，就把這筆支出從垃圾桶還原，存好後返回 Trash，讓它不再出現在 Trash，回到支出清單上依 LEDGER-28.1 該在的位置，再算進 Your Total Share；存好之前再按一次，也只還原一次、只返回一次。
 
 #### Scenario: 還原
 
@@ -1196,6 +1231,11 @@ WHEN 使用者在唯讀明細按「Restore」，the mobile app SHALL 不另外�
 
 - **WHEN** 按「Restore」，還沒存好
 - **THEN** 唯讀明細仍開著；存好後才返回 Trash
+
+#### Scenario: 存好之前再按一次
+
+- **WHEN** 按「Restore」，還沒存好時再按一次
+- **THEN** 存好後只返回一次：Settings 分頁的堆疊由下而上是「Settings」根畫面和「Trash」
 
 ### Requirement: LEDGER-80.1 選 Delete Permanently 時先確認再永久刪除
 

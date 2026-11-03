@@ -430,3 +430,38 @@ export async function removeCategory(name: string) {
   await settle();
   return shown[0];
 }
+
+/** The open list of where Move Expenses… can move the expenses of `name`: a screen with its title, or the view around a header with it. */
+function moveList(name: string): HostView | undefined {
+  const title = `Move ${name} Expenses`;
+  const bar = navigationBars()
+    .filter((candidate) => candidate.props.title === title)
+    .at(-1);
+  if (bar !== undefined)
+    for (let view = bar.parent; view; view = view.parent)
+      if (/^RNS(Modal)?Screen$/.test(String(view.type))) return view;
+  const header = screen.queryAllByRole('header', { name: title }).at(-1);
+  for (let outer = header?.parent; outer; outer = outer.parent)
+    if (within(outer).queryAllByRole('button').length > 1) return outer;
+  return undefined;
+}
+
+/**
+ * Removes the category named `name` in Manage Categories, chooses Move Expenses…
+ * and then `target`, and leaves Manage Categories open.
+ */
+export async function moveCategoryExpenses(name: string, target: string) {
+  await tapTab('Settings');
+  await fireEvent.press(within(settingsRoot()).getByText('Manage Categories'));
+  await expectOpen('Manage Categories');
+  await settle();
+  await doAction(tab('Settings'), name, 'Remove');
+  await pressAlertButton('Move Expenses…');
+  await waitFor(() => expect(moveList(name)).toBeDefined());
+  await settle();
+  await fireEvent.press(
+    within(moveList(name)!).getByRole('button', { name: target }),
+  );
+  await settle();
+  await waitFor(() => expect(moveList(name)).toBeUndefined());
+}
