@@ -308,7 +308,7 @@ test('[GROUPS-63.1] pushes the details on the Groups tab at /groups/expenses/<ID
   expect(app.getPathname()).toBe(`/groups/expenses/${dinner.id}`);
 });
 
-test('[GROUPS-63.1] pushes the details on the Settings tab for an archived group', async () => {
+test('[GROUPS-63.1] [LEDGER-67.1] pushes the read-only details on the Settings tab for an archived group', async () => {
   const app = await startWithGroups(BRISBANE);
   await addDinner();
   const [dinner] = await storedExpenses();
