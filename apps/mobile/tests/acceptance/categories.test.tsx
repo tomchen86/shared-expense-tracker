@@ -487,7 +487,7 @@ async function openNewCategory() {
 }
 
 async function openCategory(name: string) {
-  await fireEvent.press(screen.getByText(name));
+  await fireEvent.press(within(categoriesScreen()).getByText(name));
   await expectForm('Edit Category');
 }
 
