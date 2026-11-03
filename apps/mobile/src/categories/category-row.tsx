@@ -49,15 +49,17 @@ export function CategoryRow({
     }
     return PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) =>
-        !!action &&
         Math.abs(gesture.dx) > 10 &&
         Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
       onPanResponderGrant: () => {
         translation.stopAnimation();
         start.current = offset.current;
-        setRevealed(true);
+        // Even a row without a swipe action must consume the drag, so releasing
+        // it does not press Restore.
+        setRevealed(!!action);
       },
       onPanResponderMove: (_, gesture) => {
+        if (!action) return;
         offset.current = Math.max(
           -ACTION_WIDTH,
           Math.min(0, start.current + gesture.dx),
@@ -65,7 +67,9 @@ export function CategoryRow({
         translation.setValue(offset.current);
       },
       onPanResponderRelease: (_, gesture) =>
-        finish(offset.current < -ACTION_WIDTH / 2 || gesture.vx < -0.5),
+        finish(
+          !!action && (offset.current < -ACTION_WIDTH / 2 || gesture.vx < -0.5),
+        ),
       onPanResponderTerminate: () => finish(false),
     });
   }, [action, translation]);

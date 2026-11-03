@@ -1,0 +1,43 @@
+appId: com.tomchen.sharedexpensetracker
+name: Swiping a used archived category does not press Restore
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Add expense
+- tapOn: Expense title
+- inputText: Train
+- tapOn: Amount in .*
+- inputText: '3'
+- tapOn: Category, Food & Dining
+- tapOn: Travel
+- tapOn:
+    text: Add
+    enabled: true
+- waitForAnimationToEnd
+- tapOn: Settings
+- tapOn: Manage Categories
+- waitForAnimationToEnd
+- swipe:
+    from:
+      text: Travel
+    direction: LEFT
+- waitForAnimationToEnd
+- tapOn: Remove
+- tapOn: Archive
+- assertVisible: Restore Travel
+- swipe:
+    from:
+      text: Restore Travel
+    direction: LEFT
+- waitForAnimationToEnd
+- assertNotVisible: Delete
+- assertVisible: Restore Travel
+- tapOn: Restore Travel
+- assertNotVisible: ARCHIVED
+- assertVisible: Travel
