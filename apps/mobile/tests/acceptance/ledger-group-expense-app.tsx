@@ -228,7 +228,23 @@ const inForm = () => within(formScreen());
 
 // The switch and the rows under it
 
-export const splitSwitch = () => inForm().getByRole('switch', { name: SPLIT });
+/**
+ * The switch, found by its role and name among the form's native views: React
+ * Native's Switch on Android is a native view that the testing library's role
+ * queries do not take for an accessibility element.
+ */
+export function splitSwitch() {
+  const found = formScreen().queryAll(
+    (view) =>
+      typeof view.type === 'string' &&
+      (view.props.accessibilityRole === 'switch' ||
+        view.props.role === 'switch') &&
+      nameOf(view) === SPLIT,
+  );
+  if (found.length !== 1)
+    throw new Error(`Expected one ${SPLIT} switch, found ${found.length}`);
+  return found[0];
+}
 
 export const isSplitOn = () => isOn(splitSwitch());
 

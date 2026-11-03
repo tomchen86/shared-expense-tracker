@@ -2,11 +2,12 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { ActionSheetIOS } from 'react-native';
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import {
   expectForm,
   expectFormClosed,
   fillForm,
+  phoneDatabase,
   press,
   resetPhone,
   restart,
@@ -14,10 +15,7 @@ import {
   watchAlerts,
 } from './ledger-expense-app';
 import {
-  allowReads,
-  holdReads,
   linesIn,
-  phoneDatabaseWithReads,
   shownInOrder,
   startExpensesAt,
 } from './ledger-expense-list-app';
@@ -64,13 +62,14 @@ import {
   startWithGroups,
   storedGroup,
 } from './ledger-group-expense-app';
-import type { Database } from '../../src/storage';
+import type { Database, SqlValue } from '../../src/storage';
 
 // Runs on iOS. Each test starts the app as the group expense form tests do: its own
-// phone database file, its reads behind a gate the test can hold, in Taipei on
-// 2026-10-30, in a region whose currency is USD, with Taylor saved as your name.
-// It adds group expenses through New Expense and reads a group's screen, on the
-// Groups tab or, for an archived group, on the Settings tab.
+// phone database file, in Taipei on 2026-10-30, in a region whose currency is USD,
+// with Taylor saved as your name. Its reads go through a gate the test can hold,
+// all at once or one read at a time, as a slow disk would let them through. It adds
+// group expenses through New Expense and reads a group's screen, on the Groups tab
+// or, for an archived group, on the Settings tab.
 
 let mockOpen: () => Promise<Database>;
 
@@ -99,13 +98,48 @@ const BRISBANE = { Brisbane: ['Casey', 'Blake'] };
 let directory: string;
 let file: string;
 
+// The read gate: open, or holding every read outside a transaction until the test
+// lets them through, all at once or the oldest one at a time.
+
+let readsHeld = false;
+const heldReads: (() => void)[] = [];
+
+function gatedDatabase(path: string): Database {
+  const database = phoneDatabase(path);
+  return {
+    ...database,
+    all: async <T,>(sql: string, parameters?: readonly SqlValue[]) => {
+      if (readsHeld)
+        await new Promise<void>((resolve) => heldReads.push(resolve));
+      return database.all<T>(sql, parameters);
+    },
+  };
+}
+
+function openReads() {
+  readsHeld = false;
+  for (const release of heldReads.splice(0)) release();
+}
+
+function holdReads() {
+  readsHeld = true;
+  return { release: () => act(async () => openReads()) };
+}
+
+/** Lets the oldest held read through, if one waits, and what it starts finish. */
+async function letOneReadThrough() {
+  const release = heldReads.shift();
+  await act(async () => release?.());
+  await settle();
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   directory = fs.mkdtempSync(path.join(os.tmpdir(), 'group-expenses-'));
   file = path.join(directory, 'app.db');
-  mockOpen = async () => phoneDatabaseWithReads(file);
+  mockOpen = async () => gatedDatabase(file);
   allowWrites();
-  allowReads();
+  openReads();
   resetPhone();
   watchAlerts();
   jest
@@ -231,19 +265,22 @@ test("[GROUPS-61.1] keeps listing the group's expenses after a restart", async (
   await waitFor(() => expect(groupCardTitles('Brisbane')).toEqual(['Dinner']));
 });
 
-test('[GROUPS-62.1] shows no hint that the group has no expenses before its expenses are read', async () => {
+test('[GROUPS-62.1] shows no hint that the group has no expenses while its data is read, one read at a time', async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await tapTab('Groups');
-  const reads = holdReads();
+  holdReads();
 
   await fireEvent.press(screen.getByRole('button', { name: 'Open Brisbane' }));
   await settle();
 
-  expect(linesIn(tab('Groups')).some((line) => line === NO_EXPENSES)).toBe(
-    false,
-  );
-  await reads.release();
+  for (let read = 0; read < 50; read += 1) {
+    const lines = linesIn(tab('Groups'));
+    expect(lines).not.toContain(NO_EXPENSES);
+    if (lines.includes('Dinner')) break;
+    await letOneReadThrough();
+  }
+  openReads();
   await expectOpen('Brisbane');
   await waitFor(() => expect(groupCardTitles('Brisbane')).toEqual(['Dinner']));
   expect(groupLines('Brisbane')).not.toContain(NO_EXPENSES);

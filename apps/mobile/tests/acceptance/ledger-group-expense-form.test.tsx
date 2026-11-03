@@ -1073,6 +1073,19 @@ test('[LEDGER-59.1] enables Save when only the payer changes, and disables it on
   expect(formButton('Save').disabled).toBe(true);
 });
 
+test('[LEDGER-59.1] enables Save, and asks before discarding, when only the people in the split change', async () => {
+  await startWithGroups(BRISBANE);
+  const dinner = await addDinner();
+  await openEditExpense(dinner.id);
+
+  await chooseSharers('Blake');
+
+  expect(formButton('Save').disabled).toBe(false);
+  await press('Cancel');
+  expect(alerts.shown()).toEqual([DISCARD_CHANGES]);
+  expect(formTitle()).toBe('Edit Expense');
+});
+
 test('[LEDGER-59.1] keeps Save disabled when someone is taken out of the split and chosen again', async () => {
   await startWithGroups(BRISBANE);
   const dinner = await addDinner();
