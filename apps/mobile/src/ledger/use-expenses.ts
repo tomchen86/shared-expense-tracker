@@ -4,12 +4,14 @@ import { listCategories } from '../categories';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { listExpenses, subscribeToExpenses, type Expense } from './expenses';
 
+type DisplayExpense = Expense & { categoryLabel: string };
+
 /** Undefined until loaded; refresh on navigation and committed expense changes. */
 export function useExpenses() {
   const database = useLocalDatabase();
   const { personalSpaceId } = useLocalIdentity();
   const focused = useIsFocused();
-  const [expenses, setExpenses] = useState<Expense[]>();
+  const [expenses, setExpenses] = useState<DisplayExpense[]>();
   const [error, setError] = useState<unknown>();
 
   useEffect(() => {
@@ -27,10 +29,17 @@ export function useExpenses() {
           setExpenses(
             rows
               .filter((expense) => expense.spaceId === personalSpaceId)
-              .map((expense) => ({
-                ...expense,
-                category: current.get(expense.category.id) ?? expense.category,
-              })),
+              .map((expense) => {
+                const category = current.get(expense.category.id);
+                const name = category?.name ?? expense.category.name;
+                return {
+                  ...expense,
+                  category: category ?? expense.category,
+                  categoryLabel: category?.isArchived
+                    ? `${name} (Archived)`
+                    : name,
+                };
+              }),
           );
         },
         (failure: unknown) => {

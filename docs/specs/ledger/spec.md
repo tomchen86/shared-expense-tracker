@@ -699,9 +699,9 @@ WHILE 本機資料裡沒有個人支出，the mobile app SHALL 在支出清單�
 - **WHEN** 新增「Coffee run」
 - **THEN** 這句話消失，只有 Coffee run 的卡片
 
-### Requirement: LEDGER-33.1 卡片的內容
+### Requirement: LEDGER-33.2 卡片的內容
 
-The mobile app SHALL 讓每張卡片是一個按鈕，依序顯示支出的標題、卡片金額、分類現在的名稱和日期，不顯示付款人和備註；螢幕閱讀器把卡片讀成一個按鈕，依同樣的順序讀出這四項。個人支出的卡片金額是它的全額。
+The mobile app SHALL 讓每張卡片是一個按鈕，依序顯示支出的標題、卡片金額、分類和日期，不顯示付款人和備註；分類是分類現在顏色的色點，後面接分類現在的名稱，分類已封存時名稱是「<分類現在的名稱> (Archived)」，色點和分類沒封存時一樣；螢幕閱讀器把卡片讀成一個按鈕，依序讀出標題、卡片金額、卡片上分類的名稱和日期，不讀色點。個人支出的卡片金額是它的全額。
 
 #### Scenario: 一筆支出
 
@@ -717,6 +717,31 @@ The mobile app SHALL 讓每張卡片是一個按鈕，依序顯示支出的標�
 
 - **WHEN** 新增 Shopping 的支出之後，在 Manage Categories 把 Shopping 改名為「Groceries」
 - **THEN** 卡片上的分類是「Groceries」
+
+#### Scenario: 色點
+
+- **WHEN** 新增 Food & Dining 的「Coffee run」
+- **THEN** 卡片上「$8.75」和「Food & Dining」之間是 `#D81B60` 的色點；螢幕閱讀器只讀出「Coffee run」、「$8.75」、「Food & Dining」和「Oct 30, 2026」，不讀色點
+
+#### Scenario: 分類改了顏色
+
+- **WHEN** 新增 Shopping 的支出之後，在 Manage Categories 把 Shopping 改用 `#43A047`
+- **THEN** 卡片上的色點是 `#43A047`
+
+#### Scenario: 分類封存了
+
+- **WHEN** 有 Shopping 的「Coffee run」和 Food & Dining 的「Lunch」時，封存 Shopping
+- **THEN** Coffee run 的卡片依序顯示「Coffee run」、「$8.75」、「Shopping (Archived)」、「Oct 30, 2026」，螢幕閱讀器也依序讀出這四項，色點仍是 `#FBC02D`，沒有變淡；Lunch 的卡片上的分類仍是「Food & Dining」
+
+#### Scenario: 改了名和顏色又封存
+
+- **WHEN** 把 Shopping 改名為「Groceries」並改用 `#43A047` 之後，封存 Groceries
+- **THEN** 卡片上的分類是「Groceries (Archived)」，色點是 `#43A047`
+
+#### Scenario: 還原
+
+- **WHEN** 封存 Shopping 之後，在 Manage Categories 點「Restore Shopping」
+- **THEN** 卡片上的分類是「Shopping」，沒有「(Archived)」
 
 ### Requirement: LEDGER-34.1 卡片上的標題只佔一行
 
@@ -785,9 +810,9 @@ WHEN 使用者點卡片，the mobile app SHALL 在 Expenses 分頁推入這筆�
 - **WHEN** 在明細返回，或在 Android 上按返回鍵
 - **THEN** 回到支出清單，分頁列仍選中 Expenses
 
-### Requirement: LEDGER-37.1 明細的內容
+### Requirement: LEDGER-37.2 明細的內容
 
-The mobile app SHALL 在明細上依序顯示支出的標題、金額、「DETAILS」區塊裡的「Category」和分類現在的名稱、「Date」和日期，有備註時再顯示「NOTE」區塊和備註；標題和備註都完整顯示，不截斷。
+The mobile app SHALL 在明細上依序顯示支出的標題、金額、「DETAILS」區塊裡的「Category」和分類、「Date」和日期，有備註時再顯示「NOTE」區塊和備註；分類和卡片上的一樣，是分類現在顏色的色點，後面接分類現在的名稱，分類已封存時名稱是「<分類現在的名稱> (Archived)」，色點和分類沒封存時一樣，螢幕閱讀器不讀色點；標題和備註都完整顯示，不截斷。
 
 #### Scenario: 有備註
 
@@ -803,6 +828,31 @@ The mobile app SHALL 在明細上依序顯示支出的標題、金額、「DETAI
 
 - **WHEN** 把 Shopping 改名為「Groceries」之後，打開這筆支出的明細
 - **THEN** 分類是「Groceries」
+
+#### Scenario: 色點
+
+- **WHEN** 打開 Shopping 的支出的明細
+- **THEN** 「Category」後面、「Shopping」前面是 `#FBC02D` 的色點，螢幕閱讀器不讀這個色點
+
+#### Scenario: 分類改了顏色
+
+- **WHEN** 把 Shopping 改用 `#43A047` 之後，打開這筆支出的明細
+- **THEN** 色點是 `#43A047`
+
+#### Scenario: 分類封存了
+
+- **WHEN** 封存 Shopping 之後，打開 Shopping 的支出的明細
+- **THEN** 依序顯示「DETAILS」、「Category」、「Shopping (Archived)」、「Date」，色點仍是 `#FBC02D`，沒有變淡
+
+#### Scenario: 改了名和顏色又封存
+
+- **WHEN** 把 Shopping 改名為「Groceries」並改用 `#43A047` 之後，封存 Groceries，再打開這筆支出的明細
+- **THEN** 分類是「Groceries (Archived)」，色點是 `#43A047`
+
+#### Scenario: 明細開著時封存和還原
+
+- **WHEN** Shopping 的支出的明細開著時，在 Settings 分頁封存 Shopping，再回到 Expenses 分頁
+- **THEN** 明細仍開著，分類是「Shopping (Archived)」；再到 Manage Categories 點「Restore Shopping」，回到 Expenses 分頁時，分類是「Shopping」，沒有「(Archived)」
 
 #### Scenario: 很長的標題和備註
 

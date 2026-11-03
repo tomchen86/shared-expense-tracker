@@ -1,3 +1,4 @@
+import { StyleSheet } from 'react-native';
 import { act, fireEvent, waitFor, within } from '@testing-library/react-native';
 import { nameOf, phoneDatabase, setPhoneClock } from './ledger-expense-app';
 import { settle } from './shell-appearance-app';
@@ -7,7 +8,7 @@ import type { Database, SqlValue } from '../../src/storage';
 // The expense list tests start the app as the expense form tests do
 // (ledger-expense-app) and add expenses through New Expense. They read the expense
 // list and an expense's details from what the app shows: the lines of text, top to
-// bottom, the buttons and the names a screen reader reads, and the items the
+// bottom, the color dots, the buttons and the names a screen reader reads, and the items the
 // details hand to the native navigation bar on iOS. A test can hold the app's reads
 // to see a screen before its data arrives.
 
@@ -132,6 +133,53 @@ export const readOut = (shown: HostView) => asRead(nameOf(shown));
 /** The Your Total Share lines on the expense list, top to bottom. */
 export const totalShareLines = () =>
   linesIn(expensesRoot()).filter((line) => line.startsWith('Your Total Share'));
+
+// Category color dots
+
+/** The palette (CATEGORIES-1.1). */
+const PALETTE = [
+  '#D81B60',
+  '#1E88E5',
+  '#FBC02D',
+  '#00897B',
+  '#8E24AA',
+  '#F4511E',
+  '#3949AB',
+  '#6D4C41',
+  '#757575',
+  '#43A047',
+  '#00ACC1',
+  '#C62828',
+  '#9E9D24',
+];
+
+function backgroundOf(view: HostView): string | undefined {
+  const color = StyleSheet.flatten(view.props.style)?.backgroundColor;
+  return typeof color === 'string' ? color.toUpperCase() : undefined;
+}
+
+/** The color dots inside `root`, top to bottom: every view filled with a palette color is one. */
+export const colorDots = (root: HostView) =>
+  nativeViews(/./, root).filter((view) =>
+    PALETTE.includes(backgroundOf(view) ?? ''),
+  );
+
+/** The colors of the color dots inside `root`, top to bottom. */
+export const dotColors = (root: HostView) => colorDots(root).map(backgroundOf);
+
+/** Whether a screen reader skips `view`: it has no name and is no accessibility element. */
+export const isUnread = (view: HostView) =>
+  nameOf(view) === '' && view.props.accessible !== true;
+
+/** The opacity `view` is drawn with inside `root`: its own and that of every view around it up to `root`. */
+export function opacityIn(root: HostView, view: HostView) {
+  let opacity = 1;
+  for (let at: HostView | null = view; at; at = at.parent) {
+    opacity *= StyleSheet.flatten(at.props.style)?.opacity ?? 1;
+    if (at === root) break;
+  }
+  return opacity;
+}
 
 /** The first native subview of `view`; components that render nothing add none. */
 function firstSubview(view: HostView): HostView | undefined {
