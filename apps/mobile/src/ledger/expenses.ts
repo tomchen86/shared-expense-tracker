@@ -87,6 +87,21 @@ type ExpenseInput = Pick<
   'title' | 'amountMinor' | 'currency' | 'date' | 'note'
 > & { categoryId: string };
 
+const listeners = new WeakMap<Database, Set<() => void>>();
+
+/** Mounted screens also refresh while another screen covers them. */
+export function subscribeToExpenses(database: Database, listener: () => void) {
+  let subscribers = listeners.get(database);
+  if (!subscribers) {
+    subscribers = new Set();
+    listeners.set(database, subscribers);
+  }
+  subscribers.add(listener);
+  return () => {
+    subscribers.delete(listener);
+  };
+}
+
 export async function savePersonalExpense(
   database: Database,
   identity: LocalIdentity,
@@ -137,4 +152,5 @@ export async function savePersonalExpense(
       [id, identity.personalParticipantId, input.amountMinor],
     );
   });
+  listeners.get(database)?.forEach((listener) => listener());
 }
