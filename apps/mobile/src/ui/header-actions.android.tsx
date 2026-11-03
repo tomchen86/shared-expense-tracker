@@ -17,7 +17,7 @@ function ActionButton({
   icon,
   color,
 }: HeaderAction & {
-  icon: 'close' | 'check' | 'more_vert';
+  icon: 'close' | 'check' | 'edit' | 'more_vert';
   color: ColorValue;
 }) {
   return (
@@ -40,7 +40,12 @@ function ActionButton({
   );
 }
 
-export function HeaderActions({ cancel, confirm, menu }: HeaderActionsProps) {
+export function HeaderActions({
+  cancel,
+  confirm,
+  edit,
+  menu,
+}: HeaderActionsProps) {
   const colors = useThemeColors();
   const enabledActions =
     menu?.actions.filter((action) => !action.disabled) ?? [];
@@ -53,6 +58,9 @@ export function HeaderActions({ cancel, confirm, menu }: HeaderActionsProps) {
           : undefined,
         headerRight: () => (
           <View style={styles.row}>
+            {edit && (
+              <ActionButton {...edit} icon="edit" color={colors.accent} />
+            )}
             {confirm && (
               <ActionButton {...confirm} icon="check" color={colors.accent} />
             )}

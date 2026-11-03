@@ -8,6 +8,7 @@ export interface HeaderAction {
 export interface HeaderActionsProps {
   cancel?: HeaderAction;
   confirm?: HeaderAction;
+  edit?: HeaderAction;
   /** The other actions, at most two, in a menu whose accessible name is `label`. */
   menu?: {
     label: string;
