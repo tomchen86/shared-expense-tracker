@@ -20,6 +20,7 @@ import {
   nativeViews,
   navigationBarTitles,
   navigationBars,
+  push,
   startApp,
   tab,
   tapTab,
@@ -40,12 +41,14 @@ import {
   colorsInBoth,
   fakePhoneAppearance,
   fixedColors,
+  sectionOf,
   switchPhoneTo,
   textsWithoutColor,
 } from './shell-appearance-app';
 import {
   CREATE_FAILED,
   alertsShown,
+  cardNames,
   createGroup,
   expectNewGroupOpen,
   localData,
@@ -58,6 +61,14 @@ import {
   storedGroups,
   typeName,
 } from './groups-app';
+import { expectOpen, textsOn } from './group-details-app';
+import {
+  READ_ONLY as GROUP_READ_ONLY,
+  archiveByAction,
+  openArchivedGroups,
+  pressRestore,
+  pressRestoreGroup,
+} from './group-archive-app';
 import { listCategories, type Category } from '../../src/categories';
 import { listExpenses, type Expense } from '../../src/ledger';
 import type { LocalIdentity } from '../../src/shell';
@@ -601,7 +612,7 @@ test('[CATEGORIES-6.2] gives the nine default categories your personal space on 
   expect(await storedCategories()).toHaveLength(DEFAULTS.length);
 });
 
-test('[CATEGORIES-7.3] lists the categories under CATEGORIES, with Add category in the navigation bar', async () => {
+test('[CATEGORIES-7.4] lists the categories under CATEGORIES, with Add category in the navigation bar', async () => {
   await openManageCategories();
 
   const texts = ['CATEGORIES', ...DEFAULTS.map(([name]) => name)];
@@ -609,7 +620,7 @@ test('[CATEGORIES-7.3] lists the categories under CATEGORIES, with Add category 
   expect(addCategoryButton().disabled).toBe(false);
 });
 
-test('[CATEGORIES-7.3] lists a new category after Uncategorized', async () => {
+test('[CATEGORIES-7.4] lists a new category after Uncategorized', async () => {
   await openManageCategories();
 
   await addCategory('Gym');
@@ -617,7 +628,7 @@ test('[CATEGORIES-7.3] lists a new category after Uncategorized', async () => {
   expect(categoryList()).toEqual([...DEFAULTS, ['Gym', '#43A047']]);
 });
 
-test('[CATEGORIES-7.3] keeps a renamed category in its place', async () => {
+test('[CATEGORIES-7.4] keeps a renamed category in its place', async () => {
   await openManageCategories();
 
   await editCategory('Shopping', 'Groceries');
@@ -625,7 +636,7 @@ test('[CATEGORIES-7.3] keeps a renamed category in its place', async () => {
   expect(categoryList()).toEqual(replacing(2, ['Groceries', '#FBC02D']));
 });
 
-test('[CATEGORIES-7.3] keeps the stored order in each scope when categories of other scopes come between', async () => {
+test('[CATEGORIES-7.4] keeps the stored order in each scope when categories of other scopes come between', async () => {
   const groups = await createGroups('Brisbane');
   await reopenManageCategories();
   await addCategory('Gym');
@@ -640,7 +651,7 @@ test('[CATEGORIES-7.3] keeps the stored order in each scope when categories of o
   expect(listedNames()).toEqual([...DEFAULT_NAMES, 'Flights']);
 });
 
-test('[CATEGORIES-8.2] opens New Category with an empty name and the first unused color selected', async () => {
+test('[CATEGORIES-8.3] opens New Category with an empty name and the first unused color selected', async () => {
   await openManageCategories();
 
   await openNewCategory();
@@ -649,7 +660,7 @@ test('[CATEGORIES-8.2] opens New Category with an empty name and the first unuse
   expect(selectedColor()).toBe('#43A047');
 });
 
-test('[CATEGORIES-8.2] selects the next unused color once a new category takes the first', async () => {
+test('[CATEGORIES-8.3] selects the next unused color once a new category takes the first', async () => {
   await openManageCategories();
   await addCategory('Gym');
 
@@ -658,7 +669,7 @@ test('[CATEGORIES-8.2] selects the next unused color once a new category takes t
   expect(selectedColor()).toBe('#00ACC1');
 });
 
-test('[CATEGORIES-8.2] opens Edit Category with the name and color of the category pressed', async () => {
+test('[CATEGORIES-8.3] opens Edit Category with the name and color of the category pressed', async () => {
   await openManageCategories();
 
   await openCategory('Shopping');
@@ -667,7 +678,7 @@ test('[CATEGORIES-8.2] opens Edit Category with the name and color of the catego
   expect(selectedColor()).toBe('#FBC02D');
 });
 
-test("[CATEGORIES-8.2] selects the first color this scope leaves unused, whatever another scope's categories use", async () => {
+test("[CATEGORIES-8.3] selects the first color this scope leaves unused, whatever another scope's categories use", async () => {
   const groups = await createGroups('Brisbane');
   await reopenManageCategories();
   await addCategory('Gym', '#43A047');
@@ -948,7 +959,7 @@ test("[CATEGORIES-13.2] leaves a group's colors free once Manage Categories uses
   expect(formButton('Add').disabled).toBe(false);
 });
 
-test('[CATEGORIES-14.1] opens no form when Uncategorized is pressed', async () => {
+test('[CATEGORIES-14.2] opens no form when Uncategorized is pressed', async () => {
   await openManageCategories();
 
   await fireEvent.press(screen.getByText('Uncategorized'));
@@ -961,7 +972,7 @@ test('[CATEGORIES-14.1] opens no form when Uncategorized is pressed', async () =
   ).toBeNull();
 });
 
-test('[CATEGORIES-14.1] opens Edit Category for each of the other default categories', async () => {
+test('[CATEGORIES-14.2] opens Edit Category for each of the other default categories', async () => {
   await openManageCategories();
 
   for (const [name, color] of DEFAULTS.slice(0, 8)) {
@@ -973,7 +984,7 @@ test('[CATEGORIES-14.1] opens Edit Category for each of the other default catego
   }
 });
 
-test('[CATEGORIES-14.1] opens no form when Uncategorized is pressed in Group Categories', async () => {
+test('[CATEGORIES-14.2] opens no form when Uncategorized is pressed in Group Categories', async () => {
   const groups = await createGroups('Brisbane');
   await openGroupCategories(groups.Brisbane);
 
@@ -1399,7 +1410,7 @@ test('[CATEGORIES-31.1] changes a default category in Manage Categories for the 
 // Removing, archiving, restoring and moving expenses. These tests add expenses
 // through New Expense on the Expenses tab while Manage Categories stays open on the
 // Settings tab, and do Remove and Delete as a screen reader does, through the rows'
-// accessibility actions; swiping a row is for the E2E flow (CATEGORIES-32.1). The
+// accessibility actions; swiping a row is for the E2E flow (CATEGORIES-32.2). The
 // Move list may be a screen of its own or a view, and its Cancel a navigation bar
 // item or a view; the helpers find them either way.
 
@@ -1608,7 +1619,7 @@ async function cancelMoveList(name: string) {
   await waitFor(() => expect(moveList(name)).toBeUndefined());
 }
 
-test('[CATEGORIES-7.3] leaves an archived category out of CATEGORIES and the others in their order', async () => {
+test('[CATEGORIES-7.4] leaves an archived category out of CATEGORIES and the others in their order', async () => {
   running = await openManageCategories();
   await spendOn('Health');
 
@@ -1617,7 +1628,7 @@ test('[CATEGORIES-7.3] leaves an archived category out of CATEGORIES and the oth
   expect(sections().active).toEqual(without('Health'));
 });
 
-test('[CATEGORIES-8.2] skips the color of an archived category when New Category opens', async () => {
+test('[CATEGORIES-8.3] skips the color of an archived category when New Category opens', async () => {
   running = await openManageCategories();
   await addCategory('Gym');
   await spendOn('Gym');
@@ -1720,14 +1731,14 @@ test('[CATEGORIES-17.2] keeps deletions, archives and restores after the app res
   expect(sections()).toEqual({ active: without('Other'), archived: [GYM] });
 });
 
-test('[CATEGORIES-33.1] offers Remove on every category but Uncategorized', async () => {
+test('[CATEGORIES-33.2] offers Remove on every category but Uncategorized', async () => {
   running = await openManageCategories();
 
   expect(namesWithAction('Remove')).toEqual(namesWithout('Uncategorized'));
   expect(namesWithAction('Delete')).toEqual([]);
 });
 
-test("[CATEGORIES-33.1] offers Remove on a group's categories but its Uncategorized", async () => {
+test("[CATEGORIES-33.2] offers Remove on a group's categories but its Uncategorized", async () => {
   const groups = await createGroups('Brisbane');
 
   await openGroupCategories(groups.Brisbane);
@@ -1735,7 +1746,7 @@ test("[CATEGORIES-33.1] offers Remove on a group's categories but its Uncategori
   expect(namesWithAction('Remove')).toEqual(namesWithout('Uncategorized'));
 });
 
-test('[CATEGORIES-33.1] offers neither action on an archived category that expenses use', async () => {
+test('[CATEGORIES-33.2] offers neither action on an archived category that expenses use', async () => {
   running = await openManageCategories();
   await addCategory('Gym');
   await spendOn('Gym');
@@ -1747,7 +1758,7 @@ test('[CATEGORIES-33.1] offers neither action on an archived category that expen
   expect(namesWithAction('Delete')).toEqual([]);
 });
 
-test('[CATEGORIES-33.1] offers Delete on an archived category once no expense uses it', async () => {
+test('[CATEGORIES-33.2] offers Delete on an archived category once no expense uses it', async () => {
   running = await openManageCategories();
   await addCategory('Gym');
   await spendOn('Gym', 'Gym session');
@@ -2195,7 +2206,7 @@ test('[CATEGORIES-41.1] moves the expenses when the category is pressed again af
   expect(sections()).toEqual({ active: DEFAULTS, archived: [GYM] });
 });
 
-test('[CATEGORIES-42.1] explains categories from About categories by the CATEGORIES header', async () => {
+test('[CATEGORIES-42.2] explains categories from About categories by the CATEGORIES header', async () => {
   running = await openManageCategories();
   const about = within(categoriesScreen()).getByRole('button', {
     name: 'About categories',
@@ -2213,7 +2224,7 @@ test('[CATEGORIES-42.1] explains categories from About categories by the CATEGOR
   expect(alerts()).toEqual([ABOUT_CATEGORIES]);
 });
 
-test('[CATEGORIES-42.1] explains categories in Group Categories too', async () => {
+test('[CATEGORIES-42.2] explains categories in Group Categories too', async () => {
   const groups = await createGroups('Brisbane');
   await openGroupCategories(groups.Brisbane);
   alert.mockClear();
@@ -2227,7 +2238,7 @@ test('[CATEGORIES-42.1] explains categories in Group Categories too', async () =
   expect(alerts()).toEqual([ABOUT_CATEGORIES]);
 });
 
-test('[CATEGORIES-42.1] has no About categories when the group is not found', async () => {
+test('[CATEGORIES-42.2] has no About categories when the group is not found', async () => {
   await createGroups('Brisbane');
 
   await restartAt(
@@ -2237,6 +2248,177 @@ test('[CATEGORIES-42.1] has no About categories when the group is not found', as
 
   expect(screen.getByText(GROUP_NOT_FOUND)).toBeOnTheScreen();
   expect(screen.queryByRole('button', { name: 'About categories' })).toBeNull();
+});
+
+// An archived group's Group Categories. These tests archive a group through its
+// card's Archive group action on the Groups root, and restore it on Archived
+// Groups or with Restore Group on its screen, as the group archive tests do.
+
+const CATEGORIES_READ_ONLY = 'Archived group. Categories are read-only.';
+const FLIGHTS = ['Flights', '#43A047'];
+
+/** Whether the categories screen says that its group is archived. */
+const saysReadOnly = () =>
+  within(categoriesScreen()).queryByText(CATEGORIES_READ_ONLY) !== null;
+
+/** Whether Add category shows, as a navigation bar item or a view. */
+const addCategoryShown = () =>
+  barItem('Add category', navigationBars()) !== undefined ||
+  screen.queryByRole('button', { name: 'Add category' }) !== null;
+
+/** Those of `names` whose rows on the categories screen are buttons, disabled ones too. */
+const rowButtons = (names: readonly string[]) =>
+  names.filter(
+    (name) =>
+      within(categoriesScreen()).queryByRole('button', { name }) !== null,
+  );
+
+/**
+ * Taps the row named `name` on the categories screen as a finger does. fireEvent
+ * would also call a press handler that a component only takes as a prop, which a
+ * row that is not a button never runs on a phone.
+ */
+async function tapRow(name: string) {
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  await user.press(within(categoriesScreen()).getByText(name));
+  await settle();
+}
+
+/** Archives the group named `name` through its card on the Groups root. */
+async function archiveGroup(name: string) {
+  await tapTab('Groups');
+  await waitFor(() => expect(cardNames()).toContain(`Open ${name}`));
+  await archiveByAction(name);
+}
+
+/** Adds Flights in Brisbane's Group Categories, archives Brisbane and opens its Group Categories again. */
+async function openArchivedBrisbane() {
+  const groups = await createGroups('Brisbane');
+  await openGroupCategories(groups.Brisbane);
+  await addCategory('Flights');
+  await archiveGroup('Brisbane');
+  await openGroupCategories(groups.Brisbane);
+}
+
+test("[CATEGORIES-43.1] lists an archived group's categories below the read-only notice, without Add category or About categories", async () => {
+  await openArchivedBrisbane();
+
+  expect(categoriesTitles()).toEqual([GROUP_CATEGORIES]);
+  expect(categoryList()).toEqual([...DEFAULTS, FLIGHTS]);
+  const shown = within(categoriesScreen());
+  expect(
+    inTreeOrder(
+      shown.getByText(CATEGORIES_READ_ONLY),
+      shown.getByText('CATEGORIES'),
+      shown.getByText('Food & Dining'),
+    ),
+  ).toBe(true);
+  expect(addCategoryShown()).toBe(false);
+  expect(screen.queryByRole('button', { name: 'About categories' })).toBeNull();
+});
+
+test('[CATEGORIES-43.1] opens no form when a category of an archived group is pressed', async () => {
+  await openArchivedBrisbane();
+
+  for (const name of ['Shopping', 'Flights', 'Uncategorized']) {
+    await tapRow(name);
+    expect(showsTitle('Edit Category')).toBe(false);
+  }
+
+  expect(screen.queryByLabelText('Category name')).toBeNull();
+  expect(rowButtons([...DEFAULT_NAMES, 'Flights'])).toEqual([]);
+});
+
+test('[CATEGORIES-43.1] offers Remove on no category of an archived group', async () => {
+  await openArchivedBrisbane();
+
+  expect(categoryList()).toEqual([...DEFAULTS, FLIGHTS]);
+  expect(namesWithAction('Remove')).toEqual([]);
+});
+
+test('[CATEGORIES-43.1] turns read-only when the group is archived on the Groups tab while its Group Categories is open', async () => {
+  const groups = await createGroups('Brisbane');
+  await openGroupCategories(groups.Brisbane);
+  expect(addCategoryShown()).toBe(true);
+
+  await archiveGroup('Brisbane');
+  await tapTab('Settings');
+  await settle();
+
+  expect(saysReadOnly()).toBe(true);
+  expect(addCategoryShown()).toBe(false);
+  expect(screen.queryByRole('button', { name: 'About categories' })).toBeNull();
+  expect(categoryList()).toEqual(DEFAULTS);
+  expect(namesWithAction('Remove')).toEqual([]);
+  await tapRow('Shopping');
+  expect(showsTitle('Edit Category')).toBe(false);
+});
+
+test('[CATEGORIES-43.1] offers every action again once the group is restored on Archived Groups', async () => {
+  const groups = await createGroups('Brisbane');
+  await archiveGroup('Brisbane');
+  await openGroupCategories(groups.Brisbane);
+  expect(saysReadOnly()).toBe(true);
+  await running?.unmount();
+  running = await startApp('/settings');
+  await openArchivedGroups();
+  await pressRestore('Brisbane');
+
+  await openGroupCategories(groups.Brisbane);
+
+  expect(categoryList()).toEqual(DEFAULTS);
+  expect(saysReadOnly()).toBe(false);
+  expect(addCategoryButton().disabled).toBe(false);
+  expect(
+    within(categoriesScreen()).getByRole('button', {
+      name: 'About categories',
+    }),
+  ).toBeOnTheScreen();
+  expect(namesWithAction('Remove')).toEqual(namesWithout('Uncategorized'));
+  await openCategory('Shopping');
+  expect(nameField()).toHaveDisplayValue('Shopping', AS_TYPED);
+});
+
+test('[CATEGORIES-43.1] offers the actions again when the group is restored on the Groups tab while its Group Categories is open', async () => {
+  const groups = await createGroups('Brisbane');
+  await archiveGroup('Brisbane');
+  await openGroupCategories(groups.Brisbane);
+  expect(saysReadOnly()).toBe(true);
+
+  await push(`/groups/${groups.Brisbane}`);
+  await expectOpen('Brisbane');
+  await waitFor(() => expect(textsOn('Brisbane')).toContain(GROUP_READ_ONLY));
+  await pressRestoreGroup('Brisbane');
+  await tapTab('Settings');
+  await settle();
+
+  expect(saysReadOnly()).toBe(false);
+  expect(addCategoryButton().disabled).toBe(false);
+  expect(
+    within(categoriesScreen()).getByRole('button', {
+      name: 'About categories',
+    }),
+  ).toBeOnTheScreen();
+  expect(namesWithAction('Remove')).toEqual(namesWithout('Uncategorized'));
+  await openCategory('Shopping');
+  expect(nameField()).toHaveDisplayValue('Shopping', AS_TYPED);
+});
+
+test("[CATEGORIES-43.1] says read-only only on an archived group's Group Categories", async () => {
+  const groups = await createGroups('Brisbane', 'Tokyo');
+  await archiveGroup('Brisbane');
+  await openGroupCategories(groups.Brisbane);
+  expect(saysReadOnly()).toBe(true);
+
+  await openGroupCategories(groups.Tokyo);
+  expect(categoryList()).toEqual(DEFAULTS);
+  expect(saysReadOnly()).toBe(false);
+  expect(addCategoryButton().disabled).toBe(false);
+
+  await reopenManageCategories();
+  expect(categoryList()).toEqual(DEFAULTS);
+  expect(saysReadOnly()).toBe(false);
+  expect(addCategoryButton().disabled).toBe(false);
 });
 
 // SHELL-34.1 leaves out the colors of user data, such as a category's color.
@@ -2275,6 +2457,26 @@ const moveListParts = () => [
   ...screen.queryAllByRole('header', { name: moveTitle('Health') }),
   ...within(openMoveListOf('Health')).getAllByRole('button'),
 ];
+
+test("[SHELL-34.1] colors the read-only notice of an archived group's Group Categories with colors that follow the appearance", async () => {
+  fakePhoneAppearance('light');
+  const groups = await createGroups('Brisbane');
+  await archiveGroup('Brisbane');
+  await openGroupCategories(groups.Brisbane);
+  // The notice with whatever holds it apart from CATEGORIES.
+  const notice = () =>
+    sectionOf(
+      within(categoriesScreen()).getByText(CATEGORIES_READ_ONLY),
+      within(categoriesScreen()).getByText('CATEGORIES'),
+    );
+  const light = appColors(notice());
+
+  await switchPhoneTo('dark');
+  const dark = appColors(notice());
+
+  expect(colorsInBoth(light.colors, dark.colors)).toEqual([]);
+  expect([...light.uncolored, ...dark.uncolored]).toEqual([]);
+});
 
 test('[SHELL-34.1] colors ARCHIVED, About categories and the Move list with colors that follow the appearance', async () => {
   fakePhoneAppearance('light');
@@ -2317,4 +2519,66 @@ test('[SHELL-34.1] colors ARCHIVED, About categories and the Move list with colo
       ({ uncolored }) => uncolored,
     ),
   ).toEqual([]);
+});
+
+/** The open category form: the sheet or screen around its name field. */
+function categoryForm(): NativeView {
+  for (let outer = nameField().parent; outer; outer = outer.parent)
+    if (/^(Modal|RNS(Modal)?Screen)$/.test(String(outer.type))) return outer;
+  throw new Error('The category form is not a sheet or a screen');
+}
+
+/**
+ * What `part` shows that does not follow the appearance: the app's colors that stay
+ * the same when the phone turns from light to dark mode, and the texts left uncolored.
+ */
+async function notFollowing(part: () => NativeView) {
+  const light = appColors(part());
+  await switchPhoneTo('dark');
+  const dark = appColors(part());
+  return {
+    colors: colorsInBoth(light.colors, dark.colors),
+    uncolored: [...light.uncolored, ...dark.uncolored],
+  };
+}
+
+const FOLLOWS = { colors: [], uncolored: [] };
+
+test('[SHELL-34.1] colors Manage Categories, its navigation bar and its categories with colors that follow the appearance', async () => {
+  fakePhoneAppearance('light');
+  running = await openManageCategories();
+
+  expect(await notFollowing(categoriesScreen)).toEqual(FOLLOWS);
+});
+
+test('[SHELL-34.1] colors Group not found. with colors that follow the appearance', async () => {
+  fakePhoneAppearance('light');
+  await restartAt(
+    groupCategoriesUrl('3f0d6c1e-8b2a-4d5e-9f7a-1c2b3d4e5f60'),
+    GROUP_CATEGORIES,
+  );
+  expect(screen.getByText(GROUP_NOT_FOUND)).toBeOnTheScreen();
+
+  expect(await notFollowing(categoriesScreen)).toEqual(FOLLOWS);
+});
+
+test('[SHELL-34.1] colors the category form with colors that follow the appearance while it says the name exists', async () => {
+  fakePhoneAppearance('light');
+  running = await openManageCategories();
+  await openNewCategory();
+  await fireEvent.changeText(nameField(), 'Shopping');
+  await press('Add');
+  expect(screen.getByText(ALREADY_EXISTS)).toBeOnTheScreen();
+
+  expect(await notFollowing(categoryForm)).toEqual(FOLLOWS);
+});
+
+test('[SHELL-34.1] colors New Category with colors that follow the appearance once all 13 colors are used', async () => {
+  fakePhoneAppearance('light');
+  running = await openManageCategories();
+  await useAllColors();
+  await openNewCategory();
+  expect(screen.getByText(ALL_COLORS_USED)).toBeOnTheScreen();
+
+  expect(await notFollowing(categoryForm)).toEqual(FOLLOWS);
 });

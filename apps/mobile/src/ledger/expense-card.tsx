@@ -5,14 +5,14 @@ import { GroupedSection } from '../ui/grouped-section';
 import { SwipeAction } from '../ui/swipe-action';
 import { useThemeColors } from '../ui/theme';
 import { formatExpenseDate } from './format-date';
-import type { Expense } from './expenses';
+import type { DisplayExpense } from './use-expenses';
 
 export function ExpenseCard({
   expense,
   onPress,
   onDelete,
 }: {
-  expense: Expense;
+  expense: DisplayExpense;
   onPress: () => void;
   onDelete?: () => void;
 }) {
@@ -24,7 +24,7 @@ export function ExpenseCard({
     <GroupedSection>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${expense.title}, ${amount}, ${expense.category.name}, ${date}`}
+        accessibilityLabel={`${expense.title}, ${amount}, ${expense.categoryLabel}, ${date}`}
         accessibilityActions={
           onDelete ? [{ name: 'delete', label: 'Delete expense' }] : undefined
         }
@@ -46,9 +46,15 @@ export function ExpenseCard({
           </Text>
           <Text style={[styles.amount, { color: colors.text }]}>{amount}</Text>
         </View>
-        <Text style={[styles.metadata, { color: colors.textMuted }]}>
-          {expense.category.name}
-        </Text>
+        <View style={styles.category}>
+          <View
+            accessible={false}
+            style={[styles.dot, { backgroundColor: expense.category.color }]}
+          />
+          <Text style={[styles.categoryName, { color: colors.textMuted }]}>
+            {expense.categoryLabel}
+          </Text>
+        </View>
         <Text style={[styles.metadata, { color: colors.textMuted }]}>
           {date}
         </Text>
@@ -79,5 +85,13 @@ const styles = StyleSheet.create({
   main: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   title: { flex: 1, fontSize: 18, fontWeight: '700' },
   amount: { fontSize: 16, fontWeight: '600' },
+  category: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dot: { width: 12, height: 12, borderRadius: 6 },
+  categoryName: { flexShrink: 1, fontSize: 14 },
   metadata: { marginTop: 8, fontSize: 14 },
 });

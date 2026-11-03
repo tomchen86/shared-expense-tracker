@@ -14,8 +14,7 @@ import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
 import { formatExpenseDate } from './format-date';
-import { useExpenses } from './use-expenses';
-import type { Expense } from './expenses';
+import { useExpenses, type DisplayExpense } from './use-expenses';
 import { useTrashActions } from './trash-provider';
 
 export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
@@ -25,7 +24,7 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   const expenses = useExpenses(trashed);
   const actions = useTrashActions();
   const saving = useRef(false);
-  const [leavingExpense, setLeavingExpense] = useState<Expense>();
+  const [leavingExpense, setLeavingExpense] = useState<DisplayExpense>();
   const expense = leavingExpense ?? expenses?.find((item) => item.id === id);
 
   async function changeAndReturn(change: () => Promise<boolean>) {
@@ -110,9 +109,18 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
             <GroupedSection>
               <View style={styles.row}>
                 <Text style={{ color: colors.text }}>Category</Text>
-                <Text style={[styles.value, { color: colors.textMuted }]}>
-                  {expense.category.name}
-                </Text>
+                <View style={styles.category}>
+                  <View
+                    accessible={false}
+                    style={[
+                      styles.dot,
+                      { backgroundColor: expense.category.color },
+                    ]}
+                  />
+                  <Text style={[styles.value, { color: colors.textMuted }]}>
+                    {expense.categoryLabel}
+                  </Text>
+                </View>
               </View>
               <View
                 style={[
@@ -173,6 +181,13 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   value: { flexShrink: 1, textAlign: 'right' },
+  category: {
+    flexShrink: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dot: { width: 12, height: 12, borderRadius: 6 },
   note: { padding: 16, fontSize: 17 },
   missing: { textAlign: 'center', marginTop: 48, fontSize: 16 },
 });
