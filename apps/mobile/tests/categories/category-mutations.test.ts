@@ -7,6 +7,7 @@ import {
 import { listExpenses, savePersonalExpense } from '../../src/ledger/expenses';
 import { ensureLocalIdentity } from '../../src/shell/identity';
 import { appMigrations } from '../../src/shell/migrations';
+import { categoryMigrations } from '../../src/categories/migrations';
 import {
   initializeDatabase,
   runMigrations,
@@ -31,7 +32,9 @@ async function prepare(migrations = appMigrations) {
 }
 
 test('upgrades an existing database without changing its categories, identity or expenses', async () => {
-  const identity = await prepare(appMigrations.slice(0, -1));
+  const identity = await prepare(
+    appMigrations.slice(0, appMigrations.indexOf(categoryMigrations.at(-1)!)),
+  );
   const before = await database.all<{ id: string }>(
     'SELECT * FROM categories ORDER BY position',
   );

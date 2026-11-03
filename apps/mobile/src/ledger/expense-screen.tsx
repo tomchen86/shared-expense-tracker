@@ -1,4 +1,12 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useLocales } from 'expo-localization';
 import { formatCurrency } from '@shared-expense/domain';
@@ -7,20 +15,61 @@ import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
 import { formatExpenseDate } from './format-date';
 import { useExpenses } from './use-expenses';
+import type { Expense } from './expenses';
+import { useTrashActions } from './trash-provider';
 
-export function ExpenseScreen() {
+export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useThemeColors();
   const locale = useLocales()[0].languageTag;
-  const expenses = useExpenses();
-  const expense = expenses?.find((item) => item.id === id);
+  const expenses = useExpenses(trashed);
+  const actions = useTrashActions();
+  const saving = useRef(false);
+  const [leavingExpense, setLeavingExpense] = useState<Expense>();
+  const expense = leavingExpense ?? expenses?.find((item) => item.id === id);
+
+  async function changeAndReturn(change: () => Promise<boolean>) {
+    if (!expense || saving.current) return;
+    saving.current = true;
+    setLeavingExpense(expense);
+    if (await change()) router.back();
+    else setLeavingExpense(undefined);
+    saving.current = false;
+  }
+
+  function deletePermanently() {
+    Alert.alert('Delete Expense?', 'This permanently deletes the expense.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => void changeAndReturn(() => actions.remove(id)),
+      },
+    ]);
+  }
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {expense && (
         <HeaderActions
-          edit={{
-            label: 'Edit',
-            onPress: () => router.navigate(`/expenses/${id}/edit`),
+          edit={
+            trashed
+              ? undefined
+              : {
+                  label: 'Edit',
+                  onPress: () => router.navigate(`/expenses/${id}/edit`),
+                }
+          }
+          menu={{
+            label: 'Expense actions',
+            actions: [
+              {
+                label: trashed ? 'Delete Permanently' : 'Delete',
+                destructive: true,
+                onPress: trashed
+                  ? deletePermanently
+                  : () => void changeAndReturn(() => actions.move(expense)),
+              },
+            ],
           }}
         />
       )}
@@ -30,6 +79,25 @@ export function ExpenseScreen() {
       >
         {expense ? (
           <>
+            {trashed && (
+              <>
+                <Text style={{ color: colors.textMuted, fontSize: 17 }}>
+                  This expense is in the Trash.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Restore"
+                  style={styles.restore}
+                  onPress={() =>
+                    void changeAndReturn(() => actions.restore(id))
+                  }
+                >
+                  <Text style={{ color: colors.accent, fontSize: 17 }}>
+                    Restore
+                  </Text>
+                </Pressable>
+              </>
+            )}
             <Text style={[styles.title, { color: colors.text }]}>
               {expense.title}
             </Text>
@@ -85,6 +153,13 @@ export function ExpenseScreen() {
 }
 
 const styles = StyleSheet.create({
+  restore: {
+    minHeight: 48,
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    marginVertical: 12,
+  },
   content: { padding: 20, paddingBottom: 40 },
   title: { fontSize: 26, fontWeight: '700' },
   amount: { fontSize: 32, fontWeight: '600', marginTop: 8 },
