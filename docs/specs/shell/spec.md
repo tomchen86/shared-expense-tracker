@@ -950,10 +950,10 @@ WHEN 畫面還沒重新讀完時，使用者按下會改本機資料、或會打
 - **WHEN** Brisbane 的 Group Categories 開在 Settings 分頁時，在 Groups 分頁封存 Brisbane，切回 Settings 分頁，還沒重新讀完時點 Shopping、按「Add category」，或對 Shopping 做螢幕閱讀器的「Remove」動作
 - **THEN** 重新讀完之後沒有開啟分類表單，也沒有跳出提示框，Brisbane 的分類都沒變；畫面照 CATEGORIES-43.1 是唯讀的
 
-#### Scenario: 群組沒有封存
+#### Scenario: 分類在別處改了名
 
-- **WHEN** Brisbane 的 Group Categories 開在 Settings 分頁時，切到 Groups 分頁再切回來，還沒重新讀完時點 Shopping
-- **THEN** 重新讀完之後開啟「Edit Category」，名稱是「Shopping」
+- **WHEN** Manage Categories 開在 Settings 分頁時，在 Expenses 分頁從 New Expense 的「+ Add New Category」把 Shopping 改名為「Groceries」，切回 Settings 分頁，還沒重新讀完時點 Shopping
+- **THEN** 重新讀完之後開啟「Edit Category」，名稱是「Groceries」
 
 #### Scenario: 群組的畫面
 

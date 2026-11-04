@@ -12,7 +12,13 @@ import {
 import type { Database } from '../../src/storage';
 import { listCategories } from '../../src/categories';
 import { openNodeDatabase } from '../../src/storage/node';
-import { navigationBarTitles, push, tab, tapTab } from './shell-tabs-app';
+import {
+  navigationBarTitles,
+  navigationBars,
+  push,
+  tab,
+  tapTab,
+} from './shell-tabs-app';
 import { allowWrites, settle } from './shell-appearance-app';
 import {
   barAction,
@@ -154,12 +160,40 @@ const categoryFormOpen = () =>
   );
 
 /**
- * Taps the row named `name` on Group Categories as a finger does: only a row that
- * is a button on screen takes the tap.
+ * Taps the row named `name` on the categories screen titled `title` as a finger
+ * does: only a row that is a button on screen takes the tap.
  */
-async function tapRow(name: string) {
+async function tapRow(name: string, title = 'Group Categories') {
   const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-  await user.press(within(screenOf('Group Categories')).getByText(name));
+  await user.press(within(screenOf(title)).getByText(name));
+  await settle();
+}
+
+/** The navigation bars titled Manage Categories: the Settings tab's first, then the one over the form. */
+const manageCategoriesBars = () =>
+  navigationBars().filter((bar) => bar.props.title === 'Manage Categories');
+
+/**
+ * Renames the category `from` to `to` on the Manage Categories that New Expense
+ * opened over itself while another Manage Categories is open on the Settings tab,
+ * then closes it.
+ */
+async function renameOverTheForm(from: string, to: string) {
+  await openCategorySheet();
+  await waitFor(() => expect(manageCategoriesBars()).toHaveLength(2));
+  await fireEvent.press(screen.getAllByText(from).at(-1)!);
+  await fireEvent.changeText(await screen.findByLabelText('Category name'), to);
+  await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+  await settle();
+  await waitFor(() =>
+    expect(screen.queryByLabelText('Category name')).toBeNull(),
+  );
+  await fireEvent.press(
+    within(manageCategoriesBars().at(-1)!).getByRole('button', {
+      name: 'Close',
+    }),
+  );
+  await waitFor(() => expect(manageCategoriesBars()).toHaveLength(1));
   await settle();
 }
 
@@ -194,20 +228,27 @@ test('[SHELL-64.1] opens no form or alert for presses on Group Categories made b
   expect(await storedCategoryNames(brisbane.id)).toEqual(DEFAULT_NAMES);
 });
 
-test('[SHELL-64.1] opens Edit Category for a category pressed on Group Categories before it reads its group again', async () => {
-  await startWithGroups({ Brisbane: [] });
-  const brisbane = await storedGroup(file, 'Brisbane');
-  await openGroupCategories(brisbane.id);
-  await tapTab('Groups');
+test('[SHELL-64.1] opens Edit Category with the name read again for a category pressed before Manage Categories reads it again', async () => {
+  await startWithGroups();
+  await tapTab('Settings');
+  await push('/settings/manage-categories');
+  await waitFor(() =>
+    expect(textsOn('Manage Categories')).toContain('Shopping'),
+  );
+  await tapTab('Expenses');
+  await openNewExpense();
+  await renameOverTheForm('Shopping', 'Groceries');
+  await press('Cancel');
+  await expectFormClosed();
   const reads = holdReads();
 
   await tapTab('Settings');
-  await tapRow('Shopping');
+  await tapRow('Shopping', 'Manage Categories');
   await reads.release();
 
   await waitFor(() =>
     expect(screen.getByLabelText('Category name')).toHaveDisplayValue(
-      'Shopping',
+      'Groceries',
     ),
   );
   expect(categoryFormOpen()).toBe(true);
