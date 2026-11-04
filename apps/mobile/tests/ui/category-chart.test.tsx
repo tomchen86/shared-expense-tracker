@@ -15,7 +15,7 @@ const category = (color: string, amountMinor: number) => ({
 /** How many of the ring's ticks each color fills. */
 function ticksByColor() {
   const counts: Record<string, number> = {};
-  for (const view of screen.root.queryAll(
+  for (const view of screen.container.queryAll(
     (node) => typeof node.type === 'string',
   )) {
     const style = StyleSheet.flatten(view.props.style) ?? {};
