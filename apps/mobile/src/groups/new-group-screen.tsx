@@ -69,6 +69,8 @@ export function NewGroupScreen() {
       <ScrollView
         automaticallyAdjustKeyboardInsets
         contentInsetAdjustmentBehavior="automatic"
+        // The keyboard scroll clamps to contentInset, which leaves out the header's automatic inset.
+        scrollToOverflowEnabled
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
       >

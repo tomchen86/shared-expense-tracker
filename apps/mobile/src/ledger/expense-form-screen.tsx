@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useIsFocused, usePreventRemove } from 'expo-router/react-navigation';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { getLocales } from 'expo-localization';
 import {
   categoryNameKey,
@@ -347,6 +347,8 @@ function ExpenseEditor({
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior="automatic"
+        // The keyboard scroll clamps to contentInset, which leaves out the header's automatic inset.
+        scrollToOverflowEnabled
         contentContainerStyle={styles.content}
       >
         <Text style={[styles.currency, { color: colors.textMuted }]}>
@@ -466,132 +468,135 @@ function ExpenseEditor({
         visible={picker !== undefined}
         animationType="slide"
         onRequestClose={() => setPicker(undefined)}
+        presentationStyle="pageSheet"
       >
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-          <View
-            style={[
-              styles.pickerHeader,
-              { borderBottomColor: colors.separator },
-            ]}
-          >
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                picker === 'Split Between' ? 'Done' : 'Cancel'
-              }
-              onPress={() => setPicker(undefined)}
-              style={styles.cancel}
+        <SafeAreaProvider>
+          <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+            <View
+              style={[
+                styles.pickerHeader,
+                { borderBottomColor: colors.separator },
+              ]}
             >
-              <Text style={{ color: colors.accent }}>
-                {picker === 'Split Between' ? 'Done' : 'Cancel'}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  picker === 'Split Between' ? 'Done' : 'Cancel'
+                }
+                onPress={() => setPicker(undefined)}
+                style={styles.cancel}
+              >
+                <Text style={{ color: colors.accent }}>
+                  {picker === 'Split Between' ? 'Done' : 'Cancel'}
+                </Text>
+              </Pressable>
+              <Text
+                accessibilityRole="header"
+                style={[styles.pickerTitle, { color: colors.text }]}
+              >
+                {picker}
               </Text>
-            </Pressable>
-            <Text
-              accessibilityRole="header"
-              style={[styles.pickerTitle, { color: colors.text }]}
-            >
-              {picker}
-            </Text>
-          </View>
-          <ScrollView contentContainerStyle={styles.content}>
-            <GroupedSection>
-              {picker === 'Category' &&
-                activeCategories.map((item) => (
+            </View>
+            <ScrollView contentContainerStyle={styles.content}>
+              <GroupedSection>
+                {picker === 'Category' &&
+                  activeCategories.map((item) => (
+                    <Pressable
+                      key={item.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={item.name}
+                      accessibilityState={{
+                        selected: item.id === form.categoryId,
+                      }}
+                      style={styles.row}
+                      onPress={() => {
+                        change('categoryId', item.id);
+                        setPicker(undefined);
+                      }}
+                    >
+                      <View style={styles.categoryValue}>
+                        <View
+                          style={[styles.dot, { backgroundColor: item.color }]}
+                        />
+                        <Text style={{ color: colors.text }}>{item.name}</Text>
+                      </View>
+                      {item.id === form.categoryId && (
+                        <Text style={{ color: colors.accent }}>✓</Text>
+                      )}
+                    </Pressable>
+                  ))}
+                {picker === 'Category' && (
                   <Pressable
-                    key={item.id}
                     accessibilityRole="button"
-                    accessibilityLabel={item.name}
-                    accessibilityState={{
-                      selected: item.id === form.categoryId,
-                    }}
+                    accessibilityLabel="+ Add New Category"
                     style={styles.row}
                     onPress={() => {
-                      change('categoryId', item.id);
                       setPicker(undefined);
+                      router.navigate(
+                        form.groupId
+                          ? {
+                              pathname: '/manage-categories',
+                              params: {
+                                scopeKind: 'group',
+                                spaceId: form.groupId,
+                              },
+                            }
+                          : '/manage-categories',
+                      );
                     }}
                   >
-                    <View style={styles.categoryValue}>
-                      <View
-                        style={[styles.dot, { backgroundColor: item.color }]}
-                      />
-                      <Text style={{ color: colors.text }}>{item.name}</Text>
-                    </View>
-                    {item.id === form.categoryId && (
-                      <Text style={{ color: colors.accent }}>✓</Text>
-                    )}
+                    <Text style={{ color: colors.accent }}>
+                      + Add New Category
+                    </Text>
                   </Pressable>
-                ))}
-              {picker === 'Category' && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="+ Add New Category"
-                  style={styles.row}
-                  onPress={() => {
-                    setPicker(undefined);
-                    router.navigate(
-                      form.groupId
-                        ? {
-                            pathname: '/manage-categories',
-                            params: {
-                              scopeKind: 'group',
-                              spaceId: form.groupId,
-                            },
-                          }
-                        : '/manage-categories',
-                    );
-                  }}
-                >
-                  <Text style={{ color: colors.accent }}>
-                    + Add New Category
-                  </Text>
-                </Pressable>
-              )}
-              {picker === 'Select Group' &&
-                groups
-                  .filter((item) => !item.archived)
-                  .map((item) => (
+                )}
+                {picker === 'Select Group' &&
+                  groups
+                    .filter((item) => !item.archived)
+                    .map((item) => (
+                      <PickerRow
+                        key={item.id}
+                        label={item.name}
+                        selected={item.id === form.groupId}
+                        onPress={() => chooseGroup(item.id)}
+                      />
+                    ))}
+                {(picker === 'Who Paid?' || picker === 'Split Between') &&
+                  members.map((member) => (
                     <PickerRow
-                      key={item.id}
-                      label={item.name}
-                      selected={item.id === form.groupId}
-                      onPress={() => chooseGroup(item.id)}
+                      key={member.id}
+                      label={memberName(member)}
+                      selected={
+                        picker === 'Who Paid?'
+                          ? member.id === form.payerId
+                          : form.participants.includes(member.id)
+                      }
+                      onPress={() => {
+                        if (savingRef.current || financialLocked) return;
+                        if (picker === 'Who Paid?') {
+                          setForm((previous) => ({
+                            ...previous,
+                            payerId: member.id,
+                          }));
+                          setPicker(undefined);
+                        } else
+                          setForm((previous) => ({
+                            ...previous,
+                            participants: previous.participants.includes(
+                              member.id,
+                            )
+                              ? previous.participants.filter(
+                                  (id) => id !== member.id,
+                                )
+                              : [...previous.participants, member.id],
+                          }));
+                      }}
                     />
                   ))}
-              {(picker === 'Who Paid?' || picker === 'Split Between') &&
-                members.map((member) => (
-                  <PickerRow
-                    key={member.id}
-                    label={memberName(member)}
-                    selected={
-                      picker === 'Who Paid?'
-                        ? member.id === form.payerId
-                        : form.participants.includes(member.id)
-                    }
-                    onPress={() => {
-                      if (savingRef.current || financialLocked) return;
-                      if (picker === 'Who Paid?') {
-                        setForm((previous) => ({
-                          ...previous,
-                          payerId: member.id,
-                        }));
-                        setPicker(undefined);
-                      } else
-                        setForm((previous) => ({
-                          ...previous,
-                          participants: previous.participants.includes(
-                            member.id,
-                          )
-                            ? previous.participants.filter(
-                                (id) => id !== member.id,
-                              )
-                            : [...previous.participants, member.id],
-                        }));
-                    }}
-                  />
-                ))}
-            </GroupedSection>
-          </ScrollView>
-        </SafeAreaView>
+              </GroupedSection>
+            </ScrollView>
+          </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     </View>
   );
