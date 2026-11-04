@@ -13,6 +13,7 @@ import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
+import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
 import { createGroup } from './index';
 import { useRequireName } from './use-require-name';
 
@@ -22,6 +23,7 @@ export function NewGroupScreen() {
   const identity = useLocalIdentity();
   const requireName = useRequireName();
   const colors = useThemeColors();
+  const keyboardScroll = useKeyboardScroll();
   const [name, setName] = useState('');
   const [status, setStatus] = useState<'editing' | 'saving' | 'saved'>(
     'editing',
@@ -67,8 +69,7 @@ export function NewGroupScreen() {
         }}
       />
       <ScrollView
-        automaticallyAdjustKeyboardInsets
-        contentInsetAdjustmentBehavior="automatic"
+        {...keyboardScroll}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
       >

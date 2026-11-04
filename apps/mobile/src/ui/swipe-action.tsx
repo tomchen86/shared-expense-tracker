@@ -10,6 +10,8 @@ import {
 import { useThemeColors } from './theme';
 
 const WIDTH = 96;
+const GAP = 8;
+const OPEN = -(WIDTH + GAP);
 
 export function SwipeAction({
   children,
@@ -39,20 +41,29 @@ export function SwipeAction({
       }).start();
     };
     return PanResponder.create({
+      // An open row closes on a looser, diagonal swipe, so a thumb's drift does not hand it to the list.
+      onMoveShouldSetPanResponderCapture: (_, gesture) =>
+        !disabled &&
+        offset.current !== 0 &&
+        gesture.dx > 10 &&
+        gesture.dx > Math.abs(gesture.dy) / 2,
       onMoveShouldSetPanResponder: (_, gesture) =>
         !disabled &&
         Math.abs(gesture.dx) > 10 &&
         Math.abs(gesture.dx) > Math.abs(gesture.dy),
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => translation.stopAnimation(),
       onPanResponderMove: (_, gesture) =>
         translation.setValue(
-          Math.max(-WIDTH, Math.min(0, offset.current + gesture.dx)),
+          Math.max(OPEN, Math.min(0, offset.current + gesture.dx)),
         ),
       onPanResponderRelease: (_, gesture) =>
         finish(
-          offset.current + gesture.dx < -WIDTH / 2 || gesture.vx < -0.5
-            ? -WIDTH
-            : 0,
+          gesture.vx > 0.5
+            ? 0
+            : offset.current + gesture.dx < OPEN / 2 || gesture.vx < -0.5
+              ? OPEN
+              : 0,
         ),
       onPanResponderTerminate: () => finish(offset.current),
     });
@@ -77,10 +88,13 @@ export function SwipeAction({
       </Pressable>
       <Animated.View
         {...responder.panHandlers}
-        style={{
-          backgroundColor: colors.background,
-          transform: [{ translateX: translation }],
-        }}
+        style={[
+          styles.row,
+          {
+            backgroundColor: colors.background,
+            transform: [{ translateX: translation }],
+          },
+        ]}
       >
         {children}
       </Animated.View>
@@ -89,8 +103,16 @@ export function SwipeAction({
 }
 
 const styles = StyleSheet.create({
-  container: { overflow: 'hidden', borderRadius: 12 },
+  container: {
+    overflow: 'hidden',
+    borderCurve: 'continuous',
+    borderRadius: 12,
+  },
+  // The row and the action match the card's shape, so no square corner shows between them.
+  row: { borderCurve: 'continuous', borderRadius: 12 },
   action: {
+    borderCurve: 'continuous',
+    borderRadius: 12,
     position: 'absolute',
     right: 0,
     top: 0,
