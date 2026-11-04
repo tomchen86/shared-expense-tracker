@@ -428,6 +428,7 @@ test('[LEDGER-35.2] shows a line for each currency, above the cards, by currency
   expect(readOut(thisMonthButton())).toBe(
     'View expense insights. Spent this month A$0.30, ¥1,200, $8.75.',
   );
+  expect(linesIn(thisMonthButton())).toEqual(thisMonthLines());
   const lines = linesIn(expensesRoot());
   expect(lines.indexOf('This Month: $8.75')).toBeLessThan(
     lines.indexOf('Ramen'),

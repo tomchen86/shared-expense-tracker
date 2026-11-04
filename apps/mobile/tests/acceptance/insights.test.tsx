@@ -461,9 +461,11 @@ test("[INSIGHTS-17.1] shows your Food & Dining and a group's as one row in your 
 });
 
 test('[INSIGHTS-17.1] takes the name of the group created first when your space has no category of that name', async () => {
-  await startWithGroups({ Brisbane: [], Tokyo: [] });
-  await addCategory('Flights', await groupId('Brisbane'));
+  // Tokyo comes first by creation only: Brisbane sorts first by name, and
+  // Flights before flights.
+  await startWithGroups({ Tokyo: [], Brisbane: [] });
   await addCategory('flights', await groupId('Tokyo'));
+  await addCategory('Flights', await groupId('Brisbane'));
   await addGroupExpense({
     group: 'Brisbane',
     payer: 'Taylor (You)',
@@ -483,7 +485,7 @@ test('[INSIGHTS-17.1] takes the name of the group created first when your space 
 
   await openInsights();
 
-  expect(rows()).toEqual([['Flights', '$5.00 · 100.0%']]);
+  expect(rows()).toEqual([['flights', '$5.00 · 100.0%']]);
 });
 
 test("[INSIGHTS-17.1] keeps a renamed personal category apart from the group's category of the old name", async () => {

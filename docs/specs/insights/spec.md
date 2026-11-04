@@ -354,7 +354,7 @@ The mobile app SHALL 讓個人的 Insights 依 INSIGHTS-1.1 分析所有不在�
 
 #### Scenario: 封存的群組
 
-- **WHEN** 封存 Brisbane
+- **WHEN** 沒有 Tokyo 時封存 Brisbane
 - **THEN** 個人的 Insights 的總額仍是「$28.75」，Brisbane 的 Insights 仍是「$69.00」
 
 #### Scenario: 垃圾桶裡的支出
@@ -383,8 +383,8 @@ WHILE 分析個人支出，the mobile app SHALL 把名稱相同的分類算成�
 
 #### Scenario: 個人空間沒有同名的分類
 
-- **WHEN** 依序建立 Brisbane 和 Tokyo，在 Brisbane 的 Group Categories 新增「Flights」，在 Tokyo 的新增「flights」，兩邊各有一筆 Taylor 分攤的支出用它
-- **THEN** 個人的 Insights 只有一列「Flights」，金額是兩筆的份額的總和
+- **WHEN** 依序建立 Tokyo 和 Brisbane，在 Tokyo 的 Group Categories 新增「flights」，在 Brisbane 的新增「Flights」，兩邊各有一筆 Taylor 分攤的支出用它
+- **THEN** 個人的 Insights 只有一列「flights」（最早建立的 Tokyo 的名稱，不是名稱排在前面的 Brisbane 或「Flights」），金額是兩筆的份額的總和
 
 #### Scenario: 個人的分類改了名
 
