@@ -54,12 +54,17 @@ import {
   addGroupExpense,
   archiveGroup,
   closeCategorySheet,
+  detailLinesOn,
+  editOn,
+  expectDetailsOn,
+  groupCard,
   openCategorySheet,
   removeCategoryInSheet,
   startWithGroups,
   storedGroup,
 } from './ledger-group-expense-app';
 import {
+  NOT_FOUND,
   allowReads,
   detailBars,
   holdReads,
@@ -67,6 +72,8 @@ import {
   phoneDatabaseWithReads,
   pressEdit,
 } from './ledger-expense-list-app';
+import { showGroup } from './group-balances-app';
+import { deleteByAction } from './ledger-trash-app';
 
 // Runs on iOS. Each test starts the app as the group expense form tests do, with
 // Taylor saved as your name, changes the local data on another tab, and holds the
@@ -323,6 +330,31 @@ test('[SHELL-64.1] opens no Edit Expense from details pressed before they read t
     detailBars().at(-1)?.props.headerRightBarButtonItems ?? []
   ).find((item: { title?: string }) => item.title === 'Edit');
   expect(edit?.disabled).toBe(true);
+});
+
+test('[SHELL-64.1] opens no Edit Expense from group expense details pressed before they read that the expense moved to the trash', async () => {
+  await startWithGroups({ Brisbane: ['Casey'] });
+  await addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Taylor (You)',
+    sharers: ['Taylor (You)', 'Casey'],
+  });
+  await showGroup('Brisbane');
+  await fireEvent.press(groupCard('Brisbane', 'Dinner'));
+  await expectDetailsOn('Groups', 'Dinner');
+  await tapTab('Expenses');
+  await settle();
+  await deleteByAction('Dinner');
+  const reads = holdReads();
+
+  await tapTab('Groups');
+  await editOn('Groups')?.press();
+  await settle();
+  await reads.release();
+  await settle();
+
+  expect(formTitle()).toBeUndefined();
+  await waitFor(() => expect(detailLinesOn('Groups')).toEqual([NOT_FOUND]));
 });
 
 // The expense form

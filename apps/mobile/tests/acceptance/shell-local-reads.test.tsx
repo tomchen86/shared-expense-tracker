@@ -182,12 +182,8 @@ const OPENED_BY_URL: [string, string, string[]][] = [
   [`/settings/archived-groups/${NO_ID}`, 'Group Details', []],
   [`/groups/members?id=${NO_ID}`, 'Members', ['Close']],
   [`/settings/archived-groups/members?id=${NO_ID}`, 'Members', ['Close']],
-  [`/groups/add-member?id=${NO_ID}`, 'Add Member', ['Cancel']],
-  [
-    `/settings/archived-groups/add-member?id=${NO_ID}`,
-    'Add Member',
-    ['Cancel'],
-  ],
+  [`/groups/balances?id=${NO_ID}`, 'Balances', ['Close']],
+  [`/settings/archived-groups/balances?id=${NO_ID}`, 'Balances', ['Close']],
   [
     `/groups/rename-member?id=${NO_ID}&memberId=${NO_ID}`,
     'Rename Member',
@@ -272,6 +268,18 @@ test('[SHELL-60.1] shows the read error, not the groups read before, when the Gr
   expect(cardNames()).toEqual(['Open Brisbane']);
   await tapTab('Expenses');
   failReads();
+
+  await tapTab('Groups');
+
+  await expectReadError('Groups');
+  expect(cardNames()).toEqual([]);
+});
+
+test('[SHELL-60.1] shows the read error on the Groups root when it reads the groups but not the expenses its cards sum up', async () => {
+  await startWithBrisbane();
+  expect(cardNames()).toEqual(['Open Brisbane']);
+  await tapTab('Expenses');
+  failReads('expenses');
 
   await tapTab('Groups');
 
@@ -516,7 +524,7 @@ test('[SHELL-63.1] goes back from a pushed screen that shows the read error', as
 test.each([
   ['/expenses/new', 'New Expense', 'Cancel'],
   [`/groups/members?id=${NO_ID}`, 'Members', 'Close'],
-  [`/groups/add-member?id=${NO_ID}`, 'Add Member', 'Cancel'],
+  [`/groups/balances?id=${NO_ID}`, 'Balances', 'Close'],
   ['/manage-categories', 'Manage Categories', 'Close'],
 ])(
   '[SHELL-63.1] closes %s, titled %s, with %s while it shows the read error, asking nothing',
@@ -537,7 +545,7 @@ test.each([
 test.each([
   ['/expenses/new', 'New Expense'],
   [`/groups/members?id=${NO_ID}`, 'Members'],
-  [`/groups/add-member?id=${NO_ID}`, 'Add Member'],
+  [`/groups/balances?id=${NO_ID}`, 'Balances'],
   ['/manage-categories', 'Manage Categories'],
 ])(
   '[SHELL-63.1] lets %s, titled %s, be swiped down while it shows the read error, asking nothing',

@@ -129,7 +129,7 @@ test("[SHELL-63.1] goes back from a group's screen that shows the read error wit
 test.each([
   ['/', '/expenses/new', 'New Expense'],
   ['/groups', `/groups/members?id=${NO_ID}`, 'Members'],
-  ['/groups', `/groups/add-member?id=${NO_ID}`, 'Add Member'],
+  ['/groups', `/groups/balances?id=${NO_ID}`, 'Balances'],
   ['/', '/manage-categories', 'Manage Categories'],
 ])(
   '[SHELL-63.1] from %s, closes %s, titled %s, with the system back button while it shows the read error, asking nothing',
