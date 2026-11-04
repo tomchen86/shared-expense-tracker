@@ -2,7 +2,7 @@
 
 ## Purpose
 
-App 外殼：開啟本機資料、開啟期間的載入畫面、打不開時的錯誤畫面、這支手機的本機身分，載入後的分頁列、各分頁自己的堆疊和返回按鈕，Settings 根畫面上的名字、外觀選項和入口列，app 的深淺色和半透明表面，以及各畫面共用的 + 按鈕和標題列動作。本機資料是手機上的 SQLite 資料庫；開啟時依序跑 migration，還沒有本機身分時再建立一個（ADR-0006）。開發版是指 `__DEV__` 為真的 build。分頁的根畫面是分頁堆疊最底下的畫面，也就是選中分頁時最先看到的畫面。名字是本機身分裡存著的名字。外觀選項是存在本機資料裡的 System、Light 或 Dark；app 的外觀是 app 現在用淺色還是深色：外觀選項是 Light 或 Dark 時就是它，是 System 時跟著手機。跟著外觀的顏色是指淺色和深色時不同的顏色，或是由系統依外觀決定的顏色。「降低透明度」是 iOS 輔助使用裡的同名設定。毛玻璃是看得到後面模糊內容的半透明表面；玻璃是 iOS 26 起的 Liquid Glass。app 自己加的毛玻璃或玻璃，不包括分頁列、標題列、分段控制這些系統元件本身畫的。+ 按鈕是畫面浮在底部的圓形按鈕；標題列動作是畫面放在自己標題列上的取消、確認、編輯，以及收進選單的其他動作；一個選單最多放兩個動作。它們的名稱、要執行的動作和是否停用，都由畫面決定。分頁裡的畫面是分頁堆疊上、看得到分頁列的畫面；分頁外的畫面是不在分頁堆疊上、看不到分頁列的畫面。下方安全區是畫面底部被系統擋住的高度，在 iOS 的分頁裡也包括分頁列。
+App 外殼：開啟本機資料、開啟期間的載入畫面、打不開時的錯誤畫面、這支手機的本機身分，載入後的分頁列、各分頁自己的堆疊和返回按鈕，Settings 根畫面上的名字、外觀選項和入口列，app 的深淺色和半透明表面，以及各畫面共用的 + 按鈕和標題列動作。本機資料是手機上的 SQLite 資料庫；開啟時依序跑 migration，還沒有本機身分時再建立一個（ADR-0006）。開發版是指 `__DEV__` 為真的 build。分頁的根畫面是分頁堆疊最底下的畫面，也就是選中分頁時最先看到的畫面。名字是本機身分裡存著的名字。外觀選項是存在本機資料裡的 System、Light 或 Dark；app 的外觀是 app 現在用淺色還是深色：外觀選項是 Light 或 Dark 時就是它，是 System 時跟著手機。跟著外觀的顏色是指淺色和深色時不同的顏色，或是由系統依外觀決定的顏色。「降低透明度」是 iOS 輔助使用裡的同名設定。毛玻璃是看得到後面模糊內容的半透明表面；玻璃是 iOS 26 起的 Liquid Glass。app 自己加的毛玻璃或玻璃，不包括分頁列、標題列、分段控制這些系統元件本身畫的。+ 按鈕是畫面浮在底部的圓形按鈕；標題列動作是畫面放在自己標題列上的取消、確認、編輯，以及收進選單的其他動作；一個選單最多放兩個動作，畫面可以把選單裡的動作標成破壞性的。它們的名稱、要執行的動作和是否停用，都由畫面決定。分頁裡的畫面是分頁堆疊上、看得到分頁列的畫面；分頁外的畫面是不在分頁堆疊上、看不到分頁列的畫面。下方安全區是畫面底部被系統擋住的高度，在 iOS 的分頁裡也包括分頁列。
 
 ## Requirements
 
@@ -231,14 +231,14 @@ WHERE Android，the mobile app SHALL 讓系統返回鍵在 Groups 或 Settings �
 - **WHEN** 在 Settings 的根畫面推入 Archived Groups，再按兩次返回鍵
 - **THEN** 第一次回到 Settings 的根畫面，第二次切到 Expenses
 
-### Requirement: SHELL-16.1 Settings 根畫面的 PROFILE 和 APP 區塊
+### Requirement: SHELL-16.2 Settings 根畫面的 PROFILE 和 APP 區塊
 
-The mobile app SHALL 在 Settings 根畫面顯示 PROFILE 區塊和排在它後面的 APP 區塊：PROFILE 有「Your Name」名字欄位，下方說明「Used to identify you in shared expenses and balances.」；APP 有「Manage Categories」和「Archived Groups」兩列。
+The mobile app SHALL 在 Settings 根畫面顯示 PROFILE 區塊和排在它後面的 APP 區塊：PROFILE 有「Your Name」名字欄位，下方說明「Used to identify you in shared expenses and balances.」；APP 有「Manage Categories」、「Archived Groups」和「Trash」三列。
 
 #### Scenario: 打開 Settings
 
 - **WHEN** 選中 Settings 分頁
-- **THEN** 由上而下依序看到「PROFILE」、「Your Name」、「Used to identify you in shared expenses and balances.」、「APP」、「Manage Categories」、「Archived Groups」
+- **THEN** 由上而下依序看到「PROFILE」、「Your Name」、「Used to identify you in shared expenses and balances.」、「APP」、「Manage Categories」、「Archived Groups」、「Trash」
 
 ### Requirement: SHELL-17.1 名字欄位顯示存著的名字
 
@@ -344,9 +344,9 @@ IF 名字存不進去，THEN the mobile app SHALL 跳出標題「Unable to Save 
 - **WHEN** 寫入失敗後資料庫恢復，再按一次 Return
 - **THEN** 名字存成「Taylor」
 
-### Requirement: SHELL-23.1 點入口列推入 Settings 分頁的畫面
+### Requirement: SHELL-23.2 點入口列推入 Settings 分頁的畫面
 
-WHEN 使用者在 Settings 根畫面點「Manage Categories」或「Archived Groups」，the mobile app SHALL 在 Settings 分頁推入對應的畫面。
+WHEN 使用者在 Settings 根畫面點「Manage Categories」、「Archived Groups」或「Trash」，the mobile app SHALL 在 Settings 分頁推入對應的畫面。
 
 #### Scenario: 點 Manage Categories
 
@@ -357,6 +357,11 @@ WHEN 使用者在 Settings 根畫面點「Manage Categories」或「Archived Gro
 
 - **WHEN** 點「Archived Groups」
 - **THEN** 分頁列仍選中 Settings，Settings 分頁的堆疊由下而上是「Settings」根畫面和「Archived Groups」，目前的網址是 `/settings/archived-groups`
+
+#### Scenario: 點 Trash
+
+- **WHEN** 點「Trash」
+- **THEN** 分頁列仍選中 Settings，Settings 分頁的堆疊由下而上是「Settings」根畫面和「Trash」，目前的網址是 `/settings/trash`
 
 ### Requirement: SHELL-24.1 鍵盤開著或字級放大時仍能操作 Settings
 
@@ -808,3 +813,17 @@ The mobile app SHALL 把畫面給的編輯動作放在標題列右邊：iOS 上�
 
 - **WHEN** Android 上畫面給名稱是「Edit」的編輯動作
 - **THEN** 標題列右邊是名稱「Edit」的 `edit`，至少 48×48 dp
+
+### Requirement: SHELL-53.1 破壞性的選單動作
+
+WHERE iOS，the mobile app SHALL 用破壞性的樣式（紅字）顯示畫面標成破壞性的選單動作；選單裡其他的動作照常顯示。
+
+#### Scenario: 標成破壞性
+
+- **WHEN** iOS 上畫面給名稱是「Expense actions」的選單，裡面的「Delete」標成破壞性
+- **THEN** 選單裡的「Delete」是破壞性的樣式
+
+#### Scenario: 沒有標成破壞性
+
+- **WHEN** iOS 上畫面給名稱是「Group actions」的選單，裡面的「Members」沒有標成破壞性
+- **THEN** 選單裡的「Members」不是破壞性的樣式

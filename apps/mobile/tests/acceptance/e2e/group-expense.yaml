@@ -112,3 +112,10 @@ name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LE
 - waitForAnimationToEnd
 # Taylor was chosen first, so the extra cent is Taylor's: the card shows that share.
 - assertVisible: .*Dinner.*\$50\.01.*
+# A group expense's card has no Delete: swiping it left shows nothing.
+- swipe:
+    from:
+      text: .*Dinner.*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertNotVisible: Delete.*

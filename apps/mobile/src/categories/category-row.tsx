@@ -13,6 +13,7 @@ import { isUncategorizedCategory, type Category } from './repository';
 interface CategoryRowProps {
   category: Category;
   used: boolean;
+  readOnly: boolean;
   onPress?: () => void;
   onRemove: () => void;
 }
@@ -22,6 +23,7 @@ const ACTION_WIDTH = 88;
 export function CategoryRow({
   category,
   used,
+  readOnly,
   onPress,
   onRemove,
 }: CategoryRowProps) {
@@ -89,9 +91,7 @@ export function CategoryRow({
   const content = (
     <>
       <View style={[styles.dot, { backgroundColor: category.color }]} />
-      <Text
-        style={[styles.label, category.isArchived && { color: colors.text }]}
-      >
+      <Text style={[styles.label, { color: colors.text }]}>
         {category.name}
       </Text>
       {category.isArchived && (
@@ -100,7 +100,7 @@ export function CategoryRow({
     </>
   );
 
-  if (reserved) return <View style={styles.row}>{content}</View>;
+  if (reserved || readOnly) return <View style={styles.row}>{content}</View>;
 
   return (
     <View style={styles.swipe} {...responder.panHandlers}>
@@ -136,12 +136,8 @@ export function CategoryRow({
           }}
           style={({ pressed }) => [
             styles.row,
-            { backgroundColor: category.isArchived ? colors.surface : '#fff' },
-            pressed && {
-              backgroundColor: category.isArchived
-                ? colors.pressedSurface
-                : '#e5e5ea',
-            },
+            { backgroundColor: colors.surface },
+            pressed && { backgroundColor: colors.pressedSurface },
           ]}
         >
           {content}
@@ -161,7 +157,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dot: { width: 20, height: 20, borderRadius: 10, marginRight: 14 },
-  label: { color: '#1c1c1e', fontSize: 17, flex: 1 },
+  label: { fontSize: 17, flex: 1 },
   action: {
     position: 'absolute',
     right: 0,

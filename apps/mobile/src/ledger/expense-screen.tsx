@@ -1,4 +1,12 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useLocales } from 'expo-localization';
 import { formatCurrency } from '@shared-expense/domain';
@@ -6,21 +14,61 @@ import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
 import { formatExpenseDate } from './format-date';
-import { useExpenses } from './use-expenses';
+import { useExpenses, type DisplayExpense } from './use-expenses';
+import { useTrashActions } from './trash-provider';
 
-export function ExpenseScreen() {
+export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useThemeColors();
   const locale = useLocales()[0].languageTag;
-  const expenses = useExpenses();
-  const expense = expenses?.find((item) => item.id === id);
+  const expenses = useExpenses(trashed);
+  const actions = useTrashActions();
+  const saving = useRef(false);
+  const [leavingExpense, setLeavingExpense] = useState<DisplayExpense>();
+  const expense = leavingExpense ?? expenses?.find((item) => item.id === id);
+
+  async function changeAndReturn(change: () => Promise<boolean>) {
+    if (!expense || saving.current) return;
+    saving.current = true;
+    setLeavingExpense(expense);
+    if (await change()) router.back();
+    else setLeavingExpense(undefined);
+    saving.current = false;
+  }
+
+  function deletePermanently() {
+    Alert.alert('Delete Expense?', 'This permanently deletes the expense.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => void changeAndReturn(() => actions.remove(id)),
+      },
+    ]);
+  }
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {expense && (
         <HeaderActions
-          edit={{
-            label: 'Edit',
-            onPress: () => router.navigate(`/expenses/${id}/edit`),
+          edit={
+            trashed
+              ? undefined
+              : {
+                  label: 'Edit',
+                  onPress: () => router.navigate(`/expenses/${id}/edit`),
+                }
+          }
+          menu={{
+            label: 'Expense actions',
+            actions: [
+              {
+                label: trashed ? 'Delete Permanently' : 'Delete',
+                destructive: true,
+                onPress: trashed
+                  ? deletePermanently
+                  : () => void changeAndReturn(() => actions.move(expense)),
+              },
+            ],
           }}
         />
       )}
@@ -30,6 +78,25 @@ export function ExpenseScreen() {
       >
         {expense ? (
           <>
+            {trashed && (
+              <>
+                <Text style={{ color: colors.textMuted, fontSize: 17 }}>
+                  This expense is in the Trash.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Restore"
+                  style={styles.restore}
+                  onPress={() =>
+                    void changeAndReturn(() => actions.restore(id))
+                  }
+                >
+                  <Text style={{ color: colors.accent, fontSize: 17 }}>
+                    Restore
+                  </Text>
+                </Pressable>
+              </>
+            )}
             <Text style={[styles.title, { color: colors.text }]}>
               {expense.title}
             </Text>
@@ -42,9 +109,18 @@ export function ExpenseScreen() {
             <GroupedSection>
               <View style={styles.row}>
                 <Text style={{ color: colors.text }}>Category</Text>
-                <Text style={[styles.value, { color: colors.textMuted }]}>
-                  {expense.category.name}
-                </Text>
+                <View style={styles.category}>
+                  <View
+                    accessible={false}
+                    style={[
+                      styles.dot,
+                      { backgroundColor: expense.category.color },
+                    ]}
+                  />
+                  <Text style={[styles.value, { color: colors.textMuted }]}>
+                    {expense.categoryLabel}
+                  </Text>
+                </View>
               </View>
               <View
                 style={[
@@ -85,6 +161,13 @@ export function ExpenseScreen() {
 }
 
 const styles = StyleSheet.create({
+  restore: {
+    minHeight: 48,
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    marginVertical: 12,
+  },
   content: { padding: 20, paddingBottom: 40 },
   title: { fontSize: 26, fontWeight: '700' },
   amount: { fontSize: 32, fontWeight: '600', marginTop: 8 },
@@ -98,6 +181,13 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   value: { flexShrink: 1, textAlign: 'right' },
+  category: {
+    flexShrink: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dot: { width: 12, height: 12, borderRadius: 6 },
   note: { padding: 16, fontSize: 17 },
   missing: { textAlign: 'center', marginTop: 48, fontSize: 16 },
 });

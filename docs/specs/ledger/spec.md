@@ -2,7 +2,7 @@
 
 ## Purpose
 
-記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、和群組分攤、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。群組支出是屬於一個群組的空間的支出，付款和分攤都記在這個群組的成員的成員 ID 下；成員、你的成員、前成員和成員現在的名稱見 groups。你的 participant 是個人 participant，以及每個群組裡你的成員；一筆支出裡你付的，是它的付款裡你的 participant 的金額總和，你的份額是它的分攤裡你的 participant 的金額總和。和你有關的群組支出，是付款或分攤裡有你的 participant 的群組支出，分攤的金額是 0 也算。表單的空間在「Split with others」開著並選了群組時是那個群組，其他時候是個人空間；分攤的欄位是「Split with others」、群組、付款人和分攤的人；分攤的順序是分攤的人被選的先後（LEDGER-49.1），存下之後是存著的順序（LEDGER-58.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期、備註或分攤的欄位（LEDGER-59.1）有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是 Your Total Share，下面是支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。手機地區的貨幣格式，是手機第一個偏好的語言和地區用來顯示一個幣別的金額的格式；手機地區的日期格式見 LEDGER-30.1。
+記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、和群組分攤、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。群組支出是屬於一個群組的空間的支出，付款和分攤都記在這個群組的成員的成員 ID 下；成員、你的成員、前成員和成員現在的名稱見 groups。你的 participant 是個人 participant，以及每個群組裡你的成員；一筆支出裡你付的，是它的付款裡你的 participant 的金額總和，你的份額是它的分攤裡你的 participant 的金額總和。和你有關的群組支出，是付款或分攤裡有你的 participant 的群組支出，分攤的金額是 0 也算。表單的空間在「Split with others」開著並選了群組時是那個群組，其他時候是個人空間；分攤的欄位是「Split with others」、群組、付款人和分攤的人；分攤的順序是分攤的人被選的先後（LEDGER-49.1），存下之後是存著的順序（LEDGER-58.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期、備註或分攤的欄位（LEDGER-59.1）有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是 Your Total Share，下面是支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。手機地區的貨幣格式，是手機第一個偏好的語言和地區用來顯示一個幣別的金額的格式；手機地區的日期格式見 LEDGER-30.1。刪除支出是把它移到垃圾桶：本機資料把它標成在垃圾桶裡，它的其他資料都不變，所以垃圾桶裡的支出仍是存著的支出，仍算使用它的分類（CATEGORIES-34.1、35.1、40.1）；還原是拿掉這個標記，永久刪除是把這筆支出和它的付款、分攤從本機資料刪掉。Undo 提示是支出移到垃圾桶之後，顯示在畫面底部、可以按 Undo 的提示；Undo 時間是 5 秒，螢幕閱讀器開著時是 15 秒，螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。Trash 是 Settings 分頁上列出垃圾桶裡的支出的畫面；唯讀明細是在 Trash 點卡片後推入、顯示垃圾桶裡一筆支出的畫面。
 
 ## Requirements
 
@@ -225,7 +225,7 @@ The mobile app SHALL 讓支出表單的標題列有取消「Cancel」和確認�
 
 ### Requirement: LEDGER-14.3 打開 New Expense 時的內容
 
-WHEN 打開 New Expense，the mobile app SHALL 讓金額、標題和備註都是空的，分類是表單的空間未封存的分類中依儲存的順序排第一的那一個（CATEGORIES-7.3），日期是今天。
+WHEN 打開 New Expense，the mobile app SHALL 讓金額、標題和備註都是空的，分類是表單的空間未封存的分類中依儲存的順序排第一的那一個（CATEGORIES-7.4），日期是今天。
 
 #### Scenario: 第一次啟動
 
@@ -307,7 +307,7 @@ WHEN 打開某筆支出的 Edit Expense，the mobile app SHALL 以這筆支出�
 
 ### Requirement: LEDGER-17.4 從清單選分類
 
-WHEN 使用者按分類按鈕，the mobile app SHALL 打開標題是「Category」的清單，依儲存的順序列出表單的空間每個未封存的分類（CATEGORIES-7.3），最後是「+ Add New Category」按鈕（LEDGER-62.1），並把表單上選的那一個標示為已選取，表單上的分類已封存時沒有標示為已選取的分類；按一個分類就選它並回到表單，按「Cancel」就回到表單、分類不變，所以沒有改選時，存檔後支出仍用那個已封存的分類，在表單開著時才封存的也一樣。
+WHEN 使用者按分類按鈕，the mobile app SHALL 打開標題是「Category」的清單，依儲存的順序列出表單的空間每個未封存的分類（CATEGORIES-7.4），最後是「+ Add New Category」按鈕（LEDGER-62.1），並把表單上選的那一個標示為已選取，表單上的分類已封存時沒有標示為已選取的分類；按一個分類就選它並回到表單，按「Cancel」就回到表單、分類不變，所以沒有改選時，存檔後支出仍用那個已封存的分類，在表單開著時才封存的也一樣。
 
 #### Scenario: 打開清單
 
@@ -676,9 +676,9 @@ The mobile app SHALL 讓日期欄位用手機地區的日期格式顯示日期�
 - **WHEN** 在日期欄位選 `2024-12-25`
 - **THEN** 日期欄位顯示「Dec 25, 2024」
 
-### Requirement: LEDGER-31.1 支出清單依序列出個人支出
+### Requirement: LEDGER-31.2 支出清單依序列出個人支出
 
-The mobile app SHALL 在支出清單上，依 LEDGER-28.1 的順序由上而下列出每筆個人支出的卡片；新增或修改支出之後回到支出清單，或重新啟動 app 之後，卡片都和存著的支出一致。
+The mobile app SHALL 在支出清單上，依 LEDGER-28.1 的順序由上而下列出每筆不在垃圾桶裡的個人支出的卡片；新增、修改、移到垃圾桶或還原支出之後回到支出清單，或重新啟動 app 之後，卡片都和存著的支出一致。
 
 #### Scenario: 不同的日期
 
@@ -705,9 +705,14 @@ The mobile app SHALL 在支出清單上，依 LEDGER-28.1 的順序由上而下�
 - **WHEN** 新增「Coffee run」和「Lunch」之後重新啟動 app
 - **THEN** 卡片由上而下仍是 Lunch、Coffee run
 
+#### Scenario: 垃圾桶裡的支出
+
+- **WHEN** 有「Coffee run」和「Lunch」時，把 Lunch 移到垃圾桶，再重新啟動 app
+- **THEN** 卡片只有 Coffee run
+
 ### Requirement: LEDGER-32.2 沒有支出時顯示提示
 
-WHILE 本機資料裡沒有支出清單要列出的支出（LEDGER-31.1、LEDGER-64.1），the mobile app SHALL 在支出清單上顯示「No expenses to display. Add a personal expense or get involved in a group expense.」，沒有任何卡片。
+WHILE 本機資料裡沒有支出清單要列出的支出（LEDGER-31.2、LEDGER-64.1），the mobile app SHALL 在支出清單上顯示「No expenses to display. Add a personal expense or get involved in a group expense.」，沒有任何卡片。
 
 #### Scenario: 第一次啟動
 
@@ -729,9 +734,9 @@ WHILE 本機資料裡沒有支出清單要列出的支出（LEDGER-31.1、LEDGER
 - **WHEN** 只有一筆 Brisbane 的支出，Casey 付款，Casey 和 Taylor 分攤
 - **THEN** 沒有這句話，只有它的卡片
 
-### Requirement: LEDGER-33.1 卡片的內容
+### Requirement: LEDGER-33.2 卡片的內容
 
-The mobile app SHALL 讓每張卡片是一個按鈕，依序顯示支出的標題、卡片金額、分類現在的名稱和日期，不顯示付款人和備註；螢幕閱讀器把卡片讀成一個按鈕，依同樣的順序讀出這四項。個人支出的卡片金額是它的全額。
+The mobile app SHALL 讓每張卡片是一個按鈕，依序顯示支出的標題、卡片金額、分類和日期，不顯示付款人和備註；分類是分類現在顏色的色點，後面接分類現在的名稱，分類已封存時名稱是「<分類現在的名稱> (Archived)」，色點和分類沒封存時一樣；螢幕閱讀器把卡片讀成一個按鈕，依序讀出標題、卡片金額、卡片上分類的名稱和日期，不讀色點。個人支出的卡片金額是它的全額。
 
 #### Scenario: 一筆支出
 
@@ -747,6 +752,31 @@ The mobile app SHALL 讓每張卡片是一個按鈕，依序顯示支出的標�
 
 - **WHEN** 新增 Shopping 的支出之後，在 Manage Categories 把 Shopping 改名為「Groceries」
 - **THEN** 卡片上的分類是「Groceries」
+
+#### Scenario: 色點
+
+- **WHEN** 新增 Food & Dining 的「Coffee run」
+- **THEN** 卡片上「$8.75」和「Food & Dining」之間是 `#D81B60` 的色點；螢幕閱讀器只讀出「Coffee run」、「$8.75」、「Food & Dining」和「Oct 30, 2026」，不讀色點
+
+#### Scenario: 分類改了顏色
+
+- **WHEN** 新增 Shopping 的支出之後，在 Manage Categories 把 Shopping 改用 `#43A047`
+- **THEN** 卡片上的色點是 `#43A047`
+
+#### Scenario: 分類封存了
+
+- **WHEN** 有 Shopping 的「Coffee run」和 Food & Dining 的「Lunch」時，封存 Shopping
+- **THEN** Coffee run 的卡片依序顯示「Coffee run」、「$8.75」、「Shopping (Archived)」、「Oct 30, 2026」，螢幕閱讀器也依序讀出這四項，色點仍是 `#FBC02D`，沒有變淡；Lunch 的卡片上的分類仍是「Food & Dining」
+
+#### Scenario: 改了名和顏色又封存
+
+- **WHEN** 把 Shopping 改名為「Groceries」並改用 `#43A047` 之後，封存 Groceries
+- **THEN** 卡片上的分類是「Groceries (Archived)」，色點是 `#43A047`
+
+#### Scenario: 還原
+
+- **WHEN** 封存 Shopping 之後，在 Manage Categories 點「Restore Shopping」
+- **THEN** 卡片上的分類是「Shopping」，沒有「(Archived)」
 
 ### Requirement: LEDGER-34.1 卡片上的標題只佔一行
 
@@ -815,9 +845,9 @@ WHEN 使用者點卡片，the mobile app SHALL 在 Expenses 分頁推入這筆�
 - **WHEN** 在明細返回，或在 Android 上按返回鍵
 - **THEN** 回到支出清單，分頁列仍選中 Expenses
 
-### Requirement: LEDGER-37.1 明細的內容
+### Requirement: LEDGER-37.2 明細的內容
 
-The mobile app SHALL 在明細上依序顯示支出的標題、金額、「DETAILS」區塊裡的「Category」和分類現在的名稱、「Date」和日期，有備註時再顯示「NOTE」區塊和備註；標題和備註都完整顯示，不截斷。
+The mobile app SHALL 在明細上依序顯示支出的標題、金額、「DETAILS」區塊裡的「Category」和分類、「Date」和日期，有備註時再顯示「NOTE」區塊和備註；分類和卡片上的一樣，是分類現在顏色的色點，後面接分類現在的名稱，分類已封存時名稱是「<分類現在的名稱> (Archived)」，色點和分類沒封存時一樣，螢幕閱讀器不讀色點；標題和備註都完整顯示，不截斷。
 
 #### Scenario: 有備註
 
@@ -833,6 +863,31 @@ The mobile app SHALL 在明細上依序顯示支出的標題、金額、「DETAI
 
 - **WHEN** 把 Shopping 改名為「Groceries」之後，打開這筆支出的明細
 - **THEN** 分類是「Groceries」
+
+#### Scenario: 色點
+
+- **WHEN** 打開 Shopping 的支出的明細
+- **THEN** 「Category」後面、「Shopping」前面是 `#FBC02D` 的色點，螢幕閱讀器不讀這個色點
+
+#### Scenario: 分類改了顏色
+
+- **WHEN** 把 Shopping 改用 `#43A047` 之後，打開這筆支出的明細
+- **THEN** 色點是 `#43A047`
+
+#### Scenario: 分類封存了
+
+- **WHEN** 封存 Shopping 之後，打開 Shopping 的支出的明細
+- **THEN** 依序顯示「DETAILS」、「Category」、「Shopping (Archived)」、「Date」，色點仍是 `#FBC02D`，沒有變淡
+
+#### Scenario: 改了名和顏色又封存
+
+- **WHEN** 把 Shopping 改名為「Groceries」並改用 `#43A047` 之後，封存 Groceries，再打開這筆支出的明細
+- **THEN** 分類是「Groceries (Archived)」，色點是 `#43A047`
+
+#### Scenario: 明細開著時封存和還原
+
+- **WHEN** Shopping 的支出的明細開著時，在 Settings 分頁封存 Shopping，再回到 Expenses 分頁
+- **THEN** 明細仍開著，分類是「Shopping (Archived)」；再到 Manage Categories 點「Restore Shopping」，回到 Expenses 分頁時，分類是「Shopping」，沒有「(Archived)」
 
 #### Scenario: 很長的標題和備註
 
@@ -1337,7 +1392,7 @@ IF 使用者在封存群組的支出的 Edit Expense 按 Save，THEN the mobile 
 
 ### Requirement: LEDGER-62.1 從分類清單打開分類的畫面
 
-WHEN 使用者在分類清單按「+ Add New Category」，the mobile app SHALL 關閉分類清單，打開表單的空間的 Manage Categories 或 Group Categories（CATEGORIES-22.2、23.3），網址是 `/manage-categories`，表單的空間是群組時加上 `?scopeKind=group&spaceId=<群組 ID>`；它和支出表單一樣從畫面底部升起、蓋在表單上（LEDGER-12.1），標題列有取消「Close」和 CATEGORIES-7.3 的「Add category」，按 Close、往下滑或按 Android 的返回鍵時關閉它，回到表單，表單上的輸入都不變。
+WHEN 使用者在分類清單按「+ Add New Category」，the mobile app SHALL 關閉分類清單，打開表單的空間的 Manage Categories 或 Group Categories（CATEGORIES-22.2、23.3），網址是 `/manage-categories`，表單的空間是群組時加上 `?scopeKind=group&spaceId=<群組 ID>`；它和支出表單一樣從畫面底部升起、蓋在表單上（LEDGER-12.1），標題列有取消「Close」和 CATEGORIES-7.4 的「Add category」，按 Close、往下滑或按 Android 的返回鍵時關閉它，回到表單，表單上的輸入都不變。
 
 #### Scenario: 個人空間
 
@@ -1414,7 +1469,7 @@ The mobile app SHALL 在支出清單上，和個人支出一起依 LEDGER-28.1 �
 
 ### Requirement: LEDGER-65.1 群組支出的卡片
 
-The mobile app SHALL 讓群組支出的卡片在分類和日期之間顯示群組的名稱，群組已封存時是「<群組名稱> · Archived」，螢幕閱讀器也在同樣的位置讀出它；群組支出的卡片金額是你的份額，只有付款沒有分攤時是 0，所以 Your Total Share 也只算你的份額（LEDGER-35.1）。
+The mobile app SHALL 讓群組支出的卡片在分類和日期之間顯示群組的名稱，群組已封存時是「<群組名稱> · Archived」，螢幕閱讀器也在同樣的位置讀出它；群組支出的卡片金額是你的份額，只有付款沒有分攤時是 0，所以 Your Total Share 也只算你的份額（LEDGER-35.1）；群組支出的卡片沒有 LEDGER-70.1、71.1 的 Delete：往左滑不露出「Delete」，也沒有「Delete expense」的輔助功能動作。
 
 #### Scenario: 卡片
 
@@ -1441,9 +1496,14 @@ The mobile app SHALL 讓群組支出的卡片在分類和日期之間顯示群�
 - **WHEN** 把 Brisbane 改名為「Sydney」
 - **THEN** 卡片上是「Sydney」
 
+#### Scenario: 沒有 Delete
+
+- **WHEN** 有 Dinner 和個人支出「Coffee run」
+- **THEN** Coffee run 的卡片有「Delete expense」的輔助功能動作，Dinner 的卡片沒有；把 Dinner 的卡片往左滑，沒有露出「Delete」
+
 ### Requirement: LEDGER-66.1 群組支出的明細
 
-WHEN 打開群組支出的明細，the mobile app SHALL 依序顯示標題、全額，「YOUR POSITION」區塊裡的「You paid」和你付的、「Your share」和你的份額，以及你付的減你的份額大於 0 時的「You are owed」、小於 0 時的「You owe」、等於 0 時的「Settled up」和兩者差額的絕對值，然後是「PAID BY」和「SPLIT」區塊，依存下的順序每位付款人或分攤的人一列，是他現在的名稱（你的成員加上「 (You)」，前成員是他存著的名稱）和他的金額，再來是「DETAILS」區塊，在「Category」前面多一列「Group」和群組名稱，其餘照 LEDGER-37.1。
+WHEN 打開群組支出的明細，the mobile app SHALL 依序顯示標題、全額，「YOUR POSITION」區塊裡的「You paid」和你付的、「Your share」和你的份額，以及你付的減你的份額大於 0 時的「You are owed」、小於 0 時的「You owe」、等於 0 時的「Settled up」和兩者差額的絕對值，然後是「PAID BY」和「SPLIT」區塊，依存下的順序每位付款人或分攤的人一列，是他現在的名稱（你的成員加上「 (You)」，前成員是他存著的名稱）和他的金額，再來是「DETAILS」區塊，在「Category」前面多一列「Group」和群組名稱，其餘照 LEDGER-37.2；標題列只有「Edit」（LEDGER-38.1），沒有 LEDGER-72.1 的「Expense actions」。
 
 #### Scenario: 你付的比份額多
 
@@ -1480,6 +1540,11 @@ WHEN 打開群組支出的明細，the mobile app SHALL 依序顯示標題、全
 - **WHEN** 以 `/expenses/` 加上 Dinner 的 ID 開啟 app
 - **THEN** 顯示 Dinner 的明細，沒有「Expense not found.」
 
+#### Scenario: 沒有 Expense actions
+
+- **WHEN** 打開 Dinner 的明細
+- **THEN** 標題列只有「Edit」，沒有「Expense actions」
+
 ### Requirement: LEDGER-67.1 封存群組的支出只能看
 
 WHILE 支出的群組已封存，the mobile app SHALL 在它的明細的金額下面顯示「Shared history」和「Payments and shares are preserved as read-only history. Restore this group before editing.」，在「DETAILS」的「Group」後面多一列「Status」和「Archived · Read-only」，並停用「Edit」（SHELL-49.1）；群組還原後不再顯示這些，Edit 恢復可以按。
@@ -1502,3 +1567,444 @@ WHERE iOS，WHEN 從支出表單打開 Select Group、Who Paid?、Split Between�
 
 - **WHEN** iOS 上在 Brisbane 的畫面按「Add expense」，輸入金額和標題，從「+ Add New Category」新增「Flights」並選它，按「Group, Brisbane」後在 Select Group 再按 Brisbane，從 Who Paid? 選付款人、從 Split Between 選分攤的人，再按 Add
 - **THEN** 每個清單和 Group Categories 都蓋在表單上，關閉後表單上的輸入都在；表單關閉後回到 Brisbane 的畫面，有這筆支出的卡片
+
+### Requirement: LEDGER-70.1 (e2e) 左滑卡片露出 Delete
+
+WHEN 使用者在支出清單把個人支出的卡片往左滑，the mobile app SHALL 在卡片右邊露出顯示「Delete」的按鈕，它的無障礙名稱是「Delete <標題> expense」；按下它就把這筆支出移到垃圾桶（LEDGER-71.1）。
+
+#### Scenario: 左滑
+
+- **WHEN** 在支出清單把 Coffee run 的卡片往左滑
+- **THEN** 卡片右邊露出「Delete」，它的無障礙名稱是「Delete Coffee run expense」
+
+#### Scenario: 按 Delete
+
+- **WHEN** 按露出的「Delete」
+- **THEN** Coffee run 的卡片移出支出清單，畫面底部顯示「Moved to Trash」
+
+### Requirement: LEDGER-71.1 刪除支出時移到垃圾桶
+
+WHEN 使用者按個人支出的卡片左滑露出的「Delete」、使用個人支出的卡片上名稱是「Delete expense」的輔助功能動作，或在個人支出的明細的 Expense actions 選「Delete」（LEDGER-72.1），the mobile app SHALL 不另外確認，就把這筆支出移到垃圾桶，存好後才把它的卡片移出支出清單、不再把它算進 Your Total Share，沒有其他卡片時顯示 LEDGER-32.2 的提示，重新啟動 app 之後也一樣；存好之前再按一次或再用一次，也只移一次。重新啟動 app 之後它仍在垃圾桶裡，以網址打開它的明細時，和 LEDGER-39.1 一樣只顯示「Expense not found.」，標題列沒有「Edit」和「Expense actions」。
+
+#### Scenario: 卡片的輔助功能動作
+
+- **WHEN** 有 Coffee run 和 Lunch
+- **THEN** 兩張卡片都有名稱是「Delete expense」的輔助功能動作
+
+#### Scenario: 移到垃圾桶
+
+- **WHEN** 有 875 USD 的 Coffee run 和 1250 USD 的 Lunch，對 Lunch 的卡片使用「Delete expense」
+- **THEN** 沒有跳出提示框；卡片只剩 Coffee run，卡片上方是「Your Total Share: $8.75」
+
+#### Scenario: 最後一筆
+
+- **WHEN** 只有 Coffee run 時把它移到垃圾桶，再重新啟動 app
+- **THEN** 移到垃圾桶之後和重新啟動之後，支出清單都顯示「No expenses to display. Add a personal expense or get involved in a group expense.」和「Your Total Share: —」，沒有卡片
+
+#### Scenario: 存好之前
+
+- **WHEN** 把 Lunch 移到垃圾桶，還沒存好
+- **THEN** Lunch 的卡片仍在支出清單上；存好後才移出
+
+#### Scenario: 存好之前再用一次
+
+- **WHEN** 對 Lunch 的卡片使用「Delete expense」，還沒存好時再用一次
+- **THEN** Lunch 只移到垃圾桶一次，螢幕閱讀器只念一次「Lunch moved to Trash. Undo available.」
+
+#### Scenario: 重新啟動
+
+- **WHEN** 把 Lunch 移到垃圾桶之後重新啟動 app
+- **THEN** 支出清單只有 Coffee run，Trash 有 Lunch
+
+#### Scenario: 以網址打開明細
+
+- **WHEN** Lunch 在垃圾桶裡時，以 `/expenses/` 加上 Lunch 的 ID 開啟 app
+- **THEN** 明細只顯示「Expense not found.」，標題列沒有「Edit」和「Expense actions」
+
+#### Scenario: 分類仍算使用中
+
+- **WHEN** Gym 唯一一筆支出在垃圾桶裡時，在 Manage Categories 移除 Gym
+- **THEN** 跳出「Archive “Gym”?」，內容是「This category is used by 1 expense. Existing expenses will keep their category, but it will no longer appear for new expenses.」
+
+#### Scenario: 用 Move Expenses… 搬走
+
+- **WHEN** Gym 唯一一筆支出 Squat rack 在垃圾桶裡時，在 Manage Categories 移除 Gym，選「Move Expenses…」，再選 Shopping
+- **THEN** 「ARCHIVED」下的「Restore Gym」有「Delete」動作；在 Trash 還原 Squat rack 之後，它的卡片上的分類是「Shopping」
+
+### Requirement: LEDGER-72.1 明細的 Expense actions 選單
+
+The mobile app SHALL 在個人支出的明細的標題列、「Edit」的右邊放一個名稱是「Expense actions」的選單（SHELL-47.1、SHELL-48.1），裡面只有破壞性的「Delete」（SHELL-53.1）；選「Delete」時，SHALL 把這筆支出移到垃圾桶（LEDGER-71.1），存好後返回支出清單，存好之前再選一次也只返回一次。
+
+#### Scenario: iOS
+
+- **WHEN** iOS 上打開 Coffee run 的明細
+- **THEN** 標題列右邊由右而左是圖示 `ellipsis.circle`、名稱「Expense actions」的選單和 plain 的「Edit」；選單裡只有「Delete」，是破壞性的樣式
+
+#### Scenario: Android
+
+- **WHEN** Android 上打開 Coffee run 的明細，按名稱「Expense actions」的 `more_vert`
+- **THEN** 標題列右邊由左而右是 `edit` 和 `more_vert`；跳出標題「Expense actions」的對話框，依序列出「Delete」和「Cancel」
+
+#### Scenario: 選 Delete
+
+- **WHEN** 有 Coffee run 和 Lunch 時，在 Lunch 的明細選「Delete」
+- **THEN** 沒有跳出確認；返回支出清單，Expenses 分頁的堆疊只剩「Expenses」根畫面，卡片只剩 Coffee run，畫面底部顯示「Moved to Trash」
+
+#### Scenario: 存好之前
+
+- **WHEN** 在 Lunch 的明細選「Delete」，還沒存好
+- **THEN** 明細仍開著，顯示 Lunch；存好後才返回支出清單
+
+#### Scenario: 存好之前再選一次
+
+- **WHEN** 在 Lunch 的明細選「Delete」，還沒存好時再選一次
+- **THEN** 存好後只返回一次：分頁列仍選中 Expenses，Expenses 分頁的堆疊只剩「Expenses」根畫面；螢幕閱讀器只念一次「Lunch moved to Trash. Undo available.」
+
+#### Scenario: 找不到支出
+
+- **WHEN** 以 `/expenses/00000000-0000-4000-8000-000000000000` 開啟 app
+- **THEN** 標題列沒有「Expense actions」
+
+### Requirement: LEDGER-73.1 移到垃圾桶後顯示 Undo 提示
+
+WHEN 支出移到垃圾桶並存好，the mobile app SHALL 在畫面底部顯示 Undo 提示，依序是「Moved to Trash」、「·」和一個顯示「Undo」、無障礙名稱是「Undo deletion of <標題>」的按鈕，並讓螢幕閱讀器念出「<標題> moved to Trash. Undo available.」；提示蓋在 app 的畫面上，切換到別的分頁也還在。提示收起之前又有支出移到垃圾桶，提示就換成那一筆的，從它存好時重新算 Undo 時間，較早的那一筆不再有 Undo。
+
+#### Scenario: 移到垃圾桶
+
+- **WHEN** 把 Coffee run 移到垃圾桶
+- **THEN** 存好時顯示「Moved to Trash」、「·」和「Undo」，「Undo」是名稱為「Undo deletion of Coffee run」的按鈕；螢幕閱讀器念出「Coffee run moved to Trash. Undo available.」
+
+#### Scenario: 還沒存好
+
+- **WHEN** 把 Coffee run 移到垃圾桶，還沒存好
+- **THEN** 不顯示提示，螢幕閱讀器也不念
+
+#### Scenario: 切換分頁
+
+- **WHEN** 提示顯示時選中 Groups 分頁
+- **THEN** 提示仍在；按「Undo」照樣放回 Coffee run
+
+#### Scenario: 接著刪除另一筆
+
+- **WHEN** 把 Coffee run 移到垃圾桶 3 秒後，再把 Lunch 移到垃圾桶
+- **THEN** Lunch 存好時螢幕閱讀器念出「Lunch moved to Trash. Undo available.」，提示的按鈕換成「Undo deletion of Lunch」，沒有「Undo deletion of Coffee run」；提示到 Lunch 存好之後 5 秒才收起，Coffee run 一直在垃圾桶裡
+
+### Requirement: LEDGER-74.1 Undo 提示收起的時候
+
+The mobile app SHALL 讓 Undo 提示從那一筆存好時起顯示 Undo 時間後收起，那一筆支出留在垃圾桶裡；提示顯示時打開或關掉螢幕閱讀器，就從那時起依螢幕閱讀器現在的狀態，重新算這一筆完整的 Undo 時間。提示收起之前，那一筆在 Trash 被還原、永久刪除或清空，SHALL 立刻收起提示。
+
+#### Scenario: 5 秒
+
+- **WHEN** 螢幕閱讀器沒開時把 Coffee run 移到垃圾桶
+- **THEN** 存好之後過了 4.9 秒仍顯示提示，到 5 秒時收起；Trash 有 Coffee run
+
+#### Scenario: 15 秒
+
+- **WHEN** 螢幕閱讀器開著時把 Coffee run 移到垃圾桶
+- **THEN** 存好之後過了 14.9 秒仍顯示提示，到 15 秒時收起
+
+#### Scenario: 打開螢幕閱讀器
+
+- **WHEN** 螢幕閱讀器沒開，提示顯示 2 秒後打開螢幕閱讀器
+- **THEN** 從那時起過了 14.9 秒仍顯示提示，到 15 秒時收起
+
+#### Scenario: 關掉螢幕閱讀器
+
+- **WHEN** 螢幕閱讀器開著，提示顯示 5 秒後關掉螢幕閱讀器
+- **THEN** 從那時起過了 4.9 秒仍顯示提示，到 5 秒時收起
+
+#### Scenario: 在 Trash 還原或永久刪除
+
+- **WHEN** 把 Coffee run 移到垃圾桶，提示還在時，在 Trash 打開它按「Restore」，或選「Delete Permanently」再按「Delete」
+- **THEN** 存好時提示就收起
+
+#### Scenario: 清空垃圾桶
+
+- **WHEN** 把 Coffee run 移到垃圾桶，提示還在時，在 Trash 清空垃圾桶
+- **THEN** 存好時提示就收起
+
+#### Scenario: 還原別筆
+
+- **WHEN** Lunch 已經在垃圾桶裡，把 Coffee run 移到垃圾桶，提示還在時，在 Trash 還原 Lunch
+- **THEN** Coffee run 的提示仍在
+
+### Requirement: LEDGER-75.1 按 Undo 時還原支出
+
+WHEN 使用者按 Undo 提示的「Undo」，the mobile app SHALL 不另外確認，就把這筆支出從垃圾桶還原，存好後收起提示，讓它的卡片回到支出清單上依 LEDGER-28.1 該在的位置，再算進 Your Total Share，也不再出現在 Trash。
+
+#### Scenario: 按 Undo
+
+- **WHEN** 有 875 USD 的 Coffee run 和 1250 USD 的 Lunch，把 Lunch 移到垃圾桶後按「Undo」
+- **THEN** 沒有跳出提示框，提示收起；卡片由上而下又是 Lunch、Coffee run，卡片上方是「Your Total Share: $21.25」；Trash 只顯示「No deleted expenses.」
+
+#### Scenario: 原來的位置
+
+- **WHEN** 依序新增日期都是 `2025-01-01` 的「E」、「F」和「D」，把 F 移到垃圾桶後按「Undo」
+- **THEN** 卡片由上而下仍是 D、F、E
+
+#### Scenario: 從明細刪除之後
+
+- **WHEN** 在 Lunch 的明細選「Delete」，返回支出清單後按「Undo」
+- **THEN** Lunch 的卡片回到支出清單，Expenses 分頁的堆疊仍只有「Expenses」根畫面
+
+#### Scenario: 重新啟動
+
+- **WHEN** 按「Undo」之後重新啟動 app
+- **THEN** 卡片由上而下仍是 Lunch、Coffee run
+
+### Requirement: LEDGER-76.1 Settings 的 Trash 列顯示筆數
+
+The mobile app SHALL 在 Settings 根畫面「Trash」那一列的文字右邊，顯示垃圾桶裡的支出的筆數，沒有時是「0」，這一列的無障礙名稱是「Trash, <筆數>」；Settings 根畫面讀完存著的支出之前，SHALL 不顯示筆數，這一列的無障礙名稱是「Trash」。
+
+#### Scenario: 還沒有刪除
+
+- **WHEN** 第一次啟動 app，選中 Settings 分頁
+- **THEN** 「Trash」右邊是「0」，這一列的無障礙名稱是「Trash, 0」
+
+#### Scenario: 刪除兩筆
+
+- **WHEN** 把 Coffee run 和 Lunch 移到垃圾桶之後選中 Settings 分頁
+- **THEN** 「Trash」右邊是「2」，這一列的無障礙名稱是「Trash, 2」
+
+#### Scenario: 還原一筆
+
+- **WHEN** 在 Trash 還原 Lunch，再返回 Settings 的根畫面
+- **THEN** 「Trash」右邊是「1」，這一列的無障礙名稱是「Trash, 1」
+
+#### Scenario: 讀完之前
+
+- **WHEN** 有垃圾桶裡的 Lunch 時開啟 app 並選中 Settings 分頁，Settings 根畫面還沒讀完存著的支出
+- **THEN** 「Trash」右邊沒有數量，這一列的無障礙名稱是「Trash」；讀完之後右邊是「1」，無障礙名稱是「Trash, 1」
+
+### Requirement: LEDGER-77.1 Trash 列出垃圾桶裡的支出
+
+The mobile app SHALL 在 Trash 依移到垃圾桶的先後，最後移入的在最上面，由上而下列出垃圾桶裡每筆個人支出的卡片；卡片顯示的內容和螢幕閱讀器讀出的，都和支出清單上的卡片一樣（LEDGER-33.2、LEDGER-34.1、LEDGER-40.1），但卡片不能左滑，也沒有「Delete expense」動作。垃圾桶裡沒有支出時，SHALL 只顯示「No deleted expenses.」，但讀完存著的支出之前不顯示這句話。
+
+#### Scenario: 依移入的先後
+
+- **WHEN** 依序新增日期是 `2025-01-03` 的「A」、`2025-01-01` 的「B」和 `2025-01-02` 的「C」，再依序把 A、C、B 移到垃圾桶，打開 Trash
+- **THEN** 卡片由上而下是 B、C、A
+
+#### Scenario: 再移入一次
+
+- **WHEN** 接著在 Trash 還原 A，再把 A 移到垃圾桶
+- **THEN** 卡片由上而下是 A、B、C
+
+#### Scenario: 卡片的內容
+
+- **WHEN** 把 875 USD、Food & Dining、`2026-10-30`、備註「Morning treat」的 Coffee run 移到垃圾桶，打開 Trash
+- **THEN** 卡片依序顯示「Coffee run」、「$8.75」、「Food & Dining」、「Oct 30, 2026」，沒有「Morning treat」；螢幕閱讀器把它讀成一個按鈕，依序讀出這四項；卡片沒有「Delete expense」動作
+
+#### Scenario: 只列垃圾桶裡的
+
+- **WHEN** 有 Coffee run 和 Lunch，只把 Lunch 移到垃圾桶
+- **THEN** Trash 只有 Lunch 的卡片
+
+#### Scenario: 分類封存了
+
+- **WHEN** Gym 唯一一筆支出 Squat rack 在垃圾桶裡時，封存 Gym
+- **THEN** Trash 上 Squat rack 的卡片的分類是「Gym (Archived)」，螢幕閱讀器也讀出「Gym (Archived)」
+
+#### Scenario: Trash 開著時
+
+- **WHEN** Trash 開著時，從 Expenses 分頁把 Lunch 移到垃圾桶，再選中 Settings 分頁
+- **THEN** Trash 有 Lunch 的卡片
+
+#### Scenario: 空的
+
+- **WHEN** 第一次啟動後打開 Trash
+- **THEN** 只顯示「No deleted expenses.」，沒有卡片
+
+#### Scenario: 讀完之前
+
+- **WHEN** 有垃圾桶裡的 Lunch 時開啟 app 並打開 Trash，Trash 還沒讀完存著的支出
+- **THEN** 沒有「No deleted expenses.」；讀完之後顯示 Lunch 的卡片
+
+### Requirement: LEDGER-78.1 點 Trash 的卡片推入唯讀明細
+
+WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推入這筆支出的唯讀明細，網址是 `/settings/trash/<支出的 ID>`，標題是「Expense」，最上面是「This expense is in the Trash.」，下面是名稱為「Restore」的按鈕，再下面依 LEDGER-37.2 顯示支出的內容；標題列沒有「Edit」，只有名稱是「Expense actions」的選單（SHELL-47.1、SHELL-48.1），裡面只有破壞性的「Delete Permanently」（SHELL-53.1）。連點兩次也只推入一個唯讀明細，返回時回到 Trash；從推入到讀完支出，都不顯示「Expense not found.」。唯讀明細跟著存著的支出：網址裡的 ID 不是垃圾桶裡的支出，或打開之後那一筆因為別處的操作（例如 Undo 提示的 Undo）離開了垃圾桶時，SHALL 只顯示「Expense not found.」，標題列沒有選單。
+
+#### Scenario: 點卡片
+
+- **WHEN** 把 875 USD、Shopping、`2024-12-25`、備註「Morning treat」的 Coffee run 移到垃圾桶，在 Trash 點它的卡片
+- **THEN** 分頁列仍選中 Settings，Settings 分頁的堆疊由下而上是「Settings」根畫面、「Trash」和「Expense」，網址是 `/settings/trash/` 加上 Coffee run 的 ID；由上而下依序顯示「This expense is in the Trash.」、「Restore」、「Coffee run」、「$8.75」、「DETAILS」、「Category」、「Shopping」、「Date」、「Dec 25, 2024」、「NOTE」、「Morning treat」
+
+#### Scenario: iOS 的標題列
+
+- **WHEN** iOS 上打開 Coffee run 的唯讀明細
+- **THEN** 標題列右邊只有圖示 `ellipsis.circle`、名稱「Expense actions」的選單，裡面只有破壞性的「Delete Permanently」；沒有「Edit」
+
+#### Scenario: Android 的標題列
+
+- **WHEN** Android 上打開 Coffee run 的唯讀明細，按名稱「Expense actions」的 `more_vert`
+- **THEN** 標題列右邊只有 `more_vert`；跳出標題「Expense actions」的對話框，依序列出「Delete Permanently」和「Cancel」
+
+#### Scenario: 連點兩次
+
+- **WHEN** 連點兩次 Coffee run 在 Trash 的卡片
+- **THEN** 只推入一個唯讀明細；返回一次就回到 Trash
+
+#### Scenario: 返回
+
+- **WHEN** 在唯讀明細返回，或在 Android 上按返回鍵
+- **THEN** 回到 Trash，分頁列仍選中 Settings
+
+#### Scenario: 讀完之前
+
+- **WHEN** 點 Coffee run 在 Trash 的卡片，唯讀明細還沒讀完支出
+- **THEN** 沒有顯示「Expense not found.」
+
+#### Scenario: 不在垃圾桶裡的支出
+
+- **WHEN** Lunch 不在垃圾桶裡，以 `/settings/trash/` 加上 Lunch 的 ID 開啟 app
+- **THEN** 標題是「Expense」，只顯示「Expense not found.」，標題列沒有「Expense actions」
+
+#### Scenario: 分類封存了
+
+- **WHEN** Gym 唯一一筆支出 Squat rack 在垃圾桶裡時，封存 Gym，再打開 Squat rack 的唯讀明細
+- **THEN** 「Category」的分類是「Gym (Archived)」
+
+#### Scenario: 打開之後被 Undo 還原
+
+- **WHEN** 把 Coffee run 移到垃圾桶，提示還在時打開它的唯讀明細，再按提示的「Undo」
+- **THEN** 唯讀明細只顯示「Expense not found.」，標題列沒有「Expense actions」
+
+### Requirement: LEDGER-79.1 按 Restore 時從垃圾桶還原
+
+WHEN 使用者在唯讀明細按「Restore」，the mobile app SHALL 不另外確認，就把這筆支出從垃圾桶還原，存好後返回 Trash，讓它不再出現在 Trash，回到支出清單上依 LEDGER-28.1 該在的位置，再算進 Your Total Share；存好之前再按一次，也只還原一次、只返回一次。
+
+#### Scenario: 還原
+
+- **WHEN** 依序新增日期都是 `2025-01-01` 的「E」、「F」和「D」，把 F 移到垃圾桶，在 Trash 打開 F，按「Restore」
+- **THEN** 沒有跳出提示框；回到 Trash，只顯示「No deleted expenses.」；支出清單由上而下是 D、F、E
+
+#### Scenario: 和移到垃圾桶之前一樣
+
+- **WHEN** 還原 875 USD、Shopping、`2024-12-25`、備註「Morning treat」的 Coffee run，再打開它的明細
+- **THEN** 明細依序顯示「Coffee run」、「$8.75」、「DETAILS」、「Category」、「Shopping」、「Date」、「Dec 25, 2024」、「NOTE」、「Morning treat」
+
+#### Scenario: 存好之前
+
+- **WHEN** 按「Restore」，還沒存好
+- **THEN** 唯讀明細仍開著；存好後才返回 Trash
+
+#### Scenario: 存好之前再按一次
+
+- **WHEN** 按「Restore」，還沒存好時再按一次
+- **THEN** 存好後只返回一次：Settings 分頁的堆疊由下而上是「Settings」根畫面和「Trash」
+
+### Requirement: LEDGER-80.1 選 Delete Permanently 時先確認再永久刪除
+
+WHEN 使用者在唯讀明細的 Expense actions 選「Delete Permanently」，the mobile app SHALL 跳出標題「Delete Expense?」、內容「This permanently deletes the expense.」的提示框，選項是「Cancel」和破壞性的「Delete」：按 Delete 就永久刪除這筆支出，存好後返回 Trash，它不再出現在任何畫面上，也不再算使用它的分類；按 Cancel 什麼都不變。
+
+#### Scenario: 永久刪除
+
+- **WHEN** Coffee run 和 Lunch 都在垃圾桶裡，在 Lunch 的唯讀明細選「Delete Permanently」，再按「Delete」
+- **THEN** 回到 Trash，只剩 Coffee run 的卡片；重新啟動 app 之後，Trash 仍只有 Coffee run，支出清單上也沒有 Lunch
+
+#### Scenario: 提示框
+
+- **WHEN** 在唯讀明細選「Delete Permanently」
+- **THEN** 跳出「Delete Expense?」，內容是「This permanently deletes the expense.」，選項是 Cancel 和破壞性的 Delete
+
+#### Scenario: 取消
+
+- **WHEN** 選「Delete Permanently」之後按「Cancel」
+- **THEN** 唯讀明細仍開著，Lunch 仍在 Trash 裡
+
+#### Scenario: 分類不再使用中
+
+- **WHEN** Gym 唯一一筆支出在垃圾桶裡，把它永久刪除之後，在 Manage Categories 移除 Gym
+- **THEN** 跳出「Delete Category?」
+
+### Requirement: LEDGER-81.1 Empty Trash 先確認再清空垃圾桶
+
+WHILE 垃圾桶裡有支出，the mobile app SHALL 在 Trash 的卡片上方顯示名稱為「Empty Trash」的按鈕；按下時跳出標題「Empty Trash?」、內容「This permanently deletes the expenses in the Trash.」的提示框，選項是「Cancel」和破壞性的「Empty Trash」：按 Empty Trash 就永久刪除垃圾桶裡所有的支出，存好後 Trash 只顯示「No deleted expenses.」；按 Cancel 什麼都不變。垃圾桶裡沒有支出時，SHALL 不顯示這個按鈕。
+
+#### Scenario: 清空
+
+- **WHEN** 有 Tea，把 Coffee run 和 Lunch 移到垃圾桶，在 Trash 按「Empty Trash」，再按提示框的「Empty Trash」
+- **THEN** Trash 只顯示「No deleted expenses.」，沒有「Empty Trash」按鈕；Settings 根畫面的 Trash 是「0」；支出清單只有 Tea；重新啟動 app 之後也一樣
+
+#### Scenario: 按鈕的位置
+
+- **WHEN** 有垃圾桶裡的 Coffee run 時打開 Trash
+- **THEN** 「Empty Trash」在 Coffee run 的卡片上方
+
+#### Scenario: 提示框
+
+- **WHEN** 按「Empty Trash」
+- **THEN** 跳出「Empty Trash?」，內容是「This permanently deletes the expenses in the Trash.」，選項是 Cancel 和破壞性的 Empty Trash
+
+#### Scenario: 取消
+
+- **WHEN** 按「Empty Trash」之後按「Cancel」
+- **THEN** Trash 仍有 Coffee run 和 Lunch 的卡片
+
+#### Scenario: 空的
+
+- **WHEN** 第一次啟動後打開 Trash
+- **THEN** 沒有「Empty Trash」按鈕
+
+#### Scenario: 分類不再使用中
+
+- **WHEN** Gym 唯一一筆支出在垃圾桶裡，清空垃圾桶之後，在 Manage Categories 移除 Gym
+- **THEN** 跳出「Delete Category?」
+
+### Requirement: LEDGER-82.1 垃圾桶的變更存不進去時提示
+
+IF 移到垃圾桶、Undo、Restore、Delete Permanently 或 Empty Trash 存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable to Update Trash」、內容「Your change could not be saved. Please try again.」的提示框，畫面維持原樣，本機資料維持這個動作之前的樣子。
+
+#### Scenario: 移到垃圾桶
+
+- **WHEN** 資料庫無法寫入時，對 Coffee run 的卡片使用「Delete expense」
+- **THEN** 跳出這個提示框，沒有 Undo 提示；Coffee run 的卡片仍在支出清單上，本機資料和之前一樣
+
+#### Scenario: 從明細刪除
+
+- **WHEN** 資料庫無法寫入時，在 Coffee run 的明細選「Delete」
+- **THEN** 跳出這個提示框，明細仍開著
+
+#### Scenario: Undo
+
+- **WHEN** 把 Coffee run 移到垃圾桶之後資料庫無法寫入，按「Undo」
+- **THEN** 跳出這個提示框，Undo 提示仍在，Coffee run 的卡片仍不在支出清單上
+
+#### Scenario: Restore 和 Delete Permanently
+
+- **WHEN** 資料庫無法寫入時，在 Coffee run 的唯讀明細按「Restore」，或選「Delete Permanently」再按「Delete」
+- **THEN** 跳出這個提示框，唯讀明細仍開著，Coffee run 仍在 Trash 裡
+
+#### Scenario: Empty Trash
+
+- **WHEN** 資料庫無法寫入時，清空有 Coffee run 和 Lunch 的垃圾桶
+- **THEN** 跳出這個提示框，Trash 仍有這兩張卡片
+
+#### Scenario: 寫到一半失敗
+
+- **WHEN** 移到垃圾桶或清空垃圾桶時，某一筆寫入失敗，在它之前的寫入都成功了，不論是哪一筆
+- **THEN** 跳出這個提示框，本機資料和這個動作之前一樣
+
+#### Scenario: 再試一次
+
+- **WHEN** 失敗後資料庫恢復，再把 Coffee run 移到垃圾桶
+- **THEN** Coffee run 的卡片移出支出清單，顯示 Undo 提示
+
+### Requirement: LEDGER-83.1 (manual) 手機上的 Undo 提示
+
+WHERE iPhone 或 Android 手機，WHILE Undo 提示顯示，the mobile app SHALL 讓它整個在 + 按鈕和分頁列的上方，不擋住它們，並讓 VoiceOver 和 TalkBack 念出它（LEDGER-73.1）。
+
+#### Scenario: 支出清單
+
+- **WHEN** 在支出清單把一筆支出移到垃圾桶
+- **THEN** 提示整個在 + 按鈕上方；提示顯示時，+ 按鈕和分頁列都按得到
+
+#### Scenario: Groups 分頁
+
+- **WHEN** 提示顯示時選中 Groups 分頁
+- **THEN** 提示在 Add group 的 + 按鈕上方，不擋住它
+
+#### Scenario: 螢幕閱讀器
+
+- **WHEN** 開著 VoiceOver 或 TalkBack 時，把 Coffee run 移到垃圾桶
+- **THEN** 念出「Coffee run moved to Trash. Undo available.」，提示顯示 15 秒

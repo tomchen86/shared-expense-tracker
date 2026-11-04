@@ -1168,7 +1168,7 @@ WHEN app 重新啟動，the mobile app SHALL 保留每個群組有沒有封存�
 
 ### Requirement: GROUPS-61.1 群組的畫面列出群組的支出
 
-WHILE 群組有支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 的順序列出這個群組每一筆支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.1、LEDGER-65.1），但卡片金額是支出的全額。
+WHILE 群組有支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 的順序列出這個群組每一筆支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.2、LEDGER-65.1），但卡片金額是支出的全額。
 
 #### Scenario: 兩筆支出
 
@@ -1211,7 +1211,7 @@ WHILE 群組的畫面還沒讀完這個群組的支出，the mobile app SHALL �
 
 ### Requirement: GROUPS-63.1 點群組畫面上的卡片推入明細
 
-WHEN 使用者點群組的畫面上的卡片，the mobile app SHALL 在群組的畫面所在的分頁推入這筆支出的明細（LEDGER-37.1、LEDGER-66.1），標題是「Expense」，網址在 Groups 分頁是 `/groups/expenses/<支出的 ID>`，在 Settings 分頁是 `/settings/archived-groups/expenses/<支出的 ID>`，分頁列仍選中同一個分頁；連點兩次也只推入一個明細，返回或按 Android 的返回鍵就回到群組的畫面。
+WHEN 使用者點群組的畫面上的卡片，the mobile app SHALL 在群組的畫面所在的分頁推入這筆支出的明細（LEDGER-37.2、LEDGER-66.1），標題是「Expense」，網址在 Groups 分頁是 `/groups/expenses/<支出的 ID>`，在 Settings 分頁是 `/settings/archived-groups/expenses/<支出的 ID>`，分頁列仍選中同一個分頁；連點兩次也只推入一個明細，返回或按 Android 的返回鍵就回到群組的畫面。
 
 #### Scenario: Groups 分頁
 

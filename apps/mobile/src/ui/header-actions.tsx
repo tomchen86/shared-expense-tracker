@@ -3,6 +3,7 @@ export interface HeaderAction {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  destructive?: boolean;
 }
 
 export interface HeaderActionsProps {
