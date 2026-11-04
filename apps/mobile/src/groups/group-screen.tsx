@@ -1,4 +1,11 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type PressableProps,
+} from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocales } from 'expo-localization';
 import { formatCurrency, groupAmounts } from '@shared-expense/domain';
@@ -26,6 +33,10 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const base = inSettings ? '/settings/archived-groups' : '/groups';
   const expenses = useExpenses()?.filter((expense) => expense.spaceId === id);
   const amounts = group && expenses ? groupAmounts(expenses, group) : [];
+  const totals = amounts.map(
+    ({ currency, total }) =>
+      `Group Total: ${formatCurrency(total, currency, locale)}`,
+  );
   const ownId = group?.members.find((member) => member.userId === userId)?.id;
   const balances = amounts
     .filter(({ members }) => members.get(ownId!)!.net !== 0n)
@@ -35,6 +46,10 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   if (amounts.length > 0 && balances.length === 0) balances.push('Settled up');
   const rename = () =>
     router.navigate({ pathname: `${base}/rename`, params: { id } });
+  const rowStyle: PressableProps['style'] = ({ pressed }) => [
+    styles.row,
+    pressed && { backgroundColor: colors.pressedSurface },
+  ];
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen
@@ -112,14 +127,32 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
           )}
           {amounts.length > 0 && (
             <GroupedSection style={styles.totals}>
-              {amounts.map(({ currency, total }) => (
-                <Text
-                  key={currency}
-                  style={[styles.total, { color: colors.text }]}
-                >
-                  Group Total: {formatCurrency(total, currency, locale)}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={totals.join(', ')}
+                accessibilityHint="Opens Insights"
+                onPress={() =>
+                  router.navigate({
+                    pathname: `${base}/insights`,
+                    params: { groupId: id },
+                  })
+                }
+                style={rowStyle}
+              >
+                <View style={{ flex: 1 }}>
+                  {totals.map((line) => (
+                    <Text
+                      key={line}
+                      style={[styles.total, { color: colors.text }]}
+                    >
+                      {line}
+                    </Text>
+                  ))}
+                </View>
+                <Text accessible={false} style={{ color: colors.textMuted }}>
+                  ›
                 </Text>
-              ))}
+              </Pressable>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={balances.join(', ')}
@@ -130,10 +163,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                     params: { id },
                   })
                 }
-                style={({ pressed }) => [
-                  styles.balance,
-                  pressed && { backgroundColor: colors.pressedSurface },
-                ]}
+                style={rowStyle}
               >
                 <View style={{ flex: 1 }}>
                   {balances.map((line) => (
@@ -188,13 +218,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 112 },
   banner: { marginBottom: 20, padding: 16 },
   totals: { marginBottom: 20 },
-  total: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  balance: {
+  total: { fontSize: 18, fontWeight: '700' },
+  row: {
     padding: 16,
     minHeight: 48,
     flexDirection: 'row',
