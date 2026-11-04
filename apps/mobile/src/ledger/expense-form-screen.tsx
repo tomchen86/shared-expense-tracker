@@ -116,16 +116,14 @@ function ExpenseFormScreen({
         <HeaderActions
           cancel={{ label: 'Cancel', onPress: () => router.back() }}
         />
-        <Text
-          style={{
-            color: colors.textMuted,
-            textAlign: 'center',
-            marginTop: 48,
-            fontSize: 16,
-          }}
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={styles.content}
         >
-          Expense not found.
-        </Text>
+          <Text style={[styles.missing, { color: colors.textMuted }]}>
+            Expense not found.
+          </Text>
+        </ScrollView>
       </View>
     );
   return <ExpenseEditor {...loaded} />;
@@ -670,6 +668,7 @@ function PickerRow({
 
 const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 40 },
+  missing: { textAlign: 'center', marginTop: 48, fontSize: 16 },
   currency: { fontSize: 13, marginLeft: 16, marginBottom: 8 },
   section: { marginTop: 24 },
   input: {
