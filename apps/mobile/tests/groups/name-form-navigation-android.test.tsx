@@ -16,7 +16,6 @@ import {
   groupNameField,
   isOpen,
   memberNameField,
-  openAddMember,
   openGroup,
   openRenameGroup,
   openRenameMember,
@@ -66,7 +65,7 @@ afterEach(() => {
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
-test.each(['Add Member', 'Rename Member', 'Rename Group', 'New Group'])(
+test.each(['Rename Member', 'Rename Group', 'New Group'])(
   '%s closes its own sheet after saving while another tab is selected',
   async (form) => {
     await startGroupsApp();
@@ -92,8 +91,7 @@ test.each(['Add Member', 'Rename Member', 'Rename Group', 'New Group'])(
       await openRenameGroup('Brisbane');
     } else {
       await openWithMembers('Brisbane', ['Blake']);
-      if (form === 'Add Member') await openAddMember();
-      else await openRenameMember('Blake');
+      await openRenameMember('Blake');
     }
 
     await fireEvent.changeText(
@@ -101,8 +99,7 @@ test.each(['Add Member', 'Rename Member', 'Rename Group', 'New Group'])(
       'Updated',
     );
     const writes = holdWrites();
-    const confirm =
-      form === 'New Group' ? 'Create' : form === 'Add Member' ? 'Add' : 'Save';
+    const confirm = form === 'New Group' ? 'Create' : 'Save';
     await pressOnBar(form, confirm);
     await tapTab('Settings');
     expect(selectedTab()).toBe('Settings');

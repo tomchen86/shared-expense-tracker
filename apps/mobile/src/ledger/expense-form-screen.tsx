@@ -83,7 +83,9 @@ function ExpenseFormScreen({
       listGroups(database),
     ])
       .then(async ([categories, expenses, groups]) => {
-        const expense = expenses.find((item) => item.id === expenseId);
+        const expense = expenses.find(
+          (item) => item.id === expenseId && item.trashOrder === undefined,
+        );
         const formerMembers = expense
           ? await listFormerMembers(database, expense.spaceId)
           : [];
@@ -106,8 +108,26 @@ function ExpenseFormScreen({
     };
   }, [database, expenseId, initialGroupId, focused]);
   if (error) throw error;
-  if (!loaded || (expenseId && !loaded.expense))
+  if (!loaded)
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+  if (expenseId && !loaded.expense)
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <HeaderActions
+          cancel={{ label: 'Cancel', onPress: () => router.back() }}
+        />
+        <Text
+          style={{
+            color: colors.textMuted,
+            textAlign: 'center',
+            marginTop: 48,
+            fontSize: 16,
+          }}
+        >
+          Expense not found.
+        </Text>
+      </View>
+    );
   return <ExpenseEditor {...loaded} />;
 }
 
