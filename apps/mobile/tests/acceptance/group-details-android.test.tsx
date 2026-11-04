@@ -157,7 +157,7 @@ test('[GROUPS-22.2] lists Members, Rename Group and Cancel in the Group actions 
   expect(lastAlertButtons()).toEqual(['Members', 'Rename Group', 'Cancel']);
 });
 
-test('[GROUPS-23.1] opens Members rising from the bottom with only Close on Android', async () => {
+test('[GROUPS-23.2] opens Members rising from the bottom with only Close on Android', async () => {
   await startWithName();
   await createGroup('Brisbane');
   await openGroup('Brisbane');
@@ -173,7 +173,7 @@ test('[GROUPS-23.1] opens Members rising from the bottom with only Close on Andr
   expect(headerButtons('Members')).toEqual({ left: ['Close'], right: [] });
 });
 
-test("[GROUPS-23.1] closes Members with Back, back on the group's screen", async () => {
+test("[GROUPS-23.2] closes Members with Back, back on the group's screen", async () => {
   await startInMembers();
 
   await pressBack();
@@ -227,7 +227,7 @@ test("[GROUPS-25.2] lets Back or a tap outside close a member's dialog without c
   ]);
 });
 
-test('[GROUPS-27.1] keeps Members open when Back is pressed while a member is removed', async () => {
+test('[GROUPS-27.2] keeps Members open when Back is pressed while a member is removed', async () => {
   await startInMembers(['Blake']);
   const writes = holdWrites();
   await removeMember('Blake');

@@ -1932,7 +1932,7 @@ WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推�
 #### Scenario: 群組封存了
 
 - **WHEN** Dinner 在垃圾桶裡時封存 Brisbane，再在 Trash 打開 Dinner
-- **THEN** 「Group」「Brisbane」後面是「Status」「Archived · Read-only」；沒有「Shared history」和那段說明，因為唯讀明細上的 Restore 還原的是支出，不用先還原群組
+- **THEN** 「Group」「Brisbane」後面是「Status」「Archived · Read-only」；沒有「Shared history」和那段說明
 
 ### Requirement: LEDGER-79.2 按 Restore 時從垃圾桶還原
 

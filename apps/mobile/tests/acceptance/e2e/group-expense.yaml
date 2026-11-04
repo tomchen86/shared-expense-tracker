@@ -27,9 +27,11 @@ name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LE
 - waitForAnimationToEnd
 - tapOn: Add Member
 - waitForAnimationToEnd
+# The name field in Members has the focus, so the keyboard types into it.
 - inputText: Casey
-- tapOn: Add
+- pressKey: Enter
 - waitForAnimationToEnd
+- assertVisible: Casey
 - swipe:
     from:
       text: Members

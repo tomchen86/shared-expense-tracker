@@ -199,6 +199,13 @@ test('[GROUPS-21.1] shows only Group not found., titled Group Details, for an ID
   expect(barItems('Group Details').right).toEqual([]);
 });
 
+test('[GROUPS-40.2] makes no button of the title of a group that is not found', async () => {
+  await startGroupsApp(NO_GROUP);
+
+  await waitFor(() => expect(textsOn('Group Details')).toEqual([NOT_FOUND]));
+  expect(titleButton('Group Details')).toBeUndefined();
+});
+
 test("[GROUPS-21.1] never shows Group not found. while an existing group's screen opens", async () => {
   await startWithName();
   await createGroup('Brisbane');
@@ -253,7 +260,7 @@ test("[GROUPS-22.2] puts a Group actions menu with Members and Rename Group in t
 
 // Members
 
-test("[GROUPS-23.1] opens Members rising from the bottom over the group's screen, with only Close", async () => {
+test("[GROUPS-23.2] opens Members rising from the bottom over the group's screen, with only Close", async () => {
   await startWithName();
   await createGroup('Brisbane');
   await openGroup('Brisbane');
@@ -270,7 +277,7 @@ test("[GROUPS-23.1] opens Members rising from the bottom over the group's screen
   expect(barItems('Members')).toEqual({ left: ['Close (plain)'], right: [] });
 });
 
-test("[GROUPS-23.1] closes Members with Close, back on the group's screen", async () => {
+test("[GROUPS-23.2] closes Members with Close, back on the group's screen", async () => {
   await startInMembers();
 
   await pressOnBar('Members', 'Close');
@@ -279,7 +286,7 @@ test("[GROUPS-23.1] closes Members with Close, back on the group's screen", asyn
   expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups', 'Brisbane']);
 });
 
-test("[GROUPS-23.1] lets Members be swiped down, back on the group's screen", async () => {
+test("[GROUPS-23.2] lets Members be swiped down, back on the group's screen", async () => {
   await startInMembers();
   expect(refusesSwipeDown(screenOf('Members'))).toBe(false);
 
@@ -380,7 +387,7 @@ test('[GROUPS-26.1] keeps a removed member out of the group after a restart', as
   await expectMembers(['Taylor (You)', 'Casey', 'Add Member']);
 });
 
-test('[GROUPS-27.1] locks Members while a member is removed', async () => {
+test('[GROUPS-27.2] locks Members while a member is removed', async () => {
   await startInMembers(['Blake', 'Casey']);
   const writes = holdWrites();
 
@@ -392,6 +399,7 @@ test('[GROUPS-27.1] locks Members while a member is removed', async () => {
   await fireEvent.press(membersButton('Add Member'));
   await settle();
   expect(isOpen('Add Member')).toBe(false);
+  expect(memberField()).toBeUndefined();
   expect(isOpen('Members')).toBe(true);
   await writes.release();
   await settle();
@@ -401,7 +409,24 @@ test('[GROUPS-27.1] locks Members while a member is removed', async () => {
   expect(barAction('Members', 'Close').disabled).toBe(false);
 });
 
-test('[GROUPS-27.1] keeps Members from being swiped down while a member is removed', async () => {
+test('[GROUPS-27.2] adds no one from the name field while a member is removed', async () => {
+  await startInMembers(['Blake']);
+  await openMemberField();
+  await fireEvent.changeText(memberField()!, 'Dana');
+  const writes = holdWrites();
+  await removeMember('Blake');
+
+  await fireEvent.changeText(memberField()!, 'Ed');
+  await pressReturn(memberField()!);
+  await writes.release();
+  await settle();
+
+  await waitFor(() => expect(membersShown()).not.toContain('Blake'));
+  expect(memberField()).toHaveDisplayValue('Dana');
+  expect(await storedMemberNames(file, 'Brisbane')).toEqual(['Taylor']);
+});
+
+test('[GROUPS-27.2] keeps Members from being swiped down while a member is removed', async () => {
   await startInMembers(['Blake']);
   const writes = holdWrites();
 
@@ -414,7 +439,7 @@ test('[GROUPS-27.1] keeps Members from being swiped down while a member is remov
   expect(refusesSwipeDown(screenOf('Members'))).toBe(false);
 });
 
-test('[GROUPS-27.1] unlocks Members once the removal fails', async () => {
+test('[GROUPS-27.2] unlocks Members once the removal fails', async () => {
   await startInMembers(['Blake', 'Casey']);
   const writes = holdWrites();
   await removeMember('Blake');
@@ -515,6 +540,46 @@ test('[GROUPS-29.2] closes Members without adding the name left in the field', a
 
   await expectClosed('Members');
   expect(await storedMemberNames(file, 'Brisbane')).toEqual(['Taylor']);
+});
+
+/** Whether a tap on a row around `field` reaches the row while the keyboard is up, rather than only hiding the keyboard, as a scroll view's first tap does by default. */
+function tapsReachRows(field: ReturnType<typeof memberNameField>) {
+  for (let node = field.parent; node; node = node.parent)
+    if (String(node.type) === 'RCTScrollView')
+      return ['always', 'handled'].includes(
+        node.props.keyboardShouldPersistTaps,
+      );
+  return true;
+}
+
+test('[GROUPS-29.2] keeps the name field and its name when the field loses the focus', async () => {
+  await startInMembers();
+  await openMemberField();
+  await fireEvent.changeText(memberField()!, 'Blake');
+
+  await fireEvent(memberField()!, 'endEditing', {
+    nativeEvent: { text: 'Blake' },
+  });
+  await fireEvent(memberField()!, 'blur');
+  await settle();
+
+  expect(memberField()).toHaveDisplayValue('Blake');
+  expect(membersShown()).not.toContain('Add Member');
+  expect(await storedMemberNames(file, 'Brisbane')).toEqual(['Taylor']);
+});
+
+test("[GROUPS-29.2] opens a member's menu on the first tap while the name field is open, and keeps the name in it", async () => {
+  await startInMembers(['Blake']);
+  await openMemberField();
+  await fireEvent.changeText(memberField()!, 'Dana');
+
+  expect(tapsReachRows(memberField()!)).toBe(true);
+  const menu = await tapMember('Blake');
+  await fireEvent(memberField()!, 'blur');
+
+  expect(menu?.title).toBe('Blake');
+  await menu!.choose('Cancel');
+  expect(memberField()).toHaveDisplayValue('Dana');
 });
 
 test('[GROUPS-30.2] closes the name field, adding no one, when Return is pressed with no name or only spaces', async () => {
@@ -1420,7 +1485,7 @@ test('[GROUPS-43.2] lets each name form be swiped down without saving', async ()
   expect(localData(file)).toEqual(before);
 });
 
-test('[GROUPS-44.2] locks the name field and Members while the new member is saved', async () => {
+test('[GROUPS-44.2] keeps the name in the field and locks Members while the new member is saved', async () => {
   await startInMembers();
   await openMemberField();
   await fireEvent.changeText(memberField()!, 'Blake');
@@ -1428,7 +1493,11 @@ test('[GROUPS-44.2] locks the name field and Members while the new member is sav
 
   await pressReturn(memberField()!);
 
-  expect(memberField()).toBeDisabled();
+  // Still editable, since iOS hides the keyboard of a field that is not, but typing
+  // leaves the name as it is.
+  expect(memberField()).not.toBeDisabled();
+  await fireEvent.changeText(memberField()!, 'Casey');
+  expect(memberField()).toHaveDisplayValue('Blake');
   expect(barAction('Members', 'Close').disabled).toBe(true);
   expect(isEnabled(membersButton('Taylor (You)'))).toBe(false);
   expect(refusesSwipeDown(screenOf('Members'))).toBe(true);
@@ -1437,7 +1506,7 @@ test('[GROUPS-44.2] locks the name field and Members while the new member is sav
   await waitFor(() =>
     expect(membersShown()).toEqual(['Taylor (You)', 'Blake']),
   );
-  expect(memberField()).not.toBeDisabled();
+  expect(memberField()).toHaveDisplayValue('');
   expect(barAction('Members', 'Close').disabled).toBe(false);
 });
 
@@ -1465,7 +1534,7 @@ test('[GROUPS-44.2] adds one member when Return is pressed again before the save
   ]);
 });
 
-test('[GROUPS-44.2] locks the name field while a former member is added back, without asking again', async () => {
+test('[GROUPS-44.2] keeps the name in the field while a former member is added back, without asking again', async () => {
   await startInMembers(['Blake']);
   await removeMember('Blake');
   await waitFor(() => expect(membersShown()).not.toContain('Blake'));
@@ -1475,7 +1544,8 @@ test('[GROUPS-44.2] locks the name field while a former member is added back, wi
 
   await pressAlertButton('Add Back');
 
-  expect(memberField()).toBeDisabled();
+  await fireEvent.changeText(memberField()!, 'Casey');
+  expect(memberField()).toHaveDisplayValue('blake');
   expect(barAction('Members', 'Close').disabled).toBe(true);
   expect(refusesSwipeDown(screenOf('Members'))).toBe(true);
   await pressReturn(memberField()!);

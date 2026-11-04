@@ -2,7 +2,7 @@
 
 ## Purpose
 
-群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Add Member 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡的支出（GROUPS-61.2），支出的卡片、明細和垃圾桶見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上的 Group Total 和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
+群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡的支出（GROUPS-61.2），支出的卡片、明細和垃圾桶見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上的 Group Total 和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
 
 ## Requirements
 
@@ -389,9 +389,9 @@ The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group ac
 - **WHEN** 封存 Brisbane 之後，在 iOS 上開啟它的畫面，或在 Android 上按它的「Group actions」
 - **THEN** iOS 的選單只列出「Members」；Android 的對話框依序列出「Members」和「Cancel」
 
-### Requirement: GROUPS-23.1 開啟和關閉 Members
+### Requirement: GROUPS-23.2 開啟和關閉 Members
 
-WHEN 使用者在 Group actions 選「Members」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Members，標題是「Members」，標題列只有取消「Close」（SHELL-47.1、SHELL-48.1）；沒有在移除中時，按 Close、把 Members 往下滑或按 Android 的返回鍵，SHALL 關閉 Members，回到群組的畫面。
+WHEN 使用者在 Group actions 選「Members」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Members，標題是「Members」，標題列只有取消「Close」（SHELL-47.1、SHELL-48.1）；沒有在移除中，Members 的名稱欄位也沒有在儲存中時，按 Close、把 Members 往下滑或按 Android 的返回鍵，SHALL 關閉 Members，回到群組的畫面。
 
 #### Scenario: 開啟
 
@@ -465,9 +465,9 @@ WHEN 使用者在別人的選單選「Remove from Group」，the mobile app SHAL
 - **WHEN** 移除 Blake 之後重新啟動 app
 - **THEN** Brisbane 的成員仍是 Taylor 和 Casey
 
-### Requirement: GROUPS-27.1 移除中鎖住 Members
+### Requirement: GROUPS-27.2 移除中鎖住 Members
 
-WHILE 有成員在移除中，the mobile app SHALL 停用 Close，讓每一列和「Add Member」都不能按，也不讓 Members 因為往下滑或按 Android 的返回鍵而關閉，直到存好或存不進去為止。
+WHILE 有成員在移除中，the mobile app SHALL 停用 Close，讓每一列和「Add Member」都不能按，名稱欄位輸入的字不會改變名稱、按 Return 也不加入成員，也不讓 Members 因為往下滑或按 Android 的返回鍵而關閉，直到存好或存不進去為止。
 
 #### Scenario: 移除中
 
@@ -478,6 +478,11 @@ WHILE 有成員在移除中，the mobile app SHALL 停用 Close，讓每一列�
 
 - **WHEN** 還沒存好時往下滑 Members，或在 Android 上按返回鍵
 - **THEN** Members 不關閉
+
+#### Scenario: 名稱欄位開著時
+
+- **WHEN** 名稱欄位裡有「Dana」時移除 Blake，還沒存好時在名稱欄位按 Return
+- **THEN** 沒有加入 Dana；存好後 Blake 不在了，名稱欄位仍是「Dana」
 
 #### Scenario: 存不進去之後
 
@@ -505,12 +510,22 @@ IF 移除存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable
 
 ### Requirement: GROUPS-29.2 按 Add Member 時多一列名稱欄位
 
-WHEN 使用者在未封存群組的 Members 按「Add Member」，the mobile app SHALL 不開新的畫面，把「Add Member」那一列換成名稱欄位，讓它取得焦點並打開鍵盤：名稱欄位的無障礙名稱是「Member name」，開啟時是空的、顯示「Enter member name」；Members 關閉時，名稱欄位裡還沒加入的名稱不會存下。
+WHEN 使用者在未封存群組的 Members 按「Add Member」，the mobile app SHALL 不開新的畫面，把「Add Member」那一列換成名稱欄位，讓它取得焦點並打開鍵盤：名稱欄位的無障礙名稱是「Member name」，開啟時是空的、顯示「Enter member name」；名稱欄位失去焦點時，例如收起鍵盤或點了成員那一列，名稱欄位和裡面的名稱都留著，名稱欄位開著時點成員那一列，第一下就跳出他的選單（GROUPS-25.2）；Members 關閉時，名稱欄位裡還沒加入的名稱不會存下。
 
 #### Scenario: 按 Add Member
 
 - **WHEN** 在 Brisbane 的 Members 按「Add Member」
 - **THEN** 沒有打開新的畫面，最上面仍是 Members；「Add Member」那一列變成空的名稱欄位，顯示「Enter member name」，已經取得焦點
+
+#### Scenario: 收起鍵盤
+
+- **WHEN** 名稱欄位裡有「Blake」時收起鍵盤
+- **THEN** 名稱欄位仍在最下面，仍是「Blake」
+
+#### Scenario: 點成員那一列
+
+- **WHEN** 名稱欄位裡有「Dana」、鍵盤開著時點「Blake」
+- **THEN** 第一下就跳出 Blake 的選單；按 Cancel 後名稱欄位仍是「Dana」
 
 #### Scenario: 還沒加入就關閉 Members
 
@@ -845,12 +860,12 @@ WHEN 沒有在儲存中，而使用者在名稱表單按 Cancel、把它往下�
 
 ### Requirement: GROUPS-44.2 儲存中鎖住名稱表單和名稱欄位
 
-WHILE 名稱表單或 Members 的名稱欄位在儲存中，the mobile app SHALL 讓名稱欄位不能編輯，再按確認或 Return 也不再儲存一次、不再提示；名稱表單另外停用它的 Cancel 和確認，也不因為往下滑或按 Android 的返回鍵而關閉；Members 的名稱欄位在儲存中時，Members 的 Close 停用，成員列都不能按，Members 也不因為往下滑或按 Android 的返回鍵而關閉；這些都到存好或存不進去為止。
+WHILE 名稱表單或 Members 的名稱欄位在儲存中，the mobile app SHALL 不讓名稱被修改，再按確認或 Return 也不再儲存一次、不再提示；名稱表單另外讓名稱欄位不能編輯，停用它的 Cancel 和確認，也不因為往下滑或按 Android 的返回鍵而關閉；Members 的名稱欄位在儲存中時保有焦點和鍵盤，輸入的字不會改變名稱，Members 的 Close 停用，成員列都不能按，Members 也不因為往下滑或按 Android 的返回鍵而關閉；這些都到存好或存不進去為止。
 
 #### Scenario: 新增中
 
 - **WHEN** 在 Members 的名稱欄位輸入「Blake」按 Return，還沒存好
-- **THEN** 名稱欄位不能編輯，Close 停用，Members 仍開著；存好後多了 Blake，名稱欄位清空、可以編輯，Close 恢復可以按
+- **THEN** 名稱欄位仍是「Blake」，鍵盤仍開著，這時輸入的字不會改變名稱；Close 停用，Members 仍開著；存好後多了 Blake，名稱欄位清空，可以輸入下一位，Close 恢復可以按
 
 #### Scenario: 連按兩次
 
@@ -860,7 +875,7 @@ WHILE 名稱表單或 Members 的名稱欄位在儲存中，the mobile app SHALL
 #### Scenario: 加回來中
 
 - **WHEN** 在「Add Blake Back?」按「Add Back」，還沒存好
-- **THEN** 名稱欄位不能編輯，Close 停用；這時按 Return 也不再問一次；存好後 Blake 回到群組
+- **THEN** 輸入的字不會改變名稱欄位的名稱，Close 停用；這時按 Return 也不再問一次；存好後 Blake 回到群組
 
 #### Scenario: 改名中
 
