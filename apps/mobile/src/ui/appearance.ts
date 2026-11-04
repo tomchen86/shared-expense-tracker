@@ -1,4 +1,9 @@
-import { Appearance, type ColorValue } from 'react-native';
+import {
+  Appearance,
+  Platform,
+  type ColorSchemeName,
+  type ColorValue,
+} from 'react-native';
 
 export type AppearanceOption = 'system' | 'light' | 'dark';
 
@@ -13,6 +18,14 @@ export const APPEARANCE_OPTIONS: readonly {
 
 export function applyAppearanceOption(option: AppearanceOption): void {
   Appearance.setColorScheme(option === 'system' ? 'unspecified' : option);
+}
+
+export function nativeStatusBarStyle(
+  scheme: ColorSchemeName | null,
+): 'light' | 'dark' | undefined {
+  // iOS keeps its existing app-managed status bar; native-stack controls it on Android.
+  if (Platform.OS !== 'android') return undefined;
+  return scheme === 'dark' ? 'light' : 'dark';
 }
 
 export interface ThemeColors {

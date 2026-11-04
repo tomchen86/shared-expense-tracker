@@ -1,6 +1,7 @@
 import { useColorScheme } from 'react-native';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { formPresentation } from '../src/ui/form-presentation';
+import { nativeStatusBarStyle } from '../src/ui/appearance';
 import { PhoneLocalData } from '../src/shell/phone-local-data';
 import { TrashProvider } from '../src/ledger/trash-provider';
 import { ReadError } from '../src/shell/read-error';
@@ -14,7 +15,7 @@ function ThemedStack() {
       <Stack
         screenOptions={{
           headerShown: false,
-          statusBarStyle: scheme === 'dark' ? 'light' : 'dark',
+          statusBarStyle: nativeStatusBarStyle(scheme),
         }}
       >
         <Stack.Screen name="(tabs)" />
