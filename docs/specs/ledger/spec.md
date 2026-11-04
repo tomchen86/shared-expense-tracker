@@ -2,7 +2,7 @@
 
 ## Purpose
 
-記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、和群組分攤、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。群組支出是屬於一個群組的空間的支出，付款和分攤都記在這個群組的成員的成員 ID 下；成員、你的成員、前成員和成員現在的名稱見 groups。你的 participant 是個人 participant，以及每個群組裡你的成員；一筆支出裡你付的，是它的付款裡你的 participant 的金額總和，你的份額是它的分攤裡你的 participant 的金額總和。和你有關的群組支出，是付款或分攤裡有你的 participant 的群組支出，分攤的金額是 0 也算。表單的空間在「Split with others」開著並選了群組時是那個群組，其他時候是個人空間；分攤的欄位是「Split with others」、群組、付款人和分攤的人；分攤的順序是分攤的人被選的先後（LEDGER-49.1），存下之後是存著的順序（LEDGER-58.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期、備註或分攤的欄位（LEDGER-59.1）有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是 Your Total Share，下面是支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。手機地區的貨幣格式，是手機第一個偏好的語言和地區用來顯示一個幣別的金額的格式；手機地區的日期格式見 LEDGER-30.1。刪除支出是把它移到垃圾桶：本機資料把它標成在垃圾桶裡，它的其他資料都不變，所以垃圾桶裡的支出仍是存著的支出，仍算使用它的分類（CATEGORIES-34.1、35.1、40.1）；還原是拿掉這個標記，永久刪除是把這筆支出和它的付款、分攤從本機資料刪掉。Undo 提示是支出移到垃圾桶之後，顯示在畫面底部、可以按 Undo 的提示；Undo 時間是 5 秒，螢幕閱讀器開著時是 15 秒，螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。Trash 是 Settings 分頁上列出垃圾桶裡的支出的畫面；唯讀明細是在 Trash 點卡片後推入、顯示垃圾桶裡一筆支出的畫面。
+記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、和群組分攤、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。群組支出是屬於一個群組的空間的支出，付款和分攤都記在這個群組的成員的成員 ID 下；成員、你的成員、前成員和成員現在的名稱見 groups。你的 participant 是個人 participant，以及每個群組裡你的成員；一筆支出裡你付的，是它的付款裡你的 participant 的金額總和，你的份額是它的分攤裡你的 participant 的金額總和。和你有關的群組支出，是付款或分攤裡有你的 participant 的群組支出，分攤的金額是 0 也算。表單的空間在「Split with others」開著並選了群組時是那個群組，其他時候是個人空間；分攤的欄位是「Split with others」、群組、付款人和分攤的人；分攤的順序是分攤的人被選的先後（LEDGER-49.1），存下之後是存著的順序（LEDGER-58.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期、備註或分攤的欄位（LEDGER-59.1）有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是 This Month（LEDGER-35.2），下面是支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。手機地區的貨幣格式，是手機第一個偏好的語言和地區用來顯示一個幣別的金額的格式；手機地區的日期格式見 LEDGER-30.1。刪除支出是把它移到垃圾桶：本機資料把它標成在垃圾桶裡，它的其他資料都不變，所以垃圾桶裡的支出仍是存著的支出，仍算使用它的分類（CATEGORIES-34.1、35.1、40.1）；還原是拿掉這個標記，永久刪除是把這筆支出和它的付款、分攤從本機資料刪掉。Undo 提示是支出移到垃圾桶之後，顯示在畫面底部、可以按 Undo 的提示；Undo 時間是 5 秒，螢幕閱讀器開著時是 15 秒，螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。Trash 是 Settings 分頁上列出垃圾桶裡的支出的畫面；唯讀明細是在 Trash 點卡片後推入、顯示垃圾桶裡一筆支出的畫面。
 
 ## Requirements
 
@@ -787,39 +787,59 @@ The mobile app SHALL 在卡片上只用一行顯示標題，放不下時在結�
 - **WHEN** 新增標題是 200 個「a」的支出
 - **THEN** 卡片上的標題只佔一行，放不下的部分在結尾截斷；螢幕閱讀器讀出完整的 200 個「a」
 
-### Requirement: LEDGER-35.1 Your Total Share 依幣別加總卡片金額
+### Requirement: LEDGER-35.2 This Month 依幣別加總這個月的卡片金額，點了打開 Insights
 
-The mobile app SHALL 在支出清單的卡片上方，為卡片用到的每個幣別各顯示一行「Your Total Share: <這個幣別所有卡片金額的總和>」，依幣別代碼排序；沒有卡片時只顯示一行「Your Total Share: —」；這幾行是文字，不是按鈕。
+The mobile app SHALL 在支出清單的卡片上方，為日期在這個月的卡片用到的每個幣別各顯示一行「This Month: <這個幣別、日期在這個月的卡片金額的總和>」，依幣別代碼排序，這個月是今天所在的月份；沒有日期在這個月的卡片時只顯示一行「This Month: —」。這幾行合成一個按鈕，螢幕閱讀器讀出「View expense insights. Spent this month <依同樣的順序、以「, 」隔開的每個總和>.」，沒有日期在這個月的卡片時讀出「View expense insights. Nothing spent this month.」；按一下就以 `/insights` 推入個人的 Insights（INSIGHTS-13.1），連按兩次也只推入一個。
 
 #### Scenario: 一個幣別
 
-- **WHEN** 有 875 USD 和 1250 USD 兩筆支出
-- **THEN** 卡片上方只有「Your Total Share: $21.25」
+- **WHEN** 今天是 `2026-10-30`，有日期是今天的 875 USD 和 1250 USD 兩筆支出
+- **THEN** 卡片上方只有「This Month: $21.25」；螢幕閱讀器把它讀成按鈕「View expense insights. Spent this month $21.25.」
 
 #### Scenario: 幾個幣別
 
-- **WHEN** 依序新增日期相同的 30 AUD、875 USD、1200 JPY
-- **THEN** 卡片由上而下是 JPY、USD、AUD 的支出；卡片上方由上而下是「Your Total Share: A$0.30」、「Your Total Share: ¥1,200」、「Your Total Share: $8.75」
+- **WHEN** 依序新增日期都是今天的 30 AUD、875 USD、1200 JPY
+- **THEN** 卡片由上而下是 JPY、USD、AUD 的支出；卡片上方由上而下是「This Month: A$0.30」、「This Month: ¥1,200」、「This Month: $8.75」，螢幕閱讀器讀出「View expense insights. Spent this month A$0.30, ¥1,200, $8.75.」
 
-#### Scenario: 不是按鈕
+#### Scenario: 只算這個月
 
-- **WHEN** 有 875 USD 的支出時點「Your Total Share: $8.75」
-- **THEN** 它不在任何按鈕裡，點了沒有反應
+- **WHEN** 今天是 `2026-10-30`，有日期是 `2026-10-01` 的 875 USD、`2026-09-30` 的 1250 USD 和 `2025-10-15` 的 300 USD
+- **THEN** 三張卡片都在支出清單上，卡片上方只有「This Month: $8.75」
+
+#### Scenario: 這個月沒有支出
+
+- **WHEN** 今天是 `2026-10-30`，只有日期是 `2026-09-30` 的支出
+- **THEN** 它的卡片在支出清單上，卡片上方只有「This Month: —」，螢幕閱讀器讀出「View expense insights. Nothing spent this month.」
+
+#### Scenario: 月初，UTC 還在上個月
+
+- **WHEN** 手機的時區是 `Asia/Taipei`，當地是 `2026-11-01` 上午 0:30（UTC 還是 10 月 31 日），有日期是 `2026-10-31` 和 `2026-11-01` 的 875 USD 和 300 USD
+- **THEN** 卡片上方只有「This Month: $3.00」
+
+#### Scenario: 按一下
+
+- **WHEN** 有 875 USD 的支出時按「This Month: $8.75」
+- **THEN** 分頁列仍選中 Expenses，Expenses 分頁的堆疊由下而上是「Expenses」根畫面和「Insights」，網址是 `/insights`
+
+#### Scenario: 連按兩次
+
+- **WHEN** 連按兩次「This Month: $8.75」
+- **THEN** 只推入一個 Insights；返回一次就回到支出清單
 
 #### Scenario: 沒有支出
 
 - **WHEN** 第一次啟動 app
-- **THEN** 卡片上方只有「Your Total Share: —」
+- **THEN** 卡片上方只有「This Month: —」，螢幕閱讀器讀出「View expense insights. Nothing spent this month.」；按了推入 Insights
 
 #### Scenario: 修改之後
 
 - **WHEN** 把 875 USD 的支出的金額改成「12.50」
-- **THEN** 回到支出清單時是「Your Total Share: $12.50」
+- **THEN** 回到支出清單時是「This Month: $12.50」
 
 #### Scenario: 總和超過單筆的上限
 
-- **WHEN** 有兩筆 999,999,999,999 USD 的支出
-- **THEN** 是「Your Total Share: $19,999,999,999.98」
+- **WHEN** 有兩筆日期是今天的 999,999,999,999 USD 的支出
+- **THEN** 是「This Month: $19,999,999,999.98」
 
 ### Requirement: LEDGER-36.1 點卡片推入明細
 
@@ -929,7 +949,7 @@ IF 明細網址裡的 ID 不是任何支出的 ID，THEN the mobile app SHALL �
 
 ### Requirement: LEDGER-40.1 金額和日期用手機地區的格式
 
-The mobile app SHALL 讓卡片、Your Total Share 和明細，用手機地區的貨幣格式和幣別的小數位數（LEDGER-1.1）顯示金額，讓卡片和明細用手機地區的日期格式（LEDGER-30.1）顯示支出的日期，日期不因手機的時區提早或延後一天。
+The mobile app SHALL 讓卡片、This Month 和明細，用手機地區的貨幣格式和幣別的小數位數（LEDGER-1.1）顯示金額，讓卡片和明細用手機地區的日期格式（LEDGER-30.1）顯示支出的日期，日期不因手機的時區提早或延後一天。
 
 #### Scenario: 英文（美國）
 
@@ -956,14 +976,14 @@ The mobile app SHALL 讓卡片、Your Total Share 和明細，用手機地區的
 - **WHEN** 手機的時區是 `America/Los_Angeles`，新增日期是 `2026-10-25` 的支出
 - **THEN** 卡片和明細的日期都是「Oct 25, 2026」，不是前一天的「Oct 24, 2026」
 
-### Requirement: LEDGER-41.1 (manual) 手機上的金額和日期格式
+### Requirement: LEDGER-41.2 (manual) 手機上的金額和日期格式
 
-WHERE iPhone 或 Android 手機，the mobile app SHALL 讓卡片、Your Total Share 和明細，依手機的語言和地區顯示金額和日期（LEDGER-40.1），在 UTC 以東的時區，日期也不提早一天；格式由各個平台決定，iPhone 和 Android 可以不一樣。
+WHERE iPhone 或 Android 手機，the mobile app SHALL 讓卡片、This Month 和明細，依手機的語言和地區顯示金額和日期（LEDGER-40.1），在 UTC 以東的時區，日期也不提早一天；格式由各個平台決定，iPhone 和 Android 可以不一樣。
 
 #### Scenario: 英文（美國）
 
 - **WHEN** 手機的語言和地區設成英文（美國），新增 8.75 USD 的支出
-- **THEN** 卡片和明細的金額是「$8.75」，日期是今天，例如「Oct 30, 2026」；Your Total Share 是「Your Total Share: $8.75」
+- **THEN** 卡片和明細的金額是「$8.75」，日期是今天，例如「Oct 30, 2026」；This Month 是「This Month: $8.75」
 
 #### Scenario: 繁體中文（台灣）
 
@@ -989,23 +1009,23 @@ WHERE iPhone 或 Android 手機，WHEN 支出清單捲到最底，the mobile app
 - **WHEN** 有 20 筆支出，把支出清單捲到最底
 - **THEN** 最後一張卡片整張在 + 按鈕上方，沒有被擋住
 
-### Requirement: LEDGER-43.1 讀完支出之前不顯示沒有支出的樣子
+### Requirement: LEDGER-43.2 讀完支出之前不顯示沒有支出的樣子
 
-WHILE 支出清單還沒讀完存著的支出，the mobile app SHALL 不顯示 LEDGER-32.2 的提示和「Your Total Share: —」。
+WHILE 支出清單還沒讀完存著的支出，the mobile app SHALL 不顯示 LEDGER-32.2 的提示和「This Month: —」。
 
 #### Scenario: 開啟 app
 
 - **WHEN** 有 Coffee run 時開啟 app，支出清單還沒讀完存著的支出
-- **THEN** 支出清單沒有「No expenses to display. Add a personal expense or get involved in a group expense.」和「Your Total Share: —」；讀完之後顯示 Coffee run 的卡片
+- **THEN** 支出清單沒有「No expenses to display. Add a personal expense or get involved in a group expense.」和「This Month: —」；讀完之後顯示 Coffee run 的卡片
 
-### Requirement: LEDGER-44.1 從明細返回時清單已經是新的
+### Requirement: LEDGER-44.2 從明細返回時清單已經是新的
 
-WHEN 從明細打開的 Edit Expense 存好支出，the mobile app SHALL 在從明細返回之前，就讓明細底下的支出清單顯示存著的卡片和 Your Total Share，返回時不先出現修改前的內容。
+WHEN 從明細打開的 Edit Expense 存好支出，the mobile app SHALL 在從明細返回之前，就讓明細底下的支出清單顯示存著的卡片和 This Month，返回時不先出現修改前的內容。
 
 #### Scenario: 改了金額再返回
 
 - **WHEN** 在 875 USD 的 Coffee run 的明細按「Edit」，把金額改成「9.25」後按 Save，再從明細返回
-- **THEN** 支出清單一出現就是「$9.25」和「Your Total Share: $9.25」，沒有先出現「$8.75」
+- **THEN** 支出清單一出現就是「$9.25」和「This Month: $9.25」，沒有先出現「$8.75」
 
 ### Requirement: LEDGER-45.1 「Split with others」開關
 
@@ -1472,9 +1492,9 @@ The mobile app SHALL 在支出清單上，和個人支出一起依 LEDGER-28.1 �
 - **WHEN** 把 Dinner 移到垃圾桶
 - **THEN** 支出清單沒有 Dinner 的卡片
 
-### Requirement: LEDGER-65.2 群組支出的卡片
+### Requirement: LEDGER-65.3 群組支出的卡片
 
-The mobile app SHALL 讓群組支出的卡片在分類和日期之間顯示群組的名稱，群組已封存時是「<群組名稱> · Archived」，螢幕閱讀器也在同樣的位置讀出它；群組支出的卡片金額是你的份額，只有付款沒有分攤時是 0，所以 Your Total Share 也只算你的份額（LEDGER-35.1）。
+The mobile app SHALL 讓群組支出的卡片在分類和日期之間顯示群組的名稱，群組已封存時是「<群組名稱> · Archived」，螢幕閱讀器也在同樣的位置讀出它；群組支出的卡片金額是你的份額，只有付款沒有分攤時是 0，所以 This Month 也只算你的份額（LEDGER-35.2）。
 
 #### Scenario: 卡片
 
@@ -1486,10 +1506,10 @@ The mobile app SHALL 讓群組支出的卡片在分類和日期之間顯示群�
 - **WHEN** Taylor 付款，只有 Casey 和 Blake 分攤
 - **THEN** 卡片金額是「$0.00」
 
-#### Scenario: Your Total Share
+#### Scenario: This Month
 
 - **WHEN** 除了 Dinner，還有一筆 875 USD 的個人支出
-- **THEN** 是「Your Total Share: $42.09」
+- **THEN** 是「This Month: $42.09」
 
 #### Scenario: 封存和還原
 
@@ -1575,7 +1595,7 @@ WHERE iOS，WHEN 從支出表單打開 Select Group、Who Paid?、Split Between�
 
 ### Requirement: LEDGER-70.2 (e2e) 左滑卡片露出 Delete
 
-WHEN 使用者在支出清單或群組的畫面，把個人支出或未封存群組的支出的卡片往左滑，the mobile app SHALL 在卡片右邊露出顯示「Delete」的按鈕，它的無障礙名稱是「Delete <標題> expense」；按下它就把這筆支出移到垃圾桶（LEDGER-71.2）。
+WHEN 使用者在支出清單或群組的畫面，把個人支出或未封存群組的支出的卡片往左滑，the mobile app SHALL 在卡片右邊露出顯示「Delete」的按鈕，它的無障礙名稱是「Delete <標題> expense」；按下它就把這筆支出移到垃圾桶（LEDGER-71.3）。
 
 #### Scenario: 左滑
 
@@ -1592,9 +1612,9 @@ WHEN 使用者在支出清單或群組的畫面，把個人支出或未封存群
 - **WHEN** 在 Brisbane 的畫面把 Dinner 的卡片往左滑，按露出的「Delete」
 - **THEN** 露出的按鈕的無障礙名稱是「Delete Dinner expense」；按下後 Dinner 的卡片移出 Brisbane 的畫面，畫面底部顯示「Moved to Trash」
 
-### Requirement: LEDGER-71.2 刪除支出時移到垃圾桶
+### Requirement: LEDGER-71.3 刪除支出時移到垃圾桶
 
-WHEN 使用者按個人支出或未封存群組的支出的卡片左滑露出的「Delete」、使用這些卡片上名稱是「Delete expense」的輔助功能動作，或在它們的明細的 Expense actions 選「Delete」（LEDGER-72.2），the mobile app SHALL 不另外確認，就把這筆支出移到垃圾桶，存好後才把它的卡片移出支出清單和群組的畫面、不再把它算進 Your Total Share 和群組的金額（GROUPS-75.1），支出清單沒有其他卡片時顯示 LEDGER-32.2 的提示，群組的畫面沒有其他卡片時顯示 GROUPS-20.2 的提示，重新啟動 app 之後也一樣；存好之前再按一次或再用一次，也只移一次；重新啟動 app 之後它仍在垃圾桶裡，以網址打開它的明細，或明細開著時它在另一個畫面被移到垃圾桶，明細都和 LEDGER-39.1 一樣只顯示「Expense not found.」，標題列沒有「Edit」和「Expense actions」。
+WHEN 使用者按個人支出或未封存群組的支出的卡片左滑露出的「Delete」、使用這些卡片上名稱是「Delete expense」的輔助功能動作，或在它們的明細的 Expense actions 選「Delete」（LEDGER-72.2），the mobile app SHALL 不另外確認，就把這筆支出移到垃圾桶，存好後才把它的卡片移出支出清單和群組的畫面、不再把它算進 This Month 和群組的金額（GROUPS-75.1），支出清單沒有其他卡片時顯示 LEDGER-32.2 的提示，群組的畫面沒有其他卡片時顯示 GROUPS-20.2 的提示，重新啟動 app 之後也一樣；存好之前再按一次或再用一次，也只移一次；重新啟動 app 之後它仍在垃圾桶裡，以網址打開它的明細，或明細開著時它在另一個畫面被移到垃圾桶，明細都和 LEDGER-39.1 一樣只顯示「Expense not found.」，標題列沒有「Edit」和「Expense actions」。
 
 #### Scenario: 卡片的輔助功能動作
 
@@ -1604,12 +1624,12 @@ WHEN 使用者按個人支出或未封存群組的支出的卡片左滑露出的
 #### Scenario: 移到垃圾桶
 
 - **WHEN** 有 875 USD 的 Coffee run 和 1250 USD 的 Lunch，對 Lunch 的卡片使用「Delete expense」
-- **THEN** 沒有跳出提示框；卡片只剩 Coffee run，卡片上方是「Your Total Share: $8.75」
+- **THEN** 沒有跳出提示框；卡片只剩 Coffee run，卡片上方是「This Month: $8.75」
 
 #### Scenario: 最後一筆
 
 - **WHEN** 只有 Coffee run 時把它移到垃圾桶，再重新啟動 app
-- **THEN** 移到垃圾桶之後和重新啟動之後，支出清單都顯示「No expenses to display. Add a personal expense or get involved in a group expense.」和「Your Total Share: —」，沒有卡片
+- **THEN** 移到垃圾桶之後和重新啟動之後，支出清單都顯示「No expenses to display. Add a personal expense or get involved in a group expense.」和「This Month: —」，沒有卡片
 
 #### Scenario: 存好之前
 
@@ -1658,7 +1678,7 @@ WHEN 使用者按個人支出或未封存群組的支出的卡片左滑露出的
 
 ### Requirement: LEDGER-72.2 明細的 Expense actions 選單
 
-The mobile app SHALL 在個人支出和群組支出的明細的標題列、「Edit」的右邊放一個名稱是「Expense actions」的選單（SHELL-47.1、SHELL-48.1），裡面只有破壞性的「Delete」（SHELL-53.1）；選「Delete」時，SHALL 把這筆支出移到垃圾桶（LEDGER-71.2），存好後返回推入明細的支出清單或群組的畫面，存好之前再選一次也只返回一次。
+The mobile app SHALL 在個人支出和群組支出的明細的標題列、「Edit」的右邊放一個名稱是「Expense actions」的選單（SHELL-47.1、SHELL-48.1），裡面只有破壞性的「Delete」（SHELL-53.1）；選「Delete」時，SHALL 把這筆支出移到垃圾桶（LEDGER-71.3），存好後返回推入明細的支出清單或群組的畫面，存好之前再選一次也只返回一次。
 
 #### Scenario: iOS
 
@@ -1758,14 +1778,14 @@ The mobile app SHALL 讓 Undo 提示從那一筆存好時起顯示 Undo 時間�
 - **WHEN** Lunch 已經在垃圾桶裡，把 Coffee run 移到垃圾桶，提示還在時，在 Trash 還原 Lunch
 - **THEN** Coffee run 的提示仍在
 
-### Requirement: LEDGER-75.2 按 Undo 時還原支出
+### Requirement: LEDGER-75.3 按 Undo 時還原支出
 
-WHEN 使用者按 Undo 提示的「Undo」，the mobile app SHALL 不另外確認，就把這筆支出從垃圾桶還原，存好後收起提示，讓它的卡片照 LEDGER-31.2、LEDGER-64.2 和 GROUPS-61.2 回到支出清單和群組的畫面上依 LEDGER-28.1 該在的位置，再算進 Your Total Share 和群組的金額（GROUPS-75.1），也不再出現在 Trash。
+WHEN 使用者按 Undo 提示的「Undo」，the mobile app SHALL 不另外確認，就把這筆支出從垃圾桶還原，存好後收起提示，讓它的卡片照 LEDGER-31.2、LEDGER-64.2 和 GROUPS-61.2 回到支出清單和群組的畫面上依 LEDGER-28.1 該在的位置，再照 LEDGER-35.2 算進 This Month 和群組的金額（GROUPS-75.1），也不再出現在 Trash。
 
 #### Scenario: 按 Undo
 
 - **WHEN** 有 875 USD 的 Coffee run 和 1250 USD 的 Lunch，把 Lunch 移到垃圾桶後按「Undo」
-- **THEN** 沒有跳出提示框，提示收起；卡片由上而下又是 Lunch、Coffee run，卡片上方是「Your Total Share: $21.25」；Trash 只顯示「No deleted expenses.」
+- **THEN** 沒有跳出提示框，提示收起；卡片由上而下又是 Lunch、Coffee run，卡片上方是「This Month: $21.25」；Trash 只顯示「No deleted expenses.」
 
 #### Scenario: 原來的位置
 
@@ -1934,9 +1954,9 @@ WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推�
 - **WHEN** Dinner 在垃圾桶裡時封存 Brisbane，再在 Trash 打開 Dinner
 - **THEN** 「Group」「Brisbane」後面是「Status」「Archived · Read-only」；沒有「Shared history」和那段說明
 
-### Requirement: LEDGER-79.2 按 Restore 時從垃圾桶還原
+### Requirement: LEDGER-79.3 按 Restore 時從垃圾桶還原
 
-WHEN 使用者在唯讀明細按「Restore」，the mobile app SHALL 不另外確認，就把這筆支出從垃圾桶還原，存好後返回 Trash，讓它不再出現在 Trash，照 LEDGER-31.2、LEDGER-64.2 和 GROUPS-61.2 回到支出清單和群組的畫面上依 LEDGER-28.1 該在的位置，再算進 Your Total Share 和群組的金額（GROUPS-75.1）；群組已封存時也一樣還原，它回到封存群組的畫面上，照 LEDGER-67.2 只能看；存好之前再按一次，也只還原一次、只返回一次。
+WHEN 使用者在唯讀明細按「Restore」，the mobile app SHALL 不另外確認，就把這筆支出從垃圾桶還原，存好後返回 Trash，讓它不再出現在 Trash，照 LEDGER-31.2、LEDGER-64.2 和 GROUPS-61.2 回到支出清單和群組的畫面上依 LEDGER-28.1 該在的位置，再照 LEDGER-35.2 算進 This Month 和群組的金額（GROUPS-75.1）；群組已封存時也一樣還原，它回到封存群組的畫面上，照 LEDGER-67.2 只能看；存好之前再按一次，也只還原一次、只返回一次。
 
 #### Scenario: 還原
 
@@ -1946,7 +1966,7 @@ WHEN 使用者在唯讀明細按「Restore」，the mobile app SHALL 不另外�
 #### Scenario: 和移到垃圾桶之前一樣
 
 - **WHEN** 還原 875 USD、Shopping、`2024-12-25`、備註「Morning treat」的 Coffee run，再打開它的明細
-- **THEN** 明細依序顯示「Coffee run」、「$8.75」、「DETAILS」、「Category」、「Shopping」、「Date」、「Dec 25, 2024」、「NOTE」、「Morning treat」
+- **THEN** 支出清單上有它的卡片；它的日期不在這個月，所以卡片上方是「This Month: —」；明細依序顯示「Coffee run」、「$8.75」、「DETAILS」、「Category」、「Shopping」、「Date」、「Dec 25, 2024」、「NOTE」、「Morning treat」
 
 #### Scenario: 存好之前
 

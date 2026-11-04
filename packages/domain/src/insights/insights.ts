@@ -1,3 +1,4 @@
+import { categoryNameKey } from '../categories/categories';
 import { isLocalDate } from '../ledger/dates';
 import type { Share } from '../ledger/money';
 
@@ -161,6 +162,7 @@ function addExpense(
   expense: InsightExpense,
   amountMinor: number,
   category: InsightCategory | undefined,
+  categoryKey: string,
 ): boolean {
   const currencies = periods.get(key) ?? new Map<string, CurrencyTotal>();
   const currency = currencies.get(expense.currency) ?? {
@@ -169,11 +171,6 @@ function addExpense(
   };
   if (amountMinor > Number.MAX_SAFE_INTEGER - currency.totalMinor) return false;
 
-  const categoryId = expense.categoryId ?? category?.id;
-  const categoryKey =
-    categoryId === undefined
-      ? `name:${expense.categoryName}`
-      : `id:${categoryId}`;
   const existing = currency.categories.get(categoryKey);
   if (existing) {
     // Positive category subtotals cannot exceed the checked currency total.
@@ -305,6 +302,12 @@ export function buildInsights(input: {
     }
   }
 
+  const firstByName = new Map<string, InsightCategory>();
+  for (const category of categories) {
+    const key = categoryNameKey(category.name);
+    if (!firstByName.has(key)) firstByName.set(key, category);
+  }
+
   const months: PeriodTotals = new Map();
   const years: PeriodTotals = new Map();
   for (const expense of expenses) {
@@ -312,10 +315,17 @@ export function buildInsights(input: {
     const amountMinor = countedAmount(expense, context, participantIds);
     if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) continue;
 
-    const category =
+    // Matched expenses merge by name into the first category of that name (INSIGHTS-6.2).
+    const matched =
       expense.categoryId === undefined
-        ? categories.find(({ name }) => name === expense.categoryName)
+        ? firstByName.get(categoryNameKey(expense.categoryName))
         : categories.find(({ id }) => id === expense.categoryId);
+    const category = matched && firstByName.get(categoryNameKey(matched.name));
+    const categoryKey = category
+      ? `category:${categoryNameKey(category.name)}`
+      : expense.categoryId === undefined
+        ? `name:${categoryNameKey(expense.categoryName)}`
+        : `id:${expense.categoryId}`;
     if (
       !addExpense(
         months,
@@ -323,6 +333,7 @@ export function buildInsights(input: {
         expense,
         amountMinor,
         category,
+        categoryKey,
       ) ||
       !addExpense(
         years,
@@ -330,6 +341,7 @@ export function buildInsights(input: {
         expense,
         amountMinor,
         category,
+        categoryKey,
       )
     )
       return undefined;

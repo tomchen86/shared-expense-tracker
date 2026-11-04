@@ -17,6 +17,10 @@ export default function GroupsLayout() {
       />
       <Stack.Screen name="expenses/[id]" options={{ title: 'Expense' }} />
       <Stack.Screen
+        name="insights"
+        options={{ title: 'Insights', fullScreenGestureEnabled: false }}
+      />
+      <Stack.Screen
         name="new"
         options={{
           title: 'New Group',

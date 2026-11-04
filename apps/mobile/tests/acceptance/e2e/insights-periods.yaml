@@ -1,0 +1,147 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[INSIGHTS-30.1] [INSIGHTS-33.1] [INSIGHTS-36.1] [INSIGHTS-37.1] Moves between periods on Insights by swiping the period name, in the Period sheet, in the year menu, and with Month and Year'
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+# The names of this month, last month and the years around them, by the simulator's clock.
+- evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
+- evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'
+- evalScript: '${output.lastMonth = output.months[(new Date().getMonth() + 11) % 12]}'
+- evalScript: '${output.thisYear = String(new Date().getFullYear())}'
+- evalScript: '${output.lastYear = String(new Date().getFullYear() - 1)}'
+- evalScript: '${output.lastMonthsYear = String(new Date().getMonth() === 0 ? new Date().getFullYear() - 1 : new Date().getFullYear())}'
+# Expenses today, on the 15th of last month, and on the 15th of this month last year. The
+# calendar names each day, as in "Thursday 15 October"; a tap outside it closes it.
+- tapOn: Add expense
+- tapOn: Expense title
+- inputText: Today
+- tapOn: Amount in .*
+- inputText: '3.00'
+- tapOn:
+    text: Add
+    enabled: true
+- waitForAnimationToEnd
+- tapOn: Add expense
+- tapOn: Expense title
+- inputText: Last month
+- tapOn: Amount in .*
+- inputText: '2.00'
+- tapOn: Date Picker
+- tapOn: Previous Month
+- tapOn: '\w+,? (15 \w+|\w+ 15)'
+- tapOn:
+    point: 50%,90%
+- waitForAnimationToEnd
+- tapOn:
+    text: Add
+    enabled: true
+- waitForAnimationToEnd
+- tapOn: Add expense
+- tapOn: Expense title
+- inputText: Last year
+- tapOn: Amount in .*
+- inputText: '1.00'
+- tapOn: Date Picker
+- repeat:
+    times: 12
+    commands:
+      - tapOn: Previous Month
+- tapOn: '\w+,? (15 \w+|\w+ 15)'
+- tapOn:
+    point: 50%,90%
+- waitForAnimationToEnd
+- tapOn:
+    text: Add
+    enabled: true
+- waitForAnimationToEnd
+- tapOn: View expense insights\..*
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible:
+    text: Next period
+    enabled: false
+# INSIGHTS-33.1: right on the period name goes back a month, left comes forward again,
+# and left on the latest month does nothing.
+- swipe:
+    from:
+      text: Choose period\..*
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
+- assertVisible:
+    text: Next period
+    enabled: true
+- swipe:
+    from:
+      text: Choose period\..*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- swipe:
+    from:
+      text: Choose period\..*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible:
+    text: Next period
+    enabled: false
+# INSIGHTS-36.1: in the Period sheet, last year in Year keeps the month, and Done selects it.
+- tapOn: Choose period\..*
+- assertVisible: Period
+- assertVisible: Cancel
+- assertVisible: Done
+- tapOn: ${output.thisYear}
+- tapOn: ${output.lastYear}
+- assertVisible: ${output.thisMonth}
+- tapOn: Done
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.lastYear}
+# Cancel leaves the selected period as it was.
+- tapOn: Choose period\..*
+- tapOn: ${output.lastYear}
+- tapOn: ${output.thisYear}
+- tapOn: Cancel
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.lastYear}
+# INSIGHTS-30.1: Year selects the year of the selected month.
+- tapOn: Year
+- waitForAnimationToEnd
+- assertVisible:
+    text: Previous period
+    enabled: false
+# INSIGHTS-37.1: with two years, the period name is a menu of them; this year selects it.
+- tapOn: ${output.lastYear}
+- tapOn: ${output.thisYear}
+- waitForAnimationToEnd
+- assertVisible:
+    text: Next period
+    enabled: false
+- assertVisible:
+    text: Previous period
+    enabled: true
+# INSIGHTS-30.1: Month selects the latest month of that year.
+- tapOn: Month
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+# INSIGHTS-36.1: in the Period sheet, the Month menu lists the months of the selected
+# period's year; choosing this month there and Done selects it.
+- swipe:
+    from:
+      text: Choose period\..*
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
+- tapOn: Choose period\..*
+- assertVisible: Period
+- tapOn: ${output.lastMonth}
+- tapOn: ${output.thisMonth}
+- tapOn: Done
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.lastMonthsYear}

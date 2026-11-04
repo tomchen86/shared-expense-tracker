@@ -1,6 +1,8 @@
 import { Stack } from 'expo-router';
 import { formPresentation } from '../../../src/ui/form-presentation';
 
+export const unstable_settings = { anchor: 'index' };
+
 export default function SettingsLayout() {
   return (
     <Stack
@@ -30,6 +32,10 @@ export default function SettingsLayout() {
       <Stack.Screen
         name="archived-groups/expenses/[id]"
         options={{ title: 'Expense' }}
+      />
+      <Stack.Screen
+        name="archived-groups/insights"
+        options={{ title: 'Insights', fullScreenGestureEnabled: false }}
       />
       <Stack.Screen
         name="archived-groups/members"

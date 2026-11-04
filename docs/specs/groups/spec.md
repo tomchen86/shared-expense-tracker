@@ -353,7 +353,7 @@ WHILE 群組沒有不在垃圾桶裡的支出，the mobile app SHALL 在群組�
 
 #### Scenario: 唯一的支出移到垃圾桶
 
-- **WHEN** Brisbane 只有 Dinner 時，在 Brisbane 的畫面把 Dinner 移到垃圾桶（LEDGER-71.2）
+- **WHEN** Brisbane 只有 Dinner 時，在 Brisbane 的畫面把 Dinner 移到垃圾桶（LEDGER-71.3）
 - **THEN** Brisbane 的畫面沒有卡片，顯示「No expenses in this group yet.」
 
 ### Requirement: GROUPS-21.1 找不到群組時顯示「Group not found.」
@@ -1198,7 +1198,7 @@ WHEN app 重新啟動，the mobile app SHALL 保留每個群組有沒有封存�
 
 ### Requirement: GROUPS-61.2 群組的畫面列出群組的支出
 
-WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 的順序列出這個群組每一筆不在垃圾桶裡的支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.2、LEDGER-65.2），但卡片金額是支出的全額。
+WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 的順序列出這個群組每一筆不在垃圾桶裡的支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.2、LEDGER-65.3），但卡片金額是支出的全額。
 
 #### Scenario: 兩筆支出
 
@@ -1334,29 +1334,34 @@ WHERE iPhone 或 Android 手機，WHEN 群組的畫面捲到最底，the mobile 
 - **WHEN** Brisbane 有 20 筆支出，把它的畫面捲到最底
 - **THEN** 最後一張卡片整張在 + 按鈕上方，沒有被擋住
 
-### Requirement: GROUPS-68.1 群組的畫面上的 Group Total
+### Requirement: GROUPS-68.2 群組的畫面上的 Group Total
 
-WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面上、支出的卡片上方，為這些支出用到的每個幣別各顯示一行「Group Total: <這個幣別的支出的全額總和>」，依幣別代碼排序；這幾行是文字，不是按鈕；群組沒有不在垃圾桶裡的支出時，SHALL 不顯示 Group Total。
+WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面上、支出的卡片上方，為這些支出用到的每個幣別各顯示一行「Group Total: <這個幣別的支出的全額總和>」，依幣別代碼排序；這幾行合起來是一個按鈕，右邊有「›」，螢幕閱讀器把它讀成一個按鈕，讀出這幾行但不讀「›」，再讀出無障礙提示「Opens Insights」，按一下就在群組的畫面所在的分頁推入這個群組的 Insights（INSIGHTS-14.1）：Groups 分頁是 `/groups/insights?groupId=<群組 ID>`，Settings 分頁是 `/settings/archived-groups/insights?groupId=<群組 ID>`，連按兩次也只推入一個；群組沒有不在垃圾桶裡的支出時，SHALL 不顯示 Group Total。
 
 #### Scenario: 一個幣別
 
 - **WHEN** 名字是「Taylor」，Brisbane 有 Taylor 付的 10001 USD 的 Dinner，以及 Casey 付、只有 Blake 分攤的 2500 USD 的 Taxi
-- **THEN** Brisbane 的畫面在卡片上方只有「Group Total: $125.01」
+- **THEN** Brisbane 的畫面在卡片上方只有「Group Total: $125.01」；它是一個按鈕，右邊有「›」，螢幕閱讀器讀出「Group Total: $125.01」和提示「Opens Insights」
 
 #### Scenario: 幾個幣別
 
 - **WHEN** Brisbane 還有一筆 3000 JPY 的 Sushi
-- **THEN** 由上而下是「Group Total: ¥3,000」和「Group Total: $125.01」
+- **THEN** 由上而下是「Group Total: ¥3,000」和「Group Total: $125.01」，兩行在同一個按鈕裡，按鈕右邊只有一個「›」
 
 #### Scenario: 修改之後
 
 - **WHEN** 在 Brisbane 的畫面打開 Dinner 的明細，按「Edit」把金額改成「90.00」後按 Save，再返回 Brisbane 的畫面
 - **THEN** 是「Group Total: $115.00」
 
-#### Scenario: 不是按鈕
+#### Scenario: 按一下
 
-- **WHEN** 點「Group Total: $125.01」
-- **THEN** 它不在任何按鈕裡，點了沒有反應
+- **WHEN** 按「Group Total: $125.01」
+- **THEN** 仍選中 Groups 分頁，Groups 分頁的堆疊由下而上是「Groups」、「Brisbane」和「Insights」，網址是 `/groups/insights`，加上 Brisbane 的群組 ID；Insights 的總額是「$125.01」
+
+#### Scenario: 連按兩次
+
+- **WHEN** 連按兩次「Group Total: $125.01」
+- **THEN** 只推入一個 Insights
 
 #### Scenario: 沒有支出
 
@@ -1366,7 +1371,7 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 #### Scenario: 封存的群組
 
 - **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面
-- **THEN** 「Restore Group」下面是「Group Total: $125.01」，再下面是卡片
+- **THEN** 「Restore Group」下面是「Group Total: $125.01」，再下面是卡片；按「Group Total: $125.01」時，在 Settings 分頁推入 `/settings/archived-groups/insights`，加上 Brisbane 的群組 ID，堆疊由下而上是「Settings」、「Archived Groups」、「Brisbane」和「Insights」
 
 ### Requirement: GROUPS-69.1 群組的畫面上你的淨額
 

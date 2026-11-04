@@ -313,6 +313,7 @@ interface BarMenuItem {
   title?: string;
   menuId?: string;
   disabled?: boolean;
+  state?: string;
 }
 
 interface BarItem {
@@ -323,7 +324,7 @@ interface BarItem {
   disabled?: boolean;
   buttonId?: string;
   icon?: { type?: string; name?: string };
-  menu?: { items: BarMenuItem[] };
+  menu?: { title?: string; items: BarMenuItem[] };
 }
 
 const barItemsOn = (side: 'Left' | 'Right'): BarItem[] =>
@@ -354,6 +355,22 @@ export const barItems = () => ({
   left: barItemsOn('Left').map(describeBarItem),
   right: barItemsOn('Right').map(describeBarItem),
 });
+
+/**
+ * The iOS menus at the right of the test screen's navigation bar, from the trailing
+ * edge: each menu's name, icon and title, and its items, checked ones marked.
+ */
+export const barMenus = () =>
+  barItemsOn('Right')
+    .filter((item) => item.type === 'menu')
+    .map((item) => ({
+      menu: item.accessibilityLabel,
+      icon: item.icon?.type === 'sfSymbol' ? item.icon.name : item.icon,
+      title: item.menu?.title,
+      items: (item.menu?.items ?? []).map((entry) =>
+        entry.state === 'on' ? `${entry.title} (checked)` : entry.title,
+      ),
+    }));
 
 /** Presses an iOS bar button by its text, as the native bar reports a press. */
 export async function pressBarButton(title: string) {
