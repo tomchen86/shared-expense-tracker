@@ -169,23 +169,20 @@ const PALETTE = [
   '#00ACC1',
   '#C62828',
   '#9E9D24',
-  '#B2726B',
-  '#E6AE8A',
-  '#994500',
-  '#FF8C00',
-  '#B27212',
-  '#665C00',
-  '#50E600',
-  '#00661F',
-  '#7ACCAF',
-  '#1F5B66',
-  '#99CCFF',
-  '#8C66FF',
-  '#E099FF',
-  '#FF00CC',
-  '#B26B96',
-  '#804060',
-  '#FF99A3',
+  '#A66F5B',
+  '#D99E77',
+  '#A66A11',
+  '#6C733F',
+  '#8BD916',
+  '#0B733C',
+  '#36D9B8',
+  '#1D6273',
+  '#85BFF2',
+  '#8861F2',
+  '#DC85F2',
+  '#F218B8',
+  '#8C4D6F',
+  '#F2858D',
 ];
 /** The default categories as [name, color], in order. */
 const DEFAULTS = [
@@ -537,11 +534,11 @@ async function editCategory(name: string, newName: string, color?: string) {
 }
 
 /** Adds four categories, which take the last four colors. */
-/** Adds Gym and 20 more categories, which take the 21 colors the defaults leave. */
+/** Adds Gym and 17 more categories, which take the 18 colors the defaults leave. */
 async function useAllColors() {
   const names = [
     'Gym',
-    ...Array.from({ length: 20 }, (_, index) => `Extra ${index + 1}`),
+    ...Array.from({ length: 17 }, (_, index) => `Extra ${index + 1}`),
   ];
   for (const name of names) await addCategory(name);
 }
@@ -711,7 +708,7 @@ test("[CATEGORIES-8.3] selects the first color this scope leaves unused, whateve
   expect(selectedColor()).toBe('#43A047');
 });
 
-test('[CATEGORIES-9.3] shows Cancel, Add, the name field and the 30 colors, with used colors disabled', async () => {
+test('[CATEGORIES-9.3] shows Cancel, Add, the name field and the 27 colors, with used colors disabled', async () => {
   await openManageCategories();
 
   await openNewCategory();
@@ -939,7 +936,7 @@ test('[CATEGORIES-12.2] stops saying the name exists once the name is edited', a
   expect(screen.queryByText(ALREADY_EXISTS)).toBeNull();
 });
 
-test('[CATEGORIES-13.3] selects no color, disables Add and says so once all 30 colors are used', async () => {
+test('[CATEGORIES-13.3] selects no color, disables Add and says so once all 27 colors are used', async () => {
   await openManageCategories();
   await useAllColors();
 
@@ -951,7 +948,7 @@ test('[CATEGORIES-13.3] selects no color, disables Add and says so once all 30 c
   expect(formButton('Add').disabled).toBe(true);
 });
 
-test('[CATEGORIES-13.3] lets a category keep its own color once all 30 colors are used', async () => {
+test('[CATEGORIES-13.3] lets a category keep its own color once all 27 colors are used', async () => {
   await openManageCategories();
   await useAllColors();
 
@@ -967,7 +964,7 @@ test('[CATEGORIES-13.3] lets a category keep its own color once all 30 colors ar
   expect(screen.queryByText(ALL_COLORS_USED)).toBeNull();
 });
 
-test("[CATEGORIES-13.3] leaves a group's colors free once Manage Categories uses all 30", async () => {
+test("[CATEGORIES-13.3] leaves a group's colors free once Manage Categories uses all 27", async () => {
   const groups = await createGroups('Brisbane');
   await reopenManageCategories();
   await useAllColors();
@@ -1724,7 +1721,7 @@ test("[CATEGORIES-12.2] keeps Edit Category open when the name is an archived ca
   expect(sections()).toEqual({ active: DEFAULTS, archived: [GYM] });
 });
 
-test('[CATEGORIES-13.3] counts the colors of archived categories among the 30', async () => {
+test('[CATEGORIES-13.3] counts the colors of archived categories among the 27', async () => {
   running = await openManageCategories();
   await useAllColors();
   await spendOn('Gym');
@@ -2595,7 +2592,7 @@ test('[SHELL-34.1] colors the category form with colors that follow the appearan
   expect(await notFollowing(categoryForm)).toEqual(FOLLOWS);
 });
 
-test('[SHELL-34.1] colors New Category with colors that follow the appearance once all 30 colors are used', async () => {
+test('[SHELL-34.1] colors New Category with colors that follow the appearance once all 27 colors are used', async () => {
   fakePhoneAppearance('light');
   running = await openManageCategories();
   await useAllColors();

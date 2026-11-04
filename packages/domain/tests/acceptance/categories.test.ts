@@ -19,23 +19,20 @@ const PALETTE = [
   '#00ACC1',
   '#C62828',
   '#9E9D24',
-  '#B2726B',
-  '#E6AE8A',
-  '#994500',
-  '#FF8C00',
-  '#B27212',
-  '#665C00',
-  '#50E600',
-  '#00661F',
-  '#7ACCAF',
-  '#1F5B66',
-  '#99CCFF',
-  '#8C66FF',
-  '#E099FF',
-  '#FF00CC',
-  '#B26B96',
-  '#804060',
-  '#FF99A3',
+  '#A66F5B',
+  '#D99E77',
+  '#A66A11',
+  '#6C733F',
+  '#8BD916',
+  '#0B733C',
+  '#36D9B8',
+  '#1D6273',
+  '#85BFF2',
+  '#8861F2',
+  '#DC85F2',
+  '#F218B8',
+  '#8C4D6F',
+  '#F2858D',
 ];
 
 const DEFAULTS = [
@@ -138,7 +135,7 @@ const contrast = (one: string, other: string) => {
   return (light + 0.05) / (dark + 0.05);
 };
 
-test('[CATEGORIES-1.2] has the 30 palette colors in order', () => {
+test('[CATEGORIES-1.2] has the 27 palette colors in order', () => {
   expect(CATEGORY_COLORS).toEqual(PALETTE);
 });
 
@@ -200,11 +197,11 @@ test('[CATEGORIES-4.1] accepts a name no other category has', () => {
   expect(categoryNameProblem('Food & Dining', [])).toBeUndefined();
 });
 
-test('[CATEGORIES-5.2] offers all 30 colors when there are no other categories', () => {
+test('[CATEGORIES-5.2] offers all 27 colors when there are no other categories', () => {
   expect(availableCategoryColors([])).toEqual(PALETTE);
 });
 
-test('[CATEGORIES-5.2] offers the last 21 colors next to the default categories', () => {
+test('[CATEGORIES-5.2] offers the last 18 colors next to the default categories', () => {
   expect(availableCategoryColors(DEFAULTS)).toEqual(PALETTE.slice(9));
 });
 
@@ -220,6 +217,6 @@ test('[CATEGORIES-5.2] compares color codes regardless of case', () => {
   );
 });
 
-test('[CATEGORIES-5.2] offers no color once all 30 are taken', () => {
+test('[CATEGORIES-5.2] offers no color once all 27 are taken', () => {
   expect(availableCategoryColors(usingColors(PALETTE))).toEqual([]);
 });
