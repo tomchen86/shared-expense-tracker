@@ -282,7 +282,7 @@ test('[INSIGHTS-5.1] lists no currency that only the previous period has', () =>
   ]);
 });
 
-test('[INSIGHTS-6.1] merges expenses with the same categoryId', () => {
+test('[INSIGHTS-6.2] merges expenses with the same categoryId', () => {
   const [january] = build([
     expense({ categoryId: 'food', categoryName: 'Food', amountMinor: 400 }),
     expense({ categoryId: 'travel', categoryName: 'Travel', amountMinor: 500 }),
@@ -299,16 +299,61 @@ test('[INSIGHTS-6.1] merges expenses with the same categoryId', () => {
   ]);
 });
 
-test('[INSIGHTS-6.1] merges an expense without categoryId into the category with its name', () => {
+test('[INSIGHTS-6.2] merges an expense without categoryId into the category with its name, compared as CATEGORIES-4.1 compares names', () => {
   const [january] = build([
-    expense({ categoryName: 'Food', amountMinor: 300 }),
+    expense({ categoryName: ' food ', amountMinor: 300 }),
     expense({ categoryId: 'food', categoryName: 'Food', amountMinor: 200 }),
   ]).months;
 
   expect(rows(january)).toEqual([['Food', '#FF5722', 500]]);
 });
 
-test('[INSIGHTS-6.1] matches the first category with that name', () => {
+test('[INSIGHTS-6.2] merges categories of two spaces with the same name into the first one in the list', () => {
+  const [january] = build(
+    [
+      expense({
+        categoryId: 'my-food',
+        categoryName: 'Food & Dining',
+        amountMinor: 300,
+      }),
+      expense({
+        categoryId: 'trip-food',
+        categoryName: 'food & dining',
+        amountMinor: 200,
+      }),
+    ],
+    {
+      categories: [
+        { id: 'my-food', name: 'Food & Dining', color: '#D81B60' },
+        { id: 'trip-food', name: 'food & dining', color: '#1E88E5' },
+      ],
+    },
+  ).months;
+
+  expect(rows(january)).toEqual([['Food & Dining', '#D81B60', 500]]);
+});
+
+test('[INSIGHTS-6.2] takes the name and color of the first category with that name even without expenses of its own', () => {
+  const [january] = build(
+    [
+      expense({
+        categoryId: 'snacks-2',
+        categoryName: 'SNACKS',
+        amountMinor: 100,
+      }),
+    ],
+    {
+      categories: [
+        { id: 'snacks-1', name: 'Snacks', color: '#111111' },
+        { id: 'snacks-2', name: 'SNACKS', color: '#222222' },
+      ],
+    },
+  ).months;
+
+  expect(rows(january)).toEqual([['Snacks', '#111111', 100]]);
+});
+
+test('[INSIGHTS-6.2] matches an expense without categoryId to the first category with its name', () => {
   const [january] = build(
     [
       expense({ categoryName: 'Food', amountMinor: 300 }),
@@ -323,17 +368,14 @@ test('[INSIGHTS-6.1] matches the first category with that name', () => {
     },
   ).months;
 
-  expect(rows(january)).toEqual([
-    ['Food', '#FF0000', 500],
-    ['Food', '#00FF00', 100],
-  ]);
+  expect(rows(january)).toEqual([['Food', '#FF0000', 600]]);
 });
 
-test('[INSIGHTS-6.1] merges unmatched expenses by the name stored on them', () => {
+test('[INSIGHTS-6.2] merges unmatched expenses by the name stored on them, whatever its case', () => {
   const [january] = build([
     expense({ categoryName: 'Gifts', amountMinor: 100 }),
     expense({ categoryName: 'Books', amountMinor: 50 }),
-    expense({ categoryName: 'Gifts', amountMinor: 200 }),
+    expense({ categoryName: 'gifts', amountMinor: 200 }),
   ]).months;
 
   expect(rows(january)).toEqual([
@@ -342,7 +384,7 @@ test('[INSIGHTS-6.1] merges unmatched expenses by the name stored on them', () =
   ]);
 });
 
-test('[INSIGHTS-6.1] keeps a category apart in each currency', () => {
+test('[INSIGHTS-6.2] keeps a category apart in each currency', () => {
   const [january] = build([
     expense({ categoryId: 'food', categoryName: 'Food', amountMinor: 400 }),
     expense({
@@ -536,23 +578,21 @@ test('[INSIGHTS-8.1] orders equal amounts by lowercased name in code point order
 });
 
 test('[INSIGHTS-8.1] breaks remaining ties by the name as written, then by color', () => {
-  const [january] = build(
-    [
-      expense({ categoryName: 'tea', amountMinor: 500 }),
-      expense({ categoryId: 'tea-red', categoryName: 'Tea', amountMinor: 500 }),
-      expense({
-        categoryId: 'tea-green',
-        categoryName: 'Tea',
-        amountMinor: 500,
-      }),
-    ],
-    {
-      categories: [
-        { id: 'tea-red', name: 'Tea', color: '#FF0000' },
-        { id: 'tea-green', name: 'Tea', color: '#00FF00' },
-      ],
-    },
-  ).months;
+  const [january] = build([
+    expense({ categoryName: 'tea', amountMinor: 500 }),
+    expense({
+      categoryId: 'gone-1',
+      categoryName: 'Tea',
+      categorySnapshot: { name: 'Tea', color: '#FF0000' },
+      amountMinor: 500,
+    }),
+    expense({
+      categoryId: 'gone-2',
+      categoryName: 'Tea',
+      categorySnapshot: { name: 'Tea', color: '#00FF00' },
+      amountMinor: 500,
+    }),
+  ]).months;
 
   expect(rows(january)).toEqual([
     ['Tea', '#00FF00', 500],
