@@ -1889,7 +1889,7 @@ WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推�
 - **WHEN** 把 Coffee run 移到垃圾桶，提示還在時打開它的唯讀明細，再按提示的「Undo」
 - **THEN** 唯讀明細只顯示「Expense not found.」，標題列沒有「Expense actions」
 
-### Requirement: LEDGER-79.1 按 Restore 時從垃圾桶還原
+### Requirement: LEDGER-79.2 按 Restore 時從垃圾桶還原
 
 WHEN 使用者在唯讀明細按「Restore」，the mobile app SHALL 不另外確認，就把這筆支出從垃圾桶還原，存好後返回 Trash，讓它不再出現在 Trash，回到支出清單上依 LEDGER-28.1 該在的位置，再照 LEDGER-35.2 算進 This Month；存好之前再按一次，也只還原一次、只返回一次。
 
@@ -1901,7 +1901,7 @@ WHEN 使用者在唯讀明細按「Restore」，the mobile app SHALL 不另外�
 #### Scenario: 和移到垃圾桶之前一樣
 
 - **WHEN** 還原 875 USD、Shopping、`2024-12-25`、備註「Morning treat」的 Coffee run，再打開它的明細
-- **THEN** 明細依序顯示「Coffee run」、「$8.75」、「DETAILS」、「Category」、「Shopping」、「Date」、「Dec 25, 2024」、「NOTE」、「Morning treat」
+- **THEN** 支出清單上有它的卡片；它的日期不在這個月，所以卡片上方是「This Month: —」；明細依序顯示「Coffee run」、「$8.75」、「DETAILS」、「Category」、「Shopping」、「Date」、「Dec 25, 2024」、「NOTE」、「Morning treat」
 
 #### Scenario: 存好之前
 

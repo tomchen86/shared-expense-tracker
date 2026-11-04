@@ -954,7 +954,7 @@ test('[LEDGER-78.1] shows only Expense not found. at the Trash URL of an ID that
 
 // Restore
 
-test('[LEDGER-79.1] restores an expense from its read-only details without asking, back to its place', async () => {
+test('[LEDGER-79.2] restores an expense from its read-only details without asking, back to its place', async () => {
   await startExpenses();
   await addExpense({ title: 'E', date: '2025-01-01' });
   await addExpense({ title: 'F', date: '2025-01-01' });
@@ -974,7 +974,7 @@ test('[LEDGER-79.1] restores an expense from its read-only details without askin
   await expectCards(['D', 'F', 'E']);
 });
 
-test('[LEDGER-79.1] restores the expense as it was before it moved to the trash', async () => {
+test('[LEDGER-79.2] restores the expense as it was before it moved to the trash', async () => {
   await startExpenses();
   await addFullCoffeeRun();
   await deleteByAction('Coffee run');
@@ -983,14 +983,15 @@ test('[LEDGER-79.1] restores the expense as it was before it moved to the trash'
   await tapTab('Expenses');
 
   await expectCards(['Coffee run']);
-  expect(thisMonthLines()).toEqual(['This Month: $8.75']);
+  // Dated December 2024, it does not count in This Month.
+  expect(thisMonthLines()).toEqual(['This Month: —']);
   await openDetails('Coffee run');
   expect(shownInOrder(detailLines(), DETAILS_OF_COFFEE_RUN)).toEqual(
     DETAILS_OF_COFFEE_RUN,
   );
 });
 
-test('[LEDGER-79.1] keeps the read-only details open until the restore is saved', async () => {
+test('[LEDGER-79.2] keeps the read-only details open until the restore is saved', async () => {
   await startExpenses();
   await addExpense();
   await deleteByAction('Coffee run');
@@ -1008,7 +1009,7 @@ test('[LEDGER-79.1] keeps the read-only details open until the restore is saved'
   );
 });
 
-test('[LEDGER-79.1] restores once and goes back once when Restore is pressed again before it is saved', async () => {
+test('[LEDGER-79.2] restores once and goes back once when Restore is pressed again before it is saved', async () => {
   await startExpenses();
   await addExpense();
   await deleteByAction('Coffee run');
