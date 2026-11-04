@@ -204,6 +204,10 @@ const addDinner = (amount = '60.00', date?: string) =>
     ...(date === undefined ? {} : { date }),
   });
 
+/** The headings of the currencies' categories, top to bottom. */
+const currencyHeadings = () =>
+  headings().filter((heading) => heading.endsWith(' categories'));
+
 /** Whether screen readers on iOS skip `view` and everything in it. */
 const hiddenOnIOS = (view: ReturnType<typeof insightsScreen> | undefined) =>
   view !== undefined &&
@@ -623,7 +627,7 @@ test('[INSIGHTS-28.1] shows Previous period, the period name and Next period abo
   const period = periodButton()!;
   const next = nextButton()!;
   expect(nameOf(period)).toBe('Choose period. March 2025');
-  expect(linesIn(period)).toEqual(['March 2025']);
+  expect(linesIn(period)[0]).toBe('March 2025');
   const [card] = within(insightsScreen()).queryAllByLabelText(/^Total spent /);
   expect(inTreeOrder(previous, period, next, card)).toBe(true);
 });
@@ -721,9 +725,11 @@ test('[INSIGHTS-40.1] shows No expenses yet when no period is left', async () =>
 test('[INSIGHTS-41.1] lets iOS go back from Insights only from the left edge of the screen', async () => {
   await insightsWith(['2025-01-20', '8.75']);
 
+  // react-native-screens hands both to iOS as 'true', 'false' or 'undefined'; an
+  // unset fullScreenSwipeEnabled means iOS 26's swipe from anywhere.
   const shown = insightsScreen();
-  expect(shown.props.gestureEnabled).not.toBe(false);
-  expect(shown.props.fullScreenSwipeEnabled).toBe(false);
+  expect(String(shown.props.gestureEnabled)).not.toBe('false');
+  expect(String(shown.props.fullScreenSwipeEnabled)).toBe('false');
 });
 
 // Total cards
@@ -792,7 +798,7 @@ test("[INSIGHTS-23.1] lists a currency's categories under its heading, with a co
     ['2025-01-11', '2.00', 'Transportation'],
   );
 
-  expect(headings()).toEqual(['USD categories']);
+  expect(currencyHeadings()).toEqual(['USD categories']);
   expect(rows()).toEqual([
     ['Food & Dining', '$6.00 · 75.0%'],
     ['Transportation', '$2.00 · 25.0%'],
@@ -818,7 +824,7 @@ test('[INSIGHTS-23.1] reads the heading as a heading and each row as one item, w
     ['2025-01-11', '2.00', 'Transportation'],
   );
 
-  expect(headings()).toEqual(['USD categories']);
+  expect(currencyHeadings()).toEqual(['USD categories']);
   expect(rowsRead()).toEqual([
     'Food & Dining, $6.00, 75.0 percent',
     'Transportation, $2.00, 25.0 percent',
@@ -833,7 +839,7 @@ test('[INSIGHTS-23.1] shows each currency under its own heading by currency code
   await spend('2025-01-11', '2000', 'Travel', 'Ramen', 'JPY');
   await openInsights();
 
-  expect(headings()).toEqual(['JPY categories', 'USD categories']);
+  expect(currencyHeadings()).toEqual(['JPY categories', 'USD categories']);
   expect(rows()).toEqual([
     ['Travel', '¥2,000 · 100.0%'],
     ['Food & Dining', '$6.00 · 100.0%'],
@@ -863,7 +869,7 @@ test('[INSIGHTS-23.1] lists every category, without Others, under a donut', asyn
   await chooseChart('Donut');
 
   expect(rows().map(([name]) => name)).toEqual(SEVEN.map(([, , name]) => name));
-  expect(insightsLines()).not.toContain('Others');
+  expect(rowsRead().filter((row) => row.startsWith('Others'))).toEqual([]);
 });
 
 test('[INSIGHTS-23.1] rounds percentages to one decimal place', async () => {

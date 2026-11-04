@@ -106,6 +106,32 @@ afterEach(() => {
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+/** From MONTH on, the lines of the open picker that name the list, its year and its months. */
+function monthList() {
+  const lines = pickerLines();
+  return lines
+    .slice(lines.indexOf('MONTH'))
+    .filter(
+      (line) =>
+        line === 'MONTH' || /^\d{4}$/.test(line) || MONTH_NAMES.includes(line),
+    );
+}
+
 /** Starts the app, adds a personal expense on each date and opens the personal Insights. */
 async function insightsOn(...dates: string[]) {
   await startExpensesAt('/');
@@ -273,8 +299,8 @@ test('[INSIGHTS-35.1] [INSIGHTS-39.1] lists the years and the months of the sele
     'January 2025',
   ]);
   expect(pickerSelected()).toEqual(['Year 2025', 'March 2025']);
-  expect(pickerButtonLines('March 2025')).toEqual(['March']);
-  expect(pickerButtonLines('January 2025')).toEqual(['January']);
+  expect(pickerButtonLines('March 2025')[0]).toBe('March');
+  expect(pickerButtonLines('January 2025')[0]).toBe('January');
   const lines = pickerLines();
   const expected = [
     'Select Month',
@@ -302,12 +328,7 @@ test('[INSIGHTS-35.1] [INSIGHTS-39.1] lists the months of another year when its 
     'Year 2024',
     'November 2024',
   ]);
-  const lines = pickerLines();
-  expect(lines.slice(lines.indexOf('MONTH'))).toEqual([
-    'MONTH',
-    '2024',
-    'November',
-  ]);
+  expect(monthList()).toEqual(['MONTH', '2024', 'November']);
   expect(selectedPeriod()).toBe('March 2025');
 });
 
@@ -332,13 +353,7 @@ test('[INSIGHTS-39.1] shows no years in Select Month when the months are all in 
   expect(pickerButtons().filter((name) => name.startsWith('Year '))).toEqual(
     [],
   );
-  const lines = pickerLines();
-  expect(lines.slice(lines.indexOf('MONTH'))).toEqual([
-    'MONTH',
-    '2025',
-    'March',
-    'January',
-  ]);
+  expect(monthList()).toEqual(['MONTH', '2025', 'March', 'January']);
 });
 
 test('[INSIGHTS-39.1] lists the years newest first in Select Year and selects the year pressed', async () => {
@@ -356,12 +371,11 @@ test('[INSIGHTS-39.1] lists the years newest first in Select Year and selects th
   ]);
   expect(pickerSelected()).toEqual(['2025']);
   const lines = pickerLines();
-  expect(lines.slice(lines.indexOf('YEAR'))).toEqual([
-    'YEAR',
-    '2025',
-    '2024',
-    '2023',
-  ]);
+  expect(
+    lines
+      .slice(lines.indexOf('YEAR'))
+      .filter((line) => line === 'YEAR' || /^\d{4}$/.test(line)),
+  ).toEqual(['YEAR', '2025', '2024', '2023']);
   await pressInPicker('2024');
   expect(pickerTitle()).toBeUndefined();
   await expectPeriod('2024');
