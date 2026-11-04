@@ -38,6 +38,7 @@ import { DateField } from '../ui/date-field';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
+import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
 import {
   ArchivedExpenseError,
   listExpenses,
@@ -129,6 +130,7 @@ function ExpenseEditor({
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
   const colors = useThemeColors();
+  const keyboardScroll = useKeyboardScroll();
   const groupLocked = !!expense && expense.spaceId !== identity.personalSpaceId;
   const today = toLocalDate(
     new Date(),
@@ -344,11 +346,8 @@ function ExpenseEditor({
         }}
       />
       <ScrollView
-        automaticallyAdjustKeyboardInsets
+        {...keyboardScroll}
         keyboardShouldPersistTaps="handled"
-        contentInsetAdjustmentBehavior="automatic"
-        // The keyboard scroll clamps to contentInset, which leaves out the header's automatic inset.
-        scrollToOverflowEnabled
         contentContainerStyle={styles.content}
       >
         <Text style={[styles.currency, { color: colors.textMuted }]}>

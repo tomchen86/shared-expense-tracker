@@ -14,6 +14,7 @@ import { useLocalDatabase } from '../shell';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
+import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
 import {
   addGroupMember,
   memberNameKey,
@@ -70,6 +71,7 @@ function NameEditor({
   const database = useLocalDatabase();
   const navigation = useNavigation();
   const colors = useThemeColors();
+  const keyboardScroll = useKeyboardScroll();
   const isGroup = form === 'Rename Group';
   const adding = form === 'Add Member';
   const initialName = adding ? '' : isGroup ? group.name : member!.name;
@@ -167,10 +169,7 @@ function NameEditor({
         }}
       />
       <ScrollView
-        automaticallyAdjustKeyboardInsets
-        contentInsetAdjustmentBehavior="automatic"
-        // The keyboard scroll clamps to contentInset, which leaves out the header's automatic inset.
-        scrollToOverflowEnabled
+        {...keyboardScroll}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
       >

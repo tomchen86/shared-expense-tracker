@@ -56,6 +56,12 @@ export function SettingsScreen() {
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const profileTop = useRef(0);
   const headerHeight = useHeaderHeight();
+  // The header shrinks when the large title collapses, so keep its expanded height.
+  const expandedHeaderHeight = useRef(headerHeight);
+  expandedHeaderHeight.current = Math.max(
+    expandedHeaderHeight.current,
+    headerHeight,
+  );
   const savedName = useRef(identity.name);
 
   useEffect(() => {
@@ -142,7 +148,10 @@ export function SettingsScreen() {
               // and the name sits just under the header it leaves.
               onFocus={() =>
                 scroll.current?.scrollTo({
-                  y: profileTop.current - headerHeight + LARGE_TITLE_HEIGHT,
+                  y:
+                    profileTop.current -
+                    expandedHeaderHeight.current +
+                    LARGE_TITLE_HEIGHT,
                 })
               }
               onSubmitEditing={() => void finishEditing()}
