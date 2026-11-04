@@ -232,7 +232,10 @@ test('adding group storage preserves existing identity, appearance, categories a
     "INSERT INTO categories (id, name, color, isDefault, position, createdByUserId, spaceId) VALUES ('category', 'Travel', '#123456', 0, 1, ?, ?)",
     [localIdentity.userId, localIdentity.personalSpaceId],
   );
-  const identity = await database.all('SELECT * FROM local_identity');
+  // Later migrations may add identity columns; the ones before must stay as they were.
+  const identityColumns =
+    'SELECT singleton, userId, personalSpaceId, personalParticipantId, name, appearance FROM local_identity';
+  const identity = await database.all(identityColumns);
   const categories = await database.all('SELECT * FROM categories');
   const records = await database.all(
     'SELECT * FROM _migrations ORDER BY position',
@@ -240,7 +243,7 @@ test('adding group storage preserves existing identity, appearance, categories a
 
   await initializeDatabase(database, appMigrations, false, ensureLocalIdentity);
 
-  expect(await database.all('SELECT * FROM local_identity')).toEqual(identity);
+  expect(await database.all(identityColumns)).toEqual(identity);
   expect(
     await database.all(
       'SELECT id, name, color, isDefault, position, createdByUserId, spaceId FROM categories',

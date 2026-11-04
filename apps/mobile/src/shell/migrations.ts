@@ -27,4 +27,7 @@ export const appMigrations: readonly string[] = [
   ...categoryMigrations.slice(1),
   expenseTrashMigration,
   expenseAllocationOrderMigration,
+  `ALTER TABLE local_identity
+    ADD COLUMN chartType TEXT NOT NULL DEFAULT 'auto'
+    CHECK (chartType IN ('auto', 'donut', 'bar'))`,
 ];

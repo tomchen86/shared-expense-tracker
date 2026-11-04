@@ -1,3 +1,4 @@
+import type { InsightChartPreference } from '@shared-expense/domain';
 import { createUuid, type SqlExecutor } from '../storage';
 import type { AppearanceOption } from '../ui/appearance';
 
@@ -35,6 +36,27 @@ export async function saveLocalAppearance(
     [appearance],
   );
 }
+
+/** The chart type both Insights use (INSIGHTS-26.1). */
+export async function readLocalChartType(
+  executor: SqlExecutor,
+): Promise<InsightChartPreference> {
+  const [row] = await executor.all<{ chartType: InsightChartPreference }>(
+    'SELECT chartType FROM local_identity WHERE singleton = 1',
+  );
+  return row ? row.chartType : 'auto';
+}
+
+export async function saveLocalChartType(
+  database: SqlExecutor,
+  chartType: InsightChartPreference,
+): Promise<void> {
+  await database.run(
+    'UPDATE local_identity SET chartType = ? WHERE singleton = 1',
+    [chartType],
+  );
+}
+
 export async function ensureLocalIdentity(
   transaction: SqlExecutor,
 ): Promise<LocalIdentity> {

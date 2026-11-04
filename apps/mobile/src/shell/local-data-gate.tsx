@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import type { InsightChartPreference } from '@shared-expense/domain';
 import { ensureDefaultCategories } from '../categories/repository';
 import { initializeDatabase, type Database } from '../storage';
 import { applyAppearanceOption, type AppearanceOption } from '../ui/appearance';
@@ -18,7 +19,9 @@ import { useThemeColors } from '../ui/theme';
 import {
   ensureLocalIdentity,
   readLocalAppearance,
+  readLocalChartType,
   saveLocalAppearance,
+  saveLocalChartType,
   saveLocalName,
   type LocalIdentity,
 } from './identity';
@@ -28,11 +31,13 @@ interface LocalData {
   database: Database;
   identity: LocalIdentity;
   appearance: AppearanceOption;
+  chartType: InsightChartPreference;
 }
 
 interface LocalDataContextValue extends LocalData {
   saveName: (name: string) => Promise<void>;
   saveAppearance: (appearance: AppearanceOption) => Promise<void>;
+  saveChartType: (chartType: InsightChartPreference) => Promise<void>;
 }
 
 const LocalDataContext = createContext<LocalDataContextValue | null>(null);
@@ -66,7 +71,7 @@ export function LocalDataGate({
       const transparencyReady = waitUntilReady();
       const database = await openDatabase();
       if (!active) return;
-      const { identity, appearance } = await initializeDatabase(
+      const { identity, appearance, chartType } = await initializeDatabase(
         database,
         appMigrations,
         development,
@@ -77,7 +82,11 @@ export function LocalDataGate({
             localIdentity.personalSpaceId,
           );
           const savedAppearance = await readLocalAppearance(transaction);
-          return { identity: localIdentity, appearance: savedAppearance };
+          return {
+            identity: localIdentity,
+            appearance: savedAppearance,
+            chartType: await readLocalChartType(transaction),
+          };
         },
       );
       await transparencyReady;
@@ -85,7 +94,7 @@ export function LocalDataGate({
       applyAppearanceOption(appearance);
       setStartup({
         status: 'ready',
-        data: { database, identity, appearance },
+        data: { database, identity, appearance, chartType },
       });
     }
     void open().catch(() => {
@@ -127,10 +136,18 @@ export function LocalDataGate({
           : current,
       );
     }
+    async function saveChartType(chartType: InsightChartPreference) {
+      await saveLocalChartType(database, chartType);
+      setStartup((current) =>
+        current.status === 'ready' && current.data.database === database
+          ? { ...current, data: { ...current.data, chartType } }
+          : current,
+      );
+    }
     return (
       <ReduceTransparencyProvider controller={transparency}>
         <LocalDataContext.Provider
-          value={{ ...startup.data, saveName, saveAppearance }}
+          value={{ ...startup.data, saveName, saveAppearance, saveChartType }}
         >
           {children}
         </LocalDataContext.Provider>
@@ -179,6 +196,12 @@ export function useAppearanceOption(): AppearanceOption {
 }
 export function useSaveAppearanceOption(): LocalDataContextValue['saveAppearance'] {
   return useLocalData().saveAppearance;
+}
+export function useChartType(): InsightChartPreference {
+  return useLocalData().chartType;
+}
+export function useSaveChartType(): LocalDataContextValue['saveChartType'] {
+  return useLocalData().saveChartType;
 }
 
 const styles = StyleSheet.create({

@@ -6,6 +6,13 @@ export interface HeaderAction {
   destructive?: boolean;
 }
 
+/** An option of a choice menu; `selected` marks the current one. */
+export interface HeaderChoice {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}
+
 export interface HeaderActionsProps {
   cancel?: HeaderAction;
   confirm?: HeaderAction;
@@ -14,6 +21,18 @@ export interface HeaderActionsProps {
   menu?: {
     label: string;
     actions: [HeaderAction] | [HeaderAction, HeaderAction];
+  };
+  /**
+   * A choice menu (SHELL-54.1, SHELL-55.1): `label` is its accessible name and the
+   * title of its Android dialog, `title` the title of the iOS menu, `icon` an SF
+   * Symbol on iOS and a Material Symbol on Android; at most three options.
+   */
+  choices?: {
+    label: string;
+    title: string;
+    icon: { ios: string; android: string };
+    options:
+      [HeaderChoice, HeaderChoice] | [HeaderChoice, HeaderChoice, HeaderChoice];
   };
 }
 

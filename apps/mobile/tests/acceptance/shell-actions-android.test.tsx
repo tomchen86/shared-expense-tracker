@@ -426,3 +426,81 @@ test('[SHELL-51.1] lets the back button or a tap outside close the dialog withou
   expect(members).not.toHaveBeenCalled();
   expect(remove).not.toHaveBeenCalled();
 });
+
+/** The chart choice menu Insights gives, with Auto current. */
+const chartChoices = (
+  presses: Record<'Auto' | 'Donut' | 'Bar', () => void>,
+): HeaderActionsProps['choices'] => ({
+  label: 'Chart visualization',
+  title: 'Visualization',
+  icon: { ios: 'chart.bar.xaxis', android: 'bar_chart' },
+  options: [
+    { label: 'Auto', selected: true, onPress: presses.Auto },
+    { label: 'Donut', selected: false, onPress: presses.Donut },
+    { label: 'Bar', selected: false, onPress: presses.Bar },
+  ],
+});
+
+const choicePresses = () => ({
+  Auto: jest.fn(),
+  Donut: jest.fn(),
+  Bar: jest.fn(),
+});
+
+const CHART_BUTTON = 'Chart visualization, Auto selected';
+
+test('[SHELL-55.1] shows a choice menu as a 48×48 dp icon button named after the current option', async () => {
+  await showHeaderActions({ choices: chartChoices(choicePresses()) });
+
+  expect(headerButtons()).toEqual({ left: [], right: [CHART_BUTTON] });
+  await expectIcons({ [CHART_BUTTON]: 'bar_chart' });
+  const { width, height } = touchSize(headerButton(CHART_BUTTON));
+  expect({ wide: width >= 48, tall: height >= 48 }).toEqual({
+    wide: true,
+    tall: true,
+  });
+});
+
+test('[SHELL-55.1] opens a dialog named after the menu that lists the options, the current one marked, without Cancel', async () => {
+  await showHeaderActions({ choices: chartChoices(choicePresses()) });
+
+  await fireEvent.press(headerButton(CHART_BUTTON));
+
+  expect(lastDialog()).toMatchObject({
+    title: 'Chart visualization',
+    actions: ['Auto, selected', 'Donut', 'Bar'],
+    cancels: 0,
+    cancelable: true,
+  });
+});
+
+test('[SHELL-55.1] runs the action of the option chosen once', async () => {
+  const presses = choicePresses();
+  await showHeaderActions({ choices: chartChoices(presses) });
+  await fireEvent.press(headerButton(CHART_BUTTON));
+
+  lastDialog().press('Bar');
+
+  expect(presses.Bar).toHaveBeenCalledTimes(1);
+  expect(presses.Auto).not.toHaveBeenCalled();
+  expect(presses.Donut).not.toHaveBeenCalled();
+});
+
+test('[SHELL-55.1] lets the back button or a tap outside close the dialog without running an option', async () => {
+  const presses = choicePresses();
+  await showHeaderActions({ choices: chartChoices(presses) });
+  await fireEvent.press(headerButton(CHART_BUTTON));
+
+  lastDialog().dismiss();
+
+  for (const press of Object.values(presses))
+    expect(press).not.toHaveBeenCalled();
+});
+
+test('[SHELL-50.1] gives the choice menu button a round ripple of radius 24', async () => {
+  await showHeaderActions({ choices: chartChoices(choicePresses()) });
+
+  expect(
+    ripplesOn(headerButton(CHART_BUTTON)).map(({ round24 }) => round24),
+  ).toEqual([true]);
+});
