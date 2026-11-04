@@ -11,7 +11,12 @@ function ThemedStack() {
   const scheme = useColorScheme();
   return (
     <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          statusBarStyle: scheme === 'dark' ? 'light' : 'dark',
+        }}
+      >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="expenses/new"
