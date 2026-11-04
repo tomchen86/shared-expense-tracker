@@ -6,14 +6,24 @@
 
 ## Requirements
 
-### Requirement: CATEGORIES-1.1 13 色的色盤
+### Requirement: CATEGORIES-1.2 27 色的色盤
 
-The domain package SHALL 以固定的 13 色色盤作為分類的顏色，依序是 `#D81B60`、`#1E88E5`、`#FBC02D`、`#00897B`、`#8E24AA`、`#F4511E`、`#3949AB`、`#6D4C41`、`#757575`、`#43A047`、`#00ACC1`、`#C62828`、`#9E9D24`。
+The domain package SHALL 以固定的 27 色色盤作為分類的顏色，依序是 `#D81B60`、`#1E88E5`、`#FBC02D`、`#00897B`、`#8E24AA`、`#F4511E`、`#3949AB`、`#6D4C41`、`#757575`、`#43A047`、`#00ACC1`、`#C62828`、`#9E9D24`、`#A66F5B`、`#D99E77`、`#A66A11`、`#6C733F`、`#8BD916`、`#0B733C`、`#36D9B8`、`#1D6273`、`#85BFF2`、`#8861F2`、`#DC85F2`、`#F218B8`、`#8C4D6F`、`#F2858D`；任兩色的 CIEDE2000 色差（sRGB 色碼、D65 白點）都至少 15.5，每個顏色和 `#FFFFFF` 的對比值（WCAG 2）至少 1.65，和 `#1C1C1E` 的至少 2.19。
 
 #### Scenario: 色盤
 
 - **WHEN** 讀取色盤
-- **THEN** 依序是這 13 個色碼
+- **THEN** 依序是這 27 個色碼
+
+#### Scenario: 每兩色都分得清楚
+
+- **WHEN** 比較色盤上任兩個顏色
+- **THEN** CIEDE2000 色差都至少 15.5；最接近的是 `#D81B60` 和 `#C62828`
+
+#### Scenario: 淺色和深色背景上都看得到
+
+- **WHEN** 把每個顏色放在 `#FFFFFF` 和 `#1C1C1E` 上
+- **THEN** 對比值分別至少 1.65 和 2.19
 
 ### Requirement: CATEGORIES-2.1 九個預設分類
 
@@ -72,33 +82,33 @@ IF 分類名稱和其他分類的名稱，兩邊都去掉頭尾空白並轉成�
 - **WHEN** 其他分類是九個預設分類，名稱是「Food」；或沒有其他分類，名稱是「Food & Dining」
 - **THEN** 可以用
 
-### Requirement: CATEGORIES-5.1 可用的顏色
+### Requirement: CATEGORIES-5.2 可用的顏色
 
 The domain package SHALL 把色盤上沒有被任何其他分類使用的顏色當作可用的顏色，依色盤的順序排列；比較色碼時不分大小寫。
 
 #### Scenario: 沒有其他分類
 
 - **WHEN** 沒有其他分類
-- **THEN** 13 色都可用
+- **THEN** 27 色都可用
 
 #### Scenario: 預設分類用掉前九色
 
 - **WHEN** 其他分類是九個預設分類
-- **THEN** 可用的是 `#43A047`、`#00ACC1`、`#C62828`、`#9E9D24`
+- **THEN** 可用的是色盤的後 18 色，依序從 `#43A047`、`#00ACC1`、`#C62828`、`#9E9D24` 到 `#F2858D`
 
 #### Scenario: 用掉中間的顏色
 
 - **WHEN** 其他分類是九個預設分類，加上一個用 `#00ACC1` 的分類
-- **THEN** 可用的是 `#43A047`、`#C62828`、`#9E9D24`
+- **THEN** 可用的是後 18 色裡 `#00ACC1` 以外的 17 色，依色盤的順序，從 `#43A047`、`#C62828` 開始
 
 #### Scenario: 小寫的色碼
 
 - **WHEN** 其他分類只有一個用 `#43a047` 的分類
-- **THEN** 除了 `#43A047`，其他 12 色都可用
+- **THEN** 除了 `#43A047`，其他 26 色都可用
 
-#### Scenario: 13 色都用掉了
+#### Scenario: 27 色都用掉了
 
-- **WHEN** 其他分類用了全部 13 色
+- **WHEN** 其他分類用了全部 27 色
 - **THEN** 沒有可用的顏色
 
 ### Requirement: CATEGORIES-6.2 個人範圍還沒有分類時建立預設分類
@@ -146,7 +156,7 @@ The mobile app SHALL 在 Manage Categories 和 Group Categories 的「CATEGORIES
 
 ### Requirement: CATEGORIES-8.3 開啟分類表單
 
-WHEN 使用者點「Add category」或 Uncategorized 以外的分類，the mobile app SHALL 開啟分類表單，封存群組的 Group Categories 除外（CATEGORIES-43.1）：點「Add category」時標題是「New Category」，名稱是空的，選取和這個範圍的其他分類比對後的第一個可用的顏色（CATEGORIES-5.1）；點分類時標題是「Edit Category」，帶入這個分類的名稱和顏色。
+WHEN 使用者點「Add category」或 Uncategorized 以外的分類，the mobile app SHALL 開啟分類表單，封存群組的 Group Categories 除外（CATEGORIES-43.1）：點「Add category」時標題是「New Category」，名稱是空的，選取和這個範圍的其他分類比對後的第一個可用的顏色（CATEGORIES-5.2）；點分類時標題是「Edit Category」，帶入這個分類的名稱和顏色。
 
 #### Scenario: 新增
 
@@ -173,14 +183,14 @@ WHEN 使用者點「Add category」或 Uncategorized 以外的分類，the mobil
 - **WHEN** 用 `#43A047` 的「Gym」有支出使用並且封存之後，點「Add category」
 - **THEN** 選取 `#00ACC1`
 
-### Requirement: CATEGORIES-9.2 分類表單的內容
+### Requirement: CATEGORIES-9.3 分類表單的內容
 
-The mobile app SHALL 讓分類表單有「Cancel」按鈕、新增時是「Add」而編輯時是「Save」的按鈕、「NAME」下無障礙名稱是「Category name」的名稱欄位，以及「COLOR」下依色盤順序排列的 13 個顏色按鈕：這個範圍的其他分類用的顏色停用，無障礙名稱是「Color <色碼> already in use」；其餘顏色的無障礙名稱是「Select color <色碼>」，點了就改選這個顏色；選取的顏色標示為已選取。
+The mobile app SHALL 讓分類表單有「Cancel」按鈕、新增時是「Add」而編輯時是「Save」的按鈕、「NAME」下無障礙名稱是「Category name」的名稱欄位，以及「COLOR」下依色盤順序排列的 27 個顏色按鈕：這個範圍的其他分類用的顏色停用，無障礙名稱是「Color <色碼> already in use」；其餘顏色的無障礙名稱是「Select color <色碼>」，點了就改選這個顏色；選取的顏色標示為已選取。
 
 #### Scenario: New Category
 
 - **WHEN** 第一次啟動後開啟「New Category」
-- **THEN** 有「Cancel」和「Add」，「NAME」在「COLOR」之前；前九色停用，例如「Color #D81B60 already in use」；後四色是「Select color #43A047」到「Select color #9E9D24」，只有 `#43A047` 標示為已選取
+- **THEN** 有「Cancel」和「Add」，「NAME」在「COLOR」之前；前九色停用，例如「Color #D81B60 already in use」；後 18 色是「Select color #43A047」到「Select color #F2858D」，只有 `#43A047` 標示為已選取
 
 #### Scenario: Edit Category
 
@@ -294,29 +304,29 @@ IF 按 Add 或 Save 時名稱和這個範圍的其他分類重複（CATEGORIES-4
 - **WHEN** 「Gym」封存之後，把 Shopping 改名為「gym」，按 Save
 - **THEN** 表單仍開著，顯示這句話；按 Cancel 後 Shopping 沒有改變，「ARCHIVED」下仍是 Gym
 
-### Requirement: CATEGORIES-13.2 13 色都被用了就不能新增
+### Requirement: CATEGORIES-13.3 色盤的顏色都被用了就不能新增
 
-IF 13 色都被這個範圍的其他分類用了，THEN the mobile app SHALL 讓「New Category」不選取任何顏色、停用 Add，並顯示「All category colors are already in use.」。
+IF 色盤的 27 色都被這個範圍的其他分類用了，THEN the mobile app SHALL 讓「New Category」不選取任何顏色、停用 Add，並顯示「All category colors are already in use.」。
 
-#### Scenario: 用完 13 色
+#### Scenario: 用完 27 色
 
-- **WHEN** 新增四個分類用掉最後四色，再開啟「New Category」
-- **THEN** 13 個顏色都停用，沒有選取的顏色，顯示這句話；輸入「Garden」後 Add 仍停用
+- **WHEN** 新增 18 個分類用掉最後 18 色，再開啟「New Category」
+- **THEN** 27 個顏色都停用，沒有選取的顏色，顯示這句話；輸入「Garden」後 Add 仍停用
 
 #### Scenario: 用完時編輯
 
-- **WHEN** 13 色都被用了，開啟 Travel 的「Edit Category」
+- **WHEN** 27 色都被用了，開啟 Travel 的「Edit Category」
 - **THEN** `#3949AB` 沒有停用而且已選取，Save 可以按，不顯示這句話
 
-#### Scenario: 其他範圍用完 13 色
+#### Scenario: 其他範圍用完 27 色
 
-- **WHEN** 在 Manage Categories 新增四個分類用掉最後四色之後，在 Brisbane 的 Group Categories 開啟「New Category」
+- **WHEN** 在 Manage Categories 新增 18 個分類用掉最後 18 色之後，在 Brisbane 的 Group Categories 開啟「New Category」
 - **THEN** 選取 `#43A047`，不顯示這句話；輸入「Garden」後 Add 可以按
 
 #### Scenario: 算進封存的分類
 
-- **WHEN** 新增四個分類用掉最後四色，封存其中有支出使用的「Gym」，再開啟「New Category」
-- **THEN** 13 個顏色都停用，沒有選取的顏色，顯示這句話
+- **WHEN** 新增 18 個分類用掉最後 18 色，封存其中有支出使用的「Gym」，再開啟「New Category」
+- **THEN** 27 個顏色都停用，沒有選取的顏色，顯示這句話
 
 ### Requirement: CATEGORIES-14.2 Uncategorized 不能編輯
 
