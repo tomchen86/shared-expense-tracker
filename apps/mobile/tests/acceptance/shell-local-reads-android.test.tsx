@@ -107,6 +107,7 @@ test.each([
   ['/groups', `/groups/rename?id=${NO_ID}`, 'Rename Group', ['Cancel']],
   ['/groups', `/groups/${NO_ID}`, 'Group Details', []],
   ['/', `/expenses/${NO_ID}`, 'Expense', []],
+  ['/', '/insights', 'Insights', []],
 ])(
   '[SHELL-60.1] on Android, from %s, gives %s, titled %s, only these title bar buttons while it shows the read error: %j',
   async (tabUrl, url, title, buttons) => {

@@ -15,6 +15,10 @@ export default function ExpensesLayout() {
         options={{ title: 'Expenses', headerLargeTitleEnabled: true }}
       />
       <Stack.Screen name="expenses/[id]" options={{ title: 'Expense' }} />
+      <Stack.Screen
+        name="insights"
+        options={{ title: 'Insights', fullScreenGestureEnabled: false }}
+      />
     </Stack>
   );
 }

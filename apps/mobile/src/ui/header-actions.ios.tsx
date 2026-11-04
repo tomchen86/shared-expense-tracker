@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import type { SFSymbol } from 'expo-symbols';
 import type { HeaderActionsProps } from './header-actions';
 
 export function HeaderActions({
@@ -6,6 +7,7 @@ export function HeaderActions({
   confirm,
   edit,
   menu,
+  choices,
 }: HeaderActionsProps) {
   return (
     <>
@@ -45,6 +47,23 @@ export function HeaderActions({
                 onPress={action.onPress}
               >
                 {action.label}
+              </Stack.Toolbar.MenuAction>
+            ))}
+          </Stack.Toolbar.Menu>
+        )}
+        {choices && (
+          <Stack.Toolbar.Menu
+            icon={choices.icon.ios as SFSymbol}
+            title={choices.title}
+            accessibilityLabel={choices.label}
+          >
+            {choices.options.map((option) => (
+              <Stack.Toolbar.MenuAction
+                key={option.label}
+                isOn={option.selected}
+                onPress={option.onPress}
+              >
+                {option.label}
               </Stack.Toolbar.MenuAction>
             ))}
           </Stack.Toolbar.Menu>
