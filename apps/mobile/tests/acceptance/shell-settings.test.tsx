@@ -63,6 +63,7 @@ const LAYOUT = [
   'APP',
   'Manage Categories',
   'Archived Groups',
+  'Trash',
 ];
 const ASK_FOR_NAME = 'Please enter your name';
 const SAVE_FAILED = [
@@ -210,7 +211,7 @@ function scrollViewTheTitleFollows() {
   return view;
 }
 
-test('[SHELL-16.1] shows PROFILE with the name field and its note, then APP with two rows', async () => {
+test('[SHELL-16.2] shows PROFILE with the name field and its note, then APP with three rows', async () => {
   await startSettings();
 
   expect(inOrder(LAYOUT)).toEqual(LAYOUT);
@@ -400,8 +401,9 @@ test('[SHELL-22.1] saves the typed name when Return is pressed again after a fai
 test.each([
   ['Manage Categories', '/settings/manage-categories'],
   ['Archived Groups', '/settings/archived-groups'],
+  ['Trash', '/settings/trash'],
 ])(
-  '[SHELL-23.1] opens %s in the Settings tab when its row is pressed',
+  '[SHELL-23.2] opens %s in the Settings tab when its row is pressed',
   async (row, url) => {
     const app = await startSettings();
 

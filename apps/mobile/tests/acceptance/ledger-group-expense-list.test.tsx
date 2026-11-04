@@ -5,6 +5,7 @@ import { ActionSheetIOS } from 'react-native';
 import { fireEvent, waitFor, within } from '@testing-library/react-native';
 import {
   addExpense,
+  inTreeOrder,
   phoneDatabase,
   resetPhone,
   storedExpenses,
@@ -16,15 +17,21 @@ import {
   card,
   cardTitles,
   cards,
+  colorDots,
   detailLines,
+  detailScreen,
+  dotColors,
   expensesRoot,
+  isUnread,
   linesIn,
+  opacityIn,
   openDetails,
   readOut,
   shownInOrder,
   startExpensesAt,
   totalShareLines,
 } from './ledger-expense-list-app';
+import { actionLabels, expenseBarItems } from './ledger-trash-app';
 import { allowWrites, settle } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
 import {
@@ -40,6 +47,7 @@ import {
   SHARED_HISTORY_TEXT,
   addGroupExpense,
   archiveGroup,
+  archiveGroupCategory,
   detailLinesOn,
   editOn,
   expectDetailsOn,
@@ -49,6 +57,7 @@ import {
   renameInGroup,
   restoreGroup,
   startWithGroups,
+  storedGroup,
 } from './ledger-group-expense-app';
 import type { Database } from '../../src/storage';
 
@@ -328,6 +337,55 @@ test("[LEDGER-65.1] shows the group's new name on the card", async () => {
   expect(linesIn(card('Dinner'))).not.toContain('Brisbane');
 });
 
+test("[LEDGER-65.1] offers Delete expense on a personal expense's card but not on a group expense's", async () => {
+  await startWithGroups(BRISBANE);
+  await addExpense();
+  await addDinner();
+
+  await showExpenses();
+
+  await waitFor(() =>
+    expect(actionLabels(card('Coffee run'))).toContain('Delete expense'),
+  );
+  expect(actionLabels(card('Dinner'))).not.toContain('Delete expense');
+});
+
+test("[LEDGER-65.1] [LEDGER-33.2] shows the category's color dot on a group expense's card, and <name> (Archived) once the group's category is archived", async () => {
+  await startWithGroups(BRISBANE);
+  await addDinner();
+  await showExpenses();
+
+  const shown = card('Dinner');
+  expect(dotColors(shown)).toEqual(['#D81B60']);
+  const [dot] = colorDots(shown);
+  expect(
+    inTreeOrder(
+      within(shown).getByText('$33.34'),
+      dot,
+      within(shown).getByText('Food & Dining'),
+    ),
+  ).toBe(true);
+  expect(isUnread(dot)).toBe(true);
+
+  const { id } = await storedGroup(file, 'Brisbane');
+  await archiveGroupCategory(id, 'Food & Dining');
+
+  const expected = [
+    'Dinner',
+    '$33.34',
+    'Food & Dining (Archived)',
+    'Brisbane',
+    'Oct 30, 2026',
+  ];
+  await waitFor(() =>
+    expect(shownInOrder(linesIn(card('Dinner')), expected)).toEqual(expected),
+  );
+  expect(shownInOrder([readOut(card('Dinner'))], expected)).toEqual(expected);
+  expect(dotColors(card('Dinner'))).toEqual(['#D81B60']);
+  const [archivedDot] = colorDots(card('Dinner'));
+  expect(opacityIn(expensesRoot(), archivedDot)).toBe(1);
+});
+
 // The details
 
 test('[LEDGER-66.1] shows what you paid, your share, what you are owed, then each payment and share', async () => {
@@ -499,6 +557,51 @@ test("[LEDGER-66.1] opens a group expense's details from its URL", async () => {
   await expectDetailsOn('Expenses', 'Dinner');
   expect(detailLinesOn('Expenses')).toContain('YOUR POSITION');
   expect(detailLinesOn('Expenses')).not.toContain(NOT_FOUND);
+});
+
+test("[LEDGER-66.1] puts only Edit on a group expense's details, without Expense actions", async () => {
+  await startWithGroups(BRISBANE);
+  await addDinner();
+  await showExpenses();
+
+  await openDetails('Dinner');
+
+  expect(
+    expenseBarItems('Expenses').map((item) =>
+      'menu' in item ? item.menu : item.button,
+    ),
+  ).toEqual(['Edit']);
+});
+
+test("[LEDGER-66.1] [LEDGER-37.2] shows the category's color dot on a group expense's details, and <name> (Archived) once the group's category is archived", async () => {
+  await startWithGroups(BRISBANE);
+  await addDinner();
+  const { id } = await storedGroup(file, 'Brisbane');
+  await archiveGroupCategory(id, 'Food & Dining');
+
+  await openDetails('Dinner');
+
+  const expected = [
+    'DETAILS',
+    'Group',
+    'Brisbane',
+    'Category',
+    'Food & Dining (Archived)',
+    'Date',
+  ];
+  expect(shownInOrder(detailLines(), expected)).toEqual(expected);
+  expect(dotColors(detailScreen())).toEqual(['#D81B60']);
+  const [dot] = colorDots(detailScreen());
+  const details = within(detailScreen());
+  expect(
+    inTreeOrder(
+      details.getByText('Category'),
+      dot,
+      details.getByText('Food & Dining (Archived)'),
+    ),
+  ).toBe(true);
+  expect(isUnread(dot)).toBe(true);
+  expect(opacityIn(detailScreen(), dot)).toBe(1);
 });
 
 // Archived groups

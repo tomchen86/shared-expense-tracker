@@ -48,7 +48,9 @@ test('upgrades an existing database without changing its categories, identity or
     await database.run(`INSERT INTO ${table} VALUES ('lunch', ?, 1250)`, [
       identity.personalParticipantId,
     ]);
-  const expenses = await database.all('SELECT * FROM expenses');
+  const expenses = await database.all<Record<string, unknown>>(
+    'SELECT * FROM expenses',
+  );
 
   await runMigrations(database, appMigrations);
 
@@ -56,7 +58,9 @@ test('upgrades an existing database without changing its categories, identity or
     await database.all('SELECT * FROM categories ORDER BY position'),
   ).toEqual(before.map((row) => ({ ...row, isArchived: 0 })));
   expect(await ensureLocalIdentity(database)).toEqual(identity);
-  expect(await database.all('SELECT * FROM expenses')).toEqual(expenses);
+  expect(await database.all('SELECT * FROM expenses')).toEqual(
+    expenses.map((expense) => ({ ...expense, trashOrder: null })),
+  );
   const [lunch] = await listExpenses(database);
   expect(lunch.payments).toEqual([
     { participant: identity.personalParticipantId, amountMinor: 1250 },

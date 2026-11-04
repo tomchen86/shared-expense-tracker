@@ -20,11 +20,13 @@ export interface Expense {
   payments: Share<string>[];
   /** Each share's participant is a participant id. */
   shares: Share<string>[];
+  /** Present only in the trash; larger values were moved in later. */
+  trashOrder?: number;
 }
 
 interface ExpenseRow extends Omit<
   Expense,
-  'category' | 'note' | 'payments' | 'shares'
+  'category' | 'note' | 'payments' | 'shares' | 'trashOrder'
 > {
   categoryId: string;
   categoryName: string;
@@ -32,6 +34,7 @@ interface ExpenseRow extends Omit<
   note: string | null;
   payments: string;
   shares: string;
+  trashOrder: number | null;
 }
 
 export async function categoryExpenseCounts(
@@ -81,6 +84,7 @@ export async function listExpenses(database: SqlExecutor): Promise<Expense[]> {
     spaceId: row.spaceId,
     payments: JSON.parse(row.payments) as Share<string>[],
     shares: JSON.parse(row.shares) as Share<string>[],
+    ...(row.trashOrder == null ? {} : { trashOrder: row.trashOrder }),
   }));
 }
 
@@ -102,6 +106,10 @@ export function subscribeToExpenses(database: Database, listener: () => void) {
   return () => {
     subscribers.delete(listener);
   };
+}
+
+export function notifyExpensesChanged(database: Database) {
+  listeners.get(database)?.forEach((listener) => listener());
 }
 
 export interface GroupSplit {
@@ -213,7 +221,7 @@ export async function saveExpense(
         );
     }
   });
-  listeners.get(database)?.forEach((listener) => listener());
+  notifyExpensesChanged(database);
 }
 
 export const savePersonalExpense = saveExpense;

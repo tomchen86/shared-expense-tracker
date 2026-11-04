@@ -17,6 +17,8 @@ export default function SettingsLayout() {
         name="archived-groups"
         options={{ title: 'Archived Groups' }}
       />
+      <Stack.Screen name="trash" options={{ title: 'Trash' }} />
+      <Stack.Screen name="trash/[id]" options={{ title: 'Expense' }} />
       <Stack.Screen
         name="manage-categories"
         options={{ title: 'Manage Categories' }}

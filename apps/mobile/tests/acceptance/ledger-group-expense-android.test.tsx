@@ -7,6 +7,7 @@ import {
   expectForm,
   fillForm,
   formTitle,
+  nameOf,
   openNewExpense,
   phoneDatabase,
   pressBack,
@@ -15,6 +16,7 @@ import {
   watchAlerts,
 } from './ledger-expense-app';
 import { openDetails } from './ledger-expense-list-app';
+import { expenseHeaderButtons } from './ledger-trash-app';
 import { allowWrites, settle } from './shell-appearance-app';
 import { navigationBarTitles, tab, tapTab } from './shell-tabs-app';
 import { isOpen, openGroup } from './group-details-app';
@@ -134,6 +136,19 @@ test("[GROUPS-64.1] opens New Expense for the group from the + button on the gro
 
   await expectForm('New Expense');
   expect(rowValue('Group')).toBe('Brisbane');
+});
+
+test("[LEDGER-66.1] puts only Edit on a group expense's details on Android, without Expense actions", async () => {
+  await startWithGroups(BRISBANE);
+  await addDinner();
+  await tapTab('Expenses');
+  await settle();
+
+  await openDetails('Dinner');
+
+  await waitFor(() =>
+    expect(expenseHeaderButtons('Expenses').map(nameOf)).toEqual(['Edit']),
+  );
 });
 
 test("[LEDGER-67.1] disables the header's Edit on an archived group's expense on Android", async () => {

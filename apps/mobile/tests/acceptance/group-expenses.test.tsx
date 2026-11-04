@@ -15,6 +15,7 @@ import {
   watchAlerts,
 } from './ledger-expense-app';
 import {
+  dotColors,
   linesIn,
   shownInOrder,
   startExpensesAt,
@@ -47,6 +48,7 @@ import {
   addGroupExpense,
   addToGroup,
   archiveGroup,
+  archiveGroupCategory,
   choosePayer,
   chooseSharers,
   detailBarsOn,
@@ -208,6 +210,34 @@ test('[GROUPS-61.1] shows the full amount on the card, with the category, the gr
       shownInOrder(linesIn(groupCard('Brisbane', 'Dinner')), expected),
     ).toEqual(expected),
   );
+});
+
+test("[GROUPS-61.1] [LEDGER-33.2] shows the category's color dot on the group's cards, and <name> (Archived) once the group's category is archived", async () => {
+  await startWithGroups(BRISBANE);
+  await addDinner();
+  await showGroup('Brisbane');
+  await waitFor(() =>
+    expect(dotColors(groupCard('Brisbane', 'Dinner'))).toEqual(['#D81B60']),
+  );
+
+  const { id } = await storedGroup(file, 'Brisbane');
+  await archiveGroupCategory(id, 'Food & Dining');
+  await tapTab('Groups');
+  await settle();
+
+  const expected = [
+    'Dinner',
+    '$100.01',
+    'Food & Dining (Archived)',
+    'Brisbane',
+    'Oct 30, 2026',
+  ];
+  await waitFor(() =>
+    expect(
+      shownInOrder(linesIn(groupCard('Brisbane', 'Dinner')), expected),
+    ).toEqual(expected),
+  );
+  expect(dotColors(groupCard('Brisbane', 'Dinner'))).toEqual(['#D81B60']);
 });
 
 test('[GROUPS-61.1] lists an expense of the group that you have no part in', async () => {

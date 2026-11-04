@@ -2,6 +2,7 @@ import { useColorScheme } from 'react-native';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { formPresentation } from '../src/ui/form-presentation';
 import { PhoneLocalData } from '../src/shell/phone-local-data';
+import { TrashProvider } from '../src/ledger/trash-provider';
 
 function ThemedStack() {
   const scheme = useColorScheme();
@@ -29,7 +30,9 @@ function ThemedStack() {
 export default function RootLayout() {
   return (
     <PhoneLocalData>
-      <ThemedStack />
+      <TrashProvider>
+        <ThemedStack />
+      </TrashProvider>
     </PhoneLocalData>
   );
 }

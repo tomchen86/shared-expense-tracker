@@ -18,6 +18,7 @@ import { listGroups } from '../../src/groups';
 import {
   expenseAllocationOrderMigration,
   expenseMigrations,
+  expenseTrashMigration,
 } from '../../src/ledger/migrations';
 import { listExpenses } from '../../src/ledger';
 
@@ -385,6 +386,7 @@ test('adding allocation positions preserves stored amounts and insertion order w
     0,
     appMigrations.indexOf(expenseAllocationOrderMigration),
   );
+  expect(previous.at(-1)).toBe(expenseTrashMigration);
   const identity = await initializeDatabase(
     database,
     previous,
@@ -399,6 +401,7 @@ test('adding allocation positions preserves stored amounts and insertion order w
     INSERT INTO expenses (id, title, amountMinor, currency, date, categoryId, categoryName, categoryColor, spaceId) VALUES
       ('dinner', 'Dinner', 10001, 'USD', '2026-10-30', 'food', 'Food', '#123456', 'trip'),
       ('taxi', 'Taxi', 1, 'USD', '2026-10-29', 'food', 'Food', '#123456', 'trip');
+    UPDATE expenses SET trashOrder = 1 WHERE id = 'taxi';
     INSERT INTO expense_payments VALUES ('dinner', 'z', 5001), ('taxi', 'm', 1), ('dinner', 'a', 5000);
     INSERT INTO expense_shares VALUES ('dinner', 'z', 3334), ('taxi', 'a', 1), ('dinner', 'm', 3334), ('dinner', 'a', 3333);
   `);
@@ -418,6 +421,8 @@ test('adding allocation positions preserves stored amounts and insertion order w
     ]),
   ).toEqual(records);
   const [dinner, taxi] = await listExpenses(database);
+  expect(dinner.trashOrder).toBeUndefined();
+  expect(taxi.trashOrder).toBe(1);
   expect(dinner.payments).toEqual([
     { participant: 'z', amountMinor: 5001 },
     { participant: 'a', amountMinor: 5000 },

@@ -11,6 +11,7 @@ import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { listExpenses, subscribeToExpenses, type Expense } from './expenses';
 
 export interface ExpenseView extends Expense {
+  categoryLabel: string;
   group?: Group;
   members: GroupMember[];
   yourPaid: number;
@@ -19,7 +20,7 @@ export interface ExpenseView extends Expense {
 }
 
 /** Undefined until loaded; refresh on navigation and committed expense changes. */
-export function useExpenses() {
+export function useExpenses(trashed = false) {
   const database = useLocalDatabase();
   const { personalSpaceId, personalParticipantId, userId } = useLocalIdentity();
   const focused = useIsFocused();
@@ -46,8 +47,16 @@ export function useExpenses() {
         ([rows, categories, groups]) => {
           if (!active || request !== version) return;
           const current = new Map(categories.map((item) => [item.id, item]));
+          const selected = rows.filter(
+            (expense) =>
+              (expense.trashOrder !== undefined) === trashed &&
+              (!trashed || expense.spaceId === personalSpaceId),
+          );
+          if (trashed) selected.sort((a, b) => b.trashOrder! - a.trashOrder!);
           setExpenses(
-            rows.map((expense) => {
+            selected.map((expense) => {
+              const category = current.get(expense.category.id);
+              const name = category?.name ?? expense.category.name;
               const group = groups.find((item) => item.id === expense.spaceId);
               const members = group
                 ? [...group.members, ...group.formerMembers]
@@ -66,7 +75,10 @@ export function useExpenses() {
               );
               return {
                 ...expense,
-                category: current.get(expense.category.id) ?? expense.category,
+                category: category ?? expense.category,
+                categoryLabel: category?.isArchived
+                  ? `${name} (Archived)`
+                  : name,
                 group,
                 members,
                 yourPaid: paid.reduce(
@@ -96,7 +108,14 @@ export function useExpenses() {
       active = false;
       unsubscribe();
     };
-  }, [database, personalSpaceId, personalParticipantId, userId, focused]);
+  }, [
+    database,
+    personalSpaceId,
+    personalParticipantId,
+    userId,
+    focused,
+    trashed,
+  ]);
 
   if (error) throw error;
   return expenses;

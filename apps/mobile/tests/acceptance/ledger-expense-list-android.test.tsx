@@ -77,6 +77,15 @@ afterEach(() => {
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
+/** The details' Edit among the header buttons, which may hold others too. */
+function detailEditButton() {
+  const edit = detailHeaderButtons().find(
+    (button) => nameOf(button) === 'Edit',
+  );
+  if (edit === undefined) throw new Error('No Edit in the details header');
+  return edit;
+}
+
 test('[SHELL-52.1] puts Edit at the right of the details header as an edit icon button of at least 48 dp on Android', async () => {
   await startExpenses();
   await addExpense();
@@ -84,9 +93,9 @@ test('[SHELL-52.1] puts Edit at the right of the details header as an edit icon 
   await openDetails('Coffee run');
 
   await waitFor(() =>
-    expect(detailHeaderButtons().map(nameOf)).toEqual(['Edit']),
+    expect(detailHeaderButtons().map(nameOf)).toContain('Edit'),
   );
-  const [edit] = detailHeaderButtons();
+  const edit = detailEditButton();
   await waitFor(() => expect(iconNames(edit, 'android')).toEqual(['edit']));
   expect(touchSize(edit).width).toBeGreaterThanOrEqual(48);
   expect(touchSize(edit).height).toBeGreaterThanOrEqual(48);
@@ -98,8 +107,10 @@ test('[SHELL-50.1] shows a round ripple of radius 24 on the details Edit button'
 
   await openDetails('Coffee run');
 
-  await waitFor(() => expect(detailHeaderButtons()).toHaveLength(1));
-  expect(ripplesOn(detailHeaderButtons()[0])).toContainEqual(
+  await waitFor(() =>
+    expect(detailHeaderButtons().map(nameOf)).toContain('Edit'),
+  );
+  expect(ripplesOn(detailEditButton())).toContainEqual(
     expect.objectContaining({ round24: true }),
   );
 });

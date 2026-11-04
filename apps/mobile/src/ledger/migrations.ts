@@ -25,6 +25,9 @@ export const expenseMigrations: readonly string[] = [
   );`,
 ];
 
+export const expenseTrashMigration = `ALTER TABLE expenses
+  ADD COLUMN trashOrder INTEGER CHECK (trashOrder IS NULL OR trashOrder > 0)`;
+
 /** Keep allocation order explicit, including allocations written before this migration. */
 export const expenseAllocationOrderMigration = `
   ALTER TABLE expense_payments ADD COLUMN position INTEGER NOT NULL DEFAULT 0 CHECK (position >= 0);
