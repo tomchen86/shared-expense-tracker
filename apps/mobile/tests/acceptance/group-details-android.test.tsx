@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { Alert, BackHandler, DeviceEventEmitter } from 'react-native';
 import { act, fireEvent, waitFor, within } from '@testing-library/react-native';
 import type { Database } from '../../src/storage';
+import { iconNames, ripplesOn, touchSize } from './shell-actions-app';
 import {
   navigationBarTitles,
   selectedTab,
@@ -298,6 +299,26 @@ test('[GROUPS-36.1] opens Rename Member rising from the bottom with Cancel on th
     left: ['Cancel'],
     right: ['Save'],
   });
+});
+
+test("[GROUPS-40.2] marks the group's title button with expand_more, at least 48 dp high, with a ripple on Android", async () => {
+  await startWithName();
+  await createGroup('Brisbane');
+  await openGroup('Brisbane');
+  await waitFor(() => expect(titleButton('Brisbane')).toBeDefined());
+  const button = titleButton('Brisbane')!;
+
+  expect(iconNames(button, 'android')).toEqual(['expand_more']);
+  expect(touchSize(button).height).toBeGreaterThanOrEqual(48);
+  expect(button.props.accessibilityHint).toBe('Renames the group');
+  const light = ripplesOn(button).map(({ fixedColor }) => fixedColor);
+  await switchPhoneTo('dark');
+  const dark = ripplesOn(titleButton('Brisbane')!).map(
+    ({ fixedColor }) => fixedColor,
+  );
+  expect(light).toHaveLength(1);
+  // The same fixed color in both appearances; none means the system picks it.
+  expect(light[0] === undefined || light[0] !== dark[0]).toBe(true);
 });
 
 test("[GROUPS-40.2] opens Rename Group from the group's title on Android", async () => {

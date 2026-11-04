@@ -769,7 +769,7 @@ IF 成員的新名稱存不進本機資料，THEN the mobile app SHALL 跳出標
 
 ### Requirement: GROUPS-40.2 點標題或在 Group actions 選 Rename Group 時開啟 Rename Group
 
-WHEN 使用者在未封存群組的畫面點標題，或在 Group actions 選「Rename Group」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Rename Group，標題是「Rename Group」，標題列有取消「Cancel」和確認「Save」（SHELL-47.1、SHELL-48.1），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位；名稱欄位的無障礙名稱是「Group name」，開啟時是群組現在的名稱，並取得焦點，清空時顯示「Group name」；未封存群組的畫面的標題是名稱為群組名稱的按鈕，封存的群組和找不到的群組的畫面的標題不是按鈕。
+WHEN 使用者在未封存群組的畫面點標題，或在 Group actions 選「Rename Group」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Rename Group，標題是「Rename Group」，標題列有取消「Cancel」和確認「Save」（SHELL-47.1、SHELL-48.1），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位；名稱欄位的無障礙名稱是「Group name」，開啟時是群組現在的名稱，並取得焦點，清空時顯示「Group name」；未封存群組的畫面的標題是名稱為群組名稱、無障礙提示為「Renames the group」的按鈕，名稱右邊有向下的箭頭（iOS 是 SF Symbol `chevron.down`，Android 是 Material Symbols `expand_more`），Android 上這個按鈕至少 48 dp 高，按下時在按鈕上顯示顏色跟著 app 外觀的 ripple；封存的群組和找不到的群組的畫面的標題不是按鈕，也沒有箭頭。
 
 #### Scenario: 點標題
 
@@ -784,12 +784,17 @@ WHEN 使用者在未封存群組的畫面點標題，或在 Group actions 選「
 #### Scenario: 標題是按鈕
 
 - **WHEN** 打開 Brisbane 的畫面
-- **THEN** 標題列的標題「Brisbane」是名稱為「Brisbane」的按鈕
+- **THEN** 標題列的標題「Brisbane」是名稱為「Brisbane」的按鈕，右邊有向下的箭頭；螢幕閱讀器讀出「Brisbane」，再讀出提示「Renames the group」
+
+#### Scenario: Android
+
+- **WHEN** Android 上打開 Brisbane 的畫面
+- **THEN** 標題按鈕的箭頭是 `expand_more`，按鈕至少 48 dp 高；按下時按鈕上出現 ripple，深色和淺色時的顏色不同，或是由系統依外觀決定
 
 #### Scenario: 封存的群組
 
 - **WHEN** 封存 Brisbane 之後打開它的畫面
-- **THEN** 標題「Brisbane」不是按鈕，點了沒有反應
+- **THEN** 標題「Brisbane」不是按鈕，沒有箭頭，點了沒有反應
 
 #### Scenario: 清空名稱
 
@@ -1365,12 +1370,12 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 
 ### Requirement: GROUPS-69.1 群組的畫面上你的淨額
 
-WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面上、Group Total 的下面、支出的卡片上方顯示你在這個群組的淨額：依幣別代碼排序，你的淨額不是 0 的每個幣別各一行，大於 0 時是「You're owed: <淨額>」，小於 0 時是「You owe: <淨額的絕對值>」；每個幣別的淨額都是 0 時，只有一行「Settled up」；這幾行合起來是一個按鈕，螢幕閱讀器把它讀成一個按鈕，讀出這幾行，按一下就打開 Balances（GROUPS-70.1）；群組沒有不在垃圾桶裡的支出時，SHALL 不顯示這幾行。
+WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面上、Group Total 的下面、支出的卡片上方顯示你在這個群組的淨額：依幣別代碼排序，你的淨額不是 0 的每個幣別各一行，大於 0 時是「You're owed: <淨額>」，小於 0 時是「You owe: <淨額的絕對值>」；每個幣別的淨額都是 0 時，只有一行「Settled up」；這幾行合起來是一個按鈕，右邊有「›」，螢幕閱讀器把它讀成一個按鈕，讀出這幾行但不讀「›」，再讀出無障礙提示「Opens Balances」，按一下就打開 Balances（GROUPS-70.1）；群組沒有不在垃圾桶裡的支出時，SHALL 不顯示這幾行。
 
 #### Scenario: 別人欠你
 
 - **WHEN** 名字是「Taylor」，Brisbane 依序加入 Casey 和 Blake，有 Taylor 付的 60.00 USD 的 Dinner，分給 Taylor、Casey 和 Blake，以及 Casey 付、只有 Blake 分攤的 25.00 USD 的 Taxi
-- **THEN** 「Group Total: $85.00」下面是「You're owed: $40.00」，再下面是卡片；它是一個按鈕，螢幕閱讀器讀出「You're owed: $40.00」
+- **THEN** 「Group Total: $85.00」下面是「You're owed: $40.00」，再下面是卡片；它是一個按鈕，右邊有「›」，螢幕閱讀器讀出「You're owed: $40.00」和提示「Opens Balances」
 
 #### Scenario: 你欠別人
 
@@ -1385,7 +1390,7 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 #### Scenario: 幾個幣別
 
 - **WHEN** Brisbane 有 Casey 付的 3000 JPY 的 Sushi，分給 Taylor 和 Casey，以及 Taylor 付、分給 Taylor、Casey 和 Blake 的 60.00 USD 的 Dinner
-- **THEN** 由上而下是「You owe: ¥1,500」和「You're owed: $40.00」，兩行在同一個按鈕裡
+- **THEN** 由上而下是「You owe: ¥1,500」和「You're owed: $40.00」，兩行在同一個按鈕裡，按鈕右邊只有一個「›」
 
 #### Scenario: 有一個幣別打平
 

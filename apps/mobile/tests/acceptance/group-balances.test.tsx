@@ -335,7 +335,9 @@ test('[GROUPS-69.1] shows what you are owed below the Group Total, as one button
   expect(shownInOrder(groupLines('Brisbane'), expected)).toEqual(expected);
   const buttons = balanceButtons('Brisbane');
   expect(buttons).toHaveLength(1);
+  expect(within(buttons[0]).getByText('›')).toBeOnTheScreen();
   expect(asRead(nameOf(buttons[0]))).toBe("You're owed: $40.00");
+  expect(buttons[0].props.accessibilityHint).toBe('Opens Balances');
 });
 
 test('[GROUPS-69.1] says what you owe when someone else paid', async () => {
@@ -379,7 +381,8 @@ test('[GROUPS-69.1] puts a line for each currency in which you are owed or owe, 
   await waitFor(() => expect(balanceLines('Brisbane')).toEqual(expected));
   const buttons = balanceButtons('Brisbane');
   expect(buttons).toHaveLength(1);
-  expect(linesIn(buttons[0])).toEqual(expected);
+  expect(linesIn(buttons[0]).filter((line) => line !== '›')).toEqual(expected);
+  expect(within(buttons[0]).getAllByText('›')).toHaveLength(1);
 });
 
 test('[GROUPS-69.1] leaves out a currency in which you are settled up', async () => {

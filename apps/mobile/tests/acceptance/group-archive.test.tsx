@@ -51,6 +51,7 @@ import {
   addMember,
   alertsShown,
   barItems,
+  barTitled,
   chooseGroupAction,
   expectClosed,
   expectMembers,
@@ -73,6 +74,7 @@ import {
   textsOn,
   titleButton,
 } from './group-details-app';
+import { iconNames } from './shell-actions-app';
 import {
   ARCHIVED_STATUS,
   ARCHIVE_FAILED,
@@ -620,6 +622,9 @@ test("[GROUPS-40.2] makes no button of an archived group's title", async () => {
   await waitFor(() => expect(textsOn('Brisbane')).toContain(READ_ONLY));
 
   expect(titleButton('Brisbane')).toBeUndefined();
+  expect(iconNames(barTitled('Brisbane')!, 'ios')).not.toContain(
+    'chevron.down',
+  );
 });
 
 test('[GROUPS-55.1] shows neither on the screen of a group that is not archived', async () => {

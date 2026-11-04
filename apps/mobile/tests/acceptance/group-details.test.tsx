@@ -10,6 +10,7 @@ import {
   within,
 } from '@testing-library/react-native';
 import type { Database } from '../../src/storage';
+import { iconNames } from './shell-actions-app';
 import {
   navigationBarTitles,
   navigationBars,
@@ -1248,6 +1249,10 @@ test("[GROUPS-40.2] makes the group's title a button named after the group, whic
 
   await waitFor(() => expect(titleButton('Brisbane')).toBeDefined());
   expect(barTitled('Brisbane')?.props.title).toBe('Brisbane');
+  expect(titleButton('Brisbane')!.props.accessibilityHint).toBe(
+    'Renames the group',
+  );
+  expect(iconNames(titleButton('Brisbane')!, 'ios')).toEqual(['chevron.down']);
   await fireEvent.press(titleButton('Brisbane')!);
   await settle();
 
