@@ -4,6 +4,8 @@
 
 App 外殼：開啟本機資料、開啟期間的載入畫面、打不開時的錯誤畫面、這支手機的本機身分，載入後的分頁列、各分頁自己的堆疊和返回按鈕，Settings 根畫面上的名字、外觀選項和入口列，app 的深淺色和半透明表面，以及各畫面共用的 + 按鈕和標題列動作。本機資料是手機上的 SQLite 資料庫；開啟時依序跑 migration，還沒有本機身分時再建立一個（ADR-0006）。開發版是指 `__DEV__` 為真的 build。分頁的根畫面是分頁堆疊最底下的畫面，也就是選中分頁時最先看到的畫面。名字是本機身分裡存著的名字。外觀選項是存在本機資料裡的 System、Light 或 Dark；app 的外觀是 app 現在用淺色還是深色：外觀選項是 Light 或 Dark 時就是它，是 System 時跟著手機。跟著外觀的顏色是指淺色和深色時不同的顏色，或是由系統依外觀決定的顏色。「降低透明度」是 iOS 輔助使用裡的同名設定。毛玻璃是看得到後面模糊內容的半透明表面；玻璃是 iOS 26 起的 Liquid Glass。app 自己加的毛玻璃或玻璃，不包括分頁列、標題列、分段控制這些系統元件本身畫的。+ 按鈕是畫面浮在底部的圓形按鈕；標題列動作是畫面放在自己標題列上的取消、確認、編輯，以及收進選單的其他動作；一個選單最多放兩個動作，畫面可以把選單裡的動作標成破壞性的。它們的名稱、要執行的動作和是否停用，都由畫面決定。分頁裡的畫面是分頁堆疊上、看得到分頁列的畫面；分頁外的畫面是不在分頁堆疊上、看不到分頁列的畫面。下方安全區是畫面底部被系統擋住的高度，在 iOS 的分頁裡也包括分頁列。
 
+本機資料開好之後，App 外殼也規定畫面讀不出本機資料時的錯誤，以及畫面重新讀取時按下的動作。畫面讀本機資料，是畫面讀它要顯示或要用來決定動作的本機資料，例如 Groups 根畫面讀群組：讀出來就是讀完，讀的時候出錯就是讀不出本機資料；寫入本機資料時出錯不算讀不出，照各畫面自己的提示處理，例如 SHELL-22.1。畫面回到前景，是它又成為看得到的畫面，例如切回它所在的分頁、從推在它上面的畫面返回，或蓋在它上面的表單關閉；回到前景時再讀一次本機資料的畫面，從回到前景到再讀完之前是還沒重新讀完。從底部升起的表單是從畫面底部升起、蓋在其他畫面上的畫面，例如 Members、Add Member 和支出表單。
+
 ## Requirements
 
 ### Requirement: SHELL-1.2 載入期間只顯示載入指示
@@ -827,3 +829,148 @@ WHERE iOS，the mobile app SHALL 用破壞性的樣式（紅字）顯示畫面�
 
 - **WHEN** iOS 上畫面給名稱是「Group actions」的選單，裡面的「Members」沒有標成破壞性
 - **THEN** 選單裡的「Members」不是破壞性的樣式
+
+### Requirement: SHELL-60.1 畫面讀不出本機資料時顯示錯誤
+
+IF 畫面讀不出本機資料，THEN the mobile app SHALL 不關閉 app，讓這個畫面在標題列以下只顯示「Unable to Load Local Data」、「Your data was not changed.」和角色為 button、名稱為「Try Again」的按鈕，不顯示讀到一半或之前讀到的資料、沒有資料或找不到資料時的提示（例如 GROUPS-1.2、GROUPS-21.1、LEDGER-39.1、CATEGORIES-25.1 的）和 + 按鈕；標題列的標題是這個畫面還沒讀到資料時的標題，例如群組的畫面是「Group Details」，標題列上只有返回按鈕，或從底部升起的表單的取消動作；本機資料保持讀之前的樣子。Settings 根畫面讀不出數量要用的本機資料時，照 SHELL-62.1。
+
+#### Scenario: Groups 根畫面
+
+- **WHEN** 第一次啟動 app 後選中 Groups 分頁，Groups 根畫面讀不出群組
+- **THEN** 標題是「Groups」，畫面上只有「Unable to Load Local Data」、「Your data was not changed.」和「Try Again」，沒有「No groups yet. Tap + to create a group.」，也沒有「Add group」；分頁列仍在，選中 Groups
+
+#### Scenario: 找不到的群組
+
+- **WHEN** 打開 `/groups/00000000-0000-4000-8000-000000000000`，群組的畫面讀不出群組
+- **THEN** 標題是「Group Details」，畫面上只有這三樣，沒有「Group not found.」；標題列只有返回按鈕，沒有「Group actions」
+
+#### Scenario: 支出的明細
+
+- **WHEN** 打開 `/expenses/00000000-0000-4000-8000-000000000000`，明細讀不出支出
+- **THEN** 標題是「Expense」，畫面上只有這三樣，沒有「Expense not found.」；標題列沒有「Edit」
+
+#### Scenario: 從底部升起的表單
+
+- **WHEN** 讀不出本機資料時打開 New Expense，或打開 Brisbane 的 Members
+- **THEN** 表單上只有這三樣；New Expense 的標題列只有「Cancel」，沒有「Add」，Members 的只有「Close」
+
+#### Scenario: 回到畫面時讀不出
+
+- **WHEN** Groups 根畫面列出 Brisbane 之後切到 Expenses 分頁，再切回 Groups 時讀不出群組
+- **THEN** 畫面上只有這三樣，沒有 Brisbane 的卡片
+
+#### Scenario: 本機資料不變
+
+- **WHEN** 畫面因為讀不出本機資料而顯示這三樣
+- **THEN** 本機資料和讀之前完全一樣
+
+### Requirement: SHELL-61.1 按 Try Again 時再讀一次
+
+WHEN 使用者在讀不出本機資料的畫面按「Try Again」，the mobile app SHALL 再讀一次這個畫面的本機資料，讀完就照常顯示這個畫面，讀不出就仍顯示 SHELL-60.1 的錯誤；沒有按「Try Again」時，畫面回到前景也不再讀。
+
+#### Scenario: 又讀得出來
+
+- **WHEN** 有 Brisbane 時，Groups 根畫面讀不出群組之後，本機資料又讀得出來，按「Try Again」
+- **THEN** 錯誤消失，顯示 Brisbane 的卡片和「Add group」
+
+#### Scenario: 仍然讀不出
+
+- **WHEN** 仍讀不出本機資料時按「Try Again」
+- **THEN** 畫面上仍只有「Unable to Load Local Data」、「Your data was not changed.」和「Try Again」
+
+#### Scenario: 離開再回來
+
+- **WHEN** Groups 根畫面讀不出群組之後，本機資料又讀得出來，切到 Expenses 分頁再切回 Groups
+- **THEN** 仍顯示錯誤；按「Try Again」之後才顯示 Brisbane 的卡片
+
+#### Scenario: 表單
+
+- **WHEN** New Expense 讀不出本機資料之後，本機資料又讀得出來，按「Try Again」
+- **THEN** New Expense 照 LEDGER-13.1 顯示欄位，標題列有「Cancel」和「Add」
+
+### Requirement: SHELL-62.1 Settings 根畫面讀不出時不顯示數量
+
+IF Settings 根畫面讀不出「Archived Groups」或「Trash」那一列的數量要用的本機資料，THEN the mobile app SHALL 照常顯示 Settings 根畫面，只讓那一列不顯示數量，無障礙名稱是「Archived groups」或「Trash」（GROUPS-51.1、LEDGER-76.1），不顯示 SHELL-60.1 的錯誤；名字欄位、外觀選項和三個入口列都照常能用。Settings 根畫面回到前景時再讀一次，讀完就顯示數量。
+
+#### Scenario: 都讀不出
+
+- **WHEN** 第一次啟動 app 後選中 Settings 分頁，Settings 根畫面讀不出本機資料
+- **THEN** 「Archived Groups」和「Trash」右邊都沒有數量，無障礙名稱是「Archived groups」和「Trash」；PROFILE、APPEARANCE 和 APP 區塊照常顯示，沒有「Unable to Load Local Data」
+
+#### Scenario: 只讀不出支出
+
+- **WHEN** 第一次啟動 app 後選中 Settings 分頁，Settings 根畫面讀得出群組、讀不出支出
+- **THEN** 「Archived Groups」右邊是「0」，「Trash」右邊沒有數量
+
+#### Scenario: 照常能用
+
+- **WHEN** 讀不出本機資料時輸入名字「Taylor」並讓欄位失焦，再點「Archived Groups」
+- **THEN** 名字存成「Taylor」；Settings 分頁推入 Archived Groups（SHELL-23.2），它讀不出群組，照 SHELL-60.1 顯示錯誤
+
+#### Scenario: 回到 Settings 根畫面
+
+- **WHEN** 本機資料又讀得出來之後，切到 Expenses 分頁再切回 Settings
+- **THEN** 「Archived Groups」和「Trash」右邊都是「0」
+
+### Requirement: SHELL-63.1 讀不出本機資料時照常離開畫面
+
+WHILE 畫面顯示讀不出本機資料，the mobile app SHALL 讓使用者照常離開它：分頁列照常能切換分頁；推入的畫面照常能按返回按鈕回到上一個畫面；從底部升起的表單照常能按標題列的「Cancel」或「Close」，或往下滑關閉，不問要不要放棄變更；Android 的返回鍵照常回到上一個畫面或關閉表單，在分頁的根畫面照 SHELL-15.1。
+
+#### Scenario: 切換分頁
+
+- **WHEN** Groups 根畫面讀不出群組時點 Expenses 分頁
+- **THEN** 選中 Expenses
+
+#### Scenario: 返回
+
+- **WHEN** 群組的畫面讀不出群組時按返回按鈕，或在 Android 上按返回鍵
+- **THEN** 回到 Groups 根畫面
+
+#### Scenario: 關閉表單
+
+- **WHEN** New Expense 讀不出本機資料時按「Cancel」、往下滑，或在 Android 上按返回鍵
+- **THEN** New Expense 關閉，沒有跳出「Discard Changes?」
+
+#### Scenario: 關閉 Members
+
+- **WHEN** Members 讀不出群組時按「Close」或往下滑
+- **THEN** Members 關閉
+
+#### Scenario: Android 的分頁根畫面
+
+- **WHEN** Android 上從 Expenses 切到 Groups 分頁，Groups 根畫面讀不出群組時按返回鍵
+- **THEN** 切到 Expenses
+
+### Requirement: SHELL-64.1 還沒重新讀完時按下的動作照重新讀完的畫面處理
+
+WHEN 畫面還沒重新讀完時，使用者按下會改本機資料、或會打開能改本機資料的表單或提示框的動作，the mobile app SHALL 把它當成在重新讀完的畫面上按下的：重新讀完的畫面上沒有這個動作或它不能按，就不打開表單或提示框，也不改本機資料；有的話照重新讀完的畫面來做。重新讀不出本機資料時，畫面照 SHELL-60.1 顯示錯誤，按下的動作也不做。
+
+#### Scenario: Group Categories 的群組封存了
+
+- **WHEN** Brisbane 的 Group Categories 開在 Settings 分頁時，在 Groups 分頁封存 Brisbane，切回 Settings 分頁，還沒重新讀完時點 Shopping、按「Add category」，或對 Shopping 做螢幕閱讀器的「Remove」動作
+- **THEN** 重新讀完之後沒有開啟分類表單，也沒有跳出提示框，Brisbane 的分類都沒變；畫面照 CATEGORIES-43.1 是唯讀的
+
+#### Scenario: 群組沒有封存
+
+- **WHEN** Brisbane 的 Group Categories 開在 Settings 分頁時，切到 Groups 分頁再切回來，還沒重新讀完時點 Shopping
+- **THEN** 重新讀完之後開啟「Edit Category」，名稱是「Shopping」
+
+#### Scenario: 群組的畫面
+
+- **WHEN** 從 Archived Groups 打開封存的 Brisbane、按「Restore Group」之後，在 Groups 分頁再封存 Brisbane，切回 Settings 分頁，還沒重新讀完時在 Group actions 選「Rename Group」，或按「Add expense」
+- **THEN** 重新讀完之後沒有打開 Rename Group 或 New Expense；畫面照 GROUPS-55.1 顯示「Archived group. Expenses and allocations are read-only.」和「Restore Group」
+
+#### Scenario: 支出的明細
+
+- **WHEN** Brisbane 的 Dinner 的明細開在 Expenses 分頁時，在 Groups 分頁封存 Brisbane，切回 Expenses 分頁，還沒重新讀完時按「Edit」
+- **THEN** 重新讀完之後沒有打開 Edit Expense，「Edit」照 LEDGER-67.1 停用
+
+#### Scenario: 支出表單
+
+- **WHEN** 在 New Expense 輸入金額和標題並選 Gym，從「+ Add New Category」刪除 Gym 後按 Close，還沒重新讀完時按「Add」
+- **THEN** 存下一筆支出，分類是個人空間的 Uncategorized（LEDGER-63.1）
+
+#### Scenario: 重新讀不出
+
+- **WHEN** Brisbane 的 Group Categories 切回來、還沒重新讀完時點 Shopping，而重新讀不出本機資料
+- **THEN** 沒有開啟分類表單，畫面照 SHELL-60.1 顯示錯誤

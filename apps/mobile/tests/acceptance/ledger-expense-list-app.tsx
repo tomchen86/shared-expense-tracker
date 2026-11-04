@@ -21,7 +21,8 @@ export const NO_EXPENSE_ID = '00000000-0000-4000-8000-000000000000';
 
 // The phone database
 
-let beforeRead = () => Promise.resolve();
+let beforeRead: (sql: string) => Promise<void> = () => Promise.resolve();
+const damaged = () => new Error('database disk image is malformed');
 
 /** The phone database in `file`, as ledger-expense-app opens it, its reads behind a gate. */
 export function phoneDatabaseWithReads(file: string): Database {
@@ -29,7 +30,7 @@ export function phoneDatabaseWithReads(file: string): Database {
   return {
     ...database,
     all: async <T,>(sql: string, parameters?: readonly SqlValue[]) => {
-      await beforeRead();
+      await beforeRead(sql);
       return database.all<T>(sql, parameters);
     },
   };
@@ -39,14 +40,31 @@ export function allowReads() {
   beforeRead = () => Promise.resolve();
 }
 
-/** Holds every read outside a transaction until the test lets the reads through. */
+/**
+ * Fails every read outside a transaction, or only those of the table `table`, as
+ * a damaged database does, until the test allows reads again.
+ */
+export function failReads(table?: string) {
+  beforeRead = (sql) =>
+    table === undefined || new RegExp(`\\b${table}\\b`).test(sql)
+      ? Promise.reject(damaged())
+      : Promise.resolve();
+}
+
+/** Holds every read outside a transaction until the test lets the reads through or fails them. */
 export function holdReads() {
   let release!: () => void;
-  const held = new Promise<void>((resolve) => {
+  let fail!: () => void;
+  const held = new Promise<void>((resolve, reject) => {
     release = resolve;
+    fail = () => reject(damaged());
   });
+  held.catch(() => undefined);
   beforeRead = () => held;
-  return { release: () => act(async () => release()) };
+  return {
+    release: () => act(async () => release()),
+    fail: () => act(async () => fail()),
+  };
 }
 
 /** Starts the app at `url`, in Taipei on 2026-10-30, as startExpenses does at `/`. */
