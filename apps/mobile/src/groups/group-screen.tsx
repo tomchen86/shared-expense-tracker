@@ -12,7 +12,21 @@ import { useExpenses } from '../ledger/use-expenses';
 export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useThemeColors();
-  const [group, setGroup] = useGroup(id);
+  const [group, setGroup, pendingRead] = useGroup(id);
+  /** Runs `go` if the group is unarchived, once a read in progress has finished. */
+  function whenUnarchived(go: () => void) {
+    const read = pendingRead();
+    if (read === undefined) {
+      if (group && !group.archived) go();
+      return;
+    }
+    void read.then(
+      (fresh) => {
+        if (fresh && !fresh.archived) go();
+      },
+      () => undefined,
+    );
+  }
   const { pending, save } = useGroupArchive();
   const base = inSettings ? '/settings/archived-groups' : '/groups';
   const expenses = useExpenses()?.filter((expense) => expense.spaceId === id);
@@ -38,10 +52,12 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                     {
                       label: 'Rename Group',
                       onPress: () =>
-                        router.navigate({
-                          pathname: `${base}/rename`,
-                          params: { id },
-                        }),
+                        whenUnarchived(() =>
+                          router.navigate({
+                            pathname: `${base}/rename`,
+                            params: { id },
+                          }),
+                        ),
                     },
                   ] as const)),
             ],
@@ -102,10 +118,12 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
       {group && !group.archived && (
         <AddButton
           onPress={() =>
-            router.navigate({
-              pathname: '/expenses/new',
-              params: { groupId: id },
-            })
+            whenUnarchived(() =>
+              router.navigate({
+                pathname: '/expenses/new',
+                params: { groupId: id },
+              }),
+            )
           }
         />
       )}

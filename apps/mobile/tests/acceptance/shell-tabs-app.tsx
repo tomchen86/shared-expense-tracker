@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 // Before expo-router itself, so the expo-linking mock it installs takes effect.
 import {
@@ -18,14 +19,35 @@ export const TAB_NAMES = ['Groups', 'Expenses', 'Settings'];
 
 type Routes = Extract<MockContextConfig, { appDir: string }>['overrides'];
 
+/** A route file's key in an in-memory context: its path under `app/`, without the extension. */
+const routeKey = (file: string) =>
+  file.replace(/^\.\//, '').replace(/\.tsx?$/, '');
+
 /**
  * Starts the app at `url`. `routes` adds test-only screens, keyed like
- * `./name.tsx` under `app/`.
+ * `./name.tsx` under `app/`. Expo Router's own way to add them drops the files'
+ * extensions, and with them how it tells `+native-intent.tsx` from a route, so the
+ * app's files and the test screens go in one in-memory context instead.
  */
 export function openApp(url = '/', routes?: Routes) {
-  return renderRouter(routes ? { appDir: APP, overrides: routes } : APP, {
-    initialUrl: url,
-  });
+  if (routes === undefined) return renderRouter(APP, { initialUrl: url });
+  const files = fs
+    .readdirSync(APP, { recursive: true, encoding: 'utf8' })
+    .filter((file) => /\.tsx?$/.test(file));
+  return renderRouter(
+    {
+      ...Object.fromEntries(
+        files.map((file) => [
+          routeKey(file),
+          jest.requireActual<object>(path.join(APP, file)),
+        ]),
+      ),
+      ...Object.fromEntries(
+        Object.entries(routes).map(([key, route]) => [routeKey(key), route]),
+      ),
+    },
+    { initialUrl: url },
+  );
 }
 
 /** Starts the app as `openApp` does and waits until its local data has opened. */
