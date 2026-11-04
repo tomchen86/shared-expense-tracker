@@ -19,7 +19,11 @@ export function BalancesScreen() {
   const locale = useLocales()[0].languageTag;
   const amounts = group && expenses ? groupAmounts(expenses, group) : [];
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    // A form sheet's root view stays empty on iOS when React Native flattens it away.
+    <View
+      collapsable={false}
+      style={{ flex: 1, backgroundColor: colors.background }}
+    >
       <HeaderActions
         cancel={{ label: 'Close', onPress: () => router.back() }}
       />
