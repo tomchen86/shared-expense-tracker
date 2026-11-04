@@ -364,8 +364,8 @@ The mobile app SHALL 讓個人的 Insights 依 INSIGHTS-1.1 分析所有不在�
 
 #### Scenario: Insights 開著時改了支出
 
-- **WHEN** 個人的 Insights 開著時，在 Groups 分頁把 Dinner 的金額改成「90.00」，再回到 Expenses 分頁
-- **THEN** Insights 的總額是「$38.75」
+- **WHEN** 個人的 Insights 開著時，在 Edit Expense 把 Dinner 的金額改成「90.00」後按 Save
+- **THEN** 回到 Insights 時總額是「$38.75」
 
 #### Scenario: 重新啟動
 
@@ -785,8 +785,8 @@ IF 選中的期間因為支出改變而不再是期間，THEN the mobile app SHA
 
 #### Scenario: 同一年還有月份
 
-- **WHEN** 存過名字「Taylor」，有 2024 年 11 月和 2025 年 1 月的個人支出，和 2025 年 3 月 Brisbane 的「Dinner」，Taylor 有分攤；個人的 Insights 選中 March 2025 時，在 Groups 分頁把 Dinner 的日期改成 `2024-11-15`，再回到 Expenses 分頁
-- **THEN** 選中的期間是「January 2025」
+- **WHEN** 存過名字「Taylor」，有 2024 年 11 月和 2025 年 1 月的個人支出，和 2025 年 3 月 Brisbane 的「Dinner」，Taylor 有分攤；個人的 Insights 選中 March 2025 時，在 Edit Expense 把 Dinner 的日期改成 `2024-11-15` 後按 Save
+- **THEN** 回到 Insights 時選中的期間是「January 2025」
 
 #### Scenario: 同一年沒有了
 

@@ -7,6 +7,7 @@ import {
   addExpense,
   inTreeOrder,
   nameOf,
+  pressBack,
   resetPhone,
 } from './ledger-expense-app';
 import {
@@ -49,6 +50,7 @@ import {
 } from './group-details-app';
 import { iconNames, ripplesOn } from './shell-actions-app';
 import { allowWrites, settle } from './shell-appearance-app';
+import { navigationBarTitles, selectedTab, tab } from './shell-tabs-app';
 import type { Database } from '../../src/storage';
 
 // Runs on Android only (apps/mobile/jest.config.cjs). insights.test.tsx checks
@@ -111,6 +113,17 @@ async function insightsOn(...dates: string[]) {
     await addExpense({ date, amount: `${index + 1}.00`, title: date });
   await openInsights();
 }
+
+test('[INSIGHTS-13.1] goes back to the expense list on the back button', async () => {
+  await insightsOn('2025-01-10');
+
+  await pressBack();
+
+  await waitFor(() =>
+    expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses']),
+  );
+  expect(selectedTab()).toBe('Expenses');
+});
 
 // The chart menu
 
@@ -247,7 +260,7 @@ test('[INSIGHTS-34.1] shows the only year as text, without arrows or a button', 
 
 // The period picker
 
-test('[INSIGHTS-39.1] lists the years and the months of the selected year in Select Month', async () => {
+test('[INSIGHTS-35.1] [INSIGHTS-39.1] lists the years and the months of the selected year in Select Month, only those with expenses', async () => {
   await insightsOn('2024-11-10', '2025-01-20', '2025-03-10');
 
   await pressPeriod();
@@ -276,7 +289,7 @@ test('[INSIGHTS-39.1] lists the years and the months of the selected year in Sel
   expect(lines.filter((line) => expected.includes(line))).toEqual(expected);
 });
 
-test('[INSIGHTS-39.1] lists the months of another year when its year is pressed, keeping the dialog open', async () => {
+test('[INSIGHTS-35.1] [INSIGHTS-39.1] lists the months of another year when its year is pressed, keeping the dialog open', async () => {
   await insightsOn('2024-11-10', '2025-01-20', '2025-03-10');
   await pressPeriod();
 
