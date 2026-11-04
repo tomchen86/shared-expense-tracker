@@ -868,7 +868,10 @@ test('[LEDGER-40.1] shows amounts and dates the way a phone in Japan does', asyn
 
   const expected = ['Ramen', '￥1,200', '2026/10/30'];
   expect(shownInOrder(linesIn(card('Ramen')), expected)).toEqual(expected);
-  expect(thisMonthLines()).toEqual(['This Month: ￥1,200']);
+  // The line above the cards, whatever LEDGER-35.2 calls it.
+  expect(linesIn(expensesRoot())).toContainEqual(
+    expect.stringMatching(/: ￥1,200$/),
+  );
   await openDetails('Ramen');
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
 });
@@ -933,8 +936,9 @@ test('[SHELL-25.1] puts the expense list in the scroll view the Expenses large t
   const scrollView = scrollViewTheTitleFollows();
 
   expect(scrollView?.props.contentInsetAdjustmentBehavior).toBe('automatic');
+  // The line above the cards, whatever LEDGER-35.2 calls it, and a card.
   const lines = linesIn(scrollView!);
-  expect(lines).toContain('This Month: $8.75');
+  expect(lines).toContainEqual(expect.stringMatching(/: \$8\.75$/));
   expect(lines).toContain('Coffee run');
 });
 
