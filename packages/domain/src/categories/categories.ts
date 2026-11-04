@@ -4,7 +4,7 @@ export const MAX_CATEGORY_NAME_LENGTH = 50;
 /** Why a category name cannot be used (CATEGORIES-3.1, CATEGORIES-4.1). */
 export type CategoryNameProblem = 'empty' | 'tooLong' | 'duplicate';
 
-/** The category colors, in palette order. */
+/** The category colors, in palette order (CATEGORIES-1.2). */
 export const CATEGORY_COLORS: readonly string[] = Object.freeze([
   '#D81B60',
   '#1E88E5',
@@ -19,6 +19,20 @@ export const CATEGORY_COLORS: readonly string[] = Object.freeze([
   '#00ACC1',
   '#C62828',
   '#9E9D24',
+  '#A66F5B',
+  '#D99E77',
+  '#A66A11',
+  '#6C733F',
+  '#8BD916',
+  '#0B733C',
+  '#36D9B8',
+  '#1D6273',
+  '#85BFF2',
+  '#8861F2',
+  '#DC85F2',
+  '#F218B8',
+  '#8C4D6F',
+  '#F2858D',
 ]);
 
 const DEFAULT_CATEGORY_NAMES = [
