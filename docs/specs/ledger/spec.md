@@ -787,29 +787,34 @@ The mobile app SHALL 在卡片上只用一行顯示標題，放不下時在結�
 - **WHEN** 新增標題是 200 個「a」的支出
 - **THEN** 卡片上的標題只佔一行，放不下的部分在結尾截斷；螢幕閱讀器讀出完整的 200 個「a」
 
-### Requirement: LEDGER-35.1 Your Total Share 依幣別加總卡片金額
+### Requirement: LEDGER-35.2 Your Total Share 依幣別加總卡片金額，點了打開 Insights
 
-The mobile app SHALL 在支出清單的卡片上方，為卡片用到的每個幣別各顯示一行「Your Total Share: <這個幣別所有卡片金額的總和>」，依幣別代碼排序；沒有卡片時只顯示一行「Your Total Share: —」；這幾行是文字，不是按鈕。
+The mobile app SHALL 在支出清單的卡片上方，為卡片用到的每個幣別各顯示一行「Your Total Share: <這個幣別所有卡片金額的總和>」，依幣別代碼排序；沒有卡片時只顯示一行「Your Total Share: —」。這幾行合成一個按鈕，螢幕閱讀器讀出「View expense insights. Your total share is <依同樣的順序、以「, 」隔開的每個總和>.」，沒有卡片時讀出「View expense insights. Your total share is unavailable.」；按一下就以 `/insights` 推入個人的 Insights（INSIGHTS-13.1），連按兩次也只推入一個。
 
 #### Scenario: 一個幣別
 
 - **WHEN** 有 875 USD 和 1250 USD 兩筆支出
-- **THEN** 卡片上方只有「Your Total Share: $21.25」
+- **THEN** 卡片上方只有「Your Total Share: $21.25」；螢幕閱讀器把它讀成按鈕「View expense insights. Your total share is $21.25.」
 
 #### Scenario: 幾個幣別
 
 - **WHEN** 依序新增日期相同的 30 AUD、875 USD、1200 JPY
-- **THEN** 卡片由上而下是 JPY、USD、AUD 的支出；卡片上方由上而下是「Your Total Share: A$0.30」、「Your Total Share: ¥1,200」、「Your Total Share: $8.75」
+- **THEN** 卡片由上而下是 JPY、USD、AUD 的支出；卡片上方由上而下是「Your Total Share: A$0.30」、「Your Total Share: ¥1,200」、「Your Total Share: $8.75」，螢幕閱讀器讀出「View expense insights. Your total share is A$0.30, ¥1,200, $8.75.」
 
-#### Scenario: 不是按鈕
+#### Scenario: 按一下
 
-- **WHEN** 有 875 USD 的支出時點「Your Total Share: $8.75」
-- **THEN** 它不在任何按鈕裡，點了沒有反應
+- **WHEN** 有 875 USD 的支出時按「Your Total Share: $8.75」
+- **THEN** 分頁列仍選中 Expenses，Expenses 分頁的堆疊由下而上是「Expenses」根畫面和「Insights」，網址是 `/insights`
+
+#### Scenario: 連按兩次
+
+- **WHEN** 連按兩次「Your Total Share: $8.75」
+- **THEN** 只推入一個 Insights；返回一次就回到支出清單
 
 #### Scenario: 沒有支出
 
 - **WHEN** 第一次啟動 app
-- **THEN** 卡片上方只有「Your Total Share: —」
+- **THEN** 卡片上方只有「Your Total Share: —」，螢幕閱讀器讀出「View expense insights. Your total share is unavailable.」；按了推入 Insights
 
 #### Scenario: 修改之後
 
@@ -1469,7 +1474,7 @@ The mobile app SHALL 在支出清單上，和個人支出一起依 LEDGER-28.1 �
 
 ### Requirement: LEDGER-65.1 群組支出的卡片
 
-The mobile app SHALL 讓群組支出的卡片在分類和日期之間顯示群組的名稱，群組已封存時是「<群組名稱> · Archived」，螢幕閱讀器也在同樣的位置讀出它；群組支出的卡片金額是你的份額，只有付款沒有分攤時是 0，所以 Your Total Share 也只算你的份額（LEDGER-35.1）；群組支出的卡片沒有 LEDGER-70.1、71.1 的 Delete：往左滑不露出「Delete」，也沒有「Delete expense」的輔助功能動作。
+The mobile app SHALL 讓群組支出的卡片在分類和日期之間顯示群組的名稱，群組已封存時是「<群組名稱> · Archived」，螢幕閱讀器也在同樣的位置讀出它；群組支出的卡片金額是你的份額，只有付款沒有分攤時是 0，所以 Your Total Share 也只算你的份額（LEDGER-35.2）；群組支出的卡片沒有 LEDGER-70.1、71.1 的 Delete：往左滑不露出「Delete」，也沒有「Delete expense」的輔助功能動作。
 
 #### Scenario: 卡片
 

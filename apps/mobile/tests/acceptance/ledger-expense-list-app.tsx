@@ -111,11 +111,15 @@ export function shownInOrder(
 export const expensesRoot = () =>
   nativeViews(/^RNSScreen$/, tab('Expenses'))[0];
 
-/** The cards on the expense list, top to bottom: its buttons besides the + button. */
+/** The cards on the expense list, top to bottom: its buttons besides the + button and Your Total Share. */
 export const cards = () =>
   within(expensesRoot())
     .queryAllByRole('button')
-    .filter((button) => nameOf(button) !== 'Add expense');
+    .filter(
+      (button) =>
+        nameOf(button) !== 'Add expense' &&
+        !nameOf(button).startsWith('View expense insights.'),
+    );
 
 /** The card whose first line is `title`. */
 export function card(title: string) {

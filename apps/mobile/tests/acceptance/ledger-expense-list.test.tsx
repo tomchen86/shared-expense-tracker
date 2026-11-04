@@ -61,6 +61,11 @@ import {
   startExpensesAt,
   totalShareLines,
 } from './ledger-expense-list-app';
+import {
+  expectInsights,
+  goBackFromInsights,
+  totalShareButton,
+} from './insights-app';
 import { saveName } from './groups-app';
 import {
   allowWrites,
@@ -394,15 +399,19 @@ test('[LEDGER-34.1] shows the title on one line, cut at its end, and reads it in
 
 // Your Total Share
 
-test('[LEDGER-35.1] sums the cards of one currency', async () => {
+test('[LEDGER-35.2] sums the cards of one currency in a button that reads the total', async () => {
   await startExpenses();
   await addExpense({ amount: '8.75' });
   await addExpense({ title: 'Lunch', amount: '12.50' });
 
   expect(totalShareLines()).toEqual(['Your Total Share: $21.25']);
+  expect(readOut(totalShareButton())).toBe(
+    'View expense insights. Your total share is $21.25.',
+  );
+  expect(linesIn(totalShareButton())).toEqual(['Your Total Share: $21.25']);
 });
 
-test('[LEDGER-35.1] shows a line for each currency, above the cards, by currency code', async () => {
+test('[LEDGER-35.2] shows a line for each currency, above the cards, by currency code', async () => {
   setPhoneLanguage('en-US');
   await startExpenses();
 
@@ -416,39 +425,64 @@ test('[LEDGER-35.1] shows a line for each currency, above the cards, by currency
     'Your Total Share: ¥1,200',
     'Your Total Share: $8.75',
   ]);
+  expect(readOut(totalShareButton())).toBe(
+    'View expense insights. Your total share is A$0.30, ¥1,200, $8.75.',
+  );
   const lines = linesIn(expensesRoot());
   expect(lines.indexOf('Your Total Share: $8.75')).toBeLessThan(
     lines.indexOf('Ramen'),
   );
 });
 
-test('[LEDGER-35.1] shows Your Total Share as text that does nothing when pressed', async () => {
+test('[LEDGER-35.2] pushes Insights onto the Expenses tab at /insights when Your Total Share is pressed', async () => {
   const app = await startExpenses();
   await addExpense();
-  expect(totalShareLines()).toEqual(['Your Total Share: $8.75']);
 
-  const buttons = within(expensesRoot()).queryAllByRole('button');
-  expect(
-    buttons
-      .filter((button) =>
-        linesIn(button).some((line) => line.startsWith('Your Total Share')),
-      )
-      .map(readOut),
-  ).toEqual([]);
-  await fireEvent.press(screen.getByText('Your Total Share: $8.75'));
-  await settle();
-  expect(app.getPathname()).toBe('/');
+  await fireEvent.press(totalShareButton());
+  await expectInsights();
+
+  expect(selectedTab()).toBe('Expenses');
+  expect(navigationBarTitles(tab('Expenses'))).toEqual([
+    'Expenses',
+    'Insights',
+  ]);
+  expect(app.getPathname()).toBe('/insights');
 });
 
-test('[LEDGER-35.1] shows a dash before there are expenses', async () => {
+test('[LEDGER-35.2] pushes one Insights when Your Total Share is pressed twice', async () => {
+  await startExpenses();
+  await addExpense();
+
+  const button = totalShareButton();
+  await fireEvent.press(button);
+  await fireEvent.press(button);
+  await expectInsights();
+  await settle();
+
+  expect(navigationBarTitles(tab('Expenses'))).toEqual([
+    'Expenses',
+    'Insights',
+  ]);
+  await goBackFromInsights();
+  await waitFor(() =>
+    expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses']),
+  );
+});
+
+test('[LEDGER-35.2] shows a dash before there are expenses and still opens Insights', async () => {
   await startExpenses();
 
   await waitFor(() =>
     expect(totalShareLines()).toEqual(['Your Total Share: —']),
   );
+  expect(readOut(totalShareButton())).toBe(
+    'View expense insights. Your total share is unavailable.',
+  );
+  await fireEvent.press(totalShareButton());
+  await expectInsights();
 });
 
-test('[LEDGER-35.1] follows a changed amount', async () => {
+test('[LEDGER-35.2] follows a changed amount', async () => {
   await startExpenses();
   await addExpense({ amount: '8.75' });
   const expense = await onlyExpense();
@@ -459,7 +493,7 @@ test('[LEDGER-35.1] follows a changed amount', async () => {
   expect(totalShareLines()).toEqual(['Your Total Share: $12.50']);
 });
 
-test('[LEDGER-35.1] sums past the largest amount of a single expense', async () => {
+test('[LEDGER-35.2] sums past the largest amount of a single expense', async () => {
   await startExpenses();
   await addExpense({ amount: '9999999999.99' });
   await addExpense({ title: 'Lunch', amount: '9999999999.99' });
