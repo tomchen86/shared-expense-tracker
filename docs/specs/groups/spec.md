@@ -2,7 +2,7 @@
 
 ## Purpose
 
-群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Add Member、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Add Member 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Add Member、Rename Member 和 Rename Group 是名稱表單；儲存中是指名稱表單開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組的支出（GROUPS-61.1），支出的卡片和明細見 ledger。
+群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡的支出（GROUPS-61.2），支出的卡片、明細和垃圾桶見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上的 Group Total 和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
 
 ## Requirements
 
@@ -342,14 +342,19 @@ The mobile app SHALL 讓 New Group 名稱欄位的鍵盤把每個字的開頭自
 - **WHEN** 開啟 New Group，用手機的鍵盤輸入「teh trip」
 - **THEN** 名稱欄位是「Teh Trip」：每個字的開頭都大寫，「teh」沒有被校正成「the」；鍵盤的 Return 鍵是完成鍵
 
-### Requirement: GROUPS-20.1 群組的畫面在沒有支出時顯示提示
+### Requirement: GROUPS-20.2 群組的畫面在沒有支出時顯示提示
 
-WHILE 群組沒有支出，the mobile app SHALL 在群組的畫面顯示「No expenses in this group yet.」。
+WHILE 群組沒有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面顯示「No expenses in this group yet.」。
 
 #### Scenario: 新建立的群組
 
 - **WHEN** 建立「Brisbane」後點「Open Brisbane」
 - **THEN** 群組的畫面顯示「No expenses in this group yet.」
+
+#### Scenario: 唯一的支出移到垃圾桶
+
+- **WHEN** Brisbane 只有 Dinner 時，在 Brisbane 的畫面把 Dinner 移到垃圾桶（LEDGER-71.3）
+- **THEN** Brisbane 的畫面沒有卡片，顯示「No expenses in this group yet.」
 
 ### Requirement: GROUPS-21.1 找不到群組時顯示「Group not found.」
 
@@ -384,9 +389,9 @@ The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group ac
 - **WHEN** 封存 Brisbane 之後，在 iOS 上開啟它的畫面，或在 Android 上按它的「Group actions」
 - **THEN** iOS 的選單只列出「Members」；Android 的對話框依序列出「Members」和「Cancel」
 
-### Requirement: GROUPS-23.1 開啟和關閉 Members
+### Requirement: GROUPS-23.2 開啟和關閉 Members
 
-WHEN 使用者在 Group actions 選「Members」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Members，標題是「Members」，標題列只有取消「Close」（SHELL-47.1、SHELL-48.1）；沒有在移除中時，按 Close、把 Members 往下滑或按 Android 的返回鍵，SHALL 關閉 Members，回到群組的畫面。
+WHEN 使用者在 Group actions 選「Members」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Members，標題是「Members」，標題列只有取消「Close」（SHELL-47.1、SHELL-48.1）；沒有在移除中，Members 的名稱欄位也沒有在儲存中時，按 Close、把 Members 往下滑或按 Android 的返回鍵，SHALL 關閉 Members，回到群組的畫面。
 
 #### Scenario: 開啟
 
@@ -460,19 +465,24 @@ WHEN 使用者在別人的選單選「Remove from Group」，the mobile app SHAL
 - **WHEN** 移除 Blake 之後重新啟動 app
 - **THEN** Brisbane 的成員仍是 Taylor 和 Casey
 
-### Requirement: GROUPS-27.1 移除中鎖住 Members
+### Requirement: GROUPS-27.2 移除中鎖住 Members
 
-WHILE 有成員在移除中，the mobile app SHALL 停用 Close，讓每一列和「Add Member」都不能按，也不讓 Members 因為往下滑或按 Android 的返回鍵而關閉，直到存好或存不進去為止。
+WHILE 有成員在移除中，the mobile app SHALL 停用 Close，讓每一列和「Add Member」都不能按，名稱欄位輸入的字不會改變名稱、按 Return 也不加入成員，也不讓 Members 因為往下滑或按 Android 的返回鍵而關閉，直到存好或存不進去為止。
 
 #### Scenario: 移除中
 
 - **WHEN** 在 Blake 的選單選「Remove from Group」，還沒存好
-- **THEN** Close 停用；點「Casey」或「Taylor (You)」都不跳出選單，按「Add Member」不開啟 Add Member；Members 仍開著；存好後 Blake 不在了，Close 恢復可以按
+- **THEN** Close 停用；點「Casey」或「Taylor (You)」都不跳出選單，按「Add Member」不出現名稱欄位；Members 仍開著；存好後 Blake 不在了，Close 恢復可以按
 
 #### Scenario: 往下滑或按返回鍵
 
 - **WHEN** 還沒存好時往下滑 Members，或在 Android 上按返回鍵
 - **THEN** Members 不關閉
+
+#### Scenario: 名稱欄位開著時
+
+- **WHEN** 名稱欄位裡有「Dana」時移除 Blake，還沒存好時在名稱欄位按 Return
+- **THEN** 沒有加入 Dana；存好後 Blake 不在了，名稱欄位仍是「Dana」
 
 #### Scenario: 存不進去之後
 
@@ -498,37 +508,52 @@ IF 移除存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable
 - **WHEN** 失敗後資料庫恢復，再選一次「Remove from Group」
 - **THEN** Members 不再列出 Blake
 
-### Requirement: GROUPS-29.1 開啟 Add Member
+### Requirement: GROUPS-29.2 按 Add Member 時多一列名稱欄位
 
-WHEN 使用者在 Members 按「Add Member」，the mobile app SHALL 開啟從畫面底部升起、蓋在 Members 上的 Add Member，標題是「Add Member」，標題列有取消「Cancel」和確認「Add」（SHELL-47.1、SHELL-48.1），內容只有名稱欄位：名稱欄位的無障礙名稱是「Member name」，開啟時是空的、顯示「Enter member name」，並取得焦點。
+WHEN 使用者在未封存群組的 Members 按「Add Member」，the mobile app SHALL 不開新的畫面，把「Add Member」那一列換成名稱欄位，讓它取得焦點並打開鍵盤：名稱欄位的無障礙名稱是「Member name」，開啟時是空的、顯示「Enter member name」；名稱欄位失去焦點時，例如收起鍵盤或點了成員那一列，名稱欄位和裡面的名稱都留著，名稱欄位開著時點成員那一列，第一下就跳出他的選單（GROUPS-25.2）；Members 關閉時，名稱欄位裡還沒加入的名稱不會存下。
 
-#### Scenario: 開啟
+#### Scenario: 按 Add Member
 
 - **WHEN** 在 Brisbane 的 Members 按「Add Member」
-- **THEN** Add Member 從底部升起，蓋在 Members 上，標題是「Add Member」，標題列的取消是「Cancel」、確認是「Add」；名稱欄位是空的，顯示「Enter member name」，已經取得焦點
+- **THEN** 沒有打開新的畫面，最上面仍是 Members；「Add Member」那一列變成空的名稱欄位，顯示「Enter member name」，已經取得焦點
 
-### Requirement: GROUPS-30.1 名稱空白時停用 Add
+#### Scenario: 收起鍵盤
 
-WHILE Add Member 的名稱去掉頭尾空白後是空的，the mobile app SHALL 停用 Add（SHELL-49.1），在名稱欄位按 Return 也不新增。
+- **WHEN** 名稱欄位裡有「Blake」時收起鍵盤
+- **THEN** 名稱欄位仍在最下面，仍是「Blake」
 
-#### Scenario: 還沒輸入名稱
+#### Scenario: 點成員那一列
 
-- **WHEN** 名稱是空的，或只有「   」
-- **THEN** Add 停用，按 Return 不新增；輸入「Blake」後 Add 可以按
+- **WHEN** 名稱欄位裡有「Dana」、鍵盤開著時點「Blake」
+- **THEN** 第一下就跳出 Blake 的選單；按 Cancel 後名稱欄位仍是「Dana」
 
-### Requirement: GROUPS-31.1 按 Add 或 Return 時加入新的成員
+#### Scenario: 還沒加入就關閉 Members
 
-WHEN 使用者在 Add Member 按 Add，或在名稱欄位按 Return，而名稱去掉頭尾空白後不是空的，也和群組的成員、這個群組的前成員都不同名，the mobile app SHALL 以去掉頭尾空白的名稱把一位新的成員加入群組，存好後關閉 Add Member，回到 Members，把他列在最後；成員的人數和名稱的長度都沒有上限。
+- **WHEN** 在名稱欄位輸入「Blake」後按 Members 的「Close」
+- **THEN** Members 關閉，Brisbane 的成員仍只有 Taylor
+
+### Requirement: GROUPS-30.2 名稱空白時按 Return 收起名稱欄位
+
+WHEN 使用者在 Members 的名稱欄位按 Return，而名稱去掉頭尾空白後是空的，the mobile app SHALL 不新增成員，收起名稱欄位和鍵盤，那一列又是「Add Member」。
+
+#### Scenario: 空的或只有空白
+
+- **WHEN** 名稱欄位是空的，或只有「   」，按 Return
+- **THEN** 沒有新增成員；名稱欄位收起，最後一列又是「Add Member」
+
+### Requirement: GROUPS-31.2 按 Return 時加入新的成員
+
+WHEN 使用者在 Members 的名稱欄位按 Return，而名稱去掉頭尾空白後不是空的，也和群組的成員、這個群組的前成員都不同名，the mobile app SHALL 以去掉頭尾空白的名稱把一位新的成員加入群組，存好後把他列在成員的最後，名稱欄位清空並保有焦點，仍在最下面，可以接著加下一位；成員的人數和名稱的長度都沒有上限。
 
 #### Scenario: 去掉頭尾空白
 
-- **WHEN** 在 Brisbane 的 Add Member 輸入「 Blake 」，按 Add
-- **THEN** Add Member 關閉，Members 由上而下是「Taylor (You)」、「Blake」和「Add Member」；存下的名稱是「Blake」
+- **WHEN** 在 Brisbane 的名稱欄位輸入「 Blake 」，按 Return
+- **THEN** Members 由上而下是「Taylor (You)」、「Blake」和空的名稱欄位，名稱欄位仍有焦點；存下的名稱是「Blake」
 
-#### Scenario: 按 Return
+#### Scenario: 接著加下一位
 
-- **WHEN** 輸入「Casey」，在名稱欄位按 Return
-- **THEN** Add Member 關閉，Casey 排在最後
+- **WHEN** 再輸入「Casey」，按 Return
+- **THEN** 依序是「Taylor (You)」、「Blake」、「Casey」和空的名稱欄位
 
 #### Scenario: 很多成員
 
@@ -537,17 +562,17 @@ WHEN 使用者在 Add Member 按 Add，或在名稱欄位按 Return，而名稱�
 
 #### Scenario: 很長的名稱
 
-- **WHEN** 輸入 300 個「a」，按 Add
+- **WHEN** 輸入 300 個「a」，按 Return
 - **THEN** 存下的名稱是 300 個「a」
 
 #### Scenario: 儲存中切到別的分頁
 
-- **WHEN** Android 上在 Add Member 輸入「Blake」按 Add，還沒存好時點 Settings 分頁
-- **THEN** 存好後回到 Groups 分頁，Add Member 已經關閉，Members 列出 Blake
+- **WHEN** Android 上在名稱欄位輸入「Blake」按 Return，還沒存好時點 Settings 分頁
+- **THEN** 存好後回到 Groups 分頁，Members 列出 Blake
 
 ### Requirement: GROUPS-32.1 加入的成員的 ID
 
-WHEN 一位新的成員從 Add Member 加入群組，the mobile app SHALL 給他一個新的成員 ID，不給他使用者 ID；成員 ID 是小寫的第 4 版 UUID，和本機資料裡其他任何 ID 都不同。
+WHEN 一位新的成員從 Members 加入群組，the mobile app SHALL 給他一個新的成員 ID，不給他使用者 ID；成員 ID 是小寫的第 4 版 UUID，和本機資料裡其他任何 ID 都不同。
 
 #### Scenario: 加入 Blake
 
@@ -559,29 +584,24 @@ WHEN 一位新的成員從 Add Member 加入群組，the mobile app SHALL 給他
 - **WHEN** 在 Brisbane 和 Tokyo 都加入「Blake」
 - **THEN** 兩位 Blake 的成員 ID 不同
 
-### Requirement: GROUPS-33.1 和群組的成員同名時在欄位下方提示
+### Requirement: GROUPS-33.2 和群組的成員同名時在欄位下方提示
 
-IF 使用者在 Add Member 按 Add 或 Return 時，名稱和群組的某位成員同名，或在 Rename Member 按 Save 或 Return 時，名稱和群組的另一位成員同名，THEN the mobile app SHALL 不儲存、不關閉表單、不跳出提示框，在名稱欄位下方顯示「A member with this name already exists.」並讓螢幕閱讀器念出來，直到名稱被修改；你也算群組的成員。
+IF 使用者在 Members 的名稱欄位按 Return 時，名稱和群組的某位成員同名，或在 Rename Member 按 Save 或 Return 時，名稱和群組的另一位成員同名，THEN the mobile app SHALL 不儲存、不收起名稱欄位也不關閉 Rename Member、不跳出提示框，保留輸入，在名稱欄位下方顯示「A member with this name already exists.」並讓螢幕閱讀器念出來，直到名稱被修改；你也算群組的成員。
 
 #### Scenario: 和別人同名
 
-- **WHEN** Brisbane 有 Taylor 和 Blake，在 Add Member 輸入「 blake 」，按 Add
-- **THEN** Add Member 仍開著，名稱欄位下方顯示這句話，螢幕閱讀器念出來，沒有提示框；Brisbane 仍只有 Taylor 和 Blake
+- **WHEN** Brisbane 有 Taylor 和 Blake，在名稱欄位輸入「 blake 」，按 Return
+- **THEN** 名稱欄位仍是「 blake 」，下方顯示這句話，螢幕閱讀器念出來，沒有提示框；Brisbane 仍只有 Taylor 和 Blake
 
 #### Scenario: 你的名字
 
-- **WHEN** 你的名字是「Taylor」，在 Add Member 輸入「TAYLOR」，按 Add
+- **WHEN** 你的名字是「Taylor」，在名稱欄位輸入「TAYLOR」，按 Return
 - **THEN** 名稱欄位下方顯示這句話，沒有新增成員
 
 #### Scenario: 改成別人的名稱
 
-- **WHEN** Brisbane 有 Taylor、Blake 和 Casey，在 Casey 的 Rename Member 把名稱改成「 blake 」，按 Save
+- **WHEN** Brisbane 有 Taylor、Blake 和 Casey，在 Casey 的 Rename Member 把名稱改成「 blake 」，按 Save 或 Return
 - **THEN** Rename Member 仍開著，名稱欄位下方顯示這句話；Casey 的名稱沒有改變
-
-#### Scenario: 按 Return
-
-- **WHEN** Brisbane 有 Taylor、Blake 和 Casey，在 Add Member 輸入「blake」，或在 Casey 的 Rename Member 輸入「Blake」，然後在名稱欄位按 Return
-- **THEN** 表單仍開著，名稱欄位下方顯示這句話；Brisbane 的成員沒有改變
 
 #### Scenario: 修改名稱
 
@@ -590,76 +610,71 @@ IF 使用者在 Add Member 按 Add 或 Return 時，名稱和群組的某位成�
 
 #### Scenario: 同時和成員、前成員同名
 
-- **WHEN** 移除 Blake 之後，把 Casey 改名為「Blake」，再在 Add Member 輸入「blake」，按 Add
+- **WHEN** 移除 Blake 之後，把 Casey 改名為「Blake」，再在名稱欄位輸入「blake」，按 Return
 - **THEN** 名稱欄位下方顯示這句話，沒有問要不要加回來
 
-### Requirement: GROUPS-34.1 和前成員同名時問要不要加回來
+### Requirement: GROUPS-34.2 和前成員同名時問要不要加回來
 
-IF 使用者在 Add Member 按 Add 或 Return 時，名稱不和群組的任何成員同名，但和這個群組的前成員同名，THEN the mobile app SHALL 先不儲存，跳出標題「Add <前成員的名稱> Back?」、內容「<前成員的名稱> was removed from this group before. Adding them back reconnects their past payments and shares.」的提示框，選項是「Cancel」和「Add Back」，同名的前成員不只一位時問的是最近被移出的那一位：按 Add Back 時讓他回到群組，沿用他原本的成員 ID 和名稱，存好後關閉 Add Member，回到 Members，把他列在最後；按 Cancel 時留在 Add Member，保留輸入，Android 上按返回鍵或點提示框外面也一樣。
+IF 使用者在 Members 的名稱欄位按 Return 時，名稱不和群組的任何成員同名，但和這個群組的前成員同名，THEN the mobile app SHALL 先不儲存，跳出標題「Add <前成員的名稱> Back?」、內容「<前成員的名稱> was removed from this group before. Adding them back reconnects their past payments and shares.」的提示框，選項是「Cancel」和「Add Back」，同名的前成員不只一位時問的是最近被移出的那一位：按 Add Back 時讓他回到群組，沿用他原本的成員 ID 和名稱，存好後把他列在成員的最後，名稱欄位清空並保有焦點；按 Cancel 時名稱欄位保留輸入，Android 上按返回鍵或點提示框外面也一樣。
 
 #### Scenario: 加回來
 
-- **WHEN** Brisbane 有 Taylor、Blake 和 Casey，移除 Blake 之後，在 Add Member 輸入「blake」，按 Add，再按「Add Back」
-- **THEN** 先跳出標題「Add Blake Back?」、內容「Blake was removed from this group before. Adding them back reconnects their past payments and shares.」的提示框；按 Add Back 後 Add Member 關閉，Members 由上而下是「Taylor (You)」、「Casey」、「Blake」和「Add Member」；Blake 的成員 ID 和移除之前一樣，名稱是「Blake」
-
-#### Scenario: 按 Return
-
-- **WHEN** 移除 Blake 之後，在 Add Member 輸入「blake」，在名稱欄位按 Return
-- **THEN** 跳出「Add Blake Back?」的提示框，Blake 還沒有回到群組
+- **WHEN** Brisbane 有 Taylor、Blake 和 Casey，移除 Blake 之後，在名稱欄位輸入「blake」，按 Return，再按「Add Back」
+- **THEN** 先跳出標題「Add Blake Back?」、內容「Blake was removed from this group before. Adding them back reconnects their past payments and shares.」的提示框；按 Add Back 後 Members 由上而下是「Taylor (You)」、「Casey」、「Blake」和空的名稱欄位；Blake 的成員 ID 和移除之前一樣，名稱是「Blake」
 
 #### Scenario: 按 Cancel
 
 - **WHEN** 在這個提示框按「Cancel」
-- **THEN** Add Member 仍開著，名稱欄位是「blake」而且可以編輯，Cancel 和 Add 都可以按；Brisbane 的成員是 Taylor 和 Casey
+- **THEN** 名稱欄位仍是「blake」而且可以編輯；Brisbane 的成員是 Taylor 和 Casey
 
 #### Scenario: Android 上直接關掉
 
 - **WHEN** Android 上這個提示框開著時按返回鍵，或點提示框外面
-- **THEN** 提示框關閉，Add Member 仍開著，名稱欄位是「blake」；Brisbane 的成員是 Taylor 和 Casey
+- **THEN** 提示框關閉，名稱欄位仍是「blake」；Brisbane 的成員是 Taylor 和 Casey
 
 #### Scenario: 同名的前成員不只一位
 
-- **WHEN** 移除 Blake 之後，把 Casey 改名為「BLAKE」再移除他，然後在 Add Member 輸入「blake」，按 Add，再按「Add Back」
+- **WHEN** 移除 Blake 之後，把 Casey 改名為「BLAKE」再移除他，然後在名稱欄位輸入「blake」，按 Return，再按「Add Back」
 - **THEN** 提示框的標題是「Add BLAKE Back?」；回到 Brisbane 的是原本的 Casey，成員 ID 和移除之前一樣，名稱是「BLAKE」；原本的 Blake 仍是前成員
 
 #### Scenario: 最後被移除的人比較早加入
 
-- **WHEN** Brisbane 依序加入 Blake 和 Casey，移除 Casey 之後，把 Blake 改名為「casey」再移除他，然後在 Add Member 輸入「Casey」，按 Add，再按「Add Back」
+- **WHEN** Brisbane 依序加入 Blake 和 Casey，移除 Casey 之後，把 Blake 改名為「casey」再移除他，然後在名稱欄位輸入「Casey」，按 Return，再按「Add Back」
 - **THEN** 提示框的標題是「Add casey Back?」；回到 Brisbane 的是原本的 Blake，成員 ID 和移除之前一樣，名稱是「casey」；原本的 Casey 仍是前成員
 
 #### Scenario: 重新啟動之後
 
-- **WHEN** 移除 Blake、重新啟動 app 之後，在 Add Member 輸入「Blake」，按 Add，再按「Add Back」
+- **WHEN** 移除 Blake、重新啟動 app 之後，在名稱欄位輸入「Blake」，按 Return，再按「Add Back」
 - **THEN** Blake 回到 Brisbane，成員 ID 和移除之前一樣
 
 #### Scenario: 別的群組的前成員
 
-- **WHEN** 在 Tokyo 移除「Blake」之後，在 Brisbane 的 Add Member 輸入「Blake」，按 Add
+- **WHEN** 在 Tokyo 移除「Blake」之後，在 Brisbane 的名稱欄位輸入「Blake」，按 Return
 - **THEN** 沒有問要不要加回來，Brisbane 加入一位新的 Blake，成員 ID 和 Tokyo 的 Blake 不同
 
-### Requirement: GROUPS-35.1 新增存不進去時提示
+### Requirement: GROUPS-35.2 新增存不進去時提示
 
-IF 新的成員，或按 Add Back 時加回來的前成員，存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable to Add Member」、內容「The member could not be saved. Please try again.」的提示框，Add Member 保持開啟並保留輸入，本機資料維持按下之前的樣子。
+IF 新的成員，或按 Add Back 時加回來的前成員，存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable to Add Member」、內容「The member could not be saved. Please try again.」的提示框，名稱欄位保留輸入，本機資料維持按下之前的樣子。
 
 #### Scenario: 寫不進去
 
-- **WHEN** 資料庫無法寫入時，在 Add Member 輸入「Blake」按 Add
-- **THEN** 跳出這個提示框，Add Member 仍開著，名稱欄位是「Blake」，Add 可以再按；本機資料和按 Add 之前一樣
+- **WHEN** 資料庫無法寫入時，在名稱欄位輸入「Blake」按 Return
+- **THEN** 跳出這個提示框，名稱欄位仍是「Blake」而且可以編輯；本機資料和按 Return 之前一樣
 
 #### Scenario: 寫到一半失敗
 
 - **WHEN** 加入時的某一筆寫入失敗，在它之前的寫入都成功了，不論是哪一筆
-- **THEN** 跳出這個提示框，本機資料和按 Add 之前一樣
+- **THEN** 跳出這個提示框，本機資料和按 Return 之前一樣
 
 #### Scenario: 加回來時寫不進去
 
 - **WHEN** 資料庫無法寫入時，在「Add Blake Back?」按「Add Back」
-- **THEN** 跳出這個提示框，Add Member 仍開著，Blake 仍是前成員
+- **THEN** 跳出這個提示框，名稱欄位仍是「Blake」，Blake 仍是前成員
 
 #### Scenario: 再試一次
 
-- **WHEN** 失敗後資料庫恢復，再按一次 Add
-- **THEN** Add Member 關閉，Brisbane 只多了一位 Blake
+- **WHEN** 失敗後資料庫恢復，再按一次 Return
+- **THEN** Brisbane 只多了一位 Blake
 
 ### Requirement: GROUPS-36.1 開啟 Rename Member
 
@@ -752,14 +767,34 @@ IF 成員的新名稱存不進本機資料，THEN the mobile app SHALL 跳出標
 - **WHEN** 失敗後資料庫恢復，再按一次 Save
 - **THEN** Rename Member 關閉，他的名稱是「Blake」
 
-### Requirement: GROUPS-40.1 開啟 Rename Group
+### Requirement: GROUPS-40.2 點標題或在 Group actions 選 Rename Group 時開啟 Rename Group
 
-WHEN 使用者在 Group actions 選「Rename Group」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Rename Group，標題是「Rename Group」，標題列有取消「Cancel」和確認「Save」（SHELL-47.1、SHELL-48.1），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位；名稱欄位的無障礙名稱是「Group name」，開啟時是群組現在的名稱，並取得焦點，清空時顯示「Group name」。
+WHEN 使用者在未封存群組的畫面點標題，或在 Group actions 選「Rename Group」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Rename Group，標題是「Rename Group」，標題列有取消「Cancel」和確認「Save」（SHELL-47.1、SHELL-48.1），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位；名稱欄位的無障礙名稱是「Group name」，開啟時是群組現在的名稱，並取得焦點，清空時顯示「Group name」；未封存群組的畫面的標題是名稱為群組名稱、無障礙提示為「Renames the group」的按鈕，名稱右邊有向下的箭頭（iOS 是 SF Symbol `chevron.down`，Android 是 Material Symbols `expand_more`），Android 上這個按鈕至少 48 dp 高，按下時在按鈕上顯示顏色跟著 app 外觀的 ripple；封存的群組和找不到的群組的畫面的標題不是按鈕，也沒有箭頭。
 
-#### Scenario: 開啟
+#### Scenario: 點標題
+
+- **WHEN** 在 Brisbane 的畫面點標題「Brisbane」
+- **THEN** Rename Group 從底部升起，蓋在 Brisbane 的畫面上，名稱欄位是「Brisbane」，已經取得焦點
+
+#### Scenario: 從 Group actions 開啟
 
 - **WHEN** 在 Brisbane 的畫面選 Group actions 的「Rename Group」
 - **THEN** Rename Group 從底部升起，蓋在 Brisbane 的畫面上，標題是「Rename Group」，標題列的取消是「Cancel」、確認是「Save」；由上而下是「GROUP DETAILS」、「Name」和名稱欄位，名稱欄位是「Brisbane」，已經取得焦點
+
+#### Scenario: 標題是按鈕
+
+- **WHEN** 打開 Brisbane 的畫面
+- **THEN** 標題列的標題「Brisbane」是名稱為「Brisbane」的按鈕，右邊有向下的箭頭；螢幕閱讀器讀出「Brisbane」，再讀出提示「Renames the group」
+
+#### Scenario: Android
+
+- **WHEN** Android 上打開 Brisbane 的畫面
+- **THEN** 標題按鈕的箭頭是 `expand_more`，按鈕至少 48 dp 高；按下時按鈕上出現 ripple，深色和淺色時的顏色不同，或是由系統依外觀決定
+
+#### Scenario: 封存的群組
+
+- **WHEN** 封存 Brisbane 之後打開它的畫面
+- **THEN** 標題「Brisbane」不是按鈕，沒有箭頭，點了沒有反應
 
 #### Scenario: 清空名稱
 
@@ -809,14 +844,9 @@ IF 群組的新名稱存不進本機資料，THEN the mobile app SHALL 跳出標
 - **WHEN** 失敗後資料庫恢復，再按一次 Save
 - **THEN** Rename Group 關閉，群組的名稱是「Tokyo」
 
-### Requirement: GROUPS-43.1 按 Cancel、往下滑或按返回鍵時不儲存
+### Requirement: GROUPS-43.2 按 Cancel、往下滑或按返回鍵時不儲存
 
-WHEN 沒有在儲存中，而使用者在名稱表單按 Cancel、把它往下滑或按 Android 的返回鍵，the mobile app SHALL 關閉這個表單，不儲存：從 Add Member 和 Rename Member 回到 Members，從 Rename Group 回到群組的畫面。
-
-#### Scenario: Add Member
-
-- **WHEN** 在 Add Member 輸入「Blake」後按 Cancel
-- **THEN** Add Member 關閉，Members 沒有 Blake；再按「Add Member」時名稱欄位是空的
+WHEN 沒有在儲存中，而使用者在名稱表單按 Cancel、把它往下滑或按 Android 的返回鍵，the mobile app SHALL 關閉這個表單，不儲存：從 Rename Member 回到 Members，從 Rename Group 回到群組的畫面。
 
 #### Scenario: Rename Member
 
@@ -833,24 +863,24 @@ WHEN 沒有在儲存中，而使用者在名稱表單按 Cancel、把它往下�
 - **WHEN** 在 iOS 上把名稱表單往下滑，或在 Android 上按返回鍵
 - **THEN** 表單關閉，沒有儲存
 
-### Requirement: GROUPS-44.1 儲存中鎖住名稱表單
+### Requirement: GROUPS-44.2 儲存中鎖住名稱表單和名稱欄位
 
-WHILE 名稱表單在儲存中，the mobile app SHALL 停用它的 Cancel 和確認，讓名稱欄位不能編輯，再按確認或 Return 也不再儲存一次、不再提示，也不讓表單因為往下滑或按 Android 的返回鍵而關閉，直到存好或存不進去為止。
+WHILE 名稱表單或 Members 的名稱欄位在儲存中，the mobile app SHALL 不讓名稱被修改，再按確認或 Return 也不再儲存一次、不再提示；名稱表單另外讓名稱欄位不能編輯，停用它的 Cancel 和確認，也不因為往下滑或按 Android 的返回鍵而關閉；Members 的名稱欄位在儲存中時保有焦點和鍵盤，輸入的字不會改變名稱，Members 的 Close 停用，成員列都不能按，Members 也不因為往下滑或按 Android 的返回鍵而關閉；這些都到存好或存不進去為止。
 
 #### Scenario: 新增中
 
-- **WHEN** 在 Add Member 輸入「Blake」按 Add，還沒存好
-- **THEN** Cancel 和 Add 都停用，名稱欄位不能編輯，Add Member 仍開著；存好後 Add Member 關閉，多了 Blake
+- **WHEN** 在 Members 的名稱欄位輸入「Blake」按 Return，還沒存好
+- **THEN** 名稱欄位仍是「Blake」，鍵盤仍開著，這時輸入的字不會改變名稱；Close 停用，Members 仍開著；存好後多了 Blake，名稱欄位清空，可以輸入下一位，Close 恢復可以按
 
 #### Scenario: 連按兩次
 
-- **WHEN** 在 Add Member 輸入「Blake」後連按兩次 Add，或按 Add 後在存好之前按 Return，第二次都在存好之前
+- **WHEN** 在名稱欄位輸入「Blake」後連按兩次 Return，第二次在存好之前
 - **THEN** 只加入一位 Blake，沒有顯示「A member with this name already exists.」
 
 #### Scenario: 加回來中
 
 - **WHEN** 在「Add Blake Back?」按「Add Back」，還沒存好
-- **THEN** Cancel 和 Add 都停用，名稱欄位不能編輯，Add Member 仍開著；這時按 Return 也不再問一次；存好後 Add Member 關閉，Blake 回到群組
+- **THEN** 輸入的字不會改變名稱欄位的名稱，Close 停用；這時按 Return 也不再問一次；存好後 Blake 回到群組
 
 #### Scenario: 改名中
 
@@ -859,21 +889,21 @@ WHILE 名稱表單在儲存中，the mobile app SHALL 停用它的 Cancel 和確
 
 #### Scenario: 往下滑或按返回鍵
 
-- **WHEN** Add Member、Rename Member 或 Rename Group 還沒存好時往下滑它，或在 Android 上按返回鍵
-- **THEN** 表單不關閉；存好後才關閉
+- **WHEN** Members 的名稱欄位、Rename Member 或 Rename Group 還沒存好時，往下滑 Members 或名稱表單，或在 Android 上按返回鍵
+- **THEN** 都不關閉；存好後名稱表單才關閉，Members 仍開著
 
 #### Scenario: 存不進去之後
 
-- **WHEN** Add Member、Rename Member 或 Rename Group 存不進去之後
-- **THEN** Cancel、確認和名稱欄位都恢復可以用：可以修改名稱，按 Cancel 會關閉表單，表單也能往下滑關閉
+- **WHEN** Members 的名稱欄位、Rename Member 或 Rename Group 存不進去之後
+- **THEN** 名稱欄位、Close、Cancel 和確認都恢復可以用：可以修改名稱，按 Close 或 Cancel 會關閉，也能往下滑關閉
 
-### Requirement: GROUPS-45.1 名稱表單的鍵盤
+### Requirement: GROUPS-45.2 名稱表單和名稱欄位的鍵盤
 
-The mobile app SHALL 讓名稱表單的名稱欄位的鍵盤把每個字的開頭自動大寫、不自動校正，並以完成鍵當 Return 鍵。
+The mobile app SHALL 讓名稱表單和 Members 的名稱欄位的鍵盤把每個字的開頭自動大寫、不自動校正，並以完成鍵當 Return 鍵。
 
 #### Scenario: 輸入名稱
 
-- **WHEN** 在 Add Member、Rename Member 或 Rename Group，用手機的鍵盤輸入「teh trip」
+- **WHEN** 在 Members 的名稱欄位、Rename Member 或 Rename Group，用手機的鍵盤輸入「teh trip」
 - **THEN** 名稱欄位是「Teh Trip」：每個字的開頭都大寫，「teh」沒有被校正成「the」；鍵盤的 Return 鍵是完成鍵
 
 ### Requirement: GROUPS-46.1 你在群組裡的名稱和你的名字分開
@@ -1040,7 +1070,7 @@ WHEN 使用者點封存群組的卡片，the mobile app SHALL 在 Settings 分�
 #### Scenario: 還原後新增成員和改名
 
 - **WHEN** 在這個畫面按「Restore Group」，從 Members 加入「Blake」並把他改名為「Casey」，再從 Group actions 把群組改名為「Tokyo」
-- **THEN** Add Member、Rename Member 和 Rename Group 都蓋在這個畫面上，分頁列一直選中 Settings；群組的名稱是 Tokyo，成員是 Taylor 和 Casey
+- **THEN** Members 的名稱欄位在 Members 裡，Rename Member 和 Rename Group 都蓋在這個畫面上，分頁列一直選中 Settings；群組的名稱是 Tokyo，成員是 Taylor 和 Casey
 
 ### Requirement: GROUPS-55.1 封存群組的畫面顯示唯讀的提示和 Restore Group
 
@@ -1166,9 +1196,9 @@ WHEN app 重新啟動，the mobile app SHALL 保留每個群組有沒有封存�
 - **WHEN** 還原 Tokyo 之後重新啟動 app
 - **THEN** Groups 根畫面由上而下是 Brisbane、Tokyo、Paris；Archived Groups 只顯示「No archived groups.」
 
-### Requirement: GROUPS-61.1 群組的畫面列出群組的支出
+### Requirement: GROUPS-61.2 群組的畫面列出群組的支出
 
-WHILE 群組有支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 的順序列出這個群組每一筆支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.2、LEDGER-65.2），但卡片金額是支出的全額。
+WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 的順序列出這個群組每一筆不在垃圾桶裡的支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.2、LEDGER-65.3），但卡片金額是支出的全額。
 
 #### Scenario: 兩筆支出
 
@@ -1200,6 +1230,11 @@ WHILE 群組有支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 �
 - **WHEN** 重新啟動 app 後打開 Brisbane 的畫面
 - **THEN** 仍是 Dinner 和 Taxi 的卡片
 
+#### Scenario: 垃圾桶裡的支出
+
+- **WHEN** 把 Taxi 移到垃圾桶
+- **THEN** Brisbane 的畫面只有 Dinner 的卡片
+
 ### Requirement: GROUPS-62.1 讀完支出之前不顯示沒有支出的樣子
 
 WHILE 群組的畫面還沒讀完這個群組的支出，the mobile app SHALL 不顯示「No expenses in this group yet.」。
@@ -1211,7 +1246,7 @@ WHILE 群組的畫面還沒讀完這個群組的支出，the mobile app SHALL �
 
 ### Requirement: GROUPS-63.1 點群組畫面上的卡片推入明細
 
-WHEN 使用者點群組的畫面上的卡片，the mobile app SHALL 在群組的畫面所在的分頁推入這筆支出的明細（LEDGER-37.2、LEDGER-66.1），標題是「Expense」，網址在 Groups 分頁是 `/groups/expenses/<支出的 ID>`，在 Settings 分頁是 `/settings/archived-groups/expenses/<支出的 ID>`，分頁列仍選中同一個分頁；連點兩次也只推入一個明細，返回或按 Android 的返回鍵就回到群組的畫面。
+WHEN 使用者點群組的畫面上的卡片，the mobile app SHALL 在群組的畫面所在的分頁推入這筆支出的明細（LEDGER-37.2、LEDGER-66.2），標題是「Expense」，網址在 Groups 分頁是 `/groups/expenses/<支出的 ID>`，在 Settings 分頁是 `/settings/archived-groups/expenses/<支出的 ID>`，分頁列仍選中同一個分頁；連點兩次也只推入一個明細，返回或按 Android 的返回鍵就回到群組的畫面。
 
 #### Scenario: Groups 分頁
 
@@ -1287,7 +1322,7 @@ WHEN 使用者把成員移出群組（GROUPS-26.1），the mobile app SHALL 不�
 
 #### Scenario: 加回來
 
-- **WHEN** 再把 Blake 加回 Brisbane（GROUPS-34.1）
+- **WHEN** 再把 Blake 加回 Brisbane（GROUPS-34.2）
 - **THEN** Dinner 的分攤仍記在 Blake 原本的成員 ID 下，他又是 Brisbane 的成員
 
 ### Requirement: GROUPS-67.1 (manual) 群組畫面最後一張卡片不被 + 按鈕擋住
@@ -1298,3 +1333,225 @@ WHERE iPhone 或 Android 手機，WHEN 群組的畫面捲到最底，the mobile 
 
 - **WHEN** Brisbane 有 20 筆支出，把它的畫面捲到最底
 - **THEN** 最後一張卡片整張在 + 按鈕上方，沒有被擋住
+
+### Requirement: GROUPS-68.2 群組的畫面上的 Group Total
+
+WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面上、支出的卡片上方，為這些支出用到的每個幣別各顯示一行「Group Total: <這個幣別的支出的全額總和>」，依幣別代碼排序；這幾行合起來是一個按鈕，右邊有「›」，螢幕閱讀器把它讀成一個按鈕，讀出這幾行但不讀「›」，再讀出無障礙提示「Opens Insights」，按一下就在群組的畫面所在的分頁推入這個群組的 Insights（INSIGHTS-14.1）：Groups 分頁是 `/groups/insights?groupId=<群組 ID>`，Settings 分頁是 `/settings/archived-groups/insights?groupId=<群組 ID>`，連按兩次也只推入一個；群組沒有不在垃圾桶裡的支出時，SHALL 不顯示 Group Total。
+
+#### Scenario: 一個幣別
+
+- **WHEN** 名字是「Taylor」，Brisbane 有 Taylor 付的 10001 USD 的 Dinner，以及 Casey 付、只有 Blake 分攤的 2500 USD 的 Taxi
+- **THEN** Brisbane 的畫面在卡片上方只有「Group Total: $125.01」；它是一個按鈕，右邊有「›」，螢幕閱讀器讀出「Group Total: $125.01」和提示「Opens Insights」
+
+#### Scenario: 幾個幣別
+
+- **WHEN** Brisbane 還有一筆 3000 JPY 的 Sushi
+- **THEN** 由上而下是「Group Total: ¥3,000」和「Group Total: $125.01」，兩行在同一個按鈕裡，按鈕右邊只有一個「›」
+
+#### Scenario: 修改之後
+
+- **WHEN** 在 Brisbane 的畫面打開 Dinner 的明細，按「Edit」把金額改成「90.00」後按 Save，再返回 Brisbane 的畫面
+- **THEN** 是「Group Total: $115.00」
+
+#### Scenario: 按一下
+
+- **WHEN** 按「Group Total: $125.01」
+- **THEN** 仍選中 Groups 分頁，Groups 分頁的堆疊由下而上是「Groups」、「Brisbane」和「Insights」，網址是 `/groups/insights`，加上 Brisbane 的群組 ID；Insights 的總額是「$125.01」
+
+#### Scenario: 連按兩次
+
+- **WHEN** 連按兩次「Group Total: $125.01」
+- **THEN** 只推入一個 Insights
+
+#### Scenario: 沒有支出
+
+- **WHEN** 打開還沒有支出的 Brisbane 的畫面
+- **THEN** 沒有「Group Total」
+
+#### Scenario: 封存的群組
+
+- **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面
+- **THEN** 「Restore Group」下面是「Group Total: $125.01」，再下面是卡片；按「Group Total: $125.01」時，在 Settings 分頁推入 `/settings/archived-groups/insights`，加上 Brisbane 的群組 ID，堆疊由下而上是「Settings」、「Archived Groups」、「Brisbane」和「Insights」
+
+### Requirement: GROUPS-69.1 群組的畫面上你的淨額
+
+WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面上、Group Total 的下面、支出的卡片上方顯示你在這個群組的淨額：依幣別代碼排序，你的淨額不是 0 的每個幣別各一行，大於 0 時是「You're owed: <淨額>」，小於 0 時是「You owe: <淨額的絕對值>」；每個幣別的淨額都是 0 時，只有一行「Settled up」；這幾行合起來是一個按鈕，右邊有「›」，螢幕閱讀器把它讀成一個按鈕，讀出這幾行但不讀「›」，再讀出無障礙提示「Opens Balances」，按一下就打開 Balances（GROUPS-70.1）；群組沒有不在垃圾桶裡的支出時，SHALL 不顯示這幾行。
+
+#### Scenario: 別人欠你
+
+- **WHEN** 名字是「Taylor」，Brisbane 依序加入 Casey 和 Blake，有 Taylor 付的 60.00 USD 的 Dinner，分給 Taylor、Casey 和 Blake，以及 Casey 付、只有 Blake 分攤的 25.00 USD 的 Taxi
+- **THEN** 「Group Total: $85.00」下面是「You're owed: $40.00」，再下面是卡片；它是一個按鈕，右邊有「›」，螢幕閱讀器讀出「You're owed: $40.00」和提示「Opens Balances」
+
+#### Scenario: 你欠別人
+
+- **WHEN** Brisbane 只有 Casey 付的 60.00 USD 的 Dinner，分給 Taylor、Casey 和 Blake
+- **THEN** Group Total 下面是「You owe: $20.00」
+
+#### Scenario: 打平
+
+- **WHEN** Brisbane 只有 Taylor 付、只分給 Taylor 的 20.00 USD 的 Coffee，或只有和你無關的支出
+- **THEN** Group Total 下面是「Settled up」
+
+#### Scenario: 幾個幣別
+
+- **WHEN** Brisbane 有 Casey 付的 3000 JPY 的 Sushi，分給 Taylor 和 Casey，以及 Taylor 付、分給 Taylor、Casey 和 Blake 的 60.00 USD 的 Dinner
+- **THEN** 由上而下是「You owe: ¥1,500」和「You're owed: $40.00」，兩行在同一個按鈕裡，按鈕右邊只有一個「›」
+
+#### Scenario: 有一個幣別打平
+
+- **WHEN** Brisbane 有 Casey 付的 Sushi，以及 Taylor 付、只分給 Taylor 的 20.00 USD 的 Coffee
+- **THEN** 只有「You owe: ¥1,500」，沒有「Settled up」
+
+#### Scenario: 沒有支出
+
+- **WHEN** 打開還沒有支出的 Brisbane 的畫面
+- **THEN** 沒有「You're owed」、「You owe」和「Settled up」
+
+#### Scenario: 按下
+
+- **WHEN** 按「You're owed: $40.00」
+- **THEN** 打開 Brisbane 的 Balances
+
+### Requirement: GROUPS-70.1 開啟和關閉 Balances
+
+WHEN 使用者按群組的畫面上你的淨額（GROUPS-69.1），the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Balances，標題是「Balances」，標題列只有取消「Close」（SHELL-47.1、SHELL-48.1）；按 Close、把 Balances 往下滑或按 Android 的返回鍵，SHALL 關閉 Balances，回到群組的畫面。
+
+#### Scenario: 開啟
+
+- **WHEN** 在 Brisbane 的畫面按「You're owed: $40.00」
+- **THEN** Balances 從底部升起，蓋在 Brisbane 的畫面上，標題是「Balances」，標題列只有「Close」；仍選中 Groups 分頁
+
+#### Scenario: 按 Close
+
+- **WHEN** 在 Balances 按「Close」
+- **THEN** Balances 關閉，顯示 Brisbane 的畫面
+
+#### Scenario: 往下滑或按返回鍵
+
+- **WHEN** 在 iOS 上把 Balances 往下滑，或在 Android 上按返回鍵
+- **THEN** Balances 關閉，顯示 Brisbane 的畫面
+
+#### Scenario: 封存的群組
+
+- **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面，按你的淨額
+- **THEN** Balances 蓋在 Brisbane 的畫面上，分頁列仍選中 Settings
+
+### Requirement: GROUPS-71.1 Balances 列出每個人的已付、份額和淨額
+
+The mobile app SHALL 在 Balances 依幣別代碼排序，為群組不在垃圾桶裡的支出用到的每個幣別各放一個區塊，用到兩個以上幣別時每個區塊的標題是幣別代碼，只有一個幣別時沒有標題，區塊裡由上而下先依 GROUPS-24.2 的順序列出群組的每位成員，再依被移出的先後列出這個幣別不在垃圾桶裡的支出的付款或分攤裡的前成員；每個人一列，依序是他的名稱（你的成員是你的成員名稱加上「 (You)」，前成員是他存著的名稱）、淨額大於 0 時的「Is Owed <淨額>」、小於 0 時的「Owes <淨額的絕對值>」或等於 0 時的「Settled up」，以及「Paid <已付> · Share <份額>」，所以每個幣別所有人的淨額加總是 0。
+
+#### Scenario: 一個人付了全部
+
+- **WHEN** 名字是「Taylor」，Brisbane 依序加入 Casey 和 Blake；Taylor 付了 60.00 USD 的 Dinner，分給 Taylor、Casey 和 Blake，20.00 USD 的 Taxi，分給 Casey 和 Blake，以及 20.00 USD 的 Tickets，只分給 Blake
+- **THEN** Balances 沒有標題，由上而下是「Taylor (You)」「Is Owed $80.00」「Paid $100.00 · Share $20.00」、「Casey」「Owes $30.00」「Paid $0.00 · Share $30.00」、「Blake」「Owes $50.00」「Paid $0.00 · Share $50.00」；淨額 +8000、−3000、−5000 加總是 0
+
+#### Scenario: 幾個幣別
+
+- **WHEN** 還有 Casey 付的 3000 JPY 的 Sushi，分給 Taylor 和 Casey
+- **THEN** 有「JPY」和「USD」兩個區塊，「JPY」的區塊在上面，由上而下是「Taylor (You)」「Owes ¥1,500」「Paid ¥0 · Share ¥1,500」、「Casey」「Is Owed ¥1,500」「Paid ¥3,000 · Share ¥1,500」、「Blake」「Settled up」「Paid ¥0 · Share ¥0」
+
+#### Scenario: 前成員
+
+- **WHEN** 有這四筆支出時，把 Blake 移出 Brisbane
+- **THEN** 「USD」的區塊仍有 Blake，排在 Casey 下面，是「Blake」「Owes $50.00」「Paid $0.00 · Share $50.00」；「JPY」的區塊沒有 Blake
+
+#### Scenario: 依被移出的先後
+
+- **WHEN** 只有那三筆 USD 的支出，依序把 Blake 和 Casey 移出 Brisbane
+- **THEN** 由上而下是「Taylor (You)」、「Blake」和「Casey」那三列
+
+#### Scenario: 後來加入的成員
+
+- **WHEN** 只有那三筆 USD 的支出，加入 Riley
+- **THEN** Riley 排在 Blake 下面，是「Riley」「Settled up」「Paid $0.00 · Share $0.00」；把他移出 Brisbane 之後，Balances 沒有 Riley
+
+#### Scenario: 成員改了名
+
+- **WHEN** 把 Casey 改名為「Cass」
+- **THEN** 那一列是「Cass」
+
+#### Scenario: 只在垃圾桶裡的支出出現的前成員
+
+- **WHEN** Brisbane 有 Taylor 付、Taylor 和 Casey 分攤的 60.00 USD 的 Dinner，以及 Casey 付、只有 Blake 分攤的 25.00 USD 的 Taxi，把 Blake 移出 Brisbane，再把 Taxi 移到垃圾桶
+- **THEN** Balances 沒有 Blake；按 Undo 提示的「Undo」之後又有 Blake
+
+### Requirement: GROUPS-72.1 群組的卡片顯示成員人數
+
+The mobile app SHALL 在群組的卡片上、群組名稱的下面顯示群組的成員人數，一位時是「1 member」，其他時候是「<人數> members」；前成員不算在內。
+
+#### Scenario: 新建立的群組
+
+- **WHEN** 建立「Brisbane」
+- **THEN** Brisbane 的卡片在「Brisbane」下面是「1 member」
+
+#### Scenario: 加入成員
+
+- **WHEN** 在 Brisbane 依序加入 Casey 和 Blake，再回到 Groups 根畫面
+- **THEN** 卡片上是「3 members」
+
+#### Scenario: 移出和加回
+
+- **WHEN** 把 Blake 移出 Brisbane
+- **THEN** 卡片上是「2 members」；把他加回來之後是「3 members」
+
+### Requirement: GROUPS-73.1 群組的卡片顯示你的份額和淨額
+
+The mobile app SHALL 在群組的卡片上、成員人數的下面，依幣別代碼排序，為群組不在垃圾桶裡的支出用到的每個幣別依序顯示「Your share: <你的份額>」，以及你的淨額大於 0 時的「You're owed: <淨額>」、小於 0 時的「You owe: <淨額的絕對值>」或等於 0 時的「Settled up」；群組沒有不在垃圾桶裡的支出時，SHALL 在成員人數的下面只顯示「No spending yet」；卡片的名稱仍是「Open <群組名稱>」（GROUPS-2.2），螢幕閱讀器讀完名稱，接著依序讀出它下面的每一行。
+
+#### Scenario: 幾個幣別
+
+- **WHEN** 名字是「Taylor」，Brisbane 依序加入 Casey 和 Blake，有 Taylor 付的 120.00 AUD 的 Groceries，分給 Taylor 和 Casey，以及 Casey 付的 60.00 USD 的 Tickets，分給 Taylor、Casey 和 Blake
+- **THEN** Brisbane 的卡片由上而下是「Brisbane」、「3 members」、「Your share: A$60.00」、「You're owed: A$60.00」、「Your share: $20.00」、「You owe: $20.00」
+
+#### Scenario: 打平
+
+- **WHEN** Brisbane 只有 Taylor 付的 20.00 USD 的 Coffee，只分給 Taylor
+- **THEN** 卡片上是「Your share: $20.00」和「Settled up」
+
+#### Scenario: 和你無關的支出
+
+- **WHEN** Brisbane 只有 Casey 付的 25.00 USD 的 Taxi，只分給 Blake
+- **THEN** 卡片上是「Your share: $0.00」和「Settled up」
+
+#### Scenario: 還沒有支出
+
+- **WHEN** Brisbane 還沒有支出
+- **THEN** 卡片由上而下是「Brisbane」、「1 member」和「No spending yet」
+
+#### Scenario: 螢幕閱讀器
+
+- **WHEN** 螢幕閱讀器讀「幾個幣別」的 Brisbane 的卡片
+- **THEN** 讀出名稱「Open Brisbane」，接著依序是「3 members」、「Your share: A$60.00」、「You're owed: A$60.00」、「Your share: $20.00」、「You owe: $20.00」
+
+#### Scenario: 從 Expenses 分頁新增之後
+
+- **WHEN** 在 Expenses 分頁新增一筆 Brisbane 的支出，再選 Groups 分頁
+- **THEN** Brisbane 的卡片已經算進這筆支出
+
+### Requirement: GROUPS-74.1 讀完支出之前不顯示 No spending yet
+
+WHILE Groups 根畫面還沒讀完存著的支出，the mobile app SHALL 不在群組的卡片上顯示「No spending yet」。
+
+#### Scenario: 開啟 app
+
+- **WHEN** Brisbane 有 Dinner 時打開 Groups 分頁，Groups 根畫面還沒讀完存著的支出
+- **THEN** Brisbane 的卡片上沒有「No spending yet」；讀完之後顯示你的份額
+
+### Requirement: GROUPS-75.1 群組的金額不算垃圾桶裡的支出
+
+The mobile app SHALL 讓群組的金額只算這個群組不在垃圾桶裡的支出：群組的支出移到垃圾桶或從垃圾桶還原並存好之後，群組的畫面、Balances 和群組的卡片再出現時，都是照新的狀態算的金額。
+
+#### Scenario: 移到垃圾桶
+
+- **WHEN** 名字是「Taylor」，Brisbane 依序加入 Casey 和 Blake，有 Taylor 付的 60.00 USD 的 Dinner 和 Casey 付的 30.00 USD 的 Taxi，都分給 Taylor、Casey 和 Blake，然後把 Dinner 移到垃圾桶
+- **THEN** Brisbane 的畫面是「Group Total: $30.00」和「You owe: $10.00」；Balances 是「Taylor (You)」「Owes $10.00」「Paid $0.00 · Share $10.00」、「Casey」「Is Owed $20.00」「Paid $30.00 · Share $10.00」、「Blake」「Owes $10.00」「Paid $0.00 · Share $10.00」；卡片上是「Your share: $10.00」和「You owe: $10.00」
+
+#### Scenario: 還原
+
+- **WHEN** 按 Undo 提示的「Undo」，或在 Trash 還原 Dinner
+- **THEN** 又是「Group Total: $90.00」和「You're owed: $30.00」，卡片上是「Your share: $30.00」和「You're owed: $30.00」
+
+#### Scenario: 都在垃圾桶裡
+
+- **WHEN** 把 Dinner 和 Taxi 都移到垃圾桶
+- **THEN** Brisbane 的畫面沒有 Group Total 和你的淨額，顯示「No expenses in this group yet.」；卡片上是「No spending yet」

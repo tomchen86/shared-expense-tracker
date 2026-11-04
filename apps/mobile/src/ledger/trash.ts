@@ -10,7 +10,9 @@ export async function moveExpenseToTrash(
     tx.run(
       `UPDATE expenses SET trashOrder =
         (SELECT COALESCE(MAX(trashOrder), 0) + 1 FROM expenses)
-       WHERE id = ? AND spaceId = ? AND trashOrder IS NULL`,
+       WHERE id = ? AND (spaceId = ? OR spaceId IN (SELECT id FROM groups))
+       AND NOT EXISTS (SELECT 1 FROM groups WHERE id = expenses.spaceId AND archived = 1)
+       AND trashOrder IS NULL`,
       [id, spaceId],
     ),
   );
@@ -25,7 +27,8 @@ export async function restoreExpense(
 ): Promise<boolean> {
   const { changes } = await database.transaction((tx) =>
     tx.run(
-      'UPDATE expenses SET trashOrder = NULL WHERE id = ? AND spaceId = ? AND trashOrder IS NOT NULL',
+      `UPDATE expenses SET trashOrder = NULL WHERE id = ?
+       AND (spaceId = ? OR spaceId IN (SELECT id FROM groups)) AND trashOrder IS NOT NULL`,
       [id, spaceId],
     ),
   );
@@ -33,7 +36,7 @@ export async function restoreExpense(
   return changes !== 0;
 }
 
-/** Omitting id empties this space's trash. Foreign keys remove payments and shares. */
+/** Omitting id empties personal and group trash. Foreign keys remove allocations. */
 export async function deleteTrashedExpenses(
   database: Database,
   spaceId: string,
@@ -41,7 +44,8 @@ export async function deleteTrashedExpenses(
 ): Promise<boolean> {
   const { changes } = await database.transaction((tx) =>
     tx.run(
-      `DELETE FROM expenses WHERE spaceId = ? AND trashOrder IS NOT NULL${id === undefined ? '' : ' AND id = ?'}`,
+      `DELETE FROM expenses WHERE (spaceId = ? OR spaceId IN (SELECT id FROM groups))
+       AND trashOrder IS NOT NULL${id === undefined ? '' : ' AND id = ?'}`,
       id === undefined ? [spaceId] : [spaceId, id],
     ),
   );

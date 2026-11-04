@@ -173,7 +173,7 @@ async function showGroup(group: string) {
 
 // The expenses on a group's screen
 
-test("[GROUPS-61.1] lists the group's expenses newest first, without the no-expenses hint", async () => {
+test("[GROUPS-61.2] lists the group's expenses newest first, without the no-expenses hint", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await addGroupExpense({
@@ -192,7 +192,7 @@ test("[GROUPS-61.1] lists the group's expenses newest first, without the no-expe
   expect(groupLines('Brisbane')).not.toContain(NO_EXPENSES);
 });
 
-test('[GROUPS-61.1] shows the full amount on the card, with the category, the group and the date', async () => {
+test('[GROUPS-61.2] shows the full amount on the card, with the category, the group and the date', async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
 
@@ -212,7 +212,7 @@ test('[GROUPS-61.1] shows the full amount on the card, with the category, the gr
   );
 });
 
-test("[GROUPS-61.1] [LEDGER-33.2] shows the category's color dot on the group's cards, and <name> (Archived) once the group's category is archived", async () => {
+test("[GROUPS-61.2] [LEDGER-33.2] shows the category's color dot on the group's cards, and <name> (Archived) once the group's category is archived", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await showGroup('Brisbane');
@@ -240,7 +240,7 @@ test("[GROUPS-61.1] [LEDGER-33.2] shows the category's color dot on the group's 
   expect(dotColors(groupCard('Brisbane', 'Dinner'))).toEqual(['#D81B60']);
 });
 
-test('[GROUPS-61.1] lists an expense of the group that you have no part in', async () => {
+test('[GROUPS-61.2] lists an expense of the group that you have no part in', async () => {
   await startWithGroups(BRISBANE);
   await addGroupExpense({
     group: 'Brisbane',
@@ -253,7 +253,7 @@ test('[GROUPS-61.1] lists an expense of the group that you have no part in', asy
   await waitFor(() => expect(groupCardTitles('Brisbane')).toEqual(['Dinner']));
 });
 
-test("[GROUPS-61.1] leaves out the other groups' expenses", async () => {
+test("[GROUPS-61.2] leaves out the other groups' expenses", async () => {
   await startWithGroups({ ...BRISBANE, Tokyo: [] });
   await addDinner();
   await addGroupExpense({
@@ -268,7 +268,7 @@ test("[GROUPS-61.1] leaves out the other groups' expenses", async () => {
   await waitFor(() => expect(groupCardTitles('Brisbane')).toEqual(['Dinner']));
 });
 
-test("[GROUPS-61.1] lists an archived group's expenses under its read-only notice", async () => {
+test("[GROUPS-61.2] lists an archived group's expenses under its read-only notice", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await archiveGroup('Brisbane');
@@ -287,7 +287,7 @@ test("[GROUPS-61.1] lists an archived group's expenses under its read-only notic
   expect(shownInOrder(lines, expected)).toEqual(expected);
 });
 
-test("[GROUPS-61.1] keeps listing the group's expenses after a restart", async () => {
+test("[GROUPS-61.2] keeps listing the group's expenses after a restart", async () => {
   const app = await startWithGroups(BRISBANE);
   await addDinner();
 
@@ -338,7 +338,7 @@ test('[GROUPS-63.1] pushes the details on the Groups tab at /groups/expenses/<ID
   expect(app.getPathname()).toBe(`/groups/expenses/${dinner.id}`);
 });
 
-test('[GROUPS-63.1] [LEDGER-67.1] pushes the read-only details on the Settings tab for an archived group', async () => {
+test('[GROUPS-63.1] [LEDGER-67.2] pushes the read-only details on the Settings tab for an archived group', async () => {
   const app = await startWithGroups(BRISBANE);
   await addDinner();
   const [dinner] = await storedExpenses();

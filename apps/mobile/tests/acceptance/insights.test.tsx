@@ -413,6 +413,35 @@ test('[INSIGHTS-16.1] leaves out an expense in the trash and counts it again onc
   await expectTotals(['$28.75']);
 });
 
+test("[INSIGHTS-16.1] leaves a group expense in the trash out of both the personal and the group's Insights, and counts it again once restored", async () => {
+  await startWithGroups(BRISBANE);
+  await addExpense({ amount: '8.75' });
+  await addDinner();
+  await addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Casey',
+    sharers: ['Blake'],
+    amount: '9.00',
+    title: 'Taxi',
+  });
+  const id = await groupId('Brisbane');
+
+  await deleteByAction('Dinner');
+  await openInsights();
+  await expectTotals(['$8.75']);
+  await goBackFromInsights();
+  await openGroupInsights(id);
+  await expectTotals(['$9.00'], 'Groups');
+  await goBackFromInsights('Groups');
+
+  await restoreFromTrash('Dinner');
+  await openInsights();
+  await expectTotals(['$28.75']);
+  await goBackFromInsights();
+  await openGroupInsights(id);
+  await expectTotals(['$69.00'], 'Groups');
+});
+
 test('[INSIGHTS-16.1] follows an expense changed while Insights is open', async () => {
   await startWithGroups(BRISBANE);
   await addExpense({ amount: '8.75' });

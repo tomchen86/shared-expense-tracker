@@ -10,7 +10,9 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useLocales } from 'expo-localization';
 import { formatCurrency } from '@shared-expense/domain';
-import { useLocalIdentity } from '../shell';
+import { listGroups } from '../groups';
+import { useLocalDatabase, useLocalIdentity } from '../shell';
+import { listExpenses } from './expenses';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
@@ -24,10 +26,12 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   const locale = useLocales()[0].languageTag;
   const expenses = useExpenses(trashed);
   const actions = useTrashActions();
+  const database = useLocalDatabase();
   const saving = useRef(false);
   const [leavingExpense, setLeavingExpense] = useState<ExpenseView>();
+  const [, showReadError] = useState();
   const expense = leavingExpense ?? expenses?.find((item) => item.id === id);
-  const { userId, personalSpaceId } = useLocalIdentity();
+  const { userId } = useLocalIdentity();
   const position = expense ? expense.yourPaid - expense.yourShare : 0;
 
   async function changeAndReturn(change: () => Promise<boolean>) {
@@ -37,6 +41,26 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
     if (await change()) router.back();
     else setLeavingExpense(undefined);
     saving.current = false;
+  }
+
+  /** Opens Edit Expense if the expense, read now, is out of the trash and in an unarchived space (SHELL-64.1). */
+  async function editIfAllowed() {
+    const [rows, groups] = await Promise.all([
+      listExpenses(database),
+      listGroups(database),
+    ]);
+    const archived = new Set(
+      groups.filter((group) => group.archived).map((group) => group.id),
+    );
+    if (
+      rows.some(
+        (item) =>
+          item.id === id &&
+          item.trashOrder === undefined &&
+          !archived.has(item.spaceId),
+      )
+    )
+      router.navigate(`/expenses/${id}/edit`);
   }
 
   function deletePermanently() {
@@ -51,36 +75,40 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   }
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {expense && (
-        <HeaderActions
-          edit={
-            trashed
-              ? undefined
-              : {
-                  label: 'Edit',
-                  disabled: expense.group?.archived,
-                  onPress: () => router.navigate(`/expenses/${id}/edit`),
-                }
-          }
-          menu={
-            expense.spaceId === personalSpaceId
-              ? {
-                  label: 'Expense actions',
-                  actions: [
-                    {
-                      label: trashed ? 'Delete Permanently' : 'Delete',
-                      destructive: true,
-                      onPress: trashed
-                        ? deletePermanently
-                        : () =>
-                            void changeAndReturn(() => actions.move(expense)),
-                    },
-                  ],
-                }
-              : undefined
-          }
-        />
-      )}
+      <HeaderActions
+        edit={
+          trashed || !expense
+            ? undefined
+            : {
+                label: 'Edit',
+                disabled: expense.group?.archived,
+                onPress: () =>
+                  void editIfAllowed().catch((failure: unknown) =>
+                    // Thrown in the next render, so the screen shows the read error (SHELL-60.1).
+                    showReadError(() => {
+                      throw failure;
+                    }),
+                  ),
+              }
+        }
+        menu={
+          expense
+            ? {
+                label: 'Expense actions',
+                actions: [
+                  {
+                    label: trashed ? 'Delete Permanently' : 'Delete',
+                    destructive: true,
+                    disabled: !trashed && expense.group?.archived,
+                    onPress: trashed
+                      ? deletePermanently
+                      : () => void changeAndReturn(() => actions.move(expense)),
+                  },
+                ],
+              }
+            : undefined
+        }
+      />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
@@ -112,7 +140,7 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
             <Text style={[styles.amount, { color: colors.text }]}>
               {formatCurrency(expense.amountMinor, expense.currency, locale)}
             </Text>
-            {expense.group?.archived && (
+            {expense.group?.archived && !trashed && (
               <GroupedSection style={styles.history}>
                 <Text style={{ color: colors.text }}>Shared history</Text>
                 <Text style={{ color: colors.textMuted }}>

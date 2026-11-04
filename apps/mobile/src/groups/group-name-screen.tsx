@@ -16,7 +16,6 @@ import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
 import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
 import {
-  addGroupMember,
   memberNameKey,
   MemberNameExistsError,
   renameGroup,
@@ -26,12 +25,8 @@ import {
 } from './index';
 import { useGroup } from './use-group';
 
-type Form = 'Add Member' | 'Rename Member' | 'Rename Group';
+type Form = 'Rename Member' | 'Rename Group';
 const ALREADY_EXISTS = 'A member with this name already exists.';
-
-export function AddMemberScreen() {
-  return <GroupNameScreen form="Add Member" />;
-}
 
 export function RenameMemberScreen() {
   return <GroupNameScreen form="Rename Member" />;
@@ -73,8 +68,7 @@ function NameEditor({
   const colors = useThemeColors();
   const keyboardScroll = useKeyboardScroll();
   const isGroup = form === 'Rename Group';
-  const adding = form === 'Add Member';
-  const initialName = adding ? '' : isGroup ? group.name : member!.name;
+  const initialName = isGroup ? group.name : member!.name;
   const [name, setName] = useState(initialName);
   const [duplicate, setDuplicate] = useState(false);
   const [status, setStatus] = useState<'editing' | 'saving' | 'saved'>(
@@ -82,7 +76,7 @@ function NameEditor({
   );
   const submitting = useRef(false);
   const saving = status === 'saving';
-  const canSave = !!name.trim() && (adding || name.trim() !== initialName);
+  const canSave = !!name.trim() && name.trim() !== initialName;
   usePreventRemove(saving, () => {});
   useEffect(() => {
     if (status === 'saved') navigation.goBack();
@@ -93,14 +87,12 @@ function NameEditor({
     AccessibilityInfo.announceForAccessibility(ALREADY_EXISTS);
   }
 
-  async function save(former?: GroupMember) {
+  async function save() {
     if (submitting.current) return;
     submitting.current = true;
     setStatus('saving');
     try {
       if (isGroup) await renameGroup(database, group.id, name);
-      else if (adding)
-        await addGroupMember(database, group.id, name, former?.id);
       else await renameGroupMember(database, group.id, member!.id, name);
       setStatus('saved');
     } catch (error) {
@@ -109,7 +101,7 @@ function NameEditor({
       if (error instanceof MemberNameExistsError) showDuplicate();
       else
         Alert.alert(
-          adding ? 'Unable to Add Member' : `Unable to ${form}`,
+          `Unable to ${form}`,
           isGroup
             ? 'Your group could not be saved. Please try again.'
             : 'The member could not be saved. Please try again.',
@@ -130,22 +122,7 @@ function NameEditor({
       showDuplicate();
       return;
     }
-    const former = adding
-      ? group.formerMembers.find(
-          (candidate) => memberNameKey(candidate.name) === memberNameKey(name),
-        )
-      : undefined;
-    if (former) {
-      Alert.alert(
-        `Add ${former.name} Back?`,
-        `${former.name} was removed from this group before. Adding them back reconnects their past payments and shares.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Add Back', onPress: () => void save(former) },
-        ],
-        { cancelable: true },
-      );
-    } else void save();
+    void save();
   }
 
   return (
@@ -163,7 +140,7 @@ function NameEditor({
           },
         }}
         confirm={{
-          label: adding ? 'Add' : 'Save',
+          label: 'Save',
           disabled: saving || !canSave,
           onPress: submit,
         }}

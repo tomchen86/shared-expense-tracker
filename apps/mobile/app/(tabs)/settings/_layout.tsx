@@ -42,8 +42,8 @@ export default function SettingsLayout() {
         options={{ ...formPresentation, title: 'Members' }}
       />
       <Stack.Screen
-        name="archived-groups/add-member"
-        options={{ ...formPresentation, title: 'Add Member' }}
+        name="archived-groups/balances"
+        options={{ ...formPresentation, title: 'Balances' }}
       />
       <Stack.Screen
         name="archived-groups/rename-member"

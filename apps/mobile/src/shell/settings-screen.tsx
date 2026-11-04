@@ -41,9 +41,9 @@ export function SettingsScreen() {
   useTabRootBack('/');
   const colors = useThemeColors();
   const identity = useLocalIdentity();
-  const [groups] = useGroups();
+  const [groups] = useGroups({ throwOnError: false });
   const archivedCount = groups?.filter((group) => group.archived).length;
-  const trashCount = useExpenses(true)?.length;
+  const trashCount = useExpenses(true, { throwOnError: false })?.length;
   const saveName = useSaveLocalName();
   const appearance = useAppearanceOption();
   const saveAppearance = useSaveAppearanceOption();
