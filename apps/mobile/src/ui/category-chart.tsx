@@ -67,13 +67,9 @@ function ringColors(categories: CategoryChartProps['categories']) {
   const counts = categories.map((item) =>
     Math.max(1, Math.round((item.amountMinor / total) * RING)),
   );
-  // Rounding and the minimum can overshoot; take the excess from the largest.
-  let excess = counts.reduce((sum, count) => sum + count, 0) - RING;
-  while (excess > 0) {
-    const largest = counts.indexOf(Math.max(...counts));
-    counts[largest] -= 1;
-    excess -= 1;
-  }
+  // Rounding and the minimum can miss RING either way; the largest absorbs it.
+  const largest = counts.indexOf(Math.max(...counts));
+  counts[largest] += RING - counts.reduce((sum, count) => sum + count, 0);
   return categories.flatMap((item, index) =>
     Array.from({ length: counts[index] }, () => item.color),
   );
