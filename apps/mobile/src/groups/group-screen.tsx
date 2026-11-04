@@ -25,7 +25,21 @@ import { formatBalance } from './format-balance';
 export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useThemeColors();
-  const [group, setGroup] = useGroup(id);
+  const [group, setGroup, pendingRead] = useGroup(id);
+  /** Runs `go` if the group is unarchived, once a read in progress has finished. */
+  function whenUnarchived(go: () => void) {
+    const read = pendingRead();
+    if (read === undefined) {
+      if (group && !group.archived) go();
+      return;
+    }
+    void read.then(
+      (fresh) => {
+        if (fresh && !fresh.archived) go();
+      },
+      () => undefined,
+    );
+  }
   const { pending, save } = useGroupArchive();
   const { move } = useTrashActions();
   const { userId } = useLocalIdentity();
@@ -45,7 +59,9 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
     );
   if (amounts.length > 0 && balances.length === 0) balances.push('Settled up');
   const rename = () =>
-    router.navigate({ pathname: `${base}/rename`, params: { id } });
+    whenUnarchived(() =>
+      router.navigate({ pathname: `${base}/rename`, params: { id } }),
+    );
   const rowStyle: PressableProps['style'] = ({ pressed }) => [
     styles.row,
     pressed && { backgroundColor: colors.pressedSurface },
@@ -203,10 +219,12 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
       {group && !group.archived && (
         <AddButton
           onPress={() =>
-            router.navigate({
-              pathname: '/expenses/new',
-              params: { groupId: id },
-            })
+            whenUnarchived(() =>
+              router.navigate({
+                pathname: '/expenses/new',
+                params: { groupId: id },
+              }),
+            )
           }
         />
       )}

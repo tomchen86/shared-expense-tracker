@@ -4,7 +4,7 @@ import { useLocalDatabase } from '../shell';
 import { listGroups, type Group } from './index';
 
 /** Read again on focus; undefined keeps empty messages hidden during the first read. */
-export function useGroups() {
+export function useGroups({ throwOnError = true } = {}) {
   const database = useLocalDatabase();
   const [groups, setGroups] = useState<Group[]>();
   const [error, setError] = useState<unknown>();
@@ -13,10 +13,14 @@ export function useGroups() {
       let active = true;
       void listGroups(database).then(
         (rows) => {
-          if (active) setGroups(rows);
+          if (!active) return;
+          setGroups(rows);
+          setError(undefined);
         },
         (failure: unknown) => {
-          if (active) setError(failure);
+          if (!active) return;
+          setGroups(undefined);
+          setError(failure);
         },
       );
       return () => {
@@ -24,6 +28,6 @@ export function useGroups() {
       };
     }, [database]),
   );
-  if (error) throw error;
+  if (error && throwOnError) throw error;
   return [groups, setGroups] as const;
 }

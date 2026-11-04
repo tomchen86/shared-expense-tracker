@@ -20,7 +20,7 @@ export interface ExpenseView extends Expense {
 }
 
 /** Undefined until loaded; refresh on navigation and committed expense changes. */
-export function useExpenses(trashed = false) {
+export function useExpenses(trashed = false, { throwOnError = true } = {}) {
   const database = useLocalDatabase();
   const { personalSpaceId, personalParticipantId, userId } = useLocalIdentity();
   const focused = useIsFocused();
@@ -47,6 +47,7 @@ export function useExpenses(trashed = false) {
       ]).then(
         ([rows, categories, groups]) => {
           if (!isCurrent()) return;
+          setError(undefined);
           const current = new Map(categories.map((item) => [item.id, item]));
           const selected = rows.filter(
             (expense) => (expense.trashOrder !== undefined) === trashed,
@@ -97,7 +98,9 @@ export function useExpenses(trashed = false) {
           );
         },
         (failure: unknown) => {
-          if (isCurrent()) setError(failure);
+          if (!isCurrent()) return;
+          setExpenses(undefined);
+          setError(failure);
         },
       );
     }
@@ -116,6 +119,6 @@ export function useExpenses(trashed = false) {
     trashed,
   ]);
 
-  if (error) throw error;
+  if (error && throwOnError) throw error;
   return expenses;
 }

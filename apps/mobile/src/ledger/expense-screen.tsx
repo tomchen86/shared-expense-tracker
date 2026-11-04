@@ -10,7 +10,9 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useLocales } from 'expo-localization';
 import { formatCurrency } from '@shared-expense/domain';
-import { useLocalIdentity } from '../shell';
+import { listGroups } from '../groups';
+import { useLocalDatabase, useLocalIdentity } from '../shell';
+import { listExpenses } from './expenses';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
@@ -24,8 +26,10 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   const locale = useLocales()[0].languageTag;
   const expenses = useExpenses(trashed);
   const actions = useTrashActions();
+  const database = useLocalDatabase();
   const saving = useRef(false);
   const [leavingExpense, setLeavingExpense] = useState<ExpenseView>();
+  const [, showReadError] = useState();
   const expense = leavingExpense ?? expenses?.find((item) => item.id === id);
   const { userId } = useLocalIdentity();
   const position = expense ? expense.yourPaid - expense.yourShare : 0;
@@ -37,6 +41,26 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
     if (await change()) router.back();
     else setLeavingExpense(undefined);
     saving.current = false;
+  }
+
+  /** Opens Edit Expense if the expense, read now, is out of the trash and in an unarchived space (SHELL-64.1). */
+  async function editIfAllowed() {
+    const [rows, groups] = await Promise.all([
+      listExpenses(database),
+      listGroups(database),
+    ]);
+    const archived = new Set(
+      groups.filter((group) => group.archived).map((group) => group.id),
+    );
+    if (
+      rows.some(
+        (item) =>
+          item.id === id &&
+          item.trashOrder === undefined &&
+          !archived.has(item.spaceId),
+      )
+    )
+      router.navigate(`/expenses/${id}/edit`);
   }
 
   function deletePermanently() {
@@ -58,7 +82,13 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
             : {
                 label: 'Edit',
                 disabled: expense.group?.archived,
-                onPress: () => router.navigate(`/expenses/${id}/edit`),
+                onPress: () =>
+                  void editIfAllowed().catch((failure: unknown) =>
+                    // Thrown in the next render, so the screen shows the read error (SHELL-60.1).
+                    showReadError(() => {
+                      throw failure;
+                    }),
+                  ),
               }
         }
         menu={
