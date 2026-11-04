@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import {
   AccessibilityInfo,
   Alert,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import type { AppearanceOption } from '../ui/appearance';
 import { AppearancePicker } from '../ui/appearance-picker';
 import { GroupedSection } from '../ui/grouped-section';
@@ -26,6 +27,8 @@ import {
 } from './local-data-gate';
 
 const ASK_FOR_NAME = 'Please enter your name';
+// ponytail: UIKit's large title row; measure the header instead if a screen's title ever differs.
+const LARGE_TITLE_HEIGHT = 52;
 
 function alertSaveFailed() {
   Alert.alert(
@@ -50,6 +53,15 @@ export function SettingsScreen() {
   const [needsName, setNeedsName] = useState(false);
   const saving = useRef(false);
   const savingAppearance = useRef(false);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const profileTop = useRef(0);
+  const headerHeight = useHeaderHeight();
+  // The header shrinks when the large title collapses, so keep its expanded height.
+  const expandedHeaderHeight = useRef(headerHeight);
+  expandedHeaderHeight.current = Math.max(
+    expandedHeaderHeight.current,
+    headerHeight,
+  );
   const savedName = useRef(identity.name);
 
   useEffect(() => {
@@ -104,13 +116,19 @@ export function SettingsScreen() {
       style={[styles.screen, { backgroundColor: colors.background }]}
     >
       <ScrollView
+        ref={scroll}
         automaticallyAdjustKeyboardInsets
         contentInsetAdjustmentBehavior="automatic"
+        // The keyboard scroll clamps to contentInset, which leaves out the header's automatic inset.
+        scrollToOverflowEnabled
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
       >
         <Text
           accessibilityRole="header"
+          onLayout={(event) => {
+            profileTop.current = event.nativeEvent.layout.y;
+          }}
           style={[styles.sectionLabel, { color: colors.textMuted }]}
         >
           PROFILE
@@ -126,6 +144,16 @@ export function SettingsScreen() {
               editable={!isSaving}
               onBlur={() => void finishEditing()}
               onChangeText={setName}
+              // Brings the rows below into view above the keyboard: the large title collapses,
+              // and the name sits just under the header it leaves.
+              onFocus={() =>
+                scroll.current?.scrollTo({
+                  y:
+                    profileTop.current -
+                    expandedHeaderHeight.current +
+                    LARGE_TITLE_HEIGHT,
+                })
+              }
               onSubmitEditing={() => void finishEditing()}
               placeholder="Enter your name"
               placeholderTextColor={colors.placeholder}

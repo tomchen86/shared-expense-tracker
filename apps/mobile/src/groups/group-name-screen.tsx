@@ -14,6 +14,7 @@ import { useLocalDatabase } from '../shell';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
+import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
 import {
   memberNameKey,
   MemberNameExistsError,
@@ -65,6 +66,7 @@ function NameEditor({
   const database = useLocalDatabase();
   const navigation = useNavigation();
   const colors = useThemeColors();
+  const keyboardScroll = useKeyboardScroll();
   const isGroup = form === 'Rename Group';
   const initialName = isGroup ? group.name : member!.name;
   const [name, setName] = useState(initialName);
@@ -144,8 +146,7 @@ function NameEditor({
         }}
       />
       <ScrollView
-        automaticallyAdjustKeyboardInsets
-        contentInsetAdjustmentBehavior="automatic"
+        {...keyboardScroll}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
       >

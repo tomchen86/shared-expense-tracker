@@ -448,7 +448,13 @@ export function ManageCategoriesScreen({
         />
       )}
       {groupExists && movingCategory && (
-        <Modal visible animationType="slide" onRequestClose={cancelMove}>
+        <Modal
+          allowSwipeDismissal={!updating}
+          animationType="slide"
+          onRequestClose={cancelMove}
+          presentationStyle="pageSheet"
+          visible
+        >
           <SafeAreaProvider>
             <SafeAreaView
               style={{ flex: 1, backgroundColor: colors.background }}
