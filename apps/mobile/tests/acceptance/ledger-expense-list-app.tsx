@@ -111,11 +111,15 @@ export function shownInOrder(
 export const expensesRoot = () =>
   nativeViews(/^RNSScreen$/, tab('Expenses'))[0];
 
-/** The cards on the expense list, top to bottom: its buttons besides the + button. */
+/** The cards on the expense list, top to bottom: its buttons besides the + button and This Month. */
 export const cards = () =>
   within(expensesRoot())
     .queryAllByRole('button')
-    .filter((button) => nameOf(button) !== 'Add expense');
+    .filter(
+      (button) =>
+        nameOf(button) !== 'Add expense' &&
+        !nameOf(button).startsWith('View expense insights.'),
+    );
 
 /** The card whose first line is `title`. */
 export function card(title: string) {
@@ -130,9 +134,9 @@ export const cardTitles = () => cards().map((shown) => linesIn(shown)[0]);
 /** What a screen reader reads for a card: its name. */
 export const readOut = (shown: HostView) => asRead(nameOf(shown));
 
-/** The Your Total Share lines on the expense list, top to bottom. */
-export const totalShareLines = () =>
-  linesIn(expensesRoot()).filter((line) => line.startsWith('Your Total Share'));
+/** The This Month lines on the expense list, top to bottom. */
+export const thisMonthLines = () =>
+  linesIn(expensesRoot()).filter((line) => line.startsWith('This Month'));
 
 // Category color dots
 

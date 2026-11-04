@@ -1168,7 +1168,7 @@ WHEN app 重新啟動，the mobile app SHALL 保留每個群組有沒有封存�
 
 ### Requirement: GROUPS-61.1 群組的畫面列出群組的支出
 
-WHILE 群組有支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 的順序列出這個群組每一筆支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.2、LEDGER-65.1），但卡片金額是支出的全額。
+WHILE 群組有支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 的順序列出這個群組每一筆支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.2、LEDGER-65.2），但卡片金額是支出的全額。
 
 #### Scenario: 兩筆支出
 

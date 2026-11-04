@@ -6,7 +6,7 @@ import {
   type ColorValue,
 } from 'react-native';
 import { Stack } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
+import { SymbolView, type AndroidSymbol } from 'expo-symbols';
 import type { HeaderAction, HeaderActionsProps } from './header-actions';
 import { useThemeColors } from './theme';
 
@@ -17,7 +17,7 @@ function ActionButton({
   icon,
   color,
 }: HeaderAction & {
-  icon: 'close' | 'check' | 'edit' | 'more_vert';
+  icon: AndroidSymbol;
   color: ColorValue;
 }) {
   return (
@@ -45,10 +45,12 @@ export function HeaderActions({
   confirm,
   edit,
   menu,
+  choices,
 }: HeaderActionsProps) {
   const colors = useThemeColors();
   const enabledActions =
     menu?.actions.filter((action) => !action.disabled) ?? [];
+  const current = choices?.options.find((option) => option.selected);
 
   return (
     <Stack.Screen
@@ -63,6 +65,30 @@ export function HeaderActions({
             )}
             {confirm && (
               <ActionButton {...confirm} icon="check" color={colors.accent} />
+            )}
+            {choices && (
+              <ActionButton
+                label={
+                  current
+                    ? `${choices.label}, ${current.label} selected`
+                    : choices.label
+                }
+                icon={choices.icon.android as AndroidSymbol}
+                color={colors.text}
+                onPress={() =>
+                  Alert.alert(
+                    choices.label,
+                    undefined,
+                    choices.options.map((option) => ({
+                      text: option.selected
+                        ? `${option.label}, selected`
+                        : option.label,
+                      onPress: option.onPress,
+                    })),
+                    { cancelable: true },
+                  )
+                }
+              />
             )}
             {menu && (
               <ActionButton

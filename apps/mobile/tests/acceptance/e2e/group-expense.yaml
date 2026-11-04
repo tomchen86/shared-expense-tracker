@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LEDGER-62.1] [LEDGER-54.1] [GROUPS-61.1] [LEDGER-65.1] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share, where swiping its card shows no Delete"
+name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LEDGER-62.1] [LEDGER-54.1] [GROUPS-61.1] [LEDGER-65.2] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share, where swiping its card shows no Delete"
 ---
 - launchApp:
     clearState: true
