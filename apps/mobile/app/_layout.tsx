@@ -3,6 +3,9 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { formPresentation } from '../src/ui/form-presentation';
 import { PhoneLocalData } from '../src/shell/phone-local-data';
 import { TrashProvider } from '../src/ledger/trash-provider';
+import { ReadError } from '../src/shell/read-error';
+
+export const unstable_settings = { screenErrorBoundary: ReadError };
 
 function ThemedStack() {
   const scheme = useColorScheme();

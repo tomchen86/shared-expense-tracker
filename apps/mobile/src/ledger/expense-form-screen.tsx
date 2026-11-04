@@ -75,32 +75,34 @@ function ExpenseFormScreen({
   const colors = useThemeColors();
   const [loaded, setLoaded] = useState<LoadedForm>();
   const [error, setError] = useState<unknown>();
+  const latestRead = useRef<Promise<LoadedForm>>(undefined);
   useEffect(() => {
     let active = true;
-    void Promise.all([
+    const read = Promise.all([
       listCategories(database),
       expenseId ? listExpenses(database) : Promise.resolve([] as Expense[]),
       listGroups(database),
-    ])
-      .then(async ([categories, expenses, groups]) => {
-        const expense = expenses.find((item) => item.id === expenseId);
-        const formerMembers = expense
-          ? await listFormerMembers(database, expense.spaceId)
-          : [];
-        if (active)
-          setLoaded({
-            categories,
-            expense,
-            groups,
-            formerMembers,
-            initialGroupId: groups.find(
-              (group) => group.id === initialGroupId && !group.archived,
-            )?.id,
-          });
-      })
-      .catch((failure: unknown) => {
-        if (active) setError(failure);
-      });
+    ]).then(async ([categories, expenses, groups]) => {
+      const expense = expenses.find((item) => item.id === expenseId);
+      const formerMembers = expense
+        ? await listFormerMembers(database, expense.spaceId)
+        : [];
+      const form: LoadedForm = {
+        categories,
+        expense,
+        groups,
+        formerMembers,
+        initialGroupId: groups.find(
+          (group) => group.id === initialGroupId && !group.archived,
+        )?.id,
+      };
+      if (active) setLoaded(form);
+      return form;
+    });
+    latestRead.current = read;
+    read.catch((failure: unknown) => {
+      if (active) setError(failure);
+    });
     return () => {
       active = false;
     };
@@ -108,7 +110,7 @@ function ExpenseFormScreen({
   if (error) throw error;
   if (!loaded || (expenseId && !loaded.expense))
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
-  return <ExpenseEditor {...loaded} />;
+  return <ExpenseEditor {...loaded} latestRead={() => latestRead.current!} />;
 }
 
 function normalizeAmount(text: string) {
@@ -125,7 +127,8 @@ function ExpenseEditor({
   groups,
   formerMembers,
   initialGroupId,
-}: LoadedForm) {
+  latestRead,
+}: LoadedForm & { latestRead: () => Promise<LoadedForm> }) {
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
   const colors = useThemeColors();
@@ -289,6 +292,17 @@ function ExpenseEditor({
     savingRef.current = true;
     setSaving(true);
     try {
+      // A read made when the form came back may have dropped its category (SHELL-64.1).
+      // When it fails, the form shows the read error, not a save alert (SHELL-60.1).
+      const read = await latestRead().catch(() => undefined);
+      if (!read) return;
+      const inSpace = read.categories.filter(
+        (item) => item.spaceId === spaceId,
+      );
+      const categoryId = (
+        inSpace.find((item) => item.id === category.id) ??
+        inSpace.find(isUncategorizedCategory)!
+      ).id;
       await saveExpense(
         database,
         identity,
@@ -297,7 +311,7 @@ function ExpenseEditor({
           amountMinor,
           currency: initial.currency,
           date: form.date,
-          categoryId: category.id,
+          categoryId,
           note: form.note,
         },
         expense,

@@ -138,6 +138,20 @@ const PALETTE = [
   '#00ACC1',
   '#C62828',
   '#9E9D24',
+  '#A66F5B',
+  '#D99E77',
+  '#A66A11',
+  '#6C733F',
+  '#8BD916',
+  '#0B733C',
+  '#36D9B8',
+  '#1D6273',
+  '#85BFF2',
+  '#8861F2',
+  '#DC85F2',
+  '#F218B8',
+  '#8C4D6F',
+  '#F2858D',
 ];
 // Compares a field's text as typed, spaces included.
 const AS_TYPED = { normalizer: (text: string) => text };
