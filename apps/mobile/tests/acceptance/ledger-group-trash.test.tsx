@@ -256,6 +256,22 @@ test("[LEDGER-71.2] shows only Expense not found. at the Groups tab's URL of a g
   expect(hasExpenseActions('Groups')).toBe(false);
 });
 
+test('[LEDGER-71.2] shows only Expense not found. on details left open on another tab once their group expense moves to the trash', async () => {
+  await startWithGroups(BRISBANE);
+  await addDinner();
+  await showGroup('Brisbane');
+  await fireEvent.press(groupCard('Brisbane', 'Dinner'));
+  await expectDetailsOn('Groups', 'Dinner');
+
+  await deleteFromList('Dinner');
+  await tapTab('Groups');
+  await settle();
+
+  await waitFor(() => expect(detailLinesOn('Groups')).toEqual([NOT_FOUND]));
+  expect(editOn('Groups')).toBeUndefined();
+  expect(hasExpenseActions('Groups')).toBe(false);
+});
+
 test("[LEDGER-72.2] moves a group expense to the trash from its details on the group's screen, and goes back to the group", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
@@ -441,7 +457,7 @@ test("[LEDGER-78.2] shows a group expense's read-only details with what its deta
   ]);
 });
 
-test("[LEDGER-78.2] shows Shared history and Status on the read-only details of an archived group's expense", async () => {
+test("[LEDGER-78.2] shows Status but not Shared history on the read-only details of an archived group's expense", async () => {
   await startWithGroups(BRISBANE);
   await addTaylorsDinner();
   await deleteFromList('Dinner');
@@ -450,18 +466,12 @@ test("[LEDGER-78.2] shows Shared history and Status on the read-only details of 
 
   await openTrashed('Dinner');
 
-  const expected = [
-    '$60.00',
-    SHARED_HISTORY,
-    SHARED_HISTORY_TEXT,
-    'Group',
-    'Brisbane',
-    'Status',
-    'Archived · Read-only',
-  ];
+  const expected = ['Group', 'Brisbane', 'Status', 'Archived · Read-only'];
   await waitFor(() =>
     expect(shownInOrder(expenseLines('Settings'), expected)).toEqual(expected),
   );
+  expect(expenseLines('Settings')).not.toContain(SHARED_HISTORY);
+  expect(expenseLines('Settings')).not.toContain(SHARED_HISTORY_TEXT);
 });
 
 test("[LEDGER-79.2] restores a group expense you have no part in to the group's screen, not the expense list", async () => {
@@ -529,6 +539,9 @@ test('[LEDGER-81.1] empties group expenses from the trash too', async () => {
 
   await waitFor(() => expect(trashLines()).toContain(NO_DELETED));
   expect(await storedExpenses()).toEqual([]);
+  const stored = localData(file);
+  expect(stored.expense_payments).toEqual([]);
+  expect(stored.expense_shares).toEqual([]);
 });
 
 // Edit Expense at the URL of an expense in the trash, or of no expense

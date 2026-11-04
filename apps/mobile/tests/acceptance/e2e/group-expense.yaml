@@ -144,6 +144,7 @@ name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LE
     direction: LEFT
 - waitForAnimationToEnd
 - assertNotVisible: This expense is in the Trash.
+- assertNotVisible: Delete.*
 - assertVisible: Empty Trash
 - tapOn: .*Dinner.*\$100\.01.*
 - waitForAnimationToEnd

@@ -614,19 +614,27 @@ export async function moveExpensesInSheet(name: string, to: string) {
 
 // Group screens, on the Groups tab or, for archived groups, on the Settings tab
 
+/** Whether `view` is in a title bar, which on iOS sits inside its screen. */
+function inTitleBar(view: HostView) {
+  for (let node = view.parent; node; node = node.parent)
+    if (String(node.type) === 'RNSScreenStackHeaderConfig') return true;
+  return false;
+}
+
 /** The buttons on the screen of the group named `group`, besides its title bar. */
 const groupButtons = (group: string) =>
-  within(screenOf(group)).queryAllByRole('button');
+  within(screenOf(group))
+    .queryAllByRole('button')
+    .filter((button) => !inTitleBar(button));
 
-/** The expense cards on the group's screen, top to bottom: its buttons besides +, Restore Group, My Total Contribution and Balances. */
+/** The expense cards on the group's screen, top to bottom: its buttons besides +, Restore Group and your net balance. */
 export const groupCards = (group: string) =>
   groupButtons(group).filter((button) => {
     const name = nameOf(button);
     return (
       name !== 'Add expense' &&
       name !== 'Restore Group' &&
-      name !== 'Balances' &&
-      !name.startsWith('My Total Contribution')
+      !/^(You're owed: |You owe: |Settled up)/.test(name)
     );
   });
 

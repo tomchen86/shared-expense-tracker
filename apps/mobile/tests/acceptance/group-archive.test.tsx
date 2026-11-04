@@ -60,7 +60,6 @@ import {
   isOpen,
   memberNameField,
   membersShown,
-  openAddMember,
   openGroup,
   openMembers,
   openRenameMember,
@@ -68,8 +67,11 @@ import {
   pressOnBar,
   removeMember,
   screenOf,
+  startAddingMember,
+  stopAddingMember,
   storedMemberNames,
   textsOn,
+  titleButton,
 } from './group-details-app';
 import {
   ARCHIVED_STATUS,
@@ -521,23 +523,22 @@ test("[GROUPS-54.1] opens Members over an archived group's screen on the Setting
   expect(selectedTab()).toBe('Settings');
 });
 
-test('[GROUPS-54.1] keeps Add Member, Rename Member and Rename Group on the Settings tab once the group is restored there', async () => {
+test("[GROUPS-54.1] keeps Members' name field, Rename Member and Rename Group on the Settings tab once the group is restored there", async () => {
   await startWithGroups(['Brisbane']);
   await openArchived('Brisbane');
   await pressRestoreGroup('Brisbane');
   await waitFor(() => expect(textsOn('Brisbane')).not.toContain(READ_ONLY));
 
   await openMembers('Brisbane');
-  await openAddMember();
+  const adding = await startAddingMember();
   expect(navigationBarTitles(tab('Settings'))).toEqual([
     'Settings',
     'Archived Groups',
     'Brisbane',
     'Members',
-    'Add Member',
+    ...(adding.inForm ? ['Add Member'] : []),
   ]);
-  await pressOnBar('Add Member', 'Cancel');
-  await expectClosed('Add Member');
+  await stopAddingMember(adding);
   await addMember('Blake');
   await openRenameMember('Blake');
   expect(navigationBarTitles(tab('Settings'))).toEqual([
@@ -611,6 +612,14 @@ test("[GROUPS-55.1] says the same on an archived group's screen opened at its UR
       NO_EXPENSES,
     ]),
   );
+});
+
+test("[GROUPS-40.2] makes no button of an archived group's title", async () => {
+  await startWithGroups(['Brisbane']);
+  await openArchived('Brisbane');
+  await waitFor(() => expect(textsOn('Brisbane')).toContain(READ_ONLY));
+
+  expect(titleButton('Brisbane')).toBeUndefined();
 });
 
 test('[GROUPS-55.1] shows neither on the screen of a group that is not archived', async () => {

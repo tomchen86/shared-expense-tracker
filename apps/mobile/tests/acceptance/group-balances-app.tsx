@@ -36,35 +36,23 @@ export async function showGroup(group: string) {
 export const groupTotals = (group: string) =>
   groupLines(group).filter((line) => line.startsWith('Group Total'));
 
-/** The My Total Contribution lines on the group's screen, top to bottom. */
-export const contributions = (group: string) =>
-  groupLines(group).filter((line) => line.startsWith('My Total Contribution'));
+/** A line of your net balance on the group's screen (GROUPS-69.1). */
+const BALANCE = /^(You're owed: |You owe: |Settled up$)/;
 
-/** The buttons on the group's screen that hold a My Total Contribution line. */
-export const contributionButtons = (group: string) =>
+/** The lines of your net balance on the group's screen, top to bottom. */
+export const balanceLines = (group: string) =>
+  groupLines(group).filter((line) => BALANCE.test(line));
+
+/** The buttons on the group's screen that hold a line of your net balance. */
+export const balanceButtons = (group: string) =>
   within(screenOf(group))
     .queryAllByRole('button')
-    .filter((button) =>
-      linesIn(button).some((line) => line.startsWith('My Total Contribution')),
-    );
+    .filter((button) => linesIn(button).some((line) => BALANCE.test(line)));
 
-/** The Balances button on the group's screen, if it shows one. */
-export const balancesButton = (group: string) =>
-  within(screenOf(group))
-    .queryAllByRole('button')
-    .find((button) => nameOf(button) === 'Balances');
-
-/** Opens the group's Balances from its Balances button, or by pressing My Total Contribution. */
-export async function openBalances(
-  group: string,
-  from: 'button' | 'contribution' = 'button',
-) {
-  const [button] =
-    from === 'button' ? [balancesButton(group)] : contributionButtons(group);
-  if (button === undefined)
-    throw new Error(
-      `${group} shows no ${from === 'button' ? 'Balances' : 'My Total Contribution'}`,
-    );
+/** Opens the group's Balances by pressing your net balance on its screen. */
+export async function openBalances(group: string) {
+  const [button] = balanceButtons(group);
+  if (button === undefined) throw new Error(`${group} shows no balance`);
   await fireEvent.press(button);
   await settle();
   await expectOpen('Balances');

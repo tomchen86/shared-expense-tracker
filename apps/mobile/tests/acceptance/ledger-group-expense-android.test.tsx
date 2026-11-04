@@ -164,6 +164,10 @@ test("[LEDGER-67.2] disables the header's Edit and Expense actions on an archive
   await openDetails('Dinner');
 
   expect(editOn('Expenses')?.disabled).toBe(true);
+  expect(expenseHeaderButtons('Expenses').map(nameOf)).toEqual([
+    'Edit',
+    'Expense actions',
+  ]);
   const [, actions] = expenseHeaderButtons('Expenses');
   expect(nameOf(actions)).toBe('Expense actions');
   expect(actions).toBeDisabled();

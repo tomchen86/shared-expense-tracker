@@ -1373,7 +1373,7 @@ WHILE 修改的群組支出的付款人或分攤的人裡有前成員，the mobi
 
 #### Scenario: 加回來
 
-- **WHEN** 把 Blake 加回 Brisbane（GROUPS-34.1）之後，打開 Dinner 的 Edit Expense
+- **WHEN** 把 Blake 加回 Brisbane（GROUPS-34.2）之後，打開 Dinner 的 Edit Expense
 - **THEN** 都可以操作，沒有這句話
 
 ### Requirement: LEDGER-61.1 修改封存群組的支出時擋下
@@ -1547,7 +1547,7 @@ WHEN 打開群組支出的明細，the mobile app SHALL 依序顯示標題、全
 
 ### Requirement: LEDGER-67.2 封存群組的支出只能看
 
-WHILE 支出的群組已封存，the mobile app SHALL 在它的明細的金額下面顯示「Shared history」和「Payments and shares are preserved as read-only history. Restore this group before editing.」，在「DETAILS」的「Group」後面多一列「Status」和「Archived · Read-only」，並停用「Edit」和「Expense actions」裡的「Delete」（SHELL-49.1）；它的卡片沒有 Delete：往左滑不露出「Delete」，也沒有「Delete expense」的輔助功能動作。群組還原後不再顯示這些，Edit 和 Delete 恢復可以用，卡片也有 Delete。
+WHILE 支出的群組已封存，the mobile app SHALL 在它的明細的金額下面顯示「Shared history」和「Payments and shares are preserved as read-only history. Restore this group before editing.」，在「DETAILS」的「Group」後面多一列「Status」和「Archived · Read-only」，並停用「Edit」和「Expense actions」裡的「Delete」（SHELL-49.1）；它的卡片沒有 Delete：往左滑不露出「Delete」，也沒有「Delete expense」的輔助功能動作；群組還原後不再顯示這些，Edit 和 Delete 恢復可以用，卡片也有 Delete。
 
 #### Scenario: 封存之後
 
@@ -1594,7 +1594,7 @@ WHEN 使用者在支出清單或群組的畫面，把個人支出或未封存群
 
 ### Requirement: LEDGER-71.2 刪除支出時移到垃圾桶
 
-WHEN 使用者按個人支出或未封存群組的支出的卡片左滑露出的「Delete」、使用這些卡片上名稱是「Delete expense」的輔助功能動作，或在它們的明細的 Expense actions 選「Delete」（LEDGER-72.2），the mobile app SHALL 不另外確認，就把這筆支出移到垃圾桶，存好後才把它的卡片移出支出清單和群組的畫面、不再把它算進 Your Total Share 和群組的金額（GROUPS-75.1），支出清單沒有其他卡片時顯示 LEDGER-32.2 的提示，群組的畫面沒有其他卡片時顯示 GROUPS-20.2 的提示，重新啟動 app 之後也一樣；存好之前再按一次或再用一次，也只移一次。重新啟動 app 之後它仍在垃圾桶裡，以網址打開它的明細時，和 LEDGER-39.1 一樣只顯示「Expense not found.」，標題列沒有「Edit」和「Expense actions」。
+WHEN 使用者按個人支出或未封存群組的支出的卡片左滑露出的「Delete」、使用這些卡片上名稱是「Delete expense」的輔助功能動作，或在它們的明細的 Expense actions 選「Delete」（LEDGER-72.2），the mobile app SHALL 不另外確認，就把這筆支出移到垃圾桶，存好後才把它的卡片移出支出清單和群組的畫面、不再把它算進 Your Total Share 和群組的金額（GROUPS-75.1），支出清單沒有其他卡片時顯示 LEDGER-32.2 的提示，群組的畫面沒有其他卡片時顯示 GROUPS-20.2 的提示，重新啟動 app 之後也一樣；存好之前再按一次或再用一次，也只移一次；重新啟動 app 之後它仍在垃圾桶裡，以網址打開它的明細，或明細開著時它在另一個畫面被移到垃圾桶，明細都和 LEDGER-39.1 一樣只顯示「Expense not found.」，標題列沒有「Edit」和「Expense actions」。
 
 #### Scenario: 卡片的輔助功能動作
 
@@ -1640,6 +1640,11 @@ WHEN 使用者按個人支出或未封存群組的支出的卡片左滑露出的
 
 - **WHEN** Dinner 在垃圾桶裡時，以 `/groups/expenses/` 加上 Dinner 的 ID 開啟 app
 - **THEN** 明細只顯示「Expense not found.」，標題列沒有「Edit」和「Expense actions」
+
+#### Scenario: 明細開著時在另一個分頁刪除
+
+- **WHEN** 在 Brisbane 的畫面打開 Dinner 的明細，切到 Expenses 分頁，對 Dinner 的卡片使用「Delete expense」，再切回 Groups 分頁
+- **THEN** Groups 分頁上的明細只顯示「Expense not found.」，標題列沒有「Edit」和「Expense actions」
 
 #### Scenario: 分類仍算使用中
 
@@ -1872,7 +1877,7 @@ The mobile app SHALL 在 Trash 依移到垃圾桶的先後，最後移入的在�
 
 ### Requirement: LEDGER-78.2 點 Trash 的卡片推入唯讀明細
 
-WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推入這筆支出的唯讀明細，網址是 `/settings/trash/<支出的 ID>`，標題是「Expense」，最上面是「This expense is in the Trash.」，下面是名稱為「Restore」的按鈕，再下面是和明細一樣的支出的內容：個人支出照 LEDGER-37.2，群組支出照 LEDGER-66.2，群組已封存時還有 LEDGER-67.2 的「Shared history」和「Status」；標題列沒有「Edit」，只有名稱是「Expense actions」的選單（SHELL-47.1、SHELL-48.1），裡面只有破壞性的「Delete Permanently」（SHELL-53.1）。連點兩次也只推入一個唯讀明細，返回時回到 Trash；從推入到讀完支出，都不顯示「Expense not found.」。唯讀明細跟著存著的支出：網址裡的 ID 不是垃圾桶裡的支出，或打開之後那一筆因為別處的操作（例如 Undo 提示的 Undo）離開了垃圾桶時，SHALL 只顯示「Expense not found.」，標題列沒有選單。
+WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推入這筆支出的唯讀明細，網址是 `/settings/trash/<支出的 ID>`，標題是「Expense」，最上面是「This expense is in the Trash.」，下面是名稱為「Restore」的按鈕，再下面是和明細一樣的支出的內容：個人支出照 LEDGER-37.2，群組支出照 LEDGER-66.2，群組已封存時「DETAILS」裡還有 LEDGER-67.2 的「Status」，但沒有它的「Shared history」那段說明；標題列沒有「Edit」，只有名稱是「Expense actions」的選單（SHELL-47.1、SHELL-48.1），裡面只有破壞性的「Delete Permanently」（SHELL-53.1）。連點兩次也只推入一個唯讀明細，返回時回到 Trash；從推入到讀完支出，都不顯示「Expense not found.」。唯讀明細跟著存著的支出：網址裡的 ID 不是垃圾桶裡的支出，或打開之後那一筆因為別處的操作（例如 Undo 提示的 Undo）離開了垃圾桶時，SHALL 只顯示「Expense not found.」，標題列沒有選單。
 
 #### Scenario: 點卡片
 
@@ -1927,7 +1932,7 @@ WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推�
 #### Scenario: 群組封存了
 
 - **WHEN** Dinner 在垃圾桶裡時封存 Brisbane，再在 Trash 打開 Dinner
-- **THEN** 「$60.00」下面是「Shared history」和 LEDGER-67.2 的那句話，「Group」「Brisbane」後面是「Status」「Archived · Read-only」
+- **THEN** 「Group」「Brisbane」後面是「Status」「Archived · Read-only」；沒有「Shared history」和那段說明，因為唯讀明細上的 Restore 還原的是支出，不用先還原群組
 
 ### Requirement: LEDGER-79.2 按 Restore 時從垃圾桶還原
 
@@ -2110,7 +2115,7 @@ WHEN 使用者把沒有 Delete 的支出卡片往左滑，也就是封存群組�
 
 ### Requirement: LEDGER-85.1 Edit Expense 找不到支出時顯示「Expense not found.」
 
-IF Edit Expense 網址裡的 ID 不是任何支出的 ID，或是垃圾桶裡的支出的 ID，THEN the mobile app SHALL 讓 Edit Expense 只顯示「Expense not found.」，標題列只有「Cancel」，沒有支出表單的欄位和「Save」；按 Cancel、往下滑或按 Android 的返回鍵時直接關閉，不跳出提示框，什麼都不存。打開存在而且不在垃圾桶裡的支出時，SHALL 從打開到讀完都不顯示「Expense not found.」。
+IF Edit Expense 網址裡的 ID 不是任何支出的 ID，或是垃圾桶裡的支出的 ID，THEN the mobile app SHALL 讓 Edit Expense 只顯示「Expense not found.」，標題列只有「Cancel」，沒有支出表單的欄位和「Save」；按 Cancel、往下滑或按 Android 的返回鍵時直接關閉，不跳出提示框，什麼都不存；打開存在而且不在垃圾桶裡的支出時，SHALL 從打開到讀完都不顯示「Expense not found.」。
 
 #### Scenario: 垃圾桶裡的支出
 
