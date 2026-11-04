@@ -6,7 +6,6 @@ import { fireEvent, waitFor } from '@testing-library/react-native';
 import {
   addExpense,
   formBarSides,
-  formScreen,
   formTitle,
   nameOf,
   phoneDatabase,
@@ -15,7 +14,7 @@ import {
   startExpenses,
   storedExpenses,
 } from './ledger-expense-app';
-import { NOT_FOUND, linesIn, openDetails } from './ledger-expense-list-app';
+import { NOT_FOUND, openDetails } from './ledger-expense-list-app';
 import {
   DELETE_EXPENSE,
   NO_DELETED,
@@ -33,6 +32,7 @@ import {
   alertsShown,
   lastAlertButtons,
   pressAlertButton,
+  textsOn,
 } from './group-details-app';
 import { iconNames } from './shell-actions-app';
 import { allowWrites, settle } from './shell-appearance-app';
@@ -191,7 +191,7 @@ test('[LEDGER-85.1] closes the Edit Expense of an expense in the trash, which sh
   await push(`/expenses/${coffeeRun.id}/edit`);
 
   await waitFor(() => expect(formTitle()).toBe('Edit Expense'));
-  await waitFor(() => expect(linesIn(formScreen())).toEqual([NOT_FOUND]));
+  await waitFor(() => expect(textsOn('Edit Expense')).toEqual([NOT_FOUND]));
   expect(formBarSides()).toEqual({ left: ['Cancel'], right: [] });
   await pressBack();
   await waitFor(() => expect(formTitle()).toBeUndefined());

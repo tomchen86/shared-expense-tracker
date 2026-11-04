@@ -229,7 +229,7 @@ test('[GROUPS-21.1] never shows Group not found. while a group opened at its URL
   expect(screen.queryByText(NOT_FOUND)).toBeNull();
 });
 
-test("[GROUPS-22.3] puts a Group actions menu with Members, Balances and Rename Group in the group's title bar", async () => {
+test("[GROUPS-22.2] puts a Group actions menu with Members and Rename Group in the group's title bar", async () => {
   await startWithName();
   await createGroup('Brisbane');
 
@@ -240,7 +240,7 @@ test("[GROUPS-22.3] puts a Group actions menu with Members, Balances and Rename 
       {
         menu: 'Group actions',
         icon: 'ellipsis.circle',
-        items: ['Members', 'Balances', 'Rename Group'],
+        items: ['Members', 'Rename Group'],
       },
     ]),
   );

@@ -618,13 +618,14 @@ export async function moveExpensesInSheet(name: string, to: string) {
 const groupButtons = (group: string) =>
   within(screenOf(group)).queryAllByRole('button');
 
-/** The expense cards on the group's screen, top to bottom: its buttons besides +, Restore Group and My Total Contribution. */
+/** The expense cards on the group's screen, top to bottom: its buttons besides +, Restore Group, My Total Contribution and Balances. */
 export const groupCards = (group: string) =>
   groupButtons(group).filter((button) => {
     const name = nameOf(button);
     return (
       name !== 'Add expense' &&
       name !== 'Restore Group' &&
+      name !== 'Balances' &&
       !name.startsWith('My Total Contribution')
     );
   });

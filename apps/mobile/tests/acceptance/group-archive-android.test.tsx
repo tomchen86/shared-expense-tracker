@@ -100,7 +100,7 @@ test('[GROUPS-48.1] archives a group from its card on Android', async () => {
   expect(alertsShown()).toEqual([]);
 });
 
-test("[GROUPS-22.3] lists only Members, Balances and Cancel in an archived group's Group actions dialog on Android", async () => {
+test("[GROUPS-22.2] lists only Members and Cancel in an archived group's Group actions dialog on Android", async () => {
   await startWithGroups(['Brisbane']);
   await openArchived('Brisbane');
   await waitFor(() => expect(textsOn('Brisbane')).toContain(READ_ONLY));
@@ -113,7 +113,7 @@ test("[GROUPS-22.3] lists only Members, Balances and Cancel in an archived group
   await settle();
 
   expect(alertsShown()).toEqual([['Group actions', undefined]]);
-  expect(lastAlertButtons()).toEqual(['Members', 'Balances', 'Cancel']);
+  expect(lastAlertButtons()).toEqual(['Members', 'Cancel']);
 });
 
 test("[GROUPS-54.1] goes back from an archived group's screen to Archived Groups with Back", async () => {

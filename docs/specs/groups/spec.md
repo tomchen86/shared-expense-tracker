@@ -370,24 +370,24 @@ IF 群組的畫面的網址裡的 ID 不是任何群組的群組 ID，THEN the m
 - **WHEN** 點「Open Brisbane」
 - **THEN** 推入的畫面一開始和讀完 Brisbane 之後，都沒有顯示「Group not found.」
 
-### Requirement: GROUPS-22.3 群組的畫面的 Group actions 選單
+### Requirement: GROUPS-22.2 群組的畫面的 Group actions 選單
 
-The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group actions」的選單（SHELL-47.1、SHELL-48.1）：未封存的群組依序是「Members」、「Balances」和「Rename Group」，封存的群組依序是「Members」和「Balances」。
+The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group actions」的選單（SHELL-47.1、SHELL-48.1）：未封存的群組依序是「Members」和「Rename Group」，封存的群組只有「Members」。
 
 #### Scenario: iOS
 
 - **WHEN** iOS 上開啟 Brisbane 的畫面
-- **THEN** 標題列右邊是圖示 `ellipsis.circle`、名稱「Group actions」的選單，依序列出「Members」、「Balances」和「Rename Group」
+- **THEN** 標題列右邊是圖示 `ellipsis.circle`、名稱「Group actions」的選單，依序列出「Members」和「Rename Group」
 
 #### Scenario: Android
 
 - **WHEN** Android 上在 Brisbane 的畫面按「Group actions」
-- **THEN** 跳出標題「Group actions」的對話框，依序列出「Members」、「Balances」、「Rename Group」和「Cancel」
+- **THEN** 跳出標題「Group actions」的對話框，依序列出「Members」、「Rename Group」和「Cancel」
 
 #### Scenario: 封存的群組
 
 - **WHEN** 封存 Brisbane 之後，在 iOS 上開啟它的畫面，或在 Android 上按它的「Group actions」
-- **THEN** iOS 的選單依序列出「Members」和「Balances」；Android 的對話框依序列出「Members」、「Balances」和「Cancel」
+- **THEN** iOS 的選單只列出「Members」；Android 的對話框依序列出「Members」和「Cancel」
 
 ### Requirement: GROUPS-23.1 開啟和關閉 Members
 
@@ -1362,19 +1362,34 @@ WHILE 你在群組裡有已付大於 0 的幣別，the mobile app SHALL 在 Grou
 - **WHEN** 按「My Total Contribution: $100.01」
 - **THEN** 打開 Brisbane 的 Balances
 
-### Requirement: GROUPS-70.1 開啟和關閉 Balances
+### Requirement: GROUPS-70.1 Balances 按鈕和開啟、關閉 Balances
 
-WHEN 使用者按 My Total Contribution，或在 Group actions 選「Balances」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Balances，標題是「Balances」，標題列只有取消「Close」（SHELL-47.1、SHELL-48.1）；按 Close、把 Balances 往下滑或按 Android 的返回鍵，SHALL 關閉 Balances，回到群組的畫面。
+WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面上、Group Total 和 My Total Contribution 的下面、支出的卡片上方放一個名稱是「Balances」的按鈕，群組沒有不在垃圾桶裡的支出時不放；使用者按它或按 My Total Contribution 時，SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Balances，標題是「Balances」，標題列只有取消「Close」（SHELL-47.1、SHELL-48.1）；按 Close、把 Balances 往下滑或按 Android 的返回鍵，SHALL 關閉 Balances，回到群組的畫面。
 
-#### Scenario: 從 My Total Contribution 開啟
+#### Scenario: 按鈕的位置
 
-- **WHEN** 在 Brisbane 的畫面按 My Total Contribution
+- **WHEN** Brisbane 有 Taylor 付的 Dinner
+- **THEN** 由上而下是「Group Total」、「My Total Contribution」、名稱「Balances」的按鈕和 Dinner 的卡片
+
+#### Scenario: 你沒有付過
+
+- **WHEN** Brisbane 只有 Casey 付的支出
+- **THEN** 「Group Total」下面是「Balances」按鈕，沒有 My Total Contribution
+
+#### Scenario: 沒有支出
+
+- **WHEN** 打開還沒有支出的 Brisbane 的畫面
+- **THEN** 沒有「Balances」按鈕
+
+#### Scenario: 按 Balances
+
+- **WHEN** 在 Brisbane 的畫面按「Balances」
 - **THEN** Balances 從底部升起，蓋在 Brisbane 的畫面上，標題是「Balances」，標題列只有「Close」；仍選中 Groups 分頁
 
-#### Scenario: 從 Group actions 開啟
+#### Scenario: 按 My Total Contribution
 
-- **WHEN** 在 Brisbane 的畫面選 Group actions 的「Balances」
-- **THEN** Balances 從底部升起，蓋在 Brisbane 的畫面上
+- **WHEN** 在 Brisbane 的畫面按 My Total Contribution
+- **THEN** 一樣打開 Balances
 
 #### Scenario: 按 Close
 
@@ -1388,12 +1403,12 @@ WHEN 使用者按 My Total Contribution，或在 Group actions 選「Balances」
 
 #### Scenario: 封存的群組
 
-- **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面，選 Group actions 的「Balances」
+- **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面，按「Balances」
 - **THEN** Balances 蓋在 Brisbane 的畫面上，分頁列仍選中 Settings
 
 ### Requirement: GROUPS-71.1 Balances 列出每個人的已付、份額和淨額
 
-The mobile app SHALL 在 Balances 依幣別代碼排序，為群組不在垃圾桶裡的支出用到的每個幣別，由上而下先依 GROUPS-24.2 的順序列出群組的每位成員，再依被移出的先後列出這個幣別的支出的付款或分攤裡的前成員；每個人一列，依序是他的名稱（你的成員是你的成員名稱加上「 (You)」，前成員是他存著的名稱）、淨額大於 0 時的「Is Owed <淨額>」、小於 0 時的「Owes <淨額的絕對值>」或等於 0 時的「Settled up」，以及「Paid <已付> · Share <份額>」，所以每個幣別所有人的淨額加總是 0。群組沒有不在垃圾桶裡的支出時，SHALL 只顯示「No balances to show.」。
+The mobile app SHALL 在 Balances 依幣別代碼排序，為群組不在垃圾桶裡的支出用到的每個幣別，由上而下先依 GROUPS-24.2 的順序列出群組的每位成員，再依被移出的先後列出這個幣別的支出的付款或分攤裡的前成員；每個人一列，依序是他的名稱（你的成員是你的成員名稱加上「 (You)」，前成員是他存著的名稱）、淨額大於 0 時的「Is Owed <淨額>」、小於 0 時的「Owes <淨額的絕對值>」或等於 0 時的「Settled up」，以及「Paid <已付> · Share <份額>」，所以每個幣別所有人的淨額加總是 0。
 
 #### Scenario: 一個人付了全部
 
@@ -1424,11 +1439,6 @@ The mobile app SHALL 在 Balances 依幣別代碼排序，為群組不在垃圾�
 
 - **WHEN** 把 Casey 改名為「Cass」
 - **THEN** 那一列是「Cass」
-
-#### Scenario: 沒有支出
-
-- **WHEN** 在還沒有支出的 Brisbane 的畫面選 Group actions 的「Balances」
-- **THEN** Balances 只顯示「No balances to show.」
 
 ### Requirement: GROUPS-72.1 群組的卡片顯示成員人數
 
@@ -1509,4 +1519,4 @@ The mobile app SHALL 讓群組的金額只算這個群組不在垃圾桶裡的�
 #### Scenario: 都在垃圾桶裡
 
 - **WHEN** 把 Dinner 和 Taxi 都移到垃圾桶
-- **THEN** Brisbane 的畫面沒有 Group Total，顯示「No expenses in this group yet.」；Balances 只顯示「No balances to show.」；卡片上是「No spending yet」
+- **THEN** Brisbane 的畫面沒有 Group Total、My Total Contribution 和「Balances」按鈕，顯示「No expenses in this group yet.」；卡片上是「No spending yet」

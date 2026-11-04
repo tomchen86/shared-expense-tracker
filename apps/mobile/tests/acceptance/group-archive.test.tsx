@@ -625,7 +625,7 @@ test('[GROUPS-55.1] shows neither on the screen of a group that is not archived'
   );
 });
 
-test("[GROUPS-22.3] lists only Members and Balances in an archived group's Group actions menu", async () => {
+test("[GROUPS-22.2] lists only Members in an archived group's Group actions menu", async () => {
   await startWithGroups(['Brisbane']);
 
   await openArchived('Brisbane');
@@ -635,7 +635,7 @@ test("[GROUPS-22.3] lists only Members and Balances in an archived group's Group
       {
         menu: 'Group actions',
         icon: 'ellipsis.circle',
-        items: ['Members', 'Balances'],
+        items: ['Members'],
       },
     ]),
   );

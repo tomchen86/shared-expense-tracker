@@ -5,7 +5,6 @@ import { settle } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
 import { cards } from './groups-app';
 import {
-  chooseGroupAction,
   expectClosed,
   expectOpen,
   isOpen,
@@ -24,7 +23,6 @@ import { groupLines } from './ledger-group-expense-app';
 
 type HostView = ReturnType<typeof screenOf>;
 
-export const NO_BALANCES = 'No balances to show.';
 export const NO_SPENDING = 'No spending yet';
 
 /** Selects the Groups tab and shows the group's screen, opening it from its card unless it is open. */
@@ -50,19 +48,25 @@ export const contributionButtons = (group: string) =>
       linesIn(button).some((line) => line.startsWith('My Total Contribution')),
     );
 
-/** Opens the group's Balances from Group actions, or by pressing My Total Contribution. */
+/** The Balances button on the group's screen, if it shows one. */
+export const balancesButton = (group: string) =>
+  within(screenOf(group))
+    .queryAllByRole('button')
+    .find((button) => nameOf(button) === 'Balances');
+
+/** Opens the group's Balances from its Balances button, or by pressing My Total Contribution. */
 export async function openBalances(
   group: string,
-  from: 'menu' | 'contribution' = 'menu',
+  from: 'button' | 'contribution' = 'button',
 ) {
-  if (from === 'menu') await chooseGroupAction(group, 'Balances');
-  else {
-    const [button] = contributionButtons(group);
-    if (button === undefined)
-      throw new Error(`${group} shows no My Total Contribution`);
-    await fireEvent.press(button);
-    await settle();
-  }
+  const [button] =
+    from === 'button' ? [balancesButton(group)] : contributionButtons(group);
+  if (button === undefined)
+    throw new Error(
+      `${group} shows no ${from === 'button' ? 'Balances' : 'My Total Contribution'}`,
+    );
+  await fireEvent.press(button);
+  await settle();
   await expectOpen('Balances');
   await settle();
 }

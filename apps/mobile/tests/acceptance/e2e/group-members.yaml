@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[GROUPS-20.2] [GROUPS-22.3] [GROUPS-23.1] [GROUPS-24.2] [GROUPS-25.2] [GROUPS-26.1] [GROUPS-29.1] [GROUPS-31.1] [GROUPS-34.1] [GROUPS-40.1] [GROUPS-41.1] Opens Members from the Group actions menu, adds a member, removes them from their action sheet, adds them back, swipes Members down, then renames the group'
+name: '[GROUPS-20.2] [GROUPS-22.2] [GROUPS-23.1] [GROUPS-24.2] [GROUPS-25.2] [GROUPS-26.1] [GROUPS-29.1] [GROUPS-31.1] [GROUPS-34.1] [GROUPS-40.1] [GROUPS-41.1] Opens Members from the Group actions menu, adds a member, removes them from their action sheet, adds them back, swipes Members down, then renames the group'
 ---
 - launchApp:
     clearState: true

@@ -11,7 +11,7 @@ import {
 import { allowWrites } from './shell-appearance-app';
 import { navigationBarTitles, selectedTab, tab } from './shell-tabs-app';
 import { expectClosed, headerButtons } from './group-details-app';
-import { startWithGroups } from './ledger-group-expense-app';
+import { addGroupExpense, startWithGroups } from './ledger-group-expense-app';
 import { openBalances, showGroup } from './group-balances-app';
 import type { Database } from '../../src/storage';
 
@@ -69,8 +69,18 @@ afterEach(() => {
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
-test("[GROUPS-70.1] opens Balances from the Group actions dialog over the group's screen, with only Close, on Android", async () => {
+/** Starts with Brisbane, whose members are Taylor and Casey, and its Dinner, which Casey pays for both. */
+async function startWithDinner() {
   await startWithGroups({ Brisbane: ['Casey'] });
+  await addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Casey',
+    sharers: ['Taylor (You)', 'Casey'],
+  });
+}
+
+test("[GROUPS-70.1] opens Balances from its button over the group's screen, with only Close, on Android", async () => {
+  await startWithDinner();
   await showGroup('Brisbane');
 
   await openBalances('Brisbane');
@@ -84,7 +94,7 @@ test("[GROUPS-70.1] opens Balances from the Group actions dialog over the group'
 });
 
 test("[GROUPS-70.1] closes Balances with Back, back on the group's screen", async () => {
-  await startWithGroups({ Brisbane: ['Casey'] });
+  await startWithDinner();
   await showGroup('Brisbane');
   await openBalances('Brisbane');
 
