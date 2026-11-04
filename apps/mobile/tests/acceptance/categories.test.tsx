@@ -533,7 +533,6 @@ async function editCategory(name: string, newName: string, color?: string) {
   await expectFormClosed();
 }
 
-/** Adds four categories, which take the last four colors. */
 /** Adds Gym and 17 more categories, which take the 18 colors the defaults leave. */
 async function useAllColors() {
   const names = [
