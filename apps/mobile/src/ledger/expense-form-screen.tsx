@@ -293,7 +293,10 @@ function ExpenseEditor({
     setSaving(true);
     try {
       // A read made when the form came back may have dropped its category (SHELL-64.1).
-      const inSpace = (await latestRead()).categories.filter(
+      // When it fails, the form shows the read error, not a save alert (SHELL-60.1).
+      const read = await latestRead().catch(() => undefined);
+      if (!read) return;
+      const inSpace = read.categories.filter(
         (item) => item.spaceId === spaceId,
       );
       const categoryId = (

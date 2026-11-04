@@ -29,6 +29,7 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   const database = useLocalDatabase();
   const saving = useRef(false);
   const [leavingExpense, setLeavingExpense] = useState<ExpenseView>();
+  const [, showReadError] = useState();
   const expense = leavingExpense ?? expenses?.find((item) => item.id === id);
   const { userId, personalSpaceId } = useLocalIdentity();
   const position = expense ? expense.yourPaid - expense.yourShare : 0;
@@ -42,7 +43,7 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
     saving.current = false;
   }
 
-  /** Opens Edit Expense if the expense, read now, is still in an unarchived space (SHELL-64.1). */
+  /** Opens Edit Expense if the expense, read now, is out of the trash and in an unarchived space (SHELL-64.1). */
   async function editIfAllowed() {
     const [rows, groups] = await Promise.all([
       listExpenses(database),
@@ -51,7 +52,14 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
     const archived = new Set(
       groups.filter((group) => group.archived).map((group) => group.id),
     );
-    if (rows.some((item) => item.id === id && !archived.has(item.spaceId)))
+    if (
+      rows.some(
+        (item) =>
+          item.id === id &&
+          item.trashOrder === undefined &&
+          !archived.has(item.spaceId),
+      )
+    )
       router.navigate(`/expenses/${id}/edit`);
   }
 
@@ -75,7 +83,13 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
               : {
                   label: 'Edit',
                   disabled: expense.group?.archived,
-                  onPress: () => void editIfAllowed().catch(() => undefined),
+                  onPress: () =>
+                    void editIfAllowed().catch((failure: unknown) =>
+                      // Thrown in the next render, so the screen shows the read error (SHELL-60.1).
+                      showReadError(() => {
+                        throw failure;
+                      }),
+                    ),
                 }
           }
           menu={
