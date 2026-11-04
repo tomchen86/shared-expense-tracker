@@ -112,7 +112,10 @@ function ExpenseFormScreen({
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   if (expenseId && !loaded.expense)
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View
+        collapsable={false}
+        style={{ flex: 1, backgroundColor: colors.background }}
+      >
         <HeaderActions
           cancel={{ label: 'Cancel', onPress: () => router.back() }}
         />
