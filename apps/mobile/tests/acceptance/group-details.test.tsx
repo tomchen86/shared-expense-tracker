@@ -841,10 +841,9 @@ test('[GROUPS-34.2] adds a former member back with their member ID after a resta
 
   expect(alertsShown()).toEqual([addBackAlert('Blake')]);
   await pressAlertButton('Add Back');
-  await waitFor(async () =>
-    expect(await storedMember(file, 'Brisbane', 'Blake')).toEqual(blake),
-  );
+  // Waits on the screen: an async waitFor on the storage here broke the next tests' renders.
   await waitFor(() => expect(membersShown()).toContain('Blake'));
+  expect(await storedMember(file, 'Brisbane', 'Blake')).toEqual(blake);
 });
 
 test("[GROUPS-34.2] adds a new member, without asking, for the name of another group's former member", async () => {
