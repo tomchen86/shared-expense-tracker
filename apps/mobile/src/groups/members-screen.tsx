@@ -16,6 +16,7 @@ import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
+import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
 import {
   addGroupMember,
   listGroups,
@@ -37,6 +38,7 @@ export function MembersScreen({
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
   const colors = useThemeColors();
+  const keyboardScroll = useKeyboardScroll();
   const [group, setGroup] = useGroup(id);
   const base = inSettings ? '/settings/archived-groups' : '/groups';
   const [busy, setBusy] = useState(false);
@@ -194,9 +196,14 @@ export function MembersScreen({
         }}
       />
       <ScrollView
+        {...keyboardScroll}
         keyboardShouldPersistTaps="handled"
-        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
+        onContentSizeChange={() => {
+          if (field.current?.isFocused()) {
+            keyboardScroll.ref.current?.scrollToEnd({ animated: true });
+          }
+        }}
       >
         <GroupedSection>
           {group?.members.map((member) => {
