@@ -340,7 +340,7 @@ The mobile app SHALL 讓個人的 Insights 依 INSIGHTS-1.1 分析所有不在�
 #### Scenario: 個人的 Insights 算你的份額
 
 - **WHEN** 存過名字「Taylor」，2026 年 10 月有 875 USD 的個人支出「Coffee run」，和 Brisbane 的 6000 USD 的「Dinner」，Casey 付款，依序分給 Taylor、Casey 和 Blake
-- **THEN** 個人的 Insights 的總額是「$28.75」，和支出清單上的「Your Total Share: $28.75」一樣
+- **THEN** 個人的 Insights 的總額是「$28.75」，和支出清單上的「Total Spent: $28.75」一樣
 
 #### Scenario: 和你無關的群組支出
 

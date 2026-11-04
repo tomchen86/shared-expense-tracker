@@ -59,12 +59,12 @@ import {
   scrollViewTheTitleFollows,
   shownInOrder,
   startExpensesAt,
-  totalShareLines,
+  totalSpentLines,
 } from './ledger-expense-list-app';
 import {
   expectInsights,
   goBackFromInsights,
-  totalShareButton,
+  totalSpentButton,
 } from './insights-app';
 import { saveName } from './groups-app';
 import {
@@ -236,7 +236,7 @@ test('[LEDGER-32.2] replaces the empty list text with the first card', async () 
   expect(linesIn(expensesRoot())).not.toContain(EMPTY_LIST);
 });
 
-test('[LEDGER-43.1] never shows the empty list while the stored expenses load', async () => {
+test('[LEDGER-43.2] never shows the empty list while the stored expenses load', async () => {
   const first = await startExpenses();
   await addExpense();
   await first.unmount();
@@ -246,7 +246,7 @@ test('[LEDGER-43.1] never shows the empty list while the stored expenses load', 
   await startExpenses();
 
   expect(screen.queryByText(EMPTY_LIST)).toBeNull();
-  expect(totalShareLines()).not.toContain('Your Total Share: —');
+  expect(totalSpentLines()).not.toContain('Total Spent: —');
   await reads.release();
   await waitFor(() => expect(cardTitles()).toEqual(['Coffee run']));
   expect(screen.queryByText(EMPTY_LIST)).toBeNull();
@@ -397,18 +397,18 @@ test('[LEDGER-34.1] shows the title on one line, cut at its end, and reads it in
   expect(readOut(card(LONG_TITLE))).toContain(LONG_TITLE);
 });
 
-// Your Total Share
+// Total Spent
 
 test('[LEDGER-35.2] sums the cards of one currency in a button that reads the total', async () => {
   await startExpenses();
   await addExpense({ amount: '8.75' });
   await addExpense({ title: 'Lunch', amount: '12.50' });
 
-  expect(totalShareLines()).toEqual(['Your Total Share: $21.25']);
-  expect(readOut(totalShareButton())).toBe(
-    'View expense insights. Your total share is $21.25.',
+  expect(totalSpentLines()).toEqual(['Total Spent: $21.25']);
+  expect(readOut(totalSpentButton())).toBe(
+    'View expense insights. Total spent $21.25.',
   );
-  expect(linesIn(totalShareButton())).toEqual(['Your Total Share: $21.25']);
+  expect(linesIn(totalSpentButton())).toEqual(['Total Spent: $21.25']);
 });
 
 test('[LEDGER-35.2] shows a line for each currency, above the cards, by currency code', async () => {
@@ -420,25 +420,25 @@ test('[LEDGER-35.2] shows a line for each currency, above the cards, by currency
   await addExpenseIn('JPY', 'Ramen', '1200');
 
   expect(cardTitles()).toEqual(['Ramen', 'Coffee', 'Taxi']);
-  expect(totalShareLines()).toEqual([
-    'Your Total Share: A$0.30',
-    'Your Total Share: ¥1,200',
-    'Your Total Share: $8.75',
+  expect(totalSpentLines()).toEqual([
+    'Total Spent: A$0.30',
+    'Total Spent: ¥1,200',
+    'Total Spent: $8.75',
   ]);
-  expect(readOut(totalShareButton())).toBe(
-    'View expense insights. Your total share is A$0.30, ¥1,200, $8.75.',
+  expect(readOut(totalSpentButton())).toBe(
+    'View expense insights. Total spent A$0.30, ¥1,200, $8.75.',
   );
   const lines = linesIn(expensesRoot());
-  expect(lines.indexOf('Your Total Share: $8.75')).toBeLessThan(
+  expect(lines.indexOf('Total Spent: $8.75')).toBeLessThan(
     lines.indexOf('Ramen'),
   );
 });
 
-test('[LEDGER-35.2] pushes Insights onto the Expenses tab at /insights when Your Total Share is pressed', async () => {
+test('[LEDGER-35.2] pushes Insights onto the Expenses tab at /insights when Total Spent is pressed', async () => {
   const app = await startExpenses();
   await addExpense();
 
-  await fireEvent.press(totalShareButton());
+  await fireEvent.press(totalSpentButton());
   await expectInsights();
 
   expect(selectedTab()).toBe('Expenses');
@@ -449,11 +449,11 @@ test('[LEDGER-35.2] pushes Insights onto the Expenses tab at /insights when Your
   expect(app.getPathname()).toBe('/insights');
 });
 
-test('[LEDGER-35.2] pushes one Insights when Your Total Share is pressed twice', async () => {
+test('[LEDGER-35.2] pushes one Insights when Total Spent is pressed twice', async () => {
   await startExpenses();
   await addExpense();
 
-  const button = totalShareButton();
+  const button = totalSpentButton();
   await fireEvent.press(button);
   await fireEvent.press(button);
   await expectInsights();
@@ -472,13 +472,11 @@ test('[LEDGER-35.2] pushes one Insights when Your Total Share is pressed twice',
 test('[LEDGER-35.2] shows a dash before there are expenses and still opens Insights', async () => {
   await startExpenses();
 
-  await waitFor(() =>
-    expect(totalShareLines()).toEqual(['Your Total Share: —']),
+  await waitFor(() => expect(totalSpentLines()).toEqual(['Total Spent: —']));
+  expect(readOut(totalSpentButton())).toBe(
+    'View expense insights. Nothing spent yet.',
   );
-  expect(readOut(totalShareButton())).toBe(
-    'View expense insights. Your total share is unavailable.',
-  );
-  await fireEvent.press(totalShareButton());
+  await fireEvent.press(totalSpentButton());
   await expectInsights();
 });
 
@@ -490,7 +488,7 @@ test('[LEDGER-35.2] follows a changed amount', async () => {
   await editExpense(expense.id, { amount: '12.50' });
   await settle();
 
-  expect(totalShareLines()).toEqual(['Your Total Share: $12.50']);
+  expect(totalSpentLines()).toEqual(['Total Spent: $12.50']);
 });
 
 test('[LEDGER-35.2] sums past the largest amount of a single expense', async () => {
@@ -498,7 +496,7 @@ test('[LEDGER-35.2] sums past the largest amount of a single expense', async () 
   await addExpense({ amount: '9999999999.99' });
   await addExpense({ title: 'Lunch', amount: '9999999999.99' });
 
-  expect(totalShareLines()).toEqual(['Your Total Share: $19,999,999,999.98']);
+  expect(totalSpentLines()).toEqual(['Total Spent: $19,999,999,999.98']);
 });
 
 // Opening the details
@@ -740,7 +738,7 @@ test('[LEDGER-38.1] opens one Edit Expense when Edit is pressed twice', async ()
   expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses', 'Expense']);
 });
 
-test('[LEDGER-44.1] shows the saved change on the list as soon as the details go back', async () => {
+test('[LEDGER-44.2] shows the saved change on the list as soon as the details go back', async () => {
   await startExpenses();
   await addExpense();
   await openDetails('Coffee run');
@@ -758,7 +756,7 @@ test('[LEDGER-44.1] shows the saved change on the list as soon as the details go
 
   expect(detailBars()).toEqual([]);
   expect(linesIn(card('Coffee run'))).toContain('$9.25');
-  expect(totalShareLines()).toEqual(['Your Total Share: $9.25']);
+  expect(totalSpentLines()).toEqual(['Total Spent: $9.25']);
   await reads.release();
 });
 
@@ -836,7 +834,7 @@ test('[LEDGER-40.1] shows amounts and dates the way a phone in Japan does', asyn
 
   const expected = ['Ramen', '￥1,200', '2026/10/30'];
   expect(shownInOrder(linesIn(card('Ramen')), expected)).toEqual(expected);
-  expect(totalShareLines()).toEqual(['Your Total Share: ￥1,200']);
+  expect(totalSpentLines()).toEqual(['Total Spent: ￥1,200']);
   await openDetails('Ramen');
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
 });
@@ -902,7 +900,7 @@ test('[SHELL-25.1] puts the expense list in the scroll view the Expenses large t
 
   expect(scrollView?.props.contentInsetAdjustmentBehavior).toBe('automatic');
   const lines = linesIn(scrollView!);
-  expect(lines).toContain('Your Total Share: $8.75');
+  expect(lines).toContain('Total Spent: $8.75');
   expect(lines).toContain('Coffee run');
 });
 

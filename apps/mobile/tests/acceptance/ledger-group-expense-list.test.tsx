@@ -29,7 +29,7 @@ import {
   readOut,
   shownInOrder,
   startExpensesAt,
-  totalShareLines,
+  totalSpentLines,
 } from './ledger-expense-list-app';
 import { actionLabels, expenseBarItems } from './ledger-trash-app';
 import { allowWrites, settle } from './shell-appearance-app';
@@ -260,7 +260,7 @@ test("[LEDGER-64.1] keeps listing an archived group's expense", async () => {
 
 // The card
 
-test("[LEDGER-65.1] shows the group's name between the category and the date, with your share as the amount", async () => {
+test("[LEDGER-65.2] shows the group's name between the category and the date, with your share as the amount", async () => {
   await startWithGroups(BRISBANE);
 
   await addDinner();
@@ -280,7 +280,7 @@ test("[LEDGER-65.1] shows the group's name between the category and the date, wi
   expect(shownInOrder([readOut(card('Dinner'))], expected)).toEqual(expected);
 });
 
-test('[LEDGER-65.1] shows $0.00 on the card of a group expense you only paid', async () => {
+test('[LEDGER-65.2] shows $0.00 on the card of a group expense you only paid', async () => {
   await startWithGroups(BRISBANE);
 
   await addGroupExpense({
@@ -298,7 +298,7 @@ test('[LEDGER-65.1] shows $0.00 on the card of a group expense you only paid', a
   );
 });
 
-test('[LEDGER-65.1] counts only your share of a group expense in Your Total Share', async () => {
+test('[LEDGER-65.2] counts only your share of a group expense in Total Spent', async () => {
   await startWithGroups(BRISBANE);
   await addExpense();
 
@@ -306,11 +306,11 @@ test('[LEDGER-65.1] counts only your share of a group expense in Your Total Shar
 
   await showExpenses();
   await waitFor(() =>
-    expect(totalShareLines()).toEqual(['Your Total Share: $42.09']),
+    expect(totalSpentLines()).toEqual(['Total Spent: $42.09']),
   );
 });
 
-test('[LEDGER-65.1] marks the group as archived on the card until the group is restored', async () => {
+test('[LEDGER-65.2] marks the group as archived on the card until the group is restored', async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
 
@@ -326,7 +326,7 @@ test('[LEDGER-65.1] marks the group as archived on the card until the group is r
   expect(linesIn(card('Dinner'))).not.toContain('Brisbane · Archived');
 });
 
-test("[LEDGER-65.1] shows the group's new name on the card", async () => {
+test("[LEDGER-65.2] shows the group's new name on the card", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
 
@@ -337,7 +337,7 @@ test("[LEDGER-65.1] shows the group's new name on the card", async () => {
   expect(linesIn(card('Dinner'))).not.toContain('Brisbane');
 });
 
-test("[LEDGER-65.1] offers Delete expense on a personal expense's card but not on a group expense's", async () => {
+test("[LEDGER-65.2] offers Delete expense on a personal expense's card but not on a group expense's", async () => {
   await startWithGroups(BRISBANE);
   await addExpense();
   await addDinner();
@@ -350,7 +350,7 @@ test("[LEDGER-65.1] offers Delete expense on a personal expense's card but not o
   expect(actionLabels(card('Dinner'))).not.toContain('Delete expense');
 });
 
-test("[LEDGER-65.1] [LEDGER-33.2] shows the category's color dot on a group expense's card, and <name> (Archived) once the group's category is archived", async () => {
+test("[LEDGER-65.2] [LEDGER-33.2] shows the category's color dot on a group expense's card, and <name> (Archived) once the group's category is archived", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await showExpenses();

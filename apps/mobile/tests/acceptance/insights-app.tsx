@@ -22,7 +22,7 @@ import type { CategoryChartProps } from '../../src/ui/category-chart';
 // The Insights tests start the app as the expense list tests do
 // (ledger-expense-list-app), add personal expenses through New Expense and group
 // expenses as the group expense tests do (ledger-group-expense-app), and open
-// Insights from Your Total Share or by its URL. They read Insights from what the app
+// Insights from Total Spent or by its URL. They read Insights from what the app
 // shows: the lines of text, top to bottom, the names a screen reader reads, the items
 // Insights hands to the native navigation bar on iOS and the buttons in its header
 // on Android. Each currency's chart is the ui/ CategoryChart: the tests read what
@@ -76,16 +76,16 @@ export async function expectInsights(on = 'Expenses') {
   await settle();
 }
 
-/** The Your Total Share button on the expense list. */
-export const totalShareButton = () =>
+/** The Total Spent button on the expense list. */
+export const totalSpentButton = () =>
   within(expensesRoot()).getByRole('button', {
     name: /^View expense insights\./,
   });
 
-/** Opens the personal Insights from Your Total Share on the expense list. */
+/** Opens the personal Insights from Total Spent on the expense list. */
 export async function openInsights() {
   await tapTab('Expenses');
-  await fireEvent.press(totalShareButton());
+  await fireEvent.press(totalSpentButton());
   await expectInsights();
 }
 
