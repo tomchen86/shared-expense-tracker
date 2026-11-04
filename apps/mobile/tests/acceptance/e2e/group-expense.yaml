@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LEDGER-62.1] [LEDGER-54.1] [GROUPS-61.1] [LEDGER-65.1] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share, where swiping its card shows no Delete"
+name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LEDGER-62.1] [LEDGER-54.1] [GROUPS-61.2] [LEDGER-65.2] [LEDGER-70.2] [LEDGER-75.2] [LEDGER-77.2] [LEDGER-78.2] [LEDGER-79.2] [LEDGER-84.1] [LEDGER-67.2] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share; swipes its card left to move it to the trash on both, finds that swiping its card on Trash opens nothing, restores it, archives the group, and finds that swiping its card opens nothing"
 ---
 - launchApp:
     clearState: true
@@ -108,14 +108,72 @@ name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LE
 - assertNotVisible: New Expense
 # Back on Brisbane's screen: its card shows the full amount.
 - assertVisible: .*Dinner.*\$100\.01.*
+# Swiping the card left on the group's screen shows its Delete, which moves it to
+# the trash; Undo puts it back.
+- swipe:
+    from:
+      text: .*Dinner.*\$100\.01.*
+    direction: LEFT
+- waitForAnimationToEnd
+- tapOn: Delete Dinner expense
+- assertVisible: Moved to Trash
+- assertVisible: No expenses in this group yet.
+- tapOn: Undo deletion of Dinner
+- waitForAnimationToEnd
+- assertVisible: .*Dinner.*\$100\.01.*
 - tapOn: Expenses
 - waitForAnimationToEnd
 # Taylor was chosen first, so the extra cent is Taylor's: the card shows that share.
 - assertVisible: .*Dinner.*\$50\.01.*
-# A group expense's card has no Delete: swiping it left shows nothing.
 - swipe:
     from:
-      text: .*Dinner.*
+      text: .*Dinner.*\$50\.01.*
+    direction: LEFT
+- waitForAnimationToEnd
+- tapOn: Delete Dinner expense
+- assertVisible: Moved to Trash
+- assertNotVisible: .*Dinner.*\$50\.01.*
+# On Trash the card shows the full amount and has no Delete: swiping it left opens
+# nothing, and a tap opens its read-only details.
+- tapOn: Settings
+- tapOn: Trash, 1
+- waitForAnimationToEnd
+- swipe:
+    from:
+      text: .*Dinner.*\$100\.01.*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertNotVisible: This expense is in the Trash.
+- assertVisible: Empty Trash
+- tapOn: .*Dinner.*\$100\.01.*
+- waitForAnimationToEnd
+- assertVisible: This expense is in the Trash.
+- tapOn: Restore
+- waitForAnimationToEnd
+- assertVisible: No deleted expenses.
+- tapOn: Back
+- waitForAnimationToEnd
+# Once the group is archived, its expense's card has no Delete: swiping it left on
+# Expenses opens nothing.
+- tapOn: Groups
+- waitForAnimationToEnd
+- tapOn: Back
+- waitForAnimationToEnd
+- swipe:
+    from:
+      text: Open Brisbane
+    direction: LEFT
+- waitForAnimationToEnd
+- tapOn: Archive Brisbane
+- assertVisible: Group archived · Find it in Settings
+- tapOn: Expenses
+- waitForAnimationToEnd
+- assertVisible: .*Dinner.*Archived.*
+- swipe:
+    from:
+      text: .*Dinner.*Archived.*
     direction: LEFT
 - waitForAnimationToEnd
 - assertNotVisible: Delete.*
+- assertNotVisible: Shared history
+- assertVisible: .*Dinner.*Archived.*

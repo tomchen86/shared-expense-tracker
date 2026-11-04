@@ -187,9 +187,10 @@ export async function pressUndo(title: string) {
   await settle();
 }
 
-// Bars titled Expense: the details on the Expenses tab, the read-only details on Settings
+// Bars titled Expense: the details on the Expenses tab or on a group's tab, the
+// read-only details on Settings
 
-type ExpenseTab = 'Expenses' | 'Settings';
+type ExpenseTab = 'Expenses' | 'Groups' | 'Settings';
 
 interface BarMenuItem {
   type: string;
@@ -248,6 +249,16 @@ export const expenseBarItems = (on: ExpenseTab) =>
           variant: item.variant,
         },
   );
+
+/** The items of the Expense actions menu on the open details' bar on the tab, as iOS shows them. */
+export const expenseMenuItems = (on: ExpenseTab) =>
+  rightItems(on)
+    .filter((item) => item.type === 'menu')
+    .flatMap((item) => item.menu?.items ?? [])
+    .map((entry) => ({
+      title: entry.title,
+      disabled: entry.disabled === true,
+    }));
 
 /** The Android header buttons at the right of the open details' bar on the tab, left to right. */
 export const expenseHeaderButtons = (on: ExpenseTab) =>

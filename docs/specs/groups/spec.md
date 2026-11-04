@@ -2,7 +2,7 @@
 
 ## Purpose
 
-群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Add Member、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Add Member 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Add Member、Rename Member 和 Rename Group 是名稱表單；儲存中是指名稱表單開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組的支出（GROUPS-61.1），支出的卡片和明細見 ledger。
+群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Add Member、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Add Member 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Add Member、Rename Member 和 Rename Group 是名稱表單；儲存中是指名稱表單開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡的支出（GROUPS-61.2），支出的卡片、明細和垃圾桶見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上的 Group Total 和 My Total Contribution、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
 
 ## Requirements
 
@@ -342,14 +342,19 @@ The mobile app SHALL 讓 New Group 名稱欄位的鍵盤把每個字的開頭自
 - **WHEN** 開啟 New Group，用手機的鍵盤輸入「teh trip」
 - **THEN** 名稱欄位是「Teh Trip」：每個字的開頭都大寫，「teh」沒有被校正成「the」；鍵盤的 Return 鍵是完成鍵
 
-### Requirement: GROUPS-20.1 群組的畫面在沒有支出時顯示提示
+### Requirement: GROUPS-20.2 群組的畫面在沒有支出時顯示提示
 
-WHILE 群組沒有支出，the mobile app SHALL 在群組的畫面顯示「No expenses in this group yet.」。
+WHILE 群組沒有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面顯示「No expenses in this group yet.」。
 
 #### Scenario: 新建立的群組
 
 - **WHEN** 建立「Brisbane」後點「Open Brisbane」
 - **THEN** 群組的畫面顯示「No expenses in this group yet.」
+
+#### Scenario: 唯一的支出移到垃圾桶
+
+- **WHEN** Brisbane 只有 Dinner 時，在 Brisbane 的畫面把 Dinner 移到垃圾桶（LEDGER-71.2）
+- **THEN** Brisbane 的畫面沒有卡片，顯示「No expenses in this group yet.」
 
 ### Requirement: GROUPS-21.1 找不到群組時顯示「Group not found.」
 
@@ -365,24 +370,24 @@ IF 群組的畫面的網址裡的 ID 不是任何群組的群組 ID，THEN the m
 - **WHEN** 點「Open Brisbane」
 - **THEN** 推入的畫面一開始和讀完 Brisbane 之後，都沒有顯示「Group not found.」
 
-### Requirement: GROUPS-22.2 群組的畫面的 Group actions 選單
+### Requirement: GROUPS-22.3 群組的畫面的 Group actions 選單
 
-The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group actions」的選單（SHELL-47.1、SHELL-48.1）：未封存的群組依序是「Members」和「Rename Group」，封存的群組只有「Members」。
+The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group actions」的選單（SHELL-47.1、SHELL-48.1）：未封存的群組依序是「Members」、「Balances」和「Rename Group」，封存的群組依序是「Members」和「Balances」。
 
 #### Scenario: iOS
 
 - **WHEN** iOS 上開啟 Brisbane 的畫面
-- **THEN** 標題列右邊是圖示 `ellipsis.circle`、名稱「Group actions」的選單，依序列出「Members」和「Rename Group」
+- **THEN** 標題列右邊是圖示 `ellipsis.circle`、名稱「Group actions」的選單，依序列出「Members」、「Balances」和「Rename Group」
 
 #### Scenario: Android
 
 - **WHEN** Android 上在 Brisbane 的畫面按「Group actions」
-- **THEN** 跳出標題「Group actions」的對話框，依序列出「Members」、「Rename Group」和「Cancel」
+- **THEN** 跳出標題「Group actions」的對話框，依序列出「Members」、「Balances」、「Rename Group」和「Cancel」
 
 #### Scenario: 封存的群組
 
 - **WHEN** 封存 Brisbane 之後，在 iOS 上開啟它的畫面，或在 Android 上按它的「Group actions」
-- **THEN** iOS 的選單只列出「Members」；Android 的對話框依序列出「Members」和「Cancel」
+- **THEN** iOS 的選單依序列出「Members」和「Balances」；Android 的對話框依序列出「Members」、「Balances」和「Cancel」
 
 ### Requirement: GROUPS-23.1 開啟和關閉 Members
 
@@ -1166,9 +1171,9 @@ WHEN app 重新啟動，the mobile app SHALL 保留每個群組有沒有封存�
 - **WHEN** 還原 Tokyo 之後重新啟動 app
 - **THEN** Groups 根畫面由上而下是 Brisbane、Tokyo、Paris；Archived Groups 只顯示「No archived groups.」
 
-### Requirement: GROUPS-61.1 群組的畫面列出群組的支出
+### Requirement: GROUPS-61.2 群組的畫面列出群組的支出
 
-WHILE 群組有支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 的順序列出這個群組每一筆支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.2、LEDGER-65.1），但卡片金額是支出的全額。
+WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 的順序列出這個群組每一筆不在垃圾桶裡的支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.2、LEDGER-65.2），但卡片金額是支出的全額。
 
 #### Scenario: 兩筆支出
 
@@ -1200,6 +1205,11 @@ WHILE 群組有支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 �
 - **WHEN** 重新啟動 app 後打開 Brisbane 的畫面
 - **THEN** 仍是 Dinner 和 Taxi 的卡片
 
+#### Scenario: 垃圾桶裡的支出
+
+- **WHEN** 把 Taxi 移到垃圾桶
+- **THEN** Brisbane 的畫面只有 Dinner 的卡片
+
 ### Requirement: GROUPS-62.1 讀完支出之前不顯示沒有支出的樣子
 
 WHILE 群組的畫面還沒讀完這個群組的支出，the mobile app SHALL 不顯示「No expenses in this group yet.」。
@@ -1211,7 +1221,7 @@ WHILE 群組的畫面還沒讀完這個群組的支出，the mobile app SHALL �
 
 ### Requirement: GROUPS-63.1 點群組畫面上的卡片推入明細
 
-WHEN 使用者點群組的畫面上的卡片，the mobile app SHALL 在群組的畫面所在的分頁推入這筆支出的明細（LEDGER-37.2、LEDGER-66.1），標題是「Expense」，網址在 Groups 分頁是 `/groups/expenses/<支出的 ID>`，在 Settings 分頁是 `/settings/archived-groups/expenses/<支出的 ID>`，分頁列仍選中同一個分頁；連點兩次也只推入一個明細，返回或按 Android 的返回鍵就回到群組的畫面。
+WHEN 使用者點群組的畫面上的卡片，the mobile app SHALL 在群組的畫面所在的分頁推入這筆支出的明細（LEDGER-37.2、LEDGER-66.2），標題是「Expense」，網址在 Groups 分頁是 `/groups/expenses/<支出的 ID>`，在 Settings 分頁是 `/settings/archived-groups/expenses/<支出的 ID>`，分頁列仍選中同一個分頁；連點兩次也只推入一個明細，返回或按 Android 的返回鍵就回到群組的畫面。
 
 #### Scenario: Groups 分頁
 
@@ -1298,3 +1308,205 @@ WHERE iPhone 或 Android 手機，WHEN 群組的畫面捲到最底，the mobile 
 
 - **WHEN** Brisbane 有 20 筆支出，把它的畫面捲到最底
 - **THEN** 最後一張卡片整張在 + 按鈕上方，沒有被擋住
+
+### Requirement: GROUPS-68.1 群組的畫面上的 Group Total
+
+WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面上、支出的卡片上方，為這些支出用到的每個幣別各顯示一行「Group Total: <這個幣別的支出的全額總和>」，依幣別代碼排序；這幾行是文字，不是按鈕。群組沒有不在垃圾桶裡的支出時，SHALL 不顯示 Group Total。
+
+#### Scenario: 一個幣別
+
+- **WHEN** 名字是「Taylor」，Brisbane 有 Taylor 付的 10001 USD 的 Dinner，以及 Casey 付、只有 Blake 分攤的 2500 USD 的 Taxi
+- **THEN** Brisbane 的畫面在卡片上方只有「Group Total: $125.01」
+
+#### Scenario: 幾個幣別
+
+- **WHEN** Brisbane 還有一筆 3000 JPY 的 Sushi
+- **THEN** 由上而下是「Group Total: ¥3,000」和「Group Total: $125.01」
+
+#### Scenario: 不是按鈕
+
+- **WHEN** 點「Group Total: $125.01」
+- **THEN** 它不在任何按鈕裡，點了沒有反應
+
+#### Scenario: 沒有支出
+
+- **WHEN** 打開還沒有支出的 Brisbane 的畫面
+- **THEN** 沒有「Group Total」
+
+#### Scenario: 封存的群組
+
+- **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面
+- **THEN** 「Restore Group」下面是「Group Total: $125.01」，再下面是卡片
+
+### Requirement: GROUPS-69.1 群組的畫面上的 My Total Contribution
+
+WHILE 你在群組裡有已付大於 0 的幣別，the mobile app SHALL 在 Group Total 的下面，為每個這樣的幣別各顯示一行「My Total Contribution: <你在這個幣別的已付>」，依幣別代碼排序；這幾行合起來是一個按鈕，螢幕閱讀器把它讀成一個按鈕，讀出這幾行，按一下就打開 Balances（GROUPS-70.1）。你在每個幣別的已付都是 0 時，SHALL 不顯示 My Total Contribution。
+
+#### Scenario: 你付的
+
+- **WHEN** 名字是「Taylor」，Brisbane 有 Taylor 付的 10001 USD 的 Dinner、Casey 付的 2500 USD 的 Taxi 和 Casey 付的 3000 JPY 的 Sushi
+- **THEN** Group Total 下面只有「My Total Contribution: $100.01」，它是一個按鈕，螢幕閱讀器讀出「My Total Contribution: $100.01」
+
+#### Scenario: 幾個幣別
+
+- **WHEN** Sushi 也是 Taylor 付的
+- **THEN** 由上而下是「My Total Contribution: ¥3,000」和「My Total Contribution: $100.01」，兩行在同一個按鈕裡
+
+#### Scenario: 你沒有付過
+
+- **WHEN** Brisbane 只有 Casey 付的支出，Taylor 也有分攤
+- **THEN** 沒有「My Total Contribution」
+
+#### Scenario: 按下
+
+- **WHEN** 按「My Total Contribution: $100.01」
+- **THEN** 打開 Brisbane 的 Balances
+
+### Requirement: GROUPS-70.1 開啟和關閉 Balances
+
+WHEN 使用者按 My Total Contribution，或在 Group actions 選「Balances」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Balances，標題是「Balances」，標題列只有取消「Close」（SHELL-47.1、SHELL-48.1）；按 Close、把 Balances 往下滑或按 Android 的返回鍵，SHALL 關閉 Balances，回到群組的畫面。
+
+#### Scenario: 從 My Total Contribution 開啟
+
+- **WHEN** 在 Brisbane 的畫面按 My Total Contribution
+- **THEN** Balances 從底部升起，蓋在 Brisbane 的畫面上，標題是「Balances」，標題列只有「Close」；仍選中 Groups 分頁
+
+#### Scenario: 從 Group actions 開啟
+
+- **WHEN** 在 Brisbane 的畫面選 Group actions 的「Balances」
+- **THEN** Balances 從底部升起，蓋在 Brisbane 的畫面上
+
+#### Scenario: 按 Close
+
+- **WHEN** 在 Balances 按「Close」
+- **THEN** Balances 關閉，顯示 Brisbane 的畫面
+
+#### Scenario: 往下滑或按返回鍵
+
+- **WHEN** 在 iOS 上把 Balances 往下滑，或在 Android 上按返回鍵
+- **THEN** Balances 關閉，顯示 Brisbane 的畫面
+
+#### Scenario: 封存的群組
+
+- **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面，選 Group actions 的「Balances」
+- **THEN** Balances 蓋在 Brisbane 的畫面上，分頁列仍選中 Settings
+
+### Requirement: GROUPS-71.1 Balances 列出每個人的已付、份額和淨額
+
+The mobile app SHALL 在 Balances 依幣別代碼排序，為群組不在垃圾桶裡的支出用到的每個幣別，由上而下先依 GROUPS-24.2 的順序列出群組的每位成員，再依被移出的先後列出這個幣別的支出的付款或分攤裡的前成員；每個人一列，依序是他的名稱（你的成員是你的成員名稱加上「 (You)」，前成員是他存著的名稱）、淨額大於 0 時的「Is Owed <淨額>」、小於 0 時的「Owes <淨額的絕對值>」或等於 0 時的「Settled up」，以及「Paid <已付> · Share <份額>」，所以每個幣別所有人的淨額加總是 0。群組沒有不在垃圾桶裡的支出時，SHALL 只顯示「No balances to show.」。
+
+#### Scenario: 一個人付了全部
+
+- **WHEN** 名字是「Taylor」，Brisbane 依序加入 Casey 和 Blake；Taylor 付了 60.00 USD 的 Dinner，分給 Taylor、Casey 和 Blake，20.00 USD 的 Taxi，分給 Casey 和 Blake，以及 20.00 USD 的 Tickets，只分給 Blake
+- **THEN** Balances 由上而下是「Taylor (You)」「Is Owed $80.00」「Paid $100.00 · Share $20.00」、「Casey」「Owes $30.00」「Paid $0.00 · Share $30.00」、「Blake」「Owes $50.00」「Paid $0.00 · Share $50.00」；淨額 +8000、−3000、−5000 加總是 0
+
+#### Scenario: 幾個幣別
+
+- **WHEN** 還有 Casey 付的 3000 JPY 的 Sushi，分給 Taylor 和 Casey
+- **THEN** JPY 的幾列在 USD 的上面，由上而下是「Taylor (You)」「Owes ¥1,500」「Paid ¥0 · Share ¥1,500」、「Casey」「Is Owed ¥1,500」「Paid ¥3,000 · Share ¥1,500」、「Blake」「Settled up」「Paid ¥0 · Share ¥0」
+
+#### Scenario: 前成員
+
+- **WHEN** 有這四筆支出時，把 Blake 移出 Brisbane
+- **THEN** USD 的幾列仍有 Blake，排在 Casey 下面，是「Blake」「Owes $50.00」「Paid $0.00 · Share $50.00」；JPY 的幾列沒有 Blake
+
+#### Scenario: 依被移出的先後
+
+- **WHEN** 只有那三筆 USD 的支出，依序把 Blake 和 Casey 移出 Brisbane
+- **THEN** 由上而下是「Taylor (You)」、「Blake」和「Casey」那三列
+
+#### Scenario: 後來加入的成員
+
+- **WHEN** 只有那三筆 USD 的支出，加入 Riley
+- **THEN** Riley 排在 Blake 下面，是「Riley」「Settled up」「Paid $0.00 · Share $0.00」；把他移出 Brisbane 之後，Balances 沒有 Riley
+
+#### Scenario: 成員改了名
+
+- **WHEN** 把 Casey 改名為「Cass」
+- **THEN** 那一列是「Cass」
+
+#### Scenario: 沒有支出
+
+- **WHEN** 在還沒有支出的 Brisbane 的畫面選 Group actions 的「Balances」
+- **THEN** Balances 只顯示「No balances to show.」
+
+### Requirement: GROUPS-72.1 群組的卡片顯示成員人數
+
+The mobile app SHALL 在群組的卡片上、群組名稱的下面顯示群組的成員人數，一位時是「1 member」，其他時候是「<人數> members」；前成員不算在內。
+
+#### Scenario: 新建立的群組
+
+- **WHEN** 建立「Brisbane」
+- **THEN** Brisbane 的卡片在「Brisbane」下面是「1 member」
+
+#### Scenario: 加入成員
+
+- **WHEN** 在 Brisbane 依序加入 Casey 和 Blake，再回到 Groups 根畫面
+- **THEN** 卡片上是「3 members」
+
+#### Scenario: 移出和加回
+
+- **WHEN** 把 Blake 移出 Brisbane
+- **THEN** 卡片上是「2 members」；把他加回來之後是「3 members」
+
+### Requirement: GROUPS-73.1 群組的卡片顯示你的份額和淨額
+
+The mobile app SHALL 在群組的卡片上、成員人數的下面，依幣別代碼排序，為群組不在垃圾桶裡的支出用到的每個幣別依序顯示「Your share: <你的份額>」，以及你的淨額大於 0 時的「You're owed: <淨額>」、小於 0 時的「You owe: <淨額的絕對值>」或等於 0 時的「Settled up」；群組沒有不在垃圾桶裡的支出時，SHALL 在成員人數的下面只顯示「No spending yet」。卡片的名稱仍是「Open <群組名稱>」（GROUPS-2.2），螢幕閱讀器讀完名稱，接著依序讀出成員人數和這幾行。
+
+#### Scenario: 幾個幣別
+
+- **WHEN** 名字是「Taylor」，Brisbane 依序加入 Casey 和 Blake，有 Taylor 付的 120.00 AUD 的 Groceries，分給 Taylor 和 Casey，以及 Casey 付的 60.00 USD 的 Tickets，分給 Taylor、Casey 和 Blake
+- **THEN** Brisbane 的卡片由上而下是「Brisbane」、「3 members」、「Your share: A$60.00」、「You're owed: A$60.00」、「Your share: $20.00」、「You owe: $20.00」
+
+#### Scenario: 打平
+
+- **WHEN** Brisbane 只有 Taylor 付的 20.00 USD 的 Coffee，只分給 Taylor
+- **THEN** 卡片上是「Your share: $20.00」和「Settled up」
+
+#### Scenario: 和你無關的支出
+
+- **WHEN** Brisbane 只有 Casey 付的 25.00 USD 的 Taxi，只分給 Blake
+- **THEN** 卡片上是「Your share: $0.00」和「Settled up」
+
+#### Scenario: 還沒有支出
+
+- **WHEN** Brisbane 還沒有支出
+- **THEN** 卡片由上而下是「Brisbane」、「1 member」和「No spending yet」
+
+#### Scenario: 螢幕閱讀器
+
+- **WHEN** 螢幕閱讀器讀「幾個幣別」的 Brisbane 的卡片
+- **THEN** 讀出名稱「Open Brisbane」，接著依序是「3 members」、「Your share: A$60.00」、「You're owed: A$60.00」、「Your share: $20.00」、「You owe: $20.00」
+
+#### Scenario: 從 Expenses 分頁新增之後
+
+- **WHEN** 在 Expenses 分頁新增一筆 Brisbane 的支出，再選 Groups 分頁
+- **THEN** Brisbane 的卡片已經算進這筆支出
+
+### Requirement: GROUPS-74.1 讀完支出之前不顯示 No spending yet
+
+WHILE Groups 根畫面還沒讀完存著的支出，the mobile app SHALL 不在群組的卡片上顯示「No spending yet」。
+
+#### Scenario: 開啟 app
+
+- **WHEN** Brisbane 有 Dinner 時打開 Groups 分頁，Groups 根畫面還沒讀完存著的支出
+- **THEN** Brisbane 的卡片上沒有「No spending yet」；讀完之後顯示你的份額
+
+### Requirement: GROUPS-75.1 群組的金額不算垃圾桶裡的支出
+
+The mobile app SHALL 讓群組的金額只算這個群組不在垃圾桶裡的支出：群組的支出移到垃圾桶或從垃圾桶還原並存好之後，群組的畫面、Balances 和群組的卡片再出現時，都是照新的狀態算的金額。
+
+#### Scenario: 移到垃圾桶
+
+- **WHEN** 名字是「Taylor」，Brisbane 依序加入 Casey 和 Blake，有 Taylor 付的 60.00 USD 的 Dinner 和 Casey 付的 30.00 USD 的 Taxi，都分給 Taylor、Casey 和 Blake，然後把 Dinner 移到垃圾桶
+- **THEN** Brisbane 的畫面是「Group Total: $30.00」，沒有 My Total Contribution；Balances 是「Taylor (You)」「Owes $10.00」「Paid $0.00 · Share $10.00」、「Casey」「Is Owed $20.00」「Paid $30.00 · Share $10.00」、「Blake」「Owes $10.00」「Paid $0.00 · Share $10.00」；卡片上是「Your share: $10.00」和「You owe: $10.00」
+
+#### Scenario: 還原
+
+- **WHEN** 按 Undo 提示的「Undo」，或在 Trash 還原 Dinner
+- **THEN** 又是「Group Total: $90.00」和「My Total Contribution: $60.00」，卡片上是「Your share: $30.00」和「You're owed: $30.00」
+
+#### Scenario: 都在垃圾桶裡
+
+- **WHEN** 把 Dinner 和 Taxi 都移到垃圾桶
+- **THEN** Brisbane 的畫面沒有 Group Total，顯示「No expenses in this group yet.」；Balances 只顯示「No balances to show.」；卡片上是「No spending yet」

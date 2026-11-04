@@ -5,13 +5,17 @@ import { Alert, BackHandler } from 'react-native';
 import { fireEvent, waitFor } from '@testing-library/react-native';
 import {
   addExpense,
+  formBarSides,
+  formScreen,
+  formTitle,
   nameOf,
   phoneDatabase,
   pressBack,
   resetPhone,
   startExpenses,
+  storedExpenses,
 } from './ledger-expense-app';
-import { openDetails } from './ledger-expense-list-app';
+import { NOT_FOUND, linesIn, openDetails } from './ledger-expense-list-app';
 import {
   DELETE_EXPENSE,
   NO_DELETED,
@@ -32,7 +36,7 @@ import {
 } from './group-details-app';
 import { iconNames } from './shell-actions-app';
 import { allowWrites, settle } from './shell-appearance-app';
-import { navigationBarTitles, tab } from './shell-tabs-app';
+import { navigationBarTitles, push, tab } from './shell-tabs-app';
 import type { Database } from '../../src/storage';
 
 // Runs on Android only (apps/mobile/jest.config.cjs). Both platforms share the
@@ -99,7 +103,7 @@ async function openTrashedCoffeeRun() {
   await openTrashed('Coffee run');
 }
 
-test('[LEDGER-72.1] puts Expense actions at the right of Edit on the details on Android, with Delete and Cancel', async () => {
+test('[LEDGER-72.2] puts Expense actions at the right of Edit on the details on Android, with Delete and Cancel', async () => {
   await startExpenses();
   await addExpense();
   await openDetails('Coffee run');
@@ -121,7 +125,7 @@ test('[LEDGER-72.1] puts Expense actions at the right of Edit on the details on 
   expect(lastAlertButtons()).toEqual(['Delete', 'Cancel']);
 });
 
-test('[LEDGER-72.1] moves the expense to the trash from the dialog of the details on Android', async () => {
+test('[LEDGER-72.2] moves the expense to the trash from the dialog of the details on Android', async () => {
   await startExpenses();
   await addExpense({ title: 'Coffee run' });
   await addExpense({ title: 'Lunch' });
@@ -136,7 +140,7 @@ test('[LEDGER-72.1] moves the expense to the trash from the dialog of the detail
   expect(noticeShown()).toBe(true);
 });
 
-test('[LEDGER-78.1] puts only Expense actions on the read-only details on Android, with Delete Permanently and Cancel', async () => {
+test('[LEDGER-78.2] puts only Expense actions on the read-only details on Android, with Delete Permanently and Cancel', async () => {
   await openTrashedCoffeeRun();
 
   await waitFor(() =>
@@ -155,7 +159,7 @@ test('[LEDGER-78.1] puts only Expense actions on the read-only details on Androi
   expect(lastAlertButtons()).toEqual(['Delete Permanently', 'Cancel']);
 });
 
-test('[LEDGER-78.1] goes back from the read-only details to Trash with Back on Android', async () => {
+test('[LEDGER-78.2] goes back from the read-only details to Trash with Back on Android', async () => {
   await openTrashedCoffeeRun();
 
   await pressBack();
@@ -175,4 +179,23 @@ test('[LEDGER-80.1] deletes an expense in the trash for good from the read-only 
     expect(navigationBarTitles(tab('Settings'))).toEqual(['Settings', 'Trash']),
   );
   await waitFor(() => expect(trashLines()).toEqual([NO_DELETED]));
+});
+
+test('[LEDGER-85.1] closes the Edit Expense of an expense in the trash, which shows only Expense not found. and Cancel, with Back on Android', async () => {
+  await startExpenses();
+  await addExpense();
+  const [coffeeRun] = await storedExpenses();
+  await deleteByAction('Coffee run');
+  const before = await storedExpenses();
+
+  await push(`/expenses/${coffeeRun.id}/edit`);
+
+  await waitFor(() => expect(formTitle()).toBe('Edit Expense'));
+  await waitFor(() => expect(linesIn(formScreen())).toEqual([NOT_FOUND]));
+  expect(formBarSides()).toEqual({ left: ['Cancel'], right: [] });
+  await pressBack();
+  await waitFor(() => expect(formTitle()).toBeUndefined());
+  expect(alertsShown()).toEqual([]);
+  expect(await storedExpenses()).toEqual(before);
+  expect(exitApp).not.toHaveBeenCalled();
 });

@@ -618,11 +618,15 @@ export async function moveExpensesInSheet(name: string, to: string) {
 const groupButtons = (group: string) =>
   within(screenOf(group)).queryAllByRole('button');
 
-/** The expense cards on the group's screen, top to bottom. */
+/** The expense cards on the group's screen, top to bottom: its buttons besides +, Restore Group and My Total Contribution. */
 export const groupCards = (group: string) =>
   groupButtons(group).filter((button) => {
     const name = nameOf(button);
-    return name !== 'Add expense' && name !== 'Restore Group';
+    return (
+      name !== 'Add expense' &&
+      name !== 'Restore Group' &&
+      !name.startsWith('My Total Contribution')
+    );
   });
 
 /** The titles of the cards on the group's screen, top to bottom. */
@@ -636,6 +640,28 @@ export function groupCard(group: string, title: string) {
   );
   if (found === undefined) throw new Error(`No card for ${title} on ${group}`);
   return found;
+}
+
+/**
+ * Uses the Delete expense action of the card titled `title` on the group's screen,
+ * as VoiceOver or TalkBack does; swiping to show Delete is a gesture only the E2E
+ * flow makes (ADR-0008).
+ */
+export async function deleteFromGroup(group: string, title: string) {
+  const view = groupCard(group, title);
+  const actions: { name: string; label?: string }[] =
+    view.props.accessibilityActions ?? [];
+  const action = actions.find(
+    (candidate) => (candidate.label ?? candidate.name) === 'Delete expense',
+  );
+  if (action === undefined)
+    throw new Error(
+      `The card of ${title} on ${group} has no Delete expense action`,
+    );
+  await fireEvent(view, 'accessibilityAction', {
+    nativeEvent: { actionName: action.name },
+  });
+  await settle();
 }
 
 /** The group screen's + button, if it shows one. */

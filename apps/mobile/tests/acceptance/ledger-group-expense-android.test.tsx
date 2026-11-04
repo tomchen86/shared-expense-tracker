@@ -138,7 +138,7 @@ test("[GROUPS-64.1] opens New Expense for the group from the + button on the gro
   expect(rowValue('Group')).toBe('Brisbane');
 });
 
-test("[LEDGER-66.1] puts only Edit on a group expense's details on Android, without Expense actions", async () => {
+test("[LEDGER-66.2] [LEDGER-72.2] puts Edit and, at its right, Expense actions on a group expense's details on Android", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await tapTab('Expenses');
@@ -147,11 +147,14 @@ test("[LEDGER-66.1] puts only Edit on a group expense's details on Android, with
   await openDetails('Dinner');
 
   await waitFor(() =>
-    expect(expenseHeaderButtons('Expenses').map(nameOf)).toEqual(['Edit']),
+    expect(expenseHeaderButtons('Expenses').map(nameOf)).toEqual([
+      'Edit',
+      'Expense actions',
+    ]),
   );
 });
 
-test("[LEDGER-67.1] disables the header's Edit on an archived group's expense on Android", async () => {
+test("[LEDGER-67.2] disables the header's Edit and Expense actions on an archived group's expense on Android", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await archiveGroup('Brisbane');
@@ -161,4 +164,7 @@ test("[LEDGER-67.1] disables the header's Edit on an archived group's expense on
   await openDetails('Dinner');
 
   expect(editOn('Expenses')?.disabled).toBe(true);
+  const [, actions] = expenseHeaderButtons('Expenses');
+  expect(nameOf(actions)).toBe('Expense actions');
+  expect(actions).toBeDisabled();
 });

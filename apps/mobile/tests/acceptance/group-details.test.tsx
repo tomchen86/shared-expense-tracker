@@ -176,7 +176,7 @@ async function submit(form: string, confirm: string, name: string) {
 
 // The group's screen
 
-test('[GROUPS-20.1] says a new group has no expenses on its screen', async () => {
+test('[GROUPS-20.2] says a new group has no expenses on its screen', async () => {
   await startWithName();
   await createGroup('Brisbane');
 
@@ -229,7 +229,7 @@ test('[GROUPS-21.1] never shows Group not found. while a group opened at its URL
   expect(screen.queryByText(NOT_FOUND)).toBeNull();
 });
 
-test("[GROUPS-22.2] puts a Group actions menu with Members and Rename Group in the group's title bar", async () => {
+test("[GROUPS-22.3] puts a Group actions menu with Members, Balances and Rename Group in the group's title bar", async () => {
   await startWithName();
   await createGroup('Brisbane');
 
@@ -240,7 +240,7 @@ test("[GROUPS-22.2] puts a Group actions menu with Members and Rename Group in t
       {
         menu: 'Group actions',
         icon: 'ellipsis.circle',
-        items: ['Members', 'Rename Group'],
+        items: ['Members', 'Balances', 'Rename Group'],
       },
     ]),
   );
