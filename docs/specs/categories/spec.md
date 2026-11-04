@@ -887,3 +887,60 @@ WHILE 群組已封存，the mobile app SHALL 讓它的 Group Categories 裡「AR
 
 - **WHEN** 還原 Brisbane 之後，在它的 Group Categories 把 Gym 往左滑
 - **THEN** 露出「Delete」
+
+### Requirement: CATEGORIES-46.1 (manual) About categories 圖示與標題對齊
+
+The mobile app SHALL 讓 Manage Categories 與未封存群組的 Group Categories 上，About categories 的資訊圖示緊鄰 CATEGORIES 標題右邊，圖示的可見中心與標題文字的可見中心垂直對齊，並保留至少 44 pt（iOS）或 48 dp（Android）的可點擊範圍、About categories 無障礙名稱及 CATEGORIES-42.2 的說明。
+
+#### Scenario: 預設字級
+
+- **WHEN** 在 iPhone 與 Android 手機上分別打開 Manage Categories 與 Brisbane 的 Group Categories
+- **THEN** 圖示與 CATEGORIES 在同一行且上下置中，沒有因標題的底部間距而向下偏移；點圖示開啟 About Categories
+
+#### Scenario: 放大的文字
+
+- **WHEN** 把字級放到系統最大的輔助使用字級，再打開上述畫面
+- **THEN** 標題與圖示仍在同一個標題區且垂直置中，不重疊、不裁切，圖示可點範圍不因圖示本身較小而縮小
+
+### Requirement: CATEGORIES-47.1 (e2e) 上下捲動分類不觸發列的操作
+
+WHEN 使用者從 Manage Categories 或 Group Categories 的分類列開始上下拖曳，the mobile app SHALL 捲動分類清單，不露出 Remove 或 Delete、不開啟 Edit Category、不還原封存分類；對已露出動作的列向右滑時只收起動作，不執行該列的點擊或移除，也不返回上一個畫面。
+
+#### Scenario: 從分類列往上捲動
+
+- **WHEN** 在 Manage Categories 從 Shopping 那一列向上拖曳
+- **THEN** 清單往下捲，底下的 Uncategorized 可見，沒有 Remove、Delete 或 Edit Category
+
+#### Scenario: 收起 Remove
+
+- **WHEN** 把 Shopping 向左滑露出 Remove，再向右滑
+- **THEN** 留在同一個分類管理畫面，Remove 消失，Shopping 仍在，沒有 Edit Category 或 Delete Category?，之後點 Shopping 才開啟 Edit Category
+
+#### Scenario: 封存分類
+
+- **WHEN** Travel 已封存，從 Restore Travel 那一列上下拖曳
+- **THEN** 只捲動清單，Travel 仍在 ARCHIVED 下，沒有還原，也沒有露出 Delete
+
+### Requirement: CATEGORIES-48.1 (manual) 分類左滑容許自然的縱向偏移
+
+WHEN 使用者從分類列往左拖曳，且開始拖曳時橫向位移大於縱向位移，the mobile app SHALL 容許手指的縱向偏移並依 CATEGORIES-32.3 露出該列的動作，橫向拖曳成立後直到放手都不被清單的上下捲動搶走；開始拖曳時縱向位移大於或等於橫向則只捲動清單，方向確定後直到放手不再切換，沒有動作的列仍不露出按鈕，也不把拖曳當成點擊。
+
+#### Scenario: 稍微向上的左滑
+
+- **WHEN** 在 Manage Categories 從 Shopping 列中央以一次連續手勢往左約 80 pt、往上約 60 pt，再放手
+- **THEN** Shopping 的 Remove 露出，清單沒有改成上下捲動，沒有開啟 Edit Category；往下偏移 60 pt 時也一樣
+
+#### Scenario: 主要是上下滑
+
+- **WHEN** 從 Shopping 往上約 80 pt、往左約 60 pt，或兩方向各約 80 pt
+- **THEN** 只捲動清單，不露出 Remove，不開啟 Edit Category
+
+#### Scenario: 其他分類狀態
+
+- **WHEN** 對沒有支出使用的已封存 Travel 作相同的斜向左滑
+- **THEN** 露出 Delete；對 Uncategorized、有支出使用的已封存分類，或封存群組裡的分類作相同動作時，不露出按鈕、不開啟表單、也不還原分類
+
+#### Scenario: 群組分類與 Android
+
+- **WHEN** 在未封存群組的 Group Categories，或在 Android 的 Manage Categories，重複上述斜向與垂直拖曳
+- **THEN** 動作選擇與不誤觸的結果相同，pt 在 Android 以 dp 計
