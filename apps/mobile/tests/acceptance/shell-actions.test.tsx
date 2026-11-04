@@ -6,6 +6,7 @@ import {
   OUTSIDE_THE_TABS,
   addButtonBox,
   barItems,
+  barMenus,
   chooseFromMenu,
   holdDown,
   iconsIn,
@@ -313,4 +314,48 @@ test('[SHELL-49.1] keeps the menu usable when every action in it is disabled', a
       items: ['Members (disabled)', 'Delete (disabled)'],
     },
   ]);
+});
+
+/** The chart choice menu Insights gives, with Auto current. */
+const chartChoices = (
+  presses: Record<'Auto' | 'Donut' | 'Bar', () => void>,
+): HeaderActionsProps['choices'] => ({
+  label: 'Chart visualization',
+  title: 'Visualization',
+  icon: { ios: 'chart.bar.xaxis', android: 'bar_chart' },
+  options: [
+    { label: 'Auto', selected: true, onPress: presses.Auto },
+    { label: 'Donut', selected: false, onPress: presses.Donut },
+    { label: 'Bar', selected: false, onPress: presses.Bar },
+  ],
+});
+
+const choicePresses = () => ({
+  Auto: jest.fn(),
+  Donut: jest.fn(),
+  Bar: jest.fn(),
+});
+
+test('[SHELL-54.1] shows a choice menu with the icon, name and title the screen gives, only the current option checked', async () => {
+  await showHeaderActions({ choices: chartChoices(choicePresses()) });
+
+  expect(barMenus()).toEqual([
+    {
+      menu: 'Chart visualization',
+      icon: 'chart.bar.xaxis',
+      title: 'Visualization',
+      items: ['Auto (checked)', 'Donut', 'Bar'],
+    },
+  ]);
+});
+
+test('[SHELL-54.1] runs the action of the option chosen once', async () => {
+  const presses = choicePresses();
+  await showHeaderActions({ choices: chartChoices(presses) });
+
+  await chooseFromMenu('Bar');
+
+  expect(presses.Bar).toHaveBeenCalledTimes(1);
+  expect(presses.Auto).not.toHaveBeenCalled();
+  expect(presses.Donut).not.toHaveBeenCalled();
 });
