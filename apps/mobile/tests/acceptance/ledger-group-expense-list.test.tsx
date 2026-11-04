@@ -29,7 +29,7 @@ import {
   readOut,
   shownInOrder,
   startExpensesAt,
-  totalSpentLines,
+  thisMonthLines,
 } from './ledger-expense-list-app';
 import { actionLabels, expenseBarItems } from './ledger-trash-app';
 import { allowWrites, settle } from './shell-appearance-app';
@@ -298,16 +298,14 @@ test('[LEDGER-65.2] shows $0.00 on the card of a group expense you only paid', a
   );
 });
 
-test('[LEDGER-65.2] counts only your share of a group expense in Total Spent', async () => {
+test('[LEDGER-65.2] counts only your share of a group expense in This Month', async () => {
   await startWithGroups(BRISBANE);
   await addExpense();
 
   await addDinner();
 
   await showExpenses();
-  await waitFor(() =>
-    expect(totalSpentLines()).toEqual(['Total Spent: $42.09']),
-  );
+  await waitFor(() => expect(thisMonthLines()).toEqual(['This Month: $42.09']));
 });
 
 test('[LEDGER-65.2] marks the group as archived on the card until the group is restored', async () => {

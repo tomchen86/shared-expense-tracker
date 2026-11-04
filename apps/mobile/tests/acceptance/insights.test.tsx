@@ -34,7 +34,7 @@ import {
   linesIn,
   phoneDatabaseWithReads,
   startExpensesAt,
-  totalSpentLines,
+  thisMonthLines,
 } from './ledger-expense-list-app';
 import { deleteByAction, restoreFromTrash } from './ledger-trash-app';
 import {
@@ -318,14 +318,12 @@ test("[INSIGHTS-15.1] never shows Group not found. while a group's Insights read
 
 // What Insights counts
 
-test('[INSIGHTS-16.1] counts your share of group expenses in the personal Insights, as Total Spent does', async () => {
+test('[INSIGHTS-16.1] counts your share of group expenses in the personal Insights, as This Month does', async () => {
   await startWithGroups(BRISBANE);
   await addExpense({ amount: '8.75' });
   await addDinner();
   await tapTab('Expenses');
-  await waitFor(() =>
-    expect(totalSpentLines()).toEqual(['Total Spent: $28.75']),
-  );
+  await waitFor(() => expect(thisMonthLines()).toEqual(['This Month: $28.75']));
 
   await openInsights();
 

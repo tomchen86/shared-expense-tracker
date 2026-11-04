@@ -38,7 +38,7 @@ import {
   readOut,
   shownInOrder,
   startExpensesAt,
-  totalSpentLines,
+  thisMonthLines,
 } from './ledger-expense-list-app';
 import {
   DELETE_EXPENSE,
@@ -249,14 +249,14 @@ test('[LEDGER-71.2] offers Delete expense on every card', async () => {
   expect(actionLabels(card('Lunch'))).toContain('Delete expense');
 });
 
-test('[LEDGER-71.2] moves an expense to the trash without asking, and leaves it out of the list and Total Spent', async () => {
+test('[LEDGER-71.2] moves an expense to the trash without asking, and leaves it out of the list and This Month', async () => {
   await startWithTwo();
 
   await deleteByAction('Lunch');
 
   expect(alertsShown()).toEqual([]);
   await expectCards(['Coffee run']);
-  expect(totalSpentLines()).toEqual(['Total Spent: $8.75']);
+  expect(thisMonthLines()).toEqual(['This Month: $8.75']);
 });
 
 test('[LEDGER-71.2] shows the empty list text once the last card moves to the trash, also after the app restarts', async () => {
@@ -267,11 +267,11 @@ test('[LEDGER-71.2] shows the empty list text once the last card moves to the tr
 
   await expectCards([]);
   expect(linesIn(expensesRoot())).toContain(EMPTY_LIST);
-  expect(totalSpentLines()).toEqual(['Total Spent: —']);
+  expect(thisMonthLines()).toEqual(['This Month: —']);
   await restart(app);
   await waitFor(() => expect(linesIn(expensesRoot())).toContain(EMPTY_LIST));
   expect(cards()).toEqual([]);
-  expect(totalSpentLines()).toEqual(['Total Spent: —']);
+  expect(thisMonthLines()).toEqual(['This Month: —']);
 });
 
 test('[LEDGER-71.2] keeps the card on the list until the move to the trash is saved', async () => {
@@ -603,7 +603,7 @@ test('[LEDGER-74.1] keeps the notice when another expense is restored from Trash
 
 // Undo
 
-test('[LEDGER-75.2] puts the expense back on the list and in Total Spent when Undo is pressed', async () => {
+test('[LEDGER-75.2] puts the expense back on the list and in This Month when Undo is pressed', async () => {
   await startWithTwo();
   await deleteByAction('Lunch');
 
@@ -612,7 +612,7 @@ test('[LEDGER-75.2] puts the expense back on the list and in Total Spent when Un
   expect(alertsShown()).toEqual([]);
   expect(noticeShown()).toBe(false);
   await expectCards(['Lunch', 'Coffee run']);
-  expect(totalSpentLines()).toEqual(['Total Spent: $21.25']);
+  expect(thisMonthLines()).toEqual(['This Month: $21.25']);
   await openTrash();
   await waitFor(() => expect(trashLines()).toEqual([NO_DELETED]));
 });
@@ -983,7 +983,7 @@ test('[LEDGER-79.1] restores the expense as it was before it moved to the trash'
   await tapTab('Expenses');
 
   await expectCards(['Coffee run']);
-  expect(totalSpentLines()).toEqual(['Total Spent: $8.75']);
+  expect(thisMonthLines()).toEqual(['This Month: $8.75']);
   await openDetails('Coffee run');
   expect(shownInOrder(detailLines(), DETAILS_OF_COFFEE_RUN)).toEqual(
     DETAILS_OF_COFFEE_RUN,
