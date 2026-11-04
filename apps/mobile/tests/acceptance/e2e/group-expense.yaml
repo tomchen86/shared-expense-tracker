@@ -1,0 +1,121 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LEDGER-62.1] [LEDGER-54.1] [GROUPS-61.1] [LEDGER-65.1] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share, where swiping its card shows no Delete"
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- tapOn: Enter your name
+- inputText: Taylor
+- pressKey: Enter
+- waitForAnimationToEnd
+- tapOn: Groups
+- tapOn: Add group
+- assertVisible: New Group
+- waitForAnimationToEnd
+- inputText: Brisbane
+- tapOn: Create
+- waitForAnimationToEnd
+- tapOn: Open Brisbane
+- tapOn: Group actions
+- tapOn: Members
+- waitForAnimationToEnd
+- tapOn: Add Member
+- waitForAnimationToEnd
+- inputText: Casey
+- tapOn: Add
+- waitForAnimationToEnd
+- swipe:
+    from:
+      text: Members
+    direction: DOWN
+- waitForAnimationToEnd
+# The group's screen has a + button of its own, which opens New Expense for the group.
+- tapOn: Add expense
+- waitForAnimationToEnd
+- assertVisible: New Expense
+- assertVisible: Group, Brisbane
+- tapOn: Amount in .*
+- inputText: '100.01'
+- tapOn: Expense title
+- inputText: Dinner
+# Add stays disabled until the payer and the split are chosen, so only the
+# category form's Add is enabled while Group Categories is open.
+- tapOn: Category, Food & Dining
+- waitForAnimationToEnd
+- tapOn: \+ Add New Category
+- waitForAnimationToEnd
+- assertVisible: Group Categories
+- tapOn: Add category
+- waitForAnimationToEnd
+- tapOn: Category name
+- inputText: Flights
+- tapOn:
+    text: Add
+    enabled: true
+- waitForAnimationToEnd
+- assertVisible: Flights
+- tapOn: Close
+- waitForAnimationToEnd
+- assertNotVisible: Group Categories
+- assertVisible: New Expense
+- assertVisible: Dinner
+- tapOn: Category, Food & Dining
+- waitForAnimationToEnd
+- tapOn: Flights
+- waitForAnimationToEnd
+- assertVisible: Category, Flights
+# The keyboard is down now, so the rows under the switch are in reach. Choosing the
+# group the form already has closes Select Group and keeps the inputs.
+- tapOn: Group, Brisbane
+- waitForAnimationToEnd
+- assertVisible: Select Group
+- tapOn:
+    text: Brisbane
+    selected: true
+- waitForAnimationToEnd
+- assertNotVisible: Select Group
+- assertVisible: Group, Brisbane
+- assertVisible: Dinner
+- assertVisible: Category, Flights
+- tapOn: Paid by, not selected
+- waitForAnimationToEnd
+- assertVisible: Who Paid\?
+- tapOn: Casey
+- waitForAnimationToEnd
+- assertNotVisible: Who Paid\?
+- assertVisible: Paid by, Casey
+- assertVisible: Dinner
+- tapOn: Split between, Choose people
+- waitForAnimationToEnd
+- assertVisible: Split Between
+- tapOn: Taylor \(You\)
+- tapOn: Casey
+- tapOn: Done
+- waitForAnimationToEnd
+- assertNotVisible: Split Between
+- assertVisible: Split between, 2 people
+- assertVisible: Dinner
+- tapOn:
+    text: Add
+    enabled: true
+- waitForAnimationToEnd
+- assertNotVisible: New Expense
+# Back on Brisbane's screen: its card shows the full amount.
+- assertVisible: .*Dinner.*\$100\.01.*
+- tapOn: Expenses
+- waitForAnimationToEnd
+# Taylor was chosen first, so the extra cent is Taylor's: the card shows that share.
+- assertVisible: .*Dinner.*\$50\.01.*
+# A group expense's card has no Delete: swiping it left shows nothing.
+- swipe:
+    from:
+      text: .*Dinner.*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertNotVisible: Delete.*

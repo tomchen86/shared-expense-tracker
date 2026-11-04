@@ -28,6 +28,10 @@ export default function SettingsLayout() {
         options={{ title: 'Group Details' }}
       />
       <Stack.Screen
+        name="archived-groups/expenses/[id]"
+        options={{ title: 'Expense' }}
+      />
+      <Stack.Screen
         name="archived-groups/members"
         options={{ ...formPresentation, title: 'Members' }}
       />

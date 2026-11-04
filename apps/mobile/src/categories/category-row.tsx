@@ -13,7 +13,7 @@ import { isUncategorizedCategory, type Category } from './repository';
 interface CategoryRowProps {
   category: Category;
   used: boolean;
-  readOnly: boolean;
+  readOnly?: boolean;
   onPress?: () => void;
   onRemove: () => void;
 }
@@ -23,14 +23,14 @@ const ACTION_WIDTH = 88;
 export function CategoryRow({
   category,
   used,
-  readOnly,
+  readOnly = false,
   onPress,
   onRemove,
 }: CategoryRowProps) {
   const colors = useThemeColors();
   const reserved = isUncategorizedCategory(category);
   const action =
-    reserved || (category.isArchived && used)
+    reserved || readOnly || (category.isArchived && used)
       ? undefined
       : category.isArchived
         ? 'Delete'
@@ -94,13 +94,19 @@ export function CategoryRow({
       <Text style={[styles.label, { color: colors.text }]}>
         {category.name}
       </Text>
-      {category.isArchived && (
+      {category.isArchived && !readOnly && (
         <Text style={{ color: colors.accent }}>Restore</Text>
       )}
     </>
   );
 
-  if (reserved || readOnly) return <View style={styles.row}>{content}</View>;
+  if (reserved) return <View style={styles.row}>{content}</View>;
+  if (readOnly)
+    return (
+      <View accessible accessibilityLabel={category.name} style={styles.row}>
+        {content}
+      </View>
+    );
 
   return (
     <View style={styles.swipe} {...responder.panHandlers}>

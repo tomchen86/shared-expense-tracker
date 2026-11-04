@@ -1,4 +1,5 @@
 import { ensureDefaultCategories, listCategories } from '../../src/categories';
+import { categoryMigrations } from '../../src/categories/migrations';
 import {
   deleteCategory,
   moveAndArchiveCategory,
@@ -7,7 +8,6 @@ import {
 import { listExpenses, savePersonalExpense } from '../../src/ledger/expenses';
 import { ensureLocalIdentity } from '../../src/shell/identity';
 import { appMigrations } from '../../src/shell/migrations';
-import { categoryMigrations } from '../../src/categories/migrations';
 import {
   initializeDatabase,
   runMigrations,
@@ -33,19 +33,24 @@ async function prepare(migrations = appMigrations) {
 
 test('upgrades an existing database without changing its categories, identity or expenses', async () => {
   const identity = await prepare(
-    appMigrations.slice(0, appMigrations.indexOf(categoryMigrations.at(-1)!)),
+    appMigrations.slice(0, appMigrations.indexOf(categoryMigrations[1])),
   );
   const before = await database.all<{ id: string }>(
     'SELECT * FROM categories ORDER BY position',
   );
-  await savePersonalExpense(database, identity, {
-    title: 'Lunch',
-    amountMinor: 1250,
-    currency: 'USD',
-    date: '2026-11-01',
-    categoryId: before[0].id,
-  });
-  const expenses = await listExpenses(database);
+  // Seed the old schema directly: today's save and read code uses later migrations.
+  await database.run(
+    `INSERT INTO expenses (id, title, amountMinor, currency, date, categoryId, categoryName, categoryColor, spaceId)
+     SELECT 'lunch', 'Lunch', 1250, 'USD', '2026-11-01', id, name, color, spaceId FROM categories WHERE id = ?`,
+    [before[0].id],
+  );
+  for (const table of ['expense_payments', 'expense_shares'])
+    await database.run(`INSERT INTO ${table} VALUES ('lunch', ?, 1250)`, [
+      identity.personalParticipantId,
+    ]);
+  const expenses = await database.all<Record<string, unknown>>(
+    'SELECT * FROM expenses',
+  );
 
   await runMigrations(database, appMigrations);
 
@@ -53,7 +58,14 @@ test('upgrades an existing database without changing its categories, identity or
     await database.all('SELECT * FROM categories ORDER BY position'),
   ).toEqual(before.map((row) => ({ ...row, isArchived: 0 })));
   expect(await ensureLocalIdentity(database)).toEqual(identity);
-  expect(await listExpenses(database)).toEqual(expenses);
+  expect(await database.all('SELECT * FROM expenses')).toEqual(
+    expenses.map((expense) => ({ ...expense, trashOrder: null })),
+  );
+  const [lunch] = await listExpenses(database);
+  expect(lunch.payments).toEqual([
+    { participant: identity.personalParticipantId, amountMinor: 1250 },
+  ]);
+  expect(lunch.shares).toEqual(lunch.payments);
 });
 
 test('rejects reserved, missing, archived and wrong-space mutation targets without changing expenses', async () => {

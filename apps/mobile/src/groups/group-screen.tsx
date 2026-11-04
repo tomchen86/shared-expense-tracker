@@ -5,6 +5,9 @@ import { useThemeColors } from '../ui/theme';
 import { useGroup } from './use-group';
 import { useGroupArchive } from './use-group-archive';
 import { GroupedSection } from '../ui/grouped-section';
+import { AddButton } from '../ui/add-button';
+import { ExpenseCard } from '../ledger/expense-card';
+import { useExpenses } from '../ledger/use-expenses';
 
 export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -12,6 +15,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const [group, setGroup] = useGroup(id);
   const { pending, save } = useGroupArchive();
   const base = inSettings ? '/settings/archived-groups' : '/groups';
+  const expenses = useExpenses()?.filter((expense) => expense.spaceId === id);
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen options={{ title: group?.name ?? 'Group Details' }} />
@@ -45,7 +49,10 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
         />
       )}
       {group !== undefined && (
-        <ScrollView contentInsetAdjustmentBehavior="automatic">
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={styles.content}
+        >
           {group?.archived && (
             <GroupedSection style={styles.banner}>
               <Text style={{ color: colors.text, fontSize: 16 }}>
@@ -74,17 +81,41 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
               </Pressable>
             </GroupedSection>
           )}
-          <Text style={[styles.message, { color: colors.textMuted }]}>
-            {group ? 'No expenses in this group yet.' : 'Group not found.'}
-          </Text>
+          {(!group || expenses?.length === 0) && (
+            <Text style={[styles.message, { color: colors.textMuted }]}>
+              {group ? 'No expenses in this group yet.' : 'Group not found.'}
+            </Text>
+          )}
+          {group &&
+            expenses?.map((expense) => (
+              <ExpenseCard
+                key={expense.id}
+                expense={{ ...expense, group }}
+                amountMinor={expense.amountMinor}
+                onPress={() =>
+                  router.navigate(`${base}/expenses/${expense.id}`)
+                }
+              />
+            ))}
         </ScrollView>
+      )}
+      {group && !group.archived && (
+        <AddButton
+          onPress={() =>
+            router.navigate({
+              pathname: '/expenses/new',
+              params: { groupId: id },
+            })
+          }
+        />
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  banner: { margin: 20, padding: 16 },
+  content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 112 },
+  banner: { marginBottom: 20, padding: 16 },
   restore: { minHeight: 44, justifyContent: 'center', marginTop: 8 },
   message: { padding: 20, marginTop: 48, textAlign: 'center', fontSize: 16 },
 });

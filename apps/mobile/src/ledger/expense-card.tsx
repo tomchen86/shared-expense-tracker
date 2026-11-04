@@ -5,26 +5,36 @@ import { GroupedSection } from '../ui/grouped-section';
 import { SwipeAction } from '../ui/swipe-action';
 import { useThemeColors } from '../ui/theme';
 import { formatExpenseDate } from './format-date';
-import type { DisplayExpense } from './use-expenses';
+import type { ExpenseView } from './use-expenses';
 
 export function ExpenseCard({
   expense,
+  amountMinor = expense.amountMinor,
   onPress,
   onDelete,
 }: {
-  expense: DisplayExpense;
+  expense: ExpenseView;
+  amountMinor?: number;
   onPress: () => void;
   onDelete?: () => void;
 }) {
   const colors = useThemeColors();
   const locale = useLocales()[0].languageTag;
-  const amount = formatCurrency(expense.amountMinor, expense.currency, locale);
+  const amount = formatCurrency(amountMinor, expense.currency, locale);
   const date = formatExpenseDate(expense.date, locale);
+  const groupName =
+    expense.group &&
+    `${expense.group.name}${expense.group.archived ? ' · Archived' : ''}`;
+  const metadata = [
+    expense.categoryLabel,
+    ...(groupName ? [groupName] : []),
+    date,
+  ];
   const card = (
     <GroupedSection>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${expense.title}, ${amount}, ${expense.categoryLabel}, ${date}`}
+        accessibilityLabel={[expense.title, amount, ...metadata].join(', ')}
         accessibilityActions={
           onDelete ? [{ name: 'delete', label: 'Delete expense' }] : undefined
         }
@@ -55,6 +65,11 @@ export function ExpenseCard({
             {expense.categoryLabel}
           </Text>
         </View>
+        {groupName && (
+          <Text style={[styles.metadata, { color: colors.textMuted }]}>
+            {groupName}
+          </Text>
+        )}
         <Text style={[styles.metadata, { color: colors.textMuted }]}>
           {date}
         </Text>

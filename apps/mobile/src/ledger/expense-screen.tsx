@@ -10,11 +10,12 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useLocales } from 'expo-localization';
 import { formatCurrency } from '@shared-expense/domain';
+import { useLocalIdentity } from '../shell';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
 import { formatExpenseDate } from './format-date';
-import { useExpenses, type DisplayExpense } from './use-expenses';
+import { useExpenses, type ExpenseView } from './use-expenses';
 import { useTrashActions } from './trash-provider';
 
 export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
@@ -24,8 +25,10 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   const expenses = useExpenses(trashed);
   const actions = useTrashActions();
   const saving = useRef(false);
-  const [leavingExpense, setLeavingExpense] = useState<DisplayExpense>();
+  const [leavingExpense, setLeavingExpense] = useState<ExpenseView>();
   const expense = leavingExpense ?? expenses?.find((item) => item.id === id);
+  const { userId, personalSpaceId } = useLocalIdentity();
+  const position = expense ? expense.yourPaid - expense.yourShare : 0;
 
   async function changeAndReturn(change: () => Promise<boolean>) {
     if (!expense || saving.current) return;
@@ -55,21 +58,27 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
               ? undefined
               : {
                   label: 'Edit',
+                  disabled: expense.group?.archived,
                   onPress: () => router.navigate(`/expenses/${id}/edit`),
                 }
           }
-          menu={{
-            label: 'Expense actions',
-            actions: [
-              {
-                label: trashed ? 'Delete Permanently' : 'Delete',
-                destructive: true,
-                onPress: trashed
-                  ? deletePermanently
-                  : () => void changeAndReturn(() => actions.move(expense)),
-              },
-            ],
-          }}
+          menu={
+            expense.spaceId === personalSpaceId
+              ? {
+                  label: 'Expense actions',
+                  actions: [
+                    {
+                      label: trashed ? 'Delete Permanently' : 'Delete',
+                      destructive: true,
+                      onPress: trashed
+                        ? deletePermanently
+                        : () =>
+                            void changeAndReturn(() => actions.move(expense)),
+                    },
+                  ],
+                }
+              : undefined
+          }
         />
       )}
       <ScrollView
@@ -103,10 +112,97 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
             <Text style={[styles.amount, { color: colors.text }]}>
               {formatCurrency(expense.amountMinor, expense.currency, locale)}
             </Text>
+            {expense.group?.archived && (
+              <GroupedSection style={styles.history}>
+                <Text style={{ color: colors.text }}>Shared history</Text>
+                <Text style={{ color: colors.textMuted }}>
+                  Payments and shares are preserved as read-only history.
+                  Restore this group before editing.
+                </Text>
+              </GroupedSection>
+            )}
+            {expense.group && (
+              <>
+                <Text style={[styles.heading, { color: colors.textMuted }]}>
+                  YOUR POSITION
+                </Text>
+                <GroupedSection>
+                  <DetailRow
+                    label="You paid"
+                    value={formatCurrency(
+                      expense.yourPaid,
+                      expense.currency,
+                      locale,
+                    )}
+                  />
+                  <DetailRow
+                    label="Your share"
+                    value={formatCurrency(
+                      expense.yourShare,
+                      expense.currency,
+                      locale,
+                    )}
+                  />
+                  <DetailRow
+                    label={
+                      position > 0
+                        ? 'You are owed'
+                        : position < 0
+                          ? 'You owe'
+                          : 'Settled up'
+                    }
+                    value={formatCurrency(
+                      Math.abs(position),
+                      expense.currency,
+                      locale,
+                    )}
+                  />
+                </GroupedSection>
+                {(
+                  [
+                    ['PAID BY', expense.payments],
+                    ['SPLIT', expense.shares],
+                  ] as const
+                ).map(([heading, allocations]) => (
+                  <View key={heading}>
+                    <Text style={[styles.heading, { color: colors.textMuted }]}>
+                      {heading}
+                    </Text>
+                    <GroupedSection>
+                      {allocations.map((share) => {
+                        const member = expense.members.find(
+                          (item) => item.id === share.participant,
+                        );
+                        return (
+                          <DetailRow
+                            key={share.participant}
+                            label={
+                              (member?.name ?? share.participant) +
+                              (member?.userId === userId ? ' (You)' : '')
+                            }
+                            value={formatCurrency(
+                              share.amountMinor,
+                              expense.currency,
+                              locale,
+                            )}
+                          />
+                        );
+                      })}
+                    </GroupedSection>
+                  </View>
+                ))}
+              </>
+            )}
             <Text style={[styles.heading, { color: colors.textMuted }]}>
               DETAILS
             </Text>
             <GroupedSection>
+              {expense.group && (
+                <DetailRow label="Group" value={expense.group.name} />
+              )}
+              {expense.group?.archived && (
+                <DetailRow label="Status" value="Archived · Read-only" />
+              )}
               <View style={styles.row}>
                 <Text style={{ color: colors.text }}>Category</Text>
                 <View style={styles.category}>
@@ -160,6 +256,16 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   );
 }
 
+function DetailRow({ label, value }: { label: string; value: string }) {
+  const colors = useThemeColors();
+  return (
+    <View style={styles.row}>
+      <Text style={{ color: colors.text }}>{label}</Text>
+      <Text style={[styles.value, { color: colors.textMuted }]}>{value}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   restore: {
     minHeight: 48,
@@ -171,6 +277,7 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 40 },
   title: { fontSize: 26, fontWeight: '700' },
   amount: { fontSize: 32, fontWeight: '600', marginTop: 8 },
+  history: { padding: 16, marginTop: 20, gap: 8 },
   heading: { marginTop: 28, marginBottom: 8, marginLeft: 16, fontSize: 13 },
   row: {
     minHeight: 54,

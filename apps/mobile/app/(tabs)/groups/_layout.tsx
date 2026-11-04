@@ -15,6 +15,7 @@ export default function GroupsLayout() {
         name="index"
         options={{ title: 'Groups', headerLargeTitleEnabled: true }}
       />
+      <Stack.Screen name="expenses/[id]" options={{ title: 'Expense' }} />
       <Stack.Screen
         name="new"
         options={{

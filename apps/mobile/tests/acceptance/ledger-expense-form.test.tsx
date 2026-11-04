@@ -292,7 +292,7 @@ test("[LEDGER-13.1] shows Save and the expense's own currency on Edit Expense", 
   ).toBe(true);
 });
 
-test('[LEDGER-14.2] opens New Expense empty, with the first category and today', async () => {
+test('[LEDGER-14.3] opens New Expense empty, with the first category and today', async () => {
   await startExpenses();
 
   await openNewExpense();
@@ -304,7 +304,7 @@ test('[LEDGER-14.2] opens New Expense empty, with the first category and today',
   expect(dateField().value).toBe('2026-10-30');
 });
 
-test('[LEDGER-14.2] picks the first category by its current name', async () => {
+test('[LEDGER-14.3] picks the first category by its current name', async () => {
   await startExpenses();
   await editCategory('Food & Dining', 'Meals');
 
@@ -313,7 +313,7 @@ test('[LEDGER-14.2] picks the first category by its current name', async () => {
   expect(formCategory()).toBe('Meals');
 });
 
-test('[LEDGER-14.2] picks the first category that is not archived', async () => {
+test('[LEDGER-14.3] picks the first category that is not archived', async () => {
   await startExpenses();
   await addExpense();
   await archiveCategory('Food & Dining');
@@ -323,7 +323,7 @@ test('[LEDGER-14.2] picks the first category that is not archived', async () => 
   expect(formCategory()).toBe('Transportation');
 });
 
-test('[LEDGER-14.2] dates a new expense by the local calendar where it is already the next day', async () => {
+test('[LEDGER-14.3] dates a new expense by the local calendar where it is already the next day', async () => {
   await startExpenses();
   setPhoneClock('Australia/Sydney', '2025-01-01T13:30:00Z');
 
@@ -332,7 +332,7 @@ test('[LEDGER-14.2] dates a new expense by the local calendar where it is alread
   expect(dateField().value).toBe('2025-01-02');
 });
 
-test('[LEDGER-14.2] dates a new expense by the local calendar where it is still the previous day', async () => {
+test('[LEDGER-14.3] dates a new expense by the local calendar where it is still the previous day', async () => {
   await startExpenses();
   setPhoneClock('America/Los_Angeles', '2025-01-01T05:00:00Z');
 
@@ -439,7 +439,7 @@ test('[LEDGER-16.1] shows the current name of a renamed category', async () => {
   expect(formCategory()).toBe('Groceries');
 });
 
-test("[LEDGER-17.3] lists the categories in their stored order with the form's category selected", async () => {
+test("[LEDGER-17.4] lists the categories in their stored order with the form's category selected", async () => {
   await startExpenses();
   await openNewExpense();
 
@@ -450,7 +450,7 @@ test("[LEDGER-17.3] lists the categories in their stored order with the form's c
   );
 });
 
-test('[LEDGER-17.3] lists a new category after Uncategorized', async () => {
+test('[LEDGER-17.4] lists a new category after Uncategorized', async () => {
   await startExpenses();
   await addCategory('Gym');
   await openNewExpense();
@@ -461,7 +461,7 @@ test('[LEDGER-17.3] lists a new category after Uncategorized', async () => {
   expect(categoryOptions(names).map(([name]) => name)).toEqual(names);
 });
 
-test("[LEDGER-17.3] lists only the personal space's categories, without a group's", async () => {
+test("[LEDGER-17.4] lists only the personal space's categories, without a group's", async () => {
   await startExpenses();
   await saveName('Taylor');
   await createGroup('Brisbane');
@@ -477,7 +477,7 @@ test("[LEDGER-17.3] lists only the personal space's categories, without a group'
   );
 });
 
-test('[LEDGER-17.3] selects the category pressed and goes back to the form', async () => {
+test('[LEDGER-17.4] selects the category pressed and goes back to the form', async () => {
   await startExpenses();
   await openNewExpense();
 
@@ -491,7 +491,7 @@ test('[LEDGER-17.3] selects the category pressed and goes back to the form', asy
   ).toEqual([['Shopping', true]]);
 });
 
-test('[LEDGER-17.3] keeps the category when the list is cancelled', async () => {
+test('[LEDGER-17.4] keeps the category when the list is cancelled', async () => {
   await startExpenses();
   await openNewExpense();
   await openCategoryList();
@@ -511,7 +511,7 @@ async function archiveGymWithAnExpense() {
   return onlyExpense();
 }
 
-test('[LEDGER-17.3] leaves an archived category out of the list', async () => {
+test('[LEDGER-17.4] leaves an archived category out of the list', async () => {
   await startExpenses();
   await archiveGymWithAnExpense();
   await openNewExpense();
@@ -523,7 +523,7 @@ test('[LEDGER-17.3] leaves an archived category out of the list', async () => {
   );
 });
 
-test("[LEDGER-17.3] marks no category selected when the expense's category is archived", async () => {
+test("[LEDGER-17.4] marks no category selected when the expense's category is archived", async () => {
   await startExpenses();
   const expense = await archiveGymWithAnExpense();
   await openEditExpense(expense.id);
@@ -538,7 +538,7 @@ test("[LEDGER-17.3] marks no category selected when the expense's category is ar
   expect(formCategory()).toBe('Gym');
 });
 
-test('[LEDGER-17.3] keeps an archived category when the expense is saved without choosing another', async () => {
+test('[LEDGER-17.4] keeps an archived category when the expense is saved without choosing another', async () => {
   await startExpenses();
   const expense = await archiveGymWithAnExpense();
 
@@ -677,7 +677,7 @@ test('[LEDGER-20.1] disables Save for decimals in a currency without them', asyn
   expect(formButton('Save').disabled).toBe(true);
 });
 
-test('[LEDGER-21.1] saves a personal expense with its text trimmed and closes the form', async () => {
+test('[LEDGER-21.2] saves a personal expense with its text trimmed and closes the form', async () => {
   await startExpenses();
   const identity = await readIdentity();
   await openNewExpense();
@@ -703,7 +703,7 @@ test('[LEDGER-21.1] saves a personal expense with its text trimmed and closes th
   ]);
 });
 
-test('[LEDGER-21.1] leaves out a note of only spaces', async () => {
+test('[LEDGER-21.2] leaves out a note of only spaces', async () => {
   await startExpenses();
 
   await addExpense({ note: '   ' });
@@ -711,7 +711,7 @@ test('[LEDGER-21.1] leaves out a note of only spaces', async () => {
   expect((await onlyExpense()).note).toBeUndefined();
 });
 
-test('[LEDGER-21.1] adds one expense when Add is pressed twice before the save finishes', async () => {
+test('[LEDGER-21.2] adds one expense when Add is pressed twice before the save finishes', async () => {
   await startExpenses();
   await openNewExpense();
   await fillForm({ amount: '8.75', title: 'Coffee run' });
@@ -729,7 +729,7 @@ test('[LEDGER-21.1] adds one expense when Add is pressed twice before the save f
   expect(await titles()).toEqual(['Coffee run']);
 });
 
-test('[LEDGER-22.1] saves the new amount as the payment and the share of the same expense', async () => {
+test('[LEDGER-22.2] saves the new amount as the payment and the share of the same expense', async () => {
   await startExpenses();
   const identity = await readIdentity();
   await addExpense();
@@ -749,7 +749,7 @@ test('[LEDGER-22.1] saves the new amount as the payment and the share of the sam
   expect((await onlyExpense()).id).toBe(before.id);
 });
 
-test('[LEDGER-22.1] keeps the currency of an expense without decimals', async () => {
+test('[LEDGER-22.2] keeps the currency of an expense without decimals', async () => {
   await startExpenses();
   const expense = await addExpenseIn('JPY', '1200');
 
@@ -759,7 +759,7 @@ test('[LEDGER-22.1] keeps the currency of an expense without decimals', async ()
   expect([saved.amountMinor, saved.currency]).toEqual([1500, 'JPY']);
 });
 
-test('[LEDGER-22.1] saves a new category and date, and leaves out a cleared note', async () => {
+test('[LEDGER-22.2] saves a new category and date, and leaves out a cleared note', async () => {
   await startExpenses();
   await addExpense({ note: 'Morning treat' });
   const expense = await onlyExpense();

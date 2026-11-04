@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useLocales } from 'expo-localization';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatCurrency } from '@shared-expense/domain';
+import { useLocalIdentity } from '../shell';
 import { AddButton } from '../ui/add-button';
 import { GroupedSection } from '../ui/grouped-section';
 import { useThemeColors } from '../ui/theme';
@@ -13,13 +14,14 @@ import { useExpenses } from './use-expenses';
 export function ExpensesScreen() {
   const colors = useThemeColors();
   const locale = useLocales()[0].languageTag;
-  const expenses = useExpenses();
+  const expenses = useExpenses()?.filter((expense) => expense.involved);
+  const { personalSpaceId } = useLocalIdentity();
   const { move } = useTrashActions();
   const totals = new Map<string, bigint>();
   for (const expense of expenses ?? []) {
     totals.set(
       expense.currency,
-      (totals.get(expense.currency) ?? 0n) + BigInt(expense.amountMinor),
+      (totals.get(expense.currency) ?? 0n) + BigInt(expense.yourShare),
     );
   }
   return (
@@ -60,8 +62,13 @@ export function ExpensesScreen() {
               <ExpenseCard
                 key={expense.id}
                 expense={expense}
+                amountMinor={expense.yourShare}
                 onPress={() => router.navigate(`/expenses/${expense.id}`)}
-                onDelete={() => void move(expense)}
+                onDelete={
+                  expense.spaceId === personalSpaceId
+                    ? () => void move(expense)
+                    : undefined
+                }
               />
             ))}
           </>

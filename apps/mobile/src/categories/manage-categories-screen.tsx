@@ -9,7 +9,12 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import {
+  router,
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+} from 'expo-router';
 import { listGroups } from '../groups';
 import { categoryExpenseCounts } from '../ledger/expenses';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
@@ -29,7 +34,15 @@ import {
 
 type FormState = { kind: 'add' } | { kind: 'edit'; category: Category };
 
-export function ManageCategoriesScreen() {
+export function ManageCategoriesSheet() {
+  return <ManageCategoriesScreen asSheet />;
+}
+
+export function ManageCategoriesScreen({
+  asSheet = false,
+}: {
+  asSheet?: boolean;
+} = {}) {
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
   const colors = useThemeColors();
@@ -246,6 +259,20 @@ export function ManageCategoriesScreen() {
   const screenOptions = useMemo(
     () => ({
       title: groupId ? 'Group Categories' : 'Manage Categories',
+      headerLeft: asSheet
+        ? () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              onPress={() =>
+                router.canGoBack() ? router.back() : router.replace('/')
+              }
+              style={styles.cancel}
+            >
+              <Text style={{ color: colors.accent }}>Close</Text>
+            </Pressable>
+          )
+        : undefined,
       headerRight:
         groupExists && !groupArchived
           ? () => (
@@ -269,7 +296,7 @@ export function ManageCategoriesScreen() {
             )
           : undefined,
     }),
-    [openAddForm, groupId, groupExists, groupArchived, colors.accent],
+    [openAddForm, groupId, groupExists, groupArchived, colors.accent, asSheet],
   );
 
   const activeCategories = categories.filter(
@@ -279,9 +306,9 @@ export function ManageCategoriesScreen() {
     (category) => category.isArchived,
   );
 
-  function rows(items: Category[], readOnly = false) {
+  function rows(items: Category[]) {
     return items.map((category, index) => (
-      <Fragment key={category.id}>
+      <Fragment key={`${category.id}-${groupArchived}`}>
         {index > 0 && (
           <View
             style={[styles.separator, { backgroundColor: colors.separator }]}
@@ -290,9 +317,9 @@ export function ManageCategoriesScreen() {
         <CategoryRow
           category={category}
           used={(expenseCounts.get(category.id) ?? 0) > 0}
-          readOnly={readOnly}
+          readOnly={groupArchived}
           onPress={
-            isUncategorizedCategory(category)
+            isUncategorizedCategory(category) || groupArchived
               ? undefined
               : () =>
                   category.isArchived
@@ -354,12 +381,8 @@ export function ManageCategoriesScreen() {
               </Pressable>
             )}
           </View>
-          {/* Reset open swipes when the group's archived state changes. */}
-          <View
-            key={groupArchived ? 'read-only' : 'editable'}
-            style={[styles.section, { backgroundColor: colors.surface }]}
-          >
-            {rows(activeCategories, groupArchived)}
+          <View style={[styles.section, { backgroundColor: colors.surface }]}>
+            {rows(activeCategories)}
           </View>
           {archivedCategories.length > 0 && (
             <View

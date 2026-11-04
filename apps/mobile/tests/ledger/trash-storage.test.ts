@@ -11,6 +11,7 @@ import {
 } from '../../src/ledger/trash';
 import { ensureLocalIdentity } from '../../src/shell/identity';
 import { appMigrations } from '../../src/shell/migrations';
+import { expenseTrashMigration } from '../../src/ledger/migrations';
 import {
   initializeDatabase,
   runMigrations,
@@ -56,12 +57,41 @@ async function add(title: string, spaceId?: string) {
 }
 
 test('upgrading preserves existing expenses, payments, shares, row order and migration history', async () => {
-  await prepare(appMigrations.slice(0, -1));
-  await add('First');
-  await add('Second');
-  const before = await listExpenses(database);
-  const rows = await database.all(
-    'SELECT rowid, id FROM expenses ORDER BY rowid',
+  const previous = appMigrations.slice(
+    0,
+    appMigrations.indexOf(expenseTrashMigration),
+  );
+  const identity = await prepare(previous);
+  const [category] = await listCategories(database, identity.personalSpaceId);
+  // Seed the pre-trash schema: current save/read code also needs allocation positions.
+  for (const title of ['First', 'Second']) {
+    await database.run(
+      `INSERT INTO expenses (id, title, amountMinor, currency, date, categoryId, categoryName, categoryColor, spaceId)
+       VALUES (?, ?, 875, 'USD', '2026-10-30', ?, ?, ?, ?)`,
+      [
+        title,
+        title,
+        category.id,
+        category.name,
+        category.color,
+        identity.personalSpaceId,
+      ],
+    );
+    for (const table of ['expense_payments', 'expense_shares'])
+      await database.run(`INSERT INTO ${table} VALUES (?, ?, 875)`, [
+        title,
+        identity.personalParticipantId,
+      ]);
+  }
+  const before = await database.all<Record<string, unknown>>(
+    'SELECT rowid, * FROM expenses ORDER BY rowid',
+  );
+  const allocations = await Promise.all(
+    ['expense_payments', 'expense_shares'].map((table) =>
+      database.all<Record<string, unknown>>(
+        `SELECT * FROM ${table} ORDER BY rowid`,
+      ),
+    ),
   );
   const migrations = await database.all(
     'SELECT * FROM _migrations ORDER BY position',
@@ -69,15 +99,17 @@ test('upgrading preserves existing expenses, payments, shares, row order and mig
 
   await runMigrations(database, appMigrations);
 
-  expect(await listExpenses(database)).toEqual(before);
   expect(
-    await database.all('SELECT rowid, id FROM expenses ORDER BY rowid'),
-  ).toEqual(rows);
+    await database.all('SELECT rowid, * FROM expenses ORDER BY rowid'),
+  ).toEqual(before.map((row) => ({ ...row, trashOrder: null })));
+  for (const [index, table] of ['expense_payments', 'expense_shares'].entries())
+    expect(await database.all(`SELECT * FROM ${table} ORDER BY rowid`)).toEqual(
+      allocations[index].map((row) => ({ ...row, position: 0 })),
+    );
   expect(
-    (await database.all('SELECT * FROM _migrations ORDER BY position')).slice(
-      0,
-      -1,
-    ),
+    await database.all('SELECT * FROM _migrations ORDER BY position LIMIT ?', [
+      previous.length,
+    ]),
   ).toEqual(migrations);
   expect(await database.all('SELECT trashOrder FROM expenses')).toEqual([
     { trashOrder: null },

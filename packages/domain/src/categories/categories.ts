@@ -43,6 +43,9 @@ export const DEFAULT_CATEGORIES: readonly {
   ),
 );
 
+/** Stable category name comparison across spaces and clients. */
+export const categoryNameKey = (name: string) => name.trim().toLowerCase();
+
 /** Why `name` cannot be used next to the other categories, if it cannot. */
 export function categoryNameProblem(
   name: string,
@@ -52,8 +55,8 @@ export function categoryNameProblem(
   if (trimmed.length === 0) return 'empty';
   if (trimmed.length > MAX_CATEGORY_NAME_LENGTH) return 'tooLong';
 
-  const normalized = trimmed.toLowerCase();
-  if (others.some((other) => other.name.trim().toLowerCase() === normalized)) {
+  const normalized = categoryNameKey(trimmed);
+  if (others.some((other) => categoryNameKey(other.name) === normalized)) {
     return 'duplicate';
   }
   return undefined;

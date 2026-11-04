@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-11.1] [LEDGER-20.1] [LEDGER-24.1] [LEDGER-21.1] Adds an expense in the sheet, asking first when a change is swiped away'
+name: '[LEDGER-11.1] [LEDGER-20.1] [LEDGER-24.1] [LEDGER-21.2] Adds an expense in the sheet, asking first when a change is swiped away'
 ---
 - launchApp:
     clearState: true

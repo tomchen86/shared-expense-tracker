@@ -20,6 +20,12 @@ module.exports = {
   coverageReporters: ['text', 'json-summary', 'lcov'],
   coverageThreshold: {
     './packages/domain/src/ledger/money.ts': { branches: 100 },
+    // Measured using acceptance tests alone, so test:traced enforces these too.
+    './apps/mobile/src/ledger/expenses.ts': { branches: 83.78 },
+    './apps/mobile/src/ledger/expense-form-screen.tsx': { branches: 93.25 },
+    './apps/mobile/src/ledger/use-expenses.ts': { branches: 58.82 },
+    './apps/mobile/src/ledger/expense-screen.tsx': { branches: 96.15 },
+    './apps/mobile/src/ledger/expenses-screen.tsx': { branches: 100 },
   },
   testTimeout: 15000,
 };

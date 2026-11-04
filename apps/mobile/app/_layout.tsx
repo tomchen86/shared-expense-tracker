@@ -18,6 +18,10 @@ function ThemedStack() {
           name="expenses/[id]/edit"
           options={{ ...formPresentation, title: 'Edit Expense' }}
         />
+        <Stack.Screen
+          name="manage-categories"
+          options={{ ...formPresentation, title: 'Manage Categories' }}
+        />
       </Stack>
     </ThemeProvider>
   );
