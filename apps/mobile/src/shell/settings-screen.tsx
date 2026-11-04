@@ -17,6 +17,7 @@ import { GroupedSection } from '../ui/grouped-section';
 import { useThemeColors } from '../ui/theme';
 import { useTabRootBack } from '../ui/use-tab-root-back';
 import { useGroups } from '../groups/use-groups';
+import { useExpenses } from '../ledger/use-expenses';
 import {
   useAppearanceOption,
   useLocalIdentity,
@@ -39,6 +40,7 @@ export function SettingsScreen() {
   const identity = useLocalIdentity();
   const [groups] = useGroups();
   const archivedCount = groups?.filter((group) => group.archived).length;
+  const trashCount = useExpenses(true)?.length;
   const saveName = useSaveLocalName();
   const appearance = useAppearanceOption();
   const saveAppearance = useSaveAppearanceOption();
@@ -210,6 +212,33 @@ export function SettingsScreen() {
             {archivedCount !== undefined && (
               <Text style={{ color: colors.textMuted, fontSize: 17 }}>
                 {archivedCount}
+              </Text>
+            )}
+            <Text
+              accessible={false}
+              style={[styles.chevron, { color: colors.textMuted }]}
+            >
+              ›
+            </Text>
+          </Pressable>
+          <View
+            style={[styles.separator, { backgroundColor: colors.separator }]}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              trashCount === undefined ? 'Trash' : `Trash, ${trashCount}`
+            }
+            onPress={() => router.navigate('/settings/trash')}
+            style={({ pressed }) => [
+              styles.row,
+              pressed && { backgroundColor: colors.pressedSurface },
+            ]}
+          >
+            <Text style={[styles.rowLabel, { color: colors.text }]}>Trash</Text>
+            {trashCount !== undefined && (
+              <Text style={{ color: colors.textMuted, fontSize: 17 }}>
+                {trashCount}
               </Text>
             )}
             <Text

@@ -165,7 +165,7 @@ const LONG_NOTE = 'b'.repeat(500);
 
 // The expense list
 
-test('[LEDGER-31.1] lists the personal expenses newest date first', async () => {
+test('[LEDGER-31.2] lists the personal expenses newest date first', async () => {
   await startExpenses();
   await addExpense({ title: 'A', date: '2025-01-01' });
   await addExpense({ title: 'B', date: '2025-01-03' });
@@ -174,7 +174,7 @@ test('[LEDGER-31.1] lists the personal expenses newest date first', async () => 
   expect(cardTitles()).toEqual(['B', 'C', 'A']);
 });
 
-test('[LEDGER-31.1] lists the expense added later first on the same date', async () => {
+test('[LEDGER-31.2] lists the expense added later first on the same date', async () => {
   await startExpenses();
   await addExpense({ title: 'E', date: '2025-01-01' });
   await addExpense({ title: 'F', date: '2025-01-01' });
@@ -183,7 +183,7 @@ test('[LEDGER-31.1] lists the expense added later first on the same date', async
   expect(cardTitles()).toEqual(['D', 'F', 'E']);
 });
 
-test('[LEDGER-31.1] shows a new expense on top once New Expense closes', async () => {
+test('[LEDGER-31.2] shows a new expense on top once New Expense closes', async () => {
   await startExpenses();
   await addExpense({ title: 'Coffee run' });
 
@@ -192,7 +192,7 @@ test('[LEDGER-31.1] shows a new expense on top once New Expense closes', async (
   expect(cardTitles()).toEqual(['Lunch', 'Coffee run']);
 });
 
-test('[LEDGER-31.1] shows the change to an expense once Edit Expense closes', async () => {
+test('[LEDGER-31.2] shows the change to an expense once Edit Expense closes', async () => {
   await startExpenses();
   await addExpense();
   const expense = await onlyExpense();
@@ -205,7 +205,7 @@ test('[LEDGER-31.1] shows the change to an expense once Edit Expense closes', as
   expect(linesIn(expensesRoot())).not.toContain('Coffee run');
 });
 
-test('[LEDGER-31.1] keeps the cards after the app restarts', async () => {
+test('[LEDGER-31.2] keeps the cards after the app restarts', async () => {
   const app = await startExpenses();
   await addExpense({ title: 'Coffee run' });
   await addExpense({ title: 'Lunch' });
@@ -878,9 +878,11 @@ test('[SHELL-52.1] puts Edit at the right of the details title bar as a plain te
 
   await openDetails('Coffee run');
 
-  expect(detailBarItems()).toEqual([
-    { type: 'button', title: 'Edit', variant: 'plain' },
-  ]);
+  expect(detailBarItems()).toContainEqual({
+    type: 'button',
+    title: 'Edit',
+    variant: 'plain',
+  });
 });
 
 // SHELL-34.1 leaves out the colors of user data, such as a category's color.

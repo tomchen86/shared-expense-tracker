@@ -4,10 +4,10 @@ import { listCategories } from '../categories';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { listExpenses, subscribeToExpenses, type Expense } from './expenses';
 
-type DisplayExpense = Expense & { categoryLabel: string };
+export type DisplayExpense = Expense & { categoryLabel: string };
 
 /** Undefined until loaded; refresh on navigation and committed expense changes. */
-export function useExpenses() {
+export function useExpenses(trashed = false) {
   const database = useLocalDatabase();
   const { personalSpaceId } = useLocalIdentity();
   const focused = useIsFocused();
@@ -26,20 +26,24 @@ export function useExpenses() {
         ([rows, categories]) => {
           if (!active || request !== version) return;
           const current = new Map(categories.map((item) => [item.id, item]));
+          const selected = rows.filter(
+            (expense) =>
+              expense.spaceId === personalSpaceId &&
+              (expense.trashOrder !== undefined) === trashed,
+          );
+          if (trashed) selected.sort((a, b) => b.trashOrder! - a.trashOrder!);
           setExpenses(
-            rows
-              .filter((expense) => expense.spaceId === personalSpaceId)
-              .map((expense) => {
-                const category = current.get(expense.category.id);
-                const name = category?.name ?? expense.category.name;
-                return {
-                  ...expense,
-                  category: category ?? expense.category,
-                  categoryLabel: category?.isArchived
-                    ? `${name} (Archived)`
-                    : name,
-                };
-              }),
+            selected.map((expense) => {
+              const category = current.get(expense.category.id);
+              const name = category?.name ?? expense.category.name;
+              return {
+                ...expense,
+                category: category ?? expense.category,
+                categoryLabel: category?.isArchived
+                  ? `${name} (Archived)`
+                  : name,
+              };
+            }),
           );
         },
         (failure: unknown) => {
@@ -53,7 +57,7 @@ export function useExpenses() {
       active = false;
       unsubscribe();
     };
-  }, [database, personalSpaceId, focused]);
+  }, [database, personalSpaceId, focused, trashed]);
 
   if (error) throw error;
   return expenses;

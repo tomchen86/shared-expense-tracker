@@ -41,6 +41,7 @@ export function HeaderActions({
               <Stack.Toolbar.MenuAction
                 key={index}
                 disabled={action.disabled}
+                destructive={action.destructive}
                 onPress={action.onPress}
               >
                 {action.label}

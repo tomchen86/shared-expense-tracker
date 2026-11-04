@@ -24,3 +24,6 @@ export const expenseMigrations: readonly string[] = [
     PRIMARY KEY (expenseId, participant)
   );`,
 ];
+
+export const expenseTrashMigration = `ALTER TABLE expenses
+  ADD COLUMN trashOrder INTEGER CHECK (trashOrder IS NULL OR trashOrder > 0)`;
