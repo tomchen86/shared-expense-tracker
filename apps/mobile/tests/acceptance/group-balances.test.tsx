@@ -66,11 +66,13 @@ import {
   closeBalances,
   groupRootCard,
   groupRootCardLines,
+  groupTotalButtons,
   groupTotals,
   openBalances,
   readAfterName,
   showGroup,
 } from './group-balances-app';
+import { expectInsights, expectTotals } from './insights-app';
 import type { Database, SqlValue } from '../../src/storage';
 
 // Runs on iOS; group-balances-android.test.tsx checks the Android back button. Each
@@ -224,7 +226,7 @@ const addSushi = (payer = 'Casey') =>
 
 // The Group Total
 
-test('[GROUPS-68.1] shows the Group Total of one currency above the cards, counting every expense of the group', async () => {
+test('[GROUPS-68.2] shows the Group Total of one currency above the cards, counting every expense of the group', async () => {
   await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
 
@@ -235,9 +237,14 @@ test('[GROUPS-68.1] shows the Group Total of one currency above the cards, count
   );
   const expected = ['Group Total: $125.01', 'Taxi', 'Dinner'];
   expect(shownInOrder(groupLines('Brisbane'), expected)).toEqual(expected);
+  const buttons = groupTotalButtons('Brisbane');
+  expect(buttons).toHaveLength(1);
+  expect(within(buttons[0]).getByText('›')).toBeOnTheScreen();
+  expect(asRead(nameOf(buttons[0]))).toBe('Group Total: $125.01');
+  expect(buttons[0].props.accessibilityHint).toBe('Opens Insights');
 });
 
-test('[GROUPS-68.1] shows a Group Total line for each currency, sorted by currency code', async () => {
+test('[GROUPS-68.2] shows a Group Total line for each currency, sorted by currency code', async () => {
   await startWithGroups(BRISBANE);
   // The JPY expense comes first, so the cards, newest first, put USD first.
   await addSushi();
@@ -245,15 +252,15 @@ test('[GROUPS-68.1] shows a Group Total line for each currency, sorted by curren
 
   await showGroup('Brisbane');
 
-  await waitFor(() =>
-    expect(groupTotals('Brisbane')).toEqual([
-      'Group Total: ¥3,000',
-      'Group Total: $125.01',
-    ]),
-  );
+  const expected = ['Group Total: ¥3,000', 'Group Total: $125.01'];
+  await waitFor(() => expect(groupTotals('Brisbane')).toEqual(expected));
+  const buttons = groupTotalButtons('Brisbane');
+  expect(buttons).toHaveLength(1);
+  expect(linesIn(buttons[0]).filter((line) => line !== '›')).toEqual(expected);
+  expect(within(buttons[0]).getAllByText('›')).toHaveLength(1);
 });
 
-test("[GROUPS-68.1] shows the Group Total that counts an expense's new amount", async () => {
+test("[GROUPS-68.2] shows the Group Total that counts an expense's new amount", async () => {
   await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
   await showGroup('Brisbane');
@@ -272,28 +279,45 @@ test("[GROUPS-68.1] shows the Group Total that counts an expense's new amount", 
   );
 });
 
-test('[GROUPS-68.1] shows the Group Total as text that does nothing when pressed', async () => {
-  await startWithGroups(BRISBANE);
-  await addToBrisbane('Taxi', '25.00', 'Casey', ['Blake']);
+test("[GROUPS-68.2] pushes the group's Insights onto the Groups tab when the Group Total is pressed", async () => {
+  const app = await startWithGroups(BRISBANE);
+  await addDinnerAndTaxi();
   await showGroup('Brisbane');
-  await waitFor(() =>
-    expect(groupTotals('Brisbane')).toEqual(['Group Total: $25.00']),
-  );
+  await waitFor(() => expect(groupTotalButtons('Brisbane')).toHaveLength(1));
 
-  const buttons = within(screenOf('Brisbane')).queryAllByRole('button');
-  expect(
-    buttons.filter((button) =>
-      linesIn(button).some((line) => line.startsWith('Group Total')),
-    ),
-  ).toEqual([]);
-  await fireEvent.press(
-    within(screenOf('Brisbane')).getByText('Group Total: $25.00'),
-  );
-  await settle();
-  expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups', 'Brisbane']);
+  await fireEvent.press(groupTotalButtons('Brisbane')[0]);
+  await expectInsights('Groups');
+
+  expect(selectedTab()).toBe('Groups');
+  expect(navigationBarTitles(tab('Groups'))).toEqual([
+    'Groups',
+    'Brisbane',
+    'Insights',
+  ]);
+  expect(app.getPathname()).toBe('/groups/insights');
+  await expectTotals(['$125.01'], 'Groups');
 });
 
-test('[GROUPS-68.1] shows no Group Total on a group without expenses', async () => {
+test('[GROUPS-68.2] pushes one Insights when the Group Total is pressed twice', async () => {
+  await startWithGroups(BRISBANE);
+  await addDinnerAndTaxi();
+  await showGroup('Brisbane');
+  await waitFor(() => expect(groupTotalButtons('Brisbane')).toHaveLength(1));
+
+  const [button] = groupTotalButtons('Brisbane');
+  await fireEvent.press(button);
+  await fireEvent.press(button);
+  await expectInsights('Groups');
+  await settle();
+
+  expect(navigationBarTitles(tab('Groups'))).toEqual([
+    'Groups',
+    'Brisbane',
+    'Insights',
+  ]);
+});
+
+test('[GROUPS-68.2] shows no Group Total on a group without expenses', async () => {
   await startWithGroups(BRISBANE);
 
   await showGroup('Brisbane');
@@ -302,7 +326,7 @@ test('[GROUPS-68.1] shows no Group Total on a group without expenses', async () 
   expect(groupTotals('Brisbane')).toEqual([]);
 });
 
-test("[GROUPS-68.1] shows an archived group's Group Total below Restore Group and above the cards", async () => {
+test("[GROUPS-68.2] shows an archived group's Group Total below Restore Group and above the cards", async () => {
   await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
   await archiveGroup('Brisbane');
@@ -314,6 +338,28 @@ test("[GROUPS-68.1] shows an archived group's Group Total below Restore Group an
   await waitFor(() =>
     expect(shownInOrder(groupLines('Brisbane'), expected)).toEqual(expected),
   );
+});
+
+test("[GROUPS-68.2] pushes an archived group's Insights onto the Settings tab when its Group Total is pressed", async () => {
+  const app = await startWithGroups(BRISBANE);
+  await addDinnerAndTaxi();
+  await archiveGroup('Brisbane');
+  await openArchivedGroups();
+  await openArchivedGroup('Brisbane');
+  await waitFor(() => expect(groupTotalButtons('Brisbane')).toHaveLength(1));
+
+  await fireEvent.press(groupTotalButtons('Brisbane')[0]);
+  await expectInsights('Settings');
+
+  expect(selectedTab()).toBe('Settings');
+  expect(navigationBarTitles(tab('Settings'))).toEqual([
+    'Settings',
+    'Archived Groups',
+    'Brisbane',
+    'Insights',
+  ]);
+  expect(app.getPathname()).toBe('/settings/archived-groups/insights');
+  await expectTotals(['$125.01'], 'Settings');
 });
 
 // Your net balance on the group's screen

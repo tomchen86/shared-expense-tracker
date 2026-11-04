@@ -627,14 +627,14 @@ const groupButtons = (group: string) =>
     .queryAllByRole('button')
     .filter((button) => !inTitleBar(button));
 
-/** The expense cards on the group's screen, top to bottom: its buttons besides +, Restore Group and your net balance. */
+/** The expense cards on the group's screen, top to bottom: its buttons besides +, Restore Group, the Group Total and your net balance. */
 export const groupCards = (group: string) =>
   groupButtons(group).filter((button) => {
     const name = nameOf(button);
     return (
       name !== 'Add expense' &&
       name !== 'Restore Group' &&
-      !/^(You're owed: |You owe: |Settled up)/.test(name)
+      !/^(Group Total: |You're owed: |You owe: |Settled up)/.test(name)
     );
   });
 

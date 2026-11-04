@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LEDGER-62.1] [LEDGER-54.1] [GROUPS-61.2] [LEDGER-65.2] [LEDGER-70.2] [LEDGER-75.2] [LEDGER-77.2] [LEDGER-78.2] [LEDGER-79.2] [LEDGER-84.1] [LEDGER-67.2] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share; swipes its card left to move it to the trash on both, finds that swiping its card on Trash opens nothing, restores it, archives the group, and finds that swiping its card opens nothing"
+name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LEDGER-62.1] [LEDGER-54.1] [GROUPS-61.2] [LEDGER-65.3] [LEDGER-70.2] [LEDGER-75.3] [LEDGER-77.2] [LEDGER-78.2] [LEDGER-79.3] [LEDGER-84.1] [LEDGER-67.2] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share; swipes its card left to move it to the trash on both, finds that swiping its card on Trash opens nothing, restores it, archives the group, and finds that swiping its card opens nothing"
 ---
 - launchApp:
     clearState: true
