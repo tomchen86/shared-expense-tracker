@@ -66,7 +66,11 @@ export function ManageCategoriesScreen({
     !!groupId && checkedGroup?.id === groupId && checkedGroup.archived;
   const [categories, setCategories] = useState<Category[]>([]);
   const [expenseCounts, setExpenseCounts] = useState(new Map<string, number>());
-  const loadedRef = useRef(false);
+  const [error, setError] = useState<unknown>();
+  const pending = useRef<
+    | Promise<{ rows: Category[]; exists: boolean; archived: boolean }>
+    | undefined
+  >(undefined);
   const [formState, setFormState] = useState<FormState | null>(null);
   const [movingCategory, setMovingCategory] = useState<Category | null>(null);
   const updatingRef = useRef(false);
@@ -74,46 +78,61 @@ export function ManageCategoriesScreen({
 
   useFocusEffect(
     useCallback(() => {
-      loadedRef.current = false;
       let active = true;
-      void Promise.all([
+      const read = Promise.all([
         listCategories(database, managedSpaceId),
         categoryExpenseCounts(database),
         groupId ? listGroups(database) : Promise.resolve([]),
-      ])
-        .then(([rows, counts, groups]) => {
-          if (active) {
-            loadedRef.current = true;
-            setCategories(rows);
-            setExpenseCounts(counts);
-            const group = groups.find((group) => group.id === groupId);
-            setCheckedGroup({
-              id: groupId,
-              exists: group !== undefined,
-              archived: group?.archived ?? false,
-            });
-          }
-        })
-        .catch(() => undefined);
+      ]).then(([rows, counts, groups]) => {
+        const group = groups.find((group) => group.id === groupId);
+        const fresh = {
+          rows,
+          exists: group !== undefined,
+          archived: group?.archived ?? false,
+        };
+        if (active) {
+          setCategories(rows);
+          setExpenseCounts(counts);
+          setCheckedGroup({ id: groupId, ...fresh });
+        }
+        return fresh;
+      });
+      pending.current = read;
+      read.then(
+        () => {
+          if (pending.current === read) pending.current = undefined;
+        },
+        (failure: unknown) => {
+          if (pending.current === read) pending.current = undefined;
+          if (active) setError(failure);
+        },
+      );
       return () => {
         active = false;
       };
     }, [database, groupId, managedSpaceId]),
   );
 
-  const openAddForm = useCallback(() => {
-    if (loadedRef.current) {
-      setFormState({ kind: 'add' });
+  /** Runs `go` on the categories as read again, once a read in progress has finished, if they can be edited then. */
+  function afterRead(go: (rows: Category[]) => void) {
+    const read = pending.current;
+    if (read === undefined) {
+      if (groupExists && !groupArchived) go(categories);
       return;
     }
-    void listCategories(database, managedSpaceId)
-      .then((rows) => {
-        loadedRef.current = true;
-        setCategories(rows);
-        setFormState({ kind: 'add' });
-      })
-      .catch(() => undefined);
-  }, [database, managedSpaceId]);
+    void read.then(
+      (fresh) => {
+        if (!groupId || (fresh.exists && !fresh.archived)) go(fresh.rows);
+      },
+      () => undefined,
+    );
+  }
+  const latestAfterRead = useRef(afterRead);
+  latestAfterRead.current = afterRead;
+  const openAddForm = useCallback(
+    () => latestAfterRead.current(() => setFormState({ kind: 'add' })),
+    [],
+  );
 
   async function handleSave(input: { name: string; color: string }) {
     if (formState?.kind === 'edit') {
@@ -219,8 +238,8 @@ export function ManageCategoriesScreen({
           ],
         );
       }
-    } catch {
-      updateFailed();
+    } catch (failure) {
+      setError(failure);
     } finally {
       updatingRef.current = false;
     }
@@ -322,16 +341,28 @@ export function ManageCategoriesScreen({
             isUncategorizedCategory(category) || groupArchived
               ? undefined
               : () =>
-                  category.isArchived
-                    ? archive(category, false)
-                    : setFormState({ kind: 'edit', category })
+                  afterRead((rows) => {
+                    const current = rows.find(
+                      (item) => item.id === category.id,
+                    );
+                    if (current?.isArchived !== category.isArchived) return;
+                    if (current.isArchived) archive(current, false);
+                    else setFormState({ kind: 'edit', category: current });
+                  })
           }
-          onRemove={() => void remove(category)}
+          onRemove={() =>
+            afterRead((rows) => {
+              const current = rows.find((item) => item.id === category.id);
+              if (current?.isArchived === category.isArchived)
+                void remove(current);
+            })
+          }
         />
       </Fragment>
     ));
   }
 
+  if (error) throw error;
   return (
     <SafeAreaView
       edges={['left', 'right']}
