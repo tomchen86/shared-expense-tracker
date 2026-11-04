@@ -31,7 +31,7 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   const [leavingExpense, setLeavingExpense] = useState<ExpenseView>();
   const [, showReadError] = useState();
   const expense = leavingExpense ?? expenses?.find((item) => item.id === id);
-  const { userId, personalSpaceId } = useLocalIdentity();
+  const { userId } = useLocalIdentity();
   const position = expense ? expense.yourPaid - expense.yourShare : 0;
 
   async function changeAndReturn(change: () => Promise<boolean>) {
@@ -75,42 +75,40 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   }
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {expense && (
-        <HeaderActions
-          edit={
-            trashed
-              ? undefined
-              : {
-                  label: 'Edit',
-                  disabled: expense.group?.archived,
-                  onPress: () =>
-                    void editIfAllowed().catch((failure: unknown) =>
-                      // Thrown in the next render, so the screen shows the read error (SHELL-60.1).
-                      showReadError(() => {
-                        throw failure;
-                      }),
-                    ),
-                }
-          }
-          menu={
-            expense.spaceId === personalSpaceId
-              ? {
-                  label: 'Expense actions',
-                  actions: [
-                    {
-                      label: trashed ? 'Delete Permanently' : 'Delete',
-                      destructive: true,
-                      onPress: trashed
-                        ? deletePermanently
-                        : () =>
-                            void changeAndReturn(() => actions.move(expense)),
-                    },
-                  ],
-                }
-              : undefined
-          }
-        />
-      )}
+      <HeaderActions
+        edit={
+          trashed || !expense
+            ? undefined
+            : {
+                label: 'Edit',
+                disabled: expense.group?.archived,
+                onPress: () =>
+                  void editIfAllowed().catch((failure: unknown) =>
+                    // Thrown in the next render, so the screen shows the read error (SHELL-60.1).
+                    showReadError(() => {
+                      throw failure;
+                    }),
+                  ),
+              }
+        }
+        menu={
+          expense
+            ? {
+                label: 'Expense actions',
+                actions: [
+                  {
+                    label: trashed ? 'Delete Permanently' : 'Delete',
+                    destructive: true,
+                    disabled: !trashed && expense.group?.archived,
+                    onPress: trashed
+                      ? deletePermanently
+                      : () => void changeAndReturn(() => actions.move(expense)),
+                  },
+                ],
+              }
+            : undefined
+        }
+      />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
@@ -142,7 +140,7 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
             <Text style={[styles.amount, { color: colors.text }]}>
               {formatCurrency(expense.amountMinor, expense.currency, locale)}
             </Text>
-            {expense.group?.archived && (
+            {expense.group?.archived && !trashed && (
               <GroupedSection style={styles.history}>
                 <Text style={{ color: colors.text }}>Shared history</Text>
                 <Text style={{ color: colors.textMuted }}>

@@ -12,6 +12,10 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useLocales } from 'expo-localization';
+import { formatCurrency, groupAmounts } from '@shared-expense/domain';
+import { useLocalIdentity } from '../shell';
+import { useExpenses } from '../ledger/use-expenses';
 import { AddButton } from '../ui/add-button';
 import { GroupedSection } from '../ui/grouped-section';
 import { useThemeColors } from '../ui/theme';
@@ -20,6 +24,7 @@ import { SwipeAction } from '../ui/swipe-action';
 import { useGroups } from './use-groups';
 import { useGroupArchive } from './use-group-archive';
 import { useRequireName } from './use-require-name';
+import { formatBalance } from './format-balance';
 
 export function GroupsScreen() {
   useTabRootBack('/');
@@ -27,6 +32,9 @@ export function GroupsScreen() {
   const insets = useSafeAreaInsets();
   const requireName = useRequireName();
   const [groups, setGroups] = useGroups();
+  const expenses = useExpenses();
+  const { userId } = useLocalIdentity();
+  const locale = useLocales()[0].languageTag;
   const { pending, save } = useGroupArchive();
   const [notice, setNotice] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -63,44 +71,72 @@ export function GroupsScreen() {
             No groups yet. Tap + to create a group.
           </Text>
         ) : (
-          activeGroups?.map((group) => (
-            <View key={group.id} style={styles.card}>
-              <SwipeAction
-                label="Archive"
-                accessibilityLabel={`Archive ${group.name}`}
-                disabled={pending.has(group.id)}
-                onPress={() => archive(group.id)}
-              >
-                <GroupedSection>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Open ${group.name}`}
-                    accessibilityActions={
-                      pending.has(group.id)
-                        ? []
-                        : [{ name: 'archive', label: 'Archive group' }]
-                    }
-                    onAccessibilityAction={(event) => {
-                      if (event.nativeEvent.actionName === 'archive')
-                        archive(group.id);
-                    }}
-                    onPress={() => router.push(`/groups/${group.id}`)}
-                    style={({ pressed }) => [
-                      styles.row,
-                      pressed && { backgroundColor: colors.pressedSurface },
-                    ]}
-                  >
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.name, { color: colors.text }]}
+          activeGroups?.map((group) => {
+            const lines = [
+              `${group.members.length} ${group.members.length === 1 ? 'member' : 'members'}`,
+            ];
+            if (expenses) {
+              const amounts = groupAmounts(expenses, group);
+              const ownId = group.members.find(
+                (member) => member.userId === userId,
+              )!.id;
+              if (amounts.length === 0) lines.push('No spending yet');
+              for (const { currency, members } of amounts) {
+                const own = members.get(ownId)!;
+                lines.push(
+                  `Your share: ${formatCurrency(own.share, currency, locale)}`,
+                  formatBalance(own.net, currency, locale, true),
+                );
+              }
+            }
+            return (
+              <View key={group.id} style={styles.card}>
+                <SwipeAction
+                  label="Archive"
+                  accessibilityLabel={`Archive ${group.name}`}
+                  disabled={pending.has(group.id)}
+                  onPress={() => archive(group.id)}
+                >
+                  <GroupedSection>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Open ${group.name}`}
+                      accessibilityValue={{ text: lines.join(', ') }}
+                      accessibilityActions={
+                        pending.has(group.id)
+                          ? []
+                          : [{ name: 'archive', label: 'Archive group' }]
+                      }
+                      onAccessibilityAction={(event) => {
+                        if (event.nativeEvent.actionName === 'archive')
+                          archive(group.id);
+                      }}
+                      onPress={() => router.push(`/groups/${group.id}`)}
+                      style={({ pressed }) => [
+                        styles.row,
+                        pressed && { backgroundColor: colors.pressedSurface },
+                      ]}
                     >
-                      {group.name}
-                    </Text>
-                  </Pressable>
-                </GroupedSection>
-              </SwipeAction>
-            </View>
-          ))
+                      <Text
+                        numberOfLines={1}
+                        style={[styles.name, { color: colors.text }]}
+                      >
+                        {group.name}
+                      </Text>
+                      {lines.map((line, index) => (
+                        <Text
+                          key={index}
+                          style={[styles.detail, { color: colors.textMuted }]}
+                        >
+                          {line}
+                        </Text>
+                      ))}
+                    </Pressable>
+                  </GroupedSection>
+                </SwipeAction>
+              </View>
+            );
+          })
         )}
       </ScrollView>
       {notice && (
@@ -128,4 +164,5 @@ const styles = StyleSheet.create({
   notice: { position: 'absolute', left: 20, right: 20, padding: 16 },
   row: { padding: 16, minHeight: 56, justifyContent: 'center' },
   name: { fontSize: 17 },
+  detail: { fontSize: 15, marginTop: 8 },
 });

@@ -478,7 +478,7 @@ export async function chooseForMember(name: string, item: string) {
   await menu.choose(item);
 }
 
-// The name forms: Add Member, Rename Member and Rename Group
+// The name forms (Rename Member, Rename Group) and Members' name field
 
 export const memberNameField = () => screen.getByLabelText('Member name');
 export const groupNameField = () => screen.getByLabelText('Group name');
@@ -493,23 +493,90 @@ export async function pressReturn(field: HostView) {
   await settle();
 }
 
+/** The name field in Members itself (GROUPS-29.2), if it shows one, not one on a screen over Members. */
+export function memberField(): HostView | undefined {
+  if (!isOpen('Members')) return undefined;
+  const members = screenOf('Members');
+  return within(members)
+    .queryAllByLabelText('Member name')
+    .find((field) => inContentOf(members, field));
+}
+
+/** Presses Add Member in Members and waits for the name field in Members (GROUPS-29.2). */
+export async function openMemberField() {
+  await fireEvent.press(membersButton('Add Member'));
+  await settle();
+  await waitFor(() => expect(memberField()).toBeDefined());
+}
+
+/**
+ * Starts adding a member from Members, as the app lets a person: in a name field in
+ * Members itself (GROUPS-29.2), or in a form over it, as the app did before. Tests
+ * of other rules add members through these, so they hold either way.
+ */
+export async function startAddingMember() {
+  if (memberField() === undefined) {
+    await fireEvent.press(membersButton('Add Member'));
+    await settle();
+  }
+  await waitFor(() =>
+    expect(memberField() !== undefined || isOpen('Add Member')).toBe(true),
+  );
+  return { inForm: isOpen('Add Member') };
+}
+
+/** Opens the Add Member form the app had before GROUPS-29.2, for tests outside the acceptance tests that still use it. */
 export async function openAddMember() {
   await fireEvent.press(membersButton('Add Member'));
   await settle();
   await expectOpen('Add Member');
 }
 
-/** Adds `name` from Members, saying yes if the app asks to add a former member back. */
+/** Stops adding: closes the form, or empties the name field in Members and presses Return, which puts Add Member back. */
+export async function stopAddingMember({ inForm }: { inForm: boolean }) {
+  if (inForm) {
+    await pressOnBar('Add Member', 'Cancel');
+    await expectClosed('Add Member');
+    return;
+  }
+  const field = memberField();
+  if (field === undefined) return;
+  await fireEvent.changeText(field, '');
+  await pressReturn(field);
+  await waitFor(() => expect(memberField()).toBeUndefined());
+}
+
+/** The rows Members lists for its members, without Add Member. */
+const memberRowsShown = () =>
+  membersShown().filter((row) => row !== 'Add Member');
+
+/** Adds `name` from Members, saying yes if the app asks to add a former member back, and leaves Members as it was. */
 export async function addMember(name: string) {
-  const rows = membersShown().length;
-  await openAddMember();
-  await fireEvent.changeText(memberNameField(), name);
+  const rows = memberRowsShown().length;
+  const adding = await startAddingMember();
+  const field = adding.inForm ? memberNameField() : memberField()!;
+  await fireEvent.changeText(field, name);
   const alertsBefore = alerts().length;
-  await pressOnBar('Add Member', 'Add');
+  if (adding.inForm) await pressOnBar('Add Member', 'Add');
+  else await pressReturn(field);
   if (alerts().length > alertsBefore && lastAlertButtons().includes('Add Back'))
     await pressAlertButton('Add Back');
-  await expectClosed('Add Member');
-  await waitFor(() => expect(membersShown()).toHaveLength(rows + 1));
+  await waitFor(() => expect(memberRowsShown()).toHaveLength(rows + 1));
+  if (adding.inForm) {
+    await expectClosed('Add Member');
+    return;
+  }
+  await waitFor(() => expect(memberField()?.props.value ?? '').toBe(''));
+  await stopAddingMember(adding);
+}
+
+/** The title of the group's screen as a button named after the group, if the screen shows one (GROUPS-40.2). */
+export function titleButton(group: string): HostView | undefined {
+  const bar = barTitled(group);
+  if (bar === undefined) return undefined;
+  return within(bar)
+    .queryAllByRole('button')
+    .find((button) => accessibleName(button) === group);
 }
 
 /** Opens Rename Member from the row `row`, which holds `name` (yours ends in " (You)"). */

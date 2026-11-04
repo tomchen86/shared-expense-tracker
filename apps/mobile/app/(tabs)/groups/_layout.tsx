@@ -33,8 +33,8 @@ export default function GroupsLayout() {
         options={{ ...formPresentation, title: 'Members' }}
       />
       <Stack.Screen
-        name="add-member"
-        options={{ ...formPresentation, title: 'Add Member' }}
+        name="balances"
+        options={{ ...formPresentation, title: 'Balances' }}
       />
       <Stack.Screen
         name="rename-member"

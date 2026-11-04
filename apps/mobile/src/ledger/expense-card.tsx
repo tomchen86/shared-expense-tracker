@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocales } from 'expo-localization';
 import { formatCurrency } from '@shared-expense/domain';
 import { GroupedSection } from '../ui/grouped-section';
@@ -19,6 +20,15 @@ export function ExpenseCard({
   onDelete?: () => void;
 }) {
   const colors = useThemeColors();
+  const swipeBlocker = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          Math.abs(gesture.dx) > 10 &&
+          Math.abs(gesture.dx) > Math.abs(gesture.dy),
+      }),
+    [],
+  );
   const locale = useLocales()[0].languageTag;
   const amount = formatCurrency(amountMinor, expense.currency, locale);
   const date = formatExpenseDate(expense.date, locale);
@@ -77,7 +87,7 @@ export function ExpenseCard({
     </GroupedSection>
   );
   return (
-    <View style={styles.card}>
+    <View style={styles.card} {...(onDelete ? {} : swipeBlocker.panHandlers)}>
       {onDelete ? (
         <SwipeAction
           label="Delete"

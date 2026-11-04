@@ -15,6 +15,7 @@ export function ReadError({
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
+          headerTitle: undefined,
           headerLeft: undefined,
           headerRight: undefined,
           ...(title === undefined ? {} : { title }),

@@ -83,7 +83,9 @@ function ExpenseFormScreen({
       expenseId ? listExpenses(database) : Promise.resolve([] as Expense[]),
       listGroups(database),
     ]).then(async ([categories, expenses, groups]) => {
-      const expense = expenses.find((item) => item.id === expenseId);
+      const expense = expenses.find(
+        (item) => item.id === expenseId && item.trashOrder === undefined,
+      );
       const formerMembers = expense
         ? await listFormerMembers(database, expense.spaceId)
         : [];
@@ -108,8 +110,27 @@ function ExpenseFormScreen({
     };
   }, [database, expenseId, initialGroupId, focused]);
   if (error) throw error;
-  if (!loaded || (expenseId && !loaded.expense))
+  if (!loaded)
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+  if (expenseId && !loaded.expense)
+    return (
+      <View
+        collapsable={false}
+        style={{ flex: 1, backgroundColor: colors.background }}
+      >
+        <HeaderActions
+          cancel={{ label: 'Cancel', onPress: () => router.back() }}
+        />
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={styles.content}
+        >
+          <Text style={[styles.missing, { color: colors.textMuted }]}>
+            Expense not found.
+          </Text>
+        </ScrollView>
+      </View>
+    );
   return <ExpenseEditor {...loaded} latestRead={() => latestRead.current!} />;
 }
 
@@ -664,6 +685,7 @@ function PickerRow({
 
 const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 40 },
+  missing: { textAlign: 'center', marginTop: 48, fontSize: 16 },
   currency: { fontSize: 13, marginLeft: 16, marginBottom: 8 },
   section: { marginTop: 24 },
   input: {

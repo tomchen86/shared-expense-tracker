@@ -32,6 +32,7 @@ export function useExpenses(trashed = false, { throwOnError = true } = {}) {
     let version = 0;
     function refresh() {
       const request = ++version;
+      const isCurrent = () => active && request === version;
       void Promise.all([
         listExpenses(database),
         listCategories(database),
@@ -45,13 +46,11 @@ export function useExpenses(trashed = false, { throwOnError = true } = {}) {
         ),
       ]).then(
         ([rows, categories, groups]) => {
-          if (!active || request !== version) return;
+          if (!isCurrent()) return;
           setError(undefined);
           const current = new Map(categories.map((item) => [item.id, item]));
           const selected = rows.filter(
-            (expense) =>
-              (expense.trashOrder !== undefined) === trashed &&
-              (!trashed || expense.spaceId === personalSpaceId),
+            (expense) => (expense.trashOrder !== undefined) === trashed,
           );
           if (trashed) selected.sort((a, b) => b.trashOrder! - a.trashOrder!);
           setExpenses(
@@ -99,7 +98,7 @@ export function useExpenses(trashed = false, { throwOnError = true } = {}) {
           );
         },
         (failure: unknown) => {
-          if (!active || request !== version) return;
+          if (!isCurrent()) return;
           setExpenses(undefined);
           setError(failure);
         },
