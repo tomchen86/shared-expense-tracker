@@ -1,5 +1,5 @@
 import type { ComponentRef } from 'react';
-import { DeviceEventEmitter, Platform, type ScrollView } from 'react-native';
+import { DeviceEventEmitter, type ScrollView } from 'react-native';
 import { act, renderHook } from '@testing-library/react-native';
 import { useKeyboardInset } from '../../src/ui/use-keyboard-inset';
 
@@ -20,7 +20,7 @@ const keyboard = (screenY: number) => ({
   endCoordinates: { screenY, screenX: 0, width: 400, height: 800 - screenY },
 });
 
-test('leaves the scroll view to the platform on iOS, and shrinks it above the keyboard on Android', async () => {
+test('shrinks the scroll view above the keyboard', async () => {
   const { bottom, ref } = setup();
   const { result } = await renderHook(() => useKeyboardInset(ref));
   expect(result.current).toBeUndefined();
@@ -28,10 +28,6 @@ test('leaves the scroll view to the platform on iOS, and shrinks it above the ke
   await act(async () => {
     DeviceEventEmitter.emit('keyboardDidShow', keyboard(500));
   });
-  if (Platform.OS === 'ios') {
-    expect(result.current).toBeUndefined();
-    return;
-  }
   expect(result.current).toEqual({ marginBottom: 200 });
 
   // The keyboard grows while open: the bottom it measures already has the inset.
