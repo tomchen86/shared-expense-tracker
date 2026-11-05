@@ -908,8 +908,8 @@ WHEN 使用者從 Manage Categories 或 Group Categories 的分類列開始上�
 
 #### Scenario: 從分類列往上捲動
 
-- **WHEN** 在 Manage Categories 從 Shopping 那一列向上拖曳
-- **THEN** 清單往下捲，底下的 Uncategorized 可見，沒有 Remove、Delete 或 Edit Category
+- **WHEN** 在 Manage Categories 新增 Scroll 1 到 Scroll 12，清單頂端的 Shopping 可見、下方的 Scroll 6 不可見時，從 Shopping 那一列向上拖曳
+- **THEN** 清單往下捲，原本不可見的 Scroll 6 變成可見，沒有 Remove、Delete 或 Edit Category
 
 #### Scenario: 收起 Remove
 
@@ -918,8 +918,13 @@ WHEN 使用者從 Manage Categories 或 Group Categories 的分類列開始上�
 
 #### Scenario: 封存分類
 
-- **WHEN** Travel 已封存，從 Restore Travel 那一列上下拖曳
-- **THEN** 只捲動清單，Travel 仍在 ARCHIVED 下，沒有還原，也沒有露出 Delete
+- **WHEN** 這個長清單的 Travel 已封存、其支出已搬到 Health，捲到底部從 Restore Travel 那一列向下拖曳
+- **THEN** 清單往上捲，Restore Travel 移出底部可見範圍；捲回來時仍有 ARCHIVED 與 Restore Travel，未封存清單裡沒有 Travel，沒有開啟表單或露出 Delete
+
+#### Scenario: 群組分類
+
+- **WHEN** 在 Brisbane 的 Group Categories 建立相同的長清單與封存分類，重複上述向上與向下拖曳
+- **THEN** 清單確實捲動，沒有編輯、移除或還原分類，Travel 仍封存於 Brisbane
 
 ### Requirement: CATEGORIES-48.1 (manual) 分類左滑容許自然的縱向偏移
 

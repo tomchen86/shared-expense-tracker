@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[CATEGORIES-47.1] Vertical category drags scroll and a right swipe closes Remove without editing'
+name: '[CATEGORIES-47.1] A right swipe closes Remove without editing or navigating back'
 ---
 - launchApp:
     clearState: true
@@ -14,19 +14,6 @@ name: '[CATEGORIES-47.1] Vertical category drags scroll and a right swipe closes
 - waitForAnimationToEnd
 - assertVisible: CATEGORIES
 - takeScreenshot: category-heading-alignment
-- swipe:
-    from:
-      text: Shopping
-    direction: UP
-- waitForAnimationToEnd
-- assertVisible: Uncategorized
-- assertNotVisible: Remove
-- assertNotVisible: Delete
-- assertNotVisible: Edit Category
-- scrollUntilVisible:
-    element: Shopping
-    direction: UP
-    centerElement: true
 - swipe:
     from:
       text: Shopping

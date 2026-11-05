@@ -1,0 +1,154 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category lists without editing or restoring'
+---
+# Repeat the same visible behavior on the Settings page and the group sheet.
+- evalScript: ${output.scope = 'personal'}
+- repeat:
+    times: 2
+    commands:
+      - launchApp:
+          clearState: true
+      - extendedWaitUntil:
+          visible:
+            text: Expenses
+            selected: true
+          timeout: 30000
+      - waitForAnimationToEnd
+      - tapOn: Settings
+      - tapOn: Enter your name
+      - inputText: Taylor
+      - pressKey: Enter
+      - waitForAnimationToEnd
+      - tapOn: Expenses
+      - runFlow:
+          when:
+            true: ${output.scope === 'group'}
+          commands:
+            - tapOn: Groups
+            - tapOn: Add group
+            - waitForAnimationToEnd
+            - inputText: Brisbane
+            - tapOn: Create
+            - waitForAnimationToEnd
+            - tapOn: Open Brisbane
+      # Save a Travel expense so Travel can be archived through the public UI.
+      - tapOn: Add expense
+      - waitForAnimationToEnd
+      - tapOn: Amount in .*
+      - inputText: '3'
+      - tapOn: Expense title
+      - inputText: Train
+      - tapOn: Category, Food & Dining
+      - tapOn: Travel
+      - waitForAnimationToEnd
+      - runFlow:
+          when:
+            true: ${output.scope === 'group'}
+          commands:
+            - scrollUntilVisible:
+                element: Paid by, not selected
+                direction: DOWN
+            - tapOn: Paid by, not selected
+            - tapOn: Taylor \(You\)
+            - waitForAnimationToEnd
+            - scrollUntilVisible:
+                element: Split between, Choose people
+                direction: DOWN
+            - tapOn: Split between, Choose people
+            - tapOn: Taylor \(You\)
+            - tapOn: Done
+            - waitForAnimationToEnd
+      - tapOn:
+          text: Add
+          enabled: true
+      - waitForAnimationToEnd
+      - assertNotVisible: New Expense
+      - runFlow:
+          when:
+            true: ${output.scope === 'personal'}
+          commands:
+            - tapOn: Settings
+            - tapOn: Manage Categories
+      - runFlow:
+          when:
+            true: ${output.scope === 'group'}
+          commands:
+            - tapOn: Add expense
+            - waitForAnimationToEnd
+            - tapOn: Category, Food & Dining
+            - tapOn: \+ Add New Category
+            - waitForAnimationToEnd
+            - assertVisible: Group Categories
+      - waitForAnimationToEnd
+      - swipe:
+          from:
+            text: Travel
+          direction: LEFT
+      - waitForAnimationToEnd
+      - tapOn: Remove
+      - assertVisible: Archive “Travel”\?
+      - tapOn: Move Expenses…
+      - tapOn: Health
+      - waitForAnimationToEnd
+      - assertVisible: Restore Travel
+      # Twelve additional rows guarantee overflow; the default nine do not.
+      - evalScript: ${output.category = 1}
+      - repeat:
+          times: 12
+          commands:
+            - tapOn: Add category
+            - waitForAnimationToEnd
+            - tapOn: Category name
+            - inputText: Scroll ${output.category}
+            - tapOn:
+                text: Add
+                enabled: true
+            - waitForAnimationToEnd
+            - assertNotVisible: Category name
+            - evalScript: ${output.category = output.category + 1}
+      - scrollUntilVisible:
+          element: Food & Dining
+          direction: UP
+      - assertVisible: Shopping
+      - assertNotVisible: Scroll 6
+      - takeScreenshot: category-${output.scope}-before-up
+      # This gesture must make a previously offscreen row visible.
+      - swipe:
+          from:
+            text: Shopping
+          direction: UP
+      - waitForAnimationToEnd
+      - assertVisible: Scroll 6
+      - assertNotVisible: Remove
+      - assertNotVisible: Delete
+      - assertNotVisible: Edit Category
+      - takeScreenshot: category-${output.scope}-after-up
+      - scrollUntilVisible:
+          element: Restore Travel
+          direction: DOWN
+      - assertVisible: ARCHIVED
+      - assertVisible: Restore Travel
+      - takeScreenshot: category-${output.scope}-before-down
+      # Travel can expose Delete and can be restored by a tap, so this checks
+      # both accidental actions while proving that the list actually moves.
+      - swipe:
+          from:
+            text: Restore Travel
+          direction: DOWN
+      - waitForAnimationToEnd
+      - assertNotVisible: Restore Travel
+      - assertNotVisible: Remove
+      - assertNotVisible: Delete
+      - assertNotVisible: Edit Category
+      - takeScreenshot: category-${output.scope}-after-down
+      - scrollUntilVisible:
+          element: Restore Travel
+          direction: DOWN
+      - assertVisible: ARCHIVED
+      - assertVisible: Restore Travel
+      - scrollUntilVisible:
+          element: Food & Dining
+          direction: UP
+      - assertNotVisible: Travel
+      - assertVisible: Shopping
+      - evalScript: ${output.scope = 'group'}

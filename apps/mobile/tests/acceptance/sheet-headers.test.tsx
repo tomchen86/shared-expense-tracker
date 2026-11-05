@@ -8,6 +8,7 @@ import {
   openNewExpense,
   phoneDatabase,
   resetPhone,
+  watchAlerts,
 } from './ledger-expense-app';
 import {
   categorySheet,
@@ -53,6 +54,7 @@ beforeEach(() => {
   mockOpen = async () => phoneDatabase(path.join(directory, 'app.db'));
   allowWrites();
   resetPhone();
+  watchAlerts();
 });
 
 afterEach(() => {
