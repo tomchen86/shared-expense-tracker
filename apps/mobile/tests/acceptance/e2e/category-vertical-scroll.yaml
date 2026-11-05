@@ -48,13 +48,17 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
             - scrollUntilVisible:
                 element: Paid by, not selected
                 direction: DOWN
+                centerElement: true
             - tapOn: Paid by, not selected
+            - assertVisible: Who Paid\?
             - tapOn: Taylor \(You\)
             - waitForAnimationToEnd
             - scrollUntilVisible:
                 element: Split between, Choose people
                 direction: DOWN
+                centerElement: true
             - tapOn: Split between, Choose people
+            - assertVisible: Split Between
             - tapOn: Taylor \(You\)
             - tapOn: Done
             - waitForAnimationToEnd
@@ -135,6 +139,7 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
       - tapOn: Scroll 6
       - waitForAnimationToEnd
       - assertVisible: Edit Category
+      - assertVisible: Category name.*Scroll 6.*
       - tapOn: Cancel
       - waitForAnimationToEnd
       - scrollUntilVisible:
