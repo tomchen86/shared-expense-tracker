@@ -50,6 +50,15 @@ name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LE
 # category form's Add is enabled while Group Categories is open.
 - tapOn: Category, Food & Dining
 - waitForAnimationToEnd
+# Start inside the medium picker; a screen-center scroll starts above it.
+- swipe:
+    from:
+      text: Shopping
+    direction: UP
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: \+ Add New Category
+    direction: DOWN
 - tapOn: \+ Add New Category
 - waitForAnimationToEnd
 - assertVisible: Group Categories
@@ -69,11 +78,23 @@ name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LE
 - assertVisible: Dinner
 - tapOn: Category, Food & Dining
 - waitForAnimationToEnd
+- swipe:
+    from:
+      text: Shopping
+    direction: UP
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: Flights
+    direction: DOWN
 - tapOn: Flights
 - waitForAnimationToEnd
 - assertVisible: Category, Flights
-# The keyboard is down now, so the rows under the switch are in reach. Choosing the
-# group the form already has closes Select Group and keeps the inputs.
+# Bring all financial rows into view before opening their pickers. Returning from
+# Paid by must still leave Split between directly usable, with no further scroll.
+- scrollUntilVisible:
+    element: Split between, Choose people
+    direction: DOWN
+# Choosing the group the form already has closes Select Group and keeps the inputs.
 - tapOn: Group, Brisbane
 - waitForAnimationToEnd
 - assertVisible: Select Group

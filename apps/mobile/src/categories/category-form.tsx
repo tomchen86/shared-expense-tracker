@@ -2,15 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Alert,
-  Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   CATEGORY_COLORS,
   MAX_CATEGORY_NAME_LENGTH,
@@ -18,6 +15,7 @@ import {
   categoryNameProblem,
 } from '@shared-expense/domain';
 import { useThemeColors } from '../ui/theme';
+import { Sheet } from '../ui/sheet';
 import type { Category } from './repository';
 
 const ALREADY_EXISTS = 'A category with this name already exists.';
@@ -105,205 +103,103 @@ export function CategoryForm({
   const allColorsUsed = freeColors.length === 0;
 
   return (
-    <Modal
-      allowSwipeDismissal={!isSaving}
-      animationType="slide"
-      onRequestClose={handleCancel}
-      presentationStyle="pageSheet"
+    <Sheet
       visible
+      title={title}
+      onClose={handleCancel}
+      dismissible={!isSaving}
+      cancel={{ label: 'Cancel', disabled: isSaving, onPress: handleCancel }}
+      confirm={{
+        label: submitLabel,
+        disabled: submitDisabled,
+        onPress: () => void handleSubmit(),
+      }}
     >
-      <SafeAreaView
-        style={[styles.sheet, { backgroundColor: colors.background }]}
+      <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+        NAME
+      </Text>
+      <View style={[styles.section, { backgroundColor: colors.surface }]}>
+        <TextInput
+          accessibilityLabel="Category name"
+          editable={!isSaving}
+          maxLength={MAX_CATEGORY_NAME_LENGTH}
+          onChangeText={(next) => {
+            setName(next);
+            if (duplicateError) setDuplicateError(false);
+          }}
+          placeholder="Category name"
+          placeholderTextColor={colors.placeholder}
+          style={[styles.input, { color: colors.text }]}
+          value={name}
+        />
+      </View>
+      {duplicateError && (
+        <Text style={[styles.error, { color: colors.error }]}>
+          {ALREADY_EXISTS}
+        </Text>
+      )}
+
+      <Text
+        style={[
+          styles.sectionLabel,
+          styles.nextSection,
+          { color: colors.textMuted },
+        ]}
       >
-        <View
-          style={[
-            styles.header,
-            {
-              borderBottomColor: colors.separator,
-              backgroundColor: colors.surface,
-            },
-          ]}
-        >
-          <Pressable
-            accessibilityLabel="Cancel"
-            accessibilityRole="button"
-            accessibilityState={{ disabled: isSaving }}
-            disabled={isSaving}
-            hitSlop={8}
-            onPress={handleCancel}
-            style={({ pressed }) => [
-              styles.headerButton,
-              pressed && !isSaving && styles.headerButtonPressed,
-            ]}
-          >
-            <Text
-              style={[
-                styles.cancelText,
-                { color: isSaving ? colors.textMuted : colors.accent },
-              ]}
-            >
-              Cancel
-            </Text>
-          </Pressable>
-          <Text
-            accessibilityRole="header"
-            style={[styles.headerTitle, { color: colors.text }]}
-          >
-            {title}
-          </Text>
-          <Pressable
-            accessibilityLabel={submitLabel}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: submitDisabled }}
-            disabled={submitDisabled}
-            hitSlop={8}
-            onPress={() => void handleSubmit()}
-            style={({ pressed }) => [
-              styles.headerButton,
-              styles.headerSubmitButton,
-              pressed && !submitDisabled && styles.headerButtonPressed,
-            ]}
-          >
-            <Text
-              style={[
-                styles.submitText,
-                { color: submitDisabled ? colors.textMuted : colors.accent },
-              ]}
-            >
-              {submitLabel}
-            </Text>
-          </Pressable>
+        COLOR
+      </Text>
+      <View
+        style={[
+          styles.section,
+          styles.colorSection,
+          { backgroundColor: colors.surface },
+        ]}
+      >
+        <View style={styles.colorGrid}>
+          {CATEGORY_COLORS.map((color) => {
+            const available = freeColorSet.has(color);
+            const unavailable = !available;
+            const selected =
+              available && selectedColor?.toUpperCase() === color.toUpperCase();
+            return (
+              <Pressable
+                key={color}
+                accessibilityLabel={
+                  unavailable
+                    ? `Color ${color} already in use`
+                    : `Select color ${color}`
+                }
+                accessibilityRole="button"
+                accessibilityState={{ disabled: unavailable, selected }}
+                disabled={unavailable}
+                hitSlop={4}
+                onPress={() => {
+                  if (!unavailable && !savingRef.current) {
+                    setSelectedColor(color);
+                  }
+                }}
+                style={[
+                  styles.colorButton,
+                  { backgroundColor: color },
+                  unavailable && styles.unavailableColorButton,
+                  selected && styles.selectedColorButton,
+                  selected && { borderColor: colors.accent },
+                ]}
+              />
+            );
+          })}
         </View>
-
-        <ScrollView
-          automaticallyAdjustKeyboardInsets
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
-            NAME
-          </Text>
-          <View style={[styles.section, { backgroundColor: colors.surface }]}>
-            <TextInput
-              accessibilityLabel="Category name"
-              editable={!isSaving}
-              maxLength={MAX_CATEGORY_NAME_LENGTH}
-              onChangeText={(next) => {
-                setName(next);
-                if (duplicateError) setDuplicateError(false);
-              }}
-              placeholder="Category name"
-              placeholderTextColor={colors.placeholder}
-              style={[styles.input, { color: colors.text }]}
-              value={name}
-            />
-          </View>
-          {duplicateError && (
-            <Text style={[styles.error, { color: colors.error }]}>
-              {ALREADY_EXISTS}
-            </Text>
-          )}
-
-          <Text
-            style={[
-              styles.sectionLabel,
-              styles.nextSection,
-              { color: colors.textMuted },
-            ]}
-          >
-            COLOR
-          </Text>
-          <View
-            style={[
-              styles.section,
-              styles.colorSection,
-              { backgroundColor: colors.surface },
-            ]}
-          >
-            <View style={styles.colorGrid}>
-              {CATEGORY_COLORS.map((color) => {
-                const available = freeColorSet.has(color);
-                const unavailable = !available;
-                const selected =
-                  available &&
-                  selectedColor?.toUpperCase() === color.toUpperCase();
-                return (
-                  <Pressable
-                    key={color}
-                    accessibilityLabel={
-                      unavailable
-                        ? `Color ${color} already in use`
-                        : `Select color ${color}`
-                    }
-                    accessibilityRole="button"
-                    accessibilityState={{ disabled: unavailable, selected }}
-                    disabled={unavailable}
-                    hitSlop={4}
-                    onPress={() => {
-                      if (!unavailable && !savingRef.current) {
-                        setSelectedColor(color);
-                      }
-                    }}
-                    style={[
-                      styles.colorButton,
-                      { backgroundColor: color },
-                      unavailable && styles.unavailableColorButton,
-                      selected && styles.selectedColorButton,
-                      selected && { borderColor: colors.accent },
-                    ]}
-                  />
-                );
-              })}
-            </View>
-          </View>
-          {allColorsUsed && (
-            <Text style={[styles.note, { color: colors.textMuted }]}>
-              {ALL_COLORS_USED}
-            </Text>
-          )}
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
+      </View>
+      {allColorsUsed && (
+        <Text style={[styles.note, { color: colors.textMuted }]}>
+          {ALL_COLORS_USED}
+        </Text>
+      )}
+    </Sheet>
   );
 }
 
 const styles = StyleSheet.create({
-  sheet: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  headerButton: {
-    minWidth: 64,
-    minHeight: 36,
-    justifyContent: 'center',
-  },
-  headerSubmitButton: {
-    alignItems: 'flex-end',
-  },
-  headerButtonPressed: {
-    opacity: 0.6,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  cancelText: {
-    fontSize: 17,
-  },
-  submitText: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 32,
-  },
   sectionLabel: {
     fontSize: 13,
     marginLeft: 16,

@@ -15,6 +15,7 @@ import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
 import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
+import { useSheetScroll } from '../ui/use-sheet-scroll';
 import {
   memberNameKey,
   MemberNameExistsError,
@@ -66,7 +67,10 @@ function NameEditor({
   const database = useLocalDatabase();
   const navigation = useNavigation();
   const colors = useThemeColors();
-  const keyboardScroll = useKeyboardScroll();
+  const sheetScroll = useSheetScroll();
+  const keyboardScroll = useKeyboardScroll(
+    sheetScroll.scrollProps.contentInsetAdjustmentBehavior,
+  );
   const isGroup = form === 'Rename Group';
   const initialName = isGroup ? group.name : member!.name;
   const [name, setName] = useState(initialName);
@@ -126,11 +130,14 @@ function NameEditor({
   }
 
   return (
-    <View
-      collapsable={false}
-      style={[styles.screen, { backgroundColor: colors.background }]}
-    >
-      <Stack.Screen options={{ gestureEnabled: !saving }} />
+    <>
+      <Stack.Screen
+        options={{
+          ...sheetScroll.screenOptions,
+          gestureEnabled: !saving,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      />
       <HeaderActions
         cancel={{
           label: 'Cancel',
@@ -147,8 +154,12 @@ function NameEditor({
       />
       <ScrollView
         {...keyboardScroll}
+        {...sheetScroll.scrollProps}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 32 + sheetScroll.bottomPadding },
+        ]}
       >
         {isGroup && (
           <Text
@@ -194,12 +205,11 @@ function NameEditor({
           </Text>
         )}
       </ScrollView>
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 },
   sectionLabel: { fontSize: 13, marginHorizontal: 16, marginBottom: 8 },
   row: {

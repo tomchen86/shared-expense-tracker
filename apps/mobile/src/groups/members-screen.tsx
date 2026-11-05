@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   View,
+  type ScrollViewProps,
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
@@ -17,7 +18,9 @@ import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { KeyboardAvoidingView } from '../ui/keyboard-avoiding-view';
 import { useThemeColors } from '../ui/theme';
+import { useSheetScroll } from '../ui/use-sheet-scroll';
 import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
+
 import {
   addGroupMember,
   listGroups,
@@ -39,7 +42,12 @@ export function MembersScreen({
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
   const colors = useThemeColors();
-  const keyboardScroll = useKeyboardScroll();
+  const sheetScroll = useSheetScroll();
+  const keyboardScroll = useKeyboardScroll(
+    sheetScroll.scrollProps.contentInsetAdjustmentBehavior,
+  );
+  const sheetScrollProps: ScrollViewProps = sheetScroll.scrollProps;
+
   const [group, setGroup] = useGroup(id);
   const base = inSettings ? '/settings/archived-groups' : '/groups';
   const [busy, setBusy] = useState(false);
@@ -192,7 +200,14 @@ export function MembersScreen({
       collapsable={false}
       style={[styles.screen, { backgroundColor: colors.background }]}
     >
-      <Stack.Screen options={{ gestureEnabled: !busy }} />
+      <Stack.Screen
+        options={{
+          ...sheetScroll.screenOptions,
+          gestureEnabled: !busy,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      />
+
       <HeaderActions
         cancel={{
           label: 'Close',
@@ -205,9 +220,16 @@ export function MembersScreen({
       <ScrollView
         {...keyboardScroll}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.content}
-        onContentSizeChange={scrollToField}
+        {...sheetScrollProps}
+        onContentSizeChange={(width, height) => {
+          sheetScrollProps.onContentSizeChange?.(width, height);
+          scrollToField();
+        }}
         onLayout={scrollToField}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 32 + sheetScroll.bottomPadding },
+        ]}
       >
         <GroupedSection>
           {group?.members.map((member) => {
