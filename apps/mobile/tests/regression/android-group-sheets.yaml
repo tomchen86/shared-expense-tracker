@@ -42,8 +42,6 @@ name: Android group sheets close without a native header crash
 - pressKey: Enter
 - waitForAnimationToEnd
 - assertVisible: Blake
-- back
-- waitForAnimationToEnd
 - tapOn: Blake
 - tapOn: '(?i)Rename'
 - waitForAnimationToEnd
