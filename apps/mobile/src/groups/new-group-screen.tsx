@@ -14,6 +14,7 @@ import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
 import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
+import { useSheetScroll } from '../ui/use-sheet-scroll';
 import { createGroup } from './index';
 import { useRequireName } from './use-require-name';
 
@@ -23,7 +24,10 @@ export function NewGroupScreen() {
   const identity = useLocalIdentity();
   const requireName = useRequireName();
   const colors = useThemeColors();
-  const keyboardScroll = useKeyboardScroll();
+  const sheetScroll = useSheetScroll();
+  const keyboardScroll = useKeyboardScroll(
+    sheetScroll.scrollProps.contentInsetAdjustmentBehavior,
+  );
   const [name, setName] = useState('');
   const [status, setStatus] = useState<'editing' | 'saving' | 'saved'>(
     'editing',
@@ -54,8 +58,14 @@ export function NewGroupScreen() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <Stack.Screen options={{ gestureEnabled: !saving }} />
+    <>
+      <Stack.Screen
+        options={{
+          ...sheetScroll.screenOptions,
+          gestureEnabled: !saving,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      />
       <HeaderActions
         cancel={{
           label: 'Cancel',
@@ -70,8 +80,12 @@ export function NewGroupScreen() {
       />
       <ScrollView
         {...keyboardScroll}
+        {...sheetScroll.scrollProps}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 32 + sheetScroll.bottomPadding },
+        ]}
       >
         <Text
           accessibilityRole="header"
@@ -102,12 +116,11 @@ export function NewGroupScreen() {
           Members can be added after the group is created.
         </Text>
       </ScrollView>
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 },
   sectionLabel: { fontSize: 13, marginHorizontal: 16, marginBottom: 8 },
   row: {
