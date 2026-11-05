@@ -40,6 +40,12 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
       - inputText: Train
       - tapOn: Category, Food & Dining
       - waitForAnimationToEnd
+      # Start inside the medium picker; a screen-center scroll starts above it.
+      - swipe:
+          from:
+            text: Shopping
+          direction: UP
+      - waitForAnimationToEnd
       - scrollUntilVisible:
           element: Travel
           direction: DOWN
@@ -85,6 +91,11 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
             - tapOn: Add expense
             - waitForAnimationToEnd
             - tapOn: Category, Food & Dining
+            - waitForAnimationToEnd
+            - swipe:
+                from:
+                  text: Shopping
+                direction: UP
             - waitForAnimationToEnd
             - scrollUntilVisible:
                 element: \+ Add New Category

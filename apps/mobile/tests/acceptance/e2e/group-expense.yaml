@@ -50,6 +50,12 @@ name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LE
 # category form's Add is enabled while Group Categories is open.
 - tapOn: Category, Food & Dining
 - waitForAnimationToEnd
+# Start inside the medium picker; a screen-center scroll starts above it.
+- swipe:
+    from:
+      text: Shopping
+    direction: UP
+- waitForAnimationToEnd
 - scrollUntilVisible:
     element: \+ Add New Category
     direction: DOWN
@@ -71,6 +77,11 @@ name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LE
 - assertVisible: New Expense
 - assertVisible: Dinner
 - tapOn: Category, Food & Dining
+- waitForAnimationToEnd
+- swipe:
+    from:
+      text: Shopping
+    direction: UP
 - waitForAnimationToEnd
 - scrollUntilVisible:
     element: Flights
