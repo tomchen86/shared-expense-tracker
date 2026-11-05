@@ -39,8 +39,19 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
       - tapOn: Expense title
       - inputText: Train
       - tapOn: Category, Food & Dining
+      - waitForAnimationToEnd
+      # Start inside the medium picker; a screen-center scroll starts above it.
+      - swipe:
+          from:
+            text: Shopping
+          direction: UP
+      - waitForAnimationToEnd
+      - scrollUntilVisible:
+          element: Travel
+          direction: DOWN
       - tapOn: Travel
       - waitForAnimationToEnd
+      - assertVisible: Category, Travel
       - runFlow:
           when:
             true: ${output.scope === 'group'}
@@ -80,6 +91,15 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
             - tapOn: Add expense
             - waitForAnimationToEnd
             - tapOn: Category, Food & Dining
+            - waitForAnimationToEnd
+            - swipe:
+                from:
+                  text: Shopping
+                direction: UP
+            - waitForAnimationToEnd
+            - scrollUntilVisible:
+                element: \+ Add New Category
+                direction: DOWN
             - tapOn: \+ Add New Category
             - waitForAnimationToEnd
             - assertVisible: Group Categories
@@ -147,6 +167,9 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
       - scrollUntilVisible:
           element: Restore Travel
           direction: DOWN
+          # Leave room to the driver's 90%-of-screen DOWN endpoint before
+          # measuring the row that the tested gesture must bring into view.
+          centerElement: true
       - assertVisible: ARCHIVED
       - assertVisible: Restore Travel
       # Pick the row immediately before the first one below the fixed bar.
