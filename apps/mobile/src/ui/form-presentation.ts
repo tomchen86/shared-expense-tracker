@@ -3,3 +3,5 @@ export const formPresentation = {
   presentation: 'modal' as const,
   headerShown: true,
 };
+
+export const formScrollInsetAdjustment = 'automatic' as const;

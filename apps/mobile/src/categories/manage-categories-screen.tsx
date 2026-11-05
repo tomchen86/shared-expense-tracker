@@ -278,6 +278,7 @@ export function ManageCategoriesScreen({
   const screenOptions = useMemo(
     () => ({
       title: groupId ? 'Group Categories' : 'Manage Categories',
+      fullScreenGestureEnabled: false,
       headerLeft: asSheet
         ? () => (
             <Pressable
@@ -391,7 +392,10 @@ export function ManageCategoriesScreen({
           <View style={styles.sectionHeader}>
             <Text
               accessibilityRole="header"
-              style={[styles.sectionLabel, { color: colors.textMuted }]}
+              style={[
+                styles.sectionLabel,
+                { marginBottom: 0, color: colors.textMuted },
+              ]}
             >
               CATEGORIES
             </Text>
@@ -565,8 +569,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   about: {
-    minWidth: 44,
-    minHeight: 44,
+    minWidth: 48,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },

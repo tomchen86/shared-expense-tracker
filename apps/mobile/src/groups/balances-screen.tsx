@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocales } from 'expo-localization';
 import { formatCurrency, groupAmounts } from '@shared-expense/domain';
 import { useLocalIdentity } from '../shell';
@@ -7,6 +7,7 @@ import { useExpenses } from '../ledger/use-expenses';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
+import { formScrollInsetAdjustment } from '../ui/form-presentation';
 import { useGroup } from './use-group';
 import { formatBalance } from './format-balance';
 
@@ -19,12 +20,15 @@ export function BalancesScreen() {
   const locale = useLocales()[0].languageTag;
   const amounts = group && expenses ? groupAmounts(expenses, group) : [];
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <>
+      <Stack.Screen
+        options={{ contentStyle: { backgroundColor: colors.background } }}
+      />
       <HeaderActions
         cancel={{ label: 'Close', onPress: () => router.back() }}
       />
       <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
+        contentInsetAdjustmentBehavior={formScrollInsetAdjustment}
         contentContainerStyle={styles.content}
       >
         {group &&
@@ -64,7 +68,7 @@ export function BalancesScreen() {
             </View>
           ))}
       </ScrollView>
-    </View>
+    </>
   );
 }
 

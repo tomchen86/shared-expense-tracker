@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import type { SFSymbol } from 'expo-symbols';
 import type { HeaderActionsProps } from './header-actions';
+import { nativeConfirmStyle } from './native-confirm-style.ios';
 
 export function HeaderActions({
   cancel,
@@ -71,6 +72,7 @@ export function HeaderActions({
         {confirm && (
           <Stack.Toolbar.Button
             variant="prominent"
+            style={nativeConfirmStyle}
             accessibilityLabel={confirm.label}
             disabled={confirm.disabled}
             onPress={confirm.onPress}

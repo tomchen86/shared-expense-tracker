@@ -16,6 +16,7 @@ import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
+import { formScrollInsetAdjustment } from '../ui/form-presentation';
 import {
   addGroupMember,
   listGroups,
@@ -179,11 +180,13 @@ export function MembersScreen({
   }
 
   return (
-    <View
-      collapsable={false}
-      style={[styles.screen, { backgroundColor: colors.background }]}
-    >
-      <Stack.Screen options={{ gestureEnabled: !busy }} />
+    <>
+      <Stack.Screen
+        options={{
+          gestureEnabled: !busy,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      />
       <HeaderActions
         cancel={{
           label: 'Close',
@@ -195,7 +198,8 @@ export function MembersScreen({
       />
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        contentInsetAdjustmentBehavior="automatic"
+        automaticallyAdjustKeyboardInsets
+        contentInsetAdjustmentBehavior={formScrollInsetAdjustment}
         contentContainerStyle={styles.content}
       >
         <GroupedSection>
@@ -283,12 +287,11 @@ export function MembersScreen({
             ))}
         </GroupedSection>
       </ScrollView>
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
   content: { padding: 20, paddingBottom: 32 },
   row: {
     minHeight: 54,

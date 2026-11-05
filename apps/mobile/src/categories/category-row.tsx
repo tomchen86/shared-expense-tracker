@@ -39,6 +39,7 @@ export function CategoryRow({
   const offset = useRef(0);
   const start = useRef(0);
   const [revealed, setRevealed] = useState(false);
+  const direction = useRef<'pending' | 'horizontal' | 'vertical'>('pending');
   const responder = useMemo(() => {
     function finish(open: boolean) {
       offset.current = open ? -ACTION_WIDTH : 0;
@@ -50,9 +51,22 @@ export function CategoryRow({
       setRevealed(open);
     }
     return PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gesture) =>
-        Math.abs(gesture.dx) > 10 &&
-        Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
+      onStartShouldSetPanResponderCapture: () => {
+        direction.current = 'pending';
+        return false;
+      },
+      onMoveShouldSetPanResponderCapture: (_, gesture) => {
+        if (
+          direction.current === 'pending' &&
+          Math.max(Math.abs(gesture.dx), Math.abs(gesture.dy)) > 10
+        )
+          direction.current =
+            Math.abs(gesture.dx) > Math.abs(gesture.dy)
+              ? 'horizontal'
+              : 'vertical';
+        return direction.current === 'horizontal';
+      },
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {
         translation.stopAnimation();
         start.current = offset.current;
