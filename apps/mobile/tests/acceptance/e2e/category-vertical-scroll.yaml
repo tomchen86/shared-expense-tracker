@@ -139,7 +139,8 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
       - tapOn: Scroll 6
       - waitForAnimationToEnd
       - assertVisible: Edit Category
-      - assertVisible: Category name.*Scroll 6.*
+      - copyTextFrom: Category name
+      - assertTrue: ${maestro.copiedText === 'Scroll 6'}
       - tapOn: Cancel
       - waitForAnimationToEnd
       - scrollUntilVisible:
