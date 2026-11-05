@@ -10,8 +10,6 @@
 
 ## 現在（Now）
 
-- **重建**：把 baseline 手機 app 已有的功能搬過來，補上 spec 和驗收測試。之後每個階段都要建立在這些 spec、測試和清楚的程式邊界上，所以排第一。Milestone：[重建](https://github.com/tomchen86/shared-expense-tracker/milestone/1)。Proposal：[重建](proposals/2026-10-23-rebuild.md)
-
 ## 接下來（Next）
 
 - **手動匯出入**：把帳本匯出成檔案，也能從檔案匯入。預設免註冊、資料只在手機上，在雲端服務出來之前，換手機或手機壞掉時就靠它保住資料，所以要跟第一個對外版本一起推出。
