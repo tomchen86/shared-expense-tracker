@@ -31,7 +31,7 @@ When the implementer asks about behavior the spec does not cover: decide it with
 
 ```bash
 git fetch --no-tags origin refs/heads/spec/<branch> && git switch --detach FETCH_HEAD
-# edit the spec and the acceptance tests, commit, run `bash scripts/check.sh` (no CI runs here); then the owner runs, in this repository:
+# edit the spec and the acceptance tests, commit, repeat step 5; then the owner runs, in this repository:
 git push owner <commit SHA>:refs/heads/spec/<branch>
 ```
 
