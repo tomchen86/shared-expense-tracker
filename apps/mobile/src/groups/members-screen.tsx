@@ -15,7 +15,6 @@ import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
-import { KeyboardAvoidingView } from '../ui/keyboard-avoiding-view';
 import { useThemeColors } from '../ui/theme';
 import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
 import {
@@ -188,7 +187,7 @@ export function MembersScreen({
   }
 
   return (
-    <KeyboardAvoidingView
+    <View
       collapsable={false}
       style={[styles.screen, { backgroundColor: colors.background }]}
     >
@@ -294,7 +293,7 @@ export function MembersScreen({
             ))}
         </GroupedSection>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
