@@ -16,7 +16,6 @@ import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
-import { KeyboardAvoidingView } from '../ui/keyboard-avoiding-view';
 import { useThemeColors } from '../ui/theme';
 import { useSheetScroll } from '../ui/use-sheet-scroll';
 import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
@@ -196,10 +195,7 @@ export function MembersScreen({
   }
 
   return (
-    <KeyboardAvoidingView
-      collapsable={false}
-      style={[styles.screen, { backgroundColor: colors.background }]}
-    >
+    <>
       <Stack.Screen
         options={{
           ...sheetScroll.screenOptions,
@@ -316,12 +312,11 @@ export function MembersScreen({
             ))}
         </GroupedSection>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
   content: { padding: 20, paddingBottom: 32 },
   row: {
     minHeight: 54,
