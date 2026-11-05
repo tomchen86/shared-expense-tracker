@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Keyboard,
   Modal,
   Pressable,
   ScrollView,
@@ -243,6 +244,11 @@ function ExpenseEditor({
     amountMinor !== undefined &&
     (!form.split || (!!form.groupId && !!form.payerId && splitCount > 0));
 
+  function openPicker(next: NonNullable<typeof picker>) {
+    Keyboard.dismiss();
+    setPicker(next);
+  }
+
   function chooseGroup(groupId?: string) {
     if (savingRef.current || groupLocked) return;
     if (groupId !== form.groupId) {
@@ -269,7 +275,7 @@ function ExpenseEditor({
   function changeSplit(enabled: boolean) {
     if (savingRef.current || groupLocked) return;
     setForm((previous) => ({ ...previous, split: enabled }));
-    if (enabled) setPicker('Select Group');
+    if (enabled) openPicker('Select Group');
     else chooseGroup();
   }
 
@@ -421,7 +427,7 @@ function ExpenseEditor({
             accessibilityLabel={`Category, ${category.name}`}
             disabled={saving}
             accessibilityState={{ disabled: saving }}
-            onPress={() => setPicker('Category')}
+            onPress={() => openPicker('Category')}
             style={styles.row}
           >
             <Text style={{ color: colors.text }}>Category</Text>
@@ -470,7 +476,7 @@ function ExpenseEditor({
                 label="Group"
                 value={group?.name ?? 'not selected'}
                 disabled={saving || groupLocked}
-                onPress={() => setPicker('Select Group')}
+                onPress={() => openPicker('Select Group')}
               />
               {group && (
                 <>
@@ -478,7 +484,7 @@ function ExpenseEditor({
                     label="Paid by"
                     value={payer ? memberName(payer) : 'not selected'}
                     disabled={saving || financialLocked}
-                    onPress={() => setPicker('Who Paid?')}
+                    onPress={() => openPicker('Who Paid?')}
                   />
                   <SplitRow
                     label="Split between"
@@ -490,7 +496,7 @@ function ExpenseEditor({
                           : `${splitCount} people`
                     }
                     disabled={saving || financialLocked}
-                    onPress={() => setPicker('Split Between')}
+                    onPress={() => openPicker('Split Between')}
                   />
                 </>
               )}
