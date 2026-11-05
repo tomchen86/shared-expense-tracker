@@ -17,7 +17,8 @@ jobs:
     # A template repository has no app to build yet.
     if: ${{ !github.event.repository.is_template }}
     runs-on: macos-26
-    timeout-minutes: 60
+    # The build takes up to 40 minutes, the flows up to 25, and failed flows run again.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4

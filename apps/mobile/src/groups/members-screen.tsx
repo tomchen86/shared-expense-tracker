@@ -15,7 +15,9 @@ import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
+import { KeyboardAvoidingView } from '../ui/keyboard-avoiding-view';
 import { useThemeColors } from '../ui/theme';
+import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
 import {
   addGroupMember,
   listGroups,
@@ -37,6 +39,7 @@ export function MembersScreen({
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
   const colors = useThemeColors();
+  const keyboardScroll = useKeyboardScroll();
   const [group, setGroup] = useGroup(id);
   const base = inSettings ? '/settings/archived-groups' : '/groups';
   const [busy, setBusy] = useState(false);
@@ -178,8 +181,14 @@ export function MembersScreen({
     });
   }
 
+  function scrollToField() {
+    if (field.current?.isFocused()) {
+      keyboardScroll.ref.current?.scrollToEnd({ animated: true });
+    }
+  }
+
   return (
-    <View
+    <KeyboardAvoidingView
       collapsable={false}
       style={[styles.screen, { backgroundColor: colors.background }]}
     >
@@ -194,9 +203,11 @@ export function MembersScreen({
         }}
       />
       <ScrollView
+        {...keyboardScroll}
         keyboardShouldPersistTaps="handled"
-        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
+        onContentSizeChange={scrollToField}
+        onLayout={scrollToField}
       >
         <GroupedSection>
           {group?.members.map((member) => {
@@ -283,7 +294,7 @@ export function MembersScreen({
             ))}
         </GroupedSection>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
