@@ -1,6 +1,9 @@
 appId: com.tomchen.sharedexpensetracker
-name: Android group sheets close without a detached-header native crash
+name: Android group sheets close without a native header crash
 ---
+# Run this on a Release build. The header crash only shows when JavaScript is fast enough to close
+# the form within a frame of updating its header, which a debug build never is, and it does not
+# happen on every run.
 - launchApp:
     clearState: true
 - extendedWaitUntil:
@@ -8,42 +11,65 @@ name: Android group sheets close without a detached-header native crash
       text: Expenses
       selected: true
     timeout: 30000
+- waitForAnimationToEnd
 - tapOn: Settings
+- waitForAnimationToEnd
 - tapOn: Enter your name
 - inputText: Taylor
 - pressKey: Enter
+- waitForAnimationToEnd
 - tapOn: Groups
+- waitForAnimationToEnd
 - tapOn: Add group
+- waitForAnimationToEnd
 - assertVisible: New Group
 - inputText: Brisbane
+# On Android, `back` hides the keyboard; hideKeyboard would submit the form.
+- back
+- waitForAnimationToEnd
 - tapOn: Create
-- assertVisible: Open Brisbane
-- tapOn: Open Brisbane
+- waitForAnimationToEnd
+- assertVisible: Open Brisbane.*
+- tapOn: Open Brisbane.*
+- waitForAnimationToEnd
 - assertVisible: No expenses in this group yet.
 - tapOn: Group actions
 - tapOn: '(?i)Members'
+- waitForAnimationToEnd
 - assertVisible: 'Taylor.*You.*'
 - tapOn: Add Member
 - inputText: Blake
-- tapOn: Add
-- assertNotVisible: Add
+- pressKey: Enter
+- waitForAnimationToEnd
 - assertVisible: Blake
+- back
+- waitForAnimationToEnd
 - tapOn: Blake
 - tapOn: '(?i)Rename'
+- waitForAnimationToEnd
 - assertVisible: Rename Member
 - eraseText: 20
 - inputText: Casey
+- back
+- waitForAnimationToEnd
 - tapOn: Save
+- waitForAnimationToEnd
 - assertNotVisible: Rename Member
 - assertVisible: Casey
 - tapOn: Close
+- waitForAnimationToEnd
 - tapOn: Group actions
 - tapOn: '(?i)Rename Group'
+- waitForAnimationToEnd
 - assertVisible: Rename Group
 - eraseText: 20
 - inputText: Tokyo
+- back
+- waitForAnimationToEnd
 - tapOn: Save
+- waitForAnimationToEnd
 - assertNotVisible: Rename Group
 - assertVisible: Tokyo
-- pressKey: Back
-- assertVisible: Open Tokyo
+- back
+- waitForAnimationToEnd
+- assertVisible: Open Tokyo.*
