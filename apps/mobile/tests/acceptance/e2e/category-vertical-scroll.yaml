@@ -167,6 +167,9 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
       - scrollUntilVisible:
           element: Restore Travel
           direction: DOWN
+          # Leave room to the driver's 90%-of-screen DOWN endpoint before
+          # measuring the row that the tested gesture must bring into view.
+          centerElement: true
       - assertVisible: ARCHIVED
       - assertVisible: Restore Travel
       # Pick the row immediately before the first one below the fixed bar.
