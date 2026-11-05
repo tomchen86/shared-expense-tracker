@@ -9,6 +9,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useIsFocused, usePreventRemove } from 'expo-router/react-navigation';
@@ -40,6 +41,7 @@ import { Sheet } from '../ui/sheet';
 import { useThemeColors } from '../ui/theme';
 import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
 import { formScrollInsetAdjustment } from '../ui/form-presentation';
+import { useSheetScroll } from '../ui/use-sheet-scroll';
 import {
   ArchivedExpenseError,
   listExpenses,
@@ -155,7 +157,10 @@ function ExpenseEditor({
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
   const colors = useThemeColors();
-  const keyboardScroll = useKeyboardScroll(formScrollInsetAdjustment);
+  const sheetScroll = useSheetScroll();
+  const keyboardScroll = useKeyboardScroll(
+    sheetScroll.scrollProps.contentInsetAdjustmentBehavior,
+  );
   const groupLocked = !!expense && expense.spaceId !== identity.personalSpaceId;
   const today = toLocalDate(
     new Date(),
@@ -376,7 +381,10 @@ function ExpenseEditor({
   return (
     <>
       <Stack.Screen
-        options={{ contentStyle: { backgroundColor: colors.background } }}
+        options={{
+          ...sheetScroll.screenOptions,
+          contentStyle: { backgroundColor: colors.background },
+        }}
       />
       <HeaderActions
         cancel={{ label: 'Cancel', disabled: saving, onPress: close }}
@@ -388,8 +396,12 @@ function ExpenseEditor({
       />
       <ScrollView
         {...keyboardScroll}
+        {...sheetScroll.scrollProps}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 40 + sheetScroll.bottomPadding },
+        ]}
       >
         <Text style={[styles.currency, { color: colors.textMuted }]}>
           {initial.currency}
@@ -460,7 +472,9 @@ function ExpenseEditor({
         </GroupedSection>
         <GroupedSection style={styles.section}>
           <View style={styles.row}>
-            <Text style={{ color: colors.text }}>Split with others</Text>
+            <Text style={{ color: colors.text, flex: 1 }}>
+              Split with others
+            </Text>
             <Switch
               accessibilityRole="switch"
               accessibilityLabel="Split with others"
@@ -628,6 +642,7 @@ function SplitRow({
   onPress: () => void;
 }) {
   const colors = useThemeColors();
+  const { fontScale } = useWindowDimensions();
   return (
     <Pressable
       accessibilityRole="button"
@@ -635,10 +650,10 @@ function SplitRow({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={styles.row}
+      style={[styles.row, fontScale > 1.3 && styles.stackedRow]}
     >
-      <Text style={{ color: colors.text, flex: 1 }}>{label}</Text>
-      <Text style={{ color: colors.textMuted }}>{value}</Text>
+      <Text style={{ color: colors.text, flexShrink: 1 }}>{label}</Text>
+      <Text style={{ color: colors.textMuted, flexShrink: 1 }}>{value}</Text>
     </Pressable>
   );
 }
@@ -661,7 +676,7 @@ function PickerRow({
       onPress={onPress}
       style={styles.row}
     >
-      <Text style={{ color: colors.text }}>{label}</Text>
+      <Text style={{ color: colors.text, flex: 1 }}>{label}</Text>
       {selected && <Text style={{ color: colors.accent }}>✓</Text>}
     </Pressable>
   );
@@ -690,6 +705,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   dot: { width: 12, height: 12, borderRadius: 6 },
+  stackedRow: { flexDirection: 'column', alignItems: 'stretch' },
   categoryValue: {
     flex: 1,
     flexDirection: 'row',

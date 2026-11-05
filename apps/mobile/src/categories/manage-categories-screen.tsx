@@ -19,6 +19,7 @@ import { listGroups } from '../groups';
 import { categoryExpenseCounts } from '../ledger/expenses';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { useThemeColors } from '../ui/theme';
+import { useSheetScroll } from '../ui/use-sheet-scroll';
 import { CategoryForm } from './category-form';
 import { CategoryRow } from './category-row';
 import {
@@ -46,6 +47,7 @@ export function ManageCategoriesScreen({
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
   const colors = useThemeColors();
+  const sheetScroll = useSheetScroll(asSheet);
   const { scopeKind, spaceId } = useLocalSearchParams();
   const groupId =
     scopeKind === 'group' && typeof spaceId === 'string' && spaceId
@@ -369,20 +371,28 @@ export function ManageCategoriesScreen({
       edges={['left', 'right']}
       style={[styles.screen, { backgroundColor: colors.background }]}
     >
-      <Stack.Screen options={screenOptions} />
+      <Stack.Screen
+        options={{ ...screenOptions, ...sheetScroll.screenOptions }}
+      />
 
       {groupExists === false && (
         <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.content}
+          {...sheetScroll.scrollProps}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: 32 + sheetScroll.bottomPadding },
+          ]}
         >
           <Text style={{ color: colors.text }}>Group not found.</Text>
         </ScrollView>
       )}
       {groupExists && (
         <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.content}
+          {...sheetScroll.scrollProps}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: 32 + sheetScroll.bottomPadding },
+          ]}
         >
           {groupArchived && (
             <Text style={[styles.readOnlyNotice, { color: colors.text }]}>

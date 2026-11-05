@@ -15,7 +15,7 @@ import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
 import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
-import { formScrollInsetAdjustment } from '../ui/form-presentation';
+import { useSheetScroll } from '../ui/use-sheet-scroll';
 import {
   memberNameKey,
   MemberNameExistsError,
@@ -67,7 +67,10 @@ function NameEditor({
   const database = useLocalDatabase();
   const navigation = useNavigation();
   const colors = useThemeColors();
-  const keyboardScroll = useKeyboardScroll(formScrollInsetAdjustment);
+  const sheetScroll = useSheetScroll();
+  const keyboardScroll = useKeyboardScroll(
+    sheetScroll.scrollProps.contentInsetAdjustmentBehavior,
+  );
   const isGroup = form === 'Rename Group';
   const initialName = isGroup ? group.name : member!.name;
   const [name, setName] = useState(initialName);
@@ -130,6 +133,7 @@ function NameEditor({
     <>
       <Stack.Screen
         options={{
+          ...sheetScroll.screenOptions,
           gestureEnabled: !saving,
           contentStyle: { backgroundColor: colors.background },
         }}
@@ -150,8 +154,12 @@ function NameEditor({
       />
       <ScrollView
         {...keyboardScroll}
+        {...sheetScroll.scrollProps}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 32 + sheetScroll.bottomPadding },
+        ]}
       >
         {isGroup && (
           <Text

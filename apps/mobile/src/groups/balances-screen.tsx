@@ -7,7 +7,7 @@ import { useExpenses } from '../ledger/use-expenses';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
-import { formScrollInsetAdjustment } from '../ui/form-presentation';
+import { useSheetScroll } from '../ui/use-sheet-scroll';
 import { useGroup } from './use-group';
 import { formatBalance } from './format-balance';
 
@@ -17,19 +17,26 @@ export function BalancesScreen() {
   const expenses = useExpenses();
   const { userId } = useLocalIdentity();
   const colors = useThemeColors();
+  const sheetScroll = useSheetScroll();
   const locale = useLocales()[0].languageTag;
   const amounts = group && expenses ? groupAmounts(expenses, group) : [];
   return (
     <>
       <Stack.Screen
-        options={{ contentStyle: { backgroundColor: colors.background } }}
+        options={{
+          ...sheetScroll.screenOptions,
+          contentStyle: { backgroundColor: colors.background },
+        }}
       />
       <HeaderActions
         cancel={{ label: 'Close', onPress: () => router.back() }}
       />
       <ScrollView
-        contentInsetAdjustmentBehavior={formScrollInsetAdjustment}
-        contentContainerStyle={styles.content}
+        {...sheetScroll.scrollProps}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 32 + sheetScroll.bottomPadding },
+        ]}
       >
         {group &&
           amounts.map(({ currency, members }) => (

@@ -16,7 +16,7 @@ import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
-import { formScrollInsetAdjustment } from '../ui/form-presentation';
+import { useSheetScroll } from '../ui/use-sheet-scroll';
 import {
   addGroupMember,
   listGroups,
@@ -38,6 +38,7 @@ export function MembersScreen({
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
   const colors = useThemeColors();
+  const sheetScroll = useSheetScroll();
   const [group, setGroup] = useGroup(id);
   const base = inSettings ? '/settings/archived-groups' : '/groups';
   const [busy, setBusy] = useState(false);
@@ -183,6 +184,7 @@ export function MembersScreen({
     <>
       <Stack.Screen
         options={{
+          ...sheetScroll.screenOptions,
           gestureEnabled: !busy,
           contentStyle: { backgroundColor: colors.background },
         }}
@@ -199,8 +201,11 @@ export function MembersScreen({
       <ScrollView
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
-        contentInsetAdjustmentBehavior={formScrollInsetAdjustment}
-        contentContainerStyle={styles.content}
+        {...sheetScroll.scrollProps}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 32 + sheetScroll.bottomPadding },
+        ]}
       >
         <GroupedSection>
           {group?.members.map((member) => {
