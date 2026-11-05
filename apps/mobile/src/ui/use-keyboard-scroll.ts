@@ -12,7 +12,9 @@ import { useKeyboardInset } from './use-keyboard-inset';
 // field above the keyboard. React Native's keyboard scroll clamps to contentInset, which leaves out
 // the header's automatic inset, so the clamp is off (scrollToOverflowEnabled) and this puts the
 // bounds back when the keyboard hides. A large title would expand on that scroll and stick stretched.
-export function useKeyboardScroll() {
+export function useKeyboardScroll(
+  contentInsetAdjustmentBehavior: 'automatic' | 'never' = 'automatic',
+) {
   const ref = useRef<ComponentRef<typeof ScrollView>>(null);
   const headerHeight = useHeaderHeight();
   const metrics = useRef({ offset: 0, content: 0, height: 0 });
@@ -23,17 +25,20 @@ export function useKeyboardScroll() {
       const { offset, content, height } = metrics.current;
       // ponytail: leaves out the bottom automatic inset (home indicator), so a form scrolled to its
       // very end settles that much short of it; read it from native if that shows.
-      const bottom = Math.max(-headerHeight, content - height);
+      const bottom = Math.max(
+        contentInsetAdjustmentBehavior === 'automatic' ? -headerHeight : 0,
+        content - height,
+      );
       if (offset > bottom) ref.current?.scrollTo({ y: bottom });
     });
     return () => subscription.remove();
-  }, [headerHeight]);
+  }, [headerHeight, contentInsetAdjustmentBehavior]);
 
   return {
     ref,
     style: inset,
     automaticallyAdjustKeyboardInsets: true,
-    contentInsetAdjustmentBehavior: 'automatic' as const,
+    contentInsetAdjustmentBehavior,
     scrollToOverflowEnabled: true,
     scrollEventThrottle: 16,
     onScroll: ({

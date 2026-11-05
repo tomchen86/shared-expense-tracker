@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { renderRouter } from 'expo-router/testing-library';
 import { Stack } from 'expo-router';
 import { Alert } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   act,
   fireEvent,
@@ -34,6 +35,28 @@ import { openNodeDatabase } from '../../src/storage/node';
 
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+async function pressFormAction(title: string, name: string) {
+  const bars = screen.container.queryAll(
+    (node) =>
+      String(node.type) === 'RNSScreenStackHeaderConfig' &&
+      node.props.title === title,
+  );
+  expect(bars).toHaveLength(1);
+  const bar = bars[0];
+  const items = [
+    ...(bar.props.headerLeftBarButtonItems ?? []),
+    ...(bar.props.headerRightBarButtonItems ?? []),
+  ];
+  const item = items.find(
+    (candidate) => (candidate.accessibilityLabel || candidate.title) === name,
+  );
+  expect(item).toBeDefined();
+  expect(item.disabled).not.toBe(true);
+  await fireEvent(bar, 'pressHeaderBarButtonItem', {
+    nativeEvent: { buttonId: item.buttonId },
+  });
+}
 
 let directory: string;
 let file: string;
@@ -154,7 +177,7 @@ test('resets the unreleased shared-category database on development startup', as
   expect(categories.some((category) => category.id === 'shared')).toBe(false);
 });
 
-test('blocks modal swipe dismissal and request-close while saving, and allows them when idle', async () => {
+test('blocks native sheet dismissal while saving, and allows it when idle', async () => {
   let finishSave!: () => void;
   const onCancel = jest.fn();
   const onSave = jest.fn(
@@ -165,42 +188,54 @@ test('blocks modal swipe dismissal and request-close while saving, and allows th
   );
 
   await render(
-    <CategoryForm
-      editingCategory={null}
-      onCancel={onCancel}
-      onSave={onSave}
-      otherCategories={[]}
-    />,
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { x: 0, y: 0, width: 390, height: 844 },
+        insets: { top: 0, left: 0, right: 0, bottom: 0 },
+      }}
+    >
+      <CategoryForm
+        editingCategory={null}
+        onCancel={onCancel}
+        onSave={onSave}
+        otherCategories={[]}
+      />
+    </SafeAreaProvider>,
   );
 
-  const modal = () => {
-    const modals = screen.container.queryAll(
-      (node) => String(node.type) === 'Modal',
+  const sheet = () => {
+    const sheets = screen.container.queryAll(
+      (node) =>
+        String(node.type) === 'RNSModalScreen' &&
+        node.props.stackPresentation === 'formSheet',
     );
-    expect(modals).toHaveLength(1);
-    return modals[0];
+    expect(sheets).toHaveLength(1);
+    return sheets[0];
   };
 
-  expect(modal().props.allowSwipeDismissal).toBe(true);
-  await fireEvent(modal(), 'requestClose');
+  expect(sheet().props.gestureEnabled).toBe(true);
+  expect(sheet().props.preventNativeDismiss).toBe(false);
+  await fireEvent(sheet(), 'dismissed', { nativeEvent: { dismissCount: 1 } });
   expect(onCancel).toHaveBeenCalledTimes(1);
 
   onCancel.mockClear();
   await fireEvent.changeText(screen.getByLabelText('Category name'), 'Gym');
   await act(async () => {
-    await fireEvent.press(screen.getByRole('button', { name: 'Add' }));
+    await pressFormAction('New Category', 'Add');
   });
 
-  expect(modal().props.allowSwipeDismissal).toBe(false);
-  await fireEvent(modal(), 'requestClose');
+  expect(sheet().props.gestureEnabled).toBe(false);
+  expect(sheet().props.preventNativeDismiss).toBe(true);
+  await fireEvent(sheet(), 'dismissed', { nativeEvent: { dismissCount: 1 } });
   expect(onCancel).not.toHaveBeenCalled();
 
   await act(async () => {
     finishSave();
   });
 
-  expect(modal().props.allowSwipeDismissal).toBe(true);
-  await fireEvent(modal(), 'requestClose');
+  expect(sheet().props.gestureEnabled).toBe(true);
+  expect(sheet().props.preventNativeDismiss).toBe(false);
+  await fireEvent(sheet(), 'dismissed', { nativeEvent: { dismissCount: 1 } });
   expect(onCancel).toHaveBeenCalledTimes(1);
 });
 
@@ -241,7 +276,7 @@ test('updates the list directly after creating or editing a category without re-
   await fireEvent.press(screen.getByRole('button', { name: 'Add category' }));
   await fireEvent.changeText(screen.getByLabelText('Category name'), 'Gym');
   await act(async () => {
-    await fireEvent.press(screen.getByRole('button', { name: 'Add' }));
+    await pressFormAction('New Category', 'Add');
   });
 
   await waitFor(() => {
@@ -256,7 +291,7 @@ test('updates the list directly after creating or editing a category without re-
     'Groceries',
   );
   await act(async () => {
-    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+    await pressFormAction('Edit Category', 'Save');
   });
 
   await waitFor(() => {
@@ -344,7 +379,7 @@ test.each(['matching', 'different'])(
     await fireEvent.press(screen.getByRole('button', { name: 'Add category' }));
     await fireEvent.changeText(screen.getByLabelText('Category name'), 'Pets');
     await act(async () => {
-      await fireEvent.press(screen.getByRole('button', { name: 'Add' }));
+      await pressFormAction('New Category', 'Add');
     });
 
     expect(screen.getByRole('button', { name: 'Pets' })).toBeTruthy();

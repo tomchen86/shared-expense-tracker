@@ -2156,3 +2156,36 @@ IF Edit Expense 網址裡的 ID 不是任何支出的 ID，或是垃圾桶裡的
 
 - **WHEN** 以 Coffee run 的 Edit Expense 網址打開，Edit Expense 還沒讀完支出
 - **THEN** 沒有顯示「Expense not found.」；讀完之後標題欄位是「Coffee run」
+
+### Requirement: LEDGER-86.1 (e2e) 選完付款人能直接接著選分攤的人
+
+WHEN 使用者在 New Expense 或 Edit Expense 已捲到 Paid by 與 Split between 都可見的位置，打開 Who Paid? 後選一位成員或按 Cancel，the mobile app SHALL 回到仍能看到 Paid by 和 Split between 的表單，讓使用者不用再捲動或拉高 sheet 就能按 Split between，並保留其他草稿輸入與原有的分攤選取。
+
+#### Scenario: 選完付款人
+
+- **WHEN** Brisbane 的 New Expense 已輸入標題 Dinner、金額 12 與備註，捲到選人區，從 Who Paid? 選 Casey
+- **THEN** 關閉後 Paid by, Casey 和 Split between 都可見；一按 Split between 就打開 Split Between，標題、金額與備註仍在
+
+#### Scenario: 取消改選
+
+- **WHEN** Edit Expense 的付款人是 Casey、分攤有 Taylor 和 Casey，捲到選人區後打開 Who Paid? 並按 Cancel
+- **THEN** 不用再捲動就能打開 Split Between，Taylor 和 Casey 仍標示為已選取，付款人仍是 Casey
+
+### Requirement: LEDGER-87.1 (manual) 子 sheet 關閉後保留支出表單的位置與高度
+
+WHERE iOS，WHEN 從 New Expense 或 Edit Expense 打開的 Category、Select Group、Who Paid?、Split Between 或分類管理畫面關閉，the mobile app SHALL 保留原支出表單的展開高度與捲動位置，除了內容變短或鍵盤改變可用空間時只作維持有效位置所需的調整，且不能讓原本可見的 Paid by 與 Split between 因返回而移出可操作範圍。
+
+#### Scenario: 展開與捲動後改選付款人
+
+- **WHEN** 鍵盤收起，把 New Expense 展開並捲到 Paid by 和 Split between，記下 sheet 頂緣與兩列的位置，打開 Who Paid? 選 Casey
+- **THEN** 返回後 sheet 頂緣與兩列的位置維持原樣，沒有先回到初始高度或捲到頂端再跳回；Edit Expense 也一樣
+
+#### Scenario: 其他子畫面
+
+- **WHEN** 同樣記下位置，依序打開並取消 Category、Select Group，打開 Split Between 後按 Done，或從 + Add New Category 打開分類管理再按 Close
+- **THEN** 每次返回都維持原表單位置與高度；選取和未儲存欄位照各自的規則保留
+
+#### Scenario: 鍵盤收起
+
+- **WHEN** 備註欄位正在輸入且鍵盤開著，捲到選人區後打開 Who Paid? 並選 Casey
+- **THEN** 鍵盤可以收起，但返回不跳到表單頂端，Paid by 與 Split between 都可直接操作

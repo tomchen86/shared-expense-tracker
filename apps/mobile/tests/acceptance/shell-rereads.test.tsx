@@ -24,6 +24,7 @@ import {
   barAction,
   chooseGroupAction,
   isOpen,
+  pressOnBar,
   screenOf,
   textsOn,
 } from './group-details-app';
@@ -190,7 +191,8 @@ async function renameOverTheForm(from: string, to: string) {
   await waitFor(() => expect(manageCategoriesBars()).toHaveLength(2));
   await fireEvent.press(screen.getAllByText(from).at(-1)!);
   await fireEvent.changeText(await screen.findByLabelText('Category name'), to);
-  await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+  if (isOpen('Edit Category')) await pressOnBar('Edit Category', 'Save');
+  else await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
   await settle();
   await waitFor(() =>
     expect(screen.queryByLabelText('Category name')).toBeNull(),
