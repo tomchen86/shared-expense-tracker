@@ -6,6 +6,7 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 import { useHeaderHeight } from 'expo-router/react-navigation';
+import { useKeyboardInset } from './use-keyboard-inset';
 
 // Props for a form's ScrollView under a native header without a large title, keeping the focused
 // field above the keyboard. React Native's keyboard scroll clamps to contentInset, which leaves out
@@ -17,6 +18,7 @@ export function useKeyboardScroll(
   const ref = useRef<ComponentRef<typeof ScrollView>>(null);
   const headerHeight = useHeaderHeight();
   const metrics = useRef({ offset: 0, content: 0, height: 0 });
+  const inset = useKeyboardInset(ref);
 
   useEffect(() => {
     const subscription = Keyboard.addListener('keyboardDidHide', () => {
@@ -34,6 +36,7 @@ export function useKeyboardScroll(
 
   return {
     ref,
+    style: inset,
     automaticallyAdjustKeyboardInsets: true,
     contentInsetAdjustmentBehavior,
     scrollToOverflowEnabled: true,

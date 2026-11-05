@@ -16,6 +16,7 @@ import type { AppearanceOption } from '../ui/appearance';
 import { AppearancePicker } from '../ui/appearance-picker';
 import { GroupedSection } from '../ui/grouped-section';
 import { useThemeColors } from '../ui/theme';
+import { useKeyboardInset } from '../ui/use-keyboard-inset';
 import { useTabRootBack } from '../ui/use-tab-root-back';
 import { useGroups } from '../groups/use-groups';
 import { useExpenses } from '../ledger/use-expenses';
@@ -54,6 +55,7 @@ export function SettingsScreen() {
   const saving = useRef(false);
   const savingAppearance = useRef(false);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const keyboardInset = useKeyboardInset(scroll);
   const profileTop = useRef(0);
   const headerHeight = useHeaderHeight();
   // The header shrinks when the large title collapses, so keep its expanded height.
@@ -117,6 +119,7 @@ export function SettingsScreen() {
     >
       <ScrollView
         ref={scroll}
+        style={keyboardInset}
         automaticallyAdjustKeyboardInsets
         contentInsetAdjustmentBehavior="automatic"
         // The keyboard scroll clamps to contentInset, which leaves out the header's automatic inset.
