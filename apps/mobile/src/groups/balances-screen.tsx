@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocales } from 'expo-localization';
 import { formatCurrency, groupAmounts } from '@shared-expense/domain';
 import { useLocalIdentity } from '../shell';
@@ -7,6 +7,7 @@ import { useExpenses } from '../ledger/use-expenses';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
+import { useSheetScroll } from '../ui/use-sheet-scroll';
 import { useGroup } from './use-group';
 import { formatBalance } from './format-balance';
 
@@ -16,20 +17,28 @@ export function BalancesScreen() {
   const expenses = useExpenses();
   const { userId } = useLocalIdentity();
   const colors = useThemeColors();
+  const sheetScroll = useSheetScroll();
   const locale = useLocales()[0].languageTag;
   const amounts = group && expenses ? groupAmounts(expenses, group) : [];
   return (
-    // A form sheet's root view stays empty on iOS when React Native flattens it away.
-    <View
-      collapsable={false}
-      style={{ flex: 1, backgroundColor: colors.background }}
-    >
+    <>
+      <Stack.Screen
+        options={{
+          ...sheetScroll.screenOptions,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      />
+
       <HeaderActions
         cancel={{ label: 'Close', onPress: () => router.back() }}
       />
       <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.content}
+        collapsable={false}
+        {...sheetScroll.scrollProps}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 32 + sheetScroll.bottomPadding },
+        ]}
       >
         {group &&
           amounts.map(({ currency, members }) => (
@@ -68,7 +77,7 @@ export function BalancesScreen() {
             </View>
           ))}
       </ScrollView>
-    </View>
+    </>
   );
 }
 

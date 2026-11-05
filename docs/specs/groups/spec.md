@@ -1555,3 +1555,22 @@ The mobile app SHALL 讓群組的金額只算這個群組不在垃圾桶裡的�
 
 - **WHEN** 把 Dinner 和 Taxi 都移到垃圾桶
 - **THEN** Brisbane 的畫面沒有 Group Total 和你的淨額，顯示「No expenses in this group yet.」；卡片上是「No spending yet」
+
+### Requirement: GROUPS-76.1 (e2e) 名稱表單開著鍵盤時能一次按下儲存或取消
+
+WHILE Rename Group 或 Rename Member 的鍵盤開著，the mobile app SHALL 讓名稱欄位、Cancel 與 Save 可見且可操作，使用者輸入有效的新名稱後按一次 Save 就儲存並返回原畫面，按一次 Cancel 就放棄這次修改並返回原畫面，不需要先按一次收起鍵盤。
+
+#### Scenario: Rename Group
+
+- **WHEN** 在 Brisbane 的 Rename Group 輸入 Tokyo，鍵盤保持開著，按一次 Save
+- **THEN** 回到群組畫面，名稱是 Tokyo；重新打開後輸入 Osaka 並按一次 Cancel，回到群組畫面仍是 Tokyo
+
+#### Scenario: Rename Member
+
+- **WHEN** 在 Casey 的 Rename Member 輸入 Casey K.，鍵盤保持開著，按一次 Save
+- **THEN** 回到 Members，成員是 Casey K.；重新打開後輸入 Casey L. 並按一次 Cancel，回到 Members 仍是 Casey K.
+
+#### Scenario: 放大的文字
+
+- **WHEN** 使用較小螢幕或放大字級開啟名稱表單
+- **THEN** 可藉由增高或捲動 sheet 操作名稱欄位；Cancel 與 Save 仍留在標題列，沒有被鍵盤遮住

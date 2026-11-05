@@ -1012,3 +1012,80 @@ WHILE 畫面還沒重新讀完，the mobile app SHALL 照舊顯示上一次讀�
 
 - **WHEN** Brisbane 的 Group Categories 切回來、還沒重新讀完時點 Shopping，而重新讀不出本機資料
 - **THEN** 沒有開啟分類表單，畫面照 SHELL-60.1 顯示錯誤
+
+### Requirement: SHELL-65.1 iOS 的子 sheet 使用同一套原生標題列
+
+WHERE iOS，the mobile app SHALL 讓 Category、Select Group、Who Paid?、Split Between、New Category 和 Edit Category 的 sheet 使用原生標題列，標題各只出現一次，操作照 SHELL-47.1：Category、Select Group 和 Who Paid? 左邊是 Cancel，Split Between 右邊是確認 Done，New Category 和 Edit Category 左邊是 Cancel、右邊分別是確認 Add 和 Save，內容捲動時標題與操作仍留在標題列。
+
+#### Scenario: 選付款人與分攤的人
+
+- **WHEN** Brisbane 有 Taylor、Casey 和 Blake，在支出表單分別打開 Who Paid? 和 Split Between
+- **THEN** Who Paid? 的原生標題列左邊有 Cancel；Split Between 的原生標題列右邊有 Done，左邊沒有另一個 Done；各自的內容不再重複標題或操作按鈕
+
+#### Scenario: 選群組與分類
+
+- **WHEN** 在支出表單分別打開 Select Group 和 Category
+- **THEN** 各有自己的原生標題列，左邊是 Cancel；沒有群組可選時仍能按 Cancel
+
+#### Scenario: 新增與編輯分類
+
+- **WHEN** 從 Manage Categories、Group Categories，或支出表單上方的分類管理畫面，打開 New Category 或 Edit Category
+- **THEN** 原生標題列左邊是 Cancel，右邊是 Add 或 Save；名稱空白時確認按鈕停用，儲存中兩邊都停用
+
+#### Scenario: 清單超出可見範圍
+
+- **WHEN** Split Between 有 20 位成員，捲到最後一位，再捲回第一位
+- **THEN** 標題與 Done 都一直可見；選取狀態不因捲動改變，Done 一按就回到支出表單
+
+### Requirement: SHELL-66.1 (manual) Sheet 的初始高度依內容決定
+
+WHERE iPhone 直向，WHEN 開啟從底部升起的 sheet，the mobile app SHALL 依內容決定初始高度：Rename Group、Rename Member、New Category、Edit Category，以及 Category、Select Group、Who Paid?、Split Between 在內容能容納時貼合內容，最後一個內容與底部安全區之間的空白不超過一列內容的高度；選項清單超過半個可用畫面時先開到中等高度並可捲動或向上展開，標題列留在頂部；鍵盤與大字級需要更多空間時可以增高或捲動，不能遮住目前輸入欄位或操作按鈕。
+
+#### Scenario: 短改名表單
+
+- **WHEN** 以預設字級在 iPhone 17 打開 Brisbane 的 Rename Group 或 Casey 的 Rename Member，再收起鍵盤
+- **THEN** sheet 不超過半個可用畫面；表單最後一列與底部安全區之間不多出超過一列的空白；底下的原畫面仍有一部分可見
+
+#### Scenario: 少量與沒有選項
+
+- **WHEN** 群組只有 Taylor、Casey 和 Blake，打開 Who Paid? 或 Split Between；或沒有群組時打開 Select Group
+- **THEN** sheet 只容納標題列、現有選項、正常間距與安全區；三個人不佔滿全螢幕，空清單也不留下整頁空白
+
+#### Scenario: 分類表單
+
+- **WHEN** 以預設字級在 iPhone 17 打開 Shopping 的 Edit Category，鍵盤收起
+- **THEN** 名稱與 27 色色盤按內容排列，sheet 底部沒有為填滿螢幕而增加的大面積空白；New Category 遵守同一規則
+
+#### Scenario: 長清單與放大的文字
+
+- **WHEN** Split Between 有 20 位成員，或文字放到系統最大的輔助使用字級
+- **THEN** 清單先以中等高度開啟；可捲到每一位成員，也可向上展開；Done 不跟著清單捲走，成員名稱與選取狀態不被裁掉
+
+#### Scenario: 鍵盤需要空間
+
+- **WHEN** 在較小的 iPhone 上開啟 Rename Member，或在 New Category 輸入名稱，並使用最大的輔助使用字級
+- **THEN** 欄位與 Cancel、Save 或 Add 都能操作，必要時 sheet 增高；收起鍵盤後沒有留下鍵盤原本佔用的空白區
+
+#### Scenario: 其他 sheet
+
+- **WHEN** 打開 Members、Balances、Manage Categories 或支出表單
+- **THEN** 高度有對應的內容用途；完整支出表單可以使用較高的 sheet，少量內容不僅為了填滿螢幕而拉高
+
+### Requirement: SHELL-67.1 (manual) iOS 的 sheet 採系統材質與一致的操作外觀
+
+WHERE iOS，the mobile app SHALL 讓 sheet 的導覽與操作使用系統原生外觀，在支援且未降低透明度的 iOS 上呈現 Liquid Glass，並依系統外觀與輔助使用設定調整；表單欄位、分類色盤、成員與金額等內容使用可讀的內容底色，不疊加 Liquid Glass，舊版 iOS 使用其原生外觀，Android 遵守 SHELL-38.1。
+
+#### Scenario: 從選付款人到編輯分類
+
+- **WHEN** iOS 26 沒開降低透明度，在淺色及深色下依序開啟 Who Paid?、Split Between、Rename Group、Rename Member 和 Edit Category
+- **THEN** 標題列和操作的材質、按鈕形狀與互動符合相同的系統外觀；Done、Save 與 Cancel 清楚可讀，內容沒有額外一層玻璃覆蓋
+
+#### Scenario: 降低透明度與舊版 iOS
+
+- **WHEN** iOS 26 開啟降低透明度，或在不支援 Liquid Glass 的 iOS 上開啟上述 sheet
+- **THEN** 系統控制使用該環境的原生外觀，app 自己的材質遵守 SHELL-36.1、37.1；文字、選取標記與色盤仍清楚可辨，操作及高度規則不變
+
+#### Scenario: Android
+
+- **WHEN** 在 Android 上開啟上述表單與選擇器
+- **THEN** 表面不透明，沒有 app 自己加的玻璃；儲存、取消、選人與返回仍遵守各能力的規則
