@@ -8,3 +8,6 @@ allowBuilds:
 
 # Keep local and CI installs on the same node_modules layout.
 enableGlobalVirtualStore: false
+
+patchedDependencies:
+  react-native-screens@4.30.1: patches/react-native-screens@4.30.1.patch

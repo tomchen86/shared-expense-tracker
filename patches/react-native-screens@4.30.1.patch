@@ -1,0 +1,16 @@
+diff --git a/android/src/main/java/com/swmansion/rnscreens/ScreenStackHeaderConfig.kt b/android/src/main/java/com/swmansion/rnscreens/ScreenStackHeaderConfig.kt
+index 68b8d852b8433a05e02372356d00a10530ccb8c9..8e2120483b40e935924933194a4015fe96827d93 100644
+--- a/android/src/main/java/com/swmansion/rnscreens/ScreenStackHeaderConfig.kt
++++ b/android/src/main/java/com/swmansion/rnscreens/ScreenStackHeaderConfig.kt
+@@ -238,7 +238,10 @@ class ScreenStackHeaderConfig(
+         }
+         val isTop = stack.topScreen == parent
+ 
+-        if (!isAttachedToWindow || !isTop || isDestroyed) {
++        // The removal transition marks the toolbar's subviews as transitioning, so removeViewAt below
++        // would leave them parented and addView would throw. NativeProxy starts it ahead of the mount
++        // item that removes this screen, so a props update mounted in between still gets here.
++        if (!isAttachedToWindow || !isTop || isDestroyed || screen?.isBeingRemoved == true) {
+             return
+         }
+ 
