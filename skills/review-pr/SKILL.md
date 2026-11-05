@@ -9,6 +9,10 @@ Check the PR out in its own worktree so your other work stays untouched: `git wo
 
 Take one PR at a time through the final stretch (update, check, report, merge). Each merge leaves every other open PR behind main, and a review finished before that merge has to be redone on the updated head. Other PRs can keep being implemented meanwhile.
 
+## Spec review
+
+On a draft PR with no `spec/<branch>`, review once, without running tests or waiting for CI: the rules are clear and contradict neither each other nor the issue, each rule has a test that really checks it, and version bumps are complete and collide with no other open PR. Put all findings in one PR comment, what must change first. Do not re-review the fixes: the implementation review, in this same session, will see them.
+
 ## Checklist
 
 1. The PR is marked ready (not a draft) and up to date with main. If it is behind, run `gh pr update-branch <N>` and refresh this worktree with `gh pr checkout <N> --detach`; send conflicts in specs or acceptance tests to the spec author, and code conflicts to the implementer. Wait for CI on the updated head: `gh pr checks <N> --watch --fail-fast`.

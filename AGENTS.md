@@ -52,7 +52,7 @@ Once per phase:
 2. A phase moves to Now: `skills/start-phase/SKILL.md`. Its milestone is done: the same skill, Closing a phase.
 
 Once per issue that changes behavior:
-1. Spec author: `skills/write-spec/SKILL.md`. Spec and failing tests first, then a draft PR. The owner approves the spec by publishing it before any implementation starts.
+1. Spec author: `skills/write-spec/SKILL.md`. Spec and failing tests first, then a draft PR, which a reviewer reviews right away. The owner approves the spec by publishing it before any implementation starts.
 2. Implementer: `skills/implement/SKILL.md`. Push to the same branch until the tests pass, then mark the PR ready.
 3. Reviewer: `skills/review-pr/SKILL.md`. Review, and report with the commands the owner runs to merge.
 
