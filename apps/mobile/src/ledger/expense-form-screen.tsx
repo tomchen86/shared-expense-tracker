@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,10 +9,10 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useIsFocused, usePreventRemove } from 'expo-router/react-navigation';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { getLocales } from 'expo-localization';
 import {
   categoryNameKey,
@@ -38,8 +37,11 @@ import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { DateField } from '../ui/date-field';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
+import { Sheet } from '../ui/sheet';
 import { useThemeColors } from '../ui/theme';
 import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
+import { formScrollInsetAdjustment } from '../ui/form-presentation';
+import { useSheetScroll } from '../ui/use-sheet-scroll';
 import {
   ArchivedExpenseError,
   listExpenses,
@@ -116,22 +118,22 @@ function ExpenseFormScreen({
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   if (expenseId && !loaded.expense)
     return (
-      <View
-        collapsable={false}
-        style={{ flex: 1, backgroundColor: colors.background }}
-      >
+      <>
+        <Stack.Screen
+          options={{ contentStyle: { backgroundColor: colors.background } }}
+        />
         <HeaderActions
           cancel={{ label: 'Cancel', onPress: () => router.back() }}
         />
         <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
+          contentInsetAdjustmentBehavior={formScrollInsetAdjustment}
           contentContainerStyle={styles.content}
         >
           <Text style={[styles.missing, { color: colors.textMuted }]}>
             Expense not found.
           </Text>
         </ScrollView>
-      </View>
+      </>
     );
   return <ExpenseEditor {...loaded} latestRead={() => latestRead.current!} />;
 }
@@ -155,7 +157,10 @@ function ExpenseEditor({
   const database = useLocalDatabase();
   const identity = useLocalIdentity();
   const colors = useThemeColors();
-  const keyboardScroll = useKeyboardScroll();
+  const sheetScroll = useSheetScroll();
+  const keyboardScroll = useKeyboardScroll(
+    sheetScroll.scrollProps.contentInsetAdjustmentBehavior,
+  );
   const groupLocked = !!expense && expense.spaceId !== identity.personalSpaceId;
   const today = toLocalDate(
     new Date(),
@@ -189,6 +194,7 @@ function ExpenseEditor({
     };
   });
   const [form, setForm] = useState(initial);
+  const openManagementAfterPicker = useRef(false);
   const [picker, setPicker] = useState<
     'Category' | 'Select Group' | 'Who Paid?' | 'Split Between'
   >();
@@ -374,10 +380,13 @@ function ExpenseEditor({
 
   const inputStyle = [styles.input, { color: colors.text }];
   return (
-    <View
-      collapsable={false}
-      style={{ flex: 1, backgroundColor: colors.background }}
-    >
+    <>
+      <Stack.Screen
+        options={{
+          ...sheetScroll.screenOptions,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      />
       <HeaderActions
         cancel={{ label: 'Cancel', disabled: saving, onPress: close }}
         confirm={{
@@ -388,8 +397,12 @@ function ExpenseEditor({
       />
       <ScrollView
         {...keyboardScroll}
+        {...sheetScroll.scrollProps}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 40 + sheetScroll.bottomPadding },
+        ]}
       >
         <Text style={[styles.currency, { color: colors.textMuted }]}>
           {initial.currency}
@@ -460,7 +473,9 @@ function ExpenseEditor({
         </GroupedSection>
         <GroupedSection style={styles.section}>
           <View style={styles.row}>
-            <Text style={{ color: colors.text }}>Split with others</Text>
+            <Text style={{ color: colors.text, flex: 1 }}>
+              Split with others
+            </Text>
             <Switch
               accessibilityRole="switch"
               accessibilityLabel="Split with others"
@@ -504,141 +519,116 @@ function ExpenseEditor({
           )}
         </GroupedSection>
       </ScrollView>
-      <Modal
+      <Sheet
         visible={picker !== undefined}
-        animationType="slide"
-        onRequestClose={() => setPicker(undefined)}
-        presentationStyle="pageSheet"
-      >
-        <SafeAreaProvider>
-          <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-            <View
-              style={[
-                styles.pickerHeader,
-                { borderBottomColor: colors.separator },
-              ]}
-            >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={
-                  picker === 'Split Between' ? 'Done' : 'Cancel'
+        title={picker ?? ''}
+        list
+        onClose={() => setPicker(undefined)}
+        onAfterClose={() => {
+          if (!openManagementAfterPicker.current) return;
+          openManagementAfterPicker.current = false;
+          router.navigate(
+            form.groupId
+              ? {
+                  pathname: '/manage-categories',
+                  params: { scopeKind: 'group', spaceId: form.groupId },
                 }
-                onPress={() => setPicker(undefined)}
-                style={styles.cancel}
+              : '/manage-categories',
+          );
+        }}
+        cancel={
+          picker !== 'Split Between'
+            ? { label: 'Cancel', onPress: () => setPicker(undefined) }
+            : undefined
+        }
+        confirm={
+          picker === 'Split Between'
+            ? { label: 'Done', onPress: () => setPicker(undefined) }
+            : undefined
+        }
+      >
+        <GroupedSection>
+          {picker === 'Category' &&
+            activeCategories.map((item) => (
+              <Pressable
+                key={item.id}
+                accessibilityRole="button"
+                accessibilityLabel={item.name}
+                accessibilityState={{
+                  selected: item.id === form.categoryId,
+                }}
+                style={styles.row}
+                onPress={() => {
+                  change('categoryId', item.id);
+                  setPicker(undefined);
+                }}
               >
-                <Text style={{ color: colors.accent }}>
-                  {picker === 'Split Between' ? 'Done' : 'Cancel'}
-                </Text>
-              </Pressable>
-              <Text
-                accessibilityRole="header"
-                style={[styles.pickerTitle, { color: colors.text }]}
-              >
-                {picker}
-              </Text>
-            </View>
-            <ScrollView contentContainerStyle={styles.content}>
-              <GroupedSection>
-                {picker === 'Category' &&
-                  activeCategories.map((item) => (
-                    <Pressable
-                      key={item.id}
-                      accessibilityRole="button"
-                      accessibilityLabel={item.name}
-                      accessibilityState={{
-                        selected: item.id === form.categoryId,
-                      }}
-                      style={styles.row}
-                      onPress={() => {
-                        change('categoryId', item.id);
-                        setPicker(undefined);
-                      }}
-                    >
-                      <View style={styles.categoryValue}>
-                        <View
-                          style={[styles.dot, { backgroundColor: item.color }]}
-                        />
-                        <Text style={{ color: colors.text }}>{item.name}</Text>
-                      </View>
-                      {item.id === form.categoryId && (
-                        <Text style={{ color: colors.accent }}>✓</Text>
-                      )}
-                    </Pressable>
-                  ))}
-                {picker === 'Category' && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="+ Add New Category"
-                    style={styles.row}
-                    onPress={() => {
-                      setPicker(undefined);
-                      router.navigate(
-                        form.groupId
-                          ? {
-                              pathname: '/manage-categories',
-                              params: {
-                                scopeKind: 'group',
-                                spaceId: form.groupId,
-                              },
-                            }
-                          : '/manage-categories',
-                      );
-                    }}
-                  >
-                    <Text style={{ color: colors.accent }}>
-                      + Add New Category
-                    </Text>
-                  </Pressable>
+                <View style={styles.categoryValue}>
+                  <View style={[styles.dot, { backgroundColor: item.color }]} />
+                  <Text style={{ color: colors.text, flexShrink: 1 }}>
+                    {item.name}
+                  </Text>
+                </View>
+                {item.id === form.categoryId && (
+                  <Text style={{ color: colors.accent }}>✓</Text>
                 )}
-                {picker === 'Select Group' &&
-                  groups
-                    .filter((item) => !item.archived)
-                    .map((item) => (
-                      <PickerRow
-                        key={item.id}
-                        label={item.name}
-                        selected={item.id === form.groupId}
-                        onPress={() => chooseGroup(item.id)}
-                      />
-                    ))}
-                {(picker === 'Who Paid?' || picker === 'Split Between') &&
-                  members.map((member) => (
-                    <PickerRow
-                      key={member.id}
-                      label={memberName(member)}
-                      selected={
-                        picker === 'Who Paid?'
-                          ? member.id === form.payerId
-                          : form.participants.includes(member.id)
-                      }
-                      onPress={() => {
-                        if (savingRef.current || financialLocked) return;
-                        if (picker === 'Who Paid?') {
-                          setForm((previous) => ({
-                            ...previous,
-                            payerId: member.id,
-                          }));
-                          setPicker(undefined);
-                        } else
-                          setForm((previous) => ({
-                            ...previous,
-                            participants: previous.participants.includes(
-                              member.id,
-                            )
-                              ? previous.participants.filter(
-                                  (id) => id !== member.id,
-                                )
-                              : [...previous.participants, member.id],
-                          }));
-                      }}
-                    />
-                  ))}
-              </GroupedSection>
-            </ScrollView>
-          </SafeAreaView>
-        </SafeAreaProvider>
-      </Modal>
-    </View>
+              </Pressable>
+            ))}
+          {picker === 'Category' && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="+ Add New Category"
+              style={styles.row}
+              onPress={() => {
+                openManagementAfterPicker.current = true;
+                setPicker(undefined);
+              }}
+            >
+              <Text style={{ color: colors.accent }}>+ Add New Category</Text>
+            </Pressable>
+          )}
+          {picker === 'Select Group' &&
+            groups
+              .filter((item) => !item.archived)
+              .map((item) => (
+                <PickerRow
+                  key={item.id}
+                  label={item.name}
+                  selected={item.id === form.groupId}
+                  onPress={() => chooseGroup(item.id)}
+                />
+              ))}
+          {(picker === 'Who Paid?' || picker === 'Split Between') &&
+            members.map((member) => (
+              <PickerRow
+                key={member.id}
+                label={memberName(member)}
+                selected={
+                  picker === 'Who Paid?'
+                    ? member.id === form.payerId
+                    : form.participants.includes(member.id)
+                }
+                onPress={() => {
+                  if (savingRef.current || financialLocked) return;
+                  if (picker === 'Who Paid?') {
+                    setForm((previous) => ({
+                      ...previous,
+                      payerId: member.id,
+                    }));
+                    setPicker(undefined);
+                  } else
+                    setForm((previous) => ({
+                      ...previous,
+                      participants: previous.participants.includes(member.id)
+                        ? previous.participants.filter((id) => id !== member.id)
+                        : [...previous.participants, member.id],
+                    }));
+                }}
+              />
+            ))}
+        </GroupedSection>
+      </Sheet>
+    </>
   );
 }
 
@@ -654,6 +644,7 @@ function SplitRow({
   onPress: () => void;
 }) {
   const colors = useThemeColors();
+  const { fontScale } = useWindowDimensions();
   return (
     <Pressable
       accessibilityRole="button"
@@ -661,10 +652,10 @@ function SplitRow({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={styles.row}
+      style={[styles.row, fontScale > 1.3 && styles.stackedRow]}
     >
-      <Text style={{ color: colors.text }}>{label}</Text>
-      <Text style={{ color: colors.textMuted }}>{value}</Text>
+      <Text style={{ color: colors.text, flexShrink: 1 }}>{label}</Text>
+      <Text style={{ color: colors.textMuted, flexShrink: 1 }}>{value}</Text>
     </Pressable>
   );
 }
@@ -687,7 +678,7 @@ function PickerRow({
       onPress={onPress}
       style={styles.row}
     >
-      <Text style={{ color: colors.text }}>{label}</Text>
+      <Text style={{ color: colors.text, flex: 1 }}>{label}</Text>
       {selected && <Text style={{ color: colors.accent }}>✓</Text>}
     </Pressable>
   );
@@ -713,16 +704,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
   },
   dot: { width: 12, height: 12, borderRadius: 6 },
-  categoryValue: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  pickerHeader: {
-    minHeight: 56,
-    paddingHorizontal: 16,
+  stackedRow: { flexDirection: 'column', alignItems: 'stretch' },
+  categoryValue: {
+    flex: 1,
     flexDirection: 'row',
+    gap: 10,
     alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  cancel: { minHeight: 48, minWidth: 64, justifyContent: 'center' },
-  pickerTitle: { fontWeight: '600', fontSize: 17 },
 });

@@ -1,12 +1,18 @@
-import { useMemo, useRef, useState } from 'react';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import {
-  Animated,
-  PanResponder,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+  GestureDetector,
+  GestureStateManager,
+  usePanGesture,
+  type NativeGesture,
+} from 'react-native-gesture-handler';
 import { useThemeColors } from '../ui/theme';
 import { isUncategorizedCategory, type Category } from './repository';
 
@@ -16,6 +22,7 @@ interface CategoryRowProps {
   readOnly?: boolean;
   onPress?: () => void;
   onRemove: () => void;
+  scrollGesture: NativeGesture;
 }
 
 const ACTION_WIDTH = 88;
@@ -26,6 +33,7 @@ export function CategoryRow({
   readOnly = false,
   onPress,
   onRemove,
+  scrollGesture,
 }: CategoryRowProps) {
   const colors = useThemeColors();
   const reserved = isUncategorizedCategory(category);
@@ -35,51 +43,67 @@ export function CategoryRow({
       : category.isArchived
         ? 'Delete'
         : 'Remove';
-  const translation = useRef(new Animated.Value(0)).current;
-  const offset = useRef(0);
-  const start = useRef(0);
+  const translation = useSharedValue(0);
+  const start = useSharedValue(0);
+  const origin = useSharedValue({ x: 0, y: 0 });
+  const direction = useSharedValue<'pending' | 'horizontal' | 'vertical'>(
+    'pending',
+  );
   const [revealed, setRevealed] = useState(false);
-  const responder = useMemo(() => {
-    function finish(open: boolean) {
-      offset.current = open ? -ACTION_WIDTH : 0;
-      Animated.timing(translation, {
-        toValue: offset.current,
-        duration: 160,
-        useNativeDriver: true,
-      }).start();
-      setRevealed(open);
-    }
-    return PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gesture) =>
-        Math.abs(gesture.dx) > 10 &&
-        Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
-      onPanResponderGrant: () => {
-        translation.stopAnimation();
-        start.current = offset.current;
-        // Even a row without a swipe action must consume the drag, so releasing
-        // it does not press Restore.
-        setRevealed(!!action);
-      },
-      onPanResponderMove: (_, gesture) => {
-        if (!action) return;
-        offset.current = Math.max(
+  const pan = usePanGesture({
+    // Decide before the native scroll recognizer activates; retain that
+    // direction until release, including rows that only offer Restore on tap.
+    manualActivation: true,
+    block: scrollGesture,
+    onTouchesDown: (event) => {
+      const touch = event.changedTouches[0];
+      origin.value = { x: touch.absoluteX, y: touch.absoluteY };
+      direction.value = 'pending';
+    },
+    onTouchesMove: (event) => {
+      if (direction.value !== 'pending') return;
+      const touch = event.changedTouches[0];
+      const dx = Math.abs(touch.absoluteX - origin.value.x);
+      const dy = Math.abs(touch.absoluteY - origin.value.y);
+      if (Math.max(dx, dy) <= 5) return;
+      if (dx > dy) {
+        direction.value = 'horizontal';
+        GestureStateManager.activate(event.handlerTag);
+      } else {
+        direction.value = 'vertical';
+        GestureStateManager.fail(event.handlerTag);
+      }
+    },
+    onActivate: () => {
+      cancelAnimation(translation);
+      start.value = translation.value;
+      scheduleOnRN(setRevealed, !!action);
+    },
+    onUpdate: (event) => {
+      if (action)
+        translation.value = Math.max(
           -ACTION_WIDTH,
-          Math.min(0, start.current + gesture.dx),
+          Math.min(0, start.value + event.translationX),
         );
-        translation.setValue(offset.current);
-      },
-      onPanResponderRelease: (_, gesture) =>
-        finish(
-          !!action && (offset.current < -ACTION_WIDTH / 2 || gesture.vx < -0.5),
-        ),
-      onPanResponderTerminate: () => finish(false),
-    });
-  }, [action, translation]);
+    },
+    onDeactivate: (event) => {
+      const open =
+        !event.canceled &&
+        !!action &&
+        (translation.value < -ACTION_WIDTH / 2 || event.velocityX < -500);
+      translation.value = withTiming(open ? -ACTION_WIDTH : 0, {
+        duration: 160,
+      });
+      scheduleOnRN(setRevealed, open);
+    },
+  });
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: action ? translation.value : 0 }],
+  }));
 
   function close() {
-    translation.stopAnimation();
-    translation.setValue(0);
-    offset.current = 0;
+    cancelAnimation(translation);
+    translation.value = 0;
     setRevealed(false);
   }
 
@@ -109,47 +133,47 @@ export function CategoryRow({
     );
 
   return (
-    <View style={styles.swipe} {...responder.panHandlers}>
-      {action && revealed && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={action}
-          onPress={remove}
-          style={[styles.action, { backgroundColor: colors.error }]}
-        >
-          <Text style={[styles.actionText, { color: colors.background }]}>
-            {action}
-          </Text>
-        </Pressable>
-      )}
-      <Animated.View
-        style={{ transform: [{ translateX: action ? translation : 0 }] }}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={
-            category.isArchived ? `Restore ${category.name}` : category.name
-          }
-          accessibilityActions={
-            action ? [{ name: 'remove', label: action }] : undefined
-          }
-          onAccessibilityAction={(event) => {
-            if (action && event.nativeEvent.actionName === 'remove') remove();
-          }}
-          onPress={() => {
-            close();
-            onPress?.();
-          }}
-          style={({ pressed }) => [
-            styles.row,
-            { backgroundColor: colors.surface },
-            pressed && { backgroundColor: colors.pressedSurface },
-          ]}
-        >
-          {content}
-        </Pressable>
-      </Animated.View>
-    </View>
+    <GestureDetector gesture={pan}>
+      <View style={styles.swipe}>
+        {action && revealed && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={action}
+            onPress={remove}
+            style={[styles.action, { backgroundColor: colors.error }]}
+          >
+            <Text style={[styles.actionText, { color: colors.background }]}>
+              {action}
+            </Text>
+          </Pressable>
+        )}
+        <Animated.View style={animatedStyle}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              category.isArchived ? `Restore ${category.name}` : category.name
+            }
+            accessibilityActions={
+              action ? [{ name: 'remove', label: action }] : undefined
+            }
+            onAccessibilityAction={(event) => {
+              if (action && event.nativeEvent.actionName === 'remove') remove();
+            }}
+            onPress={() => {
+              close();
+              onPress?.();
+            }}
+            style={({ pressed }) => [
+              styles.row,
+              { backgroundColor: colors.surface },
+              pressed && { backgroundColor: colors.pressedSurface },
+            ]}
+          >
+            {content}
+          </Pressable>
+        </Animated.View>
+      </View>
+    </GestureDetector>
   );
 }
 

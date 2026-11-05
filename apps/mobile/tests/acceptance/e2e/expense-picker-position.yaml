@@ -1,0 +1,103 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[LEDGER-86.1] Choosing or cancelling Paid by leaves Split between immediately usable in New and Edit Expense'
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- tapOn: Enter your name
+- inputText: Taylor
+- pressKey: Enter
+- tapOn: Groups
+- tapOn: Add group
+- waitForAnimationToEnd
+- inputText: Brisbane
+- tapOn: Create
+- waitForAnimationToEnd
+- tapOn: Open Brisbane
+- tapOn: Group actions
+- tapOn: Members
+- tapOn: Add Member
+- inputText: Casey
+- pressKey: Enter
+- waitForAnimationToEnd
+- tapOn: Close
+- waitForAnimationToEnd
+- tapOn: Add expense
+- waitForAnimationToEnd
+- tapOn: Amount in .*
+- inputText: '12'
+- tapOn: Expense title
+- inputText: Dinner
+- scrollUntilVisible:
+    element: Expense note.*
+    direction: DOWN
+    centerElement: true
+- tapOn: Expense note.*
+- inputText: Dinner note
+- scrollUntilVisible:
+    element: Split between, Choose people
+    direction: DOWN
+    centerElement: true
+- assertVisible: Paid by, not selected
+- takeScreenshot: expense-before-payer
+- tapOn: Paid by, not selected
+- waitForAnimationToEnd
+- assertVisible: Who Paid\?
+- tapOn: Casey
+- waitForAnimationToEnd
+- takeScreenshot: expense-after-payer
+# Deliberately no scroll or expansion between returning and opening the next row.
+- assertVisible: Paid by, Casey
+- assertVisible: Split between, Choose people
+- tapOn: Split between, Choose people
+- assertVisible: Split Between
+- tapOn: Taylor \(You\)
+- tapOn: Casey
+- tapOn: Done
+- waitForAnimationToEnd
+- assertVisible: Split between, 2 people
+- tapOn:
+    text: Add
+    enabled: true
+- waitForAnimationToEnd
+- assertNotVisible: New Expense
+- tapOn: .*Dinner.*
+- tapOn: Edit
+- waitForAnimationToEnd
+- assertVisible: Edit Expense
+- scrollUntilVisible:
+    element: Split between, 2 people
+    direction: DOWN
+    centerElement: true
+- assertVisible: Paid by, Casey
+- tapOn: Paid by, Casey
+- waitForAnimationToEnd
+- assertVisible: Who Paid\?
+- tapOn: Cancel
+- waitForAnimationToEnd
+- assertVisible: Paid by, Casey
+- assertVisible: Split between, 2 people
+- tapOn: Split between, 2 people
+- assertVisible:
+    text: Taylor \(You\)
+    selected: true
+- assertVisible:
+    text: Casey
+    selected: true
+- tapOn: Done
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: Expense note.*
+    direction: UP
+- assertVisible: .*Dinner note.*
+- scrollUntilVisible:
+    element: Expense title
+    direction: UP
+- assertVisible: Dinner
+- assertVisible: 12(\.00)?

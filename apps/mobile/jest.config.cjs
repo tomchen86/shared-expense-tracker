@@ -1,5 +1,8 @@
 const shared = {
   rootDir: __dirname,
+  resolver: '<rootDir>/jest.resolver.cjs',
+  setupFiles: ['react-native-gesture-handler/jestSetup'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs'],
   transformIgnorePatterns:
     require('jest-expo/jest-preset').transformIgnorePatterns.map((pattern) =>
       pattern.replace('react-native|', '@noble/hashes|react-native|'),

@@ -1,0 +1,74 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[GROUPS-76.1] Rename Group and Rename Member save or cancel with one tap while typing'
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- tapOn: Enter your name
+- inputText: Taylor
+- pressKey: Enter
+- tapOn: Groups
+- tapOn: Add group
+- waitForAnimationToEnd
+- inputText: Brisbane
+- tapOn: Create
+- waitForAnimationToEnd
+- tapOn: Open Brisbane
+- tapOn: Brisbane
+- waitForAnimationToEnd
+- assertVisible: Rename Group
+- assertVisible: Group name
+- assertVisible: Cancel
+- assertVisible: Save
+- eraseText: 20
+- inputText: Tokyo
+- takeScreenshot: rename-group-keyboard
+- tapOn: Save
+- waitForAnimationToEnd
+- assertNotVisible: Rename Group
+- assertVisible: Tokyo
+- tapOn: Tokyo
+- waitForAnimationToEnd
+- eraseText: 20
+- inputText: Osaka
+- tapOn: Cancel
+- waitForAnimationToEnd
+- assertNotVisible: Rename Group
+- assertVisible: Tokyo
+- assertNotVisible: Osaka
+- tapOn: Group actions
+- tapOn: Members
+- tapOn: Add Member
+- inputText: Casey
+- pressKey: Enter
+- waitForAnimationToEnd
+- tapOn: Casey
+- tapOn: Rename
+- waitForAnimationToEnd
+- assertVisible: Rename Member
+- assertVisible: Member name
+- assertVisible: Cancel
+- assertVisible: Save
+- eraseText: 20
+- inputText: Casey K.
+- takeScreenshot: rename-member-keyboard
+- tapOn: Save
+- waitForAnimationToEnd
+- assertNotVisible: Rename Member
+- assertVisible: Casey K\.
+- tapOn: Casey K\.
+- tapOn: Rename
+- waitForAnimationToEnd
+- eraseText: 20
+- inputText: Casey L.
+- tapOn: Cancel
+- waitForAnimationToEnd
+- assertNotVisible: Rename Member
+- assertVisible: Casey K\.
+- assertNotVisible: Casey L\.
