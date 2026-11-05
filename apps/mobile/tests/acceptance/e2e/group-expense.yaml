@@ -50,6 +50,9 @@ name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LE
 # category form's Add is enabled while Group Categories is open.
 - tapOn: Category, Food & Dining
 - waitForAnimationToEnd
+- scrollUntilVisible:
+    element: \+ Add New Category
+    direction: DOWN
 - tapOn: \+ Add New Category
 - waitForAnimationToEnd
 - assertVisible: Group Categories
@@ -69,6 +72,9 @@ name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LE
 - assertVisible: Dinner
 - tapOn: Category, Food & Dining
 - waitForAnimationToEnd
+- scrollUntilVisible:
+    element: Flights
+    direction: DOWN
 - tapOn: Flights
 - waitForAnimationToEnd
 - assertVisible: Category, Flights

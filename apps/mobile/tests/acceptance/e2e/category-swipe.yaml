@@ -17,7 +17,13 @@ name: '[CATEGORIES-32.3] Swipes a category left to remove it, finds nothing to s
 - tapOn: Amount in .*
 - inputText: '3'
 - tapOn: Category, Food & Dining
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: Travel
+    direction: DOWN
 - tapOn: Travel
+- waitForAnimationToEnd
+- assertVisible: Category, Travel
 - tapOn:
     text: Add
     enabled: true
