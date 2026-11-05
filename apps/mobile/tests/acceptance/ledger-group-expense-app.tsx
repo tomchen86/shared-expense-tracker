@@ -498,9 +498,23 @@ export async function expectCategorySheet(title: string) {
 /** Opens the category list and presses + Add New Category. */
 export async function openCategorySheet() {
   await openCategoryList();
+  // UIKit finishes dismissing a native sheet before the next screen opens.
+  // Keep that public event's receiver before the Category bar is removed.
+  let closingStack: HostView | undefined;
+  for (let view = barTitled('Category')?.parent; view; view = view.parent) {
+    if (
+      String(view.type) === 'RNSScreenStack' &&
+      typeof view.props.onFinishTransitioning === 'function'
+    ) {
+      closingStack = view;
+      break;
+    }
+  }
   await fireEvent.press(
     within(categoryListView()).getByRole('button', { name: ADD_NEW_CATEGORY }),
   );
+  if (closingStack)
+    await fireEvent(closingStack, 'finishTransitioning', { nativeEvent: {} });
   await waitFor(() => expect(categorySheetTitle()).toBeDefined());
   await settle();
 }
