@@ -444,9 +444,11 @@ function ExpenseEditor({
             style={styles.row}
           >
             <Text style={{ color: colors.text }}>Category</Text>
-            <View style={styles.categoryValue}>
+            <View style={[styles.categoryValue, styles.trailing]}>
               <View style={[styles.dot, { backgroundColor: category.color }]} />
-              <Text style={{ color: colors.textMuted }}>{category.name}</Text>
+              <Text style={{ color: colors.textMuted, flexShrink: 1 }}>
+                {category.name}
+              </Text>
             </View>
           </Pressable>
           <DateField
@@ -714,4 +716,5 @@ const styles = StyleSheet.create({
     gap: 10,
     alignItems: 'center',
   },
+  trailing: { justifyContent: 'flex-end' },
 });
