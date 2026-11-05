@@ -28,10 +28,12 @@ export function BalancesScreen() {
           contentStyle: { backgroundColor: colors.background },
         }}
       />
+
       <HeaderActions
         cancel={{ label: 'Close', onPress: () => router.back() }}
       />
       <ScrollView
+        collapsable={false}
         {...sheetScroll.scrollProps}
         contentContainerStyle={[
           styles.content,

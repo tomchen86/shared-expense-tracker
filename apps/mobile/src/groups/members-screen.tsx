@@ -8,6 +8,7 @@ import {
   Text,
   TextInput,
   View,
+  type ScrollViewProps,
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
@@ -15,8 +16,11 @@ import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
+import { KeyboardAvoidingView } from '../ui/keyboard-avoiding-view';
 import { useThemeColors } from '../ui/theme';
 import { useSheetScroll } from '../ui/use-sheet-scroll';
+import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
+
 import {
   addGroupMember,
   listGroups,
@@ -39,6 +43,11 @@ export function MembersScreen({
   const identity = useLocalIdentity();
   const colors = useThemeColors();
   const sheetScroll = useSheetScroll();
+  const keyboardScroll = useKeyboardScroll(
+    sheetScroll.scrollProps.contentInsetAdjustmentBehavior,
+  );
+  const sheetScrollProps: ScrollViewProps = sheetScroll.scrollProps;
+
   const [group, setGroup] = useGroup(id);
   const base = inSettings ? '/settings/archived-groups' : '/groups';
   const [busy, setBusy] = useState(false);
@@ -180,8 +189,17 @@ export function MembersScreen({
     });
   }
 
+  function scrollToField() {
+    if (field.current?.isFocused()) {
+      keyboardScroll.ref.current?.scrollToEnd({ animated: true });
+    }
+  }
+
   return (
-    <>
+    <KeyboardAvoidingView
+      collapsable={false}
+      style={[styles.screen, { backgroundColor: colors.background }]}
+    >
       <Stack.Screen
         options={{
           ...sheetScroll.screenOptions,
@@ -189,6 +207,7 @@ export function MembersScreen({
           contentStyle: { backgroundColor: colors.background },
         }}
       />
+
       <HeaderActions
         cancel={{
           label: 'Close',
@@ -199,9 +218,14 @@ export function MembersScreen({
         }}
       />
       <ScrollView
+        {...keyboardScroll}
         keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
-        {...sheetScroll.scrollProps}
+        {...sheetScrollProps}
+        onContentSizeChange={(width, height) => {
+          sheetScrollProps.onContentSizeChange?.(width, height);
+          scrollToField();
+        }}
+        onLayout={scrollToField}
         contentContainerStyle={[
           styles.content,
           { paddingBottom: 32 + sheetScroll.bottomPadding },
@@ -292,11 +316,12 @@ export function MembersScreen({
             ))}
         </GroupedSection>
       </ScrollView>
-    </>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1 },
   content: { padding: 20, paddingBottom: 32 },
   row: {
     minHeight: 54,
