@@ -105,6 +105,7 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
             - waitForAnimationToEnd
             - tapOn: Category name
             - inputText: Scroll ${output.category}
+            - waitForAnimationToEnd
             - tapOn:
                 text: Add
                 enabled: true
