@@ -195,10 +195,7 @@ export function MembersScreen({
   }
 
   return (
-    <View
-      collapsable={false}
-      style={[styles.screen, { backgroundColor: colors.background }]}
-    >
+    <>
       <Stack.Screen
         options={{
           ...sheetScroll.screenOptions,
@@ -315,12 +312,11 @@ export function MembersScreen({
             ))}
         </GroupedSection>
       </ScrollView>
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
   content: { padding: 20, paddingBottom: 32 },
   row: {
     minHeight: 54,
