@@ -92,6 +92,7 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
       - waitForAnimationToEnd
       - assertVisible: Restore Travel
       # Twelve additional rows guarantee overflow; the default nine do not.
+      - evalScript: "${output.rows = ['Food & Dining', 'Transportation', 'Shopping', 'Entertainment', 'Bills & Utilities', 'Health', 'Other', 'Uncategorized']}"
       - evalScript: ${output.category = 1}
       - repeat:
           times: 12
@@ -105,12 +106,17 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
                 enabled: true
             - waitForAnimationToEnd
             - assertNotVisible: Category name
+            - evalScript: ${output.rows.push('Scroll ' + output.category)}
             - evalScript: ${output.category = output.category + 1}
       - scrollUntilVisible:
           element: Food & Dining
           direction: UP
       - assertVisible: Shopping
-      - assertNotVisible: Scroll 6
+      # iOS keeps some offscreen AX nodes. Compare a row with the fixed bar
+      # before/after the gesture instead of trusting assertVisible alone.
+      - assertVisible:
+          text: Food & Dining
+          below: Add category
       - takeScreenshot: category-${output.scope}-before-up
       # This gesture must make a previously offscreen row visible.
       - swipe:
@@ -118,16 +124,36 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
             text: Shopping
           direction: UP
       - waitForAnimationToEnd
-      - assertVisible: Scroll 6
+      - assertNotVisible:
+          text: Food & Dining
+          below: Add category
       - assertNotVisible: Remove
       - assertNotVisible: Delete
       - assertNotVisible: Edit Category
       - takeScreenshot: category-${output.scope}-after-up
+      # No intervening scroll: the newly revealed row must really be tappable.
+      - tapOn: Scroll 6
+      - waitForAnimationToEnd
+      - assertVisible: Edit Category
+      - tapOn: Cancel
+      - waitForAnimationToEnd
       - scrollUntilVisible:
           element: Restore Travel
           direction: DOWN
       - assertVisible: ARCHIVED
       - assertVisible: Restore Travel
+      # Pick the row immediately before the first one below the fixed bar.
+      # This adapts to the page/sheet viewport without using private view IDs.
+      - copyTextFrom:
+          text: ${output.rows.join('|')}
+          below: Add category
+          index: 0
+      - evalScript: ${output.firstRow = output.rows.indexOf(maestro.copiedText)}
+      - assertTrue: ${output.firstRow > 0}
+      - evalScript: ${output.aboveHeader = output.rows[output.firstRow - 1]}
+      - assertNotVisible:
+          text: ${output.aboveHeader}
+          below: Add category
       - takeScreenshot: category-${output.scope}-before-down
       # Travel can expose Delete and can be restored by a tap, so this checks
       # both accidental actions while proving that the list actually moves.
@@ -135,8 +161,11 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
           from:
             text: Restore Travel
           direction: DOWN
+          duration: 200
       - waitForAnimationToEnd
-      - assertNotVisible: Restore Travel
+      - assertVisible:
+          text: ${output.aboveHeader}
+          below: Add category
       - assertNotVisible: Remove
       - assertNotVisible: Delete
       - assertNotVisible: Edit Category
