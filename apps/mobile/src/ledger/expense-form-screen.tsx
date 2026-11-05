@@ -200,6 +200,7 @@ function ExpenseEditor({
   >();
   const [saving, setSaving] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [dateOpen, setDateOpen] = useState(false);
   const savingRef = useRef(false);
   const closingRef = useRef(false);
   const mountedRef = useRef(true);
@@ -459,6 +460,7 @@ function ExpenseEditor({
             onChange={(value) => {
               if (isLocalDate(value) && value <= today) change('date', value);
             }}
+            onOpen={() => setDateOpen(true)}
           />
         </GroupedSection>
         <GroupedSection style={styles.section}>
@@ -520,6 +522,14 @@ function ExpenseEditor({
             </>
           )}
         </GroupedSection>
+        {/* iOS hands the press that closes the calendar to the form as well. */}
+        {dateOpen && (
+          <View
+            collapsable={false}
+            onTouchStart={() => setDateOpen(false)}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
       </ScrollView>
       <Sheet
         visible={picker !== undefined}
