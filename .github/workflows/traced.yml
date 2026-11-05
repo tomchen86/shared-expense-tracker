@@ -1,0 +1,36 @@
+name: traced
+
+# Traced coverage on demand (review-pr step 6), never automatically: most pushes do
+# not need it, and on a spec PR it can only fail.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  traced:
+    name: traced
+    # A template repository has no project to check yet.
+    if: ${{ !github.event.repository.is_template }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Traced coverage
+        run: pnpm test:traced
+      - name: Coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: reports/coverage/
+          if-no-files-found: ignore
