@@ -7,7 +7,7 @@ description: Review a pull request before merge, and merge only the reviewed com
 
 Check the PR out in its own worktree so your other work stays untouched: `git worktree add --detach ../review-<N>`, then run `gh pr checkout <N> --detach` inside it.
 
-Take one PR at a time through the final stretch (update, check, report, merge). Each merge leaves every other open PR behind main, and a review finished before that merge has to be redone on the updated head. Other PRs can keep being implemented meanwhile.
+Take one PR at a time through the final stretch (update, check, report, merge). Each merge leaves every other open PR behind main. Other PRs can keep being implemented meanwhile.
 
 ## Spec review
 
@@ -48,6 +48,12 @@ GH_CONFIG_DIR=~/.config/gh-owner gh pr merge <N> --squash --admin --match-head-c
 git push owner --delete refs/heads/spec/<branch>
 ```
 
-Leave out the second line when there is no spec branch. `--admin` is required, since only the owner may update main, and safe: it cannot skip a failing `check` or merge a branch behind main. If the head moved after the review, the merge fails; if the PR fell behind main, update it as in step 1, review the new commits, and report again.
+Leave out the second line when there is no spec branch. `--admin` is required, since only the owner may update main, and safe: it cannot skip a failing `check` or merge a branch behind main. If the head moved after the review, the merge fails; if the PR fell behind main, update it as in step 1 and run step 3 again. Review again only what these print, the PR's own new commits and any hand edits in its merges. If they print nothing, just give the owner the commands with the new SHA:
+
+```bash
+git fetch -q --no-tags origin refs/heads/main
+git log --no-merges --oneline <reviewed SHA>..HEAD ^FETCH_HEAD
+git log --first-parent --merges --remerge-diff --format= <reviewed SHA>..HEAD
+```
 
 Afterwards, remove the review worktree: `git worktree remove ../review-<N>`. When a PR is closed without merging, give the owner the second line for its spec branch.
