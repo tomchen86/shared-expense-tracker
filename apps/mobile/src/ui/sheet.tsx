@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import {
   Modal,
   Pressable,
@@ -17,6 +17,7 @@ export interface SheetProps {
   cancel?: HeaderAction;
   confirm?: HeaderAction;
   onClose: () => void;
+  onAfterClose?: () => void;
   dismissible?: boolean;
   /** Lists start at medium height when their content is taller than half the screen. */
   list?: boolean;
@@ -29,10 +30,14 @@ export function Sheet({
   cancel,
   confirm,
   onClose,
+  onAfterClose,
   dismissible = true,
   children,
 }: SheetProps) {
   const colors = useThemeColors();
+  useEffect(() => {
+    if (!visible) onAfterClose?.();
+  }, [visible, onAfterClose]);
   function action(item: HeaderAction | undefined) {
     return item ? (
       <Pressable

@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useLayoutEffect, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -14,7 +14,7 @@ import {
 import type { HeaderAction } from './header-actions';
 import type { SheetProps } from './sheet';
 import { useThemeColors } from './theme';
-import { nativeConfirmStyle } from './native-confirm-style.ios';
+import { nativeConfirmTint } from './native-confirm-tint.ios';
 
 /** A local native sheet keeps its parent's route and scroll view mounted. */
 export function Sheet({
@@ -23,6 +23,7 @@ export function Sheet({
   cancel,
   confirm,
   onClose,
+  onAfterClose,
   dismissible = true,
   list,
   children,
@@ -32,6 +33,11 @@ export function Sheet({
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [contentHeight, setContentHeight] = useState(0);
+  const [presented, setPresented] = useState(visible);
+  useLayoutEffect(() => {
+    if (visible) setPresented(true);
+    else setContentHeight(0);
+  }, [visible]);
   const [headerHeight, setHeaderHeight] = useState(0);
   const longList = list && contentHeight + 80 > height / 2;
   // RNS sizes a modal's native scroll view to the sheet, while its origin stays
@@ -55,16 +61,24 @@ export function Sheet({
             disabled: !!action.disabled,
             onPress: action.onPress,
             variant,
-            titleStyle:
-              variant === 'prominent' ? nativeConfirmStyle : undefined,
+            tintColor: variant === 'prominent' ? nativeConfirmTint : undefined,
           },
         ]
       : [];
 
-  if (!visible) return null;
+  if (!visible && !presented) return null;
 
   return (
-    <ScreenStack style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <ScreenStack
+      style={StyleSheet.absoluteFill}
+      pointerEvents="box-none"
+      onFinishTransitioning={() => {
+        if (!visible) {
+          setPresented(false);
+          onAfterClose?.();
+        }
+      }}
+    >
       <ScreenStackItem
         screenId={`${id}-base`}
         activityState={2}
@@ -83,13 +97,15 @@ export function Sheet({
           sheetExpandsWhenScrolledToEdge={false}
           gestureEnabled={dismissible}
           preventNativeDismiss={!dismissible}
-          onDismissed={onClose}
+          onDismissed={() => {
+            setPresented(false);
+            onClose();
+          }}
           onHeaderHeightChange={({ nativeEvent }) =>
             setHeaderHeight(nativeEvent.headerHeight)
           }
           headerConfig={{
             title,
-            color: colors.accent,
             titleColor: colors.text,
             hideBackButton: true,
             headerLeftBarButtonItems: button(cancel, 'plain'),

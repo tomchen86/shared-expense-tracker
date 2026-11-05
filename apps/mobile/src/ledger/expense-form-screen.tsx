@@ -194,6 +194,7 @@ function ExpenseEditor({
     };
   });
   const [form, setForm] = useState(initial);
+  const openManagementAfterPicker = useRef(false);
   const [picker, setPicker] = useState<
     'Category' | 'Select Group' | 'Who Paid?' | 'Split Between'
   >();
@@ -519,11 +520,22 @@ function ExpenseEditor({
         </GroupedSection>
       </ScrollView>
       <Sheet
-        key={picker}
         visible={picker !== undefined}
         title={picker ?? ''}
         list
         onClose={() => setPicker(undefined)}
+        onAfterClose={() => {
+          if (!openManagementAfterPicker.current) return;
+          openManagementAfterPicker.current = false;
+          router.navigate(
+            form.groupId
+              ? {
+                  pathname: '/manage-categories',
+                  params: { scopeKind: 'group', spaceId: form.groupId },
+                }
+              : '/manage-categories',
+          );
+        }}
         cancel={
           picker !== 'Split Between'
             ? { label: 'Cancel', onPress: () => setPicker(undefined) }
@@ -568,18 +580,8 @@ function ExpenseEditor({
               accessibilityLabel="+ Add New Category"
               style={styles.row}
               onPress={() => {
+                openManagementAfterPicker.current = true;
                 setPicker(undefined);
-                router.navigate(
-                  form.groupId
-                    ? {
-                        pathname: '/manage-categories',
-                        params: {
-                          scopeKind: 'group',
-                          spaceId: form.groupId,
-                        },
-                      }
-                    : '/manage-categories',
-                );
               }}
             >
               <Text style={{ color: colors.accent }}>+ Add New Category</Text>
