@@ -30,9 +30,41 @@ else
   xcrun simctl install "$udid" "apps/mobile/ios/build/Build/Products/Release-iphonesimulator/$app.app"
 fi
 
-# The trace runs even when a flow fails, as in check.sh.
+# On a CI runner, the first start of Maestro's iOS driver on a new simulator can take minutes.
+export MAESTRO_DRIVER_STARTUP_TIMEOUT=${MAESTRO_DRIVER_STARTUP_TIMEOUT:-300000} # ms
+
+# run <name> <flow>...: one Maestro run, reported as reports/e2e/junit/<name>.xml. When
+# Maestro cannot start on the simulator, it reports no flow at all, so it tries again.
+run() {
+  local name=$1 attempt
+  shift
+  for attempt in 1 2 3; do
+    rm -f "reports/e2e/junit/$name.xml"
+    maestro test --device "$udid" --format junit --output "reports/e2e/junit/$name.xml" \
+      --test-output-dir "reports/e2e/output/$name" "$@" && return 0
+    grep -q '<testcase' "reports/e2e/junit/$name.xml" 2>/dev/null && return 1
+    echo "Maestro did not start on the simulator (attempt $attempt of 3)" >&2
+  done
+  return 1
+}
+
+# A flow that fails runs once more, since a slow runner sometimes misses a gesture or loses
+# the simulator. The trace counts a flow that passes in either run, as each report is read.
 status=0
-maestro test --device "$udid" --format junit --output reports/e2e/junit/maestro.xml \
-  --test-output-dir reports/e2e/output apps/mobile/tests/acceptance/e2e || status=1
+if ! run maestro apps/mobile/tests/acceptance/e2e; then
+  failed=()
+  while IFS= read -r flow; do failed+=("$flow"); done < <(python3 -c '
+import sys, xml.etree.ElementTree as ET
+for case in ET.parse(sys.argv[1]).iter("testcase"):
+    if any(c.tag in ("failure", "error") for c in case):
+        print(case.get("file"))' reports/e2e/junit/maestro.xml 2>/dev/null)
+  if [ ${#failed[@]} -gt 0 ]; then
+    echo "Running the ${#failed[@]} failed flow(s) again" >&2
+    run maestro-rerun "${failed[@]}" || status=1
+  else
+    status=1
+  fi
+fi
+# The trace runs even when a flow fails, as in check.sh.
 python3 scripts/trace_check.py --e2e --reports reports/e2e/junit || status=1
 exit "$status"

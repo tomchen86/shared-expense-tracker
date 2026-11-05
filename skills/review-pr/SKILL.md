@@ -7,7 +7,11 @@ description: Review a pull request before merge, and merge only the reviewed com
 
 Check the PR out in its own worktree so your other work stays untouched: `git worktree add --detach ../review-<N>`, then run `gh pr checkout <N> --detach` inside it.
 
-Take one PR at a time through the final stretch (update, check, report, merge). Each merge leaves every other open PR behind main, and a review finished before that merge has to be redone on the updated head. Other PRs can keep being implemented meanwhile.
+Take one PR at a time through the final stretch (update, check, report, merge). Each merge leaves every other open PR behind main. Other PRs can keep being implemented meanwhile.
+
+## Spec review
+
+On a draft PR with no `spec/<branch>`, review once, without running tests or waiting for CI: the rules are clear and contradict neither each other nor the issue, each rule has a test that really checks it, and version bumps are complete and collide with no other open PR. Report in one PR comment, what must change first. The implementation review, in this same session, sees the fixes.
 
 ## Checklist
 
@@ -22,9 +26,9 @@ Take one PR at a time through the final stretch (update, check, report, merge). 
    It passes only when it exits successfully and prints an `ok` line; keep that line, including main's SHA, for your report. Differences in specs or acceptance tests go to the spec author. A PR that changes specs or acceptance tests without changing what they require (`AGENTS.md`, Roles) has no `spec/<branch>`, so this step flags those files. List them in your report as changes the owner's merge will approve, and confirm that every acceptance test kept its cases, assertions, and IDs.
 4. Spec, code, and tests say the same thing, and every test that cites a requirement actually checks it. No test outside the acceptance test paths cites an ID: the implementer's own tests are not evidence for a requirement.
 5. "Rules discovered during implementation": each must already be in the spec with a test, added by the spec author before it was implemented. Send back any behavior a user or another component would notice that exists only in the code.
-6. Traced coverage (its command is in `AGENTS.md`): run only the tests that cite IDs, with coverage on, and list the new branches none of them executes. Each is a missing requirement, dead code, or defensive code. Read function and branch coverage, not line coverage. For text-only documentation changes that do not affect code, tests, or how they run, report `N/A` with a reason instead. Refactors and dependency updates do not qualify for this exception.
+6. Traced coverage: when you start the review, run `gh workflow run traced.yml --ref <branch>`; when it finishes, `gh run download <run-id> --name coverage`. List the new branches no test citing an ID executes. Each is a missing requirement, dead code, or defensive code. Read function and branch coverage, not line coverage. For text-only documentation changes that do not affect code, tests, or how they run, report `N/A` with a reason instead. Refactors and dependency updates do not qualify for this exception.
 7. Read every change to `AGENTS.md`, `CLAUDE.md`, `skills/`, `.github/`, `scripts/`, test configuration, and dependency files line by line. The first three are the instructions for every later session.
-8. E2E record (ADR-0008): when the PR changes `apps/mobile` outside `apps/mobile/tests/`, or changes an E2E flow, Verification names the commit the flows ran on and each flow's result. Check that the record is there and that none of the PR's own later commits changes those paths; merges from main do not count. Both logs print nothing when the record still holds:
+8. E2E record (ADR-0012): when the PR changes `apps/mobile` outside `apps/mobile/tests/`, or changes an E2E flow, tell the implementer once you have nothing left to change in the code, and wait for it to run the flows. Verification then names the commit they ran on, each flow's result, and any fix with the flows it reran: read each fix. Check that none of the PR's own later commits changes those paths apart from those fixes; merges from main do not count. Both logs print only those fixes when the record still holds:
 
    ```bash
    git fetch -q --no-tags origin refs/heads/main
@@ -44,6 +48,12 @@ GH_CONFIG_DIR=~/.config/gh-owner gh pr merge <N> --squash --admin --match-head-c
 git push owner --delete refs/heads/spec/<branch>
 ```
 
-Leave out the second line when there is no spec branch. `--admin` is required, since only the owner may update main, and safe: it cannot skip a failing `check` or merge a branch behind main. If the head moved after the review, the merge fails; if the PR fell behind main, update it as in step 1, review the new commits, and report again.
+Leave out the second line when there is no spec branch. `--admin` is required, since only the owner may update main, and safe: it cannot skip a failing `check` or merge a branch behind main. If the head moved after the review, the merge fails; if the PR fell behind main, update it as in step 1 and run step 3 again. Review again only what these print (its own new commits, hand edits in its merges), then give the owner the commands with the new SHA:
+
+```bash
+git fetch -q --no-tags origin refs/heads/main
+git log --no-merges --oneline <reviewed SHA>..HEAD ^FETCH_HEAD
+git log --first-parent --merges --remerge-diff --format= <reviewed SHA>..HEAD
+```
 
 Afterwards, remove the review worktree: `git worktree remove ../review-<N>`. When a PR is closed without merging, give the owner the second line for its spec branch.
