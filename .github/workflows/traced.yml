@@ -1,7 +1,6 @@
 name: traced
 
-# Traced coverage on demand (review-pr step 6), never automatically: most pushes do
-# not need it, and on a spec PR it can only fail.
+# Traced coverage on demand (review-pr step 6).
 on:
   workflow_dispatch:
 

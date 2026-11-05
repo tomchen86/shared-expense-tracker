@@ -5,9 +5,9 @@
 
 ## Context
 
-ADR-0008 has the implementer run the flows on the debug build before marking a PR ready, and any later commit of the PR that changes the app outdates that record. Review often asks for such commits, and so does a PR that merges first and brings a conflict or a new rule. #87 ran its flows on `00b68c9`, and three later commits changed the app. A run takes about 20 minutes and is the heaviest load on a machine that several sessions share.
+ADR-0008 has the implementer run the flows on the debug build before marking a PR ready, and any later commit of the PR that changes the app outdates that record. Review often asks for such commits, and so does a PR that merges first and brings a conflict or a new rule. #90 ran them four times; #87 and #88 changed the app after their run and merged without another. A run takes about 20 minutes and is the heaviest load on a machine that several sessions share.
 
-The debug build loads its JavaScript from Metro on port 8081, which those sessions also share. In #90, a run went to waste on a stale bundle.
+The debug build loads its JavaScript from Metro on port 8081. In #87 another session's Metro held that port, and in #90 a run went to waste on a stale bundle.
 
 Hand checks are different: they often find something that needs a code change, as with the three problems in #87, so they belong before review.
 
