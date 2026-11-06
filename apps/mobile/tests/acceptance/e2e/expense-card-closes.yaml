@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-88.1] Closes an open card on a slanted drag to the right without moving the list, and when the list scrolls'
+name: '[LEDGER-88.1] Closes an open card on a drag to the right without moving the list, and when the list scrolls'
 tags:
   - android
 ---
@@ -108,15 +108,45 @@ tags:
 - assertVisible:
     text: ${output.open}
     enabled: true
-# Up from the open card itself scrolls the list.
+# A short, slow drag springs back.
 - swipe:
     start: 28%, 50%
-    end: 28%, 25%
+    end: 33%, 50%
+    duration: 1000
+- waitForAnimationToEnd
+- assertVisible:
+    text: ${output.open}
+    enabled: true
+# More up than right is scrolling, which moves the list.
+- swipe:
+    start: 28%, 50%
+    end: 58%, 25%
     duration: 250
 - waitForAnimationToEnd
 - assertNotVisible:
     text: Delete .* expense
     enabled: true
+- swipe:
+    start: 70%, 50%
+    end: 20%, 50%
+    duration: 300
+- waitForAnimationToEnd
+# The list moved, so the point can now fall between two cards.
+- runFlow:
+    when:
+      notVisible:
+        text: Delete .* expense
+        enabled: true
+    commands:
+      - swipe:
+          start: 70%, 56%
+          end: 20%, 56%
+          duration: 300
+      - waitForAnimationToEnd
+- copyTextFrom:
+    text: Delete .* expense
+    enabled: true
+- assertTrue: ${maestro.copiedText !== output.open}
 # Starting again puts the list back at its top.
 - launchApp
 - extendedWaitUntil:
@@ -131,9 +161,54 @@ tags:
     duration: 300
 - waitForAnimationToEnd
 - assertVisible:
+    text: ${output.open}
+    enabled: true
+# Straight up from the open card.
+- swipe:
+    start: 28%, 50%
+    end: 28%, 25%
+    duration: 250
+- waitForAnimationToEnd
+- assertNotVisible:
     text: Delete .* expense
     enabled: true
-# Up from another card scrolls the list.
+- swipe:
+    start: 70%, 50%
+    end: 20%, 50%
+    duration: 300
+- waitForAnimationToEnd
+# The list moved, so the point can now fall between two cards.
+- runFlow:
+    when:
+      notVisible:
+        text: Delete .* expense
+        enabled: true
+    commands:
+      - swipe:
+          start: 70%, 56%
+          end: 20%, 56%
+          duration: 300
+      - waitForAnimationToEnd
+- copyTextFrom:
+    text: Delete .* expense
+    enabled: true
+- assertTrue: ${maestro.copiedText !== output.open}
+- launchApp
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- swipe:
+    start: 70%, 50%
+    end: 20%, 50%
+    duration: 300
+- waitForAnimationToEnd
+- assertVisible:
+    text: ${output.open}
+    enabled: true
+# Up from another card.
 - swipe:
     start: 30%, 75%
     end: 30%, 50%
@@ -142,6 +217,27 @@ tags:
 - assertNotVisible:
     text: Delete .* expense
     enabled: true
+- swipe:
+    start: 70%, 50%
+    end: 20%, 50%
+    duration: 300
+- waitForAnimationToEnd
+# The list moved, so the point can now fall between two cards.
+- runFlow:
+    when:
+      notVisible:
+        text: Delete .* expense
+        enabled: true
+    commands:
+      - swipe:
+          start: 70%, 56%
+          end: 20%, 56%
+          duration: 300
+      - waitForAnimationToEnd
+- copyTextFrom:
+    text: Delete .* expense
+    enabled: true
+- assertTrue: ${maestro.copiedText !== output.open}
 # Nothing was deleted, and no details opened.
 - assertNotVisible: Moved to Trash
 - assertNotVisible: Edit

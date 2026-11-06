@@ -24,6 +24,7 @@ import {
   restoreCategory,
   setPhoneClock,
   setPhoneLanguage,
+  setPhoneRegion,
   setRegionCurrency,
   startExpenses,
   storedExpenses,
@@ -890,6 +891,18 @@ test.each([
     expect(shownInOrder(detailLines(), expected)).toEqual(expected);
   },
 );
+
+test('[LEDGER-40.2] uses the region the phone is set to, not the one in its language', async () => {
+  setPhoneLanguage('en-US');
+  setPhoneRegion('AU');
+  setRegionCurrency('AUD');
+  await startExpenses();
+
+  await addExpense({ title: 'Taxi', amount: '8.75' });
+
+  const expected = ['Taxi', '$8.75', '30 Oct 2026'];
+  expect(shownInOrder(linesIn(card('Taxi')), expected)).toEqual(expected);
+});
 
 test("[LEDGER-40.2] shows the currency's own decimals where the region rounds them away", async () => {
   setPhoneLanguage('en-US');

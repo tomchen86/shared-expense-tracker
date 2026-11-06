@@ -1,10 +1,10 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[GROUPS-78.1] Closes an open group row on a slanted drag to the right without moving the list, and when the list scrolls'
+name: "[GROUPS-78.1] Closes an open group's card on a drag to the right without moving the list, and when the list scrolls"
 tags:
   - android
 ---
 # Android's scroll view takes a slanted drag before JavaScript hears of it, so this also runs
-# there: scripts/e2e-android.sh. A list that cannot scroll never takes the drag, so it needs seven rows.
+# there: scripts/e2e-android.sh. A list that cannot scroll never takes the drag, so it needs seven cards.
 - launchApp:
     clearState: true
 - extendedWaitUntil:
@@ -33,7 +33,7 @@ tags:
       - waitForAnimationToEnd
       - assertNotVisible: New Group
       - evalScript: ${output.group = output.group + 1}
-# Every swipe here starts from this point, which seeing Archive proves is on a row.
+# Every swipe here starts from this point, which seeing Archive proves is on a card.
 - swipe:
     start: 70%, 50%
     end: 20%, 50%
@@ -60,7 +60,7 @@ tags:
 - assertVisible:
     text: ${output.open}
     enabled: true
-# Right and up, far enough that a list moving with the finger would bring another row
+# Right and up, far enough that a list moving with the finger would bring another card
 # under the point.
 - swipe:
     start: 15%, 50%
@@ -78,7 +78,55 @@ tags:
 - assertVisible:
     text: ${output.open}
     enabled: true
-# Up from another row scrolls the list.
+# More up than right is scrolling, which moves the list.
+- swipe:
+    start: 28%, 50%
+    end: 58%, 25%
+    duration: 250
+- waitForAnimationToEnd
+- assertNotVisible:
+    text: Archive .*
+    enabled: true
+- swipe:
+    start: 70%, 50%
+    end: 20%, 50%
+    duration: 300
+- waitForAnimationToEnd
+# The list moved, so the point can now fall between two cards.
+- runFlow:
+    when:
+      notVisible:
+        text: Archive .*
+        enabled: true
+    commands:
+      - swipe:
+          start: 70%, 56%
+          end: 20%, 56%
+          duration: 300
+      - waitForAnimationToEnd
+- copyTextFrom:
+    text: Archive .*
+    enabled: true
+- assertTrue: ${maestro.copiedText !== output.open}
+# Starting again puts the list back at its top, on the Groups tab.
+- launchApp
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Groups
+- waitForAnimationToEnd
+- swipe:
+    start: 70%, 50%
+    end: 20%, 50%
+    duration: 300
+- waitForAnimationToEnd
+- assertVisible:
+    text: ${output.open}
+    enabled: true
+# Up from another card.
 - swipe:
     start: 30%, 75%
     end: 30%, 50%
@@ -87,6 +135,27 @@ tags:
 - assertNotVisible:
     text: Archive .*
     enabled: true
-# Nothing was archived, and the group did not open.
+- swipe:
+    start: 70%, 50%
+    end: 20%, 50%
+    duration: 300
+- waitForAnimationToEnd
+# The list moved, so the point can now fall between two cards.
+- runFlow:
+    when:
+      notVisible:
+        text: Archive .*
+        enabled: true
+    commands:
+      - swipe:
+          start: 70%, 56%
+          end: 20%, 56%
+          duration: 300
+      - waitForAnimationToEnd
+- copyTextFrom:
+    text: Archive .*
+    enabled: true
+- assertTrue: ${maestro.copiedText !== output.open}
+# Nothing was archived, and no group opened.
 - assertNotVisible: Group archived.*
 - assertNotVisible: Group actions

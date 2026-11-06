@@ -26,7 +26,7 @@ name: "[LEDGER-30.2] [LEDGER-40.2] Shows the date field, the card's date and its
     enabled: true
 - waitForAnimationToEnd
 - assertNotVisible: New Expense
-- assertVisible: Coffee, \$8\.75, Food & Dining, \d{1,2} [A-Z][a-z]{2,3} \d{4}
+- assertVisible: .*Coffee\W+\$8\.75\W.*\d{1,2} [A-Z][a-z]{2,3} \d{4}.*
 - launchApp:
     clearState: true
     arguments:

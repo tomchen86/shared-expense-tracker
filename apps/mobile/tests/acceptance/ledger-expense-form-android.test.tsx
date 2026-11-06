@@ -19,6 +19,7 @@ import {
   pressBack,
   resetPhone,
   setPhoneLanguage,
+  setPhoneRegion,
   startExpenses,
   storedExpenses,
   watchAlerts,
@@ -183,6 +184,17 @@ test.each([
     expect(dateFieldForScreenReaders().value).toBe(shown);
   },
 );
+
+test('[LEDGER-30.2] uses the region the phone is set to, not the one in its language', async () => {
+  await startExpenses();
+  setPhoneLanguage('en-US');
+  setPhoneRegion('AU');
+
+  await openNewExpense();
+
+  expect(within(dateFieldView()).getByText('30 Oct 2026')).toBeOnTheScreen();
+  expect(dateFieldForScreenReaders().value).toBe('30 Oct 2026');
+});
 
 test('[LEDGER-30.2] shows a chosen date in the same format', async () => {
   await startExpenses();
