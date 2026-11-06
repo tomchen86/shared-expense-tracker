@@ -1,11 +1,14 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import {
+  Animated,
   Platform,
   Pressable,
   ScrollView,
@@ -22,19 +25,11 @@ import {
   usePanGesture,
   type NativeGesture,
 } from 'react-native-gesture-handler';
-import Animated, {
-  cancelAnimation,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 import { useThemeColors } from './theme';
 
 const WIDTH = 96;
 const GAP = 8;
 const OPEN = -(WIDTH + GAP);
-const SETTLE = { duration: 160 };
 
 const SwipeList = createContext<{
   scrollGesture: NativeGesture;
@@ -56,6 +51,7 @@ export function SwipeScrollView({
     // Otherwise Android stops scrolling when the finger leaves the list.
     shouldCancelWhenOutside: false,
     runOnJS: true,
+    disableReanimated: true,
     // Not onScrollBeginDrag: Android sends that as soon as the scroll view would take the drag,
     // even when the row is about to keep it.
     onActivate: () => openRows.forEach((close) => close()),
@@ -92,12 +88,27 @@ export function SwipeAction({
 }) {
   const colors = useThemeColors();
   const { scrollGesture, openRows, backSwipe } = useContext(SwipeList)!;
-  const translation = useSharedValue(0);
-  const start = useSharedValue(0);
-  const origin = useSharedValue({ x: 0, y: 0 });
-  const decided = useSharedValue(false);
+  const [translation] = useState(() => new Animated.Value(0));
+  const offset = useRef(0);
+  const origin = useRef({ x: 0, y: 0 });
+  const decided = useRef(false);
   const [open, setOpen] = useState(false);
+  const finish = useCallback(
+    (next: number) => {
+      offset.current = next;
+      setOpen(next !== 0);
+      Animated.spring(translation, {
+        toValue: next,
+        useNativeDriver: true,
+        overshootClamping: true,
+      }).start();
+    },
+    [translation],
+  );
   const pan = usePanGesture({
+    // Worklets on every row take twice as long to mount a long list.
+    runOnJS: true,
+    disableReanimated: true,
     enabled: !disabled,
     // Decide before the native scroll recognizer takes the drag, and keep that direction until
     // release, as a category row does.
@@ -105,56 +116,50 @@ export function SwipeAction({
     block: scrollGesture,
     onTouchesDown: (event) => {
       const touch = event.changedTouches[0];
-      origin.value = { x: touch.absoluteX, y: touch.absoluteY };
-      decided.value = false;
+      origin.current = { x: touch.absoluteX, y: touch.absoluteY };
+      decided.current = false;
     },
     onTouchesMove: (event) => {
-      if (decided.value) return;
+      if (decided.current) return;
       const touch = event.changedTouches[0];
-      const moved = touch.absoluteX - origin.value.x;
+      const moved = touch.absoluteX - origin.current.x;
       const dx = Math.abs(moved);
-      const dy = Math.abs(touch.absoluteY - origin.value.y);
+      const dy = Math.abs(touch.absoluteY - origin.current.y);
       if (Math.max(dx, dy) <= 5) return;
-      decided.value = true;
-      if (dx > dy && !(backSwipe && moved > 0 && translation.value === 0))
+      decided.current = true;
+      if (dx > dy && !(backSwipe && moved > 0 && offset.current === 0))
         GestureStateManager.activate(event.handlerTag);
       else GestureStateManager.fail(event.handlerTag);
     },
-    onActivate: () => {
-      cancelAnimation(translation);
-      start.value = translation.value;
-    },
-    onUpdate: (event) => {
-      translation.value = Math.max(
-        OPEN,
-        Math.min(0, start.value + event.translationX),
-      );
-    },
-    onDeactivate: (event) => {
-      const next =
-        event.velocityX > 500
-          ? 0
-          : translation.value < OPEN / 2 || event.velocityX < -500
-            ? OPEN
-            : 0;
-      translation.value = withTiming(next, SETTLE);
-      scheduleOnRN(setOpen, next !== 0);
-    },
+    onActivate: () => translation.stopAnimation(),
+    // From where the finger came down, not from activation, which comes a moment later.
+    onUpdate: (event) =>
+      translation.setValue(
+        Math.max(
+          OPEN,
+          Math.min(0, offset.current + event.absoluteX - origin.current.x),
+        ),
+      ),
+    onDeactivate: (event) =>
+      finish(
+        event.canceled
+          ? offset.current
+          : event.velocityX > 500
+            ? 0
+            : offset.current + event.absoluteX - origin.current.x < OPEN / 2 ||
+                event.velocityX < -500
+              ? OPEN
+              : 0,
+      ),
   });
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translation.value }],
-  }));
   useEffect(() => {
     if (!open) return;
-    const close = () => {
-      translation.value = withTiming(0, SETTLE);
-      setOpen(false);
-    };
+    const close = () => finish(0);
     openRows.add(close);
     return () => {
       openRows.delete(close);
     };
-  }, [open, openRows, translation]);
+  }, [open, openRows, finish]);
 
   return (
     <GestureDetector gesture={pan}>
@@ -179,8 +184,10 @@ export function SwipeAction({
         <Animated.View
           style={[
             styles.row,
-            { backgroundColor: colors.background },
-            animatedStyle,
+            {
+              backgroundColor: colors.background,
+              transform: [{ translateX: translation }],
+            },
           ]}
         >
           {children}
