@@ -17,10 +17,7 @@ export function DateField({
   onChange,
 }: DateFieldProps) {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  // Expo UI ignores an identifier iOS does not list, such as en_VN, which leaves the picker in the
-  // phone's own format: 7 Nov 2026, where the cards show Nov 7, 2026. Intl resolves to one it lists.
-  const locale = new Intl.DateTimeFormat(useDisplayLocale()).resolvedOptions()
-    .locale;
+  const locale = useDisplayLocale();
   return (
     <Host
       ignoreSafeArea="all"
@@ -37,7 +34,7 @@ export function DateField({
           datePickerStyle('compact'),
           disabledModifier(disabled),
           environment('timeZone', timeZone),
-          // Expo UI matches Foundation identifiers, such as zh_Hant_TW.
+          // Expo UI matches Foundation identifiers, such as en_AU.
           environment('locale', locale.replaceAll('-', '_')),
           padding({ horizontal: 16, vertical: 12 }),
         ]}
