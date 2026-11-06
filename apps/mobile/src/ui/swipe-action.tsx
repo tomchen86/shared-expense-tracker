@@ -25,6 +25,8 @@ import {
   usePanGesture,
   type NativeGesture,
 } from 'react-native-gesture-handler';
+import { useSharedValue, type SharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { useThemeColors } from './theme';
 
 const WIDTH = 96;
@@ -35,6 +37,7 @@ const SwipeList = createContext<{
   scrollGesture: NativeGesture;
   openRows: Set<() => void>;
   backSwipe: boolean;
+  touch: SharedValue<{ x: number; y: number; decided: boolean }>;
 } | null>(null);
 
 /**
@@ -47,6 +50,9 @@ export function SwipeScrollView({
   ...props
 }: ScrollViewProps & { backSwipe?: boolean }) {
   const [openRows] = useState(() => new Set<() => void>());
+  // ponytail: one touch per list, so a second finger on another row can pick the wrong direction;
+  // make it per row, which mounts slower, if that shows.
+  const touch = useSharedValue({ x: 0, y: 0, decided: false });
   const scrollGesture = useNativeGesture({
     // Otherwise Android stops scrolling when the finger leaves the list.
     shouldCancelWhenOutside: false,
@@ -63,6 +69,7 @@ export function SwipeScrollView({
           scrollGesture,
           openRows,
           backSwipe: backSwipe && Platform.OS === 'ios',
+          touch,
         }}
       >
         <GestureDetector gesture={scrollGesture}>
@@ -87,11 +94,9 @@ export function SwipeAction({
   onPress: () => void;
 }) {
   const colors = useThemeColors();
-  const { scrollGesture, openRows, backSwipe } = useContext(SwipeList)!;
+  const { scrollGesture, openRows, backSwipe, touch } = useContext(SwipeList)!;
   const [translation] = useState(() => new Animated.Value(0));
   const offset = useRef(0);
-  const origin = useRef({ x: 0, y: 0 });
-  const decided = useRef(false);
   const [open, setOpen] = useState(false);
   const finish = useCallback(
     (next: number) => {
@@ -105,52 +110,60 @@ export function SwipeAction({
     },
     [translation],
   );
-  const pan = usePanGesture({
-    // Worklets on every row take twice as long to mount a long list.
-    runOnJS: true,
-    disableReanimated: true,
-    enabled: !disabled,
-    // Decide before the native scroll recognizer takes the drag, and keep that direction until
-    // release, as a category row does.
-    manualActivation: true,
-    block: scrollGesture,
-    onTouchesDown: (event) => {
-      const touch = event.changedTouches[0];
-      origin.current = { x: touch.absoluteX, y: touch.absoluteY };
-      decided.current = false;
-    },
-    onTouchesMove: (event) => {
-      if (decided.current) return;
-      const touch = event.changedTouches[0];
-      const moved = touch.absoluteX - origin.current.x;
-      const dx = Math.abs(moved);
-      const dy = Math.abs(touch.absoluteY - origin.current.y);
-      if (Math.max(dx, dy) <= 5) return;
-      decided.current = true;
-      if (dx > dy && !(backSwipe && moved > 0 && offset.current === 0))
-        GestureStateManager.activate(event.handlerTag);
-      else GestureStateManager.fail(event.handlerTag);
-    },
-    onActivate: () => translation.stopAnimation(),
-    // From where the finger came down, not from activation, which comes a moment later.
-    onUpdate: (event) =>
-      translation.setValue(
-        Math.max(
-          OPEN,
-          Math.min(0, offset.current + event.absoluteX - origin.current.x),
-        ),
-      ),
-    onDeactivate: (event) =>
+  const follow = useCallback(
+    (moved: number) =>
+      translation.setValue(Math.max(OPEN, Math.min(0, offset.current + moved))),
+    [translation],
+  );
+  const release = useCallback(
+    (canceled: boolean, velocityX: number, moved: number) =>
       finish(
-        event.canceled
+        canceled
           ? offset.current
-          : event.velocityX > 500
+          : velocityX > 500
             ? 0
-            : offset.current + event.absoluteX - origin.current.x < OPEN / 2 ||
-                event.velocityX < -500
+            : offset.current + moved < OPEN / 2 || velocityX < -500
               ? OPEN
               : 0,
       ),
+    [finish],
+  );
+  const leavesRightDrag = backSwipe && !open;
+  const pan = usePanGesture({
+    enabled: !disabled,
+    // Decide on the UI thread, before the native scroll recognizer takes the drag, and keep that
+    // direction until release, as a category row does. From JavaScript, a quick drag can end before
+    // the answer arrives and count as a tap. The row itself follows from JavaScript, since animated
+    // styles on every row take a long list half as long again to mount.
+    manualActivation: true,
+    block: scrollGesture,
+    onTouchesDown: (event) => {
+      const { absoluteX: x, absoluteY: y } = event.changedTouches[0];
+      touch.value = { x, y, decided: false };
+    },
+    onTouchesMove: (event) => {
+      if (touch.value.decided) return;
+      const { absoluteX, absoluteY } = event.changedTouches[0];
+      const moved = absoluteX - touch.value.x;
+      const dx = Math.abs(moved);
+      const dy = Math.abs(absoluteY - touch.value.y);
+      if (Math.max(dx, dy) <= 5) return;
+      touch.value = { ...touch.value, decided: true };
+      if (dx > dy && !(leavesRightDrag && moved > 0))
+        GestureStateManager.activate(event.handlerTag);
+      else GestureStateManager.fail(event.handlerTag);
+    },
+    onUpdate: (event) => {
+      scheduleOnRN(follow, event.translationX);
+    },
+    onDeactivate: (event) => {
+      scheduleOnRN(
+        release,
+        event.canceled,
+        event.velocityX,
+        event.translationX,
+      );
+    },
   });
   useEffect(() => {
     if (!open) return;
