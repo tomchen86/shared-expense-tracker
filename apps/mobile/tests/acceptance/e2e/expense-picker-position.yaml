@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-86.2] Choosing Paid by or closing its list leaves Split between immediately usable in New and Edit Expense'
+name: '[LEDGER-86.2] [LEDGER-100.1] Choosing Paid by or closing its list leaves Split between immediately usable in New and Edit Expense'
 ---
 - launchApp:
     clearState: true
@@ -77,9 +77,15 @@ name: '[LEDGER-86.2] Choosing Paid by or closing its list leaves Split between i
     element: Split between, 2 people
     direction: DOWN
     centerElement: true
+# A disabled row opens no menu when it is pressed.
 - assertVisible:
     text: Group, Brisbane
     enabled: false
+- tapOn: Group, Brisbane
+- waitForAnimationToEnd
+- assertNotVisible:
+    text: Brisbane
+    selected: true
 - assertVisible: Paid by, Casey
 - tapOn: Paid by, Casey
 - waitForAnimationToEnd

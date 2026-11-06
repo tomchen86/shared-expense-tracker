@@ -202,7 +202,7 @@ test('[GROUPS-21.1] shows only Group not found., titled Group Details, for an ID
   expect(barItems('Group Details').right).toEqual([]);
 });
 
-test('[GROUPS-79.1] titles the bar Group Details, with no large title, when the group is not found', async () => {
+test('[GROUPS-100.1] titles the bar Group Details, with no large title, when the group is not found', async () => {
   await startGroupsApp(NO_GROUP);
 
   await waitFor(() => expect(textsOn('Group Details')).toEqual([NOT_FOUND]));
@@ -1245,7 +1245,7 @@ test("[GROUPS-39.1] saves a member's new name when Save is pressed again after w
 
 // Rename Group
 
-test('[GROUPS-79.1] shows the name as a large title button under the bar, collapsed, and none on the bar', async () => {
+test('[GROUPS-100.1] shows the name as a large title button under the bar, collapsed, and none on the bar', async () => {
   await startWithName();
   await createGroup('Brisbane');
 
@@ -1256,7 +1256,7 @@ test('[GROUPS-79.1] shows the name as a large title button under the bar, collap
   expect(largeTitle('Brisbane')!.props.accessibilityState.expanded).toBe(false);
 });
 
-test('[GROUPS-79.1] opens and closes the full name when the large title is pressed', async () => {
+test('[GROUPS-100.1] opens and closes the full name when the large title is pressed', async () => {
   await startWithName();
   const name = 'a'.repeat(300);
   await createGroup(name);
@@ -1278,7 +1278,7 @@ test('[GROUPS-79.1] opens and closes the full name when the large title is press
   expect(lineLimit()).toBe(1);
 });
 
-test('[GROUPS-79.1] shows the name on the bar once the large title is scrolled away, and hides it again', async () => {
+test('[GROUPS-100.1] shows the name on the bar once the large title is scrolled away, and hides it again', async () => {
   await startWithName();
   await createGroup('Brisbane');
   await openGroup('Brisbane');
@@ -1299,7 +1299,7 @@ test('[GROUPS-79.1] shows the name on the bar once the large title is scrolled a
   expect(barTitled('Brisbane')?.props.title).toBeFalsy();
 });
 
-test("[GROUPS-81.1] opens the group's Group Categories over its screen from Group actions, until Close", async () => {
+test("[GROUPS-102.1] opens the group's Group Categories over its screen from Group actions, until Close", async () => {
   const app = await startWithName();
   await createGroup('Brisbane');
   const [brisbane] = await storedGroups(file);
@@ -1330,7 +1330,7 @@ test("[GROUPS-81.1] opens the group's Group Categories over its screen from Grou
   expect(isOpen('Brisbane')).toBe(true);
 });
 
-test('[GROUPS-81.1] closes Group Categories when it is swiped down', async () => {
+test('[GROUPS-102.1] closes Group Categories when it is swiped down', async () => {
   await startWithName();
   await createGroup('Brisbane');
   await openGroup('Brisbane');

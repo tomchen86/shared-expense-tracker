@@ -476,7 +476,7 @@ WHEN Manage Categories 開啟時網址沒有 `scopeKind=group`，例如從 Setti
 
 ### Requirement: CATEGORIES-23.4 以群組的 ID 開啟時是群組範圍
 
-WHEN 以 `/settings/manage-categories?scopeKind=group&spaceId=<群組 ID>`，或 Group actions 打開的 `/manage-categories?scopeKind=group&spaceId=<群組 ID>`（GROUPS-81.1）開啟，而這是本機資料裡一個群組的 ID，the mobile app SHALL 以這個群組的範圍開啟，標題是「Group Categories」，只列出這個群組的分類。
+WHEN 以 `/settings/manage-categories?scopeKind=group&spaceId=<群組 ID>`，或 Group actions 打開的 `/manage-categories?scopeKind=group&spaceId=<群組 ID>`（GROUPS-102.1）開啟，而這是本機資料裡一個群組的 ID，the mobile app SHALL 以這個群組的範圍開啟，標題是「Group Categories」，只列出這個群組的分類。
 
 #### Scenario: 還沒有新增群組分類
 

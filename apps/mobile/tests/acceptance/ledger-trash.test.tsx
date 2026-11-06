@@ -759,7 +759,7 @@ test('[LEDGER-77.3] shows the cards on Trash as the expense list does, without D
   ).toBeNull();
 });
 
-test('[LEDGER-91.1] puts the date above each run of cards of that day on Trash, in the order they were moved', async () => {
+test('[LEDGER-102.1] puts the date above each run of cards of that day on Trash, in the order they were moved', async () => {
   await startExpenses();
   await addExpense({ title: 'A' });
   await addExpense({ title: 'B', date: '2026-10-29' });

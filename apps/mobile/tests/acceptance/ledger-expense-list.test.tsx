@@ -401,7 +401,7 @@ test('[LEDGER-34.2] shows the title on one line, cut at its end with no ellipsis
 
 // The date above the cards
 
-test('[LEDGER-91.1] puts the date above each run of cards of that day, once, as a heading', async () => {
+test('[LEDGER-102.1] puts the date above each run of cards of that day, once, as a heading', async () => {
   await startExpenses();
   await addExpense({ title: 'Taxi', date: '2026-10-29' });
   await addExpense({ title: 'Coffee run' });

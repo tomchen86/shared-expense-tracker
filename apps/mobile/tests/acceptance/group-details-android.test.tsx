@@ -307,7 +307,7 @@ test('[GROUPS-36.1] opens Rename Member rising from the bottom with Cancel on th
   });
 });
 
-test('[GROUPS-79.1] shows the name as a large title button under the bar on Android', async () => {
+test('[GROUPS-100.1] shows the name as a large title button under the bar on Android', async () => {
   await startWithName();
   await createGroup('Brisbane');
 
@@ -318,7 +318,7 @@ test('[GROUPS-79.1] shows the name as a large title button under the bar on Andr
   expect(largeTitle('Brisbane')!.props.accessibilityState.expanded).toBe(false);
 });
 
-test('[GROUPS-81.1] closes Group Categories with Back on Android', async () => {
+test('[GROUPS-102.1] closes Group Categories with Back on Android', async () => {
   await startWithName();
   await createGroup('Brisbane');
   await openGroup('Brisbane');

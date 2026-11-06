@@ -282,7 +282,7 @@ test("[GROUPS-61.3] [LEDGER-33.3] shows the category's color dot on the group's 
   expect(dotColors(groupCard('Brisbane', 'Dinner'))).toEqual(['#D81B60']);
 });
 
-test("[LEDGER-91.1] puts the date above each run of cards of that day on the group's screen", async () => {
+test("[LEDGER-102.1] puts the date above each run of cards of that day on the group's screen", async () => {
   await startWithGroups(BRISBANE);
   await addGroupExpense({
     group: 'Brisbane',

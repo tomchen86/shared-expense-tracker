@@ -633,7 +633,7 @@ test("[GROUPS-40.3] opens no Rename Group when an archived group's large title i
   expect(isOpen('Rename Group')).toBe(false);
 });
 
-test("[GROUPS-79.1] opens and closes an archived group's full name too", async () => {
+test("[GROUPS-100.1] opens and closes an archived group's full name too", async () => {
   await startWithGroups(['Brisbane']);
   await openArchived('Brisbane');
   await waitFor(() => expect(largeTitle('Brisbane')).toBeDefined());
@@ -643,7 +643,7 @@ test("[GROUPS-79.1] opens and closes an archived group's full name too", async (
   expect(largeTitle('Brisbane')!.props.accessibilityState.expanded).toBe(true);
 });
 
-test('[GROUPS-81.1] opens a read-only Group Categories from an archived group', async () => {
+test('[GROUPS-102.1] opens a read-only Group Categories from an archived group', async () => {
   await startWithGroups(['Brisbane']);
   await openArchived('Brisbane');
   await waitFor(() => expect(textsOn('Brisbane')).toContain(READ_ONLY));

@@ -454,7 +454,7 @@ WHEN Insights 打開，the mobile app SHALL 用月份模式，選中最新的月
 
 ### Requirement: INSIGHTS-22.3 總額卡
 
-The mobile app SHALL 在 Insights 顯示一張總額卡，最上面是一次「TOTAL SPENT」，下面為選中的期間的每個幣別，依幣別代碼排序各顯示用手機地區的貨幣格式顯示的總額（INSIGHTS-5.1）、在群組的 Insights 上一行「Your share: <你在這個幣別、這個期間的份額>」，以及選中的期間有上一期時的比較（INSIGHTS-9.1）：上一期沒有這個幣別時是「No spending in <上一期的名稱>.」，差額是 0 時是「Same as <上一期的名稱>.」，其他時候是「<差額的絕對值> more than <上一期的名稱>, <百分比> percent.」，差額小於 0 時「more」換成「less」；差額的絕對值用手機地區的貨幣格式，百分比是 INSIGHTS-9.1 的百分比的絕對值，用手機地區的數字格式顯示到小數一位，四捨五入。螢幕閱讀器把每個幣別讀成一項「Total spent <總額>.」，有你的份額時再接一個空格和「Your share <份額>.」，有比較時再接一個空格和比較。
+The mobile app SHALL 在 Insights 顯示一張總額卡，最上面是一次「TOTAL SPENT」，下面為選中的期間的每個幣別，依幣別代碼排序各顯示用手機地區的貨幣格式顯示的總額（INSIGHTS-5.1）、在群組的 Insights 上一行「Your share: <你在這個幣別、這個期間不在垃圾桶裡的支出的份額>」，以及選中的期間有上一期時的比較（INSIGHTS-9.1）：上一期沒有這個幣別時是「No spending in <上一期的名稱>.」，差額是 0 時是「Same as <上一期的名稱>.」，其他時候是「<差額的絕對值> more than <上一期的名稱>, <百分比> percent.」，差額小於 0 時「more」換成「less」；差額的絕對值用手機地區的貨幣格式，百分比是 INSIGHTS-9.1 的百分比的絕對值，用手機地區的數字格式顯示到小數一位，四捨五入。螢幕閱讀器把每個幣別讀成一項「Total spent <總額>.」，有你的份額時再接一個空格和「Your share <份額>.」，有比較時再接一個空格和比較。
 
 #### Scenario: 比上一期多
 
@@ -490,6 +490,11 @@ The mobile app SHALL 在 Insights 顯示一張總額卡，最上面是一次「T
 
 - **WHEN** 名字是「Taylor」，Brisbane 只有 2025 年 1 月 Casey 付的 60.00 USD 的 Dinner，分給 Taylor、Casey 和 Blake，打開 Brisbane 的 Insights
 - **THEN** 總額卡依序是「TOTAL SPENT」、「$60.00」、「Your share: $20.00」；螢幕閱讀器讀出「Total spent $60.00. Your share $20.00.」
+
+#### Scenario: 只算選中的期間
+
+- **WHEN** Brisbane 在 2024 年 12 月有 30.00 USD 的 Dinner，2025 年 1 月有 60.00 USD 的 Dinner，都是 Casey 付、分給 Taylor、Casey 和 Blake，2025 年 1 月還有 Casey 付、只分給 Taylor、已移到垃圾桶的 9.00 USD 的 Taxi，打開 Brisbane 的 Insights
+- **THEN** 總額卡依序是「TOTAL SPENT」、「$60.00」、「Your share: $20.00」和「$30.00 more than December 2024, 100.0 percent.」；螢幕閱讀器讀出「Total spent $60.00. Your share $20.00. $30.00 more than December 2024, 100.0 percent.」
 
 #### Scenario: 和你無關的幣別
 

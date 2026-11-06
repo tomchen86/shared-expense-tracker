@@ -5,9 +5,13 @@ import { fireEvent, waitFor } from '@testing-library/react-native';
 import {
   amountField,
   expectForm,
+  categoryOptions,
   fillForm,
   formCategory,
   formTitle,
+  openCategoryList,
+  openEditExpense,
+  storedExpenses,
   nameOf,
   openNewExpense,
   phoneDatabase,
@@ -27,6 +31,7 @@ import {
 } from './shell-tabs-app';
 import { isOpen, openGroup } from './group-details-app';
 import {
+  ADD_NEW_CATEGORY,
   addGroupExpense,
   addNewCategoryFromForm,
   archiveGroup,
@@ -205,7 +210,22 @@ test('[LEDGER-48.2] keeps the payer when Who Paid? is cancelled', async () => {
   expect(rowValue('Paid by')).toBe('Casey');
 });
 
-test('[LEDGER-90.1] closes a list with Back, keeping what the form had', async () => {
+test("[LEDGER-17.5] leaves + Add New Category out of the list on an archived group's expense on Android", async () => {
+  await startWithGroups(BRISBANE);
+  await addDinner();
+  const [dinner] = await storedExpenses();
+  await archiveGroup('Brisbane');
+  await tapTab('Expenses');
+  await settle();
+  await openEditExpense(dinner.id);
+
+  await openCategoryList();
+
+  expect(categoryOptions(['Food & Dining'])).toHaveLength(1);
+  expect(categoryOptions([ADD_NEW_CATEGORY])).toEqual([]);
+});
+
+test('[LEDGER-101.1] closes a list with Back, keeping what the form had', async () => {
   await startWithGroups(BRISBANE);
   await openNewExpense();
   await chooseGroup('Brisbane');
@@ -219,7 +239,7 @@ test('[LEDGER-90.1] closes a list with Back, keeping what the form had', async (
   expect(rowValue('Paid by')).toBe('Casey');
 });
 
-test('[LEDGER-90.1] opens the lists as sheets titled Select Group, Who Paid? and Split Between, with Cancel or Done', async () => {
+test('[LEDGER-101.1] opens the lists as sheets titled Select Group, Who Paid? and Split Between, with Cancel or Done', async () => {
   await startWithGroups(BRISBANE);
   await openNewExpense();
   await chooseGroup('Brisbane');

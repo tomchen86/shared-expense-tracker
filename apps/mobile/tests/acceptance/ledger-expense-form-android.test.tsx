@@ -124,7 +124,7 @@ test('[LEDGER-13.2] puts Cancel at the left and Add at the right of the header o
   expect(formBarSides()).toEqual({ left: ['Cancel'], right: ['Add'] });
 });
 
-test('[LEDGER-17.5] [LEDGER-90.1] opens the category list as a sheet titled Category, and keeps the category when it is cancelled', async () => {
+test('[LEDGER-17.5] [LEDGER-101.1] opens the category list as a sheet titled Category, and keeps the category when it is cancelled', async () => {
   await startExpenses();
   await openNewExpense();
 

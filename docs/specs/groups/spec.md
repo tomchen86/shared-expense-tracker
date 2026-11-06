@@ -284,7 +284,7 @@ The mobile app SHALL 以網址 `/groups/new` 代表開在 Groups 根畫面上的
 
 ### Requirement: GROUPS-15.1 點卡片開啟群組的畫面
 
-WHEN 使用者點群組的卡片，the mobile app SHALL 在 Groups 分頁推入這個群組的畫面，大標題是群組名稱（GROUPS-79.1），分頁列仍選中 Groups。
+WHEN 使用者點群組的卡片，the mobile app SHALL 在 Groups 分頁推入這個群組的畫面，大標題是群組名稱（GROUPS-100.1），分頁列仍選中 Groups。
 
 #### Scenario: 點卡片
 
@@ -769,7 +769,7 @@ IF 成員的新名稱存不進本機資料，THEN the mobile app SHALL 跳出標
 
 ### Requirement: GROUPS-40.3 長按標題或在 Group actions 選 Rename Group 時開啟 Rename Group
 
-WHEN 使用者在未封存群組的畫面長按大標題（GROUPS-79.1），或在 Group actions 選「Rename Group」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Rename Group，標題是「Rename Group」，標題列有取消「Cancel」和確認「Save」（SHELL-47.2、SHELL-48.1），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位；名稱欄位的無障礙名稱是「Group name」，開啟時是群組現在的名稱，並取得焦點，清空時顯示「Group name」；封存的群組長按大標題沒有作用。
+WHEN 使用者在未封存群組的畫面長按大標題（GROUPS-100.1），或在 Group actions 選「Rename Group」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Rename Group，標題是「Rename Group」，標題列有取消「Cancel」和確認「Save」（SHELL-47.2、SHELL-48.1），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位；名稱欄位的無障礙名稱是「Group name」，開啟時是群組現在的名稱，並取得焦點，清空時顯示「Group name」；封存的群組長按大標題沒有作用。
 
 #### Scenario: 長按標題
 
@@ -846,7 +846,7 @@ WHEN 沒有在儲存中，而使用者在名稱表單按 Cancel、把它往下�
 #### Scenario: Rename Group
 
 - **WHEN** 在 Trip 的 Rename Group 輸入「Tokyo」後按 Cancel
-- **THEN** Rename Group 關閉，群組的畫面的標題仍是「Trip」
+- **THEN** Rename Group 關閉，群組的畫面的大標題仍是「Trip」
 
 #### Scenario: 往下滑或按返回鍵
 
@@ -1040,7 +1040,7 @@ The mobile app SHALL 讓封存群組的卡片由上而下顯示群組名稱和�
 
 ### Requirement: GROUPS-54.1 點封存群組的卡片在 Settings 分頁推入群組的畫面
 
-WHEN 使用者點封存群組的卡片，the mobile app SHALL 在 Settings 分頁推入這個群組的畫面，網址是 `/settings/archived-groups/<群組 ID>`，大標題是群組名稱（GROUPS-79.1），分頁列仍選中 Settings；從這個畫面返回時回到 Archived Groups，從它打開的 Members 和名稱表單也都蓋在它上面，留在 Settings 分頁。
+WHEN 使用者點封存群組的卡片，the mobile app SHALL 在 Settings 分頁推入這個群組的畫面，網址是 `/settings/archived-groups/<群組 ID>`，大標題是群組名稱（GROUPS-100.1），分頁列仍選中 Settings；從這個畫面返回時回到 Archived Groups，從它打開的 Members 和名稱表單也都蓋在它上面，留在 Settings 分頁。
 
 #### Scenario: 點卡片
 
@@ -1585,7 +1585,7 @@ WHILE Rename Group 或 Rename Member 的鍵盤開著，the mobile app SHALL 讓�
 - **WHEN** 使用較小螢幕或放大字級開啟名稱表單
 - **THEN** 可藉由增高或捲動 sheet 操作名稱欄位；Cancel 與 Save 仍留在標題列，沒有被鍵盤遮住
 
-### Requirement: GROUPS-79.1 群組的畫面的大標題
+### Requirement: GROUPS-100.1 群組的畫面的大標題
 
 The mobile app SHALL 在群組的畫面的標題列下方，用大字顯示群組名稱，標題列上不顯示名稱；大標題捲出畫面之後，標題列才顯示名稱。大標題是一個按鈕，名稱是群組名稱，預設收起只佔一行，按一下展開成完整的名稱，再按一下收起；未封存的群組長按時打開 Rename Group（GROUPS-40.3）。找不到群組時，標題列是「Group Details」。
 
@@ -1609,7 +1609,7 @@ The mobile app SHALL 在群組的畫面的標題列下方，用大字顯示群�
 - **WHEN** 以不存在的群組 ID 打開群組的畫面
 - **THEN** 標題列是「Group Details」，沒有大標題
 
-### Requirement: GROUPS-80.1 (manual) 長群組名先縮小再漸層
+### Requirement: GROUPS-101.1 (manual) 長群組名先縮小再漸層
 
 The mobile app SHALL 讓群組的畫面的大標題放不下時先縮小，最小到 24 pt，還放不下才尾端漸層消失（SHELL-68.1）；展開時維持同一個字級，換行顯示完整的名稱。
 
@@ -1623,7 +1623,7 @@ The mobile app SHALL 讓群組的畫面的大標題放不下時先縮小，最�
 - **WHEN** 打開名稱是 300 個「a」的群組，再按大標題
 - **THEN** 收起時字級是 24 pt，尾端漸層消失；展開時字級不變，顯示完整的名稱
 
-### Requirement: GROUPS-81.1 在 Group actions 打開 Group Categories
+### Requirement: GROUPS-102.1 在 Group actions 打開 Group Categories
 
 WHEN 使用者在 Group actions 選「Categories」，the mobile app SHALL 打開蓋在群組的畫面上的 sheet，網址是 `/manage-categories?scopeKind=group&spaceId=<群組 ID>`，內容是這個群組的 Group Categories（CATEGORIES-23.4）；按「Close」，或 iOS 上往下滑、Android 上按返回鍵時關閉，回到群組的畫面。封存的群組打開時是唯讀的（CATEGORIES-43.1）。
 
@@ -1642,7 +1642,7 @@ WHEN 使用者在 Group actions 選「Categories」，the mobile app SHALL 打�
 - **WHEN** 封存 Brisbane 之後，在它的畫面選 Group actions 的「Categories」
 - **THEN** 打開唯讀的 Group Categories，沒有「Add category」
 
-### Requirement: GROUPS-82.1 (manual) 群組的卡片一樣高
+### Requirement: GROUPS-103.1 (manual) 群組的卡片一樣高
 
 The mobile app SHALL 讓 Groups 根畫面上每張群組的卡片一樣高，不管內容是兩行金額還是「No spending yet」。
 

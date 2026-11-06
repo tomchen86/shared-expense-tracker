@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-92.1] The press that closes the date calendar reaches nothing on the form'
+name: '[LEDGER-103.1] The press that closes the date calendar reaches nothing on the form'
 ---
 - launchApp:
     clearState: true

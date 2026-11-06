@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-89.1] With no groups yet, Select Group holds only a disabled No Groups'
+name: '[LEDGER-100.1] With no groups yet, Select Group holds only a disabled No Groups'
 ---
 - launchApp:
     clearState: true
