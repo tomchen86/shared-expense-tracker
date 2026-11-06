@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[GROUPS-78.1] Closes an open group's card on a drag to the right without moving the list, and when the list scrolls"
+name: "[GROUPS-78.1] [GROUPS-79.1] Closes an open group's card on a drag to the right, opens one on a slanted drag to the left, both without moving the list, and closes one when the list scrolls"
 tags:
   - android
 ---
@@ -33,16 +33,44 @@ tags:
       - waitForAnimationToEnd
       - assertNotVisible: New Group
       - evalScript: ${output.group = output.group + 1}
-# Every swipe here starts from this point, which seeing Archive proves is on a card.
+# Starting again, with no form still closing.
+- launchApp
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Groups
+- waitForAnimationToEnd
+# Every swipe here starts from this point, which seeing Archive proves is on a card. Left and up,
+# far enough that a list moving with the finger would bring another card under the point.
 - swipe:
-    start: 70%, 50%
-    end: 20%, 50%
+    start: 85%, 50%
+    end: 15%, 30%
     duration: 300
 - waitForAnimationToEnd
 - copyTextFrom:
     text: Archive .*
     enabled: true
 - evalScript: ${output.open = maestro.copiedText}
+# Level, to the right.
+- swipe:
+    start: 28%, 50%
+    end: 60%, 50%
+    duration: 250
+- waitForAnimationToEnd
+- assertNotVisible:
+    text: Archive .*
+    enabled: true
+- swipe:
+    start: 70%, 50%
+    end: 20%, 50%
+    duration: 300
+- waitForAnimationToEnd
+- assertVisible:
+    text: ${output.open}
+    enabled: true
 # Right and down, about 120 by 80 pt.
 - swipe:
     start: 28%, 50%
@@ -60,8 +88,7 @@ tags:
 - assertVisible:
     text: ${output.open}
     enabled: true
-# Right and up, far enough that a list moving with the finger would bring another card
-# under the point.
+# Right and up, as far as left and up above.
 - swipe:
     start: 15%, 50%
     end: 90%, 25%
@@ -78,10 +105,34 @@ tags:
 - assertVisible:
     text: ${output.open}
     enabled: true
-# More up than right is scrolling, which moves the list.
+# To the right from the open button itself closes the card without pressing the button. On
+# Android the button sometimes keeps the touch, which leaves the card open, still unpressed.
 - swipe:
-    start: 28%, 50%
-    end: 58%, 25%
+    start: 76%, 50%
+    end: 99%, 50%
+    duration: 250
+- waitForAnimationToEnd
+- assertNotVisible: Group archived.*
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertNotVisible:
+          text: Archive .*
+          enabled: true
+- swipe:
+    start: 70%, 50%
+    end: 20%, 50%
+    duration: 300
+- waitForAnimationToEnd
+- assertVisible:
+    text: ${output.open}
+    enabled: true
+# More up than right is scrolling, which moves the list. These upward drags go far enough that it
+# moves a whole card even if it starts a moment late.
+- swipe:
+    start: 28%, 55%
+    end: 58%, 10%
     duration: 250
 - waitForAnimationToEnd
 - assertNotVisible:
@@ -129,7 +180,7 @@ tags:
 # Up from another card.
 - swipe:
     start: 30%, 75%
-    end: 30%, 50%
+    end: 30%, 30%
     duration: 250
 - waitForAnimationToEnd
 - assertNotVisible:

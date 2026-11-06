@@ -1586,7 +1586,7 @@ The mobile app SHALL 讓 Groups 根畫面、群組的畫面和 Balances，用手
 
 ### Requirement: GROUPS-78.1 (e2e) 往右斜向拖曳或捲動清單時收起露出的 Archive
 
-WHILE 群組的卡片露出「Archive」，WHEN 使用者從這張卡片往右拖過露出寬度的一半或快速往右滑，或捲動 Groups 根畫面，the mobile app SHALL 收起這張卡片並停用「Archive」，不按下「Archive」，也不打開群組的畫面；手指開始移動時橫向位移大於縱向位移就是往右拖曳，放手前清單都不捲動；開始移動時縱向位移大於或等於橫向位移就是捲動清單，方向確定後直到放手都不改變。
+WHILE 群組的卡片露出「Archive」，WHEN 使用者從這張卡片或露出的「Archive」往右拖過露出寬度的一半或快速往右滑，或捲動 Groups 根畫面，the mobile app SHALL 收起這張卡片並停用「Archive」，不按下「Archive」，也不打開群組的畫面；手指開始移動時橫向位移大於縱向位移就是往右拖曳，放手前清單都不捲動；開始移動時縱向位移大於或等於橫向位移就是捲動清單，方向確定後直到放手都不改變。
 
 #### Scenario: 往右下斜向拖曳
 
@@ -1600,15 +1600,43 @@ WHILE 群組的卡片露出「Archive」，WHEN 使用者從這張卡片往右�
 
 #### Scenario: 主要是上下拖
 
-- **WHEN** 同一張卡片再露出「Archive」，從這張卡片往右約 120 pt、往上約 220 pt 拖曳後放手
+- **WHEN** 同一張卡片再露出「Archive」，從這張卡片往右約 120 pt、往上約 390 pt 拖曳後放手
 - **THEN** 清單捲動，「Archive」收起
+
+#### Scenario: 從露出的 Archive 往右拖
+
+- **WHEN** 一張卡片露出「Archive」，從「Archive」上往右約 90 pt 拖曳後放手
+- **THEN** 「Archive」收起，沒有按下它，群組沒有封存
 
 #### Scenario: 從別張卡片捲動清單
 
-- **WHEN** 一張卡片露出「Archive」時，從另一張卡片往上約 220 pt 拖曳
+- **WHEN** 一張卡片露出「Archive」時，從另一張卡片往上約 390 pt 拖曳
 - **THEN** 清單捲動，「Archive」收起，沒有打開群組的畫面，群組沒有封存
 
 #### Scenario: Android
 
 - **WHEN** 在 Android 手機重複上述拖曳
 - **THEN** 結果相同，pt 在 Android 以 dp 計
+
+### Requirement: GROUPS-79.1 (e2e) 往左拖群組的卡片時清單不捲動
+
+WHEN 使用者從還沒露出「Archive」的群組的卡片開始拖曳，且手指開始移動時橫向位移大於縱向位移，the mobile app SHALL 容許手指的縱向偏移，放手前清單都不捲動，往左拖時依 GROUPS-47.1 露出「Archive」；開始移動時縱向位移大於或等於橫向位移就是捲動清單，不露出「Archive」，方向確定後直到放手都不改變。
+
+#### Scenario: 斜向往左拖
+
+- **WHEN** Groups 根畫面的群組多到能捲動，從一張卡片往左約 280 pt、往上約 170 pt 拖曳後放手
+- **THEN** 這張卡片露出「Archive」，清單沒有捲動，這張卡片還在原來的位置
+
+#### Scenario: Android
+
+- **WHEN** 在 Android 手機重複上述拖曳
+- **THEN** 結果相同，pt 在 Android 以 dp 計
+
+### Requirement: GROUPS-80.1 (e2e) iPhone 上從收起的卡片往右拖返回
+
+WHERE iPhone，WHILE 未封存群組的畫面開著，WHEN 使用者從沒有露出「Delete」的支出卡片往右拖曳，the mobile app SHALL 返回上一頁。
+
+#### Scenario: 收起的卡片
+
+- **WHEN** 從 Groups 根畫面打開 Brisbane，從 Dinner 的卡片往右拖曳
+- **THEN** 回到 Groups 根畫面
