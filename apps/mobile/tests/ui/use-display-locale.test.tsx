@@ -4,7 +4,8 @@ import { useDisplayLocale } from '../../src/ui/use-display-locale';
 
 jest.mock('expo-localization', () => ({ useLocales: jest.fn() }));
 
-// Node has no en-VN, like Android's ICU, which would fall back to the phone's own language.
+// Node has no en-VN, so this checks that the hook resolves the locale. It does not check lookup: Node
+// falls back to en without it, where Android falls back to the phone's own language.
 test.each([
   ['AU', 'en-AU'],
   ['VN', 'en'],
