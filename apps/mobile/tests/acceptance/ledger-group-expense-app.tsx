@@ -47,6 +47,7 @@ import {
   nameOf,
   openCategoryList,
   openNewExpense,
+  presentedScreen,
   press,
   startExpenses,
   type ExpenseInput,
@@ -485,9 +486,10 @@ export const categorySheetTitle = (): string | undefined =>
 
 /** The native screen the categories screen over the form is presented in. */
 export function categorySheet(): HostView {
-  const title = categorySheetTitle();
-  if (title === undefined) throw new Error('No categories screen is open');
-  return screenOf(title);
+  const bar = categorySheetBar();
+  const sheet = bar && presentedScreen(bar);
+  if (sheet === undefined) throw new Error('No categories screen is open');
+  return sheet;
 }
 
 export async function expectCategorySheet(title: string) {

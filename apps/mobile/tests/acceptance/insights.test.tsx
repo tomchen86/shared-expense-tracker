@@ -1100,7 +1100,7 @@ test('[SHELL-13.1] shows only a back arrow named Back on Insights', async () => 
   );
 });
 
-// SHELL-34.1 leaves out the colors of user data: the palette (CATEGORIES-1.1) and
+// SHELL-34.1 leaves out the colors of user data: the palette (CATEGORIES-1.2) and
 // the gray the domain package gives Others and unmatched categories.
 const USER_COLORS = new Set(
   [
@@ -1117,6 +1117,20 @@ const USER_COLORS = new Set(
     '#00ACC1',
     '#C62828',
     '#9E9D24',
+    '#A66F5B',
+    '#D99E77',
+    '#A66A11',
+    '#6C733F',
+    '#8BD916',
+    '#0B733C',
+    '#36D9B8',
+    '#1D6273',
+    '#85BFF2',
+    '#8861F2',
+    '#DC85F2',
+    '#F218B8',
+    '#8C4D6F',
+    '#F2858D',
     '#808080',
   ].map((color) => (processColor(color) as number) >>> 0),
 );
