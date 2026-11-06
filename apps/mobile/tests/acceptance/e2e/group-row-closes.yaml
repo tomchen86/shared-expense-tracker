@@ -105,21 +105,16 @@ tags:
 - assertVisible:
     text: ${output.open}
     enabled: true
-# To the right from the open button itself closes the card without pressing the button. On
-# Android the button sometimes keeps the touch, which leaves the card open, still unpressed.
+# To the right from the open button itself closes the card without pressing the button.
 - swipe:
     start: 76%, 50%
     end: 99%, 50%
     duration: 250
 - waitForAnimationToEnd
+- assertNotVisible:
+    text: Archive .*
+    enabled: true
 - assertNotVisible: Group archived.*
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      - assertNotVisible:
-          text: Archive .*
-          enabled: true
 - swipe:
     start: 70%, 50%
     end: 20%, 50%
@@ -181,6 +176,45 @@ tags:
 - swipe:
     start: 30%, 75%
     end: 30%, 30%
+    duration: 250
+- waitForAnimationToEnd
+- assertNotVisible:
+    text: Archive .*
+    enabled: true
+- swipe:
+    start: 70%, 50%
+    end: 20%, 50%
+    duration: 300
+- waitForAnimationToEnd
+# The list moved, so the point can now fall between two cards.
+- runFlow:
+    when:
+      notVisible:
+        text: Archive .*
+        enabled: true
+    commands:
+      - swipe:
+          start: 70%, 56%
+          end: 20%, 56%
+          duration: 300
+      - waitForAnimationToEnd
+- copyTextFrom:
+    text: Archive .*
+    enabled: true
+- assertTrue: ${maestro.copiedText !== output.open}
+# More up than left from a closed card is also scrolling.
+- launchApp
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Groups
+- waitForAnimationToEnd
+- swipe:
+    start: 70%, 55%
+    end: 40%, 10%
     duration: 250
 - waitForAnimationToEnd
 - assertNotVisible:

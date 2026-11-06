@@ -172,6 +172,7 @@ test.each([
   ['Traditional Chinese in Australia', 'zh-Hant-AU', '30 Oct 2026'],
   ['Japanese in Japan', 'ja-JP', 'Oct 30, 2026'],
   ['Japanese with no region', 'ja', 'Oct 30, 2026'],
+  ['Vietnamese in Vietnam', 'vi-VN', 'Oct 30, 2026'],
 ])(
   '[LEDGER-30.2] shows the date in English with the region of a phone in %s',
   async (_phone, language, shown) => {
