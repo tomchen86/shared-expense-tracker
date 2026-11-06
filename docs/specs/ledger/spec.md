@@ -2214,3 +2214,42 @@ WHERE iOS，WHEN 從 New Expense 或 Edit Expense 打開的 Category、Select Gr
 
 - **WHEN** 備註欄位正在輸入且鍵盤開著，捲到選人區後打開 Who Paid? 並選 Casey
 - **THEN** 鍵盤可以收起，但返回不跳到表單頂端，Paid by 與 Split between 都可直接操作
+
+### Requirement: LEDGER-88.1 (e2e) 往右斜向拖曳或捲動清單時收起露出的 Delete
+
+WHILE 支出卡片露出「Delete」，WHEN 使用者從這張卡片往右拖曳，且開始拖曳時橫向位移大於縱向位移，或捲動支出清單或群組的畫面，the mobile app SHALL 收起這張卡片，不按下「Delete」，也不打開明細；往右拖曳時，方向確定後直到放手，清單都不捲動。
+
+#### Scenario: 往右下斜向拖曳
+
+- **WHEN** 支出清單的卡片多到能捲動，把其中一張往左滑露出「Delete」，再從這張卡片往右約 120 pt、往下約 80 pt 拖曳後放手
+- **THEN** 「Delete」收起
+
+#### Scenario: 清單不跟著動
+
+- **WHEN** 同一張卡片再露出「Delete」，從這張卡片往右約 300 pt、往上約 220 pt 拖曳後放手
+- **THEN** 「Delete」收起，清單沒有捲動，這張卡片還在原來的位置
+
+#### Scenario: 比較平的拖曳
+
+- **WHEN** 同一張卡片再露出「Delete」，從這張卡片往右約 120 pt、往下約 25 pt，或水平往右約 130 pt 拖曳後放手
+- **THEN** 「Delete」收起
+
+#### Scenario: 從這張卡片捲動清單
+
+- **WHEN** 同一張卡片再露出「Delete」，從這張卡片往上約 220 pt 拖曳
+- **THEN** 清單捲動，「Delete」收起
+
+#### Scenario: 從別張卡片捲動清單
+
+- **WHEN** 一張卡片露出「Delete」時，從另一張卡片往上約 220 pt 拖曳
+- **THEN** 清單捲動，「Delete」收起，沒有打開明細，支出沒有移到垃圾桶
+
+#### Scenario: 群組的畫面
+
+- **WHEN** 在 iPhone 上，Brisbane 的畫面的 Dinner 的卡片露出「Delete」時，從這張卡片往上拖曳
+- **THEN** 「Delete」收起，沒有打開明細
+
+#### Scenario: Android
+
+- **WHEN** 在 Android 手機的支出清單重複往右和往上的拖曳
+- **THEN** 結果相同，pt 在 Android 以 dp 計

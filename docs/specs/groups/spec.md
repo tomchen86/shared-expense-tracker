@@ -1583,3 +1583,27 @@ The mobile app SHALL 讓 Groups 根畫面、群組的畫面和 Balances，用手
 
 - **WHEN** 手機第一個偏好的語言和地區是法文（澳洲），Brisbane 有 Taylor、Casey 和 Blake，Taylor 付了 60.00 AUD，三人平分
 - **THEN** Groups 根畫面的 Brisbane 是「Your share: $20.00」和「You're owed: $40.00」；Brisbane 的畫面是「Group Total: $60.00」和「You're owed: $40.00」；Balances 上 Taylor 是「Is Owed $40.00」和「Paid $60.00 · Share $20.00」，都不是「20,00 $AU」這樣的格式
+
+### Requirement: GROUPS-78.1 (e2e) 往右斜向拖曳或捲動清單時收起露出的 Archive
+
+WHILE 群組的卡片露出「Archive」，WHEN 使用者從這張卡片往右拖曳，且開始拖曳時橫向位移大於縱向位移，或捲動 Groups 根畫面，the mobile app SHALL 收起這張卡片，不按下「Archive」，也不打開群組的畫面；往右拖曳時，方向確定後直到放手，清單都不捲動。
+
+#### Scenario: 往右下斜向拖曳
+
+- **WHEN** Groups 根畫面的群組多到能捲動，把其中一張卡片往左滑露出「Archive」，再從這張卡片往右約 120 pt、往下約 80 pt 拖曳後放手
+- **THEN** 「Archive」收起
+
+#### Scenario: 清單不跟著動
+
+- **WHEN** 同一張卡片再露出「Archive」，從這張卡片往右約 300 pt、往上約 220 pt 拖曳後放手
+- **THEN** 「Archive」收起，清單沒有捲動，這張卡片還在原來的位置
+
+#### Scenario: 從別張卡片捲動清單
+
+- **WHEN** 一張卡片露出「Archive」時，從另一張卡片往上約 220 pt 拖曳
+- **THEN** 清單捲動，「Archive」收起，沒有打開群組的畫面，群組沒有封存
+
+#### Scenario: Android
+
+- **WHEN** 在 Android 手機重複上述拖曳
+- **THEN** 結果相同，pt 在 Android 以 dp 計
