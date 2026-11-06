@@ -256,7 +256,7 @@ function screenAround(view: HostView): HostView | undefined {
  * RNSModalScreen holding a stack of its own, whose screen holds the header;
  * the presentation, the gestures and their events belong to the modal.
  */
-function presentedScreen(view: HostView): HostView | undefined {
+export function presentedScreen(view: HostView): HostView | undefined {
   for (let outer = view.parent; outer; outer = outer.parent)
     if (String(outer.type) === 'RNSModalScreen') return outer;
   return screenAround(view);

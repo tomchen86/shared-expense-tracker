@@ -23,6 +23,7 @@ import { allowWrites, settle } from './shell-appearance-app';
 import {
   barAction,
   chooseGroupAction,
+  expectOpen,
   isOpen,
   pressOnBar,
   screenOf,
@@ -38,6 +39,7 @@ import {
   pressRestoreGroup,
 } from './group-archive-app';
 import {
+  addExpense,
   categoryNamed,
   chooseCategory,
   doAction,
@@ -55,10 +57,12 @@ import {
   addGroupExpense,
   archiveGroup,
   closeCategorySheet,
+  deleteFromGroup,
   detailLinesOn,
   editOn,
   expectDetailsOn,
   groupCard,
+  moveExpensesInSheet,
   openCategorySheet,
   removeCategoryInSheet,
   startWithGroups,
@@ -68,6 +72,7 @@ import {
   NOT_FOUND,
   allowReads,
   detailBars,
+  detailLines,
   holdReads,
   openDetails,
   phoneDatabaseWithReads,
@@ -181,22 +186,14 @@ async function tapRow(name: string, title = 'Group Categories') {
 const manageCategoriesBars = () =>
   navigationBars().filter((bar) => bar.props.title === 'Manage Categories');
 
-/**
- * Renames the category `from` to `to` on the Manage Categories that New Expense
- * opened over itself while another Manage Categories is open on the Settings tab,
- * then closes it.
- */
-async function renameOverTheForm(from: string, to: string) {
+/** Opens the Manage Categories of New Expense over the form while another is open on the Settings tab. */
+async function openOverTheForm() {
   await openCategorySheet();
   await waitFor(() => expect(manageCategoriesBars()).toHaveLength(2));
-  await fireEvent.press(screen.getAllByText(from).at(-1)!);
-  await fireEvent.changeText(await screen.findByLabelText('Category name'), to);
-  if (isOpen('Edit Category')) await pressOnBar('Edit Category', 'Save');
-  else await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
   await settle();
-  await waitFor(() =>
-    expect(screen.queryByLabelText('Category name')).toBeNull(),
-  );
+}
+
+async function closeOverTheForm() {
   await fireEvent.press(
     within(manageCategoriesBars().at(-1)!).getByRole('button', {
       name: 'Close',
@@ -206,11 +203,29 @@ async function renameOverTheForm(from: string, to: string) {
   await settle();
 }
 
-/** The names of the group's categories in the database file, archived ones too. */
-async function storedCategoryNames(groupId: string) {
+/**
+ * Renames the category `from` to `to` on the Manage Categories that New Expense
+ * opened over itself while another Manage Categories is open on the Settings tab,
+ * then closes it.
+ */
+async function renameOverTheForm(from: string, to: string) {
+  await openOverTheForm();
+  await fireEvent.press(screen.getAllByText(from).at(-1)!);
+  await fireEvent.changeText(await screen.findByLabelText('Category name'), to);
+  if (isOpen('Edit Category')) await pressOnBar('Edit Category', 'Save');
+  else await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+  await settle();
+  await waitFor(() =>
+    expect(screen.queryByLabelText('Category name')).toBeNull(),
+  );
+  await closeOverTheForm();
+}
+
+/** The categories in the database file, archived ones too: the group's, or everyone's. */
+async function storedCategories(groupId?: string) {
   const database = openNodeDatabase(file, { readOnly: true });
   try {
-    return (await listCategories(database, groupId)).map((item) => item.name);
+    return await listCategories(database, groupId);
   } finally {
     await database.close();
   }
@@ -234,7 +249,9 @@ test('[SHELL-64.1] opens no form or alert for presses on Group Categories made b
   expect(categoryFormOpen()).toBe(false);
   expect(alerts.shown()).toEqual([]);
   expect(textsOn('Group Categories')).toContain(CATEGORIES_READ_ONLY);
-  expect(await storedCategoryNames(brisbane.id)).toEqual(DEFAULT_NAMES);
+  expect((await storedCategories(brisbane.id)).map(({ name }) => name)).toEqual(
+    DEFAULT_NAMES,
+  );
 });
 
 test('[SHELL-64.1] opens Edit Category with the name read again for a category pressed before Manage Categories reads it again', async () => {
@@ -262,6 +279,45 @@ test('[SHELL-64.1] opens Edit Category with the name read again for a category p
   );
   expect(categoryFormOpen()).toBe(true);
 });
+
+// Archived by moving its expenses, so that nothing uses it: a Remove that went on
+// would ask to delete it, where an archived category still in use shows no alert.
+test.each<[string, boolean, () => Promise<void>]>([
+  ['deleted', false, () => removeCategoryInSheet('Shopping', 'Delete')],
+  ['archived', true, () => moveExpensesInSheet('Shopping', 'Travel')],
+])(
+  '[SHELL-64.1] opens no form or alert for presses on Manage Categories made before it reads that their category was %s',
+  async (_, used, change) => {
+    await startWithGroups();
+    if (used) await addExpense({ category: 'Shopping' });
+    await tapTab('Settings');
+    await push('/settings/manage-categories');
+    await waitFor(() =>
+      expect(textsOn('Manage Categories')).toContain('Shopping'),
+    );
+    await tapTab('Expenses');
+    await openNewExpense();
+    await openOverTheForm();
+    await change();
+    await closeOverTheForm();
+    await press('Cancel');
+    await expectFormClosed();
+    const shown = alerts.shown();
+    const stored = await storedCategories();
+    const reads = holdReads();
+
+    await tapTab('Settings');
+    await tapRow('Shopping', 'Manage Categories');
+    await doAction(tab('Settings'), 'Shopping', 'Remove');
+    await reads.release();
+    await settle();
+
+    expect(categoryFormOpen()).toBe(false);
+    expect(alerts.shown()).toEqual(shown);
+    expect(textsOn('Manage Categories')).toContain('Transportation');
+    expect(await storedCategories()).toEqual(stored);
+  },
+);
 
 test('[SHELL-64.1] opens no form for a press on Group Categories when reading it again fails, and shows the read error', async () => {
   await startWithGroups({ Brisbane: [] });
@@ -310,6 +366,30 @@ test("[SHELL-64.1] opens neither Rename Group nor New Expense from a group's scr
   );
 });
 
+test.each<[string, () => Promise<void>]>([
+  ['Rename Group', () => chooseGroupAction('Brisbane', 'Rename Group')],
+  [
+    'New Expense',
+    () => fireEvent.press(contentButton('Brisbane', 'Add expense')),
+  ],
+])(
+  "[SHELL-64.1] opens %s from a group's screen pressed before it reads that the group is still unarchived",
+  async (title, pressIt) => {
+    await startWithGroups({ Brisbane: [] });
+    await showGroup('Brisbane');
+    await tapTab('Expenses');
+    const reads = holdReads();
+
+    await tapTab('Groups');
+    await pressIt();
+    await settle();
+    expect(isOpen(title)).toBe(false);
+    await reads.release();
+
+    await expectOpen(title);
+  },
+);
+
 test('[SHELL-64.1] opens no Edit Expense from details pressed before they read that the group was archived', async () => {
   await startWithGroups({ Brisbane: ['Casey'] });
   await addGroupExpense({
@@ -346,17 +426,42 @@ test('[SHELL-64.1] opens no Edit Expense from group expense details pressed befo
   await expectDetailsOn('Groups', 'Dinner');
   await tapTab('Expenses');
   await settle();
-  await deleteByAction('Dinner');
+  // Held before the move: the details read again as soon as it is saved.
   const reads = holdReads();
+  await deleteByAction('Dinner');
 
   await tapTab('Groups');
-  await editOn('Groups')?.press();
+  await editOn('Groups')!.press();
   await settle();
   await reads.release();
   await settle();
 
   expect(formTitle()).toBeUndefined();
   await waitFor(() => expect(detailLinesOn('Groups')).toEqual([NOT_FOUND]));
+});
+
+test("[SHELL-64.1] opens no Edit Expense from details pressed before they read that the group's screen moved the expense to the trash", async () => {
+  await startWithGroups({ Brisbane: ['Casey'] });
+  await addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Taylor (You)',
+    sharers: ['Taylor (You)', 'Casey'],
+  });
+  await openDetails('Dinner');
+  await showGroup('Brisbane');
+  // Held before the move: the details read again as soon as it is saved.
+  const reads = holdReads();
+  await deleteFromGroup('Brisbane', 'Dinner');
+
+  await tapTab('Expenses');
+  await pressEdit();
+  await settle();
+  expect(detailLines()).toContain('Dinner');
+  await reads.release();
+  await settle();
+
+  expect(formTitle()).toBeUndefined();
+  await waitFor(() => expect(detailLines()).toEqual([NOT_FOUND]));
 });
 
 // The expense form
@@ -385,4 +490,21 @@ test('[SHELL-64.1] saves with Uncategorized when Add is pressed before the form 
   expect(alerts.shown()).toEqual([
     ['Delete Category?', 'This permanently removes the category.'],
   ]);
+});
+
+test('[SHELL-64.1] shows only the read error and saves nothing when Add is pressed before the form reads again and that read fails', async () => {
+  await startWithGroups();
+  await openNewExpense();
+  await fillForm({ amount: '8.75', title: 'Spin class' });
+  await openCategorySheet();
+  const reads = holdReads();
+
+  await closeCategorySheet();
+  await press('Add');
+  await reads.fail();
+  await settle();
+
+  await waitFor(() => expect(textsOn('New Expense')).toEqual(READ_ERROR));
+  expect(alerts.shown()).toEqual([]);
+  expect(await storedExpenses()).toEqual([]);
 });
