@@ -582,7 +582,7 @@ test("[GROUPS-54.1] keeps Members' name field, Rename Member and Rename Group on
 
 // An archived group's screen
 
-test('[GROUPS-55.1] says an archived group is read-only, above Restore Group, at the top of its screen', async () => {
+test('[GROUPS-55.2] says an archived group is read-only, above Restore Group, under the large title of its screen', async () => {
   await startWithGroups(['Brisbane']);
 
   await openArchived('Brisbane');
@@ -595,9 +595,16 @@ test('[GROUPS-55.1] says an archived group is read-only, above Restore Group, at
     ]),
   );
   expect(contentButton('Brisbane', 'Restore Group')).toBeOnTheScreen();
+  expect(
+    inTreeOrder(
+      largeTitle('Brisbane')!,
+      within(screenOf('Brisbane')).getByText(READ_ONLY),
+      contentButton('Brisbane', 'Restore Group'),
+    ),
+  ).toBe(true);
 });
 
-test("[GROUPS-55.1] says the same on an archived group's screen opened at its URL on the Groups tab", async () => {
+test("[GROUPS-55.2] says the same on an archived group's screen opened at its URL on the Groups tab", async () => {
   const first = await startWithGroups(['Brisbane']);
   const [brisbane] = await storedGroups(file);
   await archiveByAction('Brisbane');
@@ -626,7 +633,7 @@ test("[GROUPS-40.3] opens no Rename Group when an archived group's large title i
   expect(isOpen('Rename Group')).toBe(false);
 });
 
-test("[GROUPS-77.1] opens and closes an archived group's full name too", async () => {
+test("[GROUPS-79.1] opens and closes an archived group's full name too", async () => {
   await startWithGroups(['Brisbane']);
   await openArchived('Brisbane');
   await waitFor(() => expect(largeTitle('Brisbane')).toBeDefined());
@@ -636,7 +643,7 @@ test("[GROUPS-77.1] opens and closes an archived group's full name too", async (
   expect(largeTitle('Brisbane')!.props.accessibilityState.expanded).toBe(true);
 });
 
-test('[GROUPS-79.1] opens a read-only Group Categories from an archived group', async () => {
+test('[GROUPS-81.1] opens a read-only Group Categories from an archived group', async () => {
   await startWithGroups(['Brisbane']);
   await openArchived('Brisbane');
   await waitFor(() => expect(textsOn('Brisbane')).toContain(READ_ONLY));
@@ -650,7 +657,7 @@ test('[GROUPS-79.1] opens a read-only Group Categories from an archived group', 
   expect(() => barAction('Group Categories', 'Add category')).toThrow();
 });
 
-test('[GROUPS-55.1] shows neither on the screen of a group that is not archived', async () => {
+test('[GROUPS-55.2] shows neither on the screen of a group that is not archived', async () => {
   await startWithGroups(['Brisbane', 'Tokyo']);
   await archiveByAction('Brisbane');
 

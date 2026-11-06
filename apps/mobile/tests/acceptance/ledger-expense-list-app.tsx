@@ -107,6 +107,16 @@ export function inOneRow(one: HostView, other: HostView) {
   return false;
 }
 
+/**
+ * Expects a text to stay on one line and to end with no ellipsis, as text that fades
+ * out does (SHELL-68.1). Jest lays nothing out, so this reads what it asks the native
+ * text for.
+ */
+export function expectOneFadingLine(text: HostView) {
+  expect(text.props.numberOfLines).toBe(1);
+  expect(text.props.ellipsizeMode).toBe('clip');
+}
+
 /** The lines of text shown inside `root`, top to bottom. */
 export const linesIn = (root: HostView) =>
   root
@@ -180,7 +190,7 @@ export const thisMonthLines = () =>
 // Category color dots
 
 /** The palette (CATEGORIES-1.2). */
-const PALETTE = [
+export const PALETTE = [
   '#D81B60',
   '#1E88E5',
   '#FBC02D',

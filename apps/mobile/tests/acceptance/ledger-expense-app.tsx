@@ -419,8 +419,8 @@ export const formCurrency = () =>
 export const titleField = () => inForm().getByLabelText('Expense title');
 export const noteField = () => inForm().getByLabelText('Expense note');
 
-// The form's lists are system menus on iOS (LEDGER-88.1) and sheets on Android
-// (LEDGER-89.1). Only the E2E flows can open a system menu, so on iOS the tests read
+// The form's lists are system menus on iOS (LEDGER-89.1) and sheets on Android
+// (LEDGER-90.1). Only the E2E flows can open a system menu, so on iOS the tests read
 // what the form gives its ui/ MenuField and choose as the menu does; on Android they
 // press the row and the list's buttons.
 

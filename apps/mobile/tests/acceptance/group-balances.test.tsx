@@ -26,6 +26,7 @@ import {
   linesIn,
   shownInOrder,
   startExpensesAt,
+  expectOneFadingLine,
 } from './ledger-expense-list-app';
 import { allowWrites, settle } from './shell-appearance-app';
 import {
@@ -257,6 +258,7 @@ test('[GROUPS-68.3] joins the currencies on one Group Total line, sorted by curr
   await waitFor(() => expect(groupTotals('Brisbane')).toEqual(expected));
   const buttons = groupTotalButtons('Brisbane');
   expect(buttons).toHaveLength(1);
+  expectOneFadingLine(within(buttons[0]).getByText(expected[0]));
   expect(linesIn(buttons[0]).filter((line) => line !== '›')).toEqual(expected);
   expect(within(buttons[0]).getAllByText('›')).toHaveLength(1);
 });
@@ -441,6 +443,11 @@ test('[GROUPS-69.2] joins the currencies of one direction on one line, sorted by
 
   await waitFor(() =>
     expect(balanceLines('Brisbane')).toEqual(["You're owed: A$30.00, $40.00"]),
+  );
+  expectOneFadingLine(
+    within(balanceButtons('Brisbane')[0]).getByText(
+      "You're owed: A$30.00, $40.00",
+    ),
   );
 });
 
@@ -741,6 +748,9 @@ test('[GROUPS-73.2] joins the currencies of one direction on one line of the car
       "You're owed: A$60.00, $40.00",
     ]),
   );
+  const shown = within(groupRootCard('Brisbane'));
+  expectOneFadingLine(shown.getByText('Your share: A$60.00, $20.00'));
+  expectOneFadingLine(shown.getByText("You're owed: A$60.00, $40.00"));
 });
 
 test('[GROUPS-73.2] says Settled up on the card when your share is what you paid', async () => {

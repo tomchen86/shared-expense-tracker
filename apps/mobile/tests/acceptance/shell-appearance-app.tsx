@@ -278,6 +278,14 @@ function describeView(view: HostView) {
 const hostViews = (root: HostView) =>
   root.queryAll((view) => typeof view.type === 'string', { includeSelf: true });
 
+/** Whether `view` is in a swipe action, whose icon is white on red in both appearances (SHELL-70.1). */
+function inSwipeAction(view: HostView) {
+  for (let node: HostView | null = view; node; node = node.parent)
+    if (/^(Delete|Archive|Remove)\b/.test(node.props.accessibilityLabel ?? ''))
+      return true;
+  return false;
+}
+
 /**
  * The fixed colors on screen, keyed by where they are used: the view, counted in
  * screen order among views of its kind, and the property.
@@ -296,6 +304,12 @@ export function fixedColors(root = screen.container) {
       if (!COLOR_KEY.test(key) || key === 'shadowColor') continue;
       const color = fixedColor(value);
       if (color === undefined) continue;
+      if (
+        key === 'tintColor' &&
+        hex(color) === '#ffffffff' &&
+        inSwipeAction(view)
+      )
+        continue;
       found.set(`${String(view.type)}#${count} ${key}`, {
         color,
         where: `${describeView(view)} ${key}`,
@@ -305,10 +319,6 @@ export function fixedColors(root = screen.container) {
   return found;
 }
 
-/** Whether a place is a white icon, as on a red swipe action in both appearances (SHELL-70.1). */
-const isWhiteIcon = (place: string, color: number) =>
-  place.endsWith(' tintColor') && hex(color) === '#ffffffff';
-
 /** Places that use the same fixed color in light and dark mode. */
 export const colorsInBoth = (
   light: ReturnType<typeof fixedColors>,
@@ -316,7 +326,6 @@ export const colorsInBoth = (
 ) =>
   [...light]
     .filter(([place, { color }]) => dark.get(place)?.color === color)
-    .filter(([place, { color }]) => !isWhiteIcon(place, color))
     .map(([, { color, where }]) => `${where} ${hex(color)}`);
 
 function insideText(view: HostView) {

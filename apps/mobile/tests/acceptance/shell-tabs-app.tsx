@@ -166,7 +166,7 @@ export async function push(url: string) {
 /**
  * What a navigation bar's screen is called: the bar's title or, while the bar shows
  * none, the large title in the screen's content, the button that opens and closes
- * the full name (GROUPS-77.1).
+ * the full name (GROUPS-79.1).
  */
 export function titleOfBar(bar: HostView): string {
   if (bar.props.title) return bar.props.title;

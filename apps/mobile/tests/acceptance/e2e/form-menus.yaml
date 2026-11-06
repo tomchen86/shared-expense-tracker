@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-88.1] The form's lists are system menus: one choice closes them, Split between stays open, a press outside only closes them, and the keyboard stays"
+name: "[LEDGER-89.1] The form's lists are system menus: one choice closes them, Split between stays open, a press outside only closes them, and the keyboard stays"
 ---
 - launchApp:
     clearState: true
@@ -91,3 +91,8 @@ name: "[LEDGER-88.1] The form's lists are system menus: one choice closes them, 
 - assertNotVisible: Transportation
 - assertNotVisible: Brisbane
 - assertVisible: Group, Brisbane
+# The same press now opens Select Group, so the one before was on that row.
+- tapOn:
+    point: 10%,76%
+- waitForAnimationToEnd
+- assertVisible: Brisbane

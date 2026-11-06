@@ -2,7 +2,7 @@
 
 ## Purpose
 
-記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、和群組分攤、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。群組支出是屬於一個群組的空間的支出，付款和分攤都記在這個群組的成員的成員 ID 下；成員、你的成員、前成員和成員現在的名稱見 groups。你的 participant 是個人 participant，以及每個群組裡你的成員；一筆支出裡你付的，是它的付款裡你的 participant 的金額總和，你的份額是它的分攤裡你的 participant 的金額總和。和你有關的群組支出，是付款或分攤裡有你的 participant 的群組支出，分攤的金額是 0 也算。表單的空間在「Split with others」開著並選了群組時是那個群組，其他時候是個人空間；分攤的欄位是「Split with others」、群組、付款人和分攤的人；表單的清單是分類清單、Select Group、Who Paid? 和 Split Between：iOS 上是系統選單（LEDGER-88.1），Android 上是 sheet（LEDGER-89.1）；關閉清單是不選任何一項就離開清單，iOS 上是按 sheet 裡選單外面的地方，Android 上是按 Cancel 或 Done、往下滑或按返回鍵。分攤的順序是分攤的人被選的先後（LEDGER-49.2），存下之後是存著的順序（LEDGER-58.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期、備註或分攤的欄位（LEDGER-59.1）有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是 This Month（LEDGER-35.3），下面是支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。手機地區的貨幣格式，是手機第一個偏好的語言和地區用來顯示一個幣別的金額的格式；手機地區的日期格式見 LEDGER-30.1。刪除支出是把它移到垃圾桶：本機資料把它標成在垃圾桶裡，它的其他資料都不變，所以垃圾桶裡的支出仍是存著的支出，仍算使用它的分類（CATEGORIES-34.1、35.1、40.1）；還原是拿掉這個標記，永久刪除是把這筆支出和它的付款、分攤從本機資料刪掉。Undo 提示是支出移到垃圾桶之後，顯示在畫面底部、可以按 Undo 的提示；Undo 時間是 5 秒，螢幕閱讀器開著時是 15 秒，螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。Trash 是 Settings 分頁上列出垃圾桶裡的支出的畫面；唯讀明細是在 Trash 點卡片後推入、顯示垃圾桶裡一筆支出的畫面。
+記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、和群組分攤、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。群組支出是屬於一個群組的空間的支出，付款和分攤都記在這個群組的成員的成員 ID 下；成員、你的成員、前成員和成員現在的名稱見 groups。你的 participant 是個人 participant，以及每個群組裡你的成員；一筆支出裡你付的，是它的付款裡你的 participant 的金額總和，你的份額是它的分攤裡你的 participant 的金額總和。和你有關的群組支出，是付款或分攤裡有你的 participant 的群組支出，分攤的金額是 0 也算。表單的空間在「Split with others」開著並選了群組時是那個群組，其他時候是個人空間；分攤的欄位是「Split with others」、群組、付款人和分攤的人；表單的清單是分類清單、Select Group、Who Paid? 和 Split Between：iOS 上是系統選單（LEDGER-89.1），Android 上是 sheet（LEDGER-90.1）；關閉清單是不選任何一項就離開清單，iOS 上是按 sheet 裡選單外面的地方，Android 上是按 Cancel 或 Done，或按返回鍵。分攤的順序是分攤的人被選的先後（LEDGER-49.2），存下之後是存著的順序（LEDGER-58.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期、備註或分攤的欄位（LEDGER-59.1）有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是 This Month（LEDGER-35.3），下面是支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。手機地區的貨幣格式，是手機第一個偏好的語言和地區用來顯示一個幣別的金額的格式；手機地區的日期格式見 LEDGER-30.1。刪除支出是把它移到垃圾桶：本機資料把它標成在垃圾桶裡，它的其他資料都不變，所以垃圾桶裡的支出仍是存著的支出，仍算使用它的分類（CATEGORIES-34.1、35.1、40.1）；還原是拿掉這個標記，永久刪除是把這筆支出和它的付款、分攤從本機資料刪掉。Undo 提示是支出移到垃圾桶之後，顯示在畫面底部、可以按 Undo 的提示；Undo 時間是 5 秒，螢幕閱讀器開著時是 15 秒，螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。Trash 是 Settings 分頁上列出垃圾桶裡的支出的畫面；唯讀明細是在 Trash 點卡片後推入、顯示垃圾桶裡一筆支出的畫面。
 
 ## Requirements
 
@@ -307,12 +307,12 @@ WHEN 打開某筆支出的 Edit Expense，the mobile app SHALL 以這筆支出�
 
 ### Requirement: LEDGER-17.5 從清單選分類
 
-WHEN 使用者按分類按鈕，the mobile app SHALL 打開分類清單，依儲存的順序列出表單的空間每個未封存的分類（CATEGORIES-7.5），每個分類前面有分類顏色的色點，最後是「+ Add New Category」按鈕（LEDGER-62.2），並把表單上選的那一個標示為已選取，表單上的分類已封存時沒有標示為已選取的分類；按一個分類就選它並回到表單，關閉清單就回到表單、分類不變，所以沒有改選時，存檔後支出仍用那個已封存的分類，在表單開著時才封存的也一樣。
+WHEN 使用者按分類按鈕，the mobile app SHALL 打開分類清單，依儲存的順序列出表單的空間每個未封存的分類（CATEGORIES-7.5），每個分類前面有分類顏色的色點，最後是「+ Add New Category」按鈕（LEDGER-62.2），表單的群組已封存時沒有這個按鈕，並把表單上選的那一個標示為已選取；分類按鈕上也有表單上的分類的色點，表單上的分類已封存時沒有標示為已選取的分類；按一個分類就選它並回到表單，關閉清單就回到表單、分類不變，所以沒有改選時，存檔後支出仍用那個已封存的分類，在表單開著時才封存的也一樣。
 
 #### Scenario: 打開清單
 
 - **WHEN** 第一次啟動後，在 New Expense 按「Category, Food & Dining」
-- **THEN** 清單依序是九個預設分類和「+ Add New Category」，只有 Food & Dining 標示為已選取，Food & Dining 前面的色點是 `#D81B60`
+- **THEN** 清單依序是九個預設分類和「+ Add New Category」，只有 Food & Dining 標示為已選取；分類按鈕和清單裡 Food & Dining 前面的色點都是 `#D81B60`
 
 #### Scenario: 新增的分類
 
@@ -348,6 +348,11 @@ WHEN 使用者按分類按鈕，the mobile app SHALL 打開分類清單，依儲
 
 - **WHEN** Gym 封存之後，打開一筆 Gym 支出的 Edit Expense，再打開清單
 - **THEN** 分類按鈕是「Category, Gym」；清單沒有 Gym，也沒有標示為已選取的分類；關閉清單後分類按鈕仍是「Category, Gym」
+
+#### Scenario: 封存群組的支出
+
+- **WHEN** 封存 Brisbane 之後，以 `/expenses/<Dinner 的 ID>/edit` 打開，再打開清單
+- **THEN** 清單列出 Brisbane 未封存的分類，沒有「+ Add New Category」
 
 #### Scenario: 沒有改選就存檔
 
@@ -736,7 +741,7 @@ WHILE 本機資料裡沒有支出清單要列出的支出（LEDGER-31.2、LEDGER
 
 ### Requirement: LEDGER-33.3 卡片的內容
 
-The mobile app SHALL 讓每張卡片是一個按鈕，上面一行是支出的標題和右邊的卡片金額，下面一行是分類，不顯示日期（LEDGER-90.1）、付款人和備註；分類是分類現在顏色的色點，後面接分類現在的名稱，分類已封存時名稱是「<分類現在的名稱> (Archived)」，色點和分類沒封存時一樣；螢幕閱讀器把卡片讀成一個按鈕，依序讀出標題、卡片金額、卡片上分類的名稱和日期，不讀色點。個人支出的卡片金額是它的全額。
+The mobile app SHALL 讓每張卡片是一個按鈕，上面一行是支出的標題和右邊的卡片金額，下面一行是分類，不顯示日期（LEDGER-91.1）、付款人和備註；分類是分類現在顏色的色點，後面接分類現在的名稱，分類已封存時名稱是「<分類現在的名稱> (Archived)」，色點和分類沒封存時一樣；螢幕閱讀器把卡片讀成一個按鈕，依序讀出標題、卡片金額、卡片上分類的名稱和日期，不讀色點。個人支出的卡片金額是它的全額。
 
 #### Scenario: 一筆支出
 
@@ -949,7 +954,7 @@ IF 明細網址裡的 ID 不是任何支出的 ID，THEN the mobile app SHALL �
 
 ### Requirement: LEDGER-40.1 金額和日期用手機地區的格式
 
-The mobile app SHALL 讓卡片、This Month 和明細，用手機地區的貨幣格式和幣別的小數位數（LEDGER-1.1）顯示金額，讓卡片上方的日期（LEDGER-90.1）和明細用手機地區的日期格式（LEDGER-30.1）顯示支出的日期，日期不因手機的時區提早或延後一天。
+The mobile app SHALL 讓卡片、This Month 和明細，用手機地區的貨幣格式和幣別的小數位數（LEDGER-1.1）顯示金額，讓卡片上方的日期（LEDGER-91.1）和明細用手機地區的日期格式（LEDGER-30.1）顯示支出的日期，日期不因手機的時區提早或延後一天。
 
 #### Scenario: 英文（美國）
 
@@ -1417,7 +1422,7 @@ IF 使用者在封存群組的支出的 Edit Expense 按 Save，THEN the mobile 
 
 ### Requirement: LEDGER-62.2 從分類清單新增分類
 
-WHEN 使用者在分類清單按「+ Add New Category」，the mobile app SHALL 關閉分類清單，在表單上打開 New Category（CATEGORIES-8.3、CATEGORIES-9.3），新的分類屬於表單的空間；按 Add 存好後關閉 New Category，回到表單，分類按鈕是新的分類；按 Cancel、往下滑或按 Android 的返回鍵時關閉 New Category，回到表單，分類不變；兩種情況表單上的其他輸入都不變。
+WHEN 使用者在分類清單按「+ Add New Category」，the mobile app SHALL 關閉分類清單，在表單上打開 New Category（CATEGORIES-8.3、CATEGORIES-9.3），新的分類屬於表單的空間；按 Add 存好後關閉 New Category，回到表單，分類按鈕是新的分類；按 Cancel，或 iOS 上往下滑、Android 上按返回鍵時關閉 New Category，回到表單，分類不變；兩種情況表單上的其他輸入都不變。
 
 #### Scenario: 個人空間
 
@@ -1441,7 +1446,7 @@ WHEN 使用者在分類清單按「+ Add New Category」，the mobile app SHALL 
 
 #### Scenario: 取消
 
-- **WHEN** 從「+ Add New Category」輸入「Gym」後按 Cancel、往下滑，或在 Android 上按返回鍵
+- **WHEN** 從「+ Add New Category」輸入「Gym」後按 Cancel，或 iOS 上往下滑、Android 上按返回鍵
 - **THEN** 回到表單，分類按鈕仍是「Category, Food & Dining」，沒有新增 Gym，輸入都不變
 
 ### Requirement: LEDGER-63.1 表單開著時分類被刪除
@@ -2190,14 +2195,14 @@ WHERE iOS，WHEN 從 New Expense 或 Edit Expense 打開的分類清單、Select
 - **WHEN** 同樣記下位置，依序打開並關閉分類清單、Select Group 和 Split Between，或從 + Add New Category 打開 New Category 再按 Cancel
 - **THEN** 每次返回都維持原表單位置與高度；選取和未儲存欄位照各自的規則保留
 
-#### Scenario: 鍵盤收起
+#### Scenario: 鍵盤開著
 
 - **WHEN** 備註欄位正在輸入且鍵盤開著，捲到選人區後打開 Who Paid? 並選 Casey
-- **THEN** 鍵盤可以收起，但返回不跳到表單頂端，Paid by 與 Split between 都可直接操作
+- **THEN** 返回不跳到表單頂端，Paid by 與 Split between 都可直接操作
 
-### Requirement: LEDGER-88.1 (e2e) iOS 上表單的清單是系統選單
+### Requirement: LEDGER-89.1 (e2e) iOS 上表單的清單是系統選單
 
-WHERE iOS，the mobile app SHALL 讓分類清單、Select Group、Who Paid? 和 Split Between 都是從表單那一列彈出的系統選單：每一列顯示標籤、現在的值和上下箭頭，名稱是「<標籤>, <值>」，值只佔一行，放不下時尾端漸層消失（SHELL-68.1）；選單浮在表單上，表單不動。單選的清單按一項就關閉，Split Between 按一項不關閉；按 sheet 裡選單外面的地方只關閉清單，那一下不觸發表單上的其他東西。有欄位正在輸入時打開清單，鍵盤不收起，選單在鍵盤上方，關閉後游標還在原來的欄位。
+WHERE iOS，the mobile app SHALL 讓分類清單、Select Group、Who Paid? 和 Split Between 都是從表單那一列彈出的系統選單，列的名稱是「<標籤>, <值>」，列停用時按了不打開選單。單選的清單按一項就關閉，Split Between 按一項不關閉；按 sheet 裡選單外面的地方只關閉清單，那一下不觸發表單上的其他東西；有欄位正在輸入時打開清單，關閉後游標還在原來的欄位。沒有群組時，Select Group 裡只有停用的「No Groups」。
 
 #### Scenario: 分類
 
@@ -2212,28 +2217,43 @@ WHERE iOS，the mobile app SHALL 讓分類清單、Select Group、Who Paid? 和 
 #### Scenario: 按選單外面
 
 - **WHEN** iOS 上選了 Brisbane 之後打開分類清單，按「Group, Brisbane」那一列沒被選單蓋住的地方
-- **THEN** 只關閉選單，Select Group 沒有打開，分類和群組都不變
+- **THEN** 只關閉選單，Select Group 沒有打開，分類和群組都不變；再按同一個地方才打開 Select Group
 
 #### Scenario: 打字時打開
 
 - **WHEN** iOS 上輸入標題時按「Category, Food & Dining」，再按 sheet 裡選單外面的地方
-- **THEN** 打開時鍵盤還在，選單在鍵盤上方；關閉後游標還在標題欄位，繼續輸入的字接在後面
+- **THEN** 游標還在標題欄位，繼續輸入的字接在後面
 
-### Requirement: LEDGER-89.1 Android 上表單的清單是 sheet
+#### Scenario: 還沒有群組
 
-WHERE Android，the mobile app SHALL 讓分類清單、Select Group、Who Paid? 和 Split Between 都是從底部升起、蓋在表單上的 sheet，標題依序是「Category」、「Select Group」、「Who Paid?」和「Split Between」；前三個標題列有「Cancel」，Split Between 有「Done」；往下滑或按返回鍵也會關閉清單。
+- **WHEN** iOS 上還沒有任何群組時打開「Split with others」，按「Group, not selected」
+- **THEN** 選單裡只有停用的「No Groups」
+
+#### Scenario: 停用的列
+
+- **WHEN** iOS 上打開群組支出的 Edit Expense
+- **THEN** 「Group, Brisbane」是停用的
+
+### Requirement: LEDGER-90.1 Android 上表單的清單是 sheet
+
+WHERE Android，the mobile app SHALL 讓分類清單、Select Group、Who Paid? 和 Split Between 都是從底部升起、蓋在表單上的 sheet，標題依序是「Category」、「Select Group」、「Who Paid?」和「Split Between」；前三個標題列有「Cancel」，Split Between 有「Done」；按返回鍵也會關閉清單。
 
 #### Scenario: 分類清單
 
 - **WHEN** Android 上在 New Expense 按「Category, Food & Dining」
 - **THEN** sheet 的標題是「Category」，標題列有「Cancel」；按「Cancel」回到表單，分類不變
 
+#### Scenario: 按返回鍵
+
+- **WHEN** Android 上付款人是 Casey 時按「Paid by, Casey」，再按返回鍵
+- **THEN** 回到表單，仍是「Paid by, Casey」
+
 #### Scenario: 分攤的人
 
 - **WHEN** Android 上選了 Brisbane 之後，按「Split between, Choose people」，選 Casey，再按「Done」
 - **THEN** sheet 的標題是「Split Between」，選 Casey 時 sheet 還開著；按「Done」回到表單，是「Split between, 1 person」
 
-### Requirement: LEDGER-90.1 卡片之間用日期分隔
+### Requirement: LEDGER-91.1 卡片之間用日期分隔
 
 The mobile app SHALL 在支出清單、群組的畫面和 Trash，在每一段連續同一天的卡片上方顯示這一天的日期（格式照 LEDGER-30.1），角色是標題，每一段顯示一次；Trash 依移到垃圾桶的先後排列，所以同一天可能分成幾段。
 
@@ -2252,16 +2272,35 @@ The mobile app SHALL 在支出清單、群組的畫面和 Trash，在每一段�
 - **WHEN** 依序把 `2026-10-30` 的 A、`2026-10-29` 的 B、`2026-10-30` 的 C 移到垃圾桶
 - **THEN** Trash 由上而下依序是「Oct 30, 2026」、C、「Oct 29, 2026」、B、「Oct 30, 2026」、A
 
-### Requirement: LEDGER-91.1 (e2e) 關閉日曆的那一下不會觸發表單上的其他東西
+### Requirement: LEDGER-92.1 (e2e) 關閉日曆的那一下不會觸發表單上的其他東西
 
-WHERE iOS，WHEN 支出表單的日曆開著時使用者按日曆外面，the mobile app SHALL 只關閉日曆，那一下不打開清單，也不讓欄位取得焦點。
+WHERE iOS，WHEN 支出表單的日曆開著時使用者按日曆外面，the mobile app SHALL 只關閉日曆，那一下不打開清單，也不讓欄位取得焦點。iOS 的日期欄位是系統的日期選擇器，名稱是「Date Picker」，打開的日曆有名稱是「Previous Month」的按鈕。
 
 #### Scenario: 按分類
 
-- **WHEN** iOS 上打開日曆，直接按「Category, Food & Dining」
-- **THEN** 只有日曆關閉，分類清單沒有打開；再按一次才打開
+- **WHEN** iOS 上打開日曆，直接按「Category, Food & Dining」那一列
+- **THEN** 只有日曆關閉，分類清單沒有打開；按同一個地方再按一次才打開
 
 #### Scenario: 按標題
 
 - **WHEN** iOS 上打開日曆，直接按「Expense title」
-- **THEN** 只有日曆關閉，標題欄位沒有取得焦點；再按一次才取得焦點
+- **THEN** 只有日曆關閉，標題欄位沒有取得焦點；按同一個地方再按一次才取得焦點
+
+### Requirement: LEDGER-93.1 (manual) iOS 上表單選單的外觀
+
+WHERE iOS，the mobile app SHALL 讓打開清單的列顯示標籤、現在的值和上下箭頭，值只佔一行，放不下時尾端漸層消失（SHELL-68.1）；分類清單每一項前面的色點是分類的顏色；選單浮在表單上，表單不動；有欄位正在輸入時打開清單，鍵盤不收起，選單在鍵盤上方。
+
+#### Scenario: 列
+
+- **WHEN** iOS 上打開選了 Brisbane 的 New Expense
+- **THEN** 「Category」、「Group」、「Paid by」和「Split between」都是標籤在左，值和上下箭頭在右，分類的值前面有色點；名稱很長的群組只佔一行，尾端漸層消失
+
+#### Scenario: 色點
+
+- **WHEN** iOS 上按「Category, Food & Dining」
+- **THEN** 選單裡每個分類前面都有清楚的色點，顏色和 Manage Categories 裡的一樣
+
+#### Scenario: 打字時打開
+
+- **WHEN** iOS 上打開軟體鍵盤輸入標題，按「Category, Food & Dining」
+- **THEN** 鍵盤還在，選單完整顯示在鍵盤上方

@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { processColor } from 'react-native';
 import { within } from '@testing-library/react-native';
 import {
   DISCARD_CHANGES,
@@ -33,8 +34,17 @@ import {
   titleField,
   watchAlerts,
 } from './ledger-expense-app';
-import { dotColors } from './ledger-expense-list-app';
-import { allowWrites, holdWrites, settle } from './shell-appearance-app';
+import { dotColors, PALETTE } from './ledger-expense-list-app';
+import {
+  allowWrites,
+  colorsInBoth,
+  fakePhoneAppearance,
+  fixedColors,
+  holdWrites,
+  settle,
+  switchPhoneTo,
+  textsWithoutColor,
+} from './shell-appearance-app';
 import { selectedTab } from './shell-tabs-app';
 import type { Database } from '../../src/storage';
 
@@ -114,7 +124,7 @@ test('[LEDGER-13.2] puts Cancel at the left and Add at the right of the header o
   expect(formBarSides()).toEqual({ left: ['Cancel'], right: ['Add'] });
 });
 
-test('[LEDGER-17.5] [LEDGER-89.1] opens the category list as a sheet titled Category, and keeps the category when it is cancelled', async () => {
+test('[LEDGER-17.5] [LEDGER-90.1] opens the category list as a sheet titled Category, and keeps the category when it is cancelled', async () => {
   await startExpenses();
   await openNewExpense();
 
@@ -138,6 +148,34 @@ test('[LEDGER-17.5] puts a dot of its color before each category in the sheet', 
     '#1E88E5',
     '#FBC02D',
   ]);
+});
+
+// SHELL-34.1 leaves out the colors of user data, such as a category's color.
+const PALETTE_COLORS = new Set(
+  PALETTE.map((color) => (processColor(color) as number) >>> 0),
+);
+
+const appColors = (root: Parameters<typeof fixedColors>[0]) => ({
+  colors: new Map(
+    [...fixedColors(root)].filter(
+      ([, { color }]) => !PALETTE_COLORS.has(color),
+    ),
+  ),
+  uncolored: textsWithoutColor(root),
+});
+
+test('[SHELL-34.1] colors the category list with colors that follow the appearance', async () => {
+  fakePhoneAppearance('light');
+  await startExpenses();
+  await openNewExpense();
+  await openCategoryList();
+  const light = appColors(categoryListView());
+
+  await switchPhoneTo('dark');
+  const dark = appColors(categoryListView());
+
+  expect(colorsInBoth(light.colors, dark.colors)).toEqual([]);
+  expect([...light.uncolored, ...dark.uncolored]).toEqual([]);
 });
 
 test('[LEDGER-13.2] shows the title, currency, amount, category, date and note in order on Android', async () => {

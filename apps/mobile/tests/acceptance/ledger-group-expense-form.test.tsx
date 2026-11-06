@@ -384,17 +384,6 @@ test('[LEDGER-48.2] chooses the member pressed as the payer, and marks them next
   ]);
 });
 
-test('[LEDGER-48.2] keeps the payer when Who Paid? is closed', async () => {
-  await startWithGroups(BRISBANE);
-  await newExpenseIn('Brisbane');
-  await choosePayer('Casey');
-
-  await openRow('Paid by');
-  await closeList('Who Paid?');
-
-  expect(rowValue('Paid by')).toBe('Casey');
-});
-
 test('[LEDGER-48.2] leaves former members out of Who Paid?', async () => {
   await startWithGroups(BRISBANE);
   await removeFromGroup('Brisbane', 'Casey');
@@ -1412,6 +1401,26 @@ test("[LEDGER-17.5] lists the chosen group's categories", async () => {
       ADD_NEW_CATEGORY,
     ]).map(([name]) => name),
   ).toEqual([...names, 'Flights', ADD_NEW_CATEGORY]);
+});
+
+test("[LEDGER-17.5] leaves + Add New Category out of the list on an archived group's expense", async () => {
+  await startWithGroups(BRISBANE);
+  await addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Casey',
+    sharers: ['Taylor (You)', 'Casey'],
+  });
+  const dinner = await onlyExpense();
+  await archiveGroup('Brisbane');
+  await tapTab('Expenses');
+  await settle();
+  await openEditExpense(dinner.id);
+
+  await openCategoryList();
+
+  expect(
+    categoryOptions([...DEFAULT_NAMES, ADD_NEW_CATEGORY]).map(([name]) => name),
+  ).toEqual(DEFAULT_NAMES);
 });
 
 test('[LEDGER-17.5] keeps the form on a category archived while the form is open, and saves it', async () => {

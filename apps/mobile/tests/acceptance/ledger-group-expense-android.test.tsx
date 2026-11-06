@@ -37,6 +37,7 @@ import {
   editOn,
   expectDetailsOn,
   expectList,
+  expectListClosed,
   groupAddButton,
   groupCard,
   isListOpen,
@@ -204,7 +205,21 @@ test('[LEDGER-48.2] keeps the payer when Who Paid? is cancelled', async () => {
   expect(rowValue('Paid by')).toBe('Casey');
 });
 
-test('[LEDGER-89.1] opens the lists as sheets titled Select Group, Who Paid? and Split Between, with Cancel or Done', async () => {
+test('[LEDGER-90.1] closes a list with Back, keeping what the form had', async () => {
+  await startWithGroups(BRISBANE);
+  await openNewExpense();
+  await chooseGroup('Brisbane');
+  await choosePayer('Casey');
+  await openRow('Paid by');
+
+  await fireEvent(nativeViews(/^Modal$/).at(-1)!, 'requestClose');
+  await settle();
+
+  await expectListClosed('Who Paid?');
+  expect(rowValue('Paid by')).toBe('Casey');
+});
+
+test('[LEDGER-90.1] opens the lists as sheets titled Select Group, Who Paid? and Split Between, with Cancel or Done', async () => {
   await startWithGroups(BRISBANE);
   await openNewExpense();
   await chooseGroup('Brisbane');

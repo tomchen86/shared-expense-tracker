@@ -127,7 +127,7 @@ WHEN app 開啟本機資料時個人範圍還沒有任何分類，the mobile app
 
 ### Requirement: CATEGORIES-7.5 依儲存的順序列出這個範圍的分類
 
-The mobile app SHALL 在 Manage Categories 和 Group Categories 的「CATEGORIES」下依儲存的順序列出這個範圍未封存的分類（CATEGORIES-22.2、23.4），每一列有分類顏色的色點和分類名稱，並在導覽列放一個無障礙名稱是「Add category」的「+」按鈕，iOS 上它用文字的顏色，和系統 app 的工具列圖示一樣；封存群組的 Group Categories 沒有這個按鈕（CATEGORIES-43.1）。儲存的順序是建立的先後：這個範圍的預設分類在前，之後在這個範圍新增的分類依建立的先後排在後面，改名、改色、封存或還原都不改變位置。
+The mobile app SHALL 在 Manage Categories 和 Group Categories 的「CATEGORIES」下依儲存的順序列出這個範圍未封存的分類（CATEGORIES-22.2、23.4），每一列有分類顏色的色點和分類名稱，並在導覽列放一個無障礙名稱是「Add category」的「+」按鈕，iOS 上它是 plain 樣式，不另外指定顏色，和系統 app 的工具列圖示一樣；封存群組的 Group Categories 沒有這個按鈕（CATEGORIES-43.1）。儲存的順序是建立的先後：這個範圍的預設分類在前，之後在這個範圍新增的分類依建立的先後排在後面，改名、改色、封存或還原都不改變位置。
 
 #### Scenario: 打開 Manage Categories
 
@@ -452,12 +452,17 @@ WHILE 分類正在儲存，the mobile app SHALL 讓名稱欄位不能編輯，�
 
 ### Requirement: CATEGORIES-22.2 沒有指定群組時是個人範圍
 
-WHEN Manage Categories 開啟時網址沒有 `scopeKind=group`，例如從 Settings 開啟，the mobile app SHALL 以個人範圍開啟，標題是「Manage Categories」，只列出個人分類。
+WHEN Manage Categories 開啟時網址沒有 `scopeKind=group`，例如從 Settings 開啟，或以 `/manage-categories` 開啟，the mobile app SHALL 以個人範圍開啟，標題是「Manage Categories」，只列出個人分類；以 `/manage-categories` 開啟時它蓋在目前的畫面上，按「Close」回到原來的畫面。
 
 #### Scenario: 從 Settings 開啟
 
 - **WHEN** 在 Manage Categories 新增「Gym」、在 Brisbane 的 Group Categories 新增「Flights」之後，從 Settings 開啟 Manage Categories
 - **THEN** 標題是「Manage Categories」，列出九個預設分類和 Gym，沒有 Flights
+
+#### Scenario: 蓋在目前的畫面上
+
+- **WHEN** 以 `/manage-categories` 開啟，再按「Close」
+- **THEN** 標題是「Manage Categories」，列出九個預設分類和 Gym；按 Close 之後回到原來的畫面
 
 #### Scenario: 網址只有群組 ID
 
@@ -471,7 +476,7 @@ WHEN Manage Categories 開啟時網址沒有 `scopeKind=group`，例如從 Setti
 
 ### Requirement: CATEGORIES-23.4 以群組的 ID 開啟時是群組範圍
 
-WHEN 以 `/settings/manage-categories?scopeKind=group&spaceId=<群組 ID>`，或 Group actions 打開的 `/manage-categories?scopeKind=group&spaceId=<群組 ID>`（GROUPS-79.1）開啟，而這是本機資料裡一個群組的 ID，the mobile app SHALL 以這個群組的範圍開啟，標題是「Group Categories」，只列出這個群組的分類。
+WHEN 以 `/settings/manage-categories?scopeKind=group&spaceId=<群組 ID>`，或 Group actions 打開的 `/manage-categories?scopeKind=group&spaceId=<群組 ID>`（GROUPS-81.1）開啟，而這是本機資料裡一個群組的 ID，the mobile app SHALL 以這個群組的範圍開啟，標題是「Group Categories」，只列出這個群組的分類。
 
 #### Scenario: 還沒有新增群組分類
 

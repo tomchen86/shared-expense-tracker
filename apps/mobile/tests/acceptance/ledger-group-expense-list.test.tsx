@@ -31,6 +31,7 @@ import {
   shownInOrder,
   startExpensesAt,
   thisMonthLines,
+  expectOneFadingLine,
 } from './ledger-expense-list-app';
 import {
   actionLabels,
@@ -281,6 +282,7 @@ test("[LEDGER-65.4] shows the group's name at the right of the category, reads i
   expect(
     inOneRow(shown.getByText('Food & Dining'), shown.getByText('Brisbane')),
   ).toBe(true);
+  expectOneFadingLine(shown.getByText('Brisbane'));
   const read = [...expected, 'Oct 30, 2026'];
   expect(shownInOrder([readOut(card('Dinner'))], read)).toEqual(read);
 });

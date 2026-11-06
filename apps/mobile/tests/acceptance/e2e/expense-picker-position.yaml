@@ -77,6 +77,9 @@ name: '[LEDGER-86.2] Choosing Paid by or closing its list leaves Split between i
     element: Split between, 2 people
     direction: DOWN
     centerElement: true
+- assertVisible:
+    text: Group, Brisbane
+    enabled: false
 - assertVisible: Paid by, Casey
 - tapOn: Paid by, Casey
 - waitForAnimationToEnd

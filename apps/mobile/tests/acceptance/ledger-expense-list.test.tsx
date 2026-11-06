@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { processColor } from 'react-native';
+import { processColor, StyleSheet } from 'react-native';
 import {
   fireEvent,
   screen,
@@ -62,6 +62,7 @@ import {
   shownInOrder,
   startExpensesAt,
   thisMonthLines,
+  expectOneFadingLine,
 } from './ledger-expense-list-app';
 import {
   expectInsights,
@@ -400,7 +401,7 @@ test('[LEDGER-34.2] shows the title on one line, cut at its end with no ellipsis
 
 // The date above the cards
 
-test('[LEDGER-90.1] puts the date above each run of cards of that day, once, as a heading', async () => {
+test('[LEDGER-91.1] puts the date above each run of cards of that day, once, as a heading', async () => {
   await startExpenses();
   await addExpense({ title: 'Taxi', date: '2026-10-29' });
   await addExpense({ title: 'Coffee run' });
@@ -445,6 +446,9 @@ test('[LEDGER-35.3] joins the currencies on one line above the cards, by currenc
 
   expect(cardTitles()).toEqual(['Ramen', 'Coffee', 'Taxi']);
   expect(thisMonthLines()).toEqual(['This Month: A$0.30, ¥1,200, $8.75']);
+  expectOneFadingLine(
+    within(thisMonthButton()).getByText('This Month: A$0.30, ¥1,200, $8.75'),
+  );
   expect(readOut(thisMonthButton())).toBe(
     'View expense insights. Spent this month A$0.30, ¥1,200, $8.75.',
   );
@@ -675,7 +679,14 @@ test("[LEDGER-37.3] shows the category's color dot before its name in a tag read
   const details = within(detailScreen());
   expect(inTreeOrder(dot, details.getByText('Shopping'))).toBe(true);
   expect(isUnread(dot)).toBe(true);
-  expect(details.getByLabelText('Category, Shopping')).toBeOnTheScreen();
+  const tag = details.getByLabelText('Category, Shopping');
+  const background = processColor(
+    StyleSheet.flatten(tag.props.style).backgroundColor,
+  ) as number;
+  expect(background & 0xffffff).toBe(
+    (processColor('#FBC02D') as number) & 0xffffff,
+  );
+  expect(background >>> 24).toBeLessThan(255);
 });
 
 test('[LEDGER-37.3] shows the current color of a recolored category on the details', async () => {

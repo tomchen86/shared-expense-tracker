@@ -763,7 +763,7 @@ test('[INSIGHTS-41.1] lets iOS go back from Insights only from the left edge of 
 
 // Total cards
 
-test('[INSIGHTS-22.2] shows TOTAL SPENT once, the total and how much more than the previous period', async () => {
+test('[INSIGHTS-22.3] shows TOTAL SPENT once, the total and how much more than the previous period', async () => {
   await insightsWith(['2024-12-10', '8.00'], ['2025-01-10', '12.00']);
 
   expect(insightsLines().filter((line) => line === 'TOTAL SPENT')).toHaveLength(
@@ -783,7 +783,7 @@ test.each([
   ['3.00', '5.00', '$2.00 more than December 2024, 66.7 percent.'],
   ['0.01', '12.35', '$12.34 more than December 2024, 123,400.0 percent.'],
 ])(
-  '[INSIGHTS-22.2] compares %s in December with %s in January as %s',
+  '[INSIGHTS-22.3] compares %s in December with %s in January as %s',
   async (december, january, comparison) => {
     await insightsWith(['2024-12-10', december], ['2025-01-10', january]);
 
@@ -791,7 +791,7 @@ test.each([
   },
 );
 
-test('[INSIGHTS-22.2] shows each currency by currency code under one TOTAL SPENT, saying when the previous period had none', async () => {
+test('[INSIGHTS-22.3] shows each currency by currency code under one TOTAL SPENT, saying when the previous period had none', async () => {
   await startExpensesAt('/');
   await spend('2024-12-10', '5.00');
   await spend('2025-01-10', '10.00');
@@ -807,7 +807,7 @@ test('[INSIGHTS-22.2] shows each currency by currency code under one TOTAL SPENT
   ]);
 });
 
-test('[INSIGHTS-22.2] shows no comparison for the earliest period', async () => {
+test('[INSIGHTS-22.3] shows no comparison for the earliest period', async () => {
   await insightsWith(['2024-12-10', '8.00'], ['2025-01-10', '12.00']);
 
   await pressPrevious();
@@ -817,7 +817,7 @@ test('[INSIGHTS-22.2] shows no comparison for the earliest period', async () => 
   expect(totalCardsRead()).toEqual(['Total spent $8.00.']);
 });
 
-test("[INSIGHTS-22.2] shows your share under each total of a group's Insights", async () => {
+test("[INSIGHTS-22.3] shows your share under each total of a group's Insights", async () => {
   await startWithGroups(BRISBANE);
   await addGroupExpense({
     group: 'Brisbane',
@@ -846,7 +846,37 @@ test("[INSIGHTS-22.2] shows your share under each total of a group's Insights", 
   ]);
 });
 
-test('[INSIGHTS-22.2] shows no share on the personal Insights', async () => {
+test("[INSIGHTS-22.3] counts only the selected period's expenses outside the trash in your share, and reads it between the total and the comparison", async () => {
+  await startWithGroups(BRISBANE);
+  await addDinner('30.00', '2024-12-10');
+  await addDinner('60.00', '2025-01-10');
+  await addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Casey',
+    sharers: ['Taylor (You)'],
+    amount: '9.00',
+    title: 'Taxi',
+    date: '2025-01-11',
+  });
+  await tapTab('Expenses');
+  await settle();
+  await deleteByAction('Taxi');
+
+  await openGroupInsights(await groupId('Brisbane'));
+
+  expect(totalCards('Groups')).toEqual([
+    [
+      '$60.00',
+      'Your share: $20.00',
+      '$30.00 more than December 2024, 100.0 percent.',
+    ],
+  ]);
+  expect(totalCardsRead('Groups')).toEqual([
+    'Total spent $60.00. Your share $20.00. $30.00 more than December 2024, 100.0 percent.',
+  ]);
+});
+
+test('[INSIGHTS-22.3] shows no share on the personal Insights', async () => {
   await startWithGroups(BRISBANE);
   await addExpense({ amount: '8.75' });
   await tapTab('Expenses');
@@ -856,7 +886,7 @@ test('[INSIGHTS-22.2] shows no share on the personal Insights', async () => {
   expect(totalCards()).toEqual([['$8.75']]);
 });
 
-test('[INSIGHTS-22.2] compares with the latest earlier month that has expenses', async () => {
+test('[INSIGHTS-22.3] compares with the latest earlier month that has expenses', async () => {
   await insightsWith(['2024-10-05', '10.00'], ['2025-01-20', '20.00']);
 
   expect(totalCards()).toEqual([
@@ -866,7 +896,7 @@ test('[INSIGHTS-22.2] compares with the latest earlier month that has expenses',
 
 // Categories
 
-test("[INSIGHTS-23.2] lists a currency's categories under its heading, with a color dot, the amount and the percentage", async () => {
+test("[INSIGHTS-23.3] lists a currency's categories under its heading, with a color dot, the amount and the percentage", async () => {
   await insightsWith(
     ['2025-01-10', '6.00', 'Food & Dining'],
     ['2025-01-11', '2.00', 'Transportation'],
@@ -892,7 +922,7 @@ test("[INSIGHTS-23.2] lists a currency's categories under its heading, with a co
   );
 });
 
-test('[INSIGHTS-23.2] reads the heading as a heading and each row as one item, without its dot', async () => {
+test('[INSIGHTS-23.3] reads the heading as a heading and each row as one item, without its dot', async () => {
   await insightsWith(
     ['2025-01-10', '6.00', 'Food & Dining'],
     ['2025-01-11', '2.00', 'Transportation'],
@@ -907,7 +937,7 @@ test('[INSIGHTS-23.2] reads the heading as a heading and each row as one item, w
     for (const dot of colorDots(row)) expect(isUnread(dot)).toBe(true);
 });
 
-test('[INSIGHTS-23.2] shows each currency under its own heading by currency code', async () => {
+test('[INSIGHTS-23.3] shows each currency under its own heading by currency code', async () => {
   await startExpensesAt('/');
   await spend('2025-01-10', '6.00', 'Food & Dining');
   await spend('2025-01-11', '2000', 'Travel', 'Ramen', 'JPY');
@@ -937,7 +967,7 @@ const SEVEN: [string, string, string][] = [
   'Travel',
 ].map((category, index) => ['2025-01-10', `${7 - index}.00`, category]);
 
-test('[INSIGHTS-23.2] lists every category, without Others, under a donut', async () => {
+test('[INSIGHTS-23.3] lists every category, without Others, under a donut', async () => {
   await insightsWith(...SEVEN);
 
   await chooseChart('Donut');
@@ -946,7 +976,7 @@ test('[INSIGHTS-23.2] lists every category, without Others, under a donut', asyn
   expect(rowsRead().filter((row) => row.startsWith('Others'))).toEqual([]);
 });
 
-test('[INSIGHTS-23.2] rounds percentages to one decimal place', async () => {
+test('[INSIGHTS-23.3] rounds percentages to one decimal place', async () => {
   await insightsWith(
     ['2025-01-10', '1.00', 'Food & Dining'],
     ['2025-01-10', '1.00', 'Transportation'],
@@ -960,7 +990,7 @@ test('[INSIGHTS-23.2] rounds percentages to one decimal place', async () => {
   ]);
 });
 
-test('[INSIGHTS-23.2] shows a long name on one line, with no ellipsis, and reads it in full', async () => {
+test('[INSIGHTS-23.3] shows a long name on one line, with no ellipsis, and reads it in full', async () => {
   const name = 'a'.repeat(50);
   await startExpensesAt('/');
   await addCategory(name);

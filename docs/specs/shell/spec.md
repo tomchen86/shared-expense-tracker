@@ -1001,7 +1001,7 @@ WHILE 畫面還沒重新讀完，the mobile app SHALL 照舊顯示上一次讀�
 #### Scenario: 群組的畫面
 
 - **WHEN** 從 Archived Groups 打開封存的 Brisbane、按「Restore Group」之後，在 Groups 分頁再封存 Brisbane，切回 Settings 分頁，還沒重新讀完時在 Group actions 選「Rename Group」，或按「Add expense」
-- **THEN** 重新讀完之後沒有打開 Rename Group 或 New Expense；畫面照 GROUPS-55.1 顯示「Archived group. Expenses and allocations are read-only.」和「Restore Group」
+- **THEN** 重新讀完之後沒有打開 Rename Group 或 New Expense；畫面照 GROUPS-55.2 顯示「Archived group. Expenses and allocations are read-only.」和「Restore Group」
 
 #### Scenario: 支出的明細
 
@@ -1068,12 +1068,12 @@ WHERE iPhone 直向，WHEN 開啟從底部升起的 sheet，the mobile app SHALL
 
 ### Requirement: SHELL-67.2 (manual) iOS 的 sheet 採系統材質與一致的操作外觀
 
-WHERE iOS，the mobile app SHALL 讓 sheet 的導覽與操作使用系統原生外觀，在支援且未降低透明度的 iOS 上呈現 Liquid Glass，並依系統外觀與輔助使用設定調整；畫面底部的提示（例如 Undo 提示）是 Liquid Glass 的膠囊；表單欄位、分類色盤、成員與金額等內容使用可讀的內容底色，不疊加 Liquid Glass，舊版 iOS 使用其原生外觀，Android 遵守 SHELL-38.1。
+WHERE iOS，the mobile app SHALL 讓 sheet 的導覽與操作使用系統原生外觀，在支援且未降低透明度的 iOS 上呈現 Liquid Glass，並依系統外觀與輔助使用設定調整；畫面底部的 Undo 提示和群組封存的提示是 Liquid Glass 的膠囊；表單欄位、分類色盤、成員與金額等內容使用可讀的內容底色，不疊加 Liquid Glass，舊版 iOS 使用其原生外觀，Android 遵守 SHELL-38.1。
 
 #### Scenario: 從選付款人到編輯分類
 
-- **WHEN** iOS 26 沒開降低透明度，在淺色及深色下依序開啟 New Group、Rename Group、Rename Member 和 Edit Category，並把一筆支出移到垃圾桶
-- **THEN** 標題列和操作的材質、按鈕形狀與互動符合相同的系統外觀；✓ 與 ✕ 清楚可讀，內容沒有額外一層玻璃覆蓋；Undo 提示是玻璃的膠囊
+- **WHEN** iOS 26 沒開降低透明度，在淺色及深色下依序開啟 New Group、Rename Group、Rename Member 和 Edit Category，並把一筆支出移到垃圾桶、封存一個群組
+- **THEN** 標題列和操作的材質、按鈕形狀與互動符合相同的系統外觀；✓ 與 ✕ 清楚可讀，內容沒有額外一層玻璃覆蓋；Undo 提示和群組封存的提示都是玻璃的膠囊
 
 #### Scenario: 降低透明度與舊版 iOS
 
@@ -1101,7 +1101,7 @@ The mobile app SHALL 讓只佔一行、放不下的文字在尾端漸層消失�
 
 ### Requirement: SHELL-69.1 (e2e) 卡片和分類列可以一路往左滑到底
 
-WHEN 使用者把露出動作的卡片（LEDGER-70.2、GROUPS-47.1）或分類列（CATEGORIES-32.3）一路往左滑，超過寬度的 60% 再放開，the mobile app SHALL 當成按了它露出的動作；滑回 60% 以內再放開，就只是露出動作，沒有觸發。滑不到 60% 時動作不觸發。
+WHEN 使用者把露出動作的卡片（LEDGER-70.2、GROUPS-47.1）或分類列（CATEGORIES-32.3）一路往左滑，超過寬度的 60% 再放開，the mobile app SHALL 當成按了它露出的動作；滑不到 60% 就放開時，只露出動作，沒有觸發。
 
 #### Scenario: 支出卡片
 
@@ -1125,7 +1125,7 @@ WHEN 使用者把露出動作的卡片（LEDGER-70.2、GROUPS-47.1）或分類�
 
 ### Requirement: SHELL-70.1 (manual) 左滑的動作是紅色圓形
 
-The mobile app SHALL 讓左滑露出的動作是紅色的圓形，裡面是白色的圖示（iOS 是 SF Symbol，Android 是 Material Symbols）；卡片的動作在圓形下方有說明文字，分類列沒有說明文字，只有圖示。一路往左滑時圓形跟著手指拉成紅色的膠囊；超過 SHELL-69.1 的位置時有一下觸覺回饋，滑回時回到圓形。
+The mobile app SHALL 讓左滑露出的動作是紅色的圓形，裡面是白色的圖示（iOS 是 SF Symbol，Android 是 Material Symbols）；卡片的動作在圓形下方有說明文字，分類列沒有說明文字，只有圖示。一路往左滑時圓形跟著手指拉成紅色的膠囊；超過 SHELL-69.1 的位置時有一下觸覺回饋，滑回時回到圓形；滑回 60% 以內再放開，只露出動作，沒有觸發。
 
 #### Scenario: 支出卡片
 
@@ -1142,3 +1142,7 @@ The mobile app SHALL 讓左滑露出的動作是紅色的圓形，裡面是白�
 - **WHEN** 在實機上把 Coffee run 的卡片一路往左滑，超過 60% 後滑回，再滑過去
 - **THEN** 圓形拉成膠囊，每次超過 60% 時都有一下觸覺回饋；滑回時回到圓形
 
+#### Scenario: 滑回再放開
+
+- **WHEN** 把 Coffee run 的卡片往左滑超過 60%，不放手滑回 60% 以內再放開
+- **THEN** Coffee run 還在支出清單，只露出「Delete」

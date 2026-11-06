@@ -138,7 +138,7 @@ const isDisabled = (view: HostView) =>
   view.props.accessibilityState?.disabled === true ||
   view.props['aria-disabled'] === true;
 
-/** Whether `view` is a group's large title, the button that opens and closes the full name (GROUPS-77.1). */
+/** Whether `view` is a group's large title, the button that opens and closes the full name (GROUPS-79.1). */
 export const isLargeTitle = (view: HostView) =>
   view.props.accessibilityRole === 'button' &&
   view.props.accessibilityState?.expanded !== undefined;
@@ -586,7 +586,7 @@ export async function addMember(name: string) {
   await stopAddingMember(adding);
 }
 
-/** The large title in the content of the group's screen, a button named after the group, if the screen shows one (GROUPS-77.1). */
+/** The large title in the content of the group's screen, a button named after the group, if the screen shows one (GROUPS-79.1). */
 export function largeTitle(group: string): HostView | undefined {
   if (barTitled(group) === undefined) return undefined;
   const owner = screenOf(group);

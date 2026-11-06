@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-91.1] The press that closes the date calendar reaches nothing on the form'
+name: '[LEDGER-92.1] The press that closes the date calendar reaches nothing on the form'
 ---
 - launchApp:
     clearState: true
@@ -31,7 +31,8 @@ name: '[LEDGER-91.1] The press that closes the date calendar reaches nothing on 
 - tapOn: Add expense
 - waitForAnimationToEnd
 # While the calendar is open, only its own controls can be found by name, so these
-# presses go where Category and Expense title are, above the calendar.
+# presses go where Category and Expense title are, above the calendar. The second
+# press on each point shows that the first one was on that row.
 - tapOn: Date Picker
 - waitForAnimationToEnd
 - assertVisible: Previous Month
@@ -40,7 +41,8 @@ name: '[LEDGER-91.1] The press that closes the date calendar reaches nothing on 
 - waitForAnimationToEnd
 - assertNotVisible: Previous Month
 - assertNotVisible: Transportation
-- tapOn: Category, Food & Dining
+- tapOn:
+    point: 20%,41%
 - waitForAnimationToEnd
 - assertVisible: Transportation
 - tapOn:
@@ -55,6 +57,7 @@ name: '[LEDGER-91.1] The press that closes the date calendar reaches nothing on 
 - assertNotVisible: Previous Month
 - inputText: Lost
 - assertNotVisible: Lost
-- tapOn: Expense title
+- tapOn:
+    point: 50%,25%
 - inputText: Kept
 - assertVisible: Kept

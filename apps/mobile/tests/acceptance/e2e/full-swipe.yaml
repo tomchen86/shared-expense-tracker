@@ -71,6 +71,8 @@ name: '[SHELL-69.1] Swiping a card or a category row all the way left does what 
     duration: 500
 - waitForAnimationToEnd
 - assertVisible: Delete Category\?
+# The swipe closes the row, as pressing the revealed button does.
+- assertNotVisible: Remove
 - tapOn: Cancel
 - waitForAnimationToEnd
 - assertVisible: Shopping
