@@ -110,6 +110,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
       )}
       {group !== undefined && (
         <SwipeScrollView
+          backSwipe
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={styles.content}
         >

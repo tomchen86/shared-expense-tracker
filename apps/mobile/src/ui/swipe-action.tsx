@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from 'react';
 import {
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -38,10 +39,18 @@ const SETTLE = { duration: 160 };
 const SwipeList = createContext<{
   scrollGesture: NativeGesture;
   openRows: Set<() => void>;
+  backSwipe: boolean;
 } | null>(null);
 
-/** The scroll view for SwipeAction rows: a row keeps a drag from it, and it closes them as it scrolls. */
-export function SwipeScrollView(props: ScrollViewProps) {
+/**
+ * The scroll view for SwipeAction rows: a row keeps a drag from it, and it closes them as it scrolls.
+ * With backSwipe, on a pushed screen, iOS's full-screen back gesture gets the drags to the right
+ * that a closed row has no use for.
+ */
+export function SwipeScrollView({
+  backSwipe = false,
+  ...props
+}: ScrollViewProps & { backSwipe?: boolean }) {
   const [openRows] = useState(() => new Set<() => void>());
   const scrollGesture = useNativeGesture({
     // Otherwise Android stops scrolling when the finger leaves the list.
@@ -53,7 +62,13 @@ export function SwipeScrollView(props: ScrollViewProps) {
   });
   return (
     <GestureHandlerRootView style={styles.list}>
-      <SwipeList.Provider value={{ scrollGesture, openRows }}>
+      <SwipeList.Provider
+        value={{
+          scrollGesture,
+          openRows,
+          backSwipe: backSwipe && Platform.OS === 'ios',
+        }}
+      >
         <GestureDetector gesture={scrollGesture}>
           <ScrollView {...props} />
         </GestureDetector>
@@ -76,7 +91,7 @@ export function SwipeAction({
   onPress: () => void;
 }) {
   const colors = useThemeColors();
-  const { scrollGesture, openRows } = useContext(SwipeList)!;
+  const { scrollGesture, openRows, backSwipe } = useContext(SwipeList)!;
   const translation = useSharedValue(0);
   const start = useSharedValue(0);
   const origin = useSharedValue({ x: 0, y: 0 });
@@ -96,11 +111,13 @@ export function SwipeAction({
     onTouchesMove: (event) => {
       if (decided.value) return;
       const touch = event.changedTouches[0];
-      const dx = Math.abs(touch.absoluteX - origin.value.x);
+      const moved = touch.absoluteX - origin.value.x;
+      const dx = Math.abs(moved);
       const dy = Math.abs(touch.absoluteY - origin.value.y);
       if (Math.max(dx, dy) <= 5) return;
       decided.value = true;
-      if (dx > dy) GestureStateManager.activate(event.handlerTag);
+      if (dx > dy && !(backSwipe && moved > 0 && translation.value === 0))
+        GestureStateManager.activate(event.handlerTag);
       else GestureStateManager.fail(event.handlerTag);
     },
     onActivate: () => {
