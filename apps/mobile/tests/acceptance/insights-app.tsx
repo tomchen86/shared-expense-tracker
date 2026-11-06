@@ -111,8 +111,11 @@ export async function goBackFromInsights(on = 'Expenses') {
 const totalCardViews = (on: string) =>
   within(insightsScreen(on)).queryAllByLabelText(/^Total spent /);
 
-/** The lines the total card shows for each currency, top to bottom. */
-export const totalCards = (on = 'Expenses') => totalCardViews(on).map(linesIn);
+/** The lines the total card shows for each currency, top to bottom, besides the TOTAL SPENT heading. */
+export const totalCards = (on = 'Expenses') =>
+  totalCardViews(on).map((view) =>
+    linesIn(view).filter((line) => line !== 'TOTAL SPENT'),
+  );
 
 /** What a screen reader reads for each currency of the total card, top to bottom. */
 export const totalCardsRead = (on = 'Expenses') =>
