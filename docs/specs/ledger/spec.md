@@ -2232,7 +2232,7 @@ WHERE iOS，WHEN 從 New Expense 或 Edit Expense 打開的 Category、Select Gr
 
 ### Requirement: LEDGER-88.1 (e2e) 往右斜向拖曳或捲動清單時收起露出的 Delete
 
-WHILE 支出卡片露出「Delete」，WHEN 使用者從這張卡片往右拖過露出寬度的一半或快速往右滑，或捲動支出清單或群組的畫面，the mobile app SHALL 收起這張卡片並停用「Delete」，不按下「Delete」，也不打開明細；手指開始移動時橫向位移大於縱向位移就是往右拖曳，放手前清單都不捲動；開始移動時縱向位移大於或等於橫向位移就是捲動清單，方向確定後直到放手都不改變。
+WHILE 支出卡片露出「Delete」，WHEN 使用者從這張卡片或露出的「Delete」往右拖過露出寬度的一半或快速往右滑，或捲動支出清單或群組的畫面，the mobile app SHALL 收起這張卡片並停用「Delete」，不按下「Delete」，不打開明細，也不返回上一頁；手指開始移動時橫向位移大於縱向位移就是往右拖曳，放手前清單都不捲動；開始移動時縱向位移大於或等於橫向位移就是捲動清單，方向確定後直到放手都不改變。
 
 #### Scenario: 往右下斜向拖曳
 
@@ -2254,19 +2254,24 @@ WHILE 支出卡片露出「Delete」，WHEN 使用者從這張卡片往右拖過
 - **WHEN** 同一張卡片再露出「Delete」，從這張卡片慢慢往右約 20 pt 後放手
 - **THEN** 卡片彈回去，「Delete」還露出，清單沒有捲動
 
+#### Scenario: 從露出的 Delete 往右拖
+
+- **WHEN** 同一張卡片露出「Delete」，從「Delete」上往右約 90 pt 拖曳後放手
+- **THEN** 「Delete」收起，沒有按下它，支出沒有移到垃圾桶
+
 #### Scenario: 主要是上下拖
 
-- **WHEN** 同一張卡片露出「Delete」，從這張卡片往右約 120 pt、往上約 220 pt 拖曳後放手
+- **WHEN** 同一張卡片露出「Delete」，從這張卡片往右約 120 pt、往上約 390 pt 拖曳後放手
 - **THEN** 清單捲動，「Delete」收起
 
 #### Scenario: 從這張卡片捲動清單
 
-- **WHEN** 一張卡片露出「Delete」，從這張卡片往上約 220 pt 拖曳
+- **WHEN** 一張卡片露出「Delete」，從這張卡片往上約 390 pt 拖曳
 - **THEN** 清單捲動，「Delete」收起
 
 #### Scenario: 從別張卡片捲動清單
 
-- **WHEN** 一張卡片露出「Delete」時，從另一張卡片往上約 220 pt 拖曳
+- **WHEN** 一張卡片露出「Delete」時，從另一張卡片往上約 390 pt 拖曳
 - **THEN** 清單捲動，「Delete」收起，沒有打開明細，支出沒有移到垃圾桶
 
 #### Scenario: 群組的畫面
@@ -2274,7 +2279,31 @@ WHILE 支出卡片露出「Delete」，WHEN 使用者從這張卡片往右拖過
 - **WHEN** 在 iPhone 上，Brisbane 的畫面的 Dinner 的卡片露出「Delete」時，從這張卡片往上拖曳
 - **THEN** 「Delete」收起，沒有打開明細
 
+#### Scenario: 群組的畫面不返回
+
+- **WHEN** 在 iPhone 上，Brisbane 的畫面的 Dinner 的卡片露出「Delete」時，從這張卡片往右拖曳
+- **THEN** 「Delete」收起，仍在 Brisbane 的畫面
+
 #### Scenario: Android
 
 - **WHEN** 在 Android 手機的支出清單重複往右和往上的拖曳
+- **THEN** 結果相同，pt 在 Android 以 dp 計
+
+### Requirement: LEDGER-89.1 (e2e) 往左拖支出卡片時清單不捲動
+
+WHEN 使用者從還沒露出「Delete」的支出卡片開始拖曳，且手指開始移動時橫向位移大於縱向位移，the mobile app SHALL 容許手指的縱向偏移，放手前清單都不捲動，往左拖時依 LEDGER-70.2 露出「Delete」；開始移動時縱向位移大於或等於橫向位移就是捲動清單，不露出「Delete」，方向確定後直到放手都不改變。
+
+#### Scenario: 斜向往左拖
+
+- **WHEN** 支出清單的卡片多到能捲動，從一張卡片往左約 280 pt、往上約 170 pt 拖曳後放手
+- **THEN** 這張卡片露出「Delete」，清單沒有捲動，這張卡片還在原來的位置
+
+#### Scenario: 主要是上下拖
+
+- **WHEN** 從一張卡片往左約 120 pt、往上約 390 pt 拖曳後放手
+- **THEN** 清單捲動，沒有露出「Delete」
+
+#### Scenario: Android
+
+- **WHEN** 在 Android 手機重複上述拖曳
 - **THEN** 結果相同，pt 在 Android 以 dp 計
