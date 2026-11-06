@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { processColor } from 'react-native';
+import { processColor, StyleSheet } from 'react-native';
 import { act, fireEvent, waitFor, within } from '@testing-library/react-native';
 import {
   DISCARD_CHANGES,
@@ -13,7 +13,6 @@ import {
   amountField,
   cancelCategoryList,
   categoryButton,
-  categoryListView,
   categoryNamed,
   categoryOptions,
   chooseCategory,
@@ -33,7 +32,8 @@ import {
   formScreen,
   formTitle,
   inTreeOrder,
-  isCategoryListOpen,
+  isCategoryDisabled,
+  menuField,
   isSheet,
   noteField,
   openCategoryList,
@@ -270,7 +270,7 @@ test('[LEDGER-12.1] opens Edit Expense for the expense in /expenses/<id>/edit', 
   expect(app.getPathname()).toBe(`/expenses/${expense.id}/edit`);
 });
 
-test('[LEDGER-13.1] shows Cancel and Add, then the currency, amount, title, category, date and note', async () => {
+test('[LEDGER-13.2] shows Cancel and Add, then the title, currency, amount, category, date and note, with no field focused', async () => {
   await startExpenses();
 
   await openNewExpense();
@@ -278,9 +278,9 @@ test('[LEDGER-13.1] shows Cancel and Add, then the currency, amount, title, cate
   expect(formBarSides()).toEqual({ left: ['Cancel'], right: ['Add'] });
   expect(
     inTreeOrder(
+      titleField(),
       within(formScreen()).getByText('USD'),
       within(formScreen()).getByLabelText('Amount in USD'),
-      titleField(),
       categoryButton(),
       dateFieldView(),
       noteField(),
@@ -289,9 +289,22 @@ test('[LEDGER-13.1] shows Cancel and Add, then the currency, amount, title, cate
   expect(amountField()).toHaveProp('keyboardType', 'decimal-pad');
   expect(formCategory()).toBe('Food & Dining');
   expect(dateField().label).toBe('Date');
+  for (const field of [titleField(), amountField(), noteField()])
+    expect(field.props.autoFocus).not.toBe(true);
 });
 
-test("[LEDGER-13.1] shows Save and the expense's own currency on Edit Expense", async () => {
+test('[LEDGER-13.2] makes the title bold once it is typed', async () => {
+  await startExpenses();
+  await openNewExpense();
+
+  await fireEvent.changeText(titleField(), 'Coffee run');
+
+  expect(['600', '700', 'bold']).toContain(
+    StyleSheet.flatten(titleField().props.style).fontWeight,
+  );
+});
+
+test("[LEDGER-13.2] shows Save and the expense's own currency on Edit Expense", async () => {
   await startExpenses();
   const expense = await addExpenseIn('JPY', '1200');
 
@@ -453,7 +466,7 @@ test('[LEDGER-16.1] shows the current name of a renamed category', async () => {
   expect(formCategory()).toBe('Groceries');
 });
 
-test("[LEDGER-17.4] lists the categories in their stored order with the form's category selected", async () => {
+test("[LEDGER-17.5] lists the categories in their stored order with the form's category selected", async () => {
   await startExpenses();
   await openNewExpense();
 
@@ -464,7 +477,7 @@ test("[LEDGER-17.4] lists the categories in their stored order with the form's c
   );
 });
 
-test('[LEDGER-17.4] lists a new category after Uncategorized', async () => {
+test('[LEDGER-17.5] lists a new category after Uncategorized', async () => {
   await startExpenses();
   await addCategory('Gym');
   await openNewExpense();
@@ -475,7 +488,7 @@ test('[LEDGER-17.4] lists a new category after Uncategorized', async () => {
   expect(categoryOptions(names).map(([name]) => name)).toEqual(names);
 });
 
-test("[LEDGER-17.4] lists only the personal space's categories, without a group's", async () => {
+test("[LEDGER-17.5] lists only the personal space's categories, without a group's", async () => {
   await startExpenses();
   await saveName('Taylor');
   await createGroup('Brisbane');
@@ -491,7 +504,23 @@ test("[LEDGER-17.4] lists only the personal space's categories, without a group'
   );
 });
 
-test('[LEDGER-17.4] selects the category pressed and goes back to the form', async () => {
+test('[LEDGER-17.5] puts a dot of its color before each category in the list', async () => {
+  await startExpenses();
+  await openNewExpense();
+
+  await openCategoryList();
+
+  const { options, dot } = menuField('Category').props;
+  expect(dot).toBe('#D81B60');
+  expect(options.find(({ name }) => name === 'Food & Dining')?.color).toBe(
+    '#D81B60',
+  );
+  expect(options.find(({ name }) => name === 'Shopping')?.color).toBe(
+    '#FBC02D',
+  );
+});
+
+test('[LEDGER-17.5] selects the category pressed and goes back to the form', async () => {
   await startExpenses();
   await openNewExpense();
 
@@ -505,18 +534,6 @@ test('[LEDGER-17.4] selects the category pressed and goes back to the form', asy
   ).toEqual([['Shopping', true]]);
 });
 
-test('[LEDGER-17.4] keeps the category when the list is cancelled', async () => {
-  await startExpenses();
-  await openNewExpense();
-  await openCategoryList();
-
-  await cancelCategoryList();
-
-  expect(isCategoryListOpen()).toBe(false);
-  expect(formTitle()).toBe('New Expense');
-  expect(formCategory()).toBe('Food & Dining');
-});
-
 /** Adds Gym, a Gym expense titled Gym session, then archives Gym; returns the expense. */
 async function archiveGymWithAnExpense() {
   await addCategory('Gym');
@@ -525,7 +542,7 @@ async function archiveGymWithAnExpense() {
   return onlyExpense();
 }
 
-test('[LEDGER-17.4] leaves an archived category out of the list', async () => {
+test('[LEDGER-17.5] leaves an archived category out of the list', async () => {
   await startExpenses();
   await archiveGymWithAnExpense();
   await openNewExpense();
@@ -537,7 +554,7 @@ test('[LEDGER-17.4] leaves an archived category out of the list', async () => {
   );
 });
 
-test("[LEDGER-17.4] marks no category selected when the expense's category is archived", async () => {
+test("[LEDGER-17.5] marks no category selected when the expense's category is archived", async () => {
   await startExpenses();
   const expense = await archiveGymWithAnExpense();
   await openEditExpense(expense.id);
@@ -552,7 +569,7 @@ test("[LEDGER-17.4] marks no category selected when the expense's category is ar
   expect(formCategory()).toBe('Gym');
 });
 
-test('[LEDGER-17.4] keeps an archived category when the expense is saved without choosing another', async () => {
+test('[LEDGER-17.5] keeps an archived category when the expense is saved without choosing another', async () => {
   await startExpenses();
   const expense = await archiveGymWithAnExpense();
 
@@ -903,7 +920,7 @@ test('[LEDGER-25.1] locks the form until the expense is saved', async () => {
   expect(amountField()).toBeDisabled();
   expect(titleField()).toBeDisabled();
   expect(noteField()).toBeDisabled();
-  expect(categoryButton()).toBeDisabled();
+  expect(isCategoryDisabled()).toBe(true);
   expect(dateField().disabled).toBe(true);
   await press('Cancel');
   expect(formTitle()).toBe('New Expense');
@@ -943,7 +960,7 @@ test('[LEDGER-25.1] unlocks the form once the save fails', async () => {
   expect(amountField()).toBeEnabled();
   expect(titleField()).toBeEnabled();
   expect(noteField()).toBeEnabled();
-  expect(categoryButton()).toBeEnabled();
+  expect(isCategoryDisabled()).toBe(false);
   expect(dateField().disabled).not.toBe(true);
 });
 
@@ -1161,25 +1178,15 @@ function appColors(root: Parameters<typeof fixedColors>[0]) {
   };
 }
 
-test('[SHELL-34.1] colors the expense form and the category list with colors that follow the appearance', async () => {
+test('[SHELL-34.1] colors the expense form with colors that follow the appearance', async () => {
   fakePhoneAppearance('light');
   await startExpenses();
   await openNewExpense();
   const lightForm = appColors(formScreen());
-  await openCategoryList();
-  const lightList = appColors(categoryListView());
 
   await switchPhoneTo('dark');
-  const darkList = appColors(categoryListView());
-  await cancelCategoryList();
   const darkForm = appColors(formScreen());
 
   expect(colorsInBoth(lightForm.colors, darkForm.colors)).toEqual([]);
-  expect(colorsInBoth(lightList.colors, darkList.colors)).toEqual([]);
-  expect([
-    ...lightForm.uncolored,
-    ...darkForm.uncolored,
-    ...lightList.uncolored,
-    ...darkList.uncolored,
-  ]).toEqual([]);
+  expect([...lightForm.uncolored, ...darkForm.uncolored]).toEqual([]);
 });

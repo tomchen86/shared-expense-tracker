@@ -89,11 +89,32 @@ function insideText(view: HostView, root: HostView) {
   return false;
 }
 
+/** Whether `view` or a view around it is fully transparent, as text kept only to measure it is. */
+function isInvisible(view: HostView) {
+  for (let node: HostView | null = view; node; node = node.parent)
+    if (StyleSheet.flatten(node.props.style)?.opacity === 0) return true;
+  return false;
+}
+
+/** Whether two views sit side by side: the nearest view around both lays its children out in a row. */
+export function inOneRow(one: HostView, other: HostView) {
+  const around = new Set<HostView>();
+  for (let node: HostView | null = one; node; node = node.parent)
+    around.add(node);
+  for (let node: HostView | null = other; node; node = node.parent)
+    if (around.has(node))
+      return StyleSheet.flatten(node.props.style)?.flexDirection === 'row';
+  return false;
+}
+
 /** The lines of text shown inside `root`, top to bottom. */
 export const linesIn = (root: HostView) =>
   root
     .queryAll(
-      (view) => String(view.type) === 'Text' && !insideText(view, root),
+      (view) =>
+        String(view.type) === 'Text' &&
+        !insideText(view, root) &&
+        !isInvisible(view),
       { includeSelf: true },
     )
     .flatMap((view) => textOf(view).split('\n'))

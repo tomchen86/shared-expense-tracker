@@ -323,6 +323,7 @@ interface BarItem {
   variant?: string;
   disabled?: boolean;
   buttonId?: string;
+  tintColor?: unknown;
   icon?: { type?: string; name?: string };
   menu?: { title?: string; items: BarMenuItem[] };
 }
@@ -341,7 +342,8 @@ function describeBarItem(item: BarItem) {
       ),
     };
   return {
-    button: item.title,
+    button: item.accessibilityLabel || item.title,
+    icon: item.icon?.type === 'sfSymbol' ? item.icon.name : undefined,
     variant: item.variant ?? 'plain',
     disabled: item.disabled === true,
   };
@@ -355,6 +357,12 @@ export const barItems = () => ({
   left: barItemsOn('Left').map(describeBarItem),
   right: barItemsOn('Right').map(describeBarItem),
 });
+
+/** The colors the iOS bar buttons ask for, left then right; none means the system's. */
+export const barButtonTints = () =>
+  [...barItemsOn('Left'), ...barItemsOn('Right')]
+    .filter((item) => item.type === 'button')
+    .map((item) => item.tintColor);
 
 /**
  * The iOS menus at the right of the test screen's navigation bar, from the trailing
@@ -375,7 +383,9 @@ export const barMenus = () =>
 /** Presses an iOS bar button by its text, as the native bar reports a press. */
 export async function pressBarButton(title: string) {
   const item = [...barItemsOn('Left'), ...barItemsOn('Right')].find(
-    (candidate) => candidate.type === 'button' && candidate.title === title,
+    (candidate) =>
+      candidate.type === 'button' &&
+      (candidate.accessibilityLabel || candidate.title) === title,
   );
   if (item === undefined) throw new Error(`No ${title} in the navigation bar`);
   // The native bar sends no press for a disabled item.

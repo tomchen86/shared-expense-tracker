@@ -51,7 +51,6 @@ import {
   addMember,
   alertsShown,
   barItems,
-  barTitled,
   chooseGroupAction,
   expectClosed,
   expectMembers,
@@ -72,9 +71,10 @@ import {
   stopAddingMember,
   storedMemberNames,
   textsOn,
-  titleButton,
+  barAction,
+  largeTitle,
+  longPressLargeTitle,
 } from './group-details-app';
-import { iconNames } from './shell-actions-app';
 import {
   ARCHIVED_STATUS,
   ARCHIVE_FAILED,
@@ -446,7 +446,7 @@ test('[GROUPS-52.1] never says there are no archived groups while the stored gro
   expect(screen.queryByText(NO_ARCHIVED)).toBeNull();
 });
 
-test('[GROUPS-53.1] shows the name and Archived group on the card of an archived group, with a Restore button of its own', async () => {
+test('[GROUPS-53.2] shows the name and Archived group on the card of an archived group, with a Restore button of its own', async () => {
   await startWithGroups(['Brisbane']);
   await archiveByAction('Brisbane');
 
@@ -461,7 +461,7 @@ test('[GROUPS-53.1] shows the name and Archived group on the card of an archived
   expect(shown.queryAll((view) => view === restore)).toEqual([]);
 });
 
-test('[GROUPS-53.1] shows a long name on one line of its archived card, cut off at the end', async () => {
+test('[GROUPS-53.2] shows a long name on one line of its archived card, cut off at the end', async () => {
   const name = 'a'.repeat(300);
   await startWithGroups([name]);
   await archiveByAction(name);
@@ -472,7 +472,7 @@ test('[GROUPS-53.1] shows a long name on one line of its archived card, cut off 
   // Jest lays nothing out, so the test reads what the card asks the native text for.
   const shown = within(archivedCard(name)).getByText(name);
   expect(shown.props.numberOfLines).toBe(1);
-  expect(shown.props.ellipsizeMode ?? 'tail').toBe('tail');
+  expect(shown.props.ellipsizeMode).toBe('clip');
   expect(accessibleName(restoreButton(name))).toBe(`Restore ${name}`);
 });
 
@@ -616,15 +616,38 @@ test("[GROUPS-55.1] says the same on an archived group's screen opened at its UR
   );
 });
 
-test("[GROUPS-40.2] makes no button of an archived group's title", async () => {
+test("[GROUPS-40.3] opens no Rename Group when an archived group's large title is long pressed", async () => {
+  await startWithGroups(['Brisbane']);
+  await openArchived('Brisbane');
+  await waitFor(() => expect(largeTitle('Brisbane')).toBeDefined());
+
+  await longPressLargeTitle('Brisbane');
+
+  expect(isOpen('Rename Group')).toBe(false);
+});
+
+test("[GROUPS-77.1] opens and closes an archived group's full name too", async () => {
+  await startWithGroups(['Brisbane']);
+  await openArchived('Brisbane');
+  await waitFor(() => expect(largeTitle('Brisbane')).toBeDefined());
+
+  await fireEvent.press(largeTitle('Brisbane')!);
+
+  expect(largeTitle('Brisbane')!.props.accessibilityState.expanded).toBe(true);
+});
+
+test('[GROUPS-79.1] opens a read-only Group Categories from an archived group', async () => {
   await startWithGroups(['Brisbane']);
   await openArchived('Brisbane');
   await waitFor(() => expect(textsOn('Brisbane')).toContain(READ_ONLY));
 
-  expect(titleButton('Brisbane')).toBeUndefined();
-  expect(iconNames(barTitled('Brisbane')!, 'ios')).not.toContain(
-    'chevron.down',
+  await chooseGroupAction('Brisbane', 'Categories');
+
+  await expectOpen('Group Categories');
+  await waitFor(() =>
+    expect(textsOn('Group Categories')).toContain('Food & Dining'),
   );
+  expect(() => barAction('Group Categories', 'Add category')).toThrow();
 });
 
 test('[GROUPS-55.1] shows neither on the screen of a group that is not archived', async () => {
@@ -639,7 +662,7 @@ test('[GROUPS-55.1] shows neither on the screen of a group that is not archived'
   );
 });
 
-test("[GROUPS-22.2] lists only Members in an archived group's Group actions menu", async () => {
+test("[GROUPS-22.3] lists Members and Categories in an archived group's Group actions menu", async () => {
   await startWithGroups(['Brisbane']);
 
   await openArchived('Brisbane');
@@ -649,7 +672,7 @@ test("[GROUPS-22.2] lists only Members in an archived group's Group actions menu
       {
         menu: 'Group actions',
         icon: 'ellipsis.circle',
-        items: ['Members'],
+        items: ['Members', 'Categories'],
       },
     ]),
   );
@@ -737,7 +760,7 @@ test("[GROUPS-57.1] restores a group from its screen, which then is a group's sc
     {
       menu: 'Group actions',
       icon: 'ellipsis.circle',
-      items: ['Members', 'Rename Group'],
+      items: ['Members', 'Rename Group', 'Categories'],
     },
   ]);
   await goBackFrom('Tokyo');

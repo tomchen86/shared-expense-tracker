@@ -111,18 +111,18 @@ export async function goBackFromInsights(on = 'Expenses') {
 const totalCardViews = (on: string) =>
   within(insightsScreen(on)).queryAllByLabelText(/^Total spent /);
 
-/** The lines each total card shows, top to bottom. */
+/** The lines the total card shows for each currency, top to bottom. */
 export const totalCards = (on = 'Expenses') => totalCardViews(on).map(linesIn);
 
-/** What a screen reader reads for each total card, top to bottom. */
+/** What a screen reader reads for each currency of the total card, top to bottom. */
 export const totalCardsRead = (on = 'Expenses') =>
   totalCardViews(on).map((view) => asRead(nameOf(view)));
 
-/** The totals the cards show, top to bottom. */
+/** The totals the total card shows, top to bottom. */
 export const totals = (on = 'Expenses') =>
-  totalCards(on).map((lines) => lines[1]);
+  totalCards(on).map((lines) => lines[0]);
 
-/** Waits until the total cards show `expected`. */
+/** Waits until the total card shows `expected`. */
 export const expectTotals = (expected: string[], on = 'Expenses') =>
   waitFor(() => expect(totals(on)).toEqual(expected));
 

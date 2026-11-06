@@ -164,6 +164,26 @@ export async function push(url: string) {
 }
 
 /**
+ * What a navigation bar's screen is called: the bar's title or, while the bar shows
+ * none, the large title in the screen's content, the button that opens and closes
+ * the full name (GROUPS-77.1).
+ */
+export function titleOfBar(bar: HostView): string {
+  if (bar.props.title) return bar.props.title;
+  for (let outer = bar.parent; outer; outer = outer.parent)
+    if (String(outer.type) === 'RNSScreen') {
+      const [large] = outer.queryAll(
+        (view) =>
+          typeof view.type === 'string' &&
+          view.props.accessibilityRole === 'button' &&
+          view.props.accessibilityState?.expanded !== undefined,
+      );
+      return large?.props.accessibilityLabel ?? '';
+    }
+  return '';
+}
+
+/**
  * The navigation bars on screen inside `root`, each stack's bottom screen first.
  * Pass a tab to get its stack.
  */
@@ -174,5 +194,5 @@ export function navigationBars(root = screen.container) {
 }
 
 export function navigationBarTitles(root = screen.container) {
-  return navigationBars(root).map((bar) => bar.props.title);
+  return navigationBars(root).map(titleOfBar);
 }

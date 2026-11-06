@@ -2,7 +2,13 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { ActionSheetIOS } from 'react-native';
-import { act, fireEvent, waitFor, within } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import {
   DISCARD_CHANGES,
   SAVE_FAILED,
@@ -32,6 +38,7 @@ import {
   storedExpenses,
   titleField,
   watchAlerts,
+  menuField,
 } from './ledger-expense-app';
 import {
   allowWrites,
@@ -40,19 +47,24 @@ import {
   settle,
 } from './shell-appearance-app';
 import { push, tapTab } from './shell-tabs-app';
-import { barAction, openGroup, swipeDown } from './group-details-app';
+import {
+  barAction,
+  barTitled,
+  openGroup,
+  pressOnBar,
+  swipeDown,
+} from './group-details-app';
 import {
   ADD_NEW_CATEGORY,
   FORMER_MEMBER_LOCK,
   HISTORICAL,
   NO_GROUP_ID,
-  addCategoryInSheet,
+  addNewCategoryFromForm,
   addGroupExpense,
   addToGroup,
   archiveGroup,
   archiveGroupCategory,
   categoryIn,
-  categorySheet,
   categorySheetTitle,
   chooseGroup,
   choosePayer,
@@ -63,17 +75,18 @@ import {
   fillGroupExpense,
   groupAddButton,
   isDisabled,
+  isNewCategoryOpen,
+  isRowDisabled,
   isSplitOn,
-  listButtons,
   listOptions,
   memberIds,
   moveExpensesInSheet,
   openCategorySheet,
+  openNewCategory,
   openRow,
   pickGroup,
   removeCategoryInSheet,
   removeFromGroup,
-  renameCategoryInSheet,
   renameInGroup,
   restoreGroup,
   rowValue,
@@ -222,26 +235,37 @@ test("[LEDGER-45.1] opens a personal expense's Edit Expense with the switch off"
 
 // Select Group
 
-test('[LEDGER-46.1] opens Select Group with the unarchived groups in creation order when the switch is turned on', async () => {
+test('[LEDGER-46.2] lists the unarchived groups in creation order in Select Group', async () => {
   await startWithGroups({ Brisbane: [], Tokyo: [], Paris: [] });
   await archiveGroup('Tokyo');
   await tapTab('Expenses');
   await openNewExpense();
-
   await setSplit(true);
 
-  await expectList('Select Group');
+  await openRow('Group');
+
   expect(listOptions('Select Group')).toEqual([
     ['Brisbane', false],
     ['Paris', false],
   ]);
-  expect(listButtons('Select Group')).toContain('Cancel');
 });
 
-test('[LEDGER-46.1] chooses the group pressed, and marks it when Group opens the list again', async () => {
+test('[LEDGER-46.2] only shows Group, not selected when the switch is turned on, opening no list', async () => {
+  await startWithGroups(BRISBANE);
+  await openNewExpense();
+
+  await setSplit(true);
+
+  expect(isSplitOn()).toBe(true);
+  expect(splitRows()).toEqual(['Group, not selected']);
+  expect(barTitled('Select Group')).toBeUndefined();
+});
+
+test('[LEDGER-46.2] chooses the group pressed, and marks it when Group opens the list again', async () => {
   await startWithGroups({ Brisbane: [], Paris: [] });
   await openNewExpense();
   await setSplit(true);
+  await openRow('Group');
 
   await pickGroup('Brisbane');
 
@@ -254,40 +278,15 @@ test('[LEDGER-46.1] chooses the group pressed, and marks it when Group opens the
   ]);
 });
 
-test('[LEDGER-46.1] keeps the switch on with no group when Select Group is cancelled', async () => {
-  await startWithGroups(BRISBANE);
-  await openNewExpense();
-  await setSplit(true);
-
-  await closeList('Select Group');
-
-  expect(isSplitOn()).toBe(true);
-  expect(rowValue('Group')).toBe('not selected');
-});
-
-test('[LEDGER-46.1] keeps the group and the payer when Select Group is cancelled after a group is chosen', async () => {
-  await startWithGroups(BRISBANE);
-  await openNewExpense();
-  await chooseGroup('Brisbane');
-  await choosePayer('Taylor (You)');
-
-  await openRow('Group');
-  await closeList('Select Group');
-
-  expect(isSplitOn()).toBe(true);
-  expect(rowValue('Group')).toBe('Brisbane');
-  expect(rowValue('Paid by')).toBe('Taylor (You)');
-});
-
-test('[LEDGER-46.1] lists no groups when there are none yet', async () => {
+test('[LEDGER-46.2] lists no groups, only a disabled No Groups, when there are none yet', async () => {
   await startWithGroups();
   await openNewExpense();
-
   await setSplit(true);
 
-  await expectList('Select Group');
+  await openRow('Group');
+
   expect(listOptions('Select Group')).toEqual([]);
-  expect(listButtons('Select Group')).toEqual(['Cancel']);
+  expect(menuField('Group').props.empty).toBe('No Groups');
 });
 
 // The rows under the switch
@@ -357,7 +356,7 @@ test('[LEDGER-47.1] hides Group, Paid by and Split between when the switch is tu
 
 // Who Paid?
 
-test("[LEDGER-48.1] lists the group's members in the order of Members in Who Paid?", async () => {
+test("[LEDGER-48.2] lists the group's members in the order of Members in Who Paid?", async () => {
   await startWithGroups(BRISBANE);
   await newExpenseIn('Brisbane');
 
@@ -368,10 +367,9 @@ test("[LEDGER-48.1] lists the group's members in the order of Members in Who Pai
     ['Casey', false],
     ['Blake', false],
   ]);
-  expect(listButtons('Who Paid?')).toContain('Cancel');
 });
 
-test('[LEDGER-48.1] chooses the member pressed as the payer, and marks them next time', async () => {
+test('[LEDGER-48.2] chooses the member pressed as the payer, and marks them next time', async () => {
   await startWithGroups(BRISBANE);
   await newExpenseIn('Brisbane');
 
@@ -386,7 +384,7 @@ test('[LEDGER-48.1] chooses the member pressed as the payer, and marks them next
   ]);
 });
 
-test('[LEDGER-48.1] keeps the payer when Who Paid? is cancelled', async () => {
+test('[LEDGER-48.2] keeps the payer when Who Paid? is closed', async () => {
   await startWithGroups(BRISBANE);
   await newExpenseIn('Brisbane');
   await choosePayer('Casey');
@@ -397,7 +395,7 @@ test('[LEDGER-48.1] keeps the payer when Who Paid? is cancelled', async () => {
   expect(rowValue('Paid by')).toBe('Casey');
 });
 
-test('[LEDGER-48.1] leaves former members out of Who Paid?', async () => {
+test('[LEDGER-48.2] leaves former members out of Who Paid?', async () => {
   await startWithGroups(BRISBANE);
   await removeFromGroup('Brisbane', 'Casey');
   await newExpenseIn('Brisbane');
@@ -412,7 +410,7 @@ test('[LEDGER-48.1] leaves former members out of Who Paid?', async () => {
 
 // Split Between
 
-test('[LEDGER-49.1] marks the people pressed in Split Between and splits in the order they were chosen', async () => {
+test('[LEDGER-49.2] marks the people pressed in Split Between and splits in the order they were chosen', async () => {
   await startWithGroups(BRISBANE);
   const ids = await memberIds(file, 'Brisbane');
   await newExpenseIn('Brisbane');
@@ -427,7 +425,6 @@ test('[LEDGER-49.1] marks the people pressed in Split Between and splits in the 
     ['Casey', true],
     ['Blake', false],
   ]);
-  expect(listButtons('Split Between')).toContain('Done');
   await closeList('Split Between');
   expect(rowValue('Split between')).toBe('2 people');
   await press('Add');
@@ -439,7 +436,7 @@ test('[LEDGER-49.1] marks the people pressed in Split Between and splits in the 
   );
 });
 
-test('[LEDGER-49.1] takes a person out of the split when they are pressed again', async () => {
+test('[LEDGER-49.2] takes a person out of the split when they are pressed again', async () => {
   await startWithGroups(BRISBANE);
   await newExpenseIn('Brisbane');
   await chooseSharers('Casey', 'Taylor (You)');
@@ -456,7 +453,7 @@ test('[LEDGER-49.1] takes a person out of the split when they are pressed again'
   expect(rowValue('Split between')).toBe('1 person');
 });
 
-test('[LEDGER-49.1] puts a person taken out and chosen again at the end of the split', async () => {
+test('[LEDGER-49.2] puts a person taken out and chosen again at the end of the split', async () => {
   await startWithGroups(BRISBANE);
   const ids = await memberIds(file, 'Brisbane');
   await newExpenseIn('Brisbane');
@@ -475,7 +472,7 @@ test('[LEDGER-49.1] puts a person taken out and chosen again at the end of the s
   );
 });
 
-test('[LEDGER-49.1] leaves former members out of Split Between', async () => {
+test('[LEDGER-49.2] leaves former members out of Split Between', async () => {
   await startWithGroups(BRISBANE);
   await removeFromGroup('Brisbane', 'Casey');
   await newExpenseIn('Brisbane');
@@ -880,7 +877,7 @@ test("[LEDGER-55.1] opens a group expense's Edit Expense with its group, payer a
 
   expect(isSplitOn()).toBe(true);
   expect(isDisabled(splitSwitch())).toBe(true);
-  expect(isDisabled(splitRow('Group'))).toBe(true);
+  expect(isRowDisabled('Group')).toBe(true);
   expect(splitRows()).toEqual([
     'Group, Brisbane',
     'Paid by, Casey',
@@ -1135,9 +1132,9 @@ test('[LEDGER-59.1] locks the switch and the rows under it while the expense is 
   await press('Add');
 
   expect(isDisabled(splitSwitch())).toBe(true);
-  expect(isDisabled(splitRow('Group'))).toBe(true);
-  expect(isDisabled(splitRow('Paid by'))).toBe(true);
-  expect(isDisabled(splitRow('Split between'))).toBe(true);
+  expect(isRowDisabled('Group')).toBe(true);
+  expect(isRowDisabled('Paid by')).toBe(true);
+  expect(isRowDisabled('Split between')).toBe(true);
   await writes.release();
   await settle();
   await expectFormClosed();
@@ -1153,8 +1150,8 @@ test('[LEDGER-60.1] locks the amount, the payer and the split when someone in th
   await openEditExpense(dinner.id);
 
   expect(amountField()).toBeDisabled();
-  expect(isDisabled(splitRow('Paid by'))).toBe(true);
-  expect(isDisabled(splitRow('Split between'))).toBe(true);
+  expect(isRowDisabled('Paid by')).toBe(true);
+  expect(isRowDisabled('Split between')).toBe(true);
   const lock = within(formScreen()).getByText(FORMER_MEMBER_LOCK);
   expect(inTreeOrder(amountField(), lock)).toBe(true);
   expect(titleField()).not.toBeDisabled();
@@ -1185,8 +1182,8 @@ test('[LEDGER-60.1] locks the amount, the payer and the split when the payer was
   await openEditExpense(dinner.id);
 
   expect(amountField()).toBeDisabled();
-  expect(isDisabled(splitRow('Paid by'))).toBe(true);
-  expect(isDisabled(splitRow('Split between'))).toBe(true);
+  expect(isRowDisabled('Paid by')).toBe(true);
+  expect(isRowDisabled('Split between')).toBe(true);
   expect(within(formScreen()).getByText(FORMER_MEMBER_LOCK)).toBeOnTheScreen();
 
   await fillForm({ title: 'Supper' });
@@ -1208,8 +1205,8 @@ test('[LEDGER-60.1] unlocks them once the former member is added back', async ()
   await openEditExpense(dinner.id);
 
   expect(amountField()).not.toBeDisabled();
-  expect(isDisabled(splitRow('Paid by'))).toBe(false);
-  expect(isDisabled(splitRow('Split between'))).toBe(false);
+  expect(isRowDisabled('Paid by')).toBe(false);
+  expect(isRowDisabled('Split between')).toBe(false);
   expect(within(formScreen()).queryByText(FORMER_MEMBER_LOCK)).toBeNull();
 });
 
@@ -1247,94 +1244,107 @@ test('[LEDGER-61.1] saves the expense again once its group is restored', async (
 
 // + Add New Category
 
-test('[LEDGER-62.1] opens Manage Categories over New Expense at /manage-categories from + Add New Category', async () => {
+test('[LEDGER-62.2] opens New Category over New Expense from + Add New Category', async () => {
   const app = await startWithGroups(BRISBANE);
   await openNewExpense();
   await fillForm({ amount: '8.75', title: 'Coffee' });
 
-  await openCategorySheet();
+  await openNewCategory();
 
-  expect(categorySheetTitle()).toBe('Manage Categories');
+  expect(barTitled('New Category')).toBeDefined();
   expect(formTitle()).toBe('New Expense');
-  expect(['formSheet', 'pageSheet', 'modal']).toContain(
-    categorySheet().props.stackPresentation,
-  );
-  expect(() => barAction('Manage Categories', 'Close')).not.toThrow();
-  expect(() => barAction('Manage Categories', 'Add category')).not.toThrow();
-  expect(app.getPathname()).toBe('/manage-categories');
-  expect(app.getSearchParams()).toEqual({});
+  expect(barAction('New Category', 'Cancel').disabled).toBe(false);
+  expect(barAction('New Category', 'Add').disabled).toBe(true);
+  expect(categorySheetTitle()).toBeUndefined();
+  expect(app.getPathname()).toBe('/expenses/new');
 });
 
-test("[LEDGER-62.1] opens the group's Group Categories when the form's space is a group", async () => {
-  const app = await startWithGroups(BRISBANE);
+test('[LEDGER-62.2] selects the new category and returns to the form with its inputs once it is added', async () => {
+  await startWithGroups(BRISBANE);
+  await openNewExpense();
+  await fillForm({ amount: '8.75', title: 'Coffee' });
+
+  await addNewCategoryFromForm('Gym');
+
+  expect(formTitle()).toBe('New Expense');
+  expect(amountField().props.value).toBe('8.75');
+  expect(titleField().props.value).toBe('Coffee');
+  expect(formCategory()).toBe('Gym');
+  await openCategoryList();
+  expect(categoryOptions([...DEFAULT_NAMES, 'Gym', ADD_NEW_CATEGORY])).toEqual([
+    ...DEFAULT_NAMES.map((name) => [name, false] as const),
+    ['Gym', true],
+    [ADD_NEW_CATEGORY, false],
+  ]);
+});
+
+test("[LEDGER-62.2] adds the category to the group when the form's space is a group", async () => {
+  await startWithGroups(BRISBANE);
   const brisbane = await storedGroup(file, 'Brisbane');
+  const identity = await readIdentity();
   await newExpenseIn('Brisbane');
 
-  await openCategorySheet();
+  await addNewCategoryFromForm('Flights');
 
-  expect(categorySheetTitle()).toBe('Group Categories');
-  expect(app.getPathname()).toBe('/manage-categories');
-  expect(app.getSearchParams()).toEqual({
-    scopeKind: 'group',
-    spaceId: brisbane.id,
-  });
+  expect(formCategory()).toBe('Flights');
+  await expect(categoryIn(file, brisbane.id, 'Flights')).resolves.toMatchObject(
+    { name: 'Flights' },
+  );
+  await expect(
+    categoryIn(file, identity.personalSpaceId, 'Flights'),
+  ).rejects.toThrow('No category named Flights');
 });
 
-test('[LEDGER-62.1] returns to the form with its inputs after a category is added there', async () => {
+test('[LEDGER-62.2] keeps New Category open and shows why on a name the space already uses', async () => {
   await startWithGroups(BRISBANE);
   await openNewExpense();
-  await fillForm({ amount: '8.75', title: 'Coffee' });
-  await openCategorySheet();
+  await openNewCategory();
+  await fireEvent.changeText(
+    screen.getByLabelText('Category name'),
+    'shopping',
+  );
 
-  await addCategoryInSheet('Gym');
-  await closeCategorySheet();
+  await pressOnBar('New Category', 'Add');
 
-  expect(formTitle()).toBe('New Expense');
-  expect(amountField().props.value).toBe('8.75');
-  expect(titleField().props.value).toBe('Coffee');
-  expect(formCategory()).toBe('Food & Dining');
-  await openCategoryList();
+  expect(isNewCategoryOpen()).toBe(true);
   expect(
-    categoryOptions([...DEFAULT_NAMES, 'Gym', ADD_NEW_CATEGORY]).map(
-      ([name]) => name,
-    ),
-  ).toEqual([...DEFAULT_NAMES, 'Gym', ADD_NEW_CATEGORY]);
+    screen.getByText('A category with this name already exists.'),
+  ).toBeOnTheScreen();
+  expect(formCategory()).toBe('Food & Dining');
 });
 
-test("[LEDGER-62.1] shows the new name of the form's category once it is renamed there", async () => {
-  await startWithGroups(BRISBANE);
-  await openNewExpense();
-  await chooseCategory('Shopping');
-  await openCategorySheet();
+test.each([
+  ['Cancel is pressed', () => pressOnBar('New Category', 'Cancel')],
+  ['New Category is swiped down', () => swipeDown('New Category')],
+])(
+  '[LEDGER-62.2] keeps the category and the inputs, and adds nothing, when %s',
+  async (_when, close) => {
+    await startWithGroups(BRISBANE);
+    const identity = await readIdentity();
+    await openNewExpense();
+    await fillForm({ amount: '8.75', title: 'Coffee' });
+    await openNewCategory();
+    await fireEvent.changeText(screen.getByLabelText('Category name'), 'Gym');
+    await settle();
 
-  await renameCategoryInSheet('Shopping', 'Groceries');
-  await closeCategorySheet();
+    await close();
 
-  expect(formCategory()).toBe('Groceries');
-});
-
-test('[LEDGER-62.1] returns to the form with its inputs when the categories screen is swiped down', async () => {
-  await startWithGroups(BRISBANE);
-  await openNewExpense();
-  await fillForm({ amount: '8.75', title: 'Coffee' });
-  await openCategorySheet();
-
-  await swipeDown('Manage Categories');
-
-  await waitFor(() => expect(categorySheetTitle()).toBeUndefined());
-  expect(formTitle()).toBe('New Expense');
-  expect(amountField().props.value).toBe('8.75');
-  expect(titleField().props.value).toBe('Coffee');
-});
+    await waitFor(() => expect(isNewCategoryOpen()).toBe(false));
+    expect(formTitle()).toBe('New Expense');
+    expect(amountField().props.value).toBe('8.75');
+    expect(titleField().props.value).toBe('Coffee');
+    expect(formCategory()).toBe('Food & Dining');
+    await expect(
+      categoryIn(file, identity.personalSpaceId, 'Gym'),
+    ).rejects.toThrow('No category named Gym');
+  },
+);
 
 test("[LEDGER-63.1] switches to the personal Uncategorized when the form's category is deleted", async () => {
   await startWithGroups(BRISBANE);
   const identity = await readIdentity();
   await openNewExpense();
-  await openCategorySheet();
-  await addCategoryInSheet('Gym');
-  await closeCategorySheet();
-  await chooseCategory('Gym');
+  await addNewCategoryFromForm('Gym');
   await openCategorySheet();
 
   await removeCategoryInSheet('Gym', 'Delete');
@@ -1352,11 +1362,8 @@ test("[LEDGER-63.1] switches to the group's Uncategorized when the form's group 
   await startWithGroups(BRISBANE);
   const brisbane = await storedGroup(file, 'Brisbane');
   await newExpenseIn('Brisbane');
-  await openCategorySheet();
-  await addCategoryInSheet('Flights');
-  await closeCategorySheet();
-  await chooseCategory('Flights');
-  await openCategorySheet();
+  await addNewCategoryFromForm('Flights');
+  await openCategorySheet(brisbane.id);
 
   await removeCategoryInSheet('Flights', 'Delete');
   await closeCategorySheet();
@@ -1373,7 +1380,7 @@ test("[LEDGER-63.1] switches to the group's Uncategorized when the form's group 
 
 // The category list and New Expense from a group
 
-test('[LEDGER-17.4] ends the category list with + Add New Category', async () => {
+test('[LEDGER-17.5] ends the category list with + Add New Category', async () => {
   await startWithGroups(BRISBANE);
   await openNewExpense();
 
@@ -1385,7 +1392,7 @@ test('[LEDGER-17.4] ends the category list with + Add New Category', async () =>
   ]);
 });
 
-test("[LEDGER-17.4] lists the chosen group's categories", async () => {
+test("[LEDGER-17.5] lists the chosen group's categories", async () => {
   await startWithGroups(BRISBANE);
   const brisbane = await storedGroup(file, 'Brisbane');
   await addCategory('Flights', brisbane.id);
@@ -1407,7 +1414,7 @@ test("[LEDGER-17.4] lists the chosen group's categories", async () => {
   ).toEqual([...names, 'Flights', ADD_NEW_CATEGORY]);
 });
 
-test('[LEDGER-17.4] keeps the form on a category archived while the form is open, and saves it', async () => {
+test('[LEDGER-17.5] keeps the form on a category archived while the form is open, and saves it', async () => {
   await startWithGroups(BRISBANE);
   await addCategory('Gym');
   await addExpense({ title: 'Yoga', category: 'Gym' });
@@ -1424,7 +1431,7 @@ test('[LEDGER-17.4] keeps the form on a category archived while the form is open
   expect((await onlyExpense()).category).toEqual(yoga.category);
 });
 
-test('[LEDGER-17.4] keeps the form on a category whose expenses were moved away while the form is open', async () => {
+test('[LEDGER-17.5] keeps the form on a category whose expenses were moved away while the form is open', async () => {
   await startWithGroups(BRISBANE);
   await addCategory('Gym');
   await addExpense({ title: 'Yoga', category: 'Gym' });

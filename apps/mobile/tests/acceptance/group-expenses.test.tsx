@@ -2,7 +2,13 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { ActionSheetIOS } from 'react-native';
-import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import {
   expectForm,
   expectFormClosed,
@@ -13,10 +19,13 @@ import {
   restart,
   storedExpenses,
   watchAlerts,
+  nameOf,
 } from './ledger-expense-app';
 import {
   dotColors,
   linesIn,
+  asRead,
+  inOneRow,
   shownInOrder,
   startExpensesAt,
 } from './ledger-expense-list-app';
@@ -173,7 +182,7 @@ async function showGroup(group: string) {
 
 // The expenses on a group's screen
 
-test("[GROUPS-61.2] lists the group's expenses newest first, without the no-expenses hint", async () => {
+test("[GROUPS-61.3] lists the group's expenses newest first, without the no-expenses hint", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await addGroupExpense({
@@ -192,27 +201,59 @@ test("[GROUPS-61.2] lists the group's expenses newest first, without the no-expe
   expect(groupLines('Brisbane')).not.toContain(NO_EXPENSES);
 });
 
-test('[GROUPS-61.2] shows the full amount on the card, with the category, the group and the date', async () => {
+test('[GROUPS-61.3] shows the full amount on the card, with the category and Paid by the payer at its right', async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
 
   await showGroup('Brisbane');
 
-  const expected = [
-    'Dinner',
-    '$100.01',
-    'Food & Dining',
-    'Brisbane',
-    'Oct 30, 2026',
-  ];
+  const expected = ['Dinner', '$100.01', 'Food & Dining', 'Paid by Casey'];
   await waitFor(() =>
     expect(
       shownInOrder(linesIn(groupCard('Brisbane', 'Dinner')), expected),
     ).toEqual(expected),
   );
+  const shown = groupCard('Brisbane', 'Dinner');
+  expect(linesIn(shown)).not.toContain('Brisbane');
+  expect(linesIn(shown)).not.toContain('Oct 30, 2026');
+  expect(
+    inOneRow(
+      within(shown).getByText('Food & Dining'),
+      within(shown).getByText('Paid by Casey'),
+    ),
+  ).toBe(true);
+  const read = [...expected, 'Oct 30, 2026'];
+  expect(shownInOrder([asRead(nameOf(shown))], read)).toEqual(read);
 });
 
-test("[GROUPS-61.2] [LEDGER-33.2] shows the category's color dot on the group's cards, and <name> (Archived) once the group's category is archived", async () => {
+test('[GROUPS-61.3] says Paid by You on the card of an expense you paid', async () => {
+  await startWithGroups(BRISBANE);
+  await addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Taylor (You)',
+    sharers: ['Casey'],
+  });
+
+  await showGroup('Brisbane');
+
+  await waitFor(() =>
+    expect(linesIn(groupCard('Brisbane', 'Dinner'))).toContain('Paid by You'),
+  );
+});
+
+test("[GROUPS-61.3] keeps a former member's name on the card of an expense they paid", async () => {
+  await startWithGroups(BRISBANE);
+  await addDinner();
+
+  await removeFromGroup('Brisbane', 'Casey');
+  await showGroup('Brisbane');
+
+  await waitFor(() =>
+    expect(linesIn(groupCard('Brisbane', 'Dinner'))).toContain('Paid by Casey'),
+  );
+});
+
+test("[GROUPS-61.3] [LEDGER-33.3] shows the category's color dot on the group's cards, and <name> (Archived) once the group's category is archived", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await showGroup('Brisbane');
@@ -229,8 +270,7 @@ test("[GROUPS-61.2] [LEDGER-33.2] shows the category's color dot on the group's 
     'Dinner',
     '$100.01',
     'Food & Dining (Archived)',
-    'Brisbane',
-    'Oct 30, 2026',
+    'Paid by Casey',
   ];
   await waitFor(() =>
     expect(
@@ -240,7 +280,26 @@ test("[GROUPS-61.2] [LEDGER-33.2] shows the category's color dot on the group's 
   expect(dotColors(groupCard('Brisbane', 'Dinner'))).toEqual(['#D81B60']);
 });
 
-test('[GROUPS-61.2] lists an expense of the group that you have no part in', async () => {
+test("[LEDGER-90.1] puts the date above each run of cards of that day on the group's screen", async () => {
+  await startWithGroups(BRISBANE);
+  await addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Casey',
+    sharers: ['Blake'],
+    title: 'Taxi',
+    date: '2026-10-29',
+  });
+  await addDinner();
+
+  await showGroup('Brisbane');
+
+  const expected = ['Oct 30, 2026', 'Dinner', 'Oct 29, 2026', 'Taxi'];
+  await waitFor(() =>
+    expect(shownInOrder(groupLines('Brisbane'), expected)).toEqual(expected),
+  );
+});
+
+test('[GROUPS-61.3] lists an expense of the group that you have no part in', async () => {
   await startWithGroups(BRISBANE);
   await addGroupExpense({
     group: 'Brisbane',
@@ -253,7 +312,7 @@ test('[GROUPS-61.2] lists an expense of the group that you have no part in', asy
   await waitFor(() => expect(groupCardTitles('Brisbane')).toEqual(['Dinner']));
 });
 
-test("[GROUPS-61.2] leaves out the other groups' expenses", async () => {
+test("[GROUPS-61.3] leaves out the other groups' expenses", async () => {
   await startWithGroups({ ...BRISBANE, Tokyo: [] });
   await addDinner();
   await addGroupExpense({
@@ -268,7 +327,7 @@ test("[GROUPS-61.2] leaves out the other groups' expenses", async () => {
   await waitFor(() => expect(groupCardTitles('Brisbane')).toEqual(['Dinner']));
 });
 
-test("[GROUPS-61.2] lists an archived group's expenses under its read-only notice", async () => {
+test("[GROUPS-61.3] lists an archived group's expenses under its read-only notice", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await archiveGroup('Brisbane');
@@ -278,16 +337,11 @@ test("[GROUPS-61.2] lists an archived group's expenses under its read-only notic
 
   await waitFor(() => expect(groupCardTitles('Brisbane')).toEqual(['Dinner']));
   const lines = groupLines('Brisbane');
-  const expected = [
-    READ_ONLY,
-    'Restore Group',
-    'Dinner',
-    'Brisbane · Archived',
-  ];
+  const expected = [READ_ONLY, 'Restore Group', 'Dinner', 'Paid by Casey'];
   expect(shownInOrder(lines, expected)).toEqual(expected);
 });
 
-test("[GROUPS-61.2] keeps listing the group's expenses after a restart", async () => {
+test("[GROUPS-61.3] keeps listing the group's expenses after a restart", async () => {
   const app = await startWithGroups(BRISBANE);
   await addDinner();
 

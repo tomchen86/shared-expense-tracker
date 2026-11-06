@@ -630,7 +630,7 @@ test('[CATEGORIES-6.2] gives the nine default categories your personal space on 
   expect(await storedCategories()).toHaveLength(DEFAULTS.length);
 });
 
-test('[CATEGORIES-7.4] lists the categories under CATEGORIES, with Add category in the navigation bar', async () => {
+test('[CATEGORIES-7.5] lists the categories under CATEGORIES, with Add category in the navigation bar', async () => {
   await openManageCategories();
 
   const texts = ['CATEGORIES', ...DEFAULTS.map(([name]) => name)];
@@ -638,7 +638,24 @@ test('[CATEGORIES-7.4] lists the categories under CATEGORIES, with Add category 
   expect(addCategoryButton().disabled).toBe(false);
 });
 
-test('[CATEGORIES-7.4] lists a new category after Uncategorized', async () => {
+test('[CATEGORIES-7.5] makes Add category a plain plus, in the color the system gives it, on iOS', async () => {
+  await openManageCategories();
+
+  const items: {
+    accessibilityLabel?: string;
+    icon?: { name?: string };
+    tintColor?: unknown;
+    variant?: string;
+  }[] =
+    navigationBars(categoriesScreen()).at(-1)?.props
+      .headerRightBarButtonItems ?? [];
+  const add = items.find((item) => item.accessibilityLabel === 'Add category');
+  expect(add?.icon?.name).toBe('plus');
+  expect(add?.variant ?? 'plain').toBe('plain');
+  expect(add?.tintColor).toBeUndefined();
+});
+
+test('[CATEGORIES-7.5] lists a new category after Uncategorized', async () => {
   await openManageCategories();
 
   await addCategory('Gym');
@@ -646,7 +663,7 @@ test('[CATEGORIES-7.4] lists a new category after Uncategorized', async () => {
   expect(categoryList()).toEqual([...DEFAULTS, ['Gym', '#43A047']]);
 });
 
-test('[CATEGORIES-7.4] keeps a renamed category in its place', async () => {
+test('[CATEGORIES-7.5] keeps a renamed category in its place', async () => {
   await openManageCategories();
 
   await editCategory('Shopping', 'Groceries');
@@ -654,7 +671,7 @@ test('[CATEGORIES-7.4] keeps a renamed category in its place', async () => {
   expect(categoryList()).toEqual(replacing(2, ['Groceries', '#FBC02D']));
 });
 
-test('[CATEGORIES-7.4] keeps the stored order in each scope when categories of other scopes come between', async () => {
+test('[CATEGORIES-7.5] keeps the stored order in each scope when categories of other scopes come between', async () => {
   const groups = await createGroups('Brisbane');
   await reopenManageCategories();
   await addCategory('Gym');
@@ -1238,7 +1255,7 @@ test('[CATEGORIES-22.2] adds a personal category when the URL has a group ID but
   expect(listedNames()).toEqual([...DEFAULT_NAMES, 'Gym', 'Pets']);
 });
 
-test("[CATEGORIES-23.3] lists only the group's own nine default categories in a new group's Group Categories", async () => {
+test("[CATEGORIES-23.4] lists only the group's own nine default categories in a new group's Group Categories", async () => {
   const groups = await createGroups('Brisbane');
   await reopenManageCategories();
   await addCategory('Gym');
@@ -1249,7 +1266,7 @@ test("[CATEGORIES-23.3] lists only the group's own nine default categories in a 
   expect(categoryList()).toEqual(DEFAULTS);
 });
 
-test("[CATEGORIES-23.3] leaves another group's categories out of Group Categories", async () => {
+test("[CATEGORIES-23.4] leaves another group's categories out of Group Categories", async () => {
   const groups = await setUpScopes();
 
   await openGroupCategories(groups.Tokyo);
@@ -1637,7 +1654,7 @@ async function cancelMoveList(name: string) {
   await waitFor(() => expect(moveList(name)).toBeUndefined());
 }
 
-test('[CATEGORIES-7.4] leaves an archived category out of CATEGORIES and the others in their order', async () => {
+test('[CATEGORIES-7.5] leaves an archived category out of CATEGORIES and the others in their order', async () => {
   running = await openManageCategories();
   await spendOn('Health');
 

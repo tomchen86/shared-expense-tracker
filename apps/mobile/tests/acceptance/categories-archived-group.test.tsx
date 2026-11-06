@@ -147,7 +147,7 @@ function inAButton(view: ReturnType<typeof screenOf>) {
   return false;
 }
 
-test("[CATEGORIES-23.3] opens a group's Group Categories at the URL the expense form uses", async () => {
+test("[CATEGORIES-23.4] opens a group's Group Categories at the URL Group actions uses", async () => {
   await startWithGroups({ Brisbane: [] });
   const brisbane = await storedGroup(file, 'Brisbane');
   await addCategory('Flights', brisbane.id);

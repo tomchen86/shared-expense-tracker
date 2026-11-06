@@ -452,9 +452,9 @@ WHEN Insights 打開，the mobile app SHALL 用月份模式，選中最新的月
 - **WHEN** 在 Insights 選中「January 2025」之後返回，再打開 Insights
 - **THEN** 選中的期間又是「March 2025」
 
-### Requirement: INSIGHTS-22.1 總額卡
+### Requirement: INSIGHTS-22.2 總額卡
 
-The mobile app SHALL 為選中的期間的每個幣別，依幣別代碼排序各顯示一張總額卡，由上而下是「TOTAL SPENT」、用手機地區的貨幣格式顯示的總額（INSIGHTS-5.1），以及選中的期間有上一期時的比較（INSIGHTS-9.1）：上一期沒有這個幣別時是「No spending in <上一期的名稱>.」，差額是 0 時是「Same as <上一期的名稱>.」，其他時候是「<差額的絕對值> more than <上一期的名稱>, <百分比> percent.」，差額小於 0 時「more」換成「less」；差額的絕對值用手機地區的貨幣格式，百分比是 INSIGHTS-9.1 的百分比的絕對值，用手機地區的數字格式顯示到小數一位，四捨五入。螢幕閱讀器把每張卡讀成一項「Total spent <總額>.」，有比較時再接一個空格和比較。
+The mobile app SHALL 在 Insights 顯示一張總額卡，最上面是一次「TOTAL SPENT」，下面為選中的期間的每個幣別，依幣別代碼排序各顯示用手機地區的貨幣格式顯示的總額（INSIGHTS-5.1）、在群組的 Insights 上一行「Your share: <你在這個幣別、這個期間的份額>」，以及選中的期間有上一期時的比較（INSIGHTS-9.1）：上一期沒有這個幣別時是「No spending in <上一期的名稱>.」，差額是 0 時是「Same as <上一期的名稱>.」，其他時候是「<差額的絕對值> more than <上一期的名稱>, <百分比> percent.」，差額小於 0 時「more」換成「less」；差額的絕對值用手機地區的貨幣格式，百分比是 INSIGHTS-9.1 的百分比的絕對值，用手機地區的數字格式顯示到小數一位，四捨五入。螢幕閱讀器把每個幣別讀成一項「Total spent <總額>.」，有你的份額時再接一個空格和「Your share <份額>.」，有比較時再接一個空格和比較。
 
 #### Scenario: 比上一期多
 
@@ -469,7 +469,7 @@ The mobile app SHALL 為選中的期間的每個幣別，依幣別代碼排序�
 #### Scenario: 上一期沒有這個幣別
 
 - **WHEN** 2024 年 12 月只有 500 USD，2025 年 1 月有 1000 USD 和 2000 JPY，選中 January 2025
-- **THEN** 依序是 JPY 的卡「¥2,000」「No spending in December 2024.」和 USD 的卡「$10.00」「$5.00 more than December 2024, 100.0 percent.」
+- **THEN** 一張卡依序是「TOTAL SPENT」、「¥2,000」、「No spending in December 2024.」、「$10.00」、「$5.00 more than December 2024, 100.0 percent.」，「TOTAL SPENT」只有一個
 
 #### Scenario: 最早的期間
 
@@ -486,9 +486,24 @@ The mobile app SHALL 為選中的期間的每個幣別，依幣別代碼排序�
 - **WHEN** 手機第一個偏好的語言和地區是英文（美國），上一期和選中的期間分別是 300 USD 和 500 USD，或 1 USD 和 1235 USD
 - **THEN** 百分比分別是「66.7」和「123,400.0」
 
-### Requirement: INSIGHTS-23.1 每個幣別的類別
+#### Scenario: 群組的 Insights
 
-The mobile app SHALL 在總額卡下面，為選中的期間的每個幣別依幣別代碼排序，顯示標題「<幣別代碼> categories」、這個幣別的圖（INSIGHTS-24.1），和這個幣別的類別（INSIGHTS-6.2 到 INSIGHTS-8.1，不含 INSIGHTS-11.1 的 Others），依 INSIGHTS-8.1 的順序由上而下每個類別一列：類別顏色的色點、類別的名稱，和「<金額> · <百分比>」，金額用手機地區的貨幣格式，百分比用手機地區的百分比格式顯示到小數一位，四捨五入，例如英文（美國）是「75.0%」；名稱只佔一行，放不下時在結尾以「…」截斷。螢幕閱讀器把每個幣別的標題讀成標題，把每一列讀成一項「<完整的名稱>, <金額>, <百分比的數字> percent」，不讀色點。
+- **WHEN** 名字是「Taylor」，Brisbane 只有 2025 年 1 月 Casey 付的 60.00 USD 的 Dinner，分給 Taylor、Casey 和 Blake，打開 Brisbane 的 Insights
+- **THEN** 總額卡依序是「TOTAL SPENT」、「$60.00」、「Your share: $20.00」；螢幕閱讀器讀出「Total spent $60.00. Your share $20.00.」
+
+#### Scenario: 和你無關的幣別
+
+- **WHEN** Brisbane 同一期還有 Casey 付、只有 Blake 分攤的 3000 JPY 的 Taxi
+- **THEN** 日圓的總額下面是「Your share: ¥0」
+
+#### Scenario: 個人的 Insights
+
+- **WHEN** 打開 Expenses 分頁的 Insights
+- **THEN** 沒有「Your share」
+
+### Requirement: INSIGHTS-23.2 每個幣別的類別
+
+The mobile app SHALL 在總額卡下面，為選中的期間的每個幣別依幣別代碼排序，顯示標題「<幣別代碼> categories」、這個幣別的圖（INSIGHTS-24.1），和這個幣別的類別（INSIGHTS-6.2 到 INSIGHTS-8.1，不含 INSIGHTS-11.1 的 Others），依 INSIGHTS-8.1 的順序由上而下每個類別一列：類別顏色的色點、類別的名稱，和「<金額> · <百分比>」，金額用手機地區的貨幣格式，百分比用手機地區的百分比格式顯示到小數一位，四捨五入，例如英文（美國）是「75.0%」；名稱只佔一行，放不下時尾端漸層消失（SHELL-68.1）。螢幕閱讀器把每個幣別的標題讀成標題，把每一列讀成一項「<完整的名稱>, <金額>, <百分比的數字> percent」，不讀色點。
 
 #### Scenario: 一個幣別
 
@@ -518,7 +533,7 @@ The mobile app SHALL 在總額卡下面，為選中的期間的每個幣別依�
 #### Scenario: 很長的名稱
 
 - **WHEN** 分類的名稱是 50 個「a」
-- **THEN** 這一列的名稱只佔一行，放不下的部分在結尾截斷；螢幕閱讀器讀出完整的 50 個「a」
+- **THEN** 這一列的名稱只佔一行，放不下的部分不顯示，也沒有「…」；螢幕閱讀器讀出完整的 50 個「a」
 
 ### Requirement: INSIGHTS-24.1 每個幣別的圖
 
@@ -666,19 +681,29 @@ WHEN 使用者按「Previous period」或「Next period」，the mobile app SHAL
 - **WHEN** 選中 January 2025，它是最新的期間
 - **THEN** 「Next period」停用，按了沒有反應，「Previous period」可以按；選中 October 2024 時，「Previous period」停用
 
-### Requirement: INSIGHTS-33.1 (e2e) 在期間名稱上滑動
+### Requirement: INSIGHTS-33.2 (e2e) 在期間名稱或內容上滑動
 
-WHEN 使用者在期間名稱上往右滑，the mobile app SHALL 選中上一期；WHEN 使用者往左滑，the mobile app SHALL 選中下一期；那個方向沒有期間時，滑動沒有作用。
+WHEN 使用者在期間名稱或下面的內容上往右滑，the mobile app SHALL 選中上一期；WHEN 使用者往左滑，the mobile app SHALL 選中下一期；那個方向沒有期間時，滑動沒有作用。手指開始移動時就決定是換期間還是捲動，之後不變；換期間時畫面跟著手指走，放開後新的期間滑進來。
 
 #### Scenario: 往右滑再往左滑
 
 - **WHEN** iOS 上選中最新的月份時，在期間名稱上往右滑，再往左滑
 - **THEN** 往右滑之後選中上一期，「Next period」可以按；往左滑之後又是最新的月份，「Next period」停用
 
+#### Scenario: 在內容上滑
+
+- **WHEN** 選中最新的月份時，在總額卡上往右滑
+- **THEN** 選中上一期
+
 #### Scenario: 最新的期間往左滑
 
 - **WHEN** 選中最新的月份時在期間名稱上往左滑
 - **THEN** 選中的期間不變
+
+#### Scenario: 上下滑
+
+- **WHEN** 在內容上往上滑
+- **THEN** 內容捲動，選中的期間不變
 
 ### Requirement: INSIGHTS-34.1 只有一個期間時
 
@@ -696,16 +721,16 @@ WHILE 現在的模式只有一個期間，the mobile app SHALL 只用文字顯�
 
 ### Requirement: INSIGHTS-35.1 期間選擇器
 
-WHEN 使用者按期間名稱，the mobile app SHALL 打開期間選擇器，只列出現在這一種期間裡的期間，也就是有計入的支出的月份或年份；在期間選擇器選定一個期間，就選中它。各平台的期間選擇器見 INSIGHTS-36.1 到 INSIGHTS-39.1。
+WHEN 使用者按期間名稱，the mobile app SHALL 打開期間選擇器，只列出現在這一種期間裡的期間，也就是有計入的支出的月份或年份；在期間選擇器選定一個期間，就選中它。各平台的期間選擇器見 INSIGHTS-36.2 到 INSIGHTS-39.1。
 
 #### Scenario: 只列出有支出的月份
 
 - **WHEN** 支出的日期是 `2024-11-10`、`2025-01-20` 和 `2025-03-10`，在月份模式按「Choose period. March 2025」
 - **THEN** 期間選擇器的 2025 年只有 January 和 March，2024 年只有 November，沒有其他月份
 
-### Requirement: INSIGHTS-36.1 (e2e) iOS 的月份選擇器
+### Requirement: INSIGHTS-36.2 (e2e) iOS 的月份選擇器
 
-WHERE iOS，WHEN 使用者在月份模式按期間名稱，the mobile app SHALL 從底部升起標題是「Period」的面板，左邊是「Cancel」，右邊是「Done」，中間是「Year」和「Month」兩列，各有一個系統選單：Year 由新到舊列出有計入的支出的年份，Month 依月份的先後列出 Year 選的那一年裡的月份期間，一開始是選中的期間；在 Year 換一個年份時，Month 換成那一年的同一個月，那一年沒有這個月時換成那一年最新的月份。按「Done」就選中面板上的月份並關掉面板；按「Cancel」或往下滑就關掉面板，選中的期間不變。
+WHERE iOS，WHEN 使用者在月份模式按期間名稱，the mobile app SHALL 從底部升起標題是「Period」的面板，左邊是無障礙名稱為「Cancel」、圖示是 ✕ 的按鈕，右邊是無障礙名稱為「Done」、圖示是 ✓ 的按鈕，中間是「Year」和「Month」兩列，各有一個系統選單：Year 由新到舊列出有計入的支出的年份，Month 依月份的先後列出 Year 選的那一年裡的月份期間，一開始是選中的期間；在 Year 換一個年份時，Month 換成那一年的同一個月，那一年沒有這個月時換成那一年最新的月份。按「Done」就選中面板上的月份並關掉面板；按「Cancel」或往下滑就關掉面板，選中的期間不變。
 
 #### Scenario: 選一個月份
 
@@ -731,9 +756,9 @@ WHERE iOS，WHILE 年份模式有 2 到 8 個期間，the mobile app SHALL 讓�
 - **WHEN** iOS 上有今年和去年的支出，年份模式選中今年時按期間名稱，選去年
 - **THEN** 選中的期間是去年
 
-### Requirement: INSIGHTS-38.1 (manual) iOS 年份很多時的選擇器
+### Requirement: INSIGHTS-38.2 (manual) iOS 年份很多時的選擇器
 
-WHERE iOS，WHILE 年份模式有 9 個以上的期間，WHEN 使用者按期間名稱，the mobile app SHALL 從底部升起標題是「Period」的面板：9 到 24 個期間時，面板裡是由舊到新的年份滾輪，一開始在選中的年份，左邊是「Cancel」，右邊是「Done」，按「Done」選中滾輪上的年份，按「Cancel」或往下滑選中的期間不變；25 個以上時，面板裡是「AVAILABLE PERIODS」和由新到舊的年份清單，選中的年份打勾，左邊是「Close」，點一個年份就選中它並關掉面板，按「Close」或往下滑選中的期間不變。
+WHERE iOS，WHILE 年份模式有 9 個以上的期間，WHEN 使用者按期間名稱，the mobile app SHALL 從底部升起標題是「Period」的面板：9 到 24 個期間時，面板裡是由舊到新的年份滾輪，一開始在選中的年份，左邊是名稱為「Cancel」的 ✕，右邊是名稱為「Done」的 ✓，按「Done」選中滾輪上的年份，按「Cancel」或往下滑選中的期間不變；25 個以上時，面板裡是「AVAILABLE PERIODS」和由新到舊的年份清單，選中的年份打勾，左邊是名稱為「Close」的 ✕，點一個年份就選中它並關掉面板，按「Close」或往下滑選中的期間不變。
 
 #### Scenario: 滾輪
 

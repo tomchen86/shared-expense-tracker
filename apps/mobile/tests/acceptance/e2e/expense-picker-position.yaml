@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-86.1] Choosing or cancelling Paid by leaves Split between immediately usable in New and Edit Expense'
+name: '[LEDGER-86.2] Choosing Paid by or closing its list leaves Split between immediately usable in New and Edit Expense'
 ---
 - launchApp:
     clearState: true
@@ -48,7 +48,6 @@ name: '[LEDGER-86.1] Choosing or cancelling Paid by leaves Split between immedia
 - takeScreenshot: expense-before-payer
 - tapOn: Paid by, not selected
 - waitForAnimationToEnd
-- assertVisible: Who Paid\?
 - tapOn: Casey
 - waitForAnimationToEnd
 - takeScreenshot: expense-after-payer
@@ -56,10 +55,13 @@ name: '[LEDGER-86.1] Choosing or cancelling Paid by leaves Split between immedia
 - assertVisible: Paid by, Casey
 - assertVisible: Split between, Choose people
 - tapOn: Split between, Choose people
-- assertVisible: Split Between
+- waitForAnimationToEnd
 - tapOn: Taylor \(You\)
+- waitForAnimationToEnd
 - tapOn: Casey
-- tapOn: Done
+- waitForAnimationToEnd
+- tapOn:
+    point: 3%,50%
 - waitForAnimationToEnd
 - assertVisible: Split between, 2 people
 - tapOn:
@@ -78,8 +80,8 @@ name: '[LEDGER-86.1] Choosing or cancelling Paid by leaves Split between immedia
 - assertVisible: Paid by, Casey
 - tapOn: Paid by, Casey
 - waitForAnimationToEnd
-- assertVisible: Who Paid\?
-- tapOn: Cancel
+- tapOn:
+    point: 3%,50%
 - waitForAnimationToEnd
 - assertVisible: Paid by, Casey
 - assertVisible: Split between, 2 people
@@ -90,7 +92,8 @@ name: '[LEDGER-86.1] Choosing or cancelling Paid by leaves Split between immedia
 - assertVisible:
     text: Casey
     selected: true
-- tapOn: Done
+- tapOn:
+    point: 3%,50%
 - waitForAnimationToEnd
 - scrollUntilVisible:
     element: Expense note.*

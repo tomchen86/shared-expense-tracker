@@ -28,6 +28,7 @@ import { useLocalIdentity, type LocalIdentity } from '../../src/shell';
 import type { Database } from '../../src/storage';
 import { openNodeDatabase } from '../../src/storage/node';
 import type { DateFieldProps } from '../../src/ui/date-field';
+import type { MenuFieldProps } from '../../src/ui/menu-field';
 
 // The expense form tests start the whole app on a phone database file each test
 // chooses (ADR-0006), and read what the app stores through the ledger's
@@ -417,11 +418,65 @@ export const formCurrency = () =>
   nameOf(amountField()).replace(/^Amount in /, '');
 export const titleField = () => inForm().getByLabelText('Expense title');
 export const noteField = () => inForm().getByLabelText('Expense note');
+
+// The form's lists are system menus on iOS (LEDGER-88.1) and sheets on Android
+// (LEDGER-89.1). Only the E2E flows can open a system menu, so on iOS the tests read
+// what the form gives its ui/ MenuField and choose as the menu does; on Android they
+// press the row and the list's buttons.
+
+/** The form's rows that open a system menu, top to bottom, on iOS. */
+export const menuFields = () =>
+  componentsIn(
+    formScreen(),
+    (type) => typeof type === 'function' && type.name === 'MenuField',
+  ).map(({ props, view }) => ({ props: props as MenuFieldProps, view }));
+
+/** Whether the form's lists are system menus: on iOS, where the test file's name has no -android, once the form draws its rows with MenuField. */
+export const listsAreMenus = () =>
+  !/-android\.test\./.test(expect.getState().testPath ?? '') &&
+  menuFields().length > 0;
+
+/** The form's row labelled `label` that opens a system menu, on iOS. */
+export function menuField(label: string) {
+  const found = menuFields().filter((field) => field.props.label === label);
+  if (found.length !== 1)
+    throw new Error(`Expected one ${label} menu, found ${found.length}`);
+  return found[0];
+}
+
+/** What the menu of the row labelled `label` lists, top to bottom, as [name, selected]. */
+export function menuOptions(label: string) {
+  const { props } = menuField(label);
+  return props.options.map(
+    (option) => [option.name, props.selected.includes(option.id)] as const,
+  );
+}
+
+/** Presses the option named `name` in the menu of the row labelled `label`. */
+export async function pressInMenu(label: string, name: string) {
+  const { props } = menuField(label);
+  if (props.disabled) throw new Error(`The ${label} menu is disabled`);
+  const option = props.options.find((candidate) => candidate.name === name);
+  if (option === undefined) throw new Error(`${label} has no ${name}`);
+  await act(async () => props.onSelect(option.id));
+  await settle();
+}
+
+/** The form's category row: the view it draws on iOS, its button on Android. */
 export const categoryButton = () =>
-  inForm().getByRole('button', { name: /^Category, / });
+  listsAreMenus()
+    ? menuField('Category').view
+    : inForm().getByRole('button', { name: /^Category, / });
 /** The category the form shows. */
 export const formCategory = () =>
-  nameOf(categoryButton()).replace(/^Category, /, '');
+  listsAreMenus()
+    ? menuField('Category').props.value
+    : nameOf(categoryButton()).replace(/^Category, /, '');
+/** Whether the category row can't be pressed. */
+export const isCategoryDisabled = () =>
+  listsAreMenus()
+    ? menuField('Category').props.disabled === true
+    : isDisabled(categoryButton());
 
 /** The form's date field, the ui/ DateField. */
 function formDateField() {
@@ -570,7 +625,7 @@ export function watchAlerts() {
 
 // The category list
 
-/** The open category list: a screen titled Category, or what holds a Category header. */
+/** The open category list, a sheet on Android: a screen titled Category, or the Modal or screen around a Category header. */
 function categoryList(): { root: HostView; bar?: HostView } | undefined {
   const bar = navigationBars()
     .filter((candidate) => candidate.props.title === 'Category')
@@ -578,6 +633,8 @@ function categoryList(): { root: HostView; bar?: HostView } | undefined {
   if (bar !== undefined) return { root: screenAround(bar) ?? bar, bar };
   const header = screen.queryAllByRole('header', { name: 'Category' }).at(-1);
   if (header === undefined) return undefined;
+  for (let outer = header.parent; outer; outer = outer.parent)
+    if (String(outer.type) === 'Modal') return { root: outer };
   return { root: screenAround(header) ?? screen.container };
 }
 
@@ -587,12 +644,18 @@ function listRoot() {
   return list.root;
 }
 
+/** Whether the category list is open as a sheet, on Android. */
 export const isCategoryListOpen = () => categoryList() !== undefined;
 
 /** The view that holds the open category list. */
 export const categoryListView = () => listRoot();
 
+/** Opens the category list: on iOS only checks that the row can open its menu. */
 export async function openCategoryList() {
+  if (listsAreMenus()) {
+    expect(isCategoryDisabled()).toBe(false);
+    return;
+  }
   await fireEvent.press(categoryButton());
   await waitFor(() => expect(isCategoryListOpen()).toBe(true));
   await settle();
@@ -600,6 +663,13 @@ export async function openCategoryList() {
 
 /** The list's buttons named after `names`, in screen order, as [name, selected]. */
 export function categoryOptions(names: readonly string[]) {
+  if (listsAreMenus()) {
+    const { action } = menuField('Category').props;
+    return [
+      ...menuOptions('Category'),
+      ...(action ? [[action.label, false] as const] : []),
+    ].filter(([name]) => names.includes(name));
+  }
   return within(listRoot())
     .getAllByRole('button')
     .map((button) => [nameOf(button), isSelected(button)] as const)
@@ -607,12 +677,18 @@ export function categoryOptions(names: readonly string[]) {
 }
 
 export async function chooseCategory(name: string) {
+  if (listsAreMenus()) return pressInMenu('Category', name);
   await openCategoryList();
   await fireEvent.press(within(listRoot()).getByRole('button', { name }));
   await waitFor(() => expect(isCategoryListOpen()).toBe(false));
 }
 
+/**
+ * Closes the category list. On iOS the form hears nothing when its menu closes, so
+ * this does nothing there; on Android it presses the list's Cancel.
+ */
 export async function cancelCategoryList() {
+  if (listsAreMenus()) return;
   const list = categoryList();
   if (list === undefined) throw new Error('The category list is not open');
   const control =

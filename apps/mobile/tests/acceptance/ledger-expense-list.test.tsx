@@ -29,6 +29,7 @@ import {
   storedExpenses,
   titleField,
   watchAlerts,
+  nameOf,
 } from './ledger-expense-app';
 import {
   EMPTY_LIST,
@@ -49,6 +50,7 @@ import {
   goBackFromDetails,
   hasEdit,
   holdReads,
+  inOneRow,
   isUnread,
   linesIn,
   opacityIn,
@@ -254,7 +256,7 @@ test('[LEDGER-43.2] never shows the empty list while the stored expenses load', 
 
 // Cards
 
-test('[LEDGER-33.2] shows the title, amount, category and date on the card, without the note or payer', async () => {
+test('[LEDGER-33.3] shows the title, amount and category on the card, without the date, note or payer', async () => {
   await startExpenses();
   await saveName('Tom');
   await tapTab('Expenses');
@@ -262,12 +264,16 @@ test('[LEDGER-33.2] shows the title, amount, category and date on the card, with
   await addExpense({ note: 'Morning treat' });
 
   const lines = linesIn(card('Coffee run'));
-  const expected = ['Coffee run', '$8.75', 'Food & Dining', 'Oct 30, 2026'];
+  const expected = ['Coffee run', '$8.75', 'Food & Dining'];
   expect(shownInOrder(lines, expected)).toEqual(expected);
-  expect(lines.join('\n')).not.toMatch(/Morning treat|Tom|paid/i);
+  expect(lines.join('\n')).not.toMatch(/Morning treat|Tom|paid|Oct 30, 2026/i);
+  const shown = within(card('Coffee run'));
+  expect(
+    inOneRow(shown.getByText('Coffee run'), shown.getByText('$8.75')),
+  ).toBe(true);
 });
 
-test('[LEDGER-33.2] reads each card as one button with its title, amount, category and date', async () => {
+test('[LEDGER-33.3] reads each card as one button with its title, amount, category and date', async () => {
   await startExpenses();
 
   await addExpense();
@@ -278,7 +284,7 @@ test('[LEDGER-33.2] reads each card as one button with its title, amount, catego
   expect(shownInOrder([readOut(shown)], expected)).toEqual(expected);
 });
 
-test('[LEDGER-33.2] shows the current name of a renamed category on the card', async () => {
+test('[LEDGER-33.3] shows the current name of a renamed category on the card', async () => {
   await startExpenses();
   await addExpense({ category: 'Shopping' });
 
@@ -290,7 +296,7 @@ test('[LEDGER-33.2] shows the current name of a renamed category on the card', a
   expect(linesIn(card('Coffee run'))).not.toContain('Shopping');
 });
 
-test("[LEDGER-33.2] shows the category's color dot between the amount and the category's name on the card, without reading it out", async () => {
+test("[LEDGER-33.3] shows the category's color dot between the amount and the category's name on the card, without reading it out", async () => {
   await startExpenses();
 
   await addExpense();
@@ -315,7 +321,7 @@ test("[LEDGER-33.2] shows the category's color dot between the amount and the ca
   expect(unread).toMatch(/^[\s,.;·–-]*$/);
 });
 
-test('[LEDGER-33.2] shows the current color of a recolored category on the card', async () => {
+test('[LEDGER-33.3] shows the current color of a recolored category on the card', async () => {
   await startExpenses();
   await addExpense({ category: 'Shopping' });
 
@@ -326,7 +332,7 @@ test('[LEDGER-33.2] shows the current color of a recolored category on the card'
   );
 });
 
-test('[LEDGER-33.2] shows an archived category as <name> (Archived) on the card and reads it out', async () => {
+test('[LEDGER-33.3] shows an archived category as <name> (Archived) on the card and reads it out', async () => {
   watchAlerts();
   await startExpenses();
   await addExpense({ title: 'Coffee run', category: 'Shopping' });
@@ -334,20 +340,14 @@ test('[LEDGER-33.2] shows an archived category as <name> (Archived) on the card 
 
   await archiveCategory('Shopping');
 
-  const expected = [
-    'Coffee run',
-    '$8.75',
-    'Shopping (Archived)',
-    'Oct 30, 2026',
-  ];
+  const expected = ['Coffee run', '$8.75', 'Shopping (Archived)'];
   await waitFor(() =>
     expect(shownInOrder(linesIn(card('Coffee run')), expected)).toEqual(
       expected,
     ),
   );
-  expect(shownInOrder([readOut(card('Coffee run'))], expected)).toEqual(
-    expected,
-  );
+  const read = [...expected, 'Oct 30, 2026'];
+  expect(shownInOrder([readOut(card('Coffee run'))], read)).toEqual(read);
   expect(dotColors(card('Coffee run'))).toEqual(['#FBC02D']);
   const [dot] = colorDots(card('Coffee run'));
   expect(opacityIn(expensesRoot(), dot)).toBe(1);
@@ -355,7 +355,7 @@ test('[LEDGER-33.2] shows an archived category as <name> (Archived) on the card 
   expect(readOut(card('Lunch'))).not.toContain('(Archived)');
 });
 
-test('[LEDGER-33.2] shows the current name and color of a renamed and recolored category once it is archived', async () => {
+test('[LEDGER-33.3] shows the current name and color of a renamed and recolored category once it is archived', async () => {
   watchAlerts();
   await startExpenses();
   await addExpense({ category: 'Shopping' });
@@ -369,7 +369,7 @@ test('[LEDGER-33.2] shows the current name and color of a renamed and recolored 
   expect(dotColors(card('Coffee run'))).toEqual(['#43A047']);
 });
 
-test('[LEDGER-33.2] drops (Archived) from the card once the category is restored', async () => {
+test('[LEDGER-33.3] drops (Archived) from the card once the category is restored', async () => {
   watchAlerts();
   await startExpenses();
   await addExpense({ category: 'Shopping' });
@@ -386,20 +386,44 @@ test('[LEDGER-33.2] drops (Archived) from the card once the category is restored
   expect(readOut(card('Coffee run'))).not.toContain('(Archived)');
 });
 
-test('[LEDGER-34.1] shows the title on one line, cut at its end, and reads it in full', async () => {
+test('[LEDGER-34.2] shows the title on one line, cut at its end with no ellipsis, and reads it in full', async () => {
   await startExpenses();
 
   await addExpense({ title: LONG_TITLE });
 
   const shown = within(card(LONG_TITLE)).getByText(LONG_TITLE);
   expect(shown.props.numberOfLines).toBe(1);
-  expect(shown.props.ellipsizeMode ?? 'tail').toBe('tail');
+  // Jest lays nothing out, so the test reads what the card asks the native text for.
+  expect(shown.props.ellipsizeMode).toBe('clip');
   expect(readOut(card(LONG_TITLE))).toContain(LONG_TITLE);
+});
+
+// The date above the cards
+
+test('[LEDGER-90.1] puts the date above each run of cards of that day, once, as a heading', async () => {
+  await startExpenses();
+  await addExpense({ title: 'Taxi', date: '2026-10-29' });
+  await addExpense({ title: 'Coffee run' });
+  await addExpense({ title: 'Lunch' });
+
+  const lines = linesIn(expensesRoot());
+  const expected = [
+    'Oct 30, 2026',
+    'Lunch',
+    'Coffee run',
+    'Oct 29, 2026',
+    'Taxi',
+  ];
+  expect(shownInOrder(lines, expected)).toEqual(expected);
+  expect(lines.filter((line) => line === 'Oct 30, 2026')).toHaveLength(1);
+  expect(within(expensesRoot()).getAllByRole('header').map(nameOf)).toEqual(
+    expect.arrayContaining(['Oct 30, 2026', 'Oct 29, 2026']),
+  );
 });
 
 // This Month
 
-test('[LEDGER-35.2] sums the cards of one currency in a button that reads the total', async () => {
+test('[LEDGER-35.3] sums the cards of one currency in a button that reads the total', async () => {
   await startExpenses();
   await addExpense({ amount: '8.75' });
   await addExpense({ title: 'Lunch', amount: '12.50' });
@@ -411,7 +435,7 @@ test('[LEDGER-35.2] sums the cards of one currency in a button that reads the to
   expect(linesIn(thisMonthButton())).toEqual(['This Month: $21.25']);
 });
 
-test('[LEDGER-35.2] shows a line for each currency, above the cards, by currency code', async () => {
+test('[LEDGER-35.3] joins the currencies on one line above the cards, by currency code', async () => {
   setPhoneLanguage('en-US');
   await startExpenses();
 
@@ -420,22 +444,18 @@ test('[LEDGER-35.2] shows a line for each currency, above the cards, by currency
   await addExpenseIn('JPY', 'Ramen', '1200');
 
   expect(cardTitles()).toEqual(['Ramen', 'Coffee', 'Taxi']);
-  expect(thisMonthLines()).toEqual([
-    'This Month: A$0.30',
-    'This Month: ¥1,200',
-    'This Month: $8.75',
-  ]);
+  expect(thisMonthLines()).toEqual(['This Month: A$0.30, ¥1,200, $8.75']);
   expect(readOut(thisMonthButton())).toBe(
     'View expense insights. Spent this month A$0.30, ¥1,200, $8.75.',
   );
   expect(linesIn(thisMonthButton())).toEqual(thisMonthLines());
   const lines = linesIn(expensesRoot());
-  expect(lines.indexOf('This Month: $8.75')).toBeLessThan(
+  expect(lines.indexOf('This Month: A$0.30, ¥1,200, $8.75')).toBeLessThan(
     lines.indexOf('Ramen'),
   );
 });
 
-test('[LEDGER-35.2] sums only the cards dated this month', async () => {
+test('[LEDGER-35.3] sums only the cards dated this month', async () => {
   await startExpenses();
 
   await addExpense({ title: 'Coffee run', amount: '8.75', date: '2026-10-01' });
@@ -446,7 +466,7 @@ test('[LEDGER-35.2] sums only the cards dated this month', async () => {
   expect(thisMonthLines()).toEqual(['This Month: $8.75']);
 });
 
-test('[LEDGER-35.2] shows a dash when no card is dated this month, and still lists the cards', async () => {
+test('[LEDGER-35.3] shows a dash when no card is dated this month, and still lists the cards', async () => {
   await startExpenses();
 
   await addExpense({ title: 'Lunch', amount: '12.50', date: '2026-09-30' });
@@ -458,7 +478,7 @@ test('[LEDGER-35.2] shows a dash when no card is dated this month, and still lis
   );
 });
 
-test("[LEDGER-35.2] takes this month from the phone's time zone at the start of a month", async () => {
+test("[LEDGER-35.3] takes this month from the phone's time zone at the start of a month", async () => {
   await startExpenses();
   // 00:30 on November 1 in Taipei is still October 31 in UTC.
   setPhoneClock('Asia/Taipei', '2026-10-31T16:30:00Z');
@@ -469,7 +489,7 @@ test("[LEDGER-35.2] takes this month from the phone's time zone at the start of 
   expect(thisMonthLines()).toEqual(['This Month: $3.00']);
 });
 
-test('[LEDGER-35.2] pushes Insights onto the Expenses tab at /insights when This Month is pressed', async () => {
+test('[LEDGER-35.3] pushes Insights onto the Expenses tab at /insights when This Month is pressed', async () => {
   const app = await startExpenses();
   await addExpense();
 
@@ -484,7 +504,7 @@ test('[LEDGER-35.2] pushes Insights onto the Expenses tab at /insights when This
   expect(app.getPathname()).toBe('/insights');
 });
 
-test('[LEDGER-35.2] pushes one Insights when This Month is pressed twice', async () => {
+test('[LEDGER-35.3] pushes one Insights when This Month is pressed twice', async () => {
   await startExpenses();
   await addExpense();
 
@@ -504,7 +524,7 @@ test('[LEDGER-35.2] pushes one Insights when This Month is pressed twice', async
   );
 });
 
-test('[LEDGER-35.2] shows a dash before there are expenses and still opens Insights', async () => {
+test('[LEDGER-35.3] shows a dash before there are expenses and still opens Insights', async () => {
   await startExpenses();
 
   await waitFor(() => expect(thisMonthLines()).toEqual(['This Month: —']));
@@ -515,7 +535,7 @@ test('[LEDGER-35.2] shows a dash before there are expenses and still opens Insig
   await expectInsights();
 });
 
-test('[LEDGER-35.2] follows a changed amount', async () => {
+test('[LEDGER-35.3] follows a changed amount', async () => {
   await startExpenses();
   await addExpense({ amount: '8.75' });
   const expense = await onlyExpense();
@@ -526,7 +546,7 @@ test('[LEDGER-35.2] follows a changed amount', async () => {
   expect(thisMonthLines()).toEqual(['This Month: $12.50']);
 });
 
-test('[LEDGER-35.2] sums past the largest amount of a single expense', async () => {
+test('[LEDGER-35.3] sums past the largest amount of a single expense', async () => {
   await startExpenses();
   await addExpense({ amount: '9999999999.99' });
   await addExpense({ title: 'Lunch', amount: '9999999999.99' });
@@ -595,7 +615,7 @@ test('[LEDGER-36.1] goes back from the details to the expense list', async () =>
 
 // The details
 
-test('[LEDGER-37.2] shows the title, amount, category, date and note in order on the details', async () => {
+test('[LEDGER-37.3] shows the title, amount, date, category and note in order on the details, without section words', async () => {
   await startExpenses();
   await addExpense({
     category: 'Shopping',
@@ -608,29 +628,32 @@ test('[LEDGER-37.2] shows the title, amount, category, date and note in order on
   const expected = [
     'Coffee run',
     '$8.75',
-    'DETAILS',
-    'Category',
-    'Shopping',
-    'Date',
     'Dec 25, 2024',
+    'Shopping',
     'NOTE',
     'Morning treat',
   ];
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
+  for (const word of ['DETAILS', 'Category', 'Date'])
+    expect(detailLines()).not.toContain(word);
+  const details = within(detailScreen());
+  expect(
+    inOneRow(details.getByText('$8.75'), details.getByText('Dec 25, 2024')),
+  ).toBe(true);
 });
 
-test('[LEDGER-37.2] leaves out the NOTE section for an expense without a note', async () => {
+test('[LEDGER-37.3] leaves out the NOTE section for an expense without a note', async () => {
   await startExpenses();
   await addExpense();
 
   await openDetails('Coffee run');
 
-  const expected = ['Coffee run', '$8.75', 'DETAILS', 'Category', 'Date'];
+  const expected = ['Coffee run', '$8.75', 'Oct 30, 2026', 'Food & Dining'];
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
   expect(detailLines()).not.toContain('NOTE');
 });
 
-test('[LEDGER-37.2] shows the current name of a renamed category on the details', async () => {
+test('[LEDGER-37.3] shows the current name of a renamed category on the details', async () => {
   await startExpenses();
   await addExpense({ category: 'Shopping' });
   await editCategory('Shopping', 'Groceries');
@@ -641,7 +664,7 @@ test('[LEDGER-37.2] shows the current name of a renamed category on the details'
   expect(detailLines()).not.toContain('Shopping');
 });
 
-test("[LEDGER-37.2] shows the category's color dot between Category and its name on the details, without reading it out", async () => {
+test("[LEDGER-37.3] shows the category's color dot before its name in a tag read as Category, <name>", async () => {
   await startExpenses();
   await addExpense({ category: 'Shopping' });
 
@@ -650,17 +673,12 @@ test("[LEDGER-37.2] shows the category's color dot between Category and its name
   expect(dotColors(detailScreen())).toEqual(['#FBC02D']);
   const [dot] = colorDots(detailScreen());
   const details = within(detailScreen());
-  expect(
-    inTreeOrder(
-      details.getByText('Category'),
-      dot,
-      details.getByText('Shopping'),
-    ),
-  ).toBe(true);
+  expect(inTreeOrder(dot, details.getByText('Shopping'))).toBe(true);
   expect(isUnread(dot)).toBe(true);
+  expect(details.getByLabelText('Category, Shopping')).toBeOnTheScreen();
 });
 
-test('[LEDGER-37.2] shows the current color of a recolored category on the details', async () => {
+test('[LEDGER-37.3] shows the current color of a recolored category on the details', async () => {
   await startExpenses();
   await addExpense({ category: 'Shopping' });
   await editCategory('Shopping', 'Shopping', '#43A047');
@@ -670,7 +688,7 @@ test('[LEDGER-37.2] shows the current color of a recolored category on the detai
   expect(dotColors(detailScreen())).toEqual(['#43A047']);
 });
 
-test('[LEDGER-37.2] shows an archived category as <name> (Archived) on the details', async () => {
+test('[LEDGER-37.3] shows an archived category as <name> (Archived) on the details', async () => {
   watchAlerts();
   await startExpenses();
   await addExpense({ category: 'Shopping' });
@@ -678,14 +696,13 @@ test('[LEDGER-37.2] shows an archived category as <name> (Archived) on the detai
 
   await openDetails('Coffee run');
 
-  const expected = ['DETAILS', 'Category', 'Shopping (Archived)', 'Date'];
-  expect(shownInOrder(detailLines(), expected)).toEqual(expected);
+  expect(detailLines()).toContain('Shopping (Archived)');
   expect(dotColors(detailScreen())).toEqual(['#FBC02D']);
   const [dot] = colorDots(detailScreen());
   expect(opacityIn(detailScreen(), dot)).toBe(1);
 });
 
-test('[LEDGER-37.2] shows the current name and color of a renamed and recolored category once it is archived', async () => {
+test('[LEDGER-37.3] shows the current name and color of a renamed and recolored category once it is archived', async () => {
   watchAlerts();
   await startExpenses();
   await addExpense({ category: 'Shopping' });
@@ -698,7 +715,7 @@ test('[LEDGER-37.2] shows the current name and color of a renamed and recolored 
   expect(dotColors(detailScreen())).toEqual(['#43A047']);
 });
 
-test('[LEDGER-37.2] follows the category being archived and restored while the details stay open', async () => {
+test('[LEDGER-37.3] follows the category being archived and restored while the details stay open', async () => {
   watchAlerts();
   await startExpenses();
   await addExpense({ category: 'Shopping' });
@@ -715,7 +732,7 @@ test('[LEDGER-37.2] follows the category being archived and restored while the d
   expect(detailLines().join('\n')).not.toContain('(Archived)');
 });
 
-test('[LEDGER-37.2] shows a long title and note in full on the details', async () => {
+test('[LEDGER-37.3] shows a long title and note in full on the details', async () => {
   await startExpenses();
   await addExpense({ title: LONG_TITLE, note: LONG_NOTE });
 
@@ -852,9 +869,10 @@ test('[LEDGER-40.1] shows amounts and dates the way a phone in the United States
     ['Taxi', 'A$0.30'],
     ['Ramen', '¥1,200'],
   ]) {
-    const expected = [title, amount, 'Oct 30, 2026'];
+    const expected = [title, amount];
     expect(shownInOrder(linesIn(card(title)), expected)).toEqual(expected);
   }
+  expect(linesIn(expensesRoot())).toContain('Oct 30, 2026');
   await openDetails('Ramen');
   const expected = ['Ramen', '¥1,200', 'Oct 30, 2026'];
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
@@ -868,8 +886,11 @@ test('[LEDGER-40.1] shows amounts and dates the way a phone in Japan does', asyn
   await addExpense({ title: 'Ramen', amount: '1200' });
 
   const expected = ['Ramen', '￥1,200', '2026/10/30'];
-  expect(shownInOrder(linesIn(card('Ramen')), expected)).toEqual(expected);
-  // The line above the cards, whatever LEDGER-35.2 calls it.
+  expect(shownInOrder(linesIn(card('Ramen')), expected.slice(0, 2))).toEqual(
+    expected.slice(0, 2),
+  );
+  expect(linesIn(expensesRoot())).toContain('2026/10/30');
+  // The line above the cards, whatever LEDGER-35.3 calls it.
   expect(linesIn(expensesRoot())).toContainEqual(
     expect.stringMatching(/: ￥1,200$/),
   );
@@ -907,7 +928,7 @@ test('[LEDGER-40.1] shows the date of an expense on a phone west of UTC', async 
 
   await addExpense({ date: '2026-10-25' });
 
-  expect(linesIn(card('Coffee run'))).toContain('Oct 25, 2026');
+  expect(linesIn(expensesRoot())).toContain('Oct 25, 2026');
   await openDetails('Coffee run');
   expect(detailLines()).toContain('Oct 25, 2026');
 });
@@ -937,7 +958,7 @@ test('[SHELL-25.1] puts the expense list in the scroll view the Expenses large t
   const scrollView = scrollViewTheTitleFollows();
 
   expect(scrollView?.props.contentInsetAdjustmentBehavior).toBe('automatic');
-  // The line above the cards, whatever LEDGER-35.2 calls it, and a card.
+  // The line above the cards, whatever LEDGER-35.3 calls it, and a card.
   const lines = linesIn(scrollView!);
   expect(lines).toContainEqual(expect.stringMatching(/: \$8\.75$/));
   expect(lines).toContain('Coffee run');
@@ -987,14 +1008,15 @@ const PALETTE = [
   '#F2858D',
 ];
 const PALETTE_COLORS = new Set(
-  PALETTE.map((color) => (processColor(color) as number) >>> 0),
+  PALETTE.map((color) => (processColor(color) as number) & 0xffffff),
 );
 
 function appColors(root: Parameters<typeof fixedColors>[0]) {
   return {
     colors: new Map(
       [...fixedColors(root)].filter(
-        ([, { color }]) => !PALETTE_COLORS.has(color),
+        // A category's tag is its color made lighter, still the user's data.
+        ([, { color }]) => !PALETTE_COLORS.has(color & 0xffffff),
       ),
     ),
     uncolored: textsWithoutColor(root),

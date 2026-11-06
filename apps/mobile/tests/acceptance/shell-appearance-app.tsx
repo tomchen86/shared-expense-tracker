@@ -305,6 +305,10 @@ export function fixedColors(root = screen.container) {
   return found;
 }
 
+/** Whether a place is a white icon, as on a red swipe action in both appearances (SHELL-70.1). */
+const isWhiteIcon = (place: string, color: number) =>
+  place.endsWith(' tintColor') && hex(color) === '#ffffffff';
+
 /** Places that use the same fixed color in light and dark mode. */
 export const colorsInBoth = (
   light: ReturnType<typeof fixedColors>,
@@ -312,6 +316,7 @@ export const colorsInBoth = (
 ) =>
   [...light]
     .filter(([place, { color }]) => dark.get(place)?.color === color)
+    .filter(([place, { color }]) => !isWhiteIcon(place, color))
     .map(([, { color, where }]) => `${where} ${hex(color)}`);
 
 function insideText(view: HostView) {

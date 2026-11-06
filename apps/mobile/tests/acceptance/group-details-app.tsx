@@ -7,7 +7,7 @@ import {
   within,
 } from '@testing-library/react-native';
 import type { GroupMember } from '../../src/groups';
-import { nativeViews, navigationBars } from './shell-tabs-app';
+import { nativeViews, navigationBars, titleOfBar } from './shell-tabs-app';
 import { groupsRoot, storedGroups } from './groups-app';
 import { settle } from './shell-appearance-app';
 
@@ -53,7 +53,7 @@ export const addBackAlert = (name: string) => [
 
 /** The navigation bar titled `title`, wherever the app shows it. */
 export const barTitled = (title: string) =>
-  navigationBars().find((bar) => bar.props.title === title);
+  navigationBars().find((bar) => titleOfBar(bar) === title);
 
 export const isOpen = (title: string) => barTitled(title) !== undefined;
 
@@ -138,12 +138,23 @@ const isDisabled = (view: HostView) =>
   view.props.accessibilityState?.disabled === true ||
   view.props['aria-disabled'] === true;
 
-/** The texts that `title`'s screen or sheet shows itself, top to bottom. */
+/** Whether `view` is a group's large title, the button that opens and closes the full name (GROUPS-77.1). */
+export const isLargeTitle = (view: HostView) =>
+  view.props.accessibilityRole === 'button' &&
+  view.props.accessibilityState?.expanded !== undefined;
+
+function inLargeTitle(view: HostView) {
+  for (let node: HostView | null = view; node; node = node.parent)
+    if (isLargeTitle(node)) return true;
+  return false;
+}
+
+/** The texts that `title`'s screen or sheet shows itself, top to bottom, besides a group's large title. */
 export function textsOn(title: string) {
   const owner = screenOf(title);
   return within(owner)
     .queryAllByText(/./)
-    .filter((view) => inContentOf(owner, view))
+    .filter((view) => inContentOf(owner, view) && !inLargeTitle(view))
     .map(textOf);
 }
 
@@ -178,7 +189,7 @@ function describeBarItem(item: BarItem) {
         entry.disabled ? `${entry.title} (disabled)` : entry.title,
       ),
     };
-  return `${item.title} (${item.variant ?? 'plain'})`;
+  return `${item.accessibilityLabel || item.title} (${item.variant ?? 'plain'})`;
 }
 
 /** The iOS bar items on each side of the bar titled `title`; the right side starts from the trailing edge. */
@@ -215,6 +226,11 @@ interface Control {
 export function barAction(title: string, name: string): Control {
   const bar = barTitled(title);
   if (bar === undefined) throw new Error(`${title} is not open`);
+  return barActionOn(bar, name);
+}
+
+/** A button on the navigation bar `bar`: an iOS bar button or an Android header button. */
+export function barActionOn(bar: HostView, name: string): Control {
   const item = [...barItemsOn(bar, 'Left'), ...barItemsOn(bar, 'Right')].find(
     (candidate) =>
       candidate.type === 'button' &&
@@ -570,13 +586,26 @@ export async function addMember(name: string) {
   await stopAddingMember(adding);
 }
 
-/** The title of the group's screen as a button named after the group, if the screen shows one (GROUPS-40.2). */
-export function titleButton(group: string): HostView | undefined {
-  const bar = barTitled(group);
-  if (bar === undefined) return undefined;
-  return within(bar)
+/** The large title in the content of the group's screen, a button named after the group, if the screen shows one (GROUPS-77.1). */
+export function largeTitle(group: string): HostView | undefined {
+  if (barTitled(group) === undefined) return undefined;
+  const owner = screenOf(group);
+  return within(owner)
     .queryAllByRole('button')
-    .find((button) => accessibleName(button) === group);
+    .find(
+      (button) =>
+        isLargeTitle(button) &&
+        inContentOf(owner, button) &&
+        accessibleName(button) === group,
+    );
+}
+
+/** Long presses the group's large title. */
+export async function longPressLargeTitle(group: string) {
+  const title = largeTitle(group);
+  if (title === undefined) throw new Error(`${group} has no large title`);
+  await fireEvent(title, 'longPress');
+  await settle();
 }
 
 /** Opens Rename Member from the row `row`, which holds `name` (yours ends in " (You)"). */

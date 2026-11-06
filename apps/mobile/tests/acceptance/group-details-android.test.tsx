@@ -4,7 +4,6 @@ import * as path from 'node:path';
 import { Alert, BackHandler, DeviceEventEmitter } from 'react-native';
 import { act, fireEvent, waitFor, within } from '@testing-library/react-native';
 import type { Database } from '../../src/storage';
-import { iconNames, ripplesOn, touchSize } from './shell-actions-app';
 import {
   navigationBarTitles,
   selectedTab,
@@ -58,7 +57,9 @@ import {
   storedMemberNames,
   tapMember,
   textsOn,
-  titleButton,
+  chooseGroupAction,
+  largeTitle,
+  longPressLargeTitle,
 } from './group-details-app';
 
 // Runs on Android only (apps/mobile/jest.config.cjs). Both platforms share the
@@ -142,7 +143,7 @@ test('[GROUPS-21.1] shows no Group actions for an ID that is no group on Android
   expect(headerButtons('Group Details').right).toEqual([]);
 });
 
-test('[GROUPS-22.2] lists Members, Rename Group and Cancel in the Group actions dialog on Android', async () => {
+test('[GROUPS-22.3] lists Members, Rename Group, Categories and Cancel in the Group actions dialog on Android', async () => {
   await startWithName();
   await createGroup('Brisbane');
   await openGroup('Brisbane');
@@ -155,7 +156,12 @@ test('[GROUPS-22.2] lists Members, Rename Group and Cancel in the Group actions 
   await settle();
 
   expect(alertsShown()).toEqual([['Group actions', undefined]]);
-  expect(lastAlertButtons()).toEqual(['Members', 'Rename Group', 'Cancel']);
+  expect(lastAlertButtons()).toEqual([
+    'Members',
+    'Rename Group',
+    'Categories',
+    'Cancel',
+  ]);
 });
 
 test('[GROUPS-23.2] opens Members rising from the bottom with only Close on Android', async () => {
@@ -301,34 +307,37 @@ test('[GROUPS-36.1] opens Rename Member rising from the bottom with Cancel on th
   });
 });
 
-test("[GROUPS-40.2] marks the group's title button with expand_more, at least 48 dp high, with a ripple on Android", async () => {
+test('[GROUPS-77.1] shows the name as a large title button under the bar on Android', async () => {
   await startWithName();
   await createGroup('Brisbane');
-  await openGroup('Brisbane');
-  await waitFor(() => expect(titleButton('Brisbane')).toBeDefined());
-  const button = titleButton('Brisbane')!;
 
-  expect(iconNames(button, 'android')).toEqual(['expand_more']);
-  expect(touchSize(button).height).toBeGreaterThanOrEqual(48);
-  expect(button.props.accessibilityHint).toBe('Renames the group');
-  const light = ripplesOn(button).map(({ fixedColor }) => fixedColor);
-  await switchPhoneTo('dark');
-  const dark = ripplesOn(titleButton('Brisbane')!).map(
-    ({ fixedColor }) => fixedColor,
-  );
-  expect(light).toHaveLength(1);
-  // The same fixed color in both appearances; none means the system picks it.
-  expect(light[0] === undefined || light[0] !== dark[0]).toBe(true);
+  await openGroup('Brisbane');
+
+  await waitFor(() => expect(largeTitle('Brisbane')).toBeDefined());
+  expect(barTitled('Brisbane')?.props.title).toBeFalsy();
+  expect(largeTitle('Brisbane')!.props.accessibilityState.expanded).toBe(false);
 });
 
-test("[GROUPS-40.2] opens Rename Group from the group's title on Android", async () => {
+test('[GROUPS-79.1] closes Group Categories with Back on Android', async () => {
   await startWithName();
   await createGroup('Brisbane');
   await openGroup('Brisbane');
+  await chooseGroupAction('Brisbane', 'Categories');
+  await expectOpen('Group Categories');
 
-  await waitFor(() => expect(titleButton('Brisbane')).toBeDefined());
-  await fireEvent.press(titleButton('Brisbane')!);
-  await settle();
+  await pressBack();
+
+  await expectClosed('Group Categories');
+  expect(isOpen('Brisbane')).toBe(true);
+});
+
+test("[GROUPS-40.3] opens Rename Group when the group's large title is long pressed on Android", async () => {
+  await startWithName();
+  await createGroup('Brisbane');
+  await openGroup('Brisbane');
+  await waitFor(() => expect(largeTitle('Brisbane')).toBeDefined());
+
+  await longPressLargeTitle('Brisbane');
 
   await expectOpen('Rename Group');
   risesFromTheBottom('Rename Group');
@@ -337,7 +346,7 @@ test("[GROUPS-40.2] opens Rename Group from the group's title on Android", async
   );
 });
 
-test('[GROUPS-40.2] opens Rename Group rising from the bottom with Cancel on the left and Save on the right on Android', async () => {
+test('[GROUPS-40.3] opens Rename Group rising from the bottom with Cancel on the left and Save on the right on Android', async () => {
   await startWithName();
   await createGroup('Brisbane');
   await openGroup('Brisbane');

@@ -1,0 +1,76 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[SHELL-69.1] Swiping a card or a category row all the way left does what its revealed action does, and a short swipe only reveals it'
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Add expense
+- waitForAnimationToEnd
+- tapOn: Expense title
+- inputText: Coffee run
+- tapOn: Amount in .*
+- inputText: '8.75'
+- tapOn:
+    text: Add
+    enabled: true
+- waitForAnimationToEnd
+- assertVisible: Coffee run, .*
+# The only card sits at this height, so the swipe can start near its right edge.
+- swipe:
+    start: 90%,38%
+    end: 3%,38%
+    duration: 500
+- waitForAnimationToEnd
+- assertVisible: Moved to Trash
+- assertNotVisible: Coffee run, .*
+- tapOn: Undo deletion of Coffee run
+- waitForAnimationToEnd
+- assertVisible: Coffee run, .*
+# A short swipe only reveals the action.
+- swipe:
+    start: 90%,38%
+    end: 66%,38%
+    duration: 400
+- waitForAnimationToEnd
+- assertVisible: Coffee run, .*
+- assertVisible: Delete Coffee run expense
+- swipe:
+    start: 50%,38%
+    end: 90%,38%
+    duration: 300
+- waitForAnimationToEnd
+- tapOn: Settings
+- tapOn: Enter your name
+- inputText: Taylor
+- pressKey: Enter
+- tapOn: Groups
+- tapOn: Add group
+- waitForAnimationToEnd
+- inputText: Brisbane
+- tapOn: Create
+- waitForAnimationToEnd
+- assertVisible: Open Brisbane.*
+- swipe:
+    start: 90%,25%
+    end: 3%,25%
+    duration: 500
+- waitForAnimationToEnd
+- assertVisible: Group archived.*
+- assertNotVisible: Open Brisbane.*
+- tapOn: Settings
+- tapOn: Manage Categories
+- waitForAnimationToEnd
+- swipe:
+    start: 90%,37%
+    end: 3%,37%
+    duration: 500
+- waitForAnimationToEnd
+- assertVisible: Delete Category\?
+- tapOn: Cancel
+- waitForAnimationToEnd
+- assertVisible: Shopping

@@ -188,7 +188,7 @@ export function barButtons() {
   const bar = newGroupBar();
   if (bar === undefined) throw new Error('New Group is not open');
   const describe = (item: BarItem) =>
-    `${item.title} (${item.variant ?? 'plain'})`;
+    `${item.accessibilityLabel || item.title} (${item.variant ?? 'plain'})`;
   return {
     left: barItemsOn(bar, 'Left').map(describe),
     right: barItemsOn(bar, 'Right').map(describe),
