@@ -18,7 +18,7 @@ export function DateField({
 }: DateFieldProps) {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   // Expo UI ignores an identifier iOS does not list, such as en_VN, which leaves the picker in the
-  // phone's language. Intl resolves to one it does list.
+  // phone's own format: 7 Nov 2026, where the cards show Nov 7, 2026. Intl resolves to one it lists.
   const locale = new Intl.DateTimeFormat(useDisplayLocale()).resolvedOptions()
     .locale;
   return (
