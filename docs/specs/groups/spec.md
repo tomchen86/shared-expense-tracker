@@ -1574,3 +1574,12 @@ WHILE Rename Group 或 Rename Member 的鍵盤開著，the mobile app SHALL 讓�
 
 - **WHEN** 使用較小螢幕或放大字級開啟名稱表單
 - **THEN** 可藉由增高或捲動 sheet 操作名稱欄位；Cancel 與 Save 仍留在標題列，沒有被鍵盤遮住
+
+### Requirement: GROUPS-77.1 群組的金額用手機地區的貨幣格式
+
+The mobile app SHALL 讓 Groups 根畫面、群組的畫面和 Balances，用手機地區的貨幣格式（LEDGER-40.2）顯示金額。
+
+#### Scenario: 手機的語言不是英文
+
+- **WHEN** 手機第一個偏好的語言和地區是法文（澳洲），Brisbane 有 Taylor、Casey 和 Blake，Taylor 付了 60.00 AUD，三人平分
+- **THEN** Groups 根畫面的 Brisbane 是「Your share: $20.00」和「You're owed: $40.00」；Brisbane 的畫面是「Group Total: $60.00」和「You're owed: $40.00」；Balances 上 Taylor 是「Is Owed $40.00」和「Paid $60.00 · Share $20.00」，都不是「20,00 $AU」這樣的格式

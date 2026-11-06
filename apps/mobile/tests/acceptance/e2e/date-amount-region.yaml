@@ -1,0 +1,43 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[LEDGER-30.2] [LEDGER-40.2] Shows the date field, the card's date and its amount in English with the phone's region, whatever its language"
+---
+# The date field is iOS's own date picker, so only a flow can read it. iOS's list of locales has
+# no zh_Hant_AU but does have zh_Hant_TW, so the picker takes these two phones different ways.
+- launchApp:
+    clearState: true
+    arguments:
+      AppleLanguages: '(zh-Hant-AU)'
+      AppleLocale: zh_AU
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Add expense
+- assertVisible: New Expense
+- assertVisible: \d{1,2} [A-Z][a-z]{2,3} \d{4}
+- tapOn: Expense title
+- inputText: Coffee
+- tapOn: Amount in .*
+- inputText: '8.75'
+- tapOn:
+    text: Add
+    enabled: true
+- waitForAnimationToEnd
+- assertNotVisible: New Expense
+- assertVisible: Coffee, \$8\.75, Food & Dining, \d{1,2} [A-Z][a-z]{2,3} \d{4}
+- launchApp:
+    clearState: true
+    arguments:
+      AppleLanguages: '(zh-Hant-TW)'
+      AppleLocale: zh_TW
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Add expense
+- assertVisible: New Expense
+- assertVisible: '[A-Z][a-z]{2,3} \d{1,2}, \d{4}'
