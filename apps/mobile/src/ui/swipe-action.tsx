@@ -1,17 +1,66 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  Animated,
-  PanResponder,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
+import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
+  type ScrollViewProps,
 } from 'react-native';
+import {
+  GestureDetector,
+  GestureHandlerRootView,
+  GestureStateManager,
+  useNativeGesture,
+  usePanGesture,
+  type NativeGesture,
+} from 'react-native-gesture-handler';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { useThemeColors } from './theme';
 
 const WIDTH = 96;
 const GAP = 8;
 const OPEN = -(WIDTH + GAP);
+const SETTLE = { duration: 160 };
+
+const SwipeList = createContext<{
+  scrollGesture: NativeGesture;
+  openRows: Set<() => void>;
+} | null>(null);
+
+/** The scroll view for SwipeAction rows: a row keeps a drag from it, and it closes them as it scrolls. */
+export function SwipeScrollView(props: ScrollViewProps) {
+  const [openRows] = useState(() => new Set<() => void>());
+  const scrollGesture = useNativeGesture({
+    // Otherwise Android stops scrolling when the finger leaves the list.
+    shouldCancelWhenOutside: false,
+    runOnJS: true,
+    // Not onScrollBeginDrag: Android sends that as soon as the scroll view would take the drag,
+    // even when the row is about to keep it.
+    onActivate: () => openRows.forEach((close) => close()),
+  });
+  return (
+    <GestureHandlerRootView style={styles.list}>
+      <SwipeList.Provider value={{ scrollGesture, openRows }}>
+        <GestureDetector gesture={scrollGesture}>
+          <ScrollView {...props} />
+        </GestureDetector>
+      </SwipeList.Provider>
+    </GestureHandlerRootView>
+  );
+}
 
 export function SwipeAction({
   children,
@@ -27,82 +76,105 @@ export function SwipeAction({
   onPress: () => void;
 }) {
   const colors = useThemeColors();
-  const [translation] = useState(() => new Animated.Value(0));
-  const offset = useRef(0);
+  const { scrollGesture, openRows } = useContext(SwipeList)!;
+  const translation = useSharedValue(0);
+  const start = useSharedValue(0);
+  const origin = useSharedValue({ x: 0, y: 0 });
+  const decided = useSharedValue(false);
   const [open, setOpen] = useState(false);
-  const responder = useMemo(() => {
-    const finish = (next: number) => {
-      offset.current = next;
-      setOpen(next !== 0);
-      Animated.spring(translation, {
-        toValue: next,
-        useNativeDriver: true,
-        overshootClamping: true,
-      }).start();
+  const pan = usePanGesture({
+    enabled: !disabled,
+    // Decide before the native scroll recognizer takes the drag, and keep that direction until
+    // release, as a category row does.
+    manualActivation: true,
+    block: scrollGesture,
+    onTouchesDown: (event) => {
+      const touch = event.changedTouches[0];
+      origin.value = { x: touch.absoluteX, y: touch.absoluteY };
+      decided.value = false;
+    },
+    onTouchesMove: (event) => {
+      if (decided.value) return;
+      const touch = event.changedTouches[0];
+      const dx = Math.abs(touch.absoluteX - origin.value.x);
+      const dy = Math.abs(touch.absoluteY - origin.value.y);
+      if (Math.max(dx, dy) <= 5) return;
+      decided.value = true;
+      if (dx > dy) GestureStateManager.activate(event.handlerTag);
+      else GestureStateManager.fail(event.handlerTag);
+    },
+    onActivate: () => {
+      cancelAnimation(translation);
+      start.value = translation.value;
+    },
+    onUpdate: (event) => {
+      translation.value = Math.max(
+        OPEN,
+        Math.min(0, start.value + event.translationX),
+      );
+    },
+    onDeactivate: (event) => {
+      const next =
+        event.velocityX > 500
+          ? 0
+          : translation.value < OPEN / 2 || event.velocityX < -500
+            ? OPEN
+            : 0;
+      translation.value = withTiming(next, SETTLE);
+      scheduleOnRN(setOpen, next !== 0);
+    },
+  });
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translation.value }],
+  }));
+  useEffect(() => {
+    if (!open) return;
+    const close = () => {
+      translation.value = withTiming(0, SETTLE);
+      setOpen(false);
     };
-    return PanResponder.create({
-      // An open row closes on a looser, diagonal swipe, so a thumb's drift does not hand it to the list.
-      onMoveShouldSetPanResponderCapture: (_, gesture) =>
-        !disabled &&
-        offset.current !== 0 &&
-        gesture.dx > 10 &&
-        gesture.dx > Math.abs(gesture.dy) / 2,
-      onMoveShouldSetPanResponder: (_, gesture) =>
-        !disabled &&
-        Math.abs(gesture.dx) > 10 &&
-        Math.abs(gesture.dx) > Math.abs(gesture.dy),
-      onPanResponderTerminationRequest: () => false,
-      onPanResponderGrant: () => translation.stopAnimation(),
-      onPanResponderMove: (_, gesture) =>
-        translation.setValue(
-          Math.max(OPEN, Math.min(0, offset.current + gesture.dx)),
-        ),
-      onPanResponderRelease: (_, gesture) =>
-        finish(
-          gesture.vx > 0.5
-            ? 0
-            : offset.current + gesture.dx < OPEN / 2 || gesture.vx < -0.5
-              ? OPEN
-              : 0,
-        ),
-      onPanResponderTerminate: () => finish(offset.current),
-    });
-  }, [disabled, translation]);
+    openRows.add(close);
+    return () => {
+      openRows.delete(close);
+    };
+  }, [open, openRows, translation]);
 
   return (
-    <View style={styles.container}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        accessibilityElementsHidden={!open}
-        importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
-        accessibilityState={{ disabled }}
-        disabled={disabled || !open}
-        onPress={onPress}
-        style={({ pressed }) => [
-          styles.action,
-          { backgroundColor: pressed ? colors.pressedSurface : colors.surface },
-        ]}
-      >
-        <Text style={{ color: colors.accent, fontSize: 17 }}>{label}</Text>
-      </Pressable>
-      <Animated.View
-        {...responder.panHandlers}
-        style={[
-          styles.row,
-          {
-            backgroundColor: colors.background,
-            transform: [{ translateX: translation }],
-          },
-        ]}
-      >
-        {children}
-      </Animated.View>
-    </View>
+    <GestureDetector gesture={pan}>
+      <View style={styles.container}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
+          accessibilityElementsHidden={!open}
+          importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
+          accessibilityState={{ disabled }}
+          disabled={disabled || !open}
+          onPress={onPress}
+          style={({ pressed }) => [
+            styles.action,
+            {
+              backgroundColor: pressed ? colors.pressedSurface : colors.surface,
+            },
+          ]}
+        >
+          <Text style={{ color: colors.accent, fontSize: 17 }}>{label}</Text>
+        </Pressable>
+        <Animated.View
+          style={[
+            styles.row,
+            { backgroundColor: colors.background },
+            animatedStyle,
+          ]}
+        >
+          {children}
+        </Animated.View>
+      </View>
+    </GestureDetector>
   );
 }
 
 const styles = StyleSheet.create({
+  list: { flex: 1 },
   container: {
     overflow: 'hidden',
     borderCurve: 'continuous',

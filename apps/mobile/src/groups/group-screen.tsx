@@ -1,6 +1,5 @@
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -10,6 +9,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { formatCurrency, groupAmounts } from '@shared-expense/domain';
 import { useLocalIdentity } from '../shell';
 import { HeaderActions } from '../ui/header-actions';
+import { SwipeScrollView } from '../ui/swipe-action';
 import { TitleButton } from '../ui/title-button';
 import { useThemeColors } from '../ui/theme';
 import { useGroup } from './use-group';
@@ -109,7 +109,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
         />
       )}
       {group !== undefined && (
-        <ScrollView
+        <SwipeScrollView
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={styles.content}
         >
@@ -214,7 +214,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                 onDelete={group.archived ? undefined : () => void move(expense)}
               />
             ))}
-        </ScrollView>
+        </SwipeScrollView>
       )}
       {group && !group.archived && (
         <AddButton
