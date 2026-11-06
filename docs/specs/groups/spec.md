@@ -1627,16 +1627,26 @@ WHEN 使用者從還沒露出「Archive」的群組的卡片開始拖曳，且�
 - **WHEN** Groups 根畫面的群組多到能捲動，從一張卡片往左約 280 pt、往上約 170 pt 拖曳後放手
 - **THEN** 這張卡片露出「Archive」，清單沒有捲動，這張卡片還在原來的位置
 
+#### Scenario: 主要是上下拖
+
+- **WHEN** 從一張卡片往左約 120 pt、往上約 390 pt 拖曳後放手
+- **THEN** 清單捲動，沒有露出「Archive」
+
 #### Scenario: Android
 
 - **WHEN** 在 Android 手機重複上述拖曳
 - **THEN** 結果相同，pt 在 Android 以 dp 計
 
-### Requirement: GROUPS-80.1 (e2e) iPhone 上從收起的卡片往右拖返回
+### Requirement: GROUPS-80.1 (e2e) iOS 26 以上從收起的卡片水平往右拖返回
 
-WHERE iPhone，WHILE 未封存群組的畫面開著，WHEN 使用者從沒有露出「Delete」的支出卡片往右拖曳，the mobile app SHALL 返回上一頁。
+WHERE iOS 26 以上，WHILE 未封存群組的畫面開著，WHEN 使用者從沒有露出「Delete」的支出卡片幾乎水平地往右拖曳，the mobile app SHALL 返回上一頁；比較斜的拖曳由系統決定返回或捲動清單。
 
-#### Scenario: 收起的卡片
+#### Scenario: 水平往右拖
 
-- **WHEN** 從 Groups 根畫面打開 Brisbane，從 Dinner 的卡片往右拖曳
+- **WHEN** 從 Groups 根畫面打開 Brisbane，從 Dinner 的卡片水平往右約 280 pt 拖曳
 - **THEN** 回到 Groups 根畫面
+
+#### Scenario: 比較斜的拖曳
+
+- **WHEN** 從 Dinner 的卡片往右約 280 pt、往上約 90 pt 拖曳
+- **THEN** 系統可能捲動清單並留在 Brisbane 的畫面，卡片不露出也不打開明細

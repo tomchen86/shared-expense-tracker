@@ -126,21 +126,16 @@ tags:
 - assertVisible:
     text: ${output.open}
     enabled: true
-# To the right from the open button itself closes the card without pressing the button. On
-# Android the button sometimes keeps the touch, which leaves the card open, still unpressed.
+# To the right from the open button itself closes the card without pressing the button.
 - swipe:
     start: 76%, 50%
     end: 99%, 50%
     duration: 250
 - waitForAnimationToEnd
+- assertNotVisible:
+    text: Delete .* expense
+    enabled: true
 - assertNotVisible: Moved to Trash
-- runFlow:
-    when:
-      platform: iOS
-    commands:
-      - assertNotVisible:
-          text: Delete .* expense
-          enabled: true
 - swipe:
     start: 70%, 50%
     end: 20%, 50%
