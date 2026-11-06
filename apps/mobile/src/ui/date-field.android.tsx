@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { DateTimePicker } from '@expo/ui/community/datetime-picker';
-import { getLocales } from 'expo-localization';
 import { toLocalDate } from '@shared-expense/domain';
 import type { DateFieldProps } from './date-field';
 import { useThemeColors } from './theme';
+import { useDisplayLocale } from './use-display-locale';
 
 export function DateField({
   label,
@@ -16,7 +16,7 @@ export function DateField({
   const colors = useThemeColors();
   const [open, setOpen] = useState(false);
   const date = new Date(`${value}T12:00:00`);
-  const formattedDate = new Intl.DateTimeFormat(getLocales()[0].languageTag, {
+  const formattedDate = new Intl.DateTimeFormat(useDisplayLocale(), {
     dateStyle: 'medium',
   }).format(date);
   return (

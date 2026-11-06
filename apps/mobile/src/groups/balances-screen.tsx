@@ -1,6 +1,5 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useLocales } from 'expo-localization';
 import { formatCurrency, groupAmounts } from '@shared-expense/domain';
 import { useLocalIdentity } from '../shell';
 import { useExpenses } from '../ledger/use-expenses';
@@ -8,6 +7,7 @@ import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
 import { useSheetScroll } from '../ui/use-sheet-scroll';
+import { useDisplayLocale } from '../ui/use-display-locale';
 import { useGroup } from './use-group';
 import { formatBalance } from './format-balance';
 
@@ -18,7 +18,7 @@ export function BalancesScreen() {
   const { userId } = useLocalIdentity();
   const colors = useThemeColors();
   const sheetScroll = useSheetScroll();
-  const locale = useLocales()[0].languageTag;
+  const locale = useDisplayLocale();
   const amounts = group && expenses ? groupAmounts(expenses, group) : [];
   return (
     <>

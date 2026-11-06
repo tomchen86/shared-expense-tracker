@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useLocales } from 'expo-localization';
 import { formatCurrency } from '@shared-expense/domain';
 import { GroupedSection } from '../ui/grouped-section';
 import { SwipeAction } from '../ui/swipe-action';
 import { useThemeColors } from '../ui/theme';
+import { useDisplayLocale } from '../ui/use-display-locale';
 import { formatExpenseDate } from './format-date';
 import type { ExpenseView } from './use-expenses';
 
@@ -29,7 +29,7 @@ export function ExpenseCard({
       }),
     [],
   );
-  const locale = useLocales()[0].languageTag;
+  const locale = useDisplayLocale();
   const amount = formatCurrency(amountMinor, expense.currency, locale);
   const date = formatExpenseDate(expense.date, locale);
   const groupName =

@@ -6,8 +6,8 @@ import {
   padding,
 } from '@expo/ui/swift-ui/modifiers';
 import { toLocalDate } from '@shared-expense/domain';
-import { getLocales } from 'expo-localization';
 import type { DateFieldProps } from './date-field';
+import { useDisplayLocale } from './use-display-locale';
 
 export function DateField({
   label,
@@ -17,6 +17,10 @@ export function DateField({
   onChange,
 }: DateFieldProps) {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  // Expo UI ignores an identifier iOS does not list, such as en_VN, which leaves the picker in the
+  // phone's language. Intl resolves to one it does list.
+  const locale = new Intl.DateTimeFormat(useDisplayLocale()).resolvedOptions()
+    .locale;
   return (
     <Host
       ignoreSafeArea="all"
@@ -34,10 +38,7 @@ export function DateField({
           disabledModifier(disabled),
           environment('timeZone', timeZone),
           // Expo UI matches Foundation identifiers, such as zh_Hant_TW.
-          environment(
-            'locale',
-            getLocales()[0].languageTag.replaceAll('-', '_'),
-          ),
+          environment('locale', locale.replaceAll('-', '_')),
           padding({ horizontal: 16, vertical: 12 }),
         ]}
       />

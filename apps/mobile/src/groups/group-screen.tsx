@@ -7,7 +7,6 @@ import {
   type PressableProps,
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useLocales } from 'expo-localization';
 import { formatCurrency, groupAmounts } from '@shared-expense/domain';
 import { useLocalIdentity } from '../shell';
 import { HeaderActions } from '../ui/header-actions';
@@ -17,6 +16,7 @@ import { useGroup } from './use-group';
 import { useGroupArchive } from './use-group-archive';
 import { GroupedSection } from '../ui/grouped-section';
 import { AddButton } from '../ui/add-button';
+import { useDisplayLocale } from '../ui/use-display-locale';
 import { ExpenseCard } from '../ledger/expense-card';
 import { useExpenses } from '../ledger/use-expenses';
 import { useTrashActions } from '../ledger/trash-provider';
@@ -43,7 +43,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const { pending, save } = useGroupArchive();
   const { move } = useTrashActions();
   const { userId } = useLocalIdentity();
-  const locale = useLocales()[0].languageTag;
+  const locale = useDisplayLocale();
   const base = inSettings ? '/settings/archived-groups' : '/groups';
   const expenses = useExpenses()?.filter((expense) => expense.spaceId === id);
   const amounts = group && expenses ? groupAmounts(expenses, group) : [];
