@@ -21,7 +21,6 @@ on:
       - .nvmrc
       - docs/specs/**
       - scripts/e2e-ios.sh
-      - scripts/e2e-ios-warmup.yaml
       - scripts/trace_check.py
       - .github/workflows/e2e.yml
   workflow_dispatch:

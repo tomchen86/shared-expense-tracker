@@ -58,10 +58,8 @@ if [ -z "$udid" ] && [ -z "$built" ]; then
 fi
 if [ -n "$build_only" ]; then exit 0; fi
 
-fresh=
 if [ -z "$udid" ]; then
   # A simulator of its own, so a run never disturbs one that someone else is using.
-  fresh=1
   udid=$(xcrun simctl create e2e "iPhone 17")
   trap 'xcrun simctl shutdown "$udid" 2>/dev/null; xcrun simctl delete "$udid"' EXIT
   xcrun simctl boot "$udid"
@@ -75,13 +73,6 @@ fi
 
 # On a CI runner, the first start of Maestro's iOS driver on a new simulator can take minutes.
 export MAESTRO_DRIVER_STARTUP_TIMEOUT=${MAESTRO_DRIVER_STARTUP_TIMEOUT:-300000} # ms
-
-# On CI, the first flow on a new simulator failed three times as often as the others: the first
-# keyboard, sheet, menu and swipe stall there. A walk through them first takes that cost.
-if [ -n "$fresh" ]; then
-  echo "Warming up the new simulator" >&2
-  maestro test --device "$udid" scripts/e2e-ios-warmup.yaml >/dev/null 2>&1 || true
-fi
 
 # run <name> <flow>...: one Maestro run, reported as reports/e2e/junit/<name>.xml. When
 # Maestro cannot start on the simulator, it reports no flow at all, so it tries again.
