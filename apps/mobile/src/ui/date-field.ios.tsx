@@ -3,6 +3,7 @@ import { Host, DatePicker } from '@expo/ui/swift-ui';
 import {
   datePickerStyle,
   disabled as disabledModifier,
+  dynamicTypeSize,
   environment,
 } from '@expo/ui/swift-ui/modifiers';
 import { toLocalDate } from '@shared-expense/domain';
@@ -48,6 +49,10 @@ export function DateField({
               environment('timeZone', timeZone),
               // Expo UI matches Foundation identifiers, such as en_AU.
               environment('locale', locale.replaceAll('-', '_')),
+              // The compact picker never narrows its date. At the largest size Oct 30, 2026 is
+              // 326 pt wide, and a 375 pt iPhone leaves the row 303 pt; capped here, the widest
+              // dates measured 259 pt (299 pt at the next size up).
+              dynamicTypeSize({ max: 'accessibility3' }),
             ]}
           />
         </Host>
