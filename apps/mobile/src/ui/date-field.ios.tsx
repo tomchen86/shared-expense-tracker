@@ -24,6 +24,8 @@ export function DateField({
   const locale = useDisplayLocale();
   return (
     <View
+      // The Host has no height in a sheet's first layout, which would make the sheet too short.
+      style={{ minHeight: 54 }}
       onLayout={(event) => {
         width.current = event.nativeEvent.layout.width;
       }}

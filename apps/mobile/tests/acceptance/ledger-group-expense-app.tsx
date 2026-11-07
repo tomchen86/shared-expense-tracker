@@ -21,6 +21,8 @@ import {
   barTitled,
   expectClosed,
   goBackFrom,
+  isLargeTitle,
+  largeTitle,
   membersShown,
   openGroup,
   openMembers,
@@ -41,6 +43,11 @@ import {
   categoryListView,
   chooseCategory,
   doAction,
+  listsAreMenus,
+  menuField,
+  menuFields,
+  menuOptions,
+  pressInMenu,
   expectFormClosed,
   fillForm,
   formScreen,
@@ -59,11 +66,13 @@ import { linesIn } from './ledger-expense-list-app';
 // as a person would, through the Groups tab (groups-app, group-details-app). They
 // add group expenses through the expense form, and read them back through the
 // ledger's listExpenses and from what the app shows. The form's lists (Select
-// Group, Who Paid?, Split Between) may be screens of their own or views in the form,
-// as the category list may: the helpers find each by its title, as a navigation bar
-// title or a header. The switch may be React Native's Switch or another control
-// with the switch role. Group screens and the details pushed from them are found by
-// the titles of their navigation bars, on whichever tab shows them.
+// Group, Who Paid?, Split Between) are system menus on iOS, which the helpers read
+// and press through the ui/ MenuField of each row (ledger-expense-app). On Android
+// they are sheets, which may be screens of their own or views in the form: the
+// helpers find each by its title, as a navigation bar title or a header. The switch
+// may be React Native's Switch or another control with the switch role. Group
+// screens and the details pushed from them are found by the titles of their
+// navigation bars, on whichever tab shows them.
 
 type HostView = ReturnType<typeof nativeViews>[number];
 
@@ -262,15 +271,16 @@ export async function setSplit(on: boolean) {
 
 const ROWS = /^(Group|Paid by|Split between), /;
 
-/** The form's Group, Paid by and Split between buttons, top to bottom, by their names. */
+/** The form's Group, Paid by and Split between rows, top to bottom, by their names. */
 export const splitRows = () =>
-  inForm()
-    .queryAllByRole('button')
-    .map(nameOf)
-    .filter((name) => ROWS.test(name));
+  (listsAreMenus()
+    ? menuFields().map(({ props }) => `${props.label}, ${props.value}`)
+    : inForm().queryAllByRole('button').map(nameOf)
+  ).filter((name) => ROWS.test(name));
 
-/** The form's button whose name starts with `row`, such as Group. */
+/** The form's row labelled `row`, such as Group: the view it draws on iOS, its button on Android. */
 export function splitRow(row: 'Group' | 'Paid by' | 'Split between') {
+  if (listsAreMenus()) return menuField(row).view;
   const found = inForm()
     .queryAllByRole('button')
     .find((button) => nameOf(button).startsWith(`${row}, `));
@@ -280,11 +290,25 @@ export function splitRow(row: 'Group' | 'Paid by' | 'Split between') {
 
 /** What the row says after its label, such as Brisbane for Group, Brisbane. */
 export const rowValue = (row: 'Group' | 'Paid by' | 'Split between') =>
-  nameOf(splitRow(row)).slice(row.length + 2);
+  listsAreMenus()
+    ? menuField(row).props.value
+    : nameOf(splitRow(row)).slice(row.length + 2);
+
+/** Whether the row can't be pressed. */
+export const isRowDisabled = (row: 'Group' | 'Paid by' | 'Split between') =>
+  listsAreMenus()
+    ? menuField(row).props.disabled === true
+    : isDisabled(splitRow(row));
 
 // The lists the form opens
 
 export type ListTitle = 'Select Group' | 'Who Paid?' | 'Split Between';
+
+const ROW_OF_LIST = {
+  'Select Group': 'Group',
+  'Who Paid?': 'Paid by',
+  'Split Between': 'Split between',
+} as const;
 
 const CLOSERS: Record<ListTitle, string> = {
   'Select Group': 'Cancel',
@@ -325,6 +349,7 @@ function listView(title: ListTitle): HostView | undefined {
   return withCloser;
 }
 
+/** Whether the list is open as a sheet, on Android. */
 export const isListOpen = (title: ListTitle) => listView(title) !== undefined;
 
 function openList(title: ListTitle) {
@@ -355,13 +380,16 @@ export const listButtons = (title: ListTitle) => [
 
 /** The rows of the open list, top to bottom, as [name, selected]. */
 export const listOptions = (title: ListTitle) =>
-  within(openList(title))
-    .queryAllByRole('button')
-    .filter((button) => nameOf(button) !== CLOSERS[title])
-    .map((button) => [nameOf(button), isSelected(button)] as const);
+  listsAreMenus()
+    ? menuOptions(ROW_OF_LIST[title])
+    : within(openList(title))
+        .queryAllByRole('button')
+        .filter((button) => nameOf(button) !== CLOSERS[title])
+        .map((button) => [nameOf(button), isSelected(button)] as const);
 
-/** Presses the button named `name` in the open list. */
+/** Presses the row named `name` in the open list. */
 export async function pressInList(title: ListTitle, name: string) {
+  if (listsAreMenus()) return pressInMenu(ROW_OF_LIST[title], name);
   const button = within(openList(title))
     .getAllByRole('button')
     .find((candidate) => nameOf(candidate) === name);
@@ -370,7 +398,12 @@ export async function pressInList(title: ListTitle, name: string) {
   await settle();
 }
 
+/** Waits for the list: on iOS only checks that its row can open its menu. */
 export async function expectList(title: ListTitle) {
+  if (listsAreMenus()) {
+    expect(isRowDisabled(ROW_OF_LIST[title])).toBe(false);
+    return;
+  }
   await waitFor(() => expect(isListOpen(title)).toBe(true));
   await settle();
 }
@@ -379,8 +412,13 @@ export async function expectListClosed(title: ListTitle) {
   await waitFor(() => expect(isListOpen(title)).toBe(false));
 }
 
-/** Presses the list's Cancel or Done, as its navigation bar or as a button. */
+/**
+ * Closes the list. On iOS the form hears nothing when its menu closes, so this does
+ * nothing there; on Android it presses the list's Cancel or Done, as its navigation
+ * bar or as a button.
+ */
 export async function closeList(title: ListTitle) {
+  if (listsAreMenus()) return;
   const bar = barTitled(title);
   if (bar !== undefined) await pressOnBar(title, CLOSERS[title]);
   else await pressInList(title, CLOSERS[title]);
@@ -389,6 +427,10 @@ export async function closeList(title: ListTitle) {
 
 /** Presses one of the form's rows and waits for the list it opens. */
 export async function openRow(row: 'Group' | 'Paid by' | 'Split between') {
+  if (listsAreMenus()) {
+    expect(isRowDisabled(row)).toBe(false);
+    return;
+  }
   await fireEvent.press(splitRow(row));
   const title: ListTitle =
     row === 'Group'
@@ -405,10 +447,14 @@ export async function pickGroup(name: string) {
   await expectListClosed('Select Group');
 }
 
-/** Turns the switch on if it is off, then chooses the group named `name`. */
+/**
+ * Turns the switch on if it is off, then chooses the group named `name`. Turning it
+ * on opens Select Group only on Android (LEDGER-46.2).
+ */
 export async function chooseGroup(name: string) {
-  if (!isSplitOn()) await setSplit(true);
-  else await openRow('Group');
+  const wasOn = isSplitOn();
+  if (!wasOn) await setSplit(true);
+  if (wasOn || listsAreMenus()) await openRow('Group');
   await expectList('Select Group');
   await pickGroup(name);
 }
@@ -497,28 +543,49 @@ export async function expectCategorySheet(title: string) {
   await settle();
 }
 
-/** Opens the category list and presses + Add New Category. */
-export async function openCategorySheet() {
-  await openCategoryList();
-  // UIKit finishes dismissing a native sheet before the next screen opens.
-  // Keep that public event's receiver before the Category bar is removed.
-  let closingStack: HostView | undefined;
-  for (let view = barTitled('Category')?.parent; view; view = view.parent) {
-    if (
-      String(view.type) === 'RNSScreenStack' &&
-      typeof view.props.onFinishTransitioning === 'function'
-    ) {
-      closingStack = view;
-      break;
-    }
-  }
-  await fireEvent.press(
-    within(categoryListView()).getByRole('button', { name: ADD_NEW_CATEGORY }),
+/**
+ * Opens the categories screen over the form by its URL: Manage Categories, or the
+ * Group Categories of `groupId`. The form itself no longer leads there.
+ */
+export async function openCategorySheet(groupId?: string) {
+  await push(
+    groupId === undefined
+      ? '/manage-categories'
+      : `/manage-categories?scopeKind=group&spaceId=${groupId}`,
   );
-  if (closingStack)
-    await fireEvent(closingStack, 'finishTransitioning', { nativeEvent: {} });
   await waitFor(() => expect(categorySheetTitle()).toBeDefined());
   await settle();
+}
+
+/** Whether New Category is open over the form. */
+export const isNewCategoryOpen = () =>
+  barTitled('New Category') !== undefined ||
+  screen.queryByLabelText('Category name') !== null;
+
+/** Presses + Add New Category in the category list, which opens New Category over the form. */
+export async function openNewCategory() {
+  if (listsAreMenus()) {
+    const { action } = menuField('Category').props;
+    if (action === undefined) throw new Error('The menu has no action');
+    expect(action.label).toBe(ADD_NEW_CATEGORY);
+    await act(async () => action.onPress());
+  } else {
+    await openCategoryList();
+    await fireEvent.press(
+      within(categoryListView()).getByRole('button', {
+        name: ADD_NEW_CATEGORY,
+      }),
+    );
+  }
+  await waitFor(() => expect(isNewCategoryOpen()).toBe(true));
+  await settle();
+}
+
+/** Adds the category `name` from + Add New Category. */
+export async function addNewCategoryFromForm(name: string) {
+  await openNewCategory();
+  await fireEvent.changeText(screen.getByLabelText('Category name'), name);
+  await pressInCategoryForm('Add');
 }
 
 /** Presses Close on the categories screen over the form. */
@@ -563,28 +630,6 @@ async function pressInCategoryForm(name: 'Add' | 'Save') {
   await waitFor(() =>
     expect(screen.queryByLabelText('Category name')).toBeNull(),
   );
-}
-
-/** Adds a category on the categories screen over the form. */
-export async function addCategoryInSheet(name: string) {
-  const title = categorySheetTitle();
-  if (title === undefined) throw new Error('No categories screen is open');
-  await pressOnBar(title, 'Add category');
-  await fireEvent.changeText(
-    await screen.findByLabelText('Category name'),
-    name,
-  );
-  await pressInCategoryForm('Add');
-}
-
-/** Renames a category on the categories screen over the form. */
-export async function renameCategoryInSheet(name: string, newName: string) {
-  await fireEvent.press(within(categorySheet()).getByText(name));
-  await fireEvent.changeText(
-    await screen.findByLabelText('Category name'),
-    newName,
-  );
-  await pressInCategoryForm('Save');
 }
 
 /** Removes a category on the categories screen over the form, then chooses `choice` in the alert. */
@@ -643,11 +688,12 @@ const groupButtons = (group: string) =>
     .queryAllByRole('button')
     .filter((button) => !inTitleBar(button));
 
-/** The expense cards on the group's screen, top to bottom: its buttons besides +, Restore Group, the Group Total and your net balance. */
+/** The expense cards on the group's screen, top to bottom: its buttons besides its large title, +, Restore Group, the Group Total and your net balance. */
 export const groupCards = (group: string) =>
   groupButtons(group).filter((button) => {
     const name = nameOf(button);
     return (
+      !isLargeTitle(button) &&
       name !== 'Add expense' &&
       name !== 'Restore Group' &&
       !/^(Group Total: |You're owed: |You owe: |Settled up)/.test(name)
@@ -693,8 +739,9 @@ export async function deleteFromGroup(group: string, title: string) {
 export const groupAddButton = (group: string) =>
   groupButtons(group).find((button) => nameOf(button) === 'Add expense');
 
-/** The lines of text on the group's screen, top to bottom. */
-export const groupLines = (group: string) => linesIn(screenOf(group));
+/** The lines of text on the group's screen under its large title, top to bottom. */
+export const groupLines = (group: string) =>
+  linesIn(screenOf(group)).slice(largeTitle(group) === undefined ? 0 : 1);
 
 // Details on any tab
 

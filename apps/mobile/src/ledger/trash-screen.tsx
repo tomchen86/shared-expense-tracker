@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useThemeColors } from '../ui/theme';
+import { DatedCards } from './dated-cards';
 import { ExpenseCard } from './expense-card';
 import { useExpenses } from './use-expenses';
 import { useTrashActions } from './trash-provider';
@@ -52,15 +53,17 @@ export function TrashScreen() {
                   Empty Trash
                 </Text>
               </Pressable>
-              {expenses.map((expense) => (
-                <ExpenseCard
-                  key={expense.id}
-                  expense={expense}
-                  onPress={() =>
-                    router.navigate(`/settings/trash/${expense.id}`)
-                  }
-                />
-              ))}
+              <DatedCards
+                expenses={expenses}
+                card={(expense) => (
+                  <ExpenseCard
+                    expense={expense}
+                    onPress={() =>
+                      router.navigate(`/settings/trash/${expense.id}`)
+                    }
+                  />
+                )}
+              />
             </>
           ))}
       </ScrollView>

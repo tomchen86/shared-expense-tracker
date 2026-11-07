@@ -359,7 +359,7 @@ test('[LEDGER-76.1] counts group expenses in the trash at the Trash row', async 
   expect(nameOf(trashRow())).toBe('Trash, 2');
 });
 
-test('[LEDGER-77.2] lists group expenses on Trash with personal ones, the last moved in first, at the full amount and with the group', async () => {
+test('[LEDGER-77.3] lists group expenses on Trash with personal ones, the last moved in first, at the full amount and with the group', async () => {
   await startWithGroups(BRISBANE);
   await addExpense();
   await addDinner();
@@ -369,21 +369,14 @@ test('[LEDGER-77.2] lists group expenses on Trash with personal ones, the last m
   await openTrash();
 
   await expectTrash(['Dinner', 'Coffee run']);
-  const expected = [
-    'Dinner',
-    '$100.01',
-    'Food & Dining',
-    'Brisbane',
-    'Oct 30, 2026',
-  ];
+  const expected = ['Dinner', '$100.01', 'Food & Dining', 'Brisbane'];
   expect(linesIn(trashCard('Dinner'))).toEqual(expected);
-  expect(shownInOrder([readOut(trashCard('Dinner'))], expected)).toEqual(
-    expected,
-  );
+  const read = [...expected, 'Oct 30, 2026'];
+  expect(shownInOrder([readOut(trashCard('Dinner'))], read)).toEqual(read);
   expect(actionLabels(trashCard('Dinner'))).not.toContain('Delete expense');
 });
 
-test('[LEDGER-77.2] lists a group expense you have no part in on Trash at its full amount', async () => {
+test('[LEDGER-77.3] lists a group expense you have no part in on Trash at its full amount', async () => {
   await startWithGroups(BRISBANE);
   await addTaxi();
   await showGroup('Brisbane');
@@ -395,7 +388,7 @@ test('[LEDGER-77.2] lists a group expense you have no part in on Trash at its fu
   expect(linesIn(trashCard('Taxi'))).toContain('$25.00');
 });
 
-test("[LEDGER-77.2] marks the group as archived on a group expense's card on Trash", async () => {
+test("[LEDGER-77.3] marks the group as archived on a group expense's card on Trash", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await deleteFromList('Dinner');
@@ -407,7 +400,7 @@ test("[LEDGER-77.2] marks the group as archived on a group expense's card on Tra
   expect(linesIn(trashCard('Dinner'))).toContain('Brisbane · Archived');
 });
 
-test("[LEDGER-78.2] shows a group expense's read-only details with what its details show, and only Expense actions", async () => {
+test("[LEDGER-78.3] shows a group expense's read-only details with what its details show, and only Expense actions", async () => {
   await startWithGroups(BRISBANE);
   await addTaylorsDinner();
   await deleteFromList('Dinner');
@@ -420,6 +413,8 @@ test("[LEDGER-78.2] shows a group expense's read-only details with what its deta
     'Restore',
     'Dinner',
     '$60.00',
+    'Oct 30, 2026',
+    'Food & Dining',
     'YOUR POSITION',
     'You paid',
     '$60.00',
@@ -437,13 +432,8 @@ test("[LEDGER-78.2] shows a group expense's read-only details with what its deta
     '$20.00',
     'Blake',
     '$20.00',
-    'DETAILS',
     'Group',
     'Brisbane',
-    'Category',
-    'Food & Dining',
-    'Date',
-    'Oct 30, 2026',
   ];
   await waitFor(() =>
     expect(shownInOrder(expenseLines('Settings'), expected)).toEqual(expected),
@@ -457,7 +447,7 @@ test("[LEDGER-78.2] shows a group expense's read-only details with what its deta
   ]);
 });
 
-test("[LEDGER-78.2] shows Status but not Shared history on the read-only details of an archived group's expense", async () => {
+test("[LEDGER-78.3] shows Status but not Shared history on the read-only details of an archived group's expense", async () => {
   await startWithGroups(BRISBANE);
   await addTaylorsDinner();
   await deleteFromList('Dinner');
@@ -504,7 +494,7 @@ test("[LEDGER-79.3] restores an archived group's expense from Trash without aski
   await openArchivedGroup('Brisbane');
   await waitFor(() => expect(groupCardTitles('Brisbane')).toEqual(['Dinner']));
   const shown = groupCard('Brisbane', 'Dinner');
-  expect(linesIn(shown)).toContain('Brisbane · Archived');
+  expect(linesIn(shown)).toContain('Paid by Casey');
   expect(actionLabels(shown)).not.toContain('Delete expense');
 });
 

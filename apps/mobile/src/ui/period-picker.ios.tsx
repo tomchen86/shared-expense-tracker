@@ -18,6 +18,8 @@ import {
   ToolbarItem,
 } from '@expo/ui/swift-ui';
 import {
+  buttonStyle,
+  labelStyle,
   navigationBarTitleDisplayMode,
   navigationTitle,
   pickerStyle,
@@ -34,7 +36,7 @@ const sheetTitle = [
 
 /**
  * The period name: a system menu of 2 to 8 years (INSIGHTS-37.1), or a button
- * that raises the Period sheet (INSIGHTS-36.1, INSIGHTS-38.1).
+ * that raises the Period sheet (INSIGHTS-36.2, INSIGHTS-38.2).
  */
 export function PeriodPicker({
   kind,
@@ -181,11 +183,24 @@ export function PeriodPicker({
               {content}
               <Toolbar.Content>
                 <ToolbarItem placement="cancellationAction">
-                  <Button label={asList ? 'Close' : 'Cancel'} onPress={close} />
+                  <Button
+                    label={asList ? 'Close' : 'Cancel'}
+                    systemImage="xmark"
+                    modifiers={[labelStyle('iconOnly')]}
+                    onPress={close}
+                  />
                 </ToolbarItem>
                 {!asList && (
                   <ToolbarItem placement="confirmationAction">
-                    <Button label="Done" onPress={() => choose(shown)} />
+                    <Button
+                      label="Done"
+                      systemImage="checkmark"
+                      modifiers={[
+                        labelStyle('iconOnly'),
+                        buttonStyle('borderedProminent'),
+                      ]}
+                      onPress={() => choose(shown)}
+                    />
                   </ToolbarItem>
                 )}
               </Toolbar.Content>

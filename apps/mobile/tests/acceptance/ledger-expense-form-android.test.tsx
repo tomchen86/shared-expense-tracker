@@ -1,18 +1,28 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { processColor } from 'react-native';
 import { within } from '@testing-library/react-native';
 import {
   DISCARD_CHANGES,
+  amountField,
+  cancelCategoryList,
+  categoryButton,
+  categoryListView,
   chooseDate,
   dateFieldForScreenReaders,
   dateFieldView,
   expectFormClosed,
   fillForm,
   formBarSides,
+  formCategory,
   formIsInATab,
   formScreen,
   formTitle,
+  inTreeOrder,
+  isCategoryListOpen,
+  noteField,
+  openCategoryList,
   openNewExpense,
   phoneDatabase,
   press,
@@ -22,9 +32,20 @@ import {
   setPhoneRegion,
   startExpenses,
   storedExpenses,
+  titleField,
   watchAlerts,
 } from './ledger-expense-app';
-import { allowWrites, holdWrites, settle } from './shell-appearance-app';
+import { dotColors, PALETTE } from './ledger-expense-list-app';
+import {
+  allowWrites,
+  colorsInBoth,
+  fakePhoneAppearance,
+  fixedColors,
+  holdWrites,
+  settle,
+  switchPhoneTo,
+  textsWithoutColor,
+} from './shell-appearance-app';
 import { selectedTab } from './shell-tabs-app';
 import type { Database } from '../../src/storage';
 
@@ -96,12 +117,83 @@ test('[LEDGER-12.1] opens New Expense rising from the bottom over the tab bar on
   expect(formBarSides()).toEqual({ left: ['Cancel'], right: ['Add'] });
 });
 
-test('[LEDGER-13.1] puts Cancel at the left and Add at the right of the header on Android', async () => {
+test('[LEDGER-13.2] puts Cancel at the left and Add at the right of the header on Android', async () => {
   await startExpenses();
 
   await openNewExpense();
 
   expect(formBarSides()).toEqual({ left: ['Cancel'], right: ['Add'] });
+});
+
+test('[LEDGER-17.5] [LEDGER-101.1] opens the category list as a sheet titled Category, and keeps the category when it is cancelled', async () => {
+  await startExpenses();
+  await openNewExpense();
+
+  await openCategoryList();
+
+  expect(isCategoryListOpen()).toBe(true);
+  await cancelCategoryList();
+  expect(isCategoryListOpen()).toBe(false);
+  expect(formTitle()).toBe('New Expense');
+  expect(formCategory()).toBe('Food & Dining');
+});
+
+test('[LEDGER-17.5] puts a dot of its color before each category in the sheet', async () => {
+  await startExpenses();
+  await openNewExpense();
+
+  await openCategoryList();
+
+  expect(dotColors(categoryListView()).slice(0, 3)).toEqual([
+    '#D81B60',
+    '#1E88E5',
+    '#FBC02D',
+  ]);
+});
+
+// SHELL-34.1 leaves out the colors of user data, such as a category's color.
+const PALETTE_COLORS = new Set(
+  PALETTE.map((color) => (processColor(color) as number) >>> 0),
+);
+
+const appColors = (root: Parameters<typeof fixedColors>[0]) => ({
+  colors: new Map(
+    [...fixedColors(root)].filter(
+      ([, { color }]) => !PALETTE_COLORS.has(color),
+    ),
+  ),
+  uncolored: textsWithoutColor(root),
+});
+
+test('[SHELL-34.1] colors the category list with colors that follow the appearance', async () => {
+  fakePhoneAppearance('light');
+  await startExpenses();
+  await openNewExpense();
+  await openCategoryList();
+  const light = appColors(categoryListView());
+
+  await switchPhoneTo('dark');
+  const dark = appColors(categoryListView());
+
+  expect(colorsInBoth(light.colors, dark.colors)).toEqual([]);
+  expect([...light.uncolored, ...dark.uncolored]).toEqual([]);
+});
+
+test('[LEDGER-13.2] shows the title, currency, amount, category, date and note in order on Android', async () => {
+  await startExpenses();
+
+  await openNewExpense();
+
+  expect(
+    inTreeOrder(
+      titleField(),
+      within(formScreen()).getByText('USD'),
+      amountField(),
+      categoryButton(),
+      dateFieldView(),
+      noteField(),
+    ),
+  ).toBe(true);
 });
 
 test('[LEDGER-23.1] closes an unchanged form when Back is pressed', async () => {
@@ -148,7 +240,7 @@ test('[LEDGER-25.1] keeps the form open without asking when Back is pressed duri
   ]);
 });
 
-test('[LEDGER-13.1] names the date field Date on Android, leaving the date out of its name', async () => {
+test('[LEDGER-13.2] names the date field Date on Android, leaving the date out of its name', async () => {
   await startExpenses();
 
   await openNewExpense();
