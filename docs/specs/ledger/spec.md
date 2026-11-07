@@ -1038,7 +1038,7 @@ WHERE iPhone 或 Android 手機，the mobile app SHALL 讓卡片、卡片上方�
 #### Scenario: 平台沒有這個地區的英文格式
 
 - **WHEN** 有 8.00 USD 的支出時，把 iPhone 和 Android 手機的語言和地區設成越南文（越南）或阿拉伯文（埃及），再打開 app
-- **THEN** 卡片、明細和日期欄位的金額和日期都是英文和西方數字，例如「$8.00」和「Nov 7, 2026」，不是「8,00 US$」或「٠٧‏/١١‏/٢٠٢٦」
+- **THEN** 卡片、卡片上方的日期、明細和日期欄位的金額和日期都是英文和西方數字，例如「$8.00」和「Nov 7, 2026」，不是「8,00 US$」或「٠٧‏/١١‏/٢٠٢٦」
 
 #### Scenario: 地區預設的曆法不是西曆
 
@@ -2330,7 +2330,7 @@ WHEN 使用者從能露出「Delete」、還沒露出的支出卡片開始拖曳
 
 #### Scenario: Android
 
-- **WHEN** 在 Android 手機重複上述拖曳
+- **WHEN** 在 Android 手機重複上述拖曳，往左不超過 SHELL-69.1 的位置
 - **THEN** 結果相同，pt 在 Android 以 dp 計
 
 ### Requirement: LEDGER-100.1 (e2e) iOS 上表單的清單是系統選單

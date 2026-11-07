@@ -371,7 +371,7 @@ test('[SHELL-48.2] adds Cancel when a disabled action leaves two in the dialog',
   });
 });
 
-test('[SHELL-48.2] runs no action when a press outside closes the dialog', async () => {
+test('[SHELL-51.1] runs no action when a press outside closes a dialog of three actions', async () => {
   const members = jest.fn();
   const rename = jest.fn();
   await showHeaderActions({

@@ -1,6 +1,10 @@
 appId: com.tomchen.sharedexpensetracker
 name: '[SHELL-69.1] Swiping a card or a category row all the way left does what its revealed action does, and a short swipe only reveals it'
+tags:
+  - android
 ---
+# Eight cards and seven groups, so that one is under the middle of any screen: this also runs on the
+# small Android screen of scripts/e2e-android.sh, where the first card sits elsewhere.
 - launchApp:
     clearState: true
 - extendedWaitUntil:
@@ -9,70 +13,119 @@ name: '[SHELL-69.1] Swiping a card or a category row all the way left does what 
       selected: true
     timeout: 30000
 - waitForAnimationToEnd
-- tapOn: Add expense
+- evalScript: ${output.card = 1}
+- repeat:
+    times: 8
+    commands:
+      - tapOn: Add expense
+      - assertVisible: New Expense
+      - tapOn: Expense title
+      - inputText: Card ${output.card}
+      - tapOn: Amount in .*
+      - inputText: '1'
+      - tapOn:
+          text: Add
+          enabled: true
+      - waitForAnimationToEnd
+      - assertNotVisible: New Expense
+      - evalScript: ${output.card = output.card + 1}
+# Starting again, with no form still closing.
+- launchApp
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
 - waitForAnimationToEnd
-- tapOn: Expense title
-- inputText: Coffee run
-- tapOn: Amount in .*
-- inputText: '8.75'
-- tapOn:
-    text: Add
-    enabled: true
-- waitForAnimationToEnd
-- assertVisible: Coffee run, .*
-# The only card sits at this height, so the swipe can start near its right edge.
+# A short swipe only reveals the action. It stays short of 60% of the card on a 360 dp screen too.
 - swipe:
-    start: 90%,38%
-    end: 3%,38%
+    start: 85%, 50%
+    end: 35%, 50%
+    duration: 300
+- waitForAnimationToEnd
+- copyTextFrom:
+    text: Delete .* expense
+    enabled: true
+- evalScript: ${output.card = maestro.copiedText.slice('Delete '.length, -' expense'.length)}
+- assertVisible: ${output.card}, .*
+- assertNotVisible: Moved to Trash
+- swipe:
+    start: 28%, 50%
+    end: 60%, 50%
+    duration: 250
+- waitForAnimationToEnd
+- assertNotVisible:
+    text: Delete .* expense
+    enabled: true
+# All the way to the left runs it.
+- swipe:
+    start: 90%, 50%
+    end: 3%, 50%
     duration: 500
 - waitForAnimationToEnd
 - assertVisible: Moved to Trash
-- assertNotVisible: Coffee run, .*
-- tapOn: Undo deletion of Coffee run
+- assertNotVisible: ${output.card}, .*
+- tapOn: Undo deletion of ${output.card}
 - waitForAnimationToEnd
-- assertVisible: Coffee run, .*
-# A short swipe only reveals the action.
-- swipe:
-    start: 90%,38%
-    end: 66%,38%
-    duration: 400
-- waitForAnimationToEnd
-- assertVisible: Coffee run, .*
-- assertVisible: Delete Coffee run expense
-- swipe:
-    start: 50%,38%
-    end: 90%,38%
-    duration: 300
-- waitForAnimationToEnd
+- assertVisible: ${output.card}, .*
 - tapOn: Settings
+- waitForAnimationToEnd
 - tapOn: Enter your name
 - inputText: Taylor
 - pressKey: Enter
+- waitForAnimationToEnd
 - tapOn: Groups
-- tapOn: Add group
 - waitForAnimationToEnd
-- inputText: Brisbane
-- tapOn: Create
-- waitForAnimationToEnd
-- assertVisible: Open Brisbane.*
+- evalScript: ${output.group = 1}
+- repeat:
+    times: 7
+    commands:
+      - tapOn: Add group
+      - waitForAnimationToEnd
+      - assertVisible: New Group
+      - inputText: Group ${output.group}
+      - tapOn: Create
+      - waitForAnimationToEnd
+      - assertNotVisible: New Group
+      - evalScript: ${output.group = output.group + 1}
 - swipe:
-    start: 90%,25%
-    end: 3%,25%
+    start: 85%, 50%
+    end: 35%, 50%
+    duration: 300
+- waitForAnimationToEnd
+- copyTextFrom:
+    text: Archive .*
+    enabled: true
+- evalScript: ${output.group = maestro.copiedText.slice('Archive '.length)}
+- swipe:
+    start: 28%, 50%
+    end: 60%, 50%
+    duration: 250
+- waitForAnimationToEnd
+- assertNotVisible:
+    text: Archive .*
+    enabled: true
+- swipe:
+    start: 90%, 50%
+    end: 3%, 50%
     duration: 500
 - waitForAnimationToEnd
 - assertVisible: Group archived.*
-- assertNotVisible: Open Brisbane.*
+- assertNotVisible: Open ${output.group}.*
 - tapOn: Settings
+- waitForAnimationToEnd
 - tapOn: Manage Categories
 - waitForAnimationToEnd
 - swipe:
-    start: 90%,37%
-    end: 3%,37%
+    start: 90%, 50%
+    end: 3%, 50%
     duration: 500
 - waitForAnimationToEnd
 - assertVisible: Delete Category\?
 # The swipe closes the row, as pressing the revealed button does.
-- assertNotVisible: Remove
+- assertNotVisible:
+    text: Remove
+    enabled: true
 - tapOn: Cancel
 - waitForAnimationToEnd
 - assertVisible: Shopping

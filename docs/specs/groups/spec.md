@@ -382,12 +382,12 @@ The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group ac
 #### Scenario: Android
 
 - **WHEN** Android 上在 Brisbane 的畫面按「Group actions」
-- **THEN** 跳出標題「Group actions」的對話框，依序列出「Members」、「Rename Group」和「Categories」，沒有「Cancel」
+- **THEN** 跳出標題「Group actions」的對話框，按鈕是「Members」、「Rename Group」和「Categories」，沒有「Cancel」
 
 #### Scenario: 封存的群組
 
 - **WHEN** 封存 Brisbane 之後，在 iOS 上開啟它的畫面，或在 Android 上按它的「Group actions」
-- **THEN** iOS 的選單依序列出「Members」和「Categories」；Android 的對話框依序列出「Members」、「Categories」和「Cancel」
+- **THEN** iOS 的選單依序列出「Members」和「Categories」；Android 的對話框按鈕是「Members」、「Categories」和「Cancel」
 
 ### Requirement: GROUPS-23.2 開啟和關閉 Members
 
@@ -1644,7 +1644,7 @@ WHEN 使用者從還沒露出「Archive」的群組的卡片開始拖曳，且�
 
 #### Scenario: Android
 
-- **WHEN** 在 Android 手機重複上述拖曳
+- **WHEN** 在 Android 手機重複上述拖曳，往左不超過 SHELL-69.1 的位置
 - **THEN** 結果相同，pt 在 Android 以 dp 計
 
 ### Requirement: GROUPS-80.1 (e2e) iOS 26 以上從收起的卡片水平往右拖返回
