@@ -22,11 +22,7 @@ export default function GroupsLayout() {
       />
       <Stack.Screen
         name="new"
-        options={{
-          title: 'New Group',
-          presentation: 'modal',
-          animation: 'slide_from_bottom',
-        }}
+        options={{ ...formPresentation, title: 'New Group' }}
       />
       <Stack.Screen
         name="members"
