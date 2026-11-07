@@ -10,11 +10,16 @@ Use Node from `.nvmrc`, pnpm from `package.json`, and Python 3 for the requireme
 pnpm install
 bash scripts/check.sh            # lint, format check, typecheck, tests, requirement trace
 pnpm test:traced                  # only requirement-citing acceptance tests, with branch coverage
+pnpm test:mobile                  # every test except the API's, without Docker
 pnpm --filter mobile start        # Expo development server
+docker compose -f apps/api/compose.yaml up -d --wait  # the PostgreSQL the API's tests need
+pnpm --filter api dev             # the API on Node
+pnpm --filter api dev:workers     # the API on Wrangler's local Workers runtime
+pnpm --filter api migrate         # run the API's migrations on DATABASE_URL
 ```
 
-The workspace contains the mobile toolchain and the shared domain module. Product routes
-arrive with their capability specs.
+The workspace contains the mobile toolchain, the API, and the shared domain module.
+Product routes arrive with their capability specs.
 
 Jest discovers `*.test.ts`, `*.test.tsx`, and `*.test.js` under each workspace's
 `src/` and `tests/`. Acceptance tests live in the directories listed in `AGENTS.md`;
@@ -25,6 +30,11 @@ tests without coverage. `bash scripts/check.sh` runs tests with `--coverage`, an
 money coverage threshold in `jest.config.cjs` and write branch counts to
 `reports/coverage/coverage-summary.json` and LCOV.
 
+The API's tests connect to a real PostgreSQL, through the Node entry file. With `useApi()`
+from `apps/api/tests/support/api.ts`, each test gets a new database with the real
+migrations and a server of its own, so sessions sharing the container never meet. When
+PostgreSQL cannot be reached, the tests fail and say how to start it.
+
 Domain source is typechecked using only ES2022 types. Its tests are checked separately
 with Jest and Node types, so test tooling cannot enable Node APIs in domain code.
 
@@ -33,6 +43,11 @@ Lint also checks the platform boundary in ADR-0002: `.ios`, `.android`, `.native
 `src/ui/`, and UI cannot import capability code, including
 through the `@/` alias. Outside UI, use named React Native imports so namespace,
 default, and dynamic imports cannot hide access to `Platform`.
+
+Lint also checks the runtime boundary in ADR-0007: outside `apps/api/src/node.ts` and
+`apps/api/src/workers.ts`, API code uses only web standards and the libraries listed in
+`eslint.config.mjs`. All of `apps/api` imports from the domain module only
+`@shared-expense/domain/api`, never bookkeeping rules.
 
 ## Where things are
 

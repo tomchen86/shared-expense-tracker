@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "shared-expense-tracker-api",
+  "main": "src/workers.ts",
+  "compatibility_date": "2026-11-04",
+  // postgres.js runs on Workers through Cloudflare's Node.js compatibility (ADR-0007).
+  "compatibility_flags": ["nodejs_compat"],
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      // No real Hyperdrive configuration yet. `wrangler dev` ignores this and connects to
+      // localConnectionString, or to the URL in
+      // CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE when that is set.
+      "id": "00000000000000000000000000000000",
+      "localConnectionString": "postgres://postgres:postgres@127.0.0.1:55432/postgres",
+    },
+  ],
+}
