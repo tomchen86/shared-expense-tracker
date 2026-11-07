@@ -11,6 +11,7 @@
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck",
     "test": "jest --maxWorkers=2",
+    "test:mobile": "jest --maxWorkers=2 --ignoreProjects api",
     "test:traced": "jest --maxWorkers=2 --coverage --testPathPatterns=tests/acceptance/ --testNamePattern='(?<![A-Za-z0-9])[A-Z][A-Z0-9]*[-_][0-9]+[._][0-9]+(?![0-9])' --passWithNoTests"
   },
   "devDependencies": {
