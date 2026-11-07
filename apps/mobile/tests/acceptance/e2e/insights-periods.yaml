@@ -36,7 +36,7 @@ name: '[INSIGHTS-30.1] [INSIGHTS-33.1] [INSIGHTS-36.1] [INSIGHTS-37.1] Moves bet
 - tapOn: Previous Month
 - tapOn: '\w+,? (15 \w+|\w+ 15)'
 - tapOn:
-    point: 50%,90%
+    point: 50%,95%
 - waitForAnimationToEnd
 - tapOn:
     text: Add
@@ -54,7 +54,7 @@ name: '[INSIGHTS-30.1] [INSIGHTS-33.1] [INSIGHTS-36.1] [INSIGHTS-37.1] Moves bet
       - tapOn: Previous Month
 - tapOn: '\w+,? (15 \w+|\w+ 15)'
 - tapOn:
-    point: 50%,90%
+    point: 50%,95%
 - waitForAnimationToEnd
 - tapOn:
     text: Add
