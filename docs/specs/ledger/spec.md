@@ -1511,12 +1511,12 @@ IF 表單開著時，表單上的分類被刪除（CATEGORIES-34.1），THEN the
 #### Scenario: 刪除新增的分類
 
 - **WHEN** 在 New Expense 從「+ Add New Category」新增「Gym」，再從以網址 `/manage-categories` 打開的 Manage Categories 移除 Gym 並按 Delete，然後關閉它
-- **THEN** 分類按鈕是「Category, Uncategorized」；輸入金額和標題後按 Add，支出存的是個人空間的 Uncategorized 的 ID
+- **THEN** 分類按鈕是「Category, Uncategorized」，打開清單時只有 Uncategorized 標示為已選取；輸入金額和標題後按 Add，支出存的是個人空間的 Uncategorized 的 ID
 
 #### Scenario: 群組的分類
 
 - **WHEN** 在選了 Brisbane 的 New Expense，從「+ Add New Category」新增「Flights」，再從以網址打開的 Brisbane 的 Group Categories 刪除 Flights
-- **THEN** 分類按鈕是「Category, Uncategorized」，是 Brisbane 的 Uncategorized
+- **THEN** 分類按鈕是「Category, Uncategorized」，是 Brisbane 的 Uncategorized；打開清單時只有 Uncategorized 標示為已選取
 
 ### Requirement: LEDGER-64.2 支出清單也列出和你有關的群組支出
 

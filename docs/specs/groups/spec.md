@@ -1663,17 +1663,22 @@ WHERE iOS 26 以上，WHILE 未封存群組的畫面開著，WHEN 使用者從�
 
 ### Requirement: GROUPS-100.1 群組的畫面的大標題
 
-The mobile app SHALL 在群組的畫面的標題列下方，用大字顯示群組名稱，標題列上不顯示名稱；大標題捲出畫面之後，標題列才顯示名稱。大標題是一個按鈕，名稱是群組名稱，預設收起只佔一行，按一下展開成完整的名稱，再按一下收起；未封存的群組長按時打開 Rename Group（GROUPS-40.3）。找不到群組時，標題列是「Group Details」。
+The mobile app SHALL 在群組的畫面的標題列下方，用大字顯示群組名稱，標題列上不顯示名稱；大標題捲出畫面之後，標題列才顯示名稱。大標題是一個按鈕，名稱是群組名稱，預設收起只佔一行，按一下展開成完整的名稱，再按一下收起；未封存的群組長按時打開 Rename Group（GROUPS-40.3），螢幕閱讀器讀出無障礙提示「Shows the full name. Long press renames the group.」；封存的群組沒有這個提示。找不到群組時，標題列是「Group Details」。
 
 #### Scenario: 打開群組
 
 - **WHEN** 打開 Brisbane 的畫面
-- **THEN** 標題列沒有「Brisbane」；標題列下方是名稱「Brisbane」的按鈕，標示為收起
+- **THEN** 標題列沒有「Brisbane」；標題列下方是名稱「Brisbane」的按鈕，標示為收起，無障礙提示是「Shows the full name. Long press renames the group.」
 
 #### Scenario: 展開和收起
 
 - **WHEN** 打開名稱是 300 個「a」的群組，按大標題，再按一次
 - **THEN** 第一次按完標示為展開，完整顯示 300 個「a」；第二次按完標示為收起，只佔一行
+
+#### Scenario: 封存的群組
+
+- **WHEN** 打開封存的 Brisbane 的畫面，按大標題
+- **THEN** 標示為展開，沒有無障礙提示
 
 #### Scenario: 捲出畫面
 
