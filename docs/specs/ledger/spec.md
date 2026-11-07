@@ -2458,6 +2458,6 @@ WHERE iOS，WHILE 手機的字級是輔助使用字級，WHEN 使用者按支出
 
 #### Scenario: 打開和關閉日曆
 
-- **WHEN** iOS 上把字級設成最大的輔助使用字級，打開 New Expense，按「Date Picker」，再按「Expense title」那裡
-- **THEN** 第一下打開日曆；第二下只關閉日曆，標題欄位沒有取得焦點；再按一次同一個地方才取得焦點
+- **WHEN** iOS 上把字級設成最小的輔助使用字級，打開 New Expense，按「Date Picker」，再按「Expense note」那裡
+- **THEN** 第一下打開日曆；第二下只關閉日曆，備註欄位沒有取得焦點；再按一次同一個地方才取得焦點
 

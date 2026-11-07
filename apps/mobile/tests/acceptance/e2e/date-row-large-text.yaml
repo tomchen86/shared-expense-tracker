@@ -1,14 +1,16 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-106.1] At the largest text size, pressing the date opens the calendar, and the press that closes the calendar reaches nothing on the form'
+name: '[LEDGER-106.1] At the smallest accessibility text size, pressing the date opens the calendar, and the press that closes the calendar reaches nothing on the form'
 ---
 # The text size comes from a launch argument, as UI tests set Dynamic Type, and lasts for that
-# launch only. React Native and the SwiftUI date picker both follow it. Where the date sits is
-# LEDGER-105.1's (manual): Maestro's below and rightOf compare top and left edges, so they also
-# hold for the date beside a Date broken one letter per line.
+# launch only. React Native and the SwiftUI date picker both follow it. At the smallest
+# accessibility size the date is about 160 pt wide, so once it sits under Date on the left its
+# center is in the row's left half; at the largest it is wide enough to reach the middle. Where
+# the date sits is LEDGER-105.1's (manual): Maestro's below and rightOf compare top and left
+# edges, so they also hold for the date beside a Date broken one letter per line.
 - launchApp:
     clearState: true
     arguments:
-      UIPreferredContentSizeCategoryName: UICTContentSizeCategoryAccessibilityXXXL
+      UIPreferredContentSizeCategoryName: UICTContentSizeCategoryAccessibilityM
 - extendedWaitUntil:
     visible:
       text: Expenses
@@ -25,15 +27,15 @@ name: '[LEDGER-106.1] At the largest text size, pressing the date opens the cale
 - waitForAnimationToEnd
 - assertVisible: Previous Month
 # While the calendar is open, only its own controls can be found by name, so this press goes
-# where Expense title is, above the calendar. The second press on the same point shows that the
-# first one was on that field.
+# where Expense note is, below the calendar, which covers Expense title at this size. The second
+# press on the same point shows that the first one was on that field.
 - tapOn:
-    point: 50%,23%
+    point: 50%,77%
 - waitForAnimationToEnd
 - assertNotVisible: Previous Month
 - inputText: Lost
 - assertNotVisible: Lost
 - tapOn:
-    point: 50%,23%
+    point: 50%,77%
 - inputText: Kept
 - assertVisible: Kept
