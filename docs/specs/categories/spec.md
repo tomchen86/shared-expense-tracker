@@ -973,3 +973,27 @@ WHILE 分類表單開著鍵盤，the mobile app SHALL 讓色盤的每個顏色�
 
 - **WHEN** 在 360×640 dp 的 Android 手機收起鍵盤
 - **THEN** 不用捲動就看得到「Category name」和「Select color #F2858D」
+
+### Requirement: CATEGORIES-50.1 (e2e) 捲動清單或按分類列時收起露出的動作
+
+WHILE 分類列露出「Remove」或「Delete」，WHEN 使用者捲動 Manage Categories 或 Group Categories 的分類清單，或按分類列開啟 Edit Category 或還原封存的分類，the mobile app SHALL 收起所有露出的動作，不移除任何分類。
+
+#### Scenario: 從別列捲動清單
+
+- **WHEN** 在 Manage Categories 新增 Scroll 1 到 Scroll 8，把 Shopping 往左滑露出「Remove」，從 Health 那一列往上拖曳
+- **THEN** 清單捲動，「Remove」收起，沒有 Edit Category 或 Delete Category?
+
+#### Scenario: 從這一列捲動清單
+
+- **WHEN** 同一個清單捲回頂端，把 Shopping 往左滑露出「Remove」，從 Shopping 那一列往上拖曳
+- **THEN** 清單捲動，「Remove」收起，沒有 Edit Category 或 Delete Category?
+
+#### Scenario: 按別列
+
+- **WHEN** 同一個清單捲回頂端，把 Shopping 往左滑露出「Remove」，按 Health 那一列
+- **THEN** 開啟 Health 的 Edit Category；按 Cancel 之後沒有「Remove」，Shopping 還在
+
+#### Scenario: 按這一列
+
+- **WHEN** 把 Shopping 往左滑露出「Remove」，按 Shopping 那一列
+- **THEN** 開啟 Shopping 的 Edit Category；按 Cancel 之後沒有「Remove」，Shopping 還在
