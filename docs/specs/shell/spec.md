@@ -697,14 +697,19 @@ WHERE Android，the mobile app SHALL 讓 + 按鈕的圖示是「+」字，按下
 - **WHEN** 按一下 + 按鈕
 - **THEN** 按鈕顯示 ripple，沒有觸覺回饋
 
-### Requirement: SHELL-47.1 iOS 的標題列動作
+### Requirement: SHELL-47.2 iOS 的標題列動作
 
-WHERE iOS，the mobile app SHALL 把畫面給的標題列動作放進原生標題列：取消是左邊 plain 樣式的文字按鈕，確認是右邊 prominent 樣式的文字按鈕，其他動作依序收進右邊一個圖示是 SF Symbol `ellipsis.circle` 的原生選單，選單的無障礙名稱是畫面給的名稱；確認和選單都有時，確認在最右邊。
+WHERE iOS，the mobile app SHALL 把畫面給的標題列動作放進原生標題列：取消和關閉是左邊 plain 樣式、圖示是 SF Symbol `xmark` 的按鈕，確認是右邊 prominent 樣式、圖示是 SF Symbol `checkmark` 的按鈕，兩者都用系統的顏色，不另外指定，無障礙名稱是畫面給的文字；其他動作依序收進右邊一個圖示是 SF Symbol `ellipsis.circle` 的原生選單，選單的無障礙名稱是畫面給的名稱；確認和選單都有時，確認在最右邊。不是取消、確認的文字動作（例如「Edit」）維持文字。
 
 #### Scenario: 取消和確認
 
 - **WHEN** iOS 上畫面給取消「Cancel」和確認「Add」
-- **THEN** 標題列左邊是 plain 的「Cancel」，右邊是 prominent 的「Add」
+- **THEN** 標題列左邊是 plain、圖示 `xmark`、名稱「Cancel」的按鈕，右邊是 prominent、圖示 `checkmark`、名稱「Add」的按鈕，都沒有另外指定顏色
+
+#### Scenario: 關閉
+
+- **WHEN** iOS 上畫面只給關閉「Close」，例如 Members 或 Group Categories
+- **THEN** 標題列左邊是 plain、圖示 `xmark`、名稱「Close」的按鈕
 
 #### Scenario: 其他動作
 
@@ -714,11 +719,16 @@ WHERE iOS，the mobile app SHALL 把畫面給的標題列動作放進原生標�
 #### Scenario: 確認和選單
 
 - **WHEN** 畫面同時給確認「Save」和名稱是「Expense actions」的選單
-- **THEN** 標題列右邊由右而左是「Save」和選單
+- **THEN** 標題列右邊由右而左是名稱「Save」的按鈕和選單
 
-### Requirement: SHELL-48.1 Android 的標題列動作
+#### Scenario: Edit
 
-WHERE Android，the mobile app SHALL 把畫面給的標題列動作顯示成至少 48×48 dp 的 Material Symbols 圖示按鈕，無障礙名稱是動作的名稱：取消是左邊的 `close`，確認是右邊強調色的 `check`，其他動作收進最右邊、名稱是選單名稱的 `more_vert`，按下後跳出標題是選單名稱的對話框，依序列出這些動作和「Cancel」。
+- **WHEN** 打開支出的明細
+- **THEN** 標題列的「Edit」是文字按鈕，沒有圖示
+
+### Requirement: SHELL-48.2 Android 的標題列動作
+
+WHERE Android，the mobile app SHALL 把畫面給的標題列動作顯示成至少 48×48 dp 的 Material Symbols 圖示按鈕，無障礙名稱是動作的名稱：取消是左邊的 `close`，確認是右邊強調色的 `check`，其他動作最多三個，收進最右邊、名稱是選單名稱的 `more_vert`，按下後跳出標題是選單名稱的系統對話框，這些動作是它的按鈕：一行放得下時由左而右依序排列，放不下時由系統改成直排；列出的動作不到三個時另外有「Cancel」。
 
 #### Scenario: 取消和確認
 
@@ -728,7 +738,12 @@ WHERE Android，the mobile app SHALL 把畫面給的標題列動作顯示成至�
 #### Scenario: 其他動作
 
 - **WHEN** 畫面給名稱是「Group actions」的選單，裡面依序是「Members」和「Delete」，然後按名稱「Group actions」的 `more_vert`
-- **THEN** 跳出標題「Group actions」的對話框，依序列出「Members」和「Delete」，另外有「Cancel」
+- **THEN** 跳出標題「Group actions」的對話框，按鈕是「Members」和「Delete」，另外有「Cancel」
+
+#### Scenario: 三個動作
+
+- **WHEN** 畫面給名稱是「Group actions」的選單，裡面依序是「Members」、「Rename Group」和「Categories」，然後按名稱「Group actions」的 `more_vert`
+- **THEN** 跳出標題「Group actions」的對話框，按鈕是這三個動作，沒有「Cancel」
 
 #### Scenario: 確認和選單
 
@@ -919,7 +934,7 @@ WHEN 使用者在讀不出本機資料的畫面按「Try Again」，the mobile a
 #### Scenario: 表單
 
 - **WHEN** New Expense 讀不出本機資料之後，本機資料又讀得出來，按「Try Again」
-- **THEN** New Expense 照 LEDGER-13.1 顯示欄位，標題列有「Cancel」和「Add」
+- **THEN** New Expense 照 LEDGER-13.2 顯示欄位，標題列有「Cancel」和「Add」
 
 ### Requirement: SHELL-62.1 Settings 根畫面讀不出時不顯示數量
 
@@ -985,13 +1000,13 @@ WHILE 畫面還沒重新讀完，the mobile app SHALL 照舊顯示上一次讀�
 
 #### Scenario: 分類在別處改了名
 
-- **WHEN** Manage Categories 開在 Settings 分頁時，在 Expenses 分頁從 New Expense 的「+ Add New Category」把 Shopping 改名為「Groceries」，切回 Settings 分頁，還沒重新讀完時點 Shopping
+- **WHEN** Manage Categories 開在 Settings 分頁時，以網址 `/manage-categories` 把 Shopping 改名為「Groceries」，切回 Settings 分頁，還沒重新讀完時點 Shopping
 - **THEN** 重新讀完之後開啟「Edit Category」，名稱是「Groceries」
 
 #### Scenario: 群組的畫面
 
 - **WHEN** 從 Archived Groups 打開封存的 Brisbane、按「Restore Group」之後，在 Groups 分頁再封存 Brisbane，切回 Settings 分頁，還沒重新讀完時在 Group actions 選「Rename Group」，或按「Add expense」
-- **THEN** 重新讀完之後沒有打開 Rename Group 或 New Expense；畫面照 GROUPS-55.1 顯示「Archived group. Expenses and allocations are read-only.」和「Restore Group」
+- **THEN** 重新讀完之後沒有打開 Rename Group 或 New Expense；畫面照 GROUPS-55.2 顯示「Archived group. Expenses and allocations are read-only.」和「Restore Group」
 
 #### Scenario: 支出的明細
 
@@ -1005,7 +1020,7 @@ WHILE 畫面還沒重新讀完，the mobile app SHALL 照舊顯示上一次讀�
 
 #### Scenario: 支出表單
 
-- **WHEN** 在 New Expense 輸入金額和標題並選 Gym，從「+ Add New Category」刪除 Gym 後按 Close，還沒重新讀完時按「Add」
+- **WHEN** 在 New Expense 輸入金額和標題並選 Gym，從以網址 `/manage-categories` 打開的 Manage Categories 刪除 Gym 後關閉它，還沒重新讀完時按「Add」
 - **THEN** 存下一筆支出，分類是個人空間的 Uncategorized（LEDGER-63.1）
 
 #### Scenario: 重新讀不出
@@ -1013,53 +1028,38 @@ WHILE 畫面還沒重新讀完，the mobile app SHALL 照舊顯示上一次讀�
 - **WHEN** Brisbane 的 Group Categories 切回來、還沒重新讀完時點 Shopping，而重新讀不出本機資料
 - **THEN** 沒有開啟分類表單，畫面照 SHELL-60.1 顯示錯誤
 
-### Requirement: SHELL-65.1 iOS 的子 sheet 使用同一套原生標題列
+### Requirement: SHELL-65.2 iOS 的分類表單使用同一套原生標題列
 
-WHERE iOS，the mobile app SHALL 讓 Category、Select Group、Who Paid?、Split Between、New Category 和 Edit Category 的 sheet 使用原生標題列，標題各只出現一次，操作照 SHELL-47.1：Category、Select Group 和 Who Paid? 左邊是 Cancel，Split Between 右邊是確認 Done，New Category 和 Edit Category 左邊是 Cancel、右邊分別是確認 Add 和 Save，內容捲動時標題與操作仍留在標題列。
-
-#### Scenario: 選付款人與分攤的人
-
-- **WHEN** Brisbane 有 Taylor、Casey 和 Blake，在支出表單分別打開 Who Paid? 和 Split Between
-- **THEN** Who Paid? 的原生標題列左邊有 Cancel；Split Between 的原生標題列右邊有 Done，左邊沒有另一個 Done；各自的內容不再重複標題或操作按鈕
-
-#### Scenario: 選群組與分類
-
-- **WHEN** 在支出表單分別打開 Select Group 和 Category
-- **THEN** 各有自己的原生標題列，左邊是 Cancel；沒有群組可選時仍能按 Cancel
+WHERE iOS，the mobile app SHALL 讓 New Category 和 Edit Category 的 sheet 使用原生標題列，標題只出現一次，操作照 SHELL-47.2：左邊是 Cancel，右邊分別是確認 Add 和 Save，內容捲動時標題與操作仍留在標題列。
 
 #### Scenario: 新增與編輯分類
 
-- **WHEN** 從 Manage Categories、Group Categories，或支出表單上方的分類管理畫面，打開 New Category 或 Edit Category
+- **WHEN** 從 Manage Categories、Group Categories，或支出表單的「+ Add New Category」，打開 New Category 或 Edit Category
 - **THEN** 原生標題列左邊是 Cancel，右邊是 Add 或 Save；名稱空白時確認按鈕停用，儲存中兩邊都停用
 
-#### Scenario: 清單超出可見範圍
+### Requirement: SHELL-66.2 (manual) Sheet 的初始高度依內容決定
 
-- **WHEN** Split Between 有 20 位成員，捲到最後一位，再捲回第一位
-- **THEN** 標題與 Done 都一直可見；選取狀態不因捲動改變，Done 一按就回到支出表單
+WHERE iPhone 直向，WHEN 開啟從底部升起的 sheet，the mobile app SHALL 依內容決定初始高度：New Group、Rename Group、Rename Member、New Category 和 Edit Category 在內容能容納時貼合內容，最後一個內容與底部安全區之間的空白不超過一列內容的高度；內容超過可用高度時，sheet 直接開到整個可用高度並可捲動，不先變矮；鍵盤與大字級需要更多空間時可以增高或捲動，不能遮住目前輸入欄位或操作按鈕。支出表單貼合內容時，不能切掉表單的底部：最下面的列都看得到，按得到。
 
-### Requirement: SHELL-66.1 (manual) Sheet 的初始高度依內容決定
+#### Scenario: 短表單
 
-WHERE iPhone 直向，WHEN 開啟從底部升起的 sheet，the mobile app SHALL 依內容決定初始高度：Rename Group、Rename Member、New Category、Edit Category，以及 Category、Select Group、Who Paid?、Split Between 在內容能容納時貼合內容，最後一個內容與底部安全區之間的空白不超過一列內容的高度；選項清單超過半個可用畫面時先開到中等高度並可捲動或向上展開，標題列留在頂部；鍵盤與大字級需要更多空間時可以增高或捲動，不能遮住目前輸入欄位或操作按鈕。
-
-#### Scenario: 短改名表單
-
-- **WHEN** 以預設字級在 iPhone 17 打開 Brisbane 的 Rename Group 或 Casey 的 Rename Member，再收起鍵盤
+- **WHEN** 以預設字級在 iPhone 17 打開 New Group、Brisbane 的 Rename Group 或 Casey 的 Rename Member，再收起鍵盤
 - **THEN** sheet 不超過半個可用畫面；表單最後一列與底部安全區之間不多出超過一列的空白；底下的原畫面仍有一部分可見
-
-#### Scenario: 少量與沒有選項
-
-- **WHEN** 群組只有 Taylor、Casey 和 Blake，打開 Who Paid? 或 Split Between；或沒有群組時打開 Select Group
-- **THEN** sheet 只容納標題列、現有選項、正常間距與安全區；三個人不佔滿全螢幕，空清單也不留下整頁空白
 
 #### Scenario: 分類表單
 
 - **WHEN** 以預設字級在 iPhone 17 打開 Shopping 的 Edit Category，鍵盤收起
 - **THEN** 名稱與 27 色色盤按內容排列，sheet 底部沒有為填滿螢幕而增加的大面積空白；New Category 遵守同一規則
 
-#### Scenario: 長清單與放大的文字
+#### Scenario: 放大的文字
 
-- **WHEN** Split Between 有 20 位成員，或文字放到系統最大的輔助使用字級
-- **THEN** 清單先以中等高度開啟；可捲到每一位成員，也可向上展開；Done 不跟著清單捲走，成員名稱與選取狀態不被裁掉
+- **WHEN** 文字放到系統最大的輔助使用字級，打開 New Expense 並選了群組
+- **THEN** sheet 開到整個可用高度；可捲到 Split between，標題列不跟著捲走
+
+#### Scenario: 支出表單的底部
+
+- **WHEN** 連續打開 New Expense 十次
+- **THEN** 每次「Split with others」和「Expense note」都完整顯示，按得到；表單下方沒有被切掉的痕跡
 
 #### Scenario: 鍵盤需要空間
 
@@ -1071,14 +1071,14 @@ WHERE iPhone 直向，WHEN 開啟從底部升起的 sheet，the mobile app SHALL
 - **WHEN** 打開 Members、Balances、Manage Categories 或支出表單
 - **THEN** 高度有對應的內容用途；完整支出表單可以使用較高的 sheet，少量內容不僅為了填滿螢幕而拉高
 
-### Requirement: SHELL-67.1 (manual) iOS 的 sheet 採系統材質與一致的操作外觀
+### Requirement: SHELL-67.2 (manual) iOS 的 sheet 採系統材質與一致的操作外觀
 
-WHERE iOS，the mobile app SHALL 讓 sheet 的導覽與操作使用系統原生外觀，在支援且未降低透明度的 iOS 上呈現 Liquid Glass，並依系統外觀與輔助使用設定調整；表單欄位、分類色盤、成員與金額等內容使用可讀的內容底色，不疊加 Liquid Glass，舊版 iOS 使用其原生外觀，Android 遵守 SHELL-38.1。
+WHERE iOS，the mobile app SHALL 讓 sheet 的導覽與操作使用系統原生外觀，在支援且未降低透明度的 iOS 上呈現 Liquid Glass，並依系統外觀與輔助使用設定調整；畫面底部的 Undo 提示和群組封存的提示是 Liquid Glass 的膠囊；表單欄位、分類色盤、成員與金額等內容使用可讀的內容底色，不疊加 Liquid Glass，舊版 iOS 使用其原生外觀，Android 遵守 SHELL-38.1。
 
 #### Scenario: 從選付款人到編輯分類
 
-- **WHEN** iOS 26 沒開降低透明度，在淺色及深色下依序開啟 Who Paid?、Split Between、Rename Group、Rename Member 和 Edit Category
-- **THEN** 標題列和操作的材質、按鈕形狀與互動符合相同的系統外觀；Done、Save 與 Cancel 清楚可讀，內容沒有額外一層玻璃覆蓋
+- **WHEN** iOS 26 沒開降低透明度，在淺色及深色下依序開啟 New Group、Rename Group、Rename Member 和 Edit Category，並把一筆支出移到垃圾桶、封存一個群組
+- **THEN** 標題列和操作的材質、按鈕形狀與互動符合相同的系統外觀；✓ 與 ✕ 清楚可讀，內容沒有額外一層玻璃覆蓋；Undo 提示和群組封存的提示都是玻璃的膠囊
 
 #### Scenario: 降低透明度與舊版 iOS
 
@@ -1087,5 +1087,67 @@ WHERE iOS，the mobile app SHALL 讓 sheet 的導覽與操作使用系統原生�
 
 #### Scenario: Android
 
-- **WHEN** 在 Android 上開啟上述表單與選擇器
+- **WHEN** 在 Android 上開啟上述表單，以及支出表單的清單
 - **THEN** 表面不透明，沒有 app 自己加的玻璃；儲存、取消、選人與返回仍遵守各能力的規則
+
+### Requirement: SHELL-68.1 (manual) 放不下的文字尾端漸層消失
+
+The mobile app SHALL 讓只佔一行、放不下的文字在尾端漸層消失，不顯示「…」；漸層從離邊緣約三個字寬的地方開始，短到放得下的文字沒有漸層，文字的顏色和背景不變；螢幕閱讀器仍讀出完整的文字。
+
+#### Scenario: 很長的標題
+
+- **WHEN** 新增標題是 200 個「a」的支出，並以淺色和深色查看卡片
+- **THEN** 標題只佔一行，尾端漸層消失，沒有「…」，兩種外觀下漸層都融入卡片的底色
+
+#### Scenario: 放得下
+
+- **WHEN** 新增標題是「Coffee」的支出
+- **THEN** 標題沒有漸層
+
+### Requirement: SHELL-69.1 (e2e) 卡片和分類列可以一路往左滑到底
+
+WHEN 使用者把露出動作的卡片（LEDGER-70.2、GROUPS-47.1）或分類列（CATEGORIES-32.3）一路往左滑，超過寬度的 60% 再放開，the mobile app SHALL 當成按了它露出的動作；滑不到 60% 就放開時，只露出動作，沒有觸發。
+
+#### Scenario: 支出卡片
+
+- **WHEN** 在支出清單把 Coffee run 的卡片一路往左滑到底再放開
+- **THEN** Coffee run 移出支出清單，顯示「Moved to Trash」和「Undo」
+
+#### Scenario: 滑一小段
+
+- **WHEN** 把 Lunch 的卡片往左滑一小段再放開
+- **THEN** 露出「Delete」，Lunch 還在支出清單
+
+#### Scenario: 群組卡片
+
+- **WHEN** 在 Groups 根畫面把 Brisbane 的卡片一路往左滑到底再放開
+- **THEN** Brisbane 移出 Groups 根畫面（GROUPS-48.1）
+
+#### Scenario: 分類列
+
+- **WHEN** 在 Manage Categories 把 Other 那一列一路往左滑到底再放開
+- **THEN** 跳出「Delete Category?」，那一列收回
+
+### Requirement: SHELL-70.1 (manual) 左滑的動作是紅色圓形
+
+The mobile app SHALL 讓左滑露出的動作是紅色的圓形，裡面是白色的圖示（iOS 是 SF Symbol，Android 是 Material Symbols）；卡片的動作在圓形下方有說明文字，分類列沒有說明文字，只有圖示。一路往左滑時圓形跟著手指拉成紅色的膠囊；超過 SHELL-69.1 的位置時有一下觸覺回饋，滑回時回到圓形；滑回 60% 以內再放開，只露出動作，沒有觸發。
+
+#### Scenario: 支出卡片
+
+- **WHEN** 把 Coffee run 的卡片往左滑一小段
+- **THEN** 露出紅色圓形和白色的垃圾桶，下方是「Delete」
+
+#### Scenario: 分類列
+
+- **WHEN** 把 Other 那一列往左滑一小段
+- **THEN** 露出紅色圓形和白色的圖示，沒有說明文字
+
+#### Scenario: 一路往左滑
+
+- **WHEN** 在實機上把 Coffee run 的卡片一路往左滑，超過 60% 後滑回，再滑過去
+- **THEN** 圓形拉成膠囊，每次超過 60% 時都有一下觸覺回饋；滑回時回到圓形
+
+#### Scenario: 滑回再放開
+
+- **WHEN** 把 Coffee run 的卡片往左滑超過 60%，不放手滑回 60% 以內再放開
+- **THEN** Coffee run 還在支出清單，只露出「Delete」

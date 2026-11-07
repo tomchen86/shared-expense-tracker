@@ -140,7 +140,7 @@ test('[LEDGER-72.2] moves the expense to the trash from the dialog of the detail
   expect(noticeShown()).toBe(true);
 });
 
-test('[LEDGER-78.2] puts only Expense actions on the read-only details on Android, with Delete Permanently and Cancel', async () => {
+test('[LEDGER-78.3] puts only Expense actions on the read-only details on Android, with Delete Permanently and Cancel', async () => {
   await openTrashedCoffeeRun();
 
   await waitFor(() =>
@@ -159,7 +159,7 @@ test('[LEDGER-78.2] puts only Expense actions on the read-only details on Androi
   expect(lastAlertButtons()).toEqual(['Delete Permanently', 'Cancel']);
 });
 
-test('[LEDGER-78.2] goes back from the read-only details to Trash with Back on Android', async () => {
+test('[LEDGER-78.3] goes back from the read-only details to Trash with Back on Android', async () => {
   await openTrashedCoffeeRun();
 
   await pressBack();

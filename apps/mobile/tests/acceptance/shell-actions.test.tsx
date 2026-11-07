@@ -5,6 +5,7 @@ import {
   IN_A_TAB,
   OUTSIDE_THE_TABS,
   addButtonBox,
+  barButtonTints,
   barItems,
   barMenus,
   chooseFromMenu,
@@ -206,19 +207,45 @@ test('[SHELL-34.1] colors the + button with colors that follow the appearance', 
   expect([...light.uncolored, ...dark.uncolored]).toEqual([]);
 });
 
-test('[SHELL-47.1] puts Cancel on the left as a plain text button and the confirm action on the right as a prominent one', async () => {
+test('[SHELL-47.2] puts Cancel on the left as a plain xmark and the confirm action on the right as a prominent checkmark, in the system colors', async () => {
   await showHeaderActions({
     cancel: { label: 'Cancel', onPress: jest.fn() },
     confirm: { label: 'Add', onPress: jest.fn() },
   });
 
   expect(barItems()).toEqual({
-    left: [{ button: 'Cancel', variant: 'plain', disabled: false }],
-    right: [{ button: 'Add', variant: 'prominent', disabled: false }],
+    left: [
+      { button: 'Cancel', icon: 'xmark', variant: 'plain', disabled: false },
+    ],
+    right: [
+      {
+        button: 'Add',
+        icon: 'checkmark',
+        variant: 'prominent',
+        disabled: false,
+      },
+    ],
   });
+  expect(barButtonTints()).toEqual([undefined, undefined]);
 });
 
-test('[SHELL-47.1] gathers the other actions in order in an ellipsis.circle menu with the name the screen gives', async () => {
+test('[SHELL-47.2] makes a Close an xmark too, named Close', async () => {
+  await showHeaderActions({ cancel: { label: 'Close', onPress: jest.fn() } });
+
+  expect(barItems().left).toEqual([
+    { button: 'Close', icon: 'xmark', variant: 'plain', disabled: false },
+  ]);
+});
+
+test('[SHELL-47.2] keeps Edit as text', async () => {
+  await showHeaderActions({ edit: { label: 'Edit', onPress: jest.fn() } });
+
+  expect(barItems().right).toEqual([
+    { button: 'Edit', variant: 'plain', disabled: false },
+  ]);
+});
+
+test('[SHELL-47.2] gathers the other actions in order in an ellipsis.circle menu with the name the screen gives', async () => {
   await showHeaderActions({ menu: MENU });
 
   expect(barItems()).toEqual({
@@ -234,7 +261,7 @@ test('[SHELL-47.1] gathers the other actions in order in an ellipsis.circle menu
   });
 });
 
-test('[SHELL-47.1] keeps the confirm action at the trailing edge, with the menu next to it', async () => {
+test('[SHELL-47.2] keeps the confirm action at the trailing edge, with the menu next to it', async () => {
   await showHeaderActions({
     confirm: { label: 'Save', onPress: jest.fn() },
     menu: {
@@ -244,7 +271,12 @@ test('[SHELL-47.1] keeps the confirm action at the trailing edge, with the menu 
   });
 
   expect(barItems().right).toEqual([
-    { button: 'Save', variant: 'prominent', disabled: false },
+    {
+      button: 'Save',
+      icon: 'checkmark',
+      variant: 'prominent',
+      disabled: false,
+    },
     {
       menu: 'Expense actions',
       icon: 'ellipsis.circle',
@@ -262,7 +294,7 @@ test('[SHELL-49.1] shows a disabled confirm action as disabled and ignores it', 
   });
 
   expect(barItems().right).toEqual([
-    { button: 'Add', variant: 'prominent', disabled: true },
+    { button: 'Add', icon: 'checkmark', variant: 'prominent', disabled: true },
   ]);
   await pressBarButton('Add');
   expect(add).not.toHaveBeenCalled();

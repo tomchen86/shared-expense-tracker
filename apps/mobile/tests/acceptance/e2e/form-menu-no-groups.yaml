@@ -1,0 +1,28 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[LEDGER-100.1] With no groups yet, Select Group holds only a disabled No Groups'
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- tapOn: Enter your name
+- inputText: Taylor
+- pressKey: Enter
+- tapOn: Expenses
+- tapOn: Add expense
+- waitForAnimationToEnd
+# The switch has the same name as its label, at the label's right.
+- tapOn:
+    text: Split with others
+    rightOf: Split with others
+- waitForAnimationToEnd
+- tapOn: Group, not selected
+- waitForAnimationToEnd
+- assertVisible:
+    text: No Groups
+    enabled: false

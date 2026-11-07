@@ -20,7 +20,8 @@ name: '[GROUPS-76.1] Rename Group and Rename Member save or cancel with one tap 
 - tapOn: Create
 - waitForAnimationToEnd
 - tapOn: Open Brisbane
-- tapOn: Brisbane
+- waitForAnimationToEnd
+- longPressOn: Brisbane
 - waitForAnimationToEnd
 - assertVisible: Rename Group
 - assertVisible: Group name
@@ -33,7 +34,7 @@ name: '[GROUPS-76.1] Rename Group and Rename Member save or cancel with one tap 
 - waitForAnimationToEnd
 - assertNotVisible: Rename Group
 - assertVisible: Tokyo
-- tapOn: Tokyo
+- longPressOn: Tokyo
 - waitForAnimationToEnd
 - eraseText: 20
 - inputText: Osaka

@@ -10,13 +10,13 @@ import {
   within,
 } from '@testing-library/react-native';
 import type { Database } from '../../src/storage';
-import { iconNames } from './shell-actions-app';
 import {
   navigationBarTitles,
   navigationBars,
   selectedTab,
   tab,
   tapTab,
+  nativeViews,
 } from './shell-tabs-app';
 import {
   allowReads,
@@ -95,7 +95,9 @@ import {
   swipeDown,
   tapMember,
   textsOn,
-  titleButton,
+  chooseGroupAction,
+  largeTitle,
+  longPressLargeTitle,
 } from './group-details-app';
 
 // Runs on iOS; group-details-android.test.tsx checks what Android shows differently.
@@ -200,11 +202,12 @@ test('[GROUPS-21.1] shows only Group not found., titled Group Details, for an ID
   expect(barItems('Group Details').right).toEqual([]);
 });
 
-test('[GROUPS-40.2] makes no button of the title of a group that is not found', async () => {
+test('[GROUPS-100.1] titles the bar Group Details, with no large title, when the group is not found', async () => {
   await startGroupsApp(NO_GROUP);
 
   await waitFor(() => expect(textsOn('Group Details')).toEqual([NOT_FOUND]));
-  expect(titleButton('Group Details')).toBeUndefined();
+  expect(barTitled('Group Details')?.props.title).toBe('Group Details');
+  expect(largeTitle('Group Details')).toBeUndefined();
 });
 
 test("[GROUPS-21.1] never shows Group not found. while an existing group's screen opens", async () => {
@@ -242,7 +245,7 @@ test('[GROUPS-21.1] never shows Group not found. while a group opened at its URL
   expect(screen.queryByText(NOT_FOUND)).toBeNull();
 });
 
-test("[GROUPS-22.2] puts a Group actions menu with Members and Rename Group in the group's title bar", async () => {
+test("[GROUPS-22.3] puts a Group actions menu with Members, Rename Group and Categories in the group's title bar", async () => {
   await startWithName();
   await createGroup('Brisbane');
 
@@ -253,7 +256,7 @@ test("[GROUPS-22.2] puts a Group actions menu with Members and Rename Group in t
       {
         menu: 'Group actions',
         icon: 'ellipsis.circle',
-        items: ['Members', 'Rename Group'],
+        items: ['Members', 'Rename Group', 'Categories'],
       },
     ]),
   );
@@ -1242,19 +1245,114 @@ test("[GROUPS-39.1] saves a member's new name when Save is pressed again after w
 
 // Rename Group
 
-test("[GROUPS-40.2] makes the group's title a button named after the group, which opens Rename Group with the name in a field that has the focus", async () => {
+test('[GROUPS-100.1] shows the name as a large title button under the bar, collapsed, and none on the bar', async () => {
+  await startWithName();
+  await createGroup('Brisbane');
+
+  await openGroup('Brisbane');
+
+  await waitFor(() => expect(largeTitle('Brisbane')).toBeDefined());
+  expect(barTitled('Brisbane')?.props.title).toBeFalsy();
+  expect(largeTitle('Brisbane')!.props.accessibilityState.expanded).toBe(false);
+  expect(largeTitle('Brisbane')!.props.accessibilityHint).toBe(
+    'Shows the full name. Long press renames the group.',
+  );
+});
+
+test('[GROUPS-100.1] opens and closes the full name when the large title is pressed', async () => {
+  await startWithName();
+  const name = 'a'.repeat(300);
+  await createGroup(name);
+  await openGroup(name);
+  await waitFor(() => expect(largeTitle(name)).toBeDefined());
+  const lineLimit = () =>
+    within(largeTitle(name)!).getByText(name).props.numberOfLines;
+  expect(lineLimit()).toBe(1);
+
+  await fireEvent.press(largeTitle(name)!);
+
+  expect(largeTitle(name)!.props.accessibilityState.expanded).toBe(true);
+  expect(lineLimit()).toBeUndefined();
+  expect(isOpen('Rename Group')).toBe(false);
+
+  await fireEvent.press(largeTitle(name)!);
+
+  expect(largeTitle(name)!.props.accessibilityState.expanded).toBe(false);
+  expect(lineLimit()).toBe(1);
+});
+
+test('[GROUPS-100.1] shows the name on the bar once the large title is scrolled away, and hides it again', async () => {
   await startWithName();
   await createGroup('Brisbane');
   await openGroup('Brisbane');
+  await waitFor(() => expect(largeTitle('Brisbane')).toBeDefined());
+  const scrollTo = (y: number) =>
+    fireEvent.scroll(nativeViews(/^RCTScrollView$/, screenOf('Brisbane'))[0], {
+      nativeEvent: {
+        contentOffset: { x: 0, y },
+        contentSize: { width: 400, height: 2000 },
+        layoutMeasurement: { width: 400, height: 800 },
+      },
+    });
 
-  await waitFor(() => expect(titleButton('Brisbane')).toBeDefined());
+  await scrollTo(400);
   expect(barTitled('Brisbane')?.props.title).toBe('Brisbane');
-  expect(titleButton('Brisbane')!.props.accessibilityHint).toBe(
-    'Renames the group',
+
+  await scrollTo(-200);
+  expect(barTitled('Brisbane')?.props.title).toBeFalsy();
+});
+
+test("[GROUPS-102.1] opens the group's Group Categories over its screen from Group actions, until Close", async () => {
+  const app = await startWithName();
+  await createGroup('Brisbane');
+  const [brisbane] = await storedGroups(file);
+  await openGroup('Brisbane');
+
+  await chooseGroupAction('Brisbane', 'Categories');
+
+  await expectOpen('Group Categories');
+  expect(SHEETS).toContain(
+    screenOf('Group Categories').props.stackPresentation,
   );
-  expect(iconNames(titleButton('Brisbane')!, 'ios')).toEqual(['chevron.down']);
-  await fireEvent.press(titleButton('Brisbane')!);
-  await settle();
+  expect(app.getPathname()).toBe('/manage-categories');
+  expect(app.getSearchParams()).toEqual({
+    scopeKind: 'group',
+    spaceId: brisbane.id,
+  });
+  await waitFor(() =>
+    expect(textsOn('Group Categories')).toContain('Food & Dining'),
+  );
+  expect(barItems('Group Categories').left).toEqual(['Close (plain)']);
+  expect(
+    barTitled('Group Categories')?.props.headerLeftBarButtonItems[0].icon?.name,
+  ).toBe('xmark');
+
+  await pressOnBar('Group Categories', 'Close');
+
+  await expectClosed('Group Categories');
+  expect(isOpen('Brisbane')).toBe(true);
+});
+
+test('[GROUPS-102.1] closes Group Categories when it is swiped down', async () => {
+  await startWithName();
+  await createGroup('Brisbane');
+  await openGroup('Brisbane');
+  await chooseGroupAction('Brisbane', 'Categories');
+  await expectOpen('Group Categories');
+
+  await swipeDown('Group Categories');
+
+  await expectClosed('Group Categories');
+  expect(isOpen('Brisbane')).toBe(true);
+});
+
+test('[GROUPS-40.3] opens Rename Group when the large title is long pressed, with the name in a field that has the focus', async () => {
+  await startWithName();
+  await createGroup('Brisbane');
+  await openGroup('Brisbane');
+  await waitFor(() => expect(largeTitle('Brisbane')).toBeDefined());
+
+  await longPressLargeTitle('Brisbane');
 
   await expectOpen('Rename Group');
   expect(SHEETS).toContain(screenOf('Rename Group').props.stackPresentation);
@@ -1264,7 +1362,7 @@ test("[GROUPS-40.2] makes the group's title a button named after the group, whic
   expect(groupNameField().props.autoFocus).toBe(true);
 });
 
-test("[GROUPS-40.2] opens Rename Group over the group's screen with Cancel, Save and the group's name in a field that has the focus", async () => {
+test("[GROUPS-40.3] opens Rename Group over the group's screen from Group actions with Cancel, Save and the group's name in a field that has the focus", async () => {
   await startWithName();
   await createGroup('Brisbane');
   await openGroup('Brisbane');
@@ -1293,7 +1391,7 @@ test("[GROUPS-40.2] opens Rename Group over the group's screen with Cancel, Save
   expect(groupNameField().props.autoFocus).toBe(true);
 });
 
-test('[GROUPS-40.2] shows Group name in Rename Group once the name is cleared', async () => {
+test('[GROUPS-40.3] shows Group name in Rename Group once the name is cleared', async () => {
   await startWithName();
   await createGroup('Brisbane');
   await openGroup('Brisbane');

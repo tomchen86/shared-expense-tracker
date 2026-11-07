@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { FadeText } from '../ui/fade-text';
 import { GroupedSection } from '../ui/grouped-section';
 import { useThemeColors } from '../ui/theme';
 import { useGroups } from './use-groups';
@@ -35,12 +36,11 @@ export function ArchivedGroupsScreen() {
                 pressed && { backgroundColor: colors.pressedSurface },
               ]}
             >
-              <Text
-                numberOfLines={1}
-                style={{ fontSize: 17, color: colors.text }}
+              <FadeText
+                style={{ fontSize: 18, fontWeight: '700', color: colors.text }}
               >
                 {group.name}
-              </Text>
+              </FadeText>
               <Text
                 style={{ marginTop: 8, fontSize: 15, color: colors.textMuted }}
               >

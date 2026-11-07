@@ -22,6 +22,7 @@ import {
 import { allowWrites, settle } from './shell-appearance-app';
 import {
   barAction,
+  barActionOn,
   chooseGroupAction,
   expectOpen,
   isOpen,
@@ -41,7 +42,6 @@ import {
 import {
   addExpense,
   categoryNamed,
-  chooseCategory,
   doAction,
   expectFormClosed,
   fillForm,
@@ -53,7 +53,7 @@ import {
   watchAlerts,
 } from './ledger-expense-app';
 import {
-  addCategoryInSheet,
+  addNewCategoryFromForm,
   addGroupExpense,
   archiveGroup,
   closeCategorySheet,
@@ -194,11 +194,8 @@ async function openOverTheForm() {
 }
 
 async function closeOverTheForm() {
-  await fireEvent.press(
-    within(manageCategoriesBars().at(-1)!).getByRole('button', {
-      name: 'Close',
-    }),
-  );
+  await barActionOn(manageCategoriesBars().at(-1)!, 'Close').press();
+  await settle();
   await waitFor(() => expect(manageCategoriesBars()).toHaveLength(1));
   await settle();
 }
@@ -470,10 +467,7 @@ test('[SHELL-64.1] saves with Uncategorized when Add is pressed before the form 
   await startWithGroups();
   await openNewExpense();
   await fillForm({ amount: '8.75', title: 'Spin class' });
-  await openCategorySheet();
-  await addCategoryInSheet('Gym');
-  await closeCategorySheet();
-  await chooseCategory('Gym');
+  await addNewCategoryFromForm('Gym');
   await openCategorySheet();
   await removeCategoryInSheet('Gym', 'Delete');
   const reads = holdReads();

@@ -17,10 +17,15 @@ export interface HeaderActionsProps {
   cancel?: HeaderAction;
   confirm?: HeaderAction;
   edit?: HeaderAction;
-  /** The other actions, at most two, in a menu whose accessible name is `label`. */
+  /** A + button, whose accessible name is the action's label. */
+  add?: HeaderAction;
+  /** The other actions, at most three, in a menu whose accessible name is `label`. */
   menu?: {
     label: string;
-    actions: [HeaderAction] | [HeaderAction, HeaderAction];
+    actions:
+      | [HeaderAction]
+      | [HeaderAction, HeaderAction]
+      | [HeaderAction, HeaderAction, HeaderAction];
   };
   /**
    * A choice menu (SHELL-54.1, SHELL-55.1): `label` is its accessible name and the

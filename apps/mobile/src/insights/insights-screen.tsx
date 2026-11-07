@@ -36,6 +36,7 @@ import {
   useSaveChartType,
 } from '../shell';
 import { CategoryChart } from '../ui/category-chart';
+import { FadeText } from '../ui/fade-text';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions, type HeaderChoice } from '../ui/header-actions';
 import { PeriodPicker } from '../ui/period-picker';
@@ -110,7 +111,13 @@ function useInsightsInput(group: boolean, groupId: string | undefined) {
             ),
             context:
               group && groupId
-                ? { kind: 'group', groupId }
+                ? {
+                    kind: 'group',
+                    groupId,
+                    ownMemberId: groups
+                      .find(({ id }) => id === groupId)
+                      ?.members.find((member) => member.userId === userId)?.id,
+                  }
                 : {
                     kind: 'personal',
                     userId,
@@ -148,6 +155,54 @@ function useInsightsInput(group: boolean, groupId: string | undefined) {
 
   if (error) throw error;
   return input;
+}
+
+/** One TOTAL SPENT, then for each currency its total, your share on a group's Insights, and the comparison. */
+function TotalCard({
+  currencies,
+  money,
+  comparisonOf,
+}: {
+  currencies: InsightCurrency[];
+  money: (amountMinor: number, currency: string) => string;
+  comparisonOf: (currency: InsightCurrency) => string | undefined;
+}) {
+  const colors = useThemeColors();
+  return (
+    <GroupedSection style={styles.card}>
+      <Text style={[styles.cardLabel, { color: colors.textMuted }]}>
+        TOTAL SPENT
+      </Text>
+      {currencies.map((currency, row) => {
+        const total = money(currency.totalMinor, currency.currency);
+        const yourShare =
+          currency.yourShareMinor === undefined
+            ? undefined
+            : money(currency.yourShareMinor, currency.currency);
+        const comparison = comparisonOf(currency);
+        return (
+          <View
+            key={currency.currency}
+            accessible
+            accessibilityLabel={`Total spent ${total}.${yourShare ? ` Your share ${yourShare}.` : ''}${comparison ? ` ${comparison}` : ''}`}
+            style={row > 0 && styles.nextTotal}
+          >
+            <Text style={[styles.total, { color: colors.text }]}>{total}</Text>
+            {yourShare && (
+              <Text style={[styles.yourShare, { color: colors.text }]}>
+                {`Your share: ${yourShare}`}
+              </Text>
+            )}
+            {comparison && (
+              <Text style={[styles.comparison, { color: colors.textMuted }]}>
+                {comparison}
+              </Text>
+            )}
+          </View>
+        );
+      })}
+    </GroupedSection>
+  );
 }
 
 /** The personal Insights, or with `group` the Insights of the `groupId` search param. */
@@ -328,37 +383,11 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
                 })}
             </View>
             <Animated.View style={swipe.pageStyle}>
-              {selected.currencies.map((currency) => {
-                const total = money(currency.totalMinor, currency.currency);
-                const comparison = comparisonOf(currency);
-                return (
-                  <GroupedSection key={currency.currency} style={styles.card}>
-                    <View
-                      accessible
-                      accessibilityLabel={`Total spent ${total}.${comparison ? ` ${comparison}` : ''}`}
-                    >
-                      <Text
-                        style={[styles.cardLabel, { color: colors.textMuted }]}
-                      >
-                        TOTAL SPENT
-                      </Text>
-                      <Text style={[styles.total, { color: colors.text }]}>
-                        {total}
-                      </Text>
-                      {comparison && (
-                        <Text
-                          style={[
-                            styles.comparison,
-                            { color: colors.textMuted },
-                          ]}
-                        >
-                          {comparison}
-                        </Text>
-                      )}
-                    </View>
-                  </GroupedSection>
-                );
-              })}
+              <TotalCard
+                currencies={selected.currencies}
+                money={money}
+                comparisonOf={comparisonOf}
+              />
               {selected.currencies.map((currency) => (
                 <View key={currency.currency} style={styles.currency}>
                   <Text
@@ -388,12 +417,11 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
                             ]}
                           />
                           <View style={styles.rowText}>
-                            <Text
-                              numberOfLines={1}
+                            <FadeText
                               style={[styles.rowName, { color: colors.text }]}
                             >
                               {category.name}
-                            </Text>
+                            </FadeText>
                             <Text
                               style={[
                                 styles.rowAmount,
@@ -470,6 +498,8 @@ const styles = StyleSheet.create({
   card: { padding: 16, marginBottom: 12 },
   cardLabel: { fontSize: 13, fontWeight: '600' },
   total: { fontSize: 28, fontWeight: '700', marginTop: 4 },
+  nextTotal: { marginTop: 12 },
+  yourShare: { fontSize: 17, fontWeight: '600', marginTop: 2 },
   comparison: { fontSize: 15, marginTop: 4 },
   currency: { marginTop: 20 },
   heading: { fontSize: 13, marginLeft: 16, marginBottom: 8 },
