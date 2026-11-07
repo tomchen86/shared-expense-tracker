@@ -1,24 +1,44 @@
 name: e2e
 
-# The E2E flows on a Release build for the iOS simulator (ADR-0008). Not a required
-# check: it runs after each merge to main, so a failure points to that merge, and by
-# hand, never on pull requests.
+# The E2E flows on a Release build for the iOS simulator (ADR-0008, ADR-0015). Not a required
+# check: it runs after each merge to main that changes what the flows run on, so a failure
+# points to that merge, and by hand, never on pull requests. One job prepares the app, four
+# run a quarter of the flows each, and the last checks the trace over all their reports.
 on:
   push:
     branches: [main]
+    paths:
+      - apps/mobile/**
+      - '!apps/mobile/tests/**'
+      - apps/mobile/tests/acceptance/e2e/**
+      - '!apps/mobile/jest.*'
+      - packages/*/src/**
+      - packages/*/package.json
+      - patches/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .nvmrc
+      - docs/specs/**
+      - scripts/e2e-ios.sh
+      - scripts/trace_check.py
+      - .github/workflows/e2e.yml
   workflow_dispatch:
 
 permissions:
   contents: read
 
+env:
+  APP: SharedExpenseTracker.app
+  BUILT: apps/mobile/ios/build/Build/Products/Release-iphonesimulator/SharedExpenseTracker.app
+
 jobs:
-  ios:
-    name: ios
+  app:
     # A template repository has no app to build yet.
     if: ${{ !github.event.repository.is_template }}
     runs-on: macos-26
-    # The build takes up to 40 minutes, the flows up to 25, and failed flows run again.
-    timeout-minutes: 120
+    # A build takes up to 40 minutes; reusing one takes a few.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -30,6 +50,56 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Find the Xcode build
+        id: xcode
+        run: echo "build=$(xcodebuild -version | awk '/Build version/ {print $3}')" >> "$GITHUB_OUTPUT"
+      # The native build changes only with these files and Xcode. While they stay the same, the
+      # app built for them gets this merge's JavaScript instead of a new build (ADR-0015).
+      - name: Restore the native build
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.BUILT }}
+          key: ios-release-${{ steps.xcode.outputs.build }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json', 'patches/**', 'apps/mobile/package.json', 'apps/mobile/app.json', 'apps/mobile/assets/**', 'scripts/e2e-ios.sh') }}
+      - name: Build the app
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          bash scripts/e2e-ios.sh --build
+          cp "$BUILT/main.jsbundle" "$RUNNER_TEMP/built.jsbundle"
+      - name: Save the native build
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.BUILT }}
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+      # Right after a build this must change nothing, which the next step checks, so that a
+      # reused build keeps getting the JavaScript that Xcode would give it.
+      - name: Put this commit's JavaScript in the app
+        run: bash scripts/e2e-ios.sh --repack
+      - name: Check that the JavaScript is what Xcode built
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: cmp "$RUNNER_TEMP/built.jsbundle" "$BUILT/main.jsbundle"
+      # An artifact keeps no executable bits, so the app travels as a tarball.
+      - name: Pack the app
+        run: tar -czf app.tgz -C "$(dirname "$BUILT")" "$APP"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app
+          path: app.tgz
+          retention-days: 1
+
+  flows:
+    needs: app
+    name: flows (${{ matrix.shard }}/4)
+    runs-on: macos-26
+    # A quarter of the flows takes up to 30 minutes, and failed flows run again.
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v7
       - name: Install Maestro
         env:
           MAESTRO_VERSION: 2.12.0
@@ -39,12 +109,39 @@ jobs:
           echo "$MAESTRO_SHA256  $RUNNER_TEMP/maestro.zip" | shasum -a 256 -c -
           unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/maestro/bin" >> "$GITHUB_PATH"
-      - name: Build the app and run the flows
-        run: bash scripts/e2e-ios.sh
+      - uses: actions/download-artifact@v4
+        with:
+          name: app
+      - name: Run a quarter of the flows
+        run: |
+          tar -xzf app.tgz
+          bash scripts/e2e-ios.sh --app "$APP" --shard ${{ matrix.shard }}/4
+      # Maestro names a folder after each flow, and upload-artifact refuses characters that a
+      # flow's name may have, such as ':' and '?'.
+      - name: Pack the reports
+        if: always()
+        run: if [ -d reports/e2e/output ]; then tar -czf reports/e2e/output.tgz -C reports/e2e output; fi
       - name: Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-reports
-          path: reports/e2e/
+          name: e2e-reports-${{ matrix.shard }}
+          path: |
+            reports/e2e/junit/
+            reports/e2e/output.tgz
           if-no-files-found: ignore
+
+  trace:
+    needs: flows
+    # Also when a flow failed, as in check.sh, but not when no app was ready.
+    if: ${{ !cancelled() && needs.flows.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: e2e-reports-*
+          path: reports/e2e
+      - name: Check that each (e2e) requirement has a passing flow
+        run: python3 scripts/trace_check.py --e2e --reports reports/e2e
