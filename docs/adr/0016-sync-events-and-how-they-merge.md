@@ -75,12 +75,12 @@ Rules:
 
 Versions:
 
-- Each event carries a format version inside its ciphertext, which also selects the rules that judge and merge it. Changing what a rule decides means a new version, and the old rule's code stays, so every phone judges an event by the rules it was written under. Rules that work only on the merged state, such as order on screen and the rules about other records above, follow the highest format version among the events and snapshot a phone has applied for the group, so phones that have applied the same events show the same result.
+- Each event carries a format version inside its ciphertext, which also selects the rules that judge and merge it. Changing what a rule decides means a new version, and the old rule's code stays, so every phone judges an event by the rules it was written under. Rules that work only on the merged state, such as order on screen and the rules about other records above, follow the highest format version among the group's events that a phone has applied, counting those its snapshot covers, so phones that have applied the same events show the same result.
 - An app that meets a newer version stops applying that group's events there: its cursor stays, it asks the user to update, and it keeps recording and uploading. Its other groups are unaffected. After the update it carries on from its cursor. The server holds those events for up to 30 days; after that the phone gets a snapshot. So an old app never guesses at rules it does not know, and phones reach one result once they have all caught up.
 
 Snapshots:
 
-- A snapshot holds a group's merged state with every stamp, its tombstones, roster, and active invite, its format version, and the sequence number it covers. It is encrypted chunk by chunk (ADR-0015). A phone makes one only at a moment when it has no unsent events for that group, so every stamp in it is final.
+- A snapshot holds a group's merged state with every stamp, its tombstones, roster, and active invite, its format version, the highest format version among the events it covers, and the sequence number it covers. It is encrypted chunk by chunk (ADR-0015). A phone makes one only at a moment when it has no unsent events for that group, so every stamp in it is final.
 - The receiving phone merges it with the same function, so changes it has not uploaded survive, and continues from that number. When a snapshot beats the phone's own money change, the phone flags it: a snapshot has no history to tell whether the other side had seen that change, so a returning phone may get a flag it did not strictly need rather than miss one.
 - Approving a join records the new device's cursor at the snapshot's number, so the API keeps every event after it. The API refuses the approval if events after that number are already gone, and the approving phone makes a new snapshot.
 
