@@ -5,6 +5,44 @@ const root = path.resolve(__dirname, '../..');
 const portable = 'apps/api/src/devices/routes.ts';
 const onlyInEntryFiles = 'Only apps/api/src/node.ts and workers.ts';
 const onlyDomainApi = 'imports only @shared-expense/domain/api';
+const onlySrc = 'Relative imports in apps/api/src stay inside it';
+const standsAlone = 'stands alone';
+
+// Each exists on just one of Node 22.22 and workerd with wrangler.jsonc's settings, as
+// measured by walking globalThis on both. Those up to WorkerGlobalScope have types in the
+// `lib` that portable code compiles with, so lint is all that stops them.
+const oneRuntimeGlobals = [
+  'BroadcastChannel',
+  'self',
+  'addEventListener',
+  'removeEventListener',
+  'dispatchEvent',
+  'scheduler',
+  'reportError',
+  'origin',
+  'caches',
+  'URLPattern',
+  'EventSource',
+  'CloseEvent',
+  'ErrorEvent',
+  'PromiseRejectionEvent',
+  'ExtendableEvent',
+  'FetchEvent',
+  'Cache',
+  'CacheStorage',
+  'ServiceWorkerGlobalScope',
+  'WorkerGlobalScope',
+  'Body',
+  'Cloudflare',
+  'FixedLengthStream',
+  'HTMLRewriter',
+  'IdentityTransformStream',
+  'ScheduledEvent',
+  'TailEvent',
+  'TraceEvent',
+  'WebSocketPair',
+  'WebSocketRequestResponsePair',
+];
 
 const rejected = [
   [portable, "import { readFile } from 'node:fs';", onlyInEntryFiles],
@@ -24,7 +62,10 @@ const rejected = [
   [portable, "import { serve } from '@hono/node-server';", onlyInEntryFiles],
   [portable, "import library from 'a-new-library';", 'add it to this list'],
   [portable, "import { startServer } from '../node';", onlyInEntryFiles],
+  [portable, "import { startServer } from '../node.js';", onlyInEntryFiles],
   [portable, "import worker from '../workers';", onlyInEntryFiles],
+  [portable, "import { useApi } from '../../tests/support/api';", onlySrc],
+  [portable, "import * as m from '../../../mobile/src/any';", onlySrc],
   [portable, 'process.env.DATABASE_URL;', onlyInEntryFiles],
   [portable, "Buffer.from('text');", onlyInEntryFiles],
   [portable, '__dirname;', onlyInEntryFiles],
@@ -34,6 +75,12 @@ const rejected = [
   [portable, 'caches.default;', onlyInEntryFiles],
   [portable, 'new WebSocketPair();', onlyInEntryFiles],
   [portable, 'new HTMLRewriter();', onlyInEntryFiles],
+  ...oneRuntimeGlobals.map((name) => [portable, `${name};`, onlyInEntryFiles]),
+  [portable, "new BroadcastChannel('x').close();", onlyInEntryFiles],
+  [portable, "await self.caches.open('x');", onlyInEntryFiles],
+  [portable, "typeof process === 'undefined';", onlyInEntryFiles],
+  // Both runtimes have this one, but it has not been added to the list.
+  [portable, 'navigator.userAgent;', 'add it to the list'],
   [portable, "import { sum } from '@shared-expense/domain';", onlyDomainApi],
   [
     portable,
@@ -61,15 +108,85 @@ const rejected = [
     onlyDomainApi,
   ],
   [
+    'apps/api/src/node.ts',
+    "await import('@shared-expense/domain');",
+    onlyDomainApi,
+  ],
+  [
+    'apps/api/src/workers.ts',
+    "await import('@shared-expense/domain');",
+    onlyDomainApi,
+  ],
+  [
+    'apps/api/tests/any.test.ts',
+    "await import('../../../packages/domain/src/ledger/money');",
+    onlyDomainApi,
+  ],
+  [
+    'apps/api/tests/any.test.ts',
+    "let sum: import('@shared-expense/domain').Sum;",
+    onlyDomainApi,
+  ],
+  [
+    'apps/api/tests/any.cjs',
+    "const domain = require('@shared-expense/domain');",
+    onlyDomainApi,
+  ],
+  [
     'packages/domain/src/api/any.ts',
-    "import { sum } from '../ledger/money';",
-    'stands alone',
+    "import { sum } from './../ledger/money';",
+    standsAlone,
+  ],
+  [
+    'packages/domain/src/api/any.ts',
+    "import { sum } from './nested/../../ledger/money';",
+    standsAlone,
+  ],
+  [
+    'packages/domain/src/api/any.ts',
+    "await import('../ledger/money');",
+    standsAlone,
+  ],
+  [
+    'packages/domain/src/api/any.ts',
+    "let sum: import('../ledger/money').Sum;",
+    standsAlone,
+  ],
+  [
+    'packages/domain/src/api/any.cjs',
+    "const money = require('../ledger/money');",
+    standsAlone,
   ],
   [
     'packages/domain/src/api/any.ts',
     "import { Hono } from 'hono';",
-    'stands alone',
+    standsAlone,
   ],
+  // A file's extension does not change which boundary it is inside.
+  ...['js', 'jsx', 'mjs', 'cjs', 'ts', 'tsx', 'mts', 'cts'].flatMap(
+    (extension) => [
+      [
+        `apps/api/src/devices/routes.${extension}`,
+        "import os from 'node:os';",
+        onlyInEntryFiles,
+      ],
+      [
+        `apps/api/src/devices/routes.${extension}`,
+        'process.env.CI;',
+        onlyInEntryFiles,
+      ],
+      [
+        `apps/api/setup.${extension}`,
+        "import { sum } from '@shared-expense/domain';",
+        onlyDomainApi,
+      ],
+      [
+        `packages/domain/src/api/any.${extension}`,
+        "import { sum } from '../ledger/money';",
+        standsAlone,
+      ],
+    ],
+  ),
 ];
 
 const allowed = [
@@ -84,14 +201,29 @@ const allowed = [
     "new Response(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('a')));",
   ],
   [portable, "void fetch(new Request('https://example.com'));"],
+  [portable, "console.log(new URL('https://example.com'));"],
+  [portable, 'clearTimeout(setTimeout(() => {}, 1));'],
+  [portable, 'let response: Response; let init: RequestInit;'],
+  [
+    portable,
+    'new Map([[1, new Uint8Array(1)]]); JSON.stringify(Promise.resolve()); Symbol.iterator;',
+  ],
   [portable, 'const process = () => 1; process();'],
+  [portable, 'const self = 1; self;'],
   [
     'apps/api/src/node.ts',
     "import { serve } from '@hono/node-server'; process.env.PORT;",
   ],
+  ['apps/api/src/node.ts', "await import('node:fs');"],
   ['apps/api/src/workers.ts', "import { connect } from 'cloudflare:sockets';"],
+  ['apps/api/src/workers.ts', 'self; caches.default; new WebSocketPair();'],
   ['apps/api/tests/any.test.ts', "import fs from 'node:fs'; process.env.CI;"],
+  [
+    'apps/api/tests/any.test.ts',
+    "await import('@shared-expense/domain/api'); await import('../src/app');",
+  ],
   ['packages/domain/src/api/any.ts', "import { other } from './other';"],
+  ['packages/domain/src/api/any.ts', "import { other } from './nested/other';"],
   [
     'packages/domain/src/ledger/any.ts',
     "import { other } from '../groups/other';",
@@ -139,6 +271,6 @@ test.each(allowed)('%s allows %s', (file, code) => {
   expect(
     messages
       .get(`${file}: ${code}`)
-      .filter((message) => /ADR-000|add it to this list/.test(message)),
+      .filter((message) => /ADR-000|add it to th/.test(message)),
   ).toEqual([]);
 });

@@ -13,8 +13,8 @@ services:
       POSTGRES_PASSWORD: postgres
     ports:
       - 127.0.0.1:55432:5432
-    # Nothing here is worth keeping: stopping the container empties it, along with
-    # any database a killed test run left behind.
+    # In memory, so a killed test run's database goes when the container does. That is
+    # no reason to stop it: other sessions' tests may be running in it.
     tmpfs:
       - /var/lib/postgresql
     healthcheck:
