@@ -38,12 +38,16 @@ name: '[LEDGER-86.2] [LEDGER-100.1] Choosing Paid by or closing its list leaves 
     element: Expense note.*
     direction: DOWN
     centerElement: true
+    # Rows near the end of the form never reach the center, so Maestro swipes
+    # a few more times first, which can outlast the default 20 s.
+    timeout: 60000
 - tapOn: Expense note.*
 - inputText: Dinner note
 - scrollUntilVisible:
     element: Split between, Choose people
     direction: DOWN
     centerElement: true
+    timeout: 60000
 - assertVisible: Paid by, not selected
 - takeScreenshot: expense-before-payer
 - tapOn: Paid by, not selected
@@ -77,6 +81,7 @@ name: '[LEDGER-86.2] [LEDGER-100.1] Choosing Paid by or closing its list leaves 
     element: Split between, 2 people
     direction: DOWN
     centerElement: true
+    timeout: 60000
 # A disabled row opens no menu when it is pressed.
 - assertVisible:
     text: Group, Brisbane

@@ -51,6 +51,9 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
                 element: Paid by, not selected
                 direction: DOWN
                 centerElement: true
+                # Rows near the end of the form never reach the center, so Maestro
+                # swipes a few more times first, which can outlast the default 20 s.
+                timeout: 60000
             - tapOn: Paid by, not selected
             - waitForAnimationToEnd
             - tapOn: Taylor \(You\)
@@ -59,6 +62,7 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
                 element: Split between, Choose people
                 direction: DOWN
                 centerElement: true
+                timeout: 60000
             - tapOn: Split between, Choose people
             - waitForAnimationToEnd
             - tapOn: Taylor \(You\)
