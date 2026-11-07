@@ -170,6 +170,9 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
           # Leave room to the driver's 90%-of-screen DOWN endpoint before
           # measuring the row that the tested gesture must bring into view.
           centerElement: true
+          # At the end of the list the row never reaches the center, so Maestro
+          # swipes a few more times first, which can outlast the default 20 s.
+          timeout: 60000
       - assertVisible: ARCHIVED
       - assertVisible: Restore Travel
       # Pick the row immediately before the first one below the fixed bar.
