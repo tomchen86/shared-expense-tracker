@@ -64,6 +64,10 @@ if [ -z "$udid" ]; then
   trap 'xcrun simctl shutdown "$udid" 2>/dev/null; xcrun simctl delete "$udid"' EXIT
   xcrun simctl boot "$udid"
   xcrun simctl bootstatus "$udid" >/dev/null
+  # On a CI runner, a new simulator's push daemon retries Apple's servers without pause and logs
+  # thousands of lines a second for as long as it runs, on a runner with three cores. The app
+  # uses no push notifications.
+  xcrun simctl spawn "$udid" launchctl bootout user/foreground/com.apple.apsd || echo "Could not stop apsd" >&2
   xcrun simctl install "$udid" "$built"
 fi
 
