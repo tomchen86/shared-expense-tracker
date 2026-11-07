@@ -19,6 +19,7 @@ import {
   pressBack,
   resetPhone,
   setPhoneLanguage,
+  setPhoneRegion,
   startExpenses,
   storedExpenses,
   watchAlerts,
@@ -155,7 +156,7 @@ test('[LEDGER-13.1] names the date field Date on Android, leaving the date out o
   expect(dateFieldForScreenReaders().name).toBe('Date');
 });
 
-test("[LEDGER-30.1] shows today in the phone region's date format and reads it with the name Date", async () => {
+test("[LEDGER-30.2] shows today in the phone region's date format and reads it with the name Date", async () => {
   await startExpenses();
 
   await openNewExpense();
@@ -167,17 +168,36 @@ test("[LEDGER-30.1] shows today in the phone region's date format and reads it w
   });
 });
 
-test('[LEDGER-30.1] shows the date the way a phone in Japan writes it', async () => {
+test.each([
+  ['Traditional Chinese in Australia', 'zh-Hant-AU', '30 Oct 2026'],
+  ['Japanese in Japan', 'ja-JP', 'Oct 30, 2026'],
+  ['Japanese with no region', 'ja', 'Oct 30, 2026'],
+  ['Vietnamese in Vietnam', 'vi-VN', 'Oct 30, 2026'],
+])(
+  '[LEDGER-30.2] shows the date in English with the region of a phone in %s',
+  async (_phone, language, shown) => {
+    await startExpenses();
+    setPhoneLanguage(language);
+
+    await openNewExpense();
+
+    expect(within(dateFieldView()).getByText(shown)).toBeOnTheScreen();
+    expect(dateFieldForScreenReaders().value).toBe(shown);
+  },
+);
+
+test('[LEDGER-30.2] uses the region the phone is set to, not the one in its language', async () => {
   await startExpenses();
-  setPhoneLanguage('ja-JP');
+  setPhoneLanguage('en-US');
+  setPhoneRegion('AU');
 
   await openNewExpense();
 
-  expect(within(dateFieldView()).getByText('2026/10/30')).toBeOnTheScreen();
-  expect(dateFieldForScreenReaders().value).toBe('2026/10/30');
+  expect(within(dateFieldView()).getByText('30 Oct 2026')).toBeOnTheScreen();
+  expect(dateFieldForScreenReaders().value).toBe('30 Oct 2026');
 });
 
-test('[LEDGER-30.1] shows a chosen date in the same format', async () => {
+test('[LEDGER-30.2] shows a chosen date in the same format', async () => {
   await startExpenses();
   await openNewExpense();
 
