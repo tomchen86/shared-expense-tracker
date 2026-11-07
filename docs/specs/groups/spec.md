@@ -1585,6 +1585,82 @@ WHILE Rename Group 或 Rename Member 的鍵盤開著，the mobile app SHALL 讓�
 - **WHEN** 使用較小螢幕或放大字級開啟名稱表單
 - **THEN** 可藉由增高或捲動 sheet 操作名稱欄位；Cancel 與 Save 仍留在標題列，沒有被鍵盤遮住
 
+### Requirement: GROUPS-77.1 群組的金額用手機地區的貨幣格式
+
+The mobile app SHALL 讓 Groups 根畫面、群組的畫面和 Balances，用手機地區的貨幣格式（LEDGER-40.2）顯示金額。
+
+#### Scenario: 手機的語言不是英文
+
+- **WHEN** 手機第一個偏好的語言和地區是法文（澳洲），Brisbane 有 Taylor、Casey 和 Blake，Taylor 付了 60.00 AUD，三人平分
+- **THEN** Groups 根畫面的 Brisbane 是「Your share: $20.00」和「You're owed: $40.00」；Brisbane 的畫面是「Group Total: $60.00」和「You're owed: $40.00」；Balances 上 Taylor 是「Is Owed $40.00」和「Paid $60.00 · Share $20.00」，都不是「20,00 $AU」這樣的格式
+
+### Requirement: GROUPS-78.1 (e2e) 往右斜向拖曳或捲動清單時收起露出的 Archive
+
+WHILE 群組的卡片露出「Archive」，WHEN 使用者從這張卡片或露出的「Archive」往右拖過露出寬度的一半或快速往右滑，或捲動 Groups 根畫面，the mobile app SHALL 收起這張卡片並停用「Archive」，不按下「Archive」，也不打開群組的畫面；手指開始移動時橫向位移大於縱向位移就是往右拖曳，放手前清單都不捲動；開始移動時縱向位移大於或等於橫向位移就是捲動清單，方向確定後直到放手都不改變。
+
+#### Scenario: 往右下斜向拖曳
+
+- **WHEN** Groups 根畫面的群組多到能捲動，把其中一張卡片往左滑露出「Archive」，再從這張卡片往右約 120 pt、往下約 80 pt 拖曳後放手
+- **THEN** 「Archive」收起並停用
+
+#### Scenario: 清單不跟著動
+
+- **WHEN** 同一張卡片再露出「Archive」，從這張卡片往右約 300 pt、往上約 220 pt 拖曳後放手
+- **THEN** 「Archive」收起，清單沒有捲動，這張卡片還在原來的位置
+
+#### Scenario: 主要是上下拖
+
+- **WHEN** 同一張卡片再露出「Archive」，從這張卡片往右約 120 pt、往上約 390 pt 拖曳後放手
+- **THEN** 清單捲動，「Archive」收起
+
+#### Scenario: 從露出的 Archive 往右拖
+
+- **WHEN** 一張卡片露出「Archive」，從「Archive」上往右約 90 pt 拖曳後放手
+- **THEN** 「Archive」收起，沒有按下它，群組沒有封存
+
+#### Scenario: 從別張卡片捲動清單
+
+- **WHEN** 一張卡片露出「Archive」時，從另一張卡片往上約 390 pt 拖曳
+- **THEN** 清單捲動，「Archive」收起，沒有打開群組的畫面，群組沒有封存
+
+#### Scenario: Android
+
+- **WHEN** 在 Android 手機重複上述拖曳
+- **THEN** 結果相同，pt 在 Android 以 dp 計
+
+### Requirement: GROUPS-79.2 (e2e) 往左拖群組的卡片時清單不捲動
+
+WHEN 使用者從還沒露出「Archive」的群組的卡片開始拖曳，且手指開始移動時橫向位移大於縱向位移，the mobile app SHALL 容許手指的縱向偏移，放手前清單都不捲動，往左拖時依 GROUPS-47.1 露出「Archive」，超過 SHELL-69.1 的位置時依它觸發；開始移動時縱向位移大於或等於橫向位移就是捲動清單，不露出「Archive」，方向確定後直到放手都不改變。
+
+#### Scenario: 斜向往左拖
+
+- **WHEN** Groups 根畫面的群組多到能捲動，從一張卡片往左約 200 pt、往上約 150 pt 拖曳後放手
+- **THEN** 這張卡片露出「Archive」，清單沒有捲動，這張卡片還在原來的位置
+
+#### Scenario: 主要是上下拖
+
+- **WHEN** 從一張卡片往左約 120 pt、往上約 390 pt 拖曳後放手
+- **THEN** 清單捲動，沒有露出「Archive」
+
+#### Scenario: Android
+
+- **WHEN** 在 Android 手機重複上述拖曳
+- **THEN** 結果相同，pt 在 Android 以 dp 計
+
+### Requirement: GROUPS-80.1 (e2e) iOS 26 以上從收起的卡片水平往右拖返回
+
+WHERE iOS 26 以上，WHILE 未封存群組的畫面開著，WHEN 使用者從沒有露出「Delete」的支出卡片幾乎水平地往右拖曳，the mobile app SHALL 返回上一頁；比較斜的拖曳由系統決定返回或捲動清單。
+
+#### Scenario: 水平往右拖
+
+- **WHEN** 從 Groups 根畫面打開 Brisbane，從 Dinner 的卡片水平往右約 280 pt 拖曳
+- **THEN** 回到 Groups 根畫面
+
+#### Scenario: 比較斜的拖曳
+
+- **WHEN** 從 Dinner 的卡片往右約 280 pt、往上約 90 pt 拖曳
+- **THEN** 系統可能捲動清單並留在 Brisbane 的畫面，卡片不露出也不打開明細
+
 ### Requirement: GROUPS-100.1 群組的畫面的大標題
 
 The mobile app SHALL 在群組的畫面的標題列下方，用大字顯示群組名稱，標題列上不顯示名稱；大標題捲出畫面之後，標題列才顯示名稱。大標題是一個按鈕，名稱是群組名稱，預設收起只佔一行，按一下展開成完整的名稱，再按一下收起；未封存的群組長按時打開 Rename Group（GROUPS-40.3）。找不到群組時，標題列是「Group Details」。

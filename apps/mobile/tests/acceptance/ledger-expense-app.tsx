@@ -54,12 +54,14 @@ const REGIONS: Partial<Record<string, string>> = {
 const phone = {
   currency: 'USD' as string | null,
   language: null as string | null,
+  region: null as string | null,
   timeZone: 'Asia/Taipei',
 };
 
 export function resetPhone() {
   phone.currency = 'USD';
   phone.language = null;
+  phone.region = null;
   phone.timeZone = 'Asia/Taipei';
 }
 
@@ -76,6 +78,11 @@ export function setPhoneLanguage(tag: string) {
   phone.language = tag;
 }
 
+/** The region the phone is set to; unless set, the one in its language. */
+export function setPhoneRegion(region: string) {
+  phone.region = region;
+}
+
 /** What expo-localization's getLocales reports. */
 export function phoneLocales() {
   const currencyRegion =
@@ -89,7 +96,7 @@ export function phoneLocales() {
       languageTag,
       languageCode,
       languageScriptCode: null,
-      regionCode: region,
+      regionCode: phone.region ?? region,
       languageRegionCode: region,
       currencyCode: phone.currency,
       currencySymbol: phone.currency,

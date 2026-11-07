@@ -21,6 +21,7 @@ import {
   press,
   resetPhone,
   restart,
+  setPhoneLanguage,
   setRegionCurrency,
   storedExpenses,
   watchAlerts,
@@ -807,6 +808,19 @@ test('[INSIGHTS-22.3] shows each currency by currency code under one TOTAL SPENT
   ]);
 });
 
+test('[INSIGHTS-22.3] shows totals in English with the region of a phone in French in Australia', async () => {
+  setPhoneLanguage('fr-AU');
+  await startExpensesAt('/');
+  await spend('2024-12-10', '8.00', 'Food & Dining', 'December', 'AUD');
+  await spend('2025-01-10', '12.00', 'Food & Dining', 'January', 'AUD');
+
+  await openInsights();
+
+  expect(totalCards()).toEqual([
+    ['$12.00', '$4.00 more than December 2024, 50.0 percent.'],
+  ]);
+});
+
 test('[INSIGHTS-22.3] shows no comparison for the earliest period', async () => {
   await insightsWith(['2024-12-10', '8.00'], ['2025-01-10', '12.00']);
 
@@ -920,6 +934,20 @@ test("[INSIGHTS-23.3] lists a currency's categories under its heading, with a co
   expect(lines.indexOf('USD categories')).toBeLessThan(
     lines.indexOf('Food & Dining'),
   );
+});
+
+test('[INSIGHTS-23.3] shows amounts and percentages in English with the region of a phone in French in Australia', async () => {
+  setPhoneLanguage('fr-AU');
+  await startExpensesAt('/');
+  await spend('2025-01-10', '6.00', 'Food & Dining', 'Lunch', 'AUD');
+  await spend('2025-01-11', '2.00', 'Transportation', 'Bus', 'AUD');
+
+  await openInsights();
+
+  expect(rows()).toEqual([
+    ['Food & Dining', '$6.00 · 75.0%'],
+    ['Transportation', '$2.00 · 25.0%'],
+  ]);
 });
 
 test('[INSIGHTS-23.3] reads the heading as a heading and each row as one item, without its dot', async () => {

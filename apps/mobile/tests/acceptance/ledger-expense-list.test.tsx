@@ -24,6 +24,7 @@ import {
   restoreCategory,
   setPhoneClock,
   setPhoneLanguage,
+  setPhoneRegion,
   setRegionCurrency,
   startExpenses,
   storedExpenses,
@@ -867,7 +868,7 @@ test('[LEDGER-39.1] never shows Expense not found. while details opened at their
 
 // Formats
 
-test('[LEDGER-40.1] shows amounts and dates the way a phone in the United States does', async () => {
+test('[LEDGER-40.2] shows amounts and dates the way a phone in the United States does', async () => {
   setPhoneLanguage('en-US');
   await startExpenses();
 
@@ -889,27 +890,54 @@ test('[LEDGER-40.1] shows amounts and dates the way a phone in the United States
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
 });
 
-test('[LEDGER-40.1] shows amounts and dates the way a phone in Japan does', async () => {
-  setPhoneLanguage('ja-JP');
-  setRegionCurrency('JPY');
+test.each([
+  ['Japanese in Japan', 'ja-JP', 'JPY', '1200', '¥1,200', 'Oct 30, 2026'],
+  ['Japanese with no region', 'ja', 'JPY', '1200', '¥1,200', 'Oct 30, 2026'],
+  [
+    'Traditional Chinese in Australia',
+    'zh-Hant-AU',
+    'AUD',
+    '8.75',
+    '$8.75',
+    '30 Oct 2026',
+  ],
+])(
+  '[LEDGER-40.2] shows amounts and dates in English with the region of a phone in %s',
+  async (_phone, language, currency, amount, shownAmount, shownDate) => {
+    setPhoneLanguage(language);
+    setRegionCurrency(currency);
+    await startExpenses();
+
+    await addExpense({ title: 'Ramen', amount });
+
+    const expected = ['Ramen', shownAmount, shownDate];
+    expect(shownInOrder(linesIn(card('Ramen')), expected.slice(0, 2))).toEqual(
+      expected.slice(0, 2),
+    );
+    expect(linesIn(expensesRoot())).toContain(shownDate);
+    // The line above the cards, whatever LEDGER-35.3 calls it.
+    expect(linesIn(expensesRoot())).toContainEqual(
+      expect.stringMatching(new RegExp(`: \\${shownAmount}$`)),
+    );
+    await openDetails('Ramen');
+    expect(shownInOrder(detailLines(), expected)).toEqual(expected);
+  },
+);
+
+test('[LEDGER-40.2] uses the region the phone is set to, not the one in its language', async () => {
+  setPhoneLanguage('en-US');
+  setPhoneRegion('AU');
+  setRegionCurrency('AUD');
   await startExpenses();
 
-  await addExpense({ title: 'Ramen', amount: '1200' });
+  await addExpense({ title: 'Taxi', amount: '8.75' });
 
-  const expected = ['Ramen', '￥1,200', '2026/10/30'];
-  expect(shownInOrder(linesIn(card('Ramen')), expected.slice(0, 2))).toEqual(
-    expected.slice(0, 2),
-  );
-  expect(linesIn(expensesRoot())).toContain('2026/10/30');
-  // The line above the cards, whatever LEDGER-35.3 calls it.
-  expect(linesIn(expensesRoot())).toContainEqual(
-    expect.stringMatching(/: ￥1,200$/),
-  );
-  await openDetails('Ramen');
-  expect(shownInOrder(detailLines(), expected)).toEqual(expected);
+  const expected = ['Taxi', '$8.75'];
+  expect(shownInOrder(linesIn(card('Taxi')), expected)).toEqual(expected);
+  expect(linesIn(expensesRoot())).toContain('30 Oct 2026');
 });
 
-test("[LEDGER-40.1] shows the currency's own decimals where the region rounds them away", async () => {
+test("[LEDGER-40.2] shows the currency's own decimals where the region rounds them away", async () => {
   setPhoneLanguage('en-US');
   await startExpenses();
 
@@ -920,7 +948,7 @@ test("[LEDGER-40.1] shows the currency's own decimals where the region rounds th
   expect(linesIn(card('Tea'))).toContain('IQD 1.234');
 });
 
-test('[LEDGER-40.1] shows the largest amount in full on the card and the details', async () => {
+test('[LEDGER-40.2] shows the largest amount in full on the card and the details', async () => {
   await startExpenses();
 
   await addExpense({ amount: '9999999999.99' });
@@ -930,7 +958,7 @@ test('[LEDGER-40.1] shows the largest amount in full on the card and the details
   expect(detailLines()).toContain('$9,999,999,999.99');
 });
 
-test('[LEDGER-40.1] shows the date of an expense on a phone west of UTC', async () => {
+test('[LEDGER-40.2] shows the date of an expense on a phone west of UTC', async () => {
   // jest.config.cjs runs the tests in America/Los_Angeles, where a date read
   // as UTC midnight falls on the day before.
   expect(new Date(2026, 9, 25).getTimezoneOffset()).toBeGreaterThan(0);

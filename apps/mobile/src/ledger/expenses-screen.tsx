@@ -1,10 +1,11 @@
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { router } from 'expo-router';
-import { useLocales } from 'expo-localization';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatCurrency, toLocalDate } from '@shared-expense/domain';
 import { AddButton } from '../ui/add-button';
+import { SwipeScrollView } from '../ui/swipe-action';
 import { useThemeColors } from '../ui/theme';
+import { useDisplayLocale } from '../ui/use-display-locale';
 import { ExpenseCard } from './expense-card';
 import { ThisMonthButton } from './this-month-button';
 import { useTrashActions } from './trash-provider';
@@ -12,7 +13,7 @@ import { useExpenses } from './use-expenses';
 
 export function ExpensesScreen() {
   const colors = useThemeColors();
-  const locale = useLocales()[0].languageTag;
+  const locale = useDisplayLocale();
   const expenses = useExpenses()?.filter((expense) => expense.involved);
   const { move } = useTrashActions();
   const totals = new Map<string, bigint>();
@@ -35,7 +36,7 @@ export function ExpensesScreen() {
       edges={['left', 'right']}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <ScrollView
+      <SwipeScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
       >
@@ -64,7 +65,7 @@ export function ExpensesScreen() {
             ))}
           </>
         )}
-      </ScrollView>
+      </SwipeScrollView>
       <AddButton onPress={() => router.navigate('/expenses/new')} />
     </SafeAreaView>
   );

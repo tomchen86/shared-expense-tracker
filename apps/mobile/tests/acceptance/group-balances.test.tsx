@@ -17,6 +17,7 @@ import {
   phoneDatabase,
   press,
   resetPhone,
+  setPhoneLanguage,
   setRegionCurrency,
   watchAlerts,
 } from './ledger-expense-app';
@@ -751,6 +752,35 @@ test('[GROUPS-73.2] joins the currencies of one direction on one line of the car
   const shown = within(groupRootCard('Brisbane'));
   expectOneFadingLine(shown.getByText('Your share: A$60.00, $20.00'));
   expectOneFadingLine(shown.getByText("You're owed: A$60.00, $40.00"));
+});
+
+test("[GROUPS-77.1] shows a group's amounts in English with the region of a phone in French in Australia", async () => {
+  setPhoneLanguage('fr-AU');
+  await startWithGroups(BRISBANE);
+  await addToBrisbane('Dinner', '60.00', YOU, EVERYONE, 'AUD');
+
+  await tapTab('Groups');
+  await waitFor(() =>
+    expect(groupRootCardLines('Brisbane').slice(2)).toEqual([
+      'Your share: $20.00',
+      "You're owed: $40.00",
+    ]),
+  );
+
+  await showGroup('Brisbane');
+  await waitFor(() =>
+    expect(groupTotals('Brisbane')).toEqual(['Group Total: $60.00']),
+  );
+  expect(groupLines('Brisbane')).toContain("You're owed: $40.00");
+
+  await openBalances('Brisbane');
+  await waitFor(() =>
+    expect(balancesLines().slice(0, 3)).toEqual([
+      YOU,
+      'Is Owed $40.00',
+      'Paid $60.00 · Share $20.00',
+    ]),
+  );
 });
 
 test('[GROUPS-73.2] says Settled up on the card when your share is what you paid', async () => {

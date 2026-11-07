@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-68.2] [GROUPS-64.1] [LEDGER-46.2] [LEDGER-48.2] [LEDGER-49.2] [LEDGER-62.2] [LEDGER-54.1] [GROUPS-61.3] [LEDGER-65.4] [LEDGER-70.2] [LEDGER-75.3] [LEDGER-77.3] [LEDGER-78.3] [LEDGER-79.3] [LEDGER-84.1] [LEDGER-67.2] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share; swipes its card left to move it to the trash on both, finds that swiping its card on Trash opens nothing, restores it, archives the group, and finds that swiping its card opens nothing"
+name: "[LEDGER-68.2] [GROUPS-64.1] [LEDGER-46.2] [LEDGER-48.2] [LEDGER-49.2] [LEDGER-62.2] [LEDGER-54.1] [GROUPS-61.3] [LEDGER-65.4] [LEDGER-70.2] [LEDGER-88.1] [GROUPS-80.1] [LEDGER-75.3] [LEDGER-77.3] [LEDGER-78.3] [LEDGER-79.3] [LEDGER-84.1] [LEDGER-67.2] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share; swipes its card left to move it to the trash on both, finds that swiping its card on Trash opens nothing, restores it, archives the group, and finds that swiping its card opens nothing"
 ---
 - launchApp:
     clearState: true
@@ -101,6 +101,44 @@ name: "[LEDGER-68.2] [GROUPS-64.1] [LEDGER-46.2] [LEDGER-48.2] [LEDGER-49.2] [LE
 - waitForAnimationToEnd
 - assertNotVisible: New Expense
 # Back on Brisbane's screen: its card shows the full amount.
+- assertVisible: .*Dinner.*\$100\.01.*
+# Dragging up from an open card bounces this short list, which closes the card.
+- swipe:
+    from:
+      text: .*Dinner.*\$100\.01.*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Delete Dinner expense
+- swipe:
+    from:
+      text: .*Dinner.*\$100\.01.*
+    direction: UP
+- waitForAnimationToEnd
+- assertNotVisible: Delete Dinner expense
+- assertVisible: .*Dinner.*\$100\.01.*
+# The same drag to the right only closes an open card; from a closed card, it is iOS's back
+# gesture. It starts well left of the middle, since the gesture needs half the screen's width.
+- swipe:
+    from:
+      text: .*Dinner.*\$100\.01.*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Delete Dinner expense
+- swipe:
+    start: 20%, 38%
+    end: 90%, 38%
+    duration: 300
+- waitForAnimationToEnd
+- assertNotVisible: Delete Dinner expense
+- assertVisible: Group actions
+- swipe:
+    start: 20%, 38%
+    end: 90%, 38%
+    duration: 300
+- waitForAnimationToEnd
+- assertNotVisible: Group actions
+- tapOn: Open Brisbane
+- waitForAnimationToEnd
 - assertVisible: .*Dinner.*\$100\.01.*
 # Swiping the card left on the group's screen shows its Delete, which moves it to
 # the trash; Undo puts it back.

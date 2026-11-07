@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -12,7 +11,6 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useLocales } from 'expo-localization';
 import { formatCurrency, groupAmounts } from '@shared-expense/domain';
 import { useLocalIdentity } from '../shell';
 import { useExpenses } from '../ledger/use-expenses';
@@ -20,7 +18,8 @@ import { AddButton } from '../ui/add-button';
 import { GroupedSection } from '../ui/grouped-section';
 import { useThemeColors } from '../ui/theme';
 import { useTabRootBack } from '../ui/use-tab-root-back';
-import { SwipeAction } from '../ui/swipe-action';
+import { SwipeAction, SwipeScrollView } from '../ui/swipe-action';
+import { useDisplayLocale } from '../ui/use-display-locale';
 import { useGroups } from './use-groups';
 import { useGroupArchive } from './use-group-archive';
 import { useRequireName } from './use-require-name';
@@ -34,7 +33,7 @@ export function GroupsScreen() {
   const [groups, setGroups] = useGroups();
   const expenses = useExpenses();
   const { userId } = useLocalIdentity();
-  const locale = useLocales()[0].languageTag;
+  const locale = useDisplayLocale();
   const { pending, save } = useGroupArchive();
   const [notice, setNotice] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -62,7 +61,7 @@ export function GroupsScreen() {
       edges={['left', 'right']}
       style={[styles.screen, { backgroundColor: colors.background }]}
     >
-      <ScrollView
+      <SwipeScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
       >
@@ -138,7 +137,7 @@ export function GroupsScreen() {
             );
           })
         )}
-      </ScrollView>
+      </SwipeScrollView>
       {notice && (
         <GroupedSection style={[styles.notice, { bottom: insets.bottom + 92 }]}>
           <Text style={{ color: colors.text, fontSize: 15 }}>
