@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { formatCurrency, groupAmounts } from '@shared-expense/domain';
+import { groupAmounts } from '@shared-expense/domain';
 import { useLocalIdentity } from '../shell';
 import { AddButton } from '../ui/add-button';
 import { GroupedSection } from '../ui/grouped-section';
@@ -12,7 +12,7 @@ import { DatedCards } from '../ledger/dated-cards';
 import { ExpenseCard } from '../ledger/expense-card';
 import { useTrashActions } from '../ledger/trash-provider';
 import { useExpenses, type ExpenseView } from '../ledger/use-expenses';
-import { yourBalanceLines } from './format-balance';
+import { groupTotalLine, yourBalanceLines } from './format-balance';
 import { GroupLargeTitle, useLargeTitleScroll } from './group-large-title';
 import { GroupSummary } from './group-summary';
 import { useGroup } from './use-group';
@@ -122,11 +122,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
           )}
           {amounts.length > 0 && (
             <GroupSummary
-              total={`Group Total: ${amounts
-                .map(({ currency, total }) =>
-                  formatCurrency(total, currency, locale),
-                )
-                .join(', ')}`}
+              total={groupTotalLine(amounts, locale)}
               balances={yourBalanceLines(amounts, ownId!, locale)}
               onOpenInsights={() =>
                 router.navigate({

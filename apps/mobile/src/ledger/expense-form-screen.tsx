@@ -190,7 +190,7 @@ function ExpenseEditor(props: ExpenseFormProps) {
 }
 
 function CategoryField({
-  editor: { form, saving, category, spaceCategories, group, change },
+  editor: { saving, category, spaceCategories, group, change },
   onAdd,
 }: {
   editor: ExpenseFormEditor;
@@ -206,7 +206,7 @@ function CategoryField({
       options={spaceCategories
         .filter((item) => !item.isArchived)
         .map(({ id, name, color }) => ({ id, name, color }))}
-      selected={[form.categoryId]}
+      selected={[category.id]}
       onSelect={(id) => change('categoryId', id)}
       action={
         group?.archived

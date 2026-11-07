@@ -76,6 +76,7 @@ export function GroupsScreen() {
                   : ['', '']
               }
               archiving={pending.has(group.id)}
+              onPress={() => router.push(`/groups/${group.id}`)}
               onArchive={() => archive(group.id)}
             />
           ))

@@ -1,5 +1,4 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
 import { FadeText } from '../ui/fade-text';
 import { GroupedSection } from '../ui/grouped-section';
 import { SwipeAction } from '../ui/swipe-action';
@@ -11,11 +10,13 @@ export function GroupCard({
   group,
   lines,
   archiving,
+  onPress,
   onArchive,
 }: {
   group: Group;
   lines: [string, string];
   archiving: boolean;
+  onPress: () => void;
   onArchive: () => void;
 }) {
   const colors = useThemeColors();
@@ -42,7 +43,7 @@ export function GroupCard({
             onAccessibilityAction={(event) => {
               if (event.nativeEvent.actionName === 'archive') onArchive();
             }}
-            onPress={() => router.push(`/groups/${group.id}`)}
+            onPress={onPress}
             style={({ pressed }) => [
               styles.row,
               pressed && { backgroundColor: colors.pressedSurface },

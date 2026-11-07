@@ -53,7 +53,8 @@ export function GroupLargeTitle({
           : undefined
       }
       onPress={() => setExpanded((current) => !current)}
-      onLongPress={onRename}
+      // Always one: with none, letting go of a long press counts as a press.
+      onLongPress={() => onRename?.()}
       onLayout={onLayout}
       style={styles.button}
     >
