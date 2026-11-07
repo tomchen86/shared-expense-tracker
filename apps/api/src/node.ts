@@ -19,7 +19,7 @@ export function startServer(options: {
   port?: number;
 }): Promise<NodeServer> {
   const sql = connect(options.databaseUrl);
-  const hostname = process.env.HOST ?? '127.0.0.1';
+  const hostname = '127.0.0.1';
   return new Promise((resolve, reject) => {
     const server = serve(
       {

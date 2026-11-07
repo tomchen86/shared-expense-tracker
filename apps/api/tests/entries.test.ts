@@ -65,7 +65,6 @@ test(
         {
           CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE:
             database.url,
-          WRANGLER_SEND_METRICS: 'false',
         },
       );
       try {

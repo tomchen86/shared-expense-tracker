@@ -46,8 +46,8 @@ default, and dynamic imports cannot hide access to `Platform`.
 
 Lint also checks the runtime boundary in ADR-0007: outside `apps/api/src/node.ts` and
 `apps/api/src/workers.ts`, API code uses only web standards and the libraries listed in
-`eslint.config.mjs`. All of `apps/api` imports from the domain module only
-`@shared-expense/domain/api`, never bookkeeping rules.
+`eslint.config.mjs`, and are typechecked without Node's types. All of `apps/api` imports
+from the domain module only `@shared-expense/domain/api`, never bookkeeping rules.
 
 ## Where things are
 

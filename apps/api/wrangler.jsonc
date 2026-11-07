@@ -5,6 +5,7 @@
   "compatibility_date": "2026-11-04",
   // postgres.js runs on Workers through Cloudflare's Node.js compatibility (ADR-0007).
   "compatibility_flags": ["nodejs_compat"],
+  "send_metrics": false,
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
