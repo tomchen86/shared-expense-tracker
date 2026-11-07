@@ -1,7 +1,7 @@
 # ADR-0005: Recording works without a network
 
 - Date: 2026-10-23
-- Status: Accepted
+- Status: Accepted; parts are superseded by ADR-0015
 
 ## Context
 
