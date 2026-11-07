@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Alert,
-  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +10,11 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from 'expo-router/react-navigation';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import {
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   buildInsights,
@@ -38,6 +42,7 @@ import { PeriodPicker } from '../ui/period-picker';
 import { SegmentedControl } from '../ui/segmented-control';
 import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
+import { usePeriodSwipe } from './use-period-swipe';
 
 type Mode = 'month' | 'year';
 
@@ -182,23 +187,13 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
   const previous = periods[index - 1];
   const next = periods[index + 1];
 
-  const steps = useRef<{ previous?: string; next?: string }>({});
-  steps.current = { previous: previous?.key, next: next?.key };
-  const swipe = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-        Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 2,
-      onPanResponderRelease: (_, { dx }) => {
-        const to =
-          dx > 40
-            ? steps.current.previous
-            : dx < -40
-              ? steps.current.next
-              : undefined;
-        if (to) setKey(to);
-      },
-    }),
-  ).current;
+  const swipe = usePeriodSwipe({
+    selectedKey: selected?.key,
+    previous: previous?.key,
+    next: next?.key,
+    enabled: periods.length > 1,
+    onSelect: setKey,
+  });
 
   async function chooseChartType(chosen: InsightChartPreference) {
     if (saving.current || chosen === chartType) return;
@@ -260,6 +255,7 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
   const step = (
     label: string,
     to: string | undefined,
+    side: -1 | 1,
     icon: SymbolViewProps['name'],
   ) => (
     <Pressable
@@ -267,13 +263,14 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
       accessibilityLabel={label}
       accessibilityState={{ disabled: to === undefined }}
       disabled={to === undefined}
-      onPress={() => to && setKey(to)}
+      onPress={() => to && swipe.step(to, side)}
       style={styles.step}
     >
       <SymbolView
         name={icon}
-        tintColor={to === undefined ? colors.placeholder : colors.accent}
+        tintColor={to === undefined ? colors.placeholder : colors.text}
         size={22}
+        weight="semibold"
       />
     </Pressable>
   );
@@ -306,93 +303,115 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
             setKey(selected.key.slice(0, 4));
           }}
         />
-        <View style={styles.periods}>
-          {periods.length > 1 &&
-            step('Previous period', previous?.key, {
-              ios: 'chevron.left',
-              android: 'chevron_left',
-            })}
-          <View {...swipe.panHandlers} style={styles.period}>
-            <PeriodPicker
-              kind={mode}
-              periods={periods}
-              selectedKey={selected.key}
-              onSelect={setKey}
-            />
-          </View>
-          {periods.length > 1 &&
-            step('Next period', next?.key, {
-              ios: 'chevron.right',
-              android: 'chevron_right',
-            })}
-        </View>
-        {selected.currencies.map((currency) => {
-          const total = money(currency.totalMinor, currency.currency);
-          const comparison = comparisonOf(currency);
-          return (
-            <GroupedSection key={currency.currency} style={styles.card}>
-              <View
-                accessible
-                accessibilityLabel={`Total spent ${total}.${comparison ? ` ${comparison}` : ''}`}
-              >
-                <Text style={[styles.cardLabel, { color: colors.textMuted }]}>
-                  TOTAL SPENT
-                </Text>
-                <Text style={[styles.total, { color: colors.text }]}>
-                  {total}
-                </Text>
-                {comparison && (
-                  <Text
-                    style={[styles.comparison, { color: colors.textMuted }]}
-                  >
-                    {comparison}
-                  </Text>
-                )}
+        <GestureDetector gesture={swipe.pan}>
+          <View collapsable={false}>
+            <View style={styles.periods}>
+              {periods.length > 1 &&
+                step('Previous period', previous?.key, -1, {
+                  ios: 'chevron.left',
+                  android: 'chevron_left',
+                })}
+              <View style={styles.period}>
+                <Animated.View style={swipe.nameStyle}>
+                  <PeriodPicker
+                    kind={mode}
+                    periods={periods}
+                    selectedKey={selected.key}
+                    onSelect={setKey}
+                  />
+                </Animated.View>
               </View>
-            </GroupedSection>
-          );
-        })}
-        {selected.currencies.map((currency) => (
-          <View key={currency.currency} style={styles.currency}>
-            <Text
-              accessibilityRole="header"
-              style={[styles.heading, { color: colors.textMuted }]}
-            >
-              {`${currency.currency} categories`}
-            </Text>
-            <GroupedSection style={styles.categories}>
-              <CategoryChart {...currency.chart} />
-              {currency.categories.map((category, row) => {
-                const amount = money(category.amountMinor, currency.currency);
+              {periods.length > 1 &&
+                step('Next period', next?.key, 1, {
+                  ios: 'chevron.right',
+                  android: 'chevron_right',
+                })}
+            </View>
+            <Animated.View style={swipe.pageStyle}>
+              {selected.currencies.map((currency) => {
+                const total = money(currency.totalMinor, currency.currency);
+                const comparison = comparisonOf(currency);
                 return (
-                  <View
-                    key={row}
-                    accessible
-                    accessibilityLabel={`${category.name}, ${amount}, ${decimal.format(category.percent)} percent`}
-                    style={styles.row}
-                  >
+                  <GroupedSection key={currency.currency} style={styles.card}>
                     <View
-                      style={[styles.dot, { backgroundColor: category.color }]}
-                    />
-                    <View style={styles.rowText}>
+                      accessible
+                      accessibilityLabel={`Total spent ${total}.${comparison ? ` ${comparison}` : ''}`}
+                    >
                       <Text
-                        numberOfLines={1}
-                        style={[styles.rowName, { color: colors.text }]}
+                        style={[styles.cardLabel, { color: colors.textMuted }]}
                       >
-                        {category.name}
+                        TOTAL SPENT
                       </Text>
-                      <Text
-                        style={[styles.rowAmount, { color: colors.textMuted }]}
-                      >
-                        {`${amount} · ${percentage.format(category.percent / 100)}`}
+                      <Text style={[styles.total, { color: colors.text }]}>
+                        {total}
                       </Text>
+                      {comparison && (
+                        <Text
+                          style={[
+                            styles.comparison,
+                            { color: colors.textMuted },
+                          ]}
+                        >
+                          {comparison}
+                        </Text>
+                      )}
                     </View>
-                  </View>
+                  </GroupedSection>
                 );
               })}
-            </GroupedSection>
+              {selected.currencies.map((currency) => (
+                <View key={currency.currency} style={styles.currency}>
+                  <Text
+                    accessibilityRole="header"
+                    style={[styles.heading, { color: colors.textMuted }]}
+                  >
+                    {`${currency.currency} categories`}
+                  </Text>
+                  <GroupedSection style={styles.categories}>
+                    <CategoryChart {...currency.chart} />
+                    {currency.categories.map((category, row) => {
+                      const amount = money(
+                        category.amountMinor,
+                        currency.currency,
+                      );
+                      return (
+                        <View
+                          key={row}
+                          accessible
+                          accessibilityLabel={`${category.name}, ${amount}, ${decimal.format(category.percent)} percent`}
+                          style={styles.row}
+                        >
+                          <View
+                            style={[
+                              styles.dot,
+                              { backgroundColor: category.color },
+                            ]}
+                          />
+                          <View style={styles.rowText}>
+                            <Text
+                              numberOfLines={1}
+                              style={[styles.rowName, { color: colors.text }]}
+                            >
+                              {category.name}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.rowAmount,
+                                { color: colors.textMuted },
+                              ]}
+                            >
+                              {`${amount} · ${percentage.format(category.percent / 100)}`}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </GroupedSection>
+                </View>
+              ))}
+            </Animated.View>
           </View>
-        ))}
+        </GestureDetector>
       </>
     );
 
@@ -415,12 +434,16 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
           }
         }
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.content}
-      >
-        {body}
-      </ScrollView>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <GestureDetector gesture={swipe.scrollGesture}>
+          <ScrollView
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={styles.content}
+          >
+            {body}
+          </ScrollView>
+        </GestureDetector>
+      </GestureHandlerRootView>
     </SafeAreaView>
   );
 }
@@ -437,7 +460,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  period: { flex: 1, alignItems: 'center' },
+  period: { flex: 1, alignItems: 'center', overflow: 'hidden' },
   step: {
     width: 48,
     height: 48,

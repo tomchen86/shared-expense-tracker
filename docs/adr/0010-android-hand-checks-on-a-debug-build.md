@@ -1,7 +1,7 @@
 # ADR-0010: Android hand checks on a debug build
 
 - Date: 2026-11-01
-- Status: Accepted
+- Status: Accepted; parts are superseded by ADR-0013
 
 ## Context
 
