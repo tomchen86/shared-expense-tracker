@@ -48,20 +48,22 @@ test(
 test(
   'the Workers entry file serves GET /health, on the Workers runtime',
   async () => {
-    // Wranglers started together collide on its default ports and state directory.
+    // Wranglers started together collide on their default ports and state directory.
     const state = mkdtempSync(path.join(tmpdir(), 'api-wrangler-'));
-    const args = [
-      '--port',
-      '0',
-      '--inspector-port',
-      '0',
-      '--persist-to',
-      state,
-    ];
     try {
       const workers = await startServerCommand(
         'wrangler',
-        ['dev', '--ip', '127.0.0.1', ...args],
+        [
+          'dev',
+          '--ip',
+          '127.0.0.1',
+          '--port',
+          '0',
+          '--inspector-port',
+          '0',
+          '--persist-to',
+          state,
+        ],
         {
           CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE:
             database.url,
