@@ -21,6 +21,7 @@ import {
   press,
   resetPhone,
   restart,
+  setPhoneLanguage,
   setRegionCurrency,
   storedExpenses,
   watchAlerts,
@@ -763,7 +764,7 @@ test('[INSIGHTS-41.1] lets iOS go back from Insights only from the left edge of 
 
 // Total cards
 
-test('[INSIGHTS-22.1] shows TOTAL SPENT, the total and how much more than the previous period', async () => {
+test('[INSIGHTS-22.2] shows TOTAL SPENT, the total and how much more than the previous period', async () => {
   await insightsWith(['2024-12-10', '8.00'], ['2025-01-10', '12.00']);
 
   expect(totalCards()).toEqual([
@@ -780,7 +781,7 @@ test.each([
   ['3.00', '5.00', '$2.00 more than December 2024, 66.7 percent.'],
   ['0.01', '12.35', '$12.34 more than December 2024, 123,400.0 percent.'],
 ])(
-  '[INSIGHTS-22.1] compares %s in December with %s in January as %s',
+  '[INSIGHTS-22.2] compares %s in December with %s in January as %s',
   async (december, january, comparison) => {
     await insightsWith(['2024-12-10', december], ['2025-01-10', january]);
 
@@ -788,7 +789,7 @@ test.each([
   },
 );
 
-test('[INSIGHTS-22.1] shows a card for each currency by currency code, saying when the previous period had none', async () => {
+test('[INSIGHTS-22.2] shows a card for each currency by currency code, saying when the previous period had none', async () => {
   await startExpensesAt('/');
   await spend('2024-12-10', '5.00');
   await spend('2025-01-10', '10.00');
@@ -801,7 +802,20 @@ test('[INSIGHTS-22.1] shows a card for each currency by currency code, saying wh
   ]);
 });
 
-test('[INSIGHTS-22.1] shows no comparison for the earliest period', async () => {
+test('[INSIGHTS-22.2] shows totals in English with the region of a phone in French in Australia', async () => {
+  setPhoneLanguage('fr-AU');
+  await startExpensesAt('/');
+  await spend('2024-12-10', '8.00', 'Food & Dining', 'December', 'AUD');
+  await spend('2025-01-10', '12.00', 'Food & Dining', 'January', 'AUD');
+
+  await openInsights();
+
+  expect(totalCards()).toEqual([
+    ['TOTAL SPENT', '$12.00', '$4.00 more than December 2024, 50.0 percent.'],
+  ]);
+});
+
+test('[INSIGHTS-22.2] shows no comparison for the earliest period', async () => {
   await insightsWith(['2024-12-10', '8.00'], ['2025-01-10', '12.00']);
 
   await pressPrevious();
@@ -811,7 +825,7 @@ test('[INSIGHTS-22.1] shows no comparison for the earliest period', async () => 
   expect(totalCardsRead()).toEqual(['Total spent $8.00.']);
 });
 
-test('[INSIGHTS-22.1] compares with the latest earlier month that has expenses', async () => {
+test('[INSIGHTS-22.2] compares with the latest earlier month that has expenses', async () => {
   await insightsWith(['2024-10-05', '10.00'], ['2025-01-20', '20.00']);
 
   expect(totalCards()).toEqual([
@@ -821,7 +835,7 @@ test('[INSIGHTS-22.1] compares with the latest earlier month that has expenses',
 
 // Categories
 
-test("[INSIGHTS-23.1] lists a currency's categories under its heading, with a color dot, the amount and the percentage", async () => {
+test("[INSIGHTS-23.2] lists a currency's categories under its heading, with a color dot, the amount and the percentage", async () => {
   await insightsWith(
     ['2025-01-10', '6.00', 'Food & Dining'],
     ['2025-01-11', '2.00', 'Transportation'],
@@ -847,7 +861,21 @@ test("[INSIGHTS-23.1] lists a currency's categories under its heading, with a co
   );
 });
 
-test('[INSIGHTS-23.1] reads the heading as a heading and each row as one item, without its dot', async () => {
+test('[INSIGHTS-23.2] shows amounts and percentages in English with the region of a phone in French in Australia', async () => {
+  setPhoneLanguage('fr-AU');
+  await startExpensesAt('/');
+  await spend('2025-01-10', '6.00', 'Food & Dining', 'Lunch', 'AUD');
+  await spend('2025-01-11', '2.00', 'Transportation', 'Bus', 'AUD');
+
+  await openInsights();
+
+  expect(rows()).toEqual([
+    ['Food & Dining', '$6.00 · 75.0%'],
+    ['Transportation', '$2.00 · 25.0%'],
+  ]);
+});
+
+test('[INSIGHTS-23.2] reads the heading as a heading and each row as one item, without its dot', async () => {
   await insightsWith(
     ['2025-01-10', '6.00', 'Food & Dining'],
     ['2025-01-11', '2.00', 'Transportation'],
@@ -862,7 +890,7 @@ test('[INSIGHTS-23.1] reads the heading as a heading and each row as one item, w
     for (const dot of colorDots(row)) expect(isUnread(dot)).toBe(true);
 });
 
-test('[INSIGHTS-23.1] shows each currency under its own heading by currency code', async () => {
+test('[INSIGHTS-23.2] shows each currency under its own heading by currency code', async () => {
   await startExpensesAt('/');
   await spend('2025-01-10', '6.00', 'Food & Dining');
   await spend('2025-01-11', '2000', 'Travel', 'Ramen', 'JPY');
@@ -892,7 +920,7 @@ const SEVEN: [string, string, string][] = [
   'Travel',
 ].map((category, index) => ['2025-01-10', `${7 - index}.00`, category]);
 
-test('[INSIGHTS-23.1] lists every category, without Others, under a donut', async () => {
+test('[INSIGHTS-23.2] lists every category, without Others, under a donut', async () => {
   await insightsWith(...SEVEN);
 
   await chooseChart('Donut');
@@ -901,7 +929,7 @@ test('[INSIGHTS-23.1] lists every category, without Others, under a donut', asyn
   expect(rowsRead().filter((row) => row.startsWith('Others'))).toEqual([]);
 });
 
-test('[INSIGHTS-23.1] rounds percentages to one decimal place', async () => {
+test('[INSIGHTS-23.2] rounds percentages to one decimal place', async () => {
   await insightsWith(
     ['2025-01-10', '1.00', 'Food & Dining'],
     ['2025-01-10', '1.00', 'Transportation'],
@@ -915,7 +943,7 @@ test('[INSIGHTS-23.1] rounds percentages to one decimal place', async () => {
   ]);
 });
 
-test('[INSIGHTS-23.1] shows a long name on one line, cut at its end, and reads it in full', async () => {
+test('[INSIGHTS-23.2] shows a long name on one line, cut at its end, and reads it in full', async () => {
   const name = 'a'.repeat(50);
   await startExpensesAt('/');
   await addCategory(name);
@@ -1100,7 +1128,7 @@ test('[SHELL-13.1] shows only a back arrow named Back on Insights', async () => 
   );
 });
 
-// SHELL-34.1 leaves out the colors of user data: the palette (CATEGORIES-1.1) and
+// SHELL-34.1 leaves out the colors of user data: the palette (CATEGORIES-1.2) and
 // the gray the domain package gives Others and unmatched categories.
 const USER_COLORS = new Set(
   [
@@ -1117,6 +1145,20 @@ const USER_COLORS = new Set(
     '#00ACC1',
     '#C62828',
     '#9E9D24',
+    '#A66F5B',
+    '#D99E77',
+    '#A66A11',
+    '#6C733F',
+    '#8BD916',
+    '#0B733C',
+    '#36D9B8',
+    '#1D6273',
+    '#85BFF2',
+    '#8861F2',
+    '#DC85F2',
+    '#F218B8',
+    '#8C4D6F',
+    '#F2858D',
     '#808080',
   ].map((color) => (processColor(color) as number) >>> 0),
 );

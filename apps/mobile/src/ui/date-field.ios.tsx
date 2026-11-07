@@ -6,8 +6,8 @@ import {
   padding,
 } from '@expo/ui/swift-ui/modifiers';
 import { toLocalDate } from '@shared-expense/domain';
-import { getLocales } from 'expo-localization';
 import type { DateFieldProps } from './date-field';
+import { useDisplayLocale } from './use-display-locale';
 
 export function DateField({
   label,
@@ -17,6 +17,7 @@ export function DateField({
   onChange,
 }: DateFieldProps) {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const locale = useDisplayLocale();
   return (
     <Host
       ignoreSafeArea="all"
@@ -33,11 +34,8 @@ export function DateField({
           datePickerStyle('compact'),
           disabledModifier(disabled),
           environment('timeZone', timeZone),
-          // Expo UI matches Foundation identifiers, such as zh_Hant_TW.
-          environment(
-            'locale',
-            getLocales()[0].languageTag.replaceAll('-', '_'),
-          ),
+          // Expo UI matches Foundation identifiers, such as en_AU.
+          environment('locale', locale.replaceAll('-', '_')),
           padding({ horizontal: 16, vertical: 12 }),
         ]}
       />

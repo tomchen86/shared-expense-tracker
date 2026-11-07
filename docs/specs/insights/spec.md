@@ -4,7 +4,7 @@
 
 支出分析：計算規則，以及手機 app 上顯示它的 Insights。計算規則是個人或群組情境下計入哪些支出、各計多少，依月份和年份建立期間，分幣別和類別加總，與上一個期間比較，以及每個幣別畫哪種圖；這些規則放在 `packages/domain`（ADR-0002）。金額都是最小單位的整數（ADR-0004），支出日期是 `YYYY-MM-DD`（LEDGER-8.1）。domain 只計算交給它的支出和類別清單，不判斷支出是否在垃圾桶裡，也不看群組或類別是否已封存。兩個類別名稱相同，是指兩邊都去掉頭尾空白並轉成小寫後相同，比法同 CATEGORIES-4.1。
 
-Insights 是手機 app 上分析支出的畫面：個人的 Insights 分析個人情境（INSIGHTS-1.1），群組的 Insights 分析一個群組（INSIGHTS-2.1），兩者的畫面相同。計入的支出是 domain 計入的支出（INSIGHTS-3.1）。Insights 一次看一種期間：月份模式看月份期間，年份模式看年份期間（INSIGHTS-4.1）；選中的期間是 Insights 現在顯示的期間，上一期是它之前最近的同一種期間，下一期是它之後最近的同一種期間，最早和最新的期間是現在這一種期間裡最早和最新的那一個；期間名稱是 INSIGHTS-4.1 的名稱。期間選擇器是點期間名稱時打開、選一個期間的地方。圖表類型是 Auto、Donut 或 Bar（INSIGHTS-10.1），存在本機資料裡，個人和群組的 Insights 用同一個。手機地區的貨幣格式見 LEDGER-40.1；手機地區的數字格式和百分比格式，是手機第一個偏好的語言和地區用來顯示數字和百分比的格式。螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。
+Insights 是手機 app 上分析支出的畫面：個人的 Insights 分析個人情境（INSIGHTS-1.1），群組的 Insights 分析一個群組（INSIGHTS-2.1），兩者的畫面相同。計入的支出是 domain 計入的支出（INSIGHTS-3.1）。Insights 一次看一種期間：月份模式看月份期間，年份模式看年份期間（INSIGHTS-4.1）；選中的期間是 Insights 現在顯示的期間，上一期是它之前最近的同一種期間，下一期是它之後最近的同一種期間，最早和最新的期間是現在這一種期間裡最早和最新的那一個；期間名稱是 INSIGHTS-4.1 的名稱。期間選擇器是點期間名稱時打開、選一個期間的地方。圖表類型是 Auto、Donut 或 Bar（INSIGHTS-10.1），存在本機資料裡，個人和群組的 Insights 用同一個。手機地區的貨幣格式見 LEDGER-40.2；手機地區的數字格式和百分比格式，是貨幣格式用的同一個語言和地區用來顯示數字和百分比的格式。螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。
 
 ## Requirements
 
@@ -452,7 +452,7 @@ WHEN Insights 打開，the mobile app SHALL 用月份模式，選中最新的月
 - **WHEN** 在 Insights 選中「January 2025」之後返回，再打開 Insights
 - **THEN** 選中的期間又是「March 2025」
 
-### Requirement: INSIGHTS-22.1 總額卡
+### Requirement: INSIGHTS-22.2 總額卡
 
 The mobile app SHALL 為選中的期間的每個幣別，依幣別代碼排序各顯示一張總額卡，由上而下是「TOTAL SPENT」、用手機地區的貨幣格式顯示的總額（INSIGHTS-5.1），以及選中的期間有上一期時的比較（INSIGHTS-9.1）：上一期沒有這個幣別時是「No spending in <上一期的名稱>.」，差額是 0 時是「Same as <上一期的名稱>.」，其他時候是「<差額的絕對值> more than <上一期的名稱>, <百分比> percent.」，差額小於 0 時「more」換成「less」；差額的絕對值用手機地區的貨幣格式，百分比是 INSIGHTS-9.1 的百分比的絕對值，用手機地區的數字格式顯示到小數一位，四捨五入。螢幕閱讀器把每張卡讀成一項「Total spent <總額>.」，有比較時再接一個空格和比較。
 
@@ -486,7 +486,12 @@ The mobile app SHALL 為選中的期間的每個幣別，依幣別代碼排序�
 - **WHEN** 手機第一個偏好的語言和地區是英文（美國），上一期和選中的期間分別是 300 USD 和 500 USD，或 1 USD 和 1235 USD
 - **THEN** 百分比分別是「66.7」和「123,400.0」
 
-### Requirement: INSIGHTS-23.1 每個幣別的類別
+#### Scenario: 手機的語言不是英文
+
+- **WHEN** 手機第一個偏好的語言和地區是法文（澳洲），2024 年 12 月有 800 AUD，選中有 1200 AUD 的 2025 年 1 月
+- **THEN** 總額是「$12.00」，比較是「$4.00 more than December 2024, 50.0 percent.」，不是「12,00 $AU」
+
+### Requirement: INSIGHTS-23.2 每個幣別的類別
 
 The mobile app SHALL 在總額卡下面，為選中的期間的每個幣別依幣別代碼排序，顯示標題「<幣別代碼> categories」、這個幣別的圖（INSIGHTS-24.1），和這個幣別的類別（INSIGHTS-6.2 到 INSIGHTS-8.1，不含 INSIGHTS-11.1 的 Others），依 INSIGHTS-8.1 的順序由上而下每個類別一列：類別顏色的色點、類別的名稱，和「<金額> · <百分比>」，金額用手機地區的貨幣格式，百分比用手機地區的百分比格式顯示到小數一位，四捨五入，例如英文（美國）是「75.0%」；名稱只佔一行，放不下時在結尾以「…」截斷。螢幕閱讀器把每個幣別的標題讀成標題，把每一列讀成一項「<完整的名稱>, <金額>, <百分比的數字> percent」，不讀色點。
 
@@ -504,6 +509,11 @@ The mobile app SHALL 在總額卡下面，為選中的期間的每個幣別依�
 
 - **WHEN** 2025 年 1 月有 Food & Dining 的 600 USD 和 Travel 的 2000 JPY
 - **THEN** 依序是「JPY categories」和 Travel「¥2,000 · 100.0%」，再來是「USD categories」和 Food & Dining「$6.00 · 100.0%」
+
+#### Scenario: 手機的語言不是英文
+
+- **WHEN** 手機第一個偏好的語言和地區是法文（澳洲），2025 年 1 月有 Food & Dining 的 600 AUD 和 Transportation 的 200 AUD
+- **THEN** 兩列是「$6.00 · 75.0%」和「$2.00 · 25.0%」，不是「6,00 $AU · 75,0 %」
 
 #### Scenario: 不含 Others
 

@@ -1,0 +1,75 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[CATEGORIES-49.1] Reaches and selects the palette's colors while the keyboard stays open"
+tags:
+  - android
+---
+# On a 360×640 dp Android screen the keyboard covers part of the palette, so this also runs there:
+# scripts/e2e-android.sh. A taller screen fits the palette above the keyboard and shows nothing.
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- waitForAnimationToEnd
+- tapOn: Manage Categories
+- waitForAnimationToEnd
+- tapOn: Add category
+- waitForAnimationToEnd
+- assertVisible: New Category
+- tapOn: Category name
+- inputText: Cafe
+- waitForAnimationToEnd
+# iOS keeps a control hidden by the keyboard in its tree, so scrolling until visible alone would
+# stop at once there. A drag that moves nothing closes the keyboard, so scroll no further than this.
+- swipe:
+    start: 50%, 45%
+    end: 50%, 15%
+    duration: 400
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: 'Select color #F2858D'
+    direction: DOWN
+- tapOn: 'Select color #F2858D'
+- waitForAnimationToEnd
+- assertVisible:
+    text: 'Select color #F2858D'
+    selected: true
+- scrollUntilVisible:
+    element: Category name
+    direction: UP
+# The keyboard stayed open. Closing it also uncovers the palette, so selecting a color does not
+# prove this. Only Android reports focus, and only iOS refuses to type without it.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          text: Category name
+          focused: true
+- inputText: ' Bar'
+- waitForAnimationToEnd
+- assertVisible: Cafe Bar
+- scrollUntilVisible:
+    element: 'Color #D81B60 already in use'
+    direction: UP
+- scrollUntilVisible:
+    element: 'Select color #43A047'
+    direction: UP
+- tapOn: 'Select color #43A047'
+- waitForAnimationToEnd
+- assertVisible:
+    text: 'Select color #43A047'
+    selected: true
+# Closing the keyboard leaves no gap in its place: the whole form fits again.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+      - waitForAnimationToEnd
+      - assertVisible: Category name
+      - assertVisible: 'Select color #F2858D'

@@ -53,9 +53,11 @@ import {
 } from './group-archive-app';
 import { trashRow, trashRowCounts } from './ledger-trash-app';
 import {
+  addExpense,
   doAction,
   expectFormClosed,
   fillForm,
+  formTitle,
   openNewExpense,
   press,
   resetPhone,
@@ -66,6 +68,7 @@ import {
   failReads,
   openDetails,
   phoneDatabaseWithReads,
+  pressEdit,
 } from './ledger-expense-list-app';
 
 // Runs on iOS; shell-local-reads-android.test.tsx checks the Android back button.
@@ -320,6 +323,21 @@ test("[SHELL-60.1] shows the read error, without the expense read before or its 
 
   await expectReadError('Expense');
   expect(barActions('Expense')).toEqual([]);
+});
+
+test("[SHELL-60.1] shows the read error, and opens no Edit Expense or alert, when Edit on an expense's details cannot read it", async () => {
+  await startApp();
+  await settle();
+  await addExpense();
+  await openDetails('Coffee run');
+  failReads();
+
+  await pressEdit();
+
+  await expectReadError('Expense');
+  expect(barActions('Expense')).toEqual([]);
+  expect(formTitle()).toBeUndefined();
+  expect(alertsShown()).toEqual([]);
 });
 
 test('[SHELL-60.1] shows the read error, not the expenses read before, when the expense list cannot read them again', async () => {
