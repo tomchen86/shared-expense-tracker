@@ -29,7 +29,13 @@ import {
   startExpensesAt,
   expectOneFadingLine,
 } from './ledger-expense-list-app';
-import { allowWrites, settle } from './shell-appearance-app';
+import {
+  IOS_TEXT_SIZE,
+  allowWrites,
+  resetTextSize,
+  setTextSize,
+  settle,
+} from './shell-appearance-app';
 import {
   navigationBarTitles,
   selectedTab,
@@ -162,6 +168,7 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.restoreAllMocks();
+  resetTextSize();
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
@@ -673,7 +680,8 @@ test('[GROUPS-71.1] leaves out a former member who is only in expenses in the tr
 
 // The member count on the group's card
 
-test("[GROUPS-72.2] shows 1 member at the right of the name on a new group's card", async () => {
+test("[GROUPS-72.3] shows 1 member at the right of the name on a new group's card at the default text size", async () => {
+  await setTextSize(IOS_TEXT_SIZE.default);
   await startWithGroups({ Brisbane: [] });
 
   await tapTab('Groups');
@@ -693,7 +701,7 @@ test("[GROUPS-72.2] shows 1 member at the right of the name on a new group's car
   );
 });
 
-test("[GROUPS-72.2] counts the group's members on its card, but not former members", async () => {
+test("[GROUPS-72.3] counts the group's members on its card, but not former members", async () => {
   await startWithGroups(BRISBANE);
   await tapTab('Groups');
   await waitFor(() =>
@@ -709,6 +717,40 @@ test("[GROUPS-72.2] counts the group's members on its card, but not former membe
   await waitFor(() =>
     expect(groupRootCardLines('Brisbane')).toContain('3 members'),
   );
+});
+
+test("[GROUPS-104.1] puts the member count under the name at iOS's smallest accessibility text size", async () => {
+  await setTextSize(IOS_TEXT_SIZE.smallestAccessibility);
+  await startWithGroups({ Brisbane: [] });
+
+  await tapTab('Groups');
+
+  await waitFor(() =>
+    expect(groupRootCardLines('Brisbane').slice(0, 2)).toEqual([
+      'Brisbane',
+      '1 member',
+    ]),
+  );
+  const shown = within(groupRootCard('Brisbane'));
+  expect(
+    inOneRow(shown.getByText('Brisbane'), shown.getByText('1 member')),
+  ).toBe(false);
+  expectOneFadingLine(shown.getByText('Brisbane'));
+});
+
+test("[GROUPS-104.1] keeps the member count at the right of the name at iOS's largest text size outside the accessibility sizes", async () => {
+  await setTextSize(IOS_TEXT_SIZE.largest);
+  await startWithGroups({ Brisbane: [] });
+
+  await tapTab('Groups');
+
+  await waitFor(() =>
+    expect(groupRootCardLines('Brisbane')).toContain('1 member'),
+  );
+  const shown = within(groupRootCard('Brisbane'));
+  expect(
+    inOneRow(shown.getByText('Brisbane'), shown.getByText('1 member')),
+  ).toBe(true);
 });
 
 // Your share and net on the group's card

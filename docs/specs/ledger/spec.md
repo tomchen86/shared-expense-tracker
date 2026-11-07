@@ -2437,3 +2437,22 @@ WHERE iOS，the mobile app SHALL 讓打開清單的列顯示標籤、現在的�
 
 - **WHEN** iOS 上打開軟體鍵盤輸入標題，按「Category, Food & Dining」
 - **THEN** 鍵盤還在，選單完整顯示在鍵盤上方
+
+### Requirement: LEDGER-105.1 (manual) iOS 上字級很大時，表單的 Date 列上下排
+
+WHERE iOS，WHILE 手機的字級是輔助使用字級，the mobile app SHALL 讓支出表單的 Date 列上下排：「Date」在上、日期在下，都靠左，兩者都完整顯示；按日期照常打開日曆，日曆開著時按日曆外面仍然只關閉日曆（LEDGER-103.1）。比這小的字級，「Date」和日期並排。
+
+#### Scenario: 最大的輔助使用字級
+
+- **WHEN** iOS 上把字級設成最大的輔助使用字級，打開 New Expense
+- **THEN** 「Date」完整顯示在一行，沒有被拆成一字一行；日期在它的下一行，完整顯示，沒有超出畫面
+
+#### Scenario: 打開和關閉日曆
+
+- **WHEN** 同樣的字級，按日期，再按「Category, Food & Dining」那一列
+- **THEN** 第一下打開日曆；第二下只關閉日曆，分類清單沒有打開
+
+#### Scenario: 最大的一般字級
+
+- **WHEN** iOS 上把字級設成最大的非輔助使用字級，打開 New Expense
+- **THEN** 「Date」和日期在同一行

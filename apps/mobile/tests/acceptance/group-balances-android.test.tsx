@@ -2,17 +2,33 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { BackHandler } from 'react-native';
+import { waitFor, within } from '@testing-library/react-native';
 import {
   phoneDatabase,
   pressBack,
   resetPhone,
   watchAlerts,
 } from './ledger-expense-app';
-import { allowWrites } from './shell-appearance-app';
-import { navigationBarTitles, selectedTab, tab } from './shell-tabs-app';
+import {
+  allowWrites,
+  resetTextSize,
+  setTextSize,
+} from './shell-appearance-app';
+import {
+  navigationBarTitles,
+  selectedTab,
+  tab,
+  tapTab,
+} from './shell-tabs-app';
 import { expectClosed, headerButtons } from './group-details-app';
 import { addGroupExpense, startWithGroups } from './ledger-group-expense-app';
-import { openBalances, showGroup } from './group-balances-app';
+import {
+  groupRootCard,
+  groupRootCardLines,
+  openBalances,
+  showGroup,
+} from './group-balances-app';
+import { expectOneFadingLine, inOneRow } from './ledger-expense-list-app';
 import type { Database } from '../../src/storage';
 
 // Runs on Android only (apps/mobile/jest.config.cjs), as group-balances.test.tsx
@@ -66,6 +82,7 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.restoreAllMocks();
+  resetTextSize();
   fs.rmSync(directory, { recursive: true, force: true });
 });
 
@@ -104,4 +121,30 @@ test("[GROUPS-70.1] closes Balances with Back, back on the group's screen", asyn
   expect(selectedTab()).toBe('Groups');
   expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups', 'Brisbane']);
   expect(exitApp).not.toHaveBeenCalled();
+});
+
+/** Whether the group's card shows its member count at the right of its name. */
+function countBesideName(group: string) {
+  const card = within(groupRootCard(group));
+  return inOneRow(card.getByText(group), card.getByText(/^\d+ members?$/));
+}
+
+test("[GROUPS-104.1] puts the member count under the name at Android's 150% font size, and back at its right at 130%", async () => {
+  await setTextSize(1.5);
+  await startWithGroups({ Brisbane: [] });
+
+  await tapTab('Groups');
+
+  await waitFor(() =>
+    expect(groupRootCardLines('Brisbane').slice(0, 2)).toEqual([
+      'Brisbane',
+      '1 member',
+    ]),
+  );
+  expect(countBesideName('Brisbane')).toBe(false);
+  expectOneFadingLine(within(groupRootCard('Brisbane')).getByText('Brisbane'));
+
+  await setTextSize(1.3);
+
+  await waitFor(() => expect(countBesideName('Brisbane')).toBe(true));
 });
