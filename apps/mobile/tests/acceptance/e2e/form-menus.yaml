@@ -59,6 +59,9 @@ name: "[LEDGER-100.1] The form's lists are system menus: one choice closes them,
     element: Split between, Choose people
     direction: DOWN
     centerElement: true
+    # The last row of the form never reaches the center, so Maestro swipes a
+    # few more times first, which can outlast the default 20 s.
+    timeout: 60000
 # Split between stays open while people are chosen.
 - tapOn: Split between, Choose people
 - waitForAnimationToEnd
