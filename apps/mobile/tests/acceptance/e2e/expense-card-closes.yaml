@@ -146,11 +146,12 @@ tags:
     text: ${output.open}
     enabled: true
 # More up than right is scrolling, which moves the list. These upward drags go far enough that it
-# moves a whole card even if it starts a moment late.
+# moves a whole card even if it starts a moment late, and slowly: on a busy Android emulator a
+# 250 ms drag of 288 dp has moved the list as little as 64 dp, and a 1000 ms one at least 232.
 - swipe:
     start: 28%, 55%
     end: 58%, 10%
-    duration: 250
+    duration: 1000
 - waitForAnimationToEnd
 - assertNotVisible:
     text: Delete .* expense
@@ -196,7 +197,7 @@ tags:
 - swipe:
     start: 28%, 55%
     end: 28%, 10%
-    duration: 250
+    duration: 1000
 - waitForAnimationToEnd
 - assertNotVisible:
     text: Delete .* expense
@@ -241,7 +242,7 @@ tags:
 - swipe:
     start: 30%, 75%
     end: 30%, 30%
-    duration: 250
+    duration: 1000
 - waitForAnimationToEnd
 - assertNotVisible:
     text: Delete .* expense
@@ -278,7 +279,7 @@ tags:
 - swipe:
     start: 70%, 55%
     end: 40%, 10%
-    duration: 250
+    duration: 1000
 - waitForAnimationToEnd
 - assertNotVisible:
     text: Delete .* expense
