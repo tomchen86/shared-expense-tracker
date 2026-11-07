@@ -1254,6 +1254,9 @@ test('[GROUPS-100.1] shows the name as a large title button under the bar, colla
   await waitFor(() => expect(largeTitle('Brisbane')).toBeDefined());
   expect(barTitled('Brisbane')?.props.title).toBeFalsy();
   expect(largeTitle('Brisbane')!.props.accessibilityState.expanded).toBe(false);
+  expect(largeTitle('Brisbane')!.props.accessibilityHint).toBe(
+    'Shows the full name. Long press renames the group.',
+  );
 });
 
 test('[GROUPS-100.1] opens and closes the full name when the large title is pressed', async () => {

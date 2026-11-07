@@ -311,6 +311,9 @@ test('[GROUPS-100.1] shows the name as a large title button under the bar on And
   await waitFor(() => expect(largeTitle('Brisbane')).toBeDefined());
   expect(barTitled('Brisbane')?.props.title).toBeFalsy();
   expect(largeTitle('Brisbane')!.props.accessibilityState.expanded).toBe(false);
+  expect(largeTitle('Brisbane')!.props.accessibilityHint).toBe(
+    'Shows the full name. Long press renames the group.',
+  );
 });
 
 test('[GROUPS-102.1] closes Group Categories with Back on Android', async () => {

@@ -1340,6 +1340,10 @@ test("[LEDGER-63.1] switches to the personal Uncategorized when the form's categ
   await closeCategorySheet();
 
   expect(formCategory()).toBe('Uncategorized');
+  await openCategoryList();
+  expect(categoryOptions(DEFAULT_NAMES)).toEqual(
+    DEFAULT_NAMES.map((name) => [name, name === 'Uncategorized'] as const),
+  );
   await fillForm({ amount: '8.75', title: 'Spin class' });
   await press('Add');
   expect((await onlyExpense()).category).toEqual(
@@ -1358,6 +1362,10 @@ test("[LEDGER-63.1] switches to the group's Uncategorized when the form's group 
   await closeCategorySheet();
 
   expect(formCategory()).toBe('Uncategorized');
+  await openCategoryList();
+  expect(categoryOptions(DEFAULT_NAMES)).toEqual(
+    DEFAULT_NAMES.map((name) => [name, name === 'Uncategorized'] as const),
+  );
   await fillForm({ amount: '420', title: 'Flight' });
   await choosePayer('Taylor (You)');
   await chooseSharers('Taylor (You)');
