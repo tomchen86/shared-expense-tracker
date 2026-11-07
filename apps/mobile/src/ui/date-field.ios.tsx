@@ -1,16 +1,19 @@
-import { useRef } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Host, DatePicker } from '@expo/ui/swift-ui';
 import {
   datePickerStyle,
   disabled as disabledModifier,
   environment,
-  padding,
 } from '@expo/ui/swift-ui/modifiers';
 import { toLocalDate } from '@shared-expense/domain';
 import type { DateFieldProps } from './date-field';
+import { useThemeColors } from './theme';
 import { useDisplayLocale } from './use-display-locale';
 
+/**
+ * The label beside the date, or above it from the first accessibility text size (1.786), as in a
+ * stock form. SwiftUI draws only the date: a picker with no title hides its label.
+ */
 export function DateField({
   label,
   value,
@@ -19,45 +22,52 @@ export function DateField({
   onChange,
   onOpen,
 }: DateFieldProps) {
+  const colors = useThemeColors();
+  const { fontScale } = useWindowDimensions();
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const width = useRef(0);
   const locale = useDisplayLocale();
   return (
-    <View
-      // The Host has no height in a sheet's first layout, which would make the sheet too short.
-      style={{ minHeight: 54 }}
-      onLayout={(event) => {
-        width.current = event.nativeEvent.layout.width;
-      }}
-      onTouchEnd={(event) => {
-        // ponytail: the compact picker reports neither opening nor closing, so a
-        // press on the row's right half stands in for a press on its date. Missing
-        // the date there costs one ignored press; report it if iOS adds an event.
-        if (!disabled && event.nativeEvent.locationX > width.current / 2)
-          onOpen?.();
-      }}
-    >
-      <Host
-        ignoreSafeArea="all"
-        matchContents={{ vertical: true }}
-        style={{ width: '100%' }}
+    <View style={[styles.row, fontScale >= 1.5 && styles.stacked]}>
+      <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+      <View
+        // The compact picker reports neither opening nor closing. The host is as big as the
+        // date, so a press that ends on it is a press on the date.
+        onTouchEnd={() => {
+          if (!disabled) onOpen?.();
+        }}
       >
-        <DatePicker
-          title={label}
-          selection={new Date(`${value}T12:00:00`)}
-          range={{ end: new Date(`${maximumDate}T23:59:59.999`) }}
-          displayedComponents={['date']}
-          onDateChange={(date) => onChange(toLocalDate(date, timeZone))}
-          modifiers={[
-            datePickerStyle('compact'),
-            disabledModifier(disabled),
-            environment('timeZone', timeZone),
-            // Expo UI matches Foundation identifiers, such as en_AU.
-            environment('locale', locale.replaceAll('-', '_')),
-            padding({ horizontal: 16, vertical: 12 }),
-          ]}
-        />
-      </Host>
+        <Host ignoreSafeArea="all" matchContents>
+          <DatePicker
+            selection={new Date(`${value}T12:00:00`)}
+            range={{ end: new Date(`${maximumDate}T23:59:59.999`) }}
+            displayedComponents={['date']}
+            onDateChange={(date) => onChange(toLocalDate(date, timeZone))}
+            modifiers={[
+              datePickerStyle('compact'),
+              disabledModifier(disabled),
+              environment('timeZone', timeZone),
+              // Expo UI matches Foundation identifiers, such as en_AU.
+              environment('locale', locale.replaceAll('-', '_')),
+            ]}
+          />
+        </Host>
+      </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  row: {
+    // The Host has no size in a sheet's first layout, which would make the sheet too short.
+    minHeight: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  // A stock form's gap between the label and the date at these sizes.
+  stacked: { flexDirection: 'column', alignItems: 'flex-start', gap: 4 },
+  label: { fontSize: 17 },
+});
