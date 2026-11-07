@@ -38,7 +38,7 @@ A bookkeeping app for personal and shared expenses: no sign-up by default, works
 7. One session, one working directory. If the directory you start in has uncommitted changes you did not make, or another session works there, stop and tell the owner; otherwise work there or in a `git worktree add` of your own. Never switch branches, pull, or commit in a directory another session uses.
 8. Split and settlement amounts and offline sync are level-2 areas (ADR-0001): when code in them is added, set a branch coverage threshold on its paths in the test config at the measured value. It only goes up.
 9. The API's tests and `wrangler dev` bypass Hyperdrive, so a check runs against the real Hyperdrive and PostgreSQL, through `wrangler dev --remote` or a separate test deployment (ADR-0007): a write, a read back, and a transaction. It runs before the API first goes live, and after that in every PR that changes `apps/api/wrangler.jsonc`, `apps/api/src/workers.ts`, or the Hyperdrive configuration. The owner runs it, because sessions hold no Cloudflare credentials: the PR's author prepares the exact commands, and the result goes in the PR's Verification before merge.
-10. `apps/api/compose.yaml`, the CI workflows, and Neon run the same PostgreSQL major version. A change to it changes all three; a test compares the first two, and the check in rule 9 confirms Neon's.
+10. `apps/api/compose.yaml`, the CI workflows, and Neon run the same PostgreSQL major version. A change to it changes all three; a test compares the first two, and the check in rule 9 also reads Neon's with `SHOW server_version`.
 
 ## Roles
 

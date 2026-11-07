@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { isHealthResponse } from '@shared-expense/domain/api';
 import { runCommand, startServerCommand } from './support/command';
 import { useTestDatabase } from './support/database';
@@ -45,20 +48,35 @@ test(
 test(
   'the Workers entry file serves GET /health, on the Workers runtime',
   async () => {
-    const workers = await startServerCommand(
-      'wrangler',
-      ['dev', '--ip', '127.0.0.1', '--port', '0'],
-      {
-        CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: database.url,
-        WRANGLER_SEND_METRICS: 'false',
-      },
-    );
+    // Wranglers started together collide on its default ports and state directory.
+    const state = mkdtempSync(path.join(tmpdir(), 'api-wrangler-'));
+    const args = [
+      '--port',
+      '0',
+      '--inspector-port',
+      '0',
+      '--persist-to',
+      state,
+    ];
     try {
-      await expectHealthy(workers.url);
-      // Every request connects anew: a client cannot outlive its request on Workers.
-      await expectHealthy(workers.url);
+      const workers = await startServerCommand(
+        'wrangler',
+        ['dev', '--ip', '127.0.0.1', ...args],
+        {
+          CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE:
+            database.url,
+          WRANGLER_SEND_METRICS: 'false',
+        },
+      );
+      try {
+        await expectHealthy(workers.url);
+        // Every request connects anew: a client cannot outlive its request on Workers.
+        await expectHealthy(workers.url);
+      } finally {
+        await workers.stop();
+      }
     } finally {
-      await workers.stop();
+      rmSync(state, { recursive: true, force: true });
     }
   },
   COMMAND_TIMEOUT_MS,
