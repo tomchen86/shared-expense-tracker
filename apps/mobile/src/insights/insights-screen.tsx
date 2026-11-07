@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from 'expo-router/react-navigation';
-import { useLocales } from 'expo-localization';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import {
   GestureDetector,
@@ -42,6 +41,7 @@ import { HeaderActions, type HeaderChoice } from '../ui/header-actions';
 import { PeriodPicker } from '../ui/period-picker';
 import { SegmentedControl } from '../ui/segmented-control';
 import { useThemeColors } from '../ui/theme';
+import { useDisplayLocale } from '../ui/use-display-locale';
 import { usePeriodSwipe } from './use-period-swipe';
 
 type Mode = 'month' | 'year';
@@ -154,7 +154,7 @@ function useInsightsInput(group: boolean, groupId: string | undefined) {
 export function InsightsScreen({ group = false }: { group?: boolean }) {
   const { groupId } = useLocalSearchParams<{ groupId?: string }>();
   const colors = useThemeColors();
-  const locale = useLocales()[0].languageTag;
+  const locale = useDisplayLocale();
   const input = useInsightsInput(group, groupId);
   const savedChartType = useChartType();
   const saveChartType = useSaveChartType();

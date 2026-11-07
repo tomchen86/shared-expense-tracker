@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ComponentRef, type ReactNode } from 'react';
 import {
   Modal,
   Pressable,
@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { HeaderAction } from './header-actions';
 import { useThemeColors } from './theme';
+import { useKeyboardInset } from './use-keyboard-inset';
 
 export interface SheetProps {
   visible: boolean;
@@ -35,6 +36,8 @@ export function Sheet({
   children,
 }: SheetProps) {
   const colors = useThemeColors();
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const keyboardInset = useKeyboardInset(scroll);
   useEffect(() => {
     if (!visible) onAfterClose?.();
   }, [visible, onAfterClose]);
@@ -81,6 +84,8 @@ export function Sheet({
           {action(confirm)}
         </View>
         <ScrollView
+          ref={scroll}
+          style={keyboardInset}
           automaticallyAdjustKeyboardInsets
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.content}

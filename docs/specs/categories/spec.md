@@ -949,3 +949,22 @@ WHEN 使用者從分類列往左拖曳，且開始拖曳時橫向位移大於縱
 
 - **WHEN** 在未封存群組的 Group Categories，或在 Android 的 Manage Categories，重複上述斜向與垂直拖曳
 - **THEN** 動作選擇與不誤觸的結果相同，pt 在 Android 以 dp 計
+
+### Requirement: CATEGORIES-49.1 (e2e) 鍵盤開著時色盤捲得到也點得到
+
+WHILE 分類表單開著鍵盤，the mobile app SHALL 讓色盤的每個顏色都捲得到，這個範圍的其他分類沒有用的顏色點一次就選取，鍵盤保持開著；鍵盤收起後，表單不留下鍵盤佔用的空白。
+
+#### Scenario: 最後一個顏色
+
+- **WHEN** 在 360×640 dp 的 Android 手機或 iPhone 17 打開 New Category，在「Category name」輸入 Cafe，鍵盤開著時往上捲動表單
+- **THEN** 「Select color #F2858D」捲到鍵盤上方；點一次就標示為已選取，鍵盤還開著，接著輸入的 Bar 接在名稱後面，名稱是 Cafe Bar
+
+#### Scenario: 捲回最前面
+
+- **WHEN** 接著往下捲動表單
+- **THEN** 「Category name」和「Color #D81B60 already in use」都捲得回來；點一次「Select color #43A047」就標示為已選取
+
+#### Scenario: 收起鍵盤
+
+- **WHEN** 在 360×640 dp 的 Android 手機收起鍵盤
+- **THEN** 不用捲動就看得到「Category name」和「Select color #F2858D」

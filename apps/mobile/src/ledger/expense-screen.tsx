@@ -8,7 +8,6 @@ import {
   View,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useLocales } from 'expo-localization';
 import { formatCurrency } from '@shared-expense/domain';
 import { listGroups } from '../groups';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
@@ -16,6 +15,7 @@ import { listExpenses } from './expenses';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
+import { useDisplayLocale } from '../ui/use-display-locale';
 import { formatExpenseDate } from './format-date';
 import { useExpenses, type ExpenseView } from './use-expenses';
 import { useTrashActions } from './trash-provider';
@@ -23,7 +23,7 @@ import { useTrashActions } from './trash-provider';
 export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useThemeColors();
-  const locale = useLocales()[0].languageTag;
+  const locale = useDisplayLocale();
   const expenses = useExpenses(trashed);
   const actions = useTrashActions();
   const database = useLocalDatabase();
