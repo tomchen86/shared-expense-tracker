@@ -98,7 +98,7 @@ WHEN 使用者存過名字後按「Add group」，the mobile app SHALL 開啟從
 
 ### Requirement: GROUPS-6.1 New Group 的內容
 
-The mobile app SHALL 讓 New Group 的標題是「New Group」，標題列有取消「Cancel」和確認「Create」（SHELL-47.2、SHELL-48.1），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位，以及說明「Members can be added after the group is created.」；名稱欄位的無障礙名稱是「Group name」，開啟時是空的、顯示「Group name」，並取得焦點。
+The mobile app SHALL 讓 New Group 的標題是「New Group」，標題列有取消「Cancel」和確認「Create」（SHELL-47.2、SHELL-48.2），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位，以及說明「Members can be added after the group is created.」；名稱欄位的無障礙名稱是「Group name」，開啟時是空的、顯示「Group name」，並取得焦點。
 
 #### Scenario: 開啟 New Group
 
@@ -372,7 +372,7 @@ IF 群組的畫面的網址裡的 ID 不是任何群組的群組 ID，THEN the m
 
 ### Requirement: GROUPS-22.3 群組的畫面的 Group actions 選單
 
-The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group actions」的選單（SHELL-47.2、SHELL-48.1）：未封存的群組依序是「Members」、「Rename Group」和「Categories」，封存的群組依序是「Members」和「Categories」。
+The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group actions」的選單（SHELL-47.2、SHELL-48.2）：未封存的群組依序是「Members」、「Rename Group」和「Categories」，封存的群組依序是「Members」和「Categories」。
 
 #### Scenario: iOS
 
@@ -382,7 +382,7 @@ The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group ac
 #### Scenario: Android
 
 - **WHEN** Android 上在 Brisbane 的畫面按「Group actions」
-- **THEN** 跳出標題「Group actions」的對話框，依序列出「Members」、「Rename Group」、「Categories」和「Cancel」
+- **THEN** 跳出標題「Group actions」的對話框，依序列出「Members」、「Rename Group」和「Categories」，沒有「Cancel」
 
 #### Scenario: 封存的群組
 
@@ -391,7 +391,7 @@ The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group ac
 
 ### Requirement: GROUPS-23.2 開啟和關閉 Members
 
-WHEN 使用者在 Group actions 選「Members」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Members，標題是「Members」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.1）；沒有在移除中，Members 的名稱欄位也沒有在儲存中時，按 Close、把 Members 往下滑或按 Android 的返回鍵，SHALL 關閉 Members，回到群組的畫面。
+WHEN 使用者在 Group actions 選「Members」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Members，標題是「Members」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.2）；沒有在移除中，Members 的名稱欄位也沒有在儲存中時，按 Close、把 Members 往下滑或按 Android 的返回鍵，SHALL 關閉 Members，回到群組的畫面。
 
 #### Scenario: 開啟
 
@@ -678,7 +678,7 @@ IF 新的成員，或按 Add Back 時加回來的前成員，存不進本機資�
 
 ### Requirement: GROUPS-36.1 開啟 Rename Member
 
-WHEN 使用者在成員的選單選「Rename」，the mobile app SHALL 開啟從畫面底部升起、蓋在 Members 上的 Rename Member，標題是「Rename Member」，標題列有取消「Cancel」和確認「Save」（SHELL-47.2、SHELL-48.1），內容只有名稱欄位：名稱欄位的無障礙名稱是「Member name」，開啟時是這位成員現在的名稱，並取得焦點，清空時顯示「Enter member name」。
+WHEN 使用者在成員的選單選「Rename」，the mobile app SHALL 開啟從畫面底部升起、蓋在 Members 上的 Rename Member，標題是「Rename Member」，標題列有取消「Cancel」和確認「Save」（SHELL-47.2、SHELL-48.2），內容只有名稱欄位：名稱欄位的無障礙名稱是「Member name」，開啟時是這位成員現在的名稱，並取得焦點，清空時顯示「Enter member name」。
 
 #### Scenario: 開啟
 
@@ -769,7 +769,7 @@ IF 成員的新名稱存不進本機資料，THEN the mobile app SHALL 跳出標
 
 ### Requirement: GROUPS-40.3 長按標題或在 Group actions 選 Rename Group 時開啟 Rename Group
 
-WHEN 使用者在未封存群組的畫面長按大標題（GROUPS-100.1），或在 Group actions 選「Rename Group」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Rename Group，標題是「Rename Group」，標題列有取消「Cancel」和確認「Save」（SHELL-47.2、SHELL-48.1），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位；名稱欄位的無障礙名稱是「Group name」，開啟時是群組現在的名稱，並取得焦點，清空時顯示「Group name」；封存的群組長按大標題沒有作用。
+WHEN 使用者在未封存群組的畫面長按大標題（GROUPS-100.1），或在 Group actions 選「Rename Group」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Rename Group，標題是「Rename Group」，標題列有取消「Cancel」和確認「Save」（SHELL-47.2、SHELL-48.2），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位；名稱欄位的無障礙名稱是「Group name」，開啟時是群組現在的名稱，並取得焦點，清空時顯示「Group name」；封存的群組長按大標題沒有作用。
 
 #### Scenario: 長按標題
 
@@ -1419,7 +1419,7 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 
 ### Requirement: GROUPS-70.1 開啟和關閉 Balances
 
-WHEN 使用者按群組的畫面上你的淨額（GROUPS-69.2），the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Balances，標題是「Balances」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.1）；按 Close、把 Balances 往下滑或按 Android 的返回鍵，SHALL 關閉 Balances，回到群組的畫面。
+WHEN 使用者按群組的畫面上你的淨額（GROUPS-69.2），the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Balances，標題是「Balances」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.2）；按 Close、把 Balances 往下滑或按 Android 的返回鍵，SHALL 關閉 Balances，回到群組的畫面。
 
 #### Scenario: 開啟
 

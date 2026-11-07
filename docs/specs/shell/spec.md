@@ -726,9 +726,9 @@ WHERE iOS，the mobile app SHALL 把畫面給的標題列動作放進原生標�
 - **WHEN** 打開支出的明細
 - **THEN** 標題列的「Edit」是文字按鈕，沒有圖示
 
-### Requirement: SHELL-48.1 Android 的標題列動作
+### Requirement: SHELL-48.2 Android 的標題列動作
 
-WHERE Android，the mobile app SHALL 把畫面給的標題列動作顯示成至少 48×48 dp 的 Material Symbols 圖示按鈕，無障礙名稱是動作的名稱：取消是左邊的 `close`，確認是右邊強調色的 `check`，其他動作收進最右邊、名稱是選單名稱的 `more_vert`，按下後跳出標題是選單名稱的對話框，依序列出這些動作和「Cancel」。
+WHERE Android，the mobile app SHALL 把畫面給的標題列動作顯示成至少 48×48 dp 的 Material Symbols 圖示按鈕，無障礙名稱是動作的名稱：取消是左邊的 `close`，確認是右邊強調色的 `check`，其他動作最多三個，收進最右邊、名稱是選單名稱的 `more_vert`，按下後跳出標題是選單名稱的對話框，依序列出這些動作，不到三個時另外有「Cancel」；按對話框外面或返回鍵時對話框關掉，沒有執行任何動作。
 
 #### Scenario: 取消和確認
 
@@ -740,6 +740,11 @@ WHERE Android，the mobile app SHALL 把畫面給的標題列動作顯示成至�
 - **WHEN** 畫面給名稱是「Group actions」的選單，裡面依序是「Members」和「Delete」，然後按名稱「Group actions」的 `more_vert`
 - **THEN** 跳出標題「Group actions」的對話框，依序列出「Members」和「Delete」，另外有「Cancel」
 
+#### Scenario: 三個動作
+
+- **WHEN** 畫面給名稱是「Group actions」的選單，裡面依序是「Members」、「Rename Group」和「Categories」，然後按名稱「Group actions」的 `more_vert`
+- **THEN** 跳出標題「Group actions」的對話框，依序列出這三個動作，沒有「Cancel」
+
 #### Scenario: 確認和選單
 
 - **WHEN** 畫面同時給確認「Save」和名稱是「Expense actions」的選單
@@ -748,6 +753,11 @@ WHERE Android，the mobile app SHALL 把畫面給的標題列動作顯示成至�
 #### Scenario: 按 Cancel
 
 - **WHEN** 在對話框按「Cancel」
+- **THEN** 對話框關掉，沒有執行任何動作
+
+#### Scenario: 按對話框外面
+
+- **WHEN** 跳出有三個動作的對話框之後，按對話框外面或返回鍵
 - **THEN** 對話框關掉，沒有執行任何動作
 
 ### Requirement: SHELL-49.1 停用的標題列動作

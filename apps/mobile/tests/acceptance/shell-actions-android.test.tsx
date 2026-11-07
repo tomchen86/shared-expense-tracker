@@ -131,6 +131,20 @@ const groupActions = (
   ],
 });
 
+// The cast lets this compile before the menu's props type takes a third action.
+const threeActions = (
+  members: { onPress?: () => void } = {},
+  rename: { disabled?: boolean; onPress?: () => void } = {},
+) =>
+  ({
+    label: 'Group actions',
+    actions: [
+      { label: 'Members', onPress: jest.fn(), ...members },
+      { label: 'Rename Group', onPress: jest.fn(), ...rename },
+      { label: 'Categories', onPress: jest.fn() },
+    ],
+  }) as unknown as HeaderActionsProps['menu'];
+
 test('[SHELL-41.1] floats the + button at the bottom center as a 60×60 circle with the name the screen gives', async () => {
   await showAddButton(IN_A_TAB, { label: 'Add group', onPress: jest.fn() });
 
@@ -248,7 +262,7 @@ test('[SHELL-34.1] colors the + button and the header icons with colors that fol
   expect([...light.uncolored, ...dark.uncolored]).toEqual([]);
 });
 
-test('[SHELL-48.1] shows Cancel as close on the left and the confirm action as check on the right', async () => {
+test('[SHELL-48.2] shows Cancel as close on the left and the confirm action as check on the right', async () => {
   await showHeaderActions({
     cancel: { label: 'Cancel', onPress: jest.fn() },
     confirm: { label: 'Add', onPress: jest.fn() },
@@ -258,7 +272,7 @@ test('[SHELL-48.1] shows Cancel as close on the left and the confirm action as c
   await expectIcons({ Cancel: 'close', Add: 'check' });
 });
 
-test('[SHELL-48.1] draws the confirm action in the accent color', async () => {
+test('[SHELL-48.2] draws the confirm action in the accent color', async () => {
   // Before the app starts: a hook's render becomes what `screen` queries.
   const { accent } = (await renderHook(() => useThemeColors())).result.current;
   await showHeaderActions({
@@ -273,7 +287,7 @@ test('[SHELL-48.1] draws the confirm action in the accent color', async () => {
   );
 });
 
-test('[SHELL-48.1] gives each header button a touch area of at least 48×48 dp', async () => {
+test('[SHELL-48.2] gives each header button a touch area of at least 48×48 dp', async () => {
   await showHeaderActions({
     cancel: { label: 'Cancel', onPress: jest.fn() },
     confirm: { label: 'Add', onPress: jest.fn() },
@@ -290,7 +304,7 @@ test('[SHELL-48.1] gives each header button a touch area of at least 48×48 dp',
   }
 });
 
-test('[SHELL-48.1] opens a dialog named after the menu that lists its actions in order and Cancel', async () => {
+test('[SHELL-48.2] opens a dialog named after the menu that lists its actions in order and Cancel', async () => {
   await showHeaderActions({ menu: groupActions() });
 
   expect(headerButtons()).toEqual({ left: [], right: ['Group actions'] });
@@ -304,7 +318,7 @@ test('[SHELL-48.1] opens a dialog named after the menu that lists its actions in
   });
 });
 
-test('[SHELL-48.1] puts the menu at the far right, after the confirm action', async () => {
+test('[SHELL-48.2] puts the menu at the far right, after the confirm action', async () => {
   await showHeaderActions({
     confirm: { label: 'Save', onPress: jest.fn() },
     menu: {
@@ -319,7 +333,7 @@ test('[SHELL-48.1] puts the menu at the far right, after the confirm action', as
   });
 });
 
-test('[SHELL-48.1] runs no action when Cancel is pressed in the dialog', async () => {
+test('[SHELL-48.2] runs no action when Cancel is pressed in the dialog', async () => {
   const members = jest.fn();
   const remove = jest.fn();
   await showHeaderActions({
@@ -331,6 +345,45 @@ test('[SHELL-48.1] runs no action when Cancel is pressed in the dialog', async (
 
   expect(members).not.toHaveBeenCalled();
   expect(remove).not.toHaveBeenCalled();
+});
+
+test('[SHELL-48.2] lists three actions in the dialog with no Cancel, since an Android dialog holds three buttons', async () => {
+  await showHeaderActions({ menu: threeActions() });
+
+  await fireEvent.press(headerButton('Group actions'));
+
+  expect(lastDialog()).toMatchObject({
+    title: 'Group actions',
+    actions: ['Members', 'Rename Group', 'Categories'],
+    cancels: 0,
+    cancelable: true,
+  });
+});
+
+test('[SHELL-48.2] adds Cancel when a disabled action leaves two in the dialog', async () => {
+  await showHeaderActions({ menu: threeActions({}, { disabled: true }) });
+
+  await fireEvent.press(headerButton('Group actions'));
+
+  expect(lastDialog()).toMatchObject({
+    actions: ['Members', 'Categories'],
+    cancels: 1,
+  });
+});
+
+test('[SHELL-48.2] runs no action when a press outside closes the dialog', async () => {
+  const members = jest.fn();
+  const rename = jest.fn();
+  await showHeaderActions({
+    menu: threeActions({ onPress: members }, { onPress: rename }),
+  });
+
+  await fireEvent.press(headerButton('Group actions'));
+  lastDialog().dismiss();
+
+  expect(lastDialog().cancelable).toBe(true);
+  expect(members).not.toHaveBeenCalled();
+  expect(rename).not.toHaveBeenCalled();
 });
 
 test('[SHELL-49.1] keeps a disabled confirm action on screen at 38% opacity and ignores it', async () => {

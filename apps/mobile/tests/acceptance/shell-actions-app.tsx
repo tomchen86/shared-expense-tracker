@@ -295,9 +295,14 @@ export const iconNames = (root: HostView, platform: Platform) =>
 type Menu = NonNullable<HeaderActionsProps['menu']>;
 type Expect<T extends true> = T;
 
-/** A menu holds at most two actions, so its props type refuses a third. */
-export type MenuRefusesAThirdAction = Expect<
-  [HeaderAction, HeaderAction, HeaderAction] extends Menu['actions']
+/** A menu holds at most three actions, so its props type refuses a fourth. */
+export type MenuRefusesAFourthAction = Expect<
+  [
+    HeaderAction,
+    HeaderAction,
+    HeaderAction,
+    HeaderAction,
+  ] extends Menu['actions']
     ? false
     : true
 >;

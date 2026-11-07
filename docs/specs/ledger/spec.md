@@ -211,7 +211,7 @@ The mobile app SHALL 以網址 `/expenses/new` 打開 New Expense，以 `/expens
 
 ### Requirement: LEDGER-13.2 支出表單的內容
 
-The mobile app SHALL 讓支出表單的標題列有取消「Cancel」和確認，確認在 New Expense 是「Add」、在 Edit Expense 是「Save」（SHELL-47.2、SHELL-48.1）；表單上依序是名稱是「Expense title」的標題欄位、表單幣別的代碼和它右邊名稱是「Amount in <表單幣別>」並用數字和小數點鍵盤的金額欄位、名稱是「Category, <分類名稱>」的分類按鈕、名稱是「Date」的日期欄位，以及名稱是「Expense note」的備註欄位；標題輸入後是粗體；打開表單時沒有欄位取得焦點，要打字時才有鍵盤。
+The mobile app SHALL 讓支出表單的標題列有取消「Cancel」和確認，確認在 New Expense 是「Add」、在 Edit Expense 是「Save」（SHELL-47.2、SHELL-48.2）；表單上依序是名稱是「Expense title」的標題欄位、表單幣別的代碼和它右邊名稱是「Amount in <表單幣別>」並用數字和小數點鍵盤的金額欄位、名稱是「Category, <分類名稱>」的分類按鈕、名稱是「Date」的日期欄位，以及名稱是「Expense note」的備註欄位；標題輸入後是粗體；打開表單時沒有欄位取得焦點，要打字時才有鍵盤。
 
 #### Scenario: New Expense
 
@@ -1743,7 +1743,7 @@ WHEN 使用者按個人支出或未封存群組的支出的卡片左滑露出的
 
 ### Requirement: LEDGER-72.2 明細的 Expense actions 選單
 
-The mobile app SHALL 在個人支出和群組支出的明細的標題列、「Edit」的右邊放一個名稱是「Expense actions」的選單（SHELL-47.2、SHELL-48.1），裡面只有破壞性的「Delete」（SHELL-53.1）；選「Delete」時，SHALL 把這筆支出移到垃圾桶（LEDGER-71.3），存好後返回推入明細的支出清單或群組的畫面，存好之前再選一次也只返回一次。
+The mobile app SHALL 在個人支出和群組支出的明細的標題列、「Edit」的右邊放一個名稱是「Expense actions」的選單（SHELL-47.2、SHELL-48.2），裡面只有破壞性的「Delete」（SHELL-53.1）；選「Delete」時，SHALL 把這筆支出移到垃圾桶（LEDGER-71.3），存好後返回推入明細的支出清單或群組的畫面，存好之前再選一次也只返回一次。
 
 #### Scenario: iOS
 
@@ -1962,7 +1962,7 @@ The mobile app SHALL 在 Trash 依移到垃圾桶的先後，最後移入的在�
 
 ### Requirement: LEDGER-78.3 點 Trash 的卡片推入唯讀明細
 
-WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推入這筆支出的唯讀明細，網址是 `/settings/trash/<支出的 ID>`，標題是「Expense」，最上面是「This expense is in the Trash.」，下面是名稱為「Restore」的按鈕，再下面是和明細一樣的支出的內容：個人支出照 LEDGER-37.3，群組支出照 LEDGER-66.3，群組已封存時「Group」後面還有 LEDGER-67.2 的「Status」，但沒有它的「Shared history」那段說明；標題列沒有「Edit」，只有名稱是「Expense actions」的選單（SHELL-47.2、SHELL-48.1），裡面只有破壞性的「Delete Permanently」（SHELL-53.1）。連點兩次也只推入一個唯讀明細，返回時回到 Trash；從推入到讀完支出，都不顯示「Expense not found.」。唯讀明細跟著存著的支出：網址裡的 ID 不是垃圾桶裡的支出，或打開之後那一筆因為別處的操作（例如 Undo 提示的 Undo）離開了垃圾桶時，SHALL 只顯示「Expense not found.」，標題列沒有選單。
+WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推入這筆支出的唯讀明細，網址是 `/settings/trash/<支出的 ID>`，標題是「Expense」，最上面是「This expense is in the Trash.」，下面是名稱為「Restore」的按鈕，再下面是和明細一樣的支出的內容：個人支出照 LEDGER-37.3，群組支出照 LEDGER-66.3，群組已封存時「Group」後面還有 LEDGER-67.2 的「Status」，但沒有它的「Shared history」那段說明；標題列沒有「Edit」，只有名稱是「Expense actions」的選單（SHELL-47.2、SHELL-48.2），裡面只有破壞性的「Delete Permanently」（SHELL-53.1）。連點兩次也只推入一個唯讀明細，返回時回到 Trash；從推入到讀完支出，都不顯示「Expense not found.」。唯讀明細跟著存著的支出：網址裡的 ID 不是垃圾桶裡的支出，或打開之後那一筆因為別處的操作（例如 Undo 提示的 Undo）離開了垃圾桶時，SHALL 只顯示「Expense not found.」，標題列沒有選單。
 
 #### Scenario: 點卡片
 

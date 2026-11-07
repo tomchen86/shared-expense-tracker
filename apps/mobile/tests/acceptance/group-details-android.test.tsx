@@ -143,7 +143,7 @@ test('[GROUPS-21.1] shows no Group actions for an ID that is no group on Android
   expect(headerButtons('Group Details').right).toEqual([]);
 });
 
-test('[GROUPS-22.3] lists Members, Rename Group, Categories and Cancel in the Group actions dialog on Android', async () => {
+test('[GROUPS-22.3] lists Members, Rename Group and Categories in the Group actions dialog on Android', async () => {
   await startWithName();
   await createGroup('Brisbane');
   await openGroup('Brisbane');
@@ -156,12 +156,7 @@ test('[GROUPS-22.3] lists Members, Rename Group, Categories and Cancel in the Gr
   await settle();
 
   expect(alertsShown()).toEqual([['Group actions', undefined]]);
-  expect(lastAlertButtons()).toEqual([
-    'Members',
-    'Rename Group',
-    'Categories',
-    'Cancel',
-  ]);
+  expect(lastAlertButtons()).toEqual(['Members', 'Rename Group', 'Categories']);
 });
 
 test('[GROUPS-23.2] opens Members rising from the bottom with only Close on Android', async () => {
