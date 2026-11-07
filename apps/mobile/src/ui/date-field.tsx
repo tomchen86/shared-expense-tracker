@@ -8,6 +8,8 @@ export interface DateFieldProps {
   disabled?: boolean;
   /** Receives the date chosen in the picker, as YYYY-MM-DD. */
   onChange: (date: string) => void;
+  /** Called on iOS when a press opens the picker's calendar. */
+  onOpen?: () => void;
 }
 
 export { DateField } from './date-field.android';

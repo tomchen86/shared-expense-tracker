@@ -14,7 +14,6 @@ import {
 import type { HeaderAction } from './header-actions';
 import type { SheetProps } from './sheet';
 import { useThemeColors } from './theme';
-import { nativeConfirmTint } from './native-confirm-tint.ios';
 
 /** A local native sheet keeps its parent's route and scroll view mounted. */
 export function Sheet({
@@ -61,7 +60,6 @@ export function Sheet({
             disabled: !!action.disabled,
             onPress: action.onPress,
             variant,
-            tintColor: variant === 'prominent' ? nativeConfirmTint : undefined,
           },
         ]
       : [];
