@@ -8,6 +8,8 @@
 # The e2e workflow splits the first of these across runners (ADR-0015):
 #
 #   bash scripts/e2e-ios.sh --build  only build the Release app
+#   bash scripts/e2e-ios.sh --repack put this checkout's JavaScript into the Release app built
+#                                    earlier, as Xcode's bundle phase would
 #   bash scripts/e2e-ios.sh --app <path> --shard <i>/<n>
 #                                    run every n-th flow from the i-th on a new simulator with
 #                                    that app, without the trace, which needs every shard
@@ -18,12 +20,14 @@ cd "$(dirname "$0")/.."
 export MAESTRO_CLI_NO_ANALYTICS=1 MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 # CocoaPods fails without a UTF-8 locale
 app=SharedExpenseTracker
+products=$PWD/apps/mobile/ios/build/Build/Products/Release-iphonesimulator
 rm -rf reports/e2e && mkdir -p reports/e2e/junit
 
-udid= built= shard= build_only=
+udid= built= shard= build_only= repack=
 while [ $# -gt 0 ]; do
   case $1 in
     --build) build_only=1 ;;
+    --repack) repack=1 ;;
     --app) built=$2; shift ;;
     --shard) shard=$2; shift ;;
     *) udid=$1 ;;
@@ -31,12 +35,26 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+# The two steps of Xcode's bundle phase in a Release build (react-native-xcode.sh), with the
+# same arguments and paths, so main.jsbundle comes out byte for byte as a new build's would.
+# @expo/repack-app does the same job, but compiles without -O.
+if [ -n "$repack" ]; then
+  cd apps/mobile
+  entry=$(node -e "require('expo/scripts/resolveAppEntry')" "$PWD" ios absolute | tail -n 1)
+  hermesc=$(node --print "require('path').join(require('path').dirname(require.resolve('hermes-compiler/package.json', \
+    {paths: [require('path').dirname(require.resolve('react-native/package.json'))]})), 'hermesc', 'osx-bin', 'hermesc')")
+  npx expo export:embed --entry-file "$entry" --platform ios --dev false --reset-cache --minify false \
+    --bundle-output "$products/main.jsbundle" --assets-dest "$products/$app.app"
+  "$hermesc" -emit-binary -max-diagnostic-width=80 -O -out "$products/$app.app/main.jsbundle" "$products/main.jsbundle"
+  exit 0
+fi
+
 if [ -z "$udid" ] && [ -z "$built" ]; then
   (cd apps/mobile && npx expo prebuild --platform ios)
   xcodebuild -quiet -workspace "apps/mobile/ios/$app.xcworkspace" -scheme "$app" \
     -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
     -derivedDataPath apps/mobile/ios/build CODE_SIGNING_ALLOWED=NO
-  built=apps/mobile/ios/build/Build/Products/Release-iphonesimulator/$app.app
+  built=$products/$app.app
 fi
 if [ -n "$build_only" ]; then exit 0; fi
 

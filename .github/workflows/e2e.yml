@@ -63,19 +63,22 @@ jobs:
           key: ios-release-${{ steps.xcode.outputs.build }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json', 'patches/**', 'apps/mobile/package.json', 'apps/mobile/app.json', 'apps/mobile/assets/**', 'scripts/e2e-ios.sh') }}
       - name: Build the app
         if: steps.cache.outputs.cache-hit != 'true'
-        run: bash scripts/e2e-ios.sh --build
+        run: |
+          bash scripts/e2e-ios.sh --build
+          cp "$BUILT/main.jsbundle" "$RUNNER_TEMP/built.jsbundle"
       - name: Save the native build
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: ${{ env.BUILT }}
           key: ${{ steps.cache.outputs.cache-primary-key }}
-      - name: Put this merge's JavaScript in the app
-        if: steps.cache.outputs.cache-hit == 'true'
-        working-directory: apps/mobile
-        run: |
-          pnpm exec repack-app --platform ios --source-app "../../$BUILT" --output repacked.app --js-bundle-only
-          rm -rf "../../$BUILT" && mv repacked.app "../../$BUILT"
+      # Right after a build this must change nothing, which the next step checks, so that a
+      # reused build keeps getting the JavaScript that Xcode would give it.
+      - name: Put this commit's JavaScript in the app
+        run: bash scripts/e2e-ios.sh --repack
+      - name: Check that the JavaScript is what Xcode built
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: cmp "$RUNNER_TEMP/built.jsbundle" "$BUILT/main.jsbundle"
       # An artifact keeps no executable bits, so the app travels as a tarball.
       - name: Pack the app
         run: tar -czf app.tgz -C "$(dirname "$BUILT")" "$APP"

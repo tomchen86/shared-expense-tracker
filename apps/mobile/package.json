@@ -36,7 +36,6 @@
     "react-native-worklets": "0.13.0"
   },
   "devDependencies": {
-    "@expo/repack-app": "0.10.4",
     "@react-native/jest-preset": "0.88.1",
     "@react-native/metro-config": "0.88.1",
     "@testing-library/react-native": "14.1.0",
