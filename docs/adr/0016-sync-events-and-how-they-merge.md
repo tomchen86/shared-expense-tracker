@@ -10,7 +10,7 @@ The cloud sharing proposal decides how phones merge a shared ledger: field by fi
 The proposal leaves open what an event looks like, how events are ordered, which columns sync, and what happens when phones run different app versions. The phone's tables, written for one phone, add these constraints:
 
 - `position` is unique across the app for `categories` and `groups`, and within a group for `group_members`; `trashOrder` is unique across the app. Each phone hands out the next number by itself.
-- A member's `position` also carries meaning: removing a member or adding them back moves them to the end. A category's is its creation order (CATEGORIES-7.4).
+- A member's `position` also carries meaning: removing a member or adding them back moves them to the end. A category's is its creation order (CATEGORIES-7.5).
 - Titles, notes, and group names have no length limit, while the proposal limits an event to 64 KB.
 
 Also considered:
@@ -33,7 +33,7 @@ Envelope and order:
 Time:
 
 - Every change carries a stamp: milliseconds, a counter, and the device ID, compared in that order, device IDs byte by byte. This is a hybrid logical clock. A write takes the larger of the phone's corrected time (ADR-0015) and its last stamp, raising the counter on a tie; applying an event raises the last stamp to the event's. So a change made after seeing another always has the later stamp. The last stamp is saved in the transaction of the write.
-- Before every upload attempt, a phone re-stamps its unsent events that are more than 5 minutes ahead of its corrected time, along with the local stamps and bases that name them, and lowers its last stamp to the highest one left. Nobody has seen those stamps: snapshots hold only uploaded changes, and an event whose earlier attempt got no answer may have reached the API, so it keeps its stamp.
+- A phone checks each unsent event's stamp once, the first time after writing it that the phone either applies what a request returned or sends the event. A sync downloads before it uploads, so for a change made offline the check runs against a clock the API has just accepted. If the stamp is more than 5 minutes ahead of the phone's corrected time, the phone replaces it with the next stamp after both its corrected time and the event's bases, along with the local stamps and bases that name it, and lowers its last stamp to the highest one left. No merge has compared the old stamp and no snapshot holds it, and the new one still comes after what the change replaced. After the check the stamp is final: a retry after no answer sends it unchanged, because the event may have reached the API. Only a request refused for its timestamp, which the API never stored, has its events checked again before the retry.
 - Every phone refuses an event stamped more than 10 minutes after its receive time. That is twice the window for signed requests (ADR-0015), so a phone that follows the rule above never trips it. The check depends only on the event and its envelope, so every phone reaches the same verdict, and no phone adopts a refused stamp: one wrong clock cannot drag the others forward or keep winning.
 
 Merging:
@@ -53,7 +53,7 @@ Merging:
 - Permanently deleting a record leaves a tombstone, its ID and stamp, which beats every change, earlier or later. Moving to and from the trash is an ordinary unit, so a later restore beats an earlier move to the trash. Tombstones last as long as the group, on every phone and in every snapshot: no deadline exists after which a returning phone could bring a record back.
 - `packages/domain` holds the merge as a pure function of the current state and an event: no clock, no randomness, no locale-dependent comparison. Applying events in any order, any number of times, gives one result.
 - The `sync` capability keeps units, stamps, tombstones, unsent events, cursors, and the last stamp in its own tables. The capability tables keep their shape and hold the merged result, written in the same transaction (ADR-0005). Personal data and groups never shared carry none of this.
-- A group's first Invite gives each of its records units and stamps in one transaction, in the order of their `position` columns. It writes no events: the first snapshot carries them.
+- A group's first Invite gives each of its records units and stamps in one transaction, in the order of their `position` columns, right after a request the API accepted, so the stamps follow a corrected time the API has just checked. It writes no events: the first snapshot carries them.
 
 Order on screen:
 
@@ -75,12 +75,12 @@ Rules:
 
 Versions:
 
-- Each event carries a format version inside its ciphertext, which also selects the rules that judge and merge it. Changing what a rule decides means a new version, and the old rule's code stays, so every phone judges an event by the rules it was written under.
+- Each event carries a format version inside its ciphertext, which also selects the rules that judge and merge it. Changing what a rule decides means a new version, and the old rule's code stays, so every phone judges an event by the rules it was written under. Rules that work only on the merged state, such as order on screen and the rules about other records above, are not versioned: each phone recomputes them, so changing one changes what an updated phone shows and no unit.
 - An app that meets a newer version stops applying that group's events there: its cursor stays, it asks the user to update, and it keeps recording and uploading. Its other groups are unaffected. After the update it carries on from its cursor. The server holds those events for up to 30 days; after that the phone gets a snapshot. So an old app never guesses at rules it does not know, and phones reach one result once they have all caught up.
 
 Snapshots:
 
-- A snapshot holds a group's merged state with every stamp, its tombstones, roster, and active invite, its format version, and the sequence number it covers. It is encrypted chunk by chunk (ADR-0015). A phone makes one only at a moment when it has no unsent events for that group, so a snapshot holds only uploaded changes.
+- A snapshot holds a group's merged state with every stamp, its tombstones, roster, and active invite, its format version, and the sequence number it covers. It is encrypted chunk by chunk (ADR-0015). A phone makes one only at a moment when it has no unsent events for that group, so every stamp in it is final.
 - The receiving phone merges it with the same function, so changes it has not uploaded survive, and continues from that number. When a snapshot beats the phone's own money change, the phone flags it: a snapshot has no history to tell whether the other side had seen that change, so a returning phone may get a flag it did not strictly need rather than miss one.
 - Approving a join records the new device's cursor at the snapshot's number, so the API keeps every event after it. The API refuses the approval if events after that number are already gone, and the approving phone makes a new snapshot.
 

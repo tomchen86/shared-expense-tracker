@@ -30,9 +30,9 @@ Name top-level directories only. File paths go stale.
 - On the phone, data lives in SQLite; zustand holds only screen state (ADR-0002).
 - The phone keeps all its data in one SQLite database; every capability's migrations run in one app-wide order and never change once a release tag contains them (ADR-0006).
 - Only `apps/mobile/src/storage/` imports `expo-sqlite`; tests run the same migrations and queries on SQLite in Node (ADR-0006).
-- Recording and changing data never needs the network; sync runs separately and never blocks a local save (ADR-0005).
+- Recording and changing data never needs the network, except changing which phones can open a shared ledger (ADR-0015); sync runs separately and never blocks a local save (ADR-0005).
 - The app contacts no server until the phone first creates or joins a shared ledger (ADR-0015).
-- Ledger content leaves the phone only end-to-end encrypted; the API never holds a key that opens it (ADR-0015).
+- Ledger content reaches the server only end-to-end encrypted; the API never holds a key that opens it (ADR-0015).
 - Every phone merges sync events with pure functions in `packages/domain` and reaches the same result, whatever order the events arrive in (ADR-0016).
 - Only `apps/mobile/src/ui/` knows which platform it runs on (ADR-0002).
 - Money is an integer in its currency's minor unit, paired with its currency code; each currency's decimal places come from a fixed table in `packages/domain`, never from the device (ADR-0004).
