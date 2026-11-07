@@ -157,6 +157,54 @@ function useInsightsInput(group: boolean, groupId: string | undefined) {
   return input;
 }
 
+/** One TOTAL SPENT, then for each currency its total, your share on a group's Insights, and the comparison. */
+function TotalCard({
+  currencies,
+  money,
+  comparisonOf,
+}: {
+  currencies: InsightCurrency[];
+  money: (amountMinor: number, currency: string) => string;
+  comparisonOf: (currency: InsightCurrency) => string | undefined;
+}) {
+  const colors = useThemeColors();
+  return (
+    <GroupedSection style={styles.card}>
+      <Text style={[styles.cardLabel, { color: colors.textMuted }]}>
+        TOTAL SPENT
+      </Text>
+      {currencies.map((currency, row) => {
+        const total = money(currency.totalMinor, currency.currency);
+        const yourShare =
+          currency.yourShareMinor === undefined
+            ? undefined
+            : money(currency.yourShareMinor, currency.currency);
+        const comparison = comparisonOf(currency);
+        return (
+          <View
+            key={currency.currency}
+            accessible
+            accessibilityLabel={`Total spent ${total}.${yourShare ? ` Your share ${yourShare}.` : ''}${comparison ? ` ${comparison}` : ''}`}
+            style={row > 0 && styles.nextTotal}
+          >
+            <Text style={[styles.total, { color: colors.text }]}>{total}</Text>
+            {yourShare && (
+              <Text style={[styles.yourShare, { color: colors.text }]}>
+                {`Your share: ${yourShare}`}
+              </Text>
+            )}
+            {comparison && (
+              <Text style={[styles.comparison, { color: colors.textMuted }]}>
+                {comparison}
+              </Text>
+            )}
+          </View>
+        );
+      })}
+    </GroupedSection>
+  );
+}
+
 /** The personal Insights, or with `group` the Insights of the `groupId` search param. */
 export function InsightsScreen({ group = false }: { group?: boolean }) {
   const { groupId } = useLocalSearchParams<{ groupId?: string }>();
@@ -335,48 +383,11 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
                 })}
             </View>
             <Animated.View style={swipe.pageStyle}>
-              <GroupedSection style={styles.card}>
-                <Text style={[styles.cardLabel, { color: colors.textMuted }]}>
-                  TOTAL SPENT
-                </Text>
-                {selected.currencies.map((currency, row) => {
-                  const total = money(currency.totalMinor, currency.currency);
-                  const yourShare =
-                    currency.yourShareMinor === undefined
-                      ? undefined
-                      : money(currency.yourShareMinor, currency.currency);
-                  const comparison = comparisonOf(currency);
-                  return (
-                    <View
-                      key={currency.currency}
-                      accessible
-                      accessibilityLabel={`Total spent ${total}.${yourShare ? ` Your share ${yourShare}.` : ''}${comparison ? ` ${comparison}` : ''}`}
-                      style={row > 0 && styles.nextTotal}
-                    >
-                      <Text style={[styles.total, { color: colors.text }]}>
-                        {total}
-                      </Text>
-                      {yourShare && (
-                        <Text
-                          style={[styles.yourShare, { color: colors.text }]}
-                        >
-                          {`Your share: ${yourShare}`}
-                        </Text>
-                      )}
-                      {comparison && (
-                        <Text
-                          style={[
-                            styles.comparison,
-                            { color: colors.textMuted },
-                          ]}
-                        >
-                          {comparison}
-                        </Text>
-                      )}
-                    </View>
-                  );
-                })}
-              </GroupedSection>
+              <TotalCard
+                currencies={selected.currencies}
+                money={money}
+                comparisonOf={comparisonOf}
+              />
               {selected.currencies.map((currency) => (
                 <View key={currency.currency} style={styles.currency}>
                   <Text

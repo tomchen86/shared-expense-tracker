@@ -109,32 +109,16 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
             />
           )}
           {group?.archived && (
-            <GroupedSection style={styles.banner}>
-              <Text style={{ color: colors.text, fontSize: 16 }}>
-                Archived group. Expenses and allocations are read-only.
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Restore Group"
-                accessibilityState={{ disabled: pending.has(id) }}
-                disabled={pending.has(id)}
-                onPress={() =>
-                  void save(id, false, () =>
-                    setGroup(
-                      (current) => current && { ...current, archived: false },
-                    ),
-                  )
-                }
-                style={({ pressed }) => [
-                  styles.restore,
-                  pressed && { backgroundColor: colors.pressedSurface },
-                ]}
-              >
-                <Text style={{ color: colors.accent, fontSize: 17 }}>
-                  Restore Group
-                </Text>
-              </Pressable>
-            </GroupedSection>
+            <ArchivedBanner
+              restoring={pending.has(id)}
+              onRestore={() =>
+                void save(id, false, () =>
+                  setGroup(
+                    (current) => current && { ...current, archived: false },
+                  ),
+                )
+              }
+            />
           )}
           {amounts.length > 0 && (
             <GroupSummary
@@ -195,6 +179,38 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
         />
       )}
     </View>
+  );
+}
+
+function ArchivedBanner({
+  restoring,
+  onRestore,
+}: {
+  restoring: boolean;
+  onRestore: () => void;
+}) {
+  const colors = useThemeColors();
+  return (
+    <GroupedSection style={styles.banner}>
+      <Text style={{ color: colors.text, fontSize: 16 }}>
+        Archived group. Expenses and allocations are read-only.
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Restore Group"
+        accessibilityState={{ disabled: restoring }}
+        disabled={restoring}
+        onPress={onRestore}
+        style={({ pressed }) => [
+          styles.restore,
+          pressed && { backgroundColor: colors.pressedSurface },
+        ]}
+      >
+        <Text style={{ color: colors.accent, fontSize: 17 }}>
+          Restore Group
+        </Text>
+      </Pressable>
+    </GroupedSection>
   );
 }
 
