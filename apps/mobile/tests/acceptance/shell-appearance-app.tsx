@@ -142,7 +142,8 @@ export const IOS_TEXT_SIZE = {
   largestAccessibility: 3.571,
 } as const;
 
-// Jest's React Native reports 2, which no phone setting gives.
+// Jest's React Native reports 2: on iOS a size between its two smallest accessibility sizes,
+// and Android's 200%. Both are already sizes at which group cards stack (GROUPS-104.1).
 const jestTextSize = Dimensions.get('window').fontScale;
 
 function reportTextSize(fontScale: number) {
@@ -158,7 +159,11 @@ function reportTextSize(fontScale: number) {
 export const setTextSize = (fontScale: number) =>
   act(async () => reportTextSize(fontScale));
 
-/** Puts back the text size Jest starts with, for the tests after. */
+/**
+ * Puts back the text size Jest starts with, for the tests after. It updates nothing on screen,
+ * so it needs no act: call it from a top-level afterEach, which runs after Testing Library's
+ * cleanup has unmounted the app. One inside a describe would run before that cleanup.
+ */
 export const resetTextSize = () => reportTextSize(jestTextSize);
 
 // The phone database

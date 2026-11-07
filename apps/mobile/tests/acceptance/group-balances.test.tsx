@@ -719,7 +719,7 @@ test("[GROUPS-72.3] counts the group's members on its card, but not former membe
   );
 });
 
-test("[GROUPS-104.1] puts the member count under the name at iOS's smallest accessibility text size", async () => {
+test("[GROUPS-104.1] puts the member count under the name at iOS's smallest and largest accessibility text sizes", async () => {
   await setTextSize(IOS_TEXT_SIZE.smallestAccessibility);
   await startWithGroups({ Brisbane: [] });
 
@@ -736,6 +736,13 @@ test("[GROUPS-104.1] puts the member count under the name at iOS's smallest acce
     inOneRow(shown.getByText('Brisbane'), shown.getByText('1 member')),
   ).toBe(false);
   expectOneFadingLine(shown.getByText('Brisbane'));
+
+  await setTextSize(IOS_TEXT_SIZE.largestAccessibility);
+
+  const larger = within(groupRootCard('Brisbane'));
+  expect(
+    inOneRow(larger.getByText('Brisbane'), larger.getByText('1 member')),
+  ).toBe(false);
 });
 
 test("[GROUPS-104.1] keeps the member count at the right of the name at iOS's largest text size outside the accessibility sizes", async () => {

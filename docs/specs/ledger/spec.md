@@ -2440,19 +2440,24 @@ WHERE iOS，the mobile app SHALL 讓打開清單的列顯示標籤、現在的�
 
 ### Requirement: LEDGER-105.1 (manual) iOS 上字級很大時，表單的 Date 列上下排
 
-WHERE iOS，WHILE 手機的字級是輔助使用字級，the mobile app SHALL 讓支出表單的 Date 列上下排：「Date」在上、日期在下，都靠左，兩者都完整顯示；按日期照常打開日曆，日曆開著時按日曆外面仍然只關閉日曆（LEDGER-103.1）。比這小的字級，「Date」和日期並排。
+WHERE iOS，WHILE 手機的字級是輔助使用字級，the mobile app SHALL 讓支出表單的 Date 列上下排：「Date」在上、日期在下，都靠左，兩者都完整顯示；按日期和關閉日曆見 LEDGER-106.1。比這小的字級，「Date」和日期並排。
 
 #### Scenario: 最大的輔助使用字級
 
 - **WHEN** iOS 上把字級設成最大的輔助使用字級，打開 New Expense
 - **THEN** 「Date」完整顯示在一行，沒有被拆成一字一行；日期在它的下一行，完整顯示，沒有超出畫面
 
-#### Scenario: 打開和關閉日曆
-
-- **WHEN** 同樣的字級，按日期，再按「Category, Food & Dining」那一列
-- **THEN** 第一下打開日曆；第二下只關閉日曆，分類清單沒有打開
-
 #### Scenario: 最大的一般字級
 
 - **WHEN** iOS 上把字級設成最大的非輔助使用字級，打開 New Expense
 - **THEN** 「Date」和日期在同一行
+
+### Requirement: LEDGER-106.1 (e2e) iOS 上字級很大時，按日期和關閉日曆照常
+
+WHERE iOS，WHILE 手機的字級是輔助使用字級，WHEN 使用者按支出表單的日期，the mobile app SHALL 打開日曆；日曆開著時按日曆外面，只關閉日曆，那一下不讓欄位取得焦點，也不打開清單（LEDGER-103.1）。iOS 的日期欄位裡，打開日曆的系統按鈕名稱是「Date Picker」，日曆裡有名稱是「Previous Month」的按鈕。
+
+#### Scenario: 打開和關閉日曆
+
+- **WHEN** iOS 上把字級設成最大的輔助使用字級，打開 New Expense，按「Date Picker」，再按「Expense title」那裡
+- **THEN** 第一下打開日曆；第二下只關閉日曆，標題欄位沒有取得焦點；再按一次同一個地方才取得焦點
+

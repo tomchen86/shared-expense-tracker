@@ -129,7 +129,7 @@ function countBesideName(group: string) {
   return inOneRow(card.getByText(group), card.getByText(/^\d+ members?$/));
 }
 
-test("[GROUPS-104.1] puts the member count under the name at Android's 150% font size, and back at its right at 130%", async () => {
+test("[GROUPS-104.1] puts the member count under the name at Android's 150% and 200% font sizes, and back at its right at 130%", async () => {
   await setTextSize(1.5);
   await startWithGroups({ Brisbane: [] });
 
@@ -143,6 +143,10 @@ test("[GROUPS-104.1] puts the member count under the name at Android's 150% font
   );
   expect(countBesideName('Brisbane')).toBe(false);
   expectOneFadingLine(within(groupRootCard('Brisbane')).getByText('Brisbane'));
+
+  await setTextSize(2);
+
+  expect(countBesideName('Brisbane')).toBe(false);
 
   await setTextSize(1.3);
 

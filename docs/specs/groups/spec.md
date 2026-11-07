@@ -1743,8 +1743,8 @@ WHILE 手機的字級是 iOS 的輔助使用字級，或 Android 的字型大小
 
 #### Scenario: iOS 的輔助使用字級
 
-- **WHEN** iOS 上把字級設成最小的輔助使用字級，建立「Brisbane」
-- **THEN** Brisbane 的卡片依序是「Brisbane」和「1 member」，「1 member」在「Brisbane」下一行；「Brisbane」只佔一行，放不下時尾端漸層消失
+- **WHEN** iOS 上把字級設成最小的輔助使用字級，建立「Brisbane」；再把字級設成最大的輔助使用字級
+- **THEN** 兩種字級時，Brisbane 的卡片都依序是「Brisbane」和「1 member」，「1 member」在「Brisbane」下一行；「Brisbane」只佔一行，放不下時尾端漸層消失
 
 #### Scenario: iOS 最大的一般字級
 
@@ -1753,5 +1753,5 @@ WHILE 手機的字級是 iOS 的輔助使用字級，或 Android 的字型大小
 
 #### Scenario: Android
 
-- **WHEN** Android 上把字型大小設成 150%，建立「Brisbane」；再把字型大小設成 130%
-- **THEN** 150% 時「1 member」在「Brisbane」下一行；130% 時回到「Brisbane」右邊
+- **WHEN** Android 上把字型大小設成 150%，建立「Brisbane」；再依序設成 200% 和 130%
+- **THEN** 150% 和 200% 時「1 member」在「Brisbane」下一行；130% 時回到「Brisbane」右邊
