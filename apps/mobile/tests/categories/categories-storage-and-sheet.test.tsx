@@ -273,7 +273,7 @@ test('updates the list directly after creating or editing a category without re-
 
   failListReads = true;
 
-  await fireEvent.press(screen.getByRole('button', { name: 'Add category' }));
+  await pressFormAction('Manage Categories', 'Add category');
   await fireEvent.changeText(screen.getByLabelText('Category name'), 'Gym');
   await act(async () => {
     await pressFormAction('New Category', 'Add');
@@ -376,7 +376,7 @@ test.each(['matching', 'different'])(
     expect(categoryReads).toBe(1);
     expect(groupReads).toBe(0);
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Add category' }));
+    await pressFormAction('Manage Categories', 'Add category');
     await fireEvent.changeText(screen.getByLabelText('Category name'), 'Pets');
     await act(async () => {
       await pressFormAction('New Category', 'Add');

@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[GROUPS-47.1] [GROUPS-48.1] [GROUPS-49.1] [GROUPS-51.1] [GROUPS-52.1] [GROUPS-53.1] [GROUPS-54.1] [GROUPS-55.1] [GROUPS-57.1] [GROUPS-60.1] Archives a group by swiping its card, keeps it archived after a restart, then restores it from its screen on the Settings tab'
+name: '[GROUPS-47.1] [GROUPS-48.1] [GROUPS-49.1] [GROUPS-51.1] [GROUPS-52.1] [GROUPS-53.2] [GROUPS-54.1] [GROUPS-55.2] [GROUPS-57.1] [GROUPS-60.1] Archives a group by swiping its card, keeps it archived after a restart, then restores it from its screen on the Settings tab'
 ---
 - launchApp:
     clearState: true

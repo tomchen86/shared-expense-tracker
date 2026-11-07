@@ -6,6 +6,7 @@ import { AddButton } from '../ui/add-button';
 import { SwipeScrollView } from '../ui/swipe-action';
 import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
+import { DatedCards } from './dated-cards';
 import { ExpenseCard } from './expense-card';
 import { ThisMonthButton } from './this-month-button';
 import { useTrashActions } from './trash-provider';
@@ -52,17 +53,21 @@ export function ExpensesScreen() {
                 in a group expense.
               </Text>
             )}
-            {expenses.map((expense) => (
-              <ExpenseCard
-                key={expense.id}
-                expense={expense}
-                amountMinor={expense.yourShare}
-                onPress={() => router.navigate(`/expenses/${expense.id}`)}
-                onDelete={
-                  expense.group?.archived ? undefined : () => void move(expense)
-                }
-              />
-            ))}
+            <DatedCards
+              expenses={expenses}
+              card={(expense) => (
+                <ExpenseCard
+                  expense={expense}
+                  amountMinor={expense.yourShare}
+                  onPress={() => router.navigate(`/expenses/${expense.id}`)}
+                  onDelete={
+                    expense.group?.archived
+                      ? undefined
+                      : () => void move(expense)
+                  }
+                />
+              )}
+            />
           </>
         )}
       </SwipeScrollView>

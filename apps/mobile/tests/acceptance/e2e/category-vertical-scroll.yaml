@@ -40,15 +40,6 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
       - inputText: Train
       - tapOn: Category, Food & Dining
       - waitForAnimationToEnd
-      # Start inside the medium picker; a screen-center scroll starts above it.
-      - swipe:
-          from:
-            text: Shopping
-          direction: UP
-      - waitForAnimationToEnd
-      - scrollUntilVisible:
-          element: Travel
-          direction: DOWN
       - tapOn: Travel
       - waitForAnimationToEnd
       - assertVisible: Category, Travel
@@ -61,7 +52,7 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
                 direction: DOWN
                 centerElement: true
             - tapOn: Paid by, not selected
-            - assertVisible: Who Paid\?
+            - waitForAnimationToEnd
             - tapOn: Taylor \(You\)
             - waitForAnimationToEnd
             - scrollUntilVisible:
@@ -69,9 +60,11 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
                 direction: DOWN
                 centerElement: true
             - tapOn: Split between, Choose people
-            - assertVisible: Split Between
+            - waitForAnimationToEnd
             - tapOn: Taylor \(You\)
-            - tapOn: Done
+            - waitForAnimationToEnd
+            - tapOn:
+                point: 3%,50%
             - waitForAnimationToEnd
       - tapOn:
           text: Add
@@ -88,19 +81,9 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
           when:
             true: ${output.scope === 'group'}
           commands:
-            - tapOn: Add expense
+            - tapOn: Group actions
             - waitForAnimationToEnd
-            - tapOn: Category, Food & Dining
-            - waitForAnimationToEnd
-            - swipe:
-                from:
-                  text: Shopping
-                direction: UP
-            - waitForAnimationToEnd
-            - scrollUntilVisible:
-                element: \+ Add New Category
-                direction: DOWN
-            - tapOn: \+ Add New Category
+            - tapOn: Categories
             - waitForAnimationToEnd
             - assertVisible: Group Categories
       - waitForAnimationToEnd
@@ -196,6 +179,19 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
           direction: DOWN
           duration: 200
       - waitForAnimationToEnd
+      # In the full-height group sheet Travel ends up near the bottom of the screen,
+      # with too little room to drag past one row, so a row higher up finishes the job.
+      - runFlow:
+          when:
+            true: ${output.scope === 'group'}
+          commands:
+            - assertVisible: Restore Travel
+            - swipe:
+                from:
+                  text: Scroll 8
+                direction: DOWN
+                duration: 200
+            - waitForAnimationToEnd
       - assertVisible:
           text: ${output.aboveHeader}
           below: Add category

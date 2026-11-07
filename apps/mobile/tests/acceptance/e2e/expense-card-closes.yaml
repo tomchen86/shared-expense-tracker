@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-88.1] [LEDGER-89.1] Closes an open card on a drag to the right, opens one on a slanted drag to the left, both without moving the list, and closes one when the list scrolls'
+name: '[LEDGER-88.1] [LEDGER-89.2] Closes an open card on a drag to the right, opens one on a slanted drag to the left, both without moving the list, and closes one when the list scrolls'
 tags:
   - android
 ---
@@ -39,10 +39,11 @@ tags:
     timeout: 30000
 - waitForAnimationToEnd
 # Every swipe here starts from this point, which seeing Delete proves is on a card. Left and up,
-# far enough that a list moving with the finger would bring another card under the point.
+# far enough that a list moving with the finger would bring another card under the point, and
+# short of SHELL-69.1's 60% of the card, which would run the action.
 - swipe:
     start: 85%, 50%
-    end: 15%, 30%
+    end: 35%, 33%
     duration: 300
 - waitForAnimationToEnd
 - copyTextFrom:
@@ -145,11 +146,12 @@ tags:
     text: ${output.open}
     enabled: true
 # More up than right is scrolling, which moves the list. These upward drags go far enough that it
-# moves a whole card even if it starts a moment late.
+# moves a whole card even if it starts a moment late, and slowly: on a busy Android emulator a
+# 250 ms drag of 288 dp has moved the list as little as 64 dp, and a 1000 ms one at least 232.
 - swipe:
     start: 28%, 55%
     end: 58%, 10%
-    duration: 250
+    duration: 1000
 - waitForAnimationToEnd
 - assertNotVisible:
     text: Delete .* expense
@@ -195,7 +197,7 @@ tags:
 - swipe:
     start: 28%, 55%
     end: 28%, 10%
-    duration: 250
+    duration: 1000
 - waitForAnimationToEnd
 - assertNotVisible:
     text: Delete .* expense
@@ -240,7 +242,7 @@ tags:
 - swipe:
     start: 30%, 75%
     end: 30%, 30%
-    duration: 250
+    duration: 1000
 - waitForAnimationToEnd
 - assertNotVisible:
     text: Delete .* expense
@@ -277,7 +279,7 @@ tags:
 - swipe:
     start: 70%, 55%
     end: 40%, 10%
-    duration: 250
+    duration: 1000
 - waitForAnimationToEnd
 - assertNotVisible:
     text: Delete .* expense

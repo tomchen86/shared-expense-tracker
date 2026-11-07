@@ -2,7 +2,7 @@
 
 ## Purpose
 
-群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡的支出（GROUPS-61.2），支出的卡片、明細和垃圾桶見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上的 Group Total 和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
+群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡的支出（GROUPS-61.3），支出的卡片、明細和垃圾桶見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上的 Group Total 和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
 
 ## Requirements
 
@@ -98,7 +98,7 @@ WHEN 使用者存過名字後按「Add group」，the mobile app SHALL 開啟從
 
 ### Requirement: GROUPS-6.1 New Group 的內容
 
-The mobile app SHALL 讓 New Group 的標題是「New Group」，標題列有取消「Cancel」和確認「Create」（SHELL-47.1、SHELL-48.1），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位，以及說明「Members can be added after the group is created.」；名稱欄位的無障礙名稱是「Group name」，開啟時是空的、顯示「Group name」，並取得焦點。
+The mobile app SHALL 讓 New Group 的標題是「New Group」，標題列有取消「Cancel」和確認「Create」（SHELL-47.2、SHELL-48.2），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位，以及說明「Members can be added after the group is created.」；名稱欄位的無障礙名稱是「Group name」，開啟時是空的、顯示「Group name」，並取得焦點。
 
 #### Scenario: 開啟 New Group
 
@@ -284,7 +284,7 @@ The mobile app SHALL 以網址 `/groups/new` 代表開在 Groups 根畫面上的
 
 ### Requirement: GROUPS-15.1 點卡片開啟群組的畫面
 
-WHEN 使用者點群組的卡片，the mobile app SHALL 在 Groups 分頁推入這個群組的畫面，標題是群組名稱，分頁列仍選中 Groups。
+WHEN 使用者點群組的卡片，the mobile app SHALL 在 Groups 分頁推入這個群組的畫面，大標題是群組名稱（GROUPS-100.1），分頁列仍選中 Groups。
 
 #### Scenario: 點卡片
 
@@ -324,14 +324,14 @@ The mobile app SHALL 讓群組名稱不限長度，也可以和其他群組的�
 - **WHEN** 建立「Trip」之後再建立一個「Trip」
 - **THEN** Groups 根畫面有兩張「Trip」的卡片
 
-### Requirement: GROUPS-18.1 卡片上的群組名稱只佔一行
+### Requirement: GROUPS-18.2 卡片上的群組名稱只佔一行
 
-The mobile app SHALL 在群組的卡片上只用一行顯示群組名稱，放不下時在結尾以「…」截斷；卡片的無障礙名稱仍是完整的「Open <群組名稱>」。
+The mobile app SHALL 在群組的卡片上只用一行顯示群組名稱，放不下時尾端漸層消失（SHELL-68.1）；卡片的無障礙名稱仍是完整的「Open <群組名稱>」。
 
 #### Scenario: 很長的名稱
 
 - **WHEN** 建立名稱是 300 個「a」的群組
-- **THEN** 卡片上的名稱只佔一行，放不下的部分在結尾截斷；卡片的無障礙名稱是「Open 」加上完整的 300 個「a」
+- **THEN** 卡片上的名稱只佔一行，放不下的部分不顯示，也沒有「…」；卡片的無障礙名稱是「Open 」加上完整的 300 個「a」
 
 ### Requirement: GROUPS-19.1 名稱欄位的鍵盤
 
@@ -370,28 +370,28 @@ IF 群組的畫面的網址裡的 ID 不是任何群組的群組 ID，THEN the m
 - **WHEN** 點「Open Brisbane」
 - **THEN** 推入的畫面一開始和讀完 Brisbane 之後，都沒有顯示「Group not found.」
 
-### Requirement: GROUPS-22.2 群組的畫面的 Group actions 選單
+### Requirement: GROUPS-22.3 群組的畫面的 Group actions 選單
 
-The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group actions」的選單（SHELL-47.1、SHELL-48.1）：未封存的群組依序是「Members」和「Rename Group」，封存的群組只有「Members」。
+The mobile app SHALL 在群組的畫面的標題列放一個名稱是「Group actions」的選單（SHELL-47.2、SHELL-48.2）：未封存的群組依序是「Members」、「Rename Group」和「Categories」，封存的群組依序是「Members」和「Categories」。
 
 #### Scenario: iOS
 
 - **WHEN** iOS 上開啟 Brisbane 的畫面
-- **THEN** 標題列右邊是圖示 `ellipsis.circle`、名稱「Group actions」的選單，依序列出「Members」和「Rename Group」
+- **THEN** 標題列右邊是圖示 `ellipsis.circle`、名稱「Group actions」的選單，依序列出「Members」、「Rename Group」和「Categories」
 
 #### Scenario: Android
 
 - **WHEN** Android 上在 Brisbane 的畫面按「Group actions」
-- **THEN** 跳出標題「Group actions」的對話框，依序列出「Members」、「Rename Group」和「Cancel」
+- **THEN** 跳出標題「Group actions」的對話框，按鈕是「Members」、「Rename Group」和「Categories」，沒有「Cancel」
 
 #### Scenario: 封存的群組
 
 - **WHEN** 封存 Brisbane 之後，在 iOS 上開啟它的畫面，或在 Android 上按它的「Group actions」
-- **THEN** iOS 的選單只列出「Members」；Android 的對話框依序列出「Members」和「Cancel」
+- **THEN** iOS 的選單依序列出「Members」和「Categories」；Android 的對話框按鈕是「Members」、「Categories」和「Cancel」
 
 ### Requirement: GROUPS-23.2 開啟和關閉 Members
 
-WHEN 使用者在 Group actions 選「Members」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Members，標題是「Members」，標題列只有取消「Close」（SHELL-47.1、SHELL-48.1）；沒有在移除中，Members 的名稱欄位也沒有在儲存中時，按 Close、把 Members 往下滑或按 Android 的返回鍵，SHALL 關閉 Members，回到群組的畫面。
+WHEN 使用者在 Group actions 選「Members」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Members，標題是「Members」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.2）；沒有在移除中，Members 的名稱欄位也沒有在儲存中時，按 Close、把 Members 往下滑或按 Android 的返回鍵，SHALL 關閉 Members，回到群組的畫面。
 
 #### Scenario: 開啟
 
@@ -678,7 +678,7 @@ IF 新的成員，或按 Add Back 時加回來的前成員，存不進本機資�
 
 ### Requirement: GROUPS-36.1 開啟 Rename Member
 
-WHEN 使用者在成員的選單選「Rename」，the mobile app SHALL 開啟從畫面底部升起、蓋在 Members 上的 Rename Member，標題是「Rename Member」，標題列有取消「Cancel」和確認「Save」（SHELL-47.1、SHELL-48.1），內容只有名稱欄位：名稱欄位的無障礙名稱是「Member name」，開啟時是這位成員現在的名稱，並取得焦點，清空時顯示「Enter member name」。
+WHEN 使用者在成員的選單選「Rename」，the mobile app SHALL 開啟從畫面底部升起、蓋在 Members 上的 Rename Member，標題是「Rename Member」，標題列有取消「Cancel」和確認「Save」（SHELL-47.2、SHELL-48.2），內容只有名稱欄位：名稱欄位的無障礙名稱是「Member name」，開啟時是這位成員現在的名稱，並取得焦點，清空時顯示「Enter member name」。
 
 #### Scenario: 開啟
 
@@ -767,13 +767,13 @@ IF 成員的新名稱存不進本機資料，THEN the mobile app SHALL 跳出標
 - **WHEN** 失敗後資料庫恢復，再按一次 Save
 - **THEN** Rename Member 關閉，他的名稱是「Blake」
 
-### Requirement: GROUPS-40.2 點標題或在 Group actions 選 Rename Group 時開啟 Rename Group
+### Requirement: GROUPS-40.3 長按標題或在 Group actions 選 Rename Group 時開啟 Rename Group
 
-WHEN 使用者在未封存群組的畫面點標題，或在 Group actions 選「Rename Group」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Rename Group，標題是「Rename Group」，標題列有取消「Cancel」和確認「Save」（SHELL-47.1、SHELL-48.1），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位；名稱欄位的無障礙名稱是「Group name」，開啟時是群組現在的名稱，並取得焦點，清空時顯示「Group name」；未封存群組的畫面的標題是名稱為群組名稱、無障礙提示為「Renames the group」的按鈕，名稱右邊有向下的箭頭（iOS 是 SF Symbol `chevron.down`，Android 是 Material Symbols `expand_more`），Android 上這個按鈕至少 48 dp 高，按下時在按鈕上顯示顏色跟著 app 外觀的 ripple；封存的群組和找不到的群組的畫面的標題不是按鈕，也沒有箭頭。
+WHEN 使用者在未封存群組的畫面長按大標題（GROUPS-100.1），或在 Group actions 選「Rename Group」，the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Rename Group，標題是「Rename Group」，標題列有取消「Cancel」和確認「Save」（SHELL-47.2、SHELL-48.2），內容由上而下是區塊標題「GROUP DETAILS」、區塊裡唯一的一列「Name」和它的名稱欄位；名稱欄位的無障礙名稱是「Group name」，開啟時是群組現在的名稱，並取得焦點，清空時顯示「Group name」；封存的群組長按大標題沒有作用。
 
-#### Scenario: 點標題
+#### Scenario: 長按標題
 
-- **WHEN** 在 Brisbane 的畫面點標題「Brisbane」
+- **WHEN** 在 Brisbane 的畫面長按大標題「Brisbane」
 - **THEN** Rename Group 從底部升起，蓋在 Brisbane 的畫面上，名稱欄位是「Brisbane」，已經取得焦點
 
 #### Scenario: 從 Group actions 開啟
@@ -781,20 +781,10 @@ WHEN 使用者在未封存群組的畫面點標題，或在 Group actions 選「
 - **WHEN** 在 Brisbane 的畫面選 Group actions 的「Rename Group」
 - **THEN** Rename Group 從底部升起，蓋在 Brisbane 的畫面上，標題是「Rename Group」，標題列的取消是「Cancel」、確認是「Save」；由上而下是「GROUP DETAILS」、「Name」和名稱欄位，名稱欄位是「Brisbane」，已經取得焦點
 
-#### Scenario: 標題是按鈕
-
-- **WHEN** 打開 Brisbane 的畫面
-- **THEN** 標題列的標題「Brisbane」是名稱為「Brisbane」的按鈕，右邊有向下的箭頭；螢幕閱讀器讀出「Brisbane」，再讀出提示「Renames the group」
-
-#### Scenario: Android
-
-- **WHEN** Android 上打開 Brisbane 的畫面
-- **THEN** 標題按鈕的箭頭是 `expand_more`，按鈕至少 48 dp 高；按下時按鈕上出現 ripple，深色和淺色時的顏色不同，或是由系統依外觀決定
-
 #### Scenario: 封存的群組
 
-- **WHEN** 封存 Brisbane 之後打開它的畫面
-- **THEN** 標題「Brisbane」不是按鈕，沒有箭頭，點了沒有反應
+- **WHEN** 封存 Brisbane 之後打開它的畫面，長按大標題
+- **THEN** 沒有打開 Rename Group
 
 #### Scenario: 清空名稱
 
@@ -803,17 +793,17 @@ WHEN 使用者在未封存群組的畫面點標題，或在 Group actions 選「
 
 ### Requirement: GROUPS-41.1 按 Save 或 Return 時存下群組的新名稱
 
-WHEN 使用者在 Rename Group 按 Save 或在名稱欄位按 Return，而 Save 沒有停用，the mobile app SHALL 把群組的名稱改成去掉頭尾空白的名稱，群組 ID、成員和群組在 Groups 根畫面的位置都不變，存好後關閉 Rename Group，回到群組的畫面，畫面的標題和 Groups 根畫面上這個群組的卡片都改用新的名稱。
+WHEN 使用者在 Rename Group 按 Save 或在名稱欄位按 Return，而 Save 沒有停用，the mobile app SHALL 把群組的名稱改成去掉頭尾空白的名稱，群組 ID、成員和群組在 Groups 根畫面的位置都不變，存好後關閉 Rename Group，回到群組的畫面，畫面的大標題和 Groups 根畫面上這個群組的卡片都改用新的名稱。
 
 #### Scenario: 改名
 
 - **WHEN** 有 Trip 和 Paris，在 Trip 的 Rename Group 輸入「 Tokyo 2026 」，按 Save
-- **THEN** Rename Group 關閉，群組的畫面的標題是「Tokyo 2026」；返回 Groups 根畫面，由上而下是「Open Tokyo 2026」和「Open Paris」；群組 ID 和成員都沒有改變，存下的名稱是「Tokyo 2026」
+- **THEN** Rename Group 關閉，群組的畫面的大標題是「Tokyo 2026」；返回 Groups 根畫面，由上而下是「Open Tokyo 2026」和「Open Paris」；群組 ID 和成員都沒有改變，存下的名稱是「Tokyo 2026」
 
 #### Scenario: 按 Return
 
 - **WHEN** 在 Rename Group 輸入「Kyoto」，在名稱欄位按 Return
-- **THEN** Rename Group 關閉，群組的畫面的標題是「Kyoto」
+- **THEN** Rename Group 關閉，群組的畫面的大標題是「Kyoto」
 
 #### Scenario: 重新啟動
 
@@ -823,7 +813,7 @@ WHEN 使用者在 Rename Group 按 Save 或在名稱欄位按 Return，而 Save 
 #### Scenario: 儲存中切到別的分頁
 
 - **WHEN** Android 上在 Trip 的 Rename Group 輸入「Tokyo」按 Save，還沒存好時點 Settings 分頁
-- **THEN** 存好後回到 Groups 分頁，Rename Group 已經關閉，群組的畫面的標題是「Tokyo」
+- **THEN** 存好後回到 Groups 分頁，Rename Group 已經關閉，群組的畫面的大標題是「Tokyo」
 
 ### Requirement: GROUPS-42.1 群組的新名稱存不進去時提示
 
@@ -856,7 +846,7 @@ WHEN 沒有在儲存中，而使用者在名稱表單按 Cancel、把它往下�
 #### Scenario: Rename Group
 
 - **WHEN** 在 Trip 的 Rename Group 輸入「Tokyo」後按 Cancel
-- **THEN** Rename Group 關閉，群組的畫面的標題仍是「Trip」
+- **THEN** Rename Group 關閉，群組的畫面的大標題仍是「Trip」
 
 #### Scenario: 往下滑或按返回鍵
 
@@ -1034,9 +1024,9 @@ The mobile app SHALL 在 Archived Groups 依建立的先後，由上而下列出
 - **WHEN** 封存 Brisbane 之後打開 Archived Groups，Archived Groups 還沒讀完存著的群組
 - **THEN** 沒有顯示「No archived groups.」；讀完之後顯示 Brisbane 的卡片
 
-### Requirement: GROUPS-53.1 封存群組的卡片
+### Requirement: GROUPS-53.2 封存群組的卡片
 
-The mobile app SHALL 讓封存群組的卡片由上而下顯示群組名稱和「Archived group」，名稱只佔一行、放不下時在結尾以「…」截斷；卡片是角色為 button、無障礙名稱為完整的「Open <群組名稱>」的按鈕，卡片之外另有一個顯示「Restore」、無障礙名稱為「Restore <群組名稱>」的按鈕。
+The mobile app SHALL 讓封存群組的卡片由上而下顯示群組名稱和「Archived group」，名稱只佔一行、放不下時尾端漸層消失（SHELL-68.1）；卡片是角色為 button、無障礙名稱為完整的「Open <群組名稱>」的按鈕，卡片之外另有一個顯示「Restore」、無障礙名稱為「Restore <群組名稱>」的按鈕。
 
 #### Scenario: 封存的 Brisbane
 
@@ -1046,11 +1036,11 @@ The mobile app SHALL 讓封存群組的卡片由上而下顯示群組名稱和�
 #### Scenario: 很長的名稱
 
 - **WHEN** 封存名稱是 300 個「a」的群組
-- **THEN** 卡片上的名稱只佔一行，放不下的部分在結尾截斷；卡片的無障礙名稱是「Open 」加上完整的 300 個「a」，Restore 按鈕的是「Restore 」加上完整的 300 個「a」
+- **THEN** 卡片上的名稱只佔一行，放不下的部分不顯示，也沒有「…」；卡片的無障礙名稱是「Open 」加上完整的 300 個「a」，Restore 按鈕的是「Restore 」加上完整的 300 個「a」
 
 ### Requirement: GROUPS-54.1 點封存群組的卡片在 Settings 分頁推入群組的畫面
 
-WHEN 使用者點封存群組的卡片，the mobile app SHALL 在 Settings 分頁推入這個群組的畫面，網址是 `/settings/archived-groups/<群組 ID>`，標題是群組名稱，分頁列仍選中 Settings；從這個畫面返回時回到 Archived Groups，從它打開的 Members 和名稱表單也都蓋在它上面，留在 Settings 分頁。
+WHEN 使用者點封存群組的卡片，the mobile app SHALL 在 Settings 分頁推入這個群組的畫面，網址是 `/settings/archived-groups/<群組 ID>`，大標題是群組名稱（GROUPS-100.1），分頁列仍選中 Settings；從這個畫面返回時回到 Archived Groups，從它打開的 Members 和名稱表單也都蓋在它上面，留在 Settings 分頁。
 
 #### Scenario: 點卡片
 
@@ -1072,14 +1062,14 @@ WHEN 使用者點封存群組的卡片，the mobile app SHALL 在 Settings 分�
 - **WHEN** 在這個畫面按「Restore Group」，從 Members 加入「Blake」並把他改名為「Casey」，再從 Group actions 把群組改名為「Tokyo」
 - **THEN** Members 的名稱欄位在 Members 裡，Rename Member 和 Rename Group 都蓋在這個畫面上，分頁列一直選中 Settings；群組的名稱是 Tokyo，成員是 Taylor 和 Casey
 
-### Requirement: GROUPS-55.1 封存群組的畫面顯示唯讀的提示和 Restore Group
+### Requirement: GROUPS-55.2 封存群組的畫面顯示唯讀的提示和 Restore Group
 
-WHILE 群組已封存，the mobile app SHALL 在它的畫面最上面顯示「Archived group. Expenses and allocations are read-only.」，下面是角色為 button、名稱為「Restore Group」的按鈕。
+WHILE 群組已封存，the mobile app SHALL 在它的畫面的大標題下面顯示「Archived group. Expenses and allocations are read-only.」，下面是角色為 button、名稱為「Restore Group」的按鈕。
 
 #### Scenario: 從 Archived Groups 打開
 
 - **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面
-- **THEN** 由上而下是「Archived group. Expenses and allocations are read-only.」、「Restore Group」按鈕和「No expenses in this group yet.」
+- **THEN** 由上而下是大標題「Brisbane」、「Archived group. Expenses and allocations are read-only.」、「Restore Group」按鈕和「No expenses in this group yet.」
 
 #### Scenario: 以網址在 Groups 分頁打開
 
@@ -1196,9 +1186,9 @@ WHEN app 重新啟動，the mobile app SHALL 保留每個群組有沒有封存�
 - **WHEN** 還原 Tokyo 之後重新啟動 app
 - **THEN** Groups 根畫面由上而下是 Brisbane、Tokyo、Paris；Archived Groups 只顯示「No archived groups.」
 
-### Requirement: GROUPS-61.2 群組的畫面列出群組的支出
+### Requirement: GROUPS-61.3 群組的畫面列出群組的支出
 
-WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 的順序列出這個群組每一筆不在垃圾桶裡的支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.2、LEDGER-65.3），但卡片金額是支出的全額。
+WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 的順序列出這個群組每一筆不在垃圾桶裡的支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.3、LEDGER-65.4），但卡片金額是支出的全額，分類那一行的右邊不是群組名稱，而是「Paid by <付款人的名稱>」，付款人是你時是「Paid by You」，付款人是前成員時用他存著的名稱，放不下時尾端漸層消失（SHELL-68.1），螢幕閱讀器在分類和日期之間讀出它。
 
 #### Scenario: 兩筆支出
 
@@ -1207,8 +1197,18 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 
 #### Scenario: 卡片
 
-- **WHEN** Dinner 是 10001 USD、Food & Dining，依序分給 Blake、Taylor 和 Casey
-- **THEN** 卡片依序顯示「Dinner」、「$100.01」、「Food & Dining」、「Brisbane」、「Oct 30, 2026」
+- **WHEN** Dinner 是 10001 USD、Food & Dining，Casey 付款，依序分給 Blake、Taylor 和 Casey
+- **THEN** 卡片依序顯示「Dinner」、「$100.01」、「Food & Dining」、「Paid by Casey」；螢幕閱讀器讀出這四項和「Oct 30, 2026」
+
+#### Scenario: 你付款
+
+- **WHEN** 名字是「Taylor」，Taylor 付了 Dinner
+- **THEN** 卡片上是「Paid by You」
+
+#### Scenario: 前成員付款
+
+- **WHEN** 把付了 Dinner 的 Casey 移出 Brisbane（GROUPS-34.2）
+- **THEN** 卡片上仍是「Paid by Casey」
 
 #### Scenario: 和你無關的支出
 
@@ -1223,7 +1223,7 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 #### Scenario: 封存的群組
 
 - **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面
-- **THEN** 唯讀的提示和「Restore Group」下面是 Dinner 和 Taxi 的卡片，卡片上是「Brisbane · Archived」
+- **THEN** 唯讀的提示和「Restore Group」下面是 Dinner 和 Taxi 的卡片，卡片上是「Paid by <付款人的名稱>」
 
 #### Scenario: 重新啟動
 
@@ -1246,7 +1246,7 @@ WHILE 群組的畫面還沒讀完這個群組的支出，the mobile app SHALL �
 
 ### Requirement: GROUPS-63.1 點群組畫面上的卡片推入明細
 
-WHEN 使用者點群組的畫面上的卡片，the mobile app SHALL 在群組的畫面所在的分頁推入這筆支出的明細（LEDGER-37.2、LEDGER-66.2），標題是「Expense」，網址在 Groups 分頁是 `/groups/expenses/<支出的 ID>`，在 Settings 分頁是 `/settings/archived-groups/expenses/<支出的 ID>`，分頁列仍選中同一個分頁；連點兩次也只推入一個明細，返回或按 Android 的返回鍵就回到群組的畫面。
+WHEN 使用者點群組的畫面上的卡片，the mobile app SHALL 在群組的畫面所在的分頁推入這筆支出的明細（LEDGER-37.3、LEDGER-66.3），標題是「Expense」，網址在 Groups 分頁是 `/groups/expenses/<支出的 ID>`，在 Settings 分頁是 `/settings/archived-groups/expenses/<支出的 ID>`，分頁列仍選中同一個分頁；連點兩次也只推入一個明細，返回或按 Android 的返回鍵就回到群組的畫面。
 
 #### Scenario: Groups 分頁
 
@@ -1334,9 +1334,9 @@ WHERE iPhone 或 Android 手機，WHEN 群組的畫面捲到最底，the mobile 
 - **WHEN** Brisbane 有 20 筆支出，把它的畫面捲到最底
 - **THEN** 最後一張卡片整張在 + 按鈕上方，沒有被擋住
 
-### Requirement: GROUPS-68.2 群組的畫面上的 Group Total
+### Requirement: GROUPS-68.3 群組的畫面上的 Group Total
 
-WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面上、支出的卡片上方，為這些支出用到的每個幣別各顯示一行「Group Total: <這個幣別的支出的全額總和>」，依幣別代碼排序；這幾行合起來是一個按鈕，右邊有「›」，螢幕閱讀器把它讀成一個按鈕，讀出這幾行但不讀「›」，再讀出無障礙提示「Opens Insights」，按一下就在群組的畫面所在的分頁推入這個群組的 Insights（INSIGHTS-14.1）：Groups 分頁是 `/groups/insights?groupId=<群組 ID>`，Settings 分頁是 `/settings/archived-groups/insights?groupId=<群組 ID>`，連按兩次也只推入一個；群組沒有不在垃圾桶裡的支出時，SHALL 不顯示 Group Total。
+WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面上、支出的卡片上方，顯示一行「Group Total: <這些支出用到的每個幣別的全額總和，依幣別代碼排序，以「, 」隔開>」，放不下時尾端漸層消失（SHELL-68.1）；這一行是一個按鈕，右邊有「›」，螢幕閱讀器把它讀成一個按鈕，讀出這一行但不讀「›」，再讀出無障礙提示「Opens Insights」，按一下就在群組的畫面所在的分頁推入這個群組的 Insights（INSIGHTS-14.1）：Groups 分頁是 `/groups/insights?groupId=<群組 ID>`，Settings 分頁是 `/settings/archived-groups/insights?groupId=<群組 ID>`，連按兩次也只推入一個；群組沒有不在垃圾桶裡的支出時，SHALL 不顯示 Group Total。
 
 #### Scenario: 一個幣別
 
@@ -1346,7 +1346,7 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 #### Scenario: 幾個幣別
 
 - **WHEN** Brisbane 還有一筆 3000 JPY 的 Sushi
-- **THEN** 由上而下是「Group Total: ¥3,000」和「Group Total: $125.01」，兩行在同一個按鈕裡，按鈕右邊只有一個「›」
+- **THEN** 是一行「Group Total: ¥3,000, $125.01」，按鈕右邊只有一個「›」
 
 #### Scenario: 修改之後
 
@@ -1373,9 +1373,9 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 - **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面
 - **THEN** 「Restore Group」下面是「Group Total: $125.01」，再下面是卡片；按「Group Total: $125.01」時，在 Settings 分頁推入 `/settings/archived-groups/insights`，加上 Brisbane 的群組 ID，堆疊由下而上是「Settings」、「Archived Groups」、「Brisbane」和「Insights」
 
-### Requirement: GROUPS-69.1 群組的畫面上你的淨額
+### Requirement: GROUPS-69.2 群組的畫面上你的淨額
 
-WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面上、Group Total 的下面、支出的卡片上方顯示你在這個群組的淨額：依幣別代碼排序，你的淨額不是 0 的每個幣別各一行，大於 0 時是「You're owed: <淨額>」，小於 0 時是「You owe: <淨額的絕對值>」；每個幣別的淨額都是 0 時，只有一行「Settled up」；這幾行合起來是一個按鈕，右邊有「›」，螢幕閱讀器把它讀成一個按鈕，讀出這幾行但不讀「›」，再讀出無障礙提示「Opens Balances」，按一下就打開 Balances（GROUPS-70.1）；群組沒有不在垃圾桶裡的支出時，SHALL 不顯示這幾行。
+WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面上、Group Total 的下面、支出的卡片上方顯示你在這個群組的淨額，最多兩行，先是「You owe: <淨額小於 0 的每個幣別的淨額絕對值>」，再是「You're owed: <淨額大於 0 的每個幣別的淨額>」，都依幣別代碼排序，以「, 」隔開，放不下時尾端漸層消失（SHELL-68.1），沒有這個方向的幣別時就沒有這一行；每個幣別的淨額都是 0 時，只有一行「Settled up」；這幾行合起來是一個按鈕，右邊有「›」，螢幕閱讀器把它讀成一個按鈕，讀出這幾行但不讀「›」，再讀出無障礙提示「Opens Balances」，按一下就打開 Balances（GROUPS-70.1）；群組沒有不在垃圾桶裡的支出時，SHALL 不顯示這幾行。
 
 #### Scenario: 別人欠你
 
@@ -1392,10 +1392,15 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 - **WHEN** Brisbane 只有 Taylor 付、只分給 Taylor 的 20.00 USD 的 Coffee，或只有和你無關的支出
 - **THEN** Group Total 下面是「Settled up」
 
-#### Scenario: 幾個幣別
+#### Scenario: 兩個方向
 
 - **WHEN** Brisbane 有 Casey 付的 3000 JPY 的 Sushi，分給 Taylor 和 Casey，以及 Taylor 付、分給 Taylor、Casey 和 Blake 的 60.00 USD 的 Dinner
 - **THEN** 由上而下是「You owe: ¥1,500」和「You're owed: $40.00」，兩行在同一個按鈕裡，按鈕右邊只有一個「›」
+
+#### Scenario: 同一個方向幾個幣別
+
+- **WHEN** Brisbane 有 Taylor 付、分給 Taylor 和 Casey 的 60.00 AUD 的 Taxi，以及 Taylor 付、分給 Taylor、Casey 和 Blake 的 60.00 USD 的 Dinner
+- **THEN** 只有一行「You're owed: A$30.00, $40.00」
 
 #### Scenario: 有一個幣別打平
 
@@ -1414,7 +1419,7 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 
 ### Requirement: GROUPS-70.1 開啟和關閉 Balances
 
-WHEN 使用者按群組的畫面上你的淨額（GROUPS-69.1），the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Balances，標題是「Balances」，標題列只有取消「Close」（SHELL-47.1、SHELL-48.1）；按 Close、把 Balances 往下滑或按 Android 的返回鍵，SHALL 關閉 Balances，回到群組的畫面。
+WHEN 使用者按群組的畫面上你的淨額（GROUPS-69.2），the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Balances，標題是「Balances」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.2）；按 Close、把 Balances 往下滑或按 Android 的返回鍵，SHALL 關閉 Balances，回到群組的畫面。
 
 #### Scenario: 開啟
 
@@ -1475,14 +1480,14 @@ The mobile app SHALL 在 Balances 依幣別代碼排序，為群組不在垃圾�
 - **WHEN** Brisbane 有 Taylor 付、Taylor 和 Casey 分攤的 60.00 USD 的 Dinner，以及 Casey 付、只有 Blake 分攤的 25.00 USD 的 Taxi，把 Blake 移出 Brisbane，再把 Taxi 移到垃圾桶
 - **THEN** Balances 沒有 Blake；按 Undo 提示的「Undo」之後又有 Blake
 
-### Requirement: GROUPS-72.1 群組的卡片顯示成員人數
+### Requirement: GROUPS-72.2 群組的卡片顯示成員人數
 
-The mobile app SHALL 在群組的卡片上、群組名稱的下面顯示群組的成員人數，一位時是「1 member」，其他時候是「<人數> members」；前成員不算在內。
+The mobile app SHALL 在群組的卡片上、群組名稱那一行的右邊顯示群組的成員人數，一位時是「1 member」，其他時候是「<人數> members」；前成員不算在內。群組名稱是粗體。
 
 #### Scenario: 新建立的群組
 
 - **WHEN** 建立「Brisbane」
-- **THEN** Brisbane 的卡片在「Brisbane」下面是「1 member」
+- **THEN** Brisbane 的卡片依序是「Brisbane」和「1 member」，「1 member」在「Brisbane」右邊
 
 #### Scenario: 加入成員
 
@@ -1494,14 +1499,19 @@ The mobile app SHALL 在群組的卡片上、群組名稱的下面顯示群組�
 - **WHEN** 把 Blake 移出 Brisbane
 - **THEN** 卡片上是「2 members」；把他加回來之後是「3 members」
 
-### Requirement: GROUPS-73.1 群組的卡片顯示你的份額和淨額
+### Requirement: GROUPS-73.2 群組的卡片顯示你的份額和淨額
 
-The mobile app SHALL 在群組的卡片上、成員人數的下面，依幣別代碼排序，為群組不在垃圾桶裡的支出用到的每個幣別依序顯示「Your share: <你的份額>」，以及你的淨額大於 0 時的「You're owed: <淨額>」、小於 0 時的「You owe: <淨額的絕對值>」或等於 0 時的「Settled up」；群組沒有不在垃圾桶裡的支出時，SHALL 在成員人數的下面只顯示「No spending yet」；卡片的名稱仍是「Open <群組名稱>」（GROUPS-2.2），螢幕閱讀器讀完名稱，接著依序讀出它下面的每一行。
+The mobile app SHALL 在群組的卡片上、名稱那一行的下面固定顯示兩行，每一行只佔一行，放不下時尾端漸層消失（SHELL-68.1）：群組沒有不在垃圾桶裡的支出時，是「No spending yet」和一行空白；你的淨額同時有大於 0 和小於 0 的幣別時，是「You owe: <淨額小於 0 的每個幣別的淨額絕對值>」和「You're owed: <淨額大於 0 的每個幣別的淨額>」；其他時候是「Your share: <每個幣別的你的份額>」，以及「You owe: <…>」、「You're owed: <…>」或每個幣別的淨額都是 0 時的「Settled up」。同一行的幣別依幣別代碼排序，以「, 」隔開。卡片的名稱仍是「Open <群組名稱>」（GROUPS-2.2），螢幕閱讀器讀完名稱，接著依序讀出成員人數和有內容的每一行。
 
-#### Scenario: 幾個幣別
+#### Scenario: 兩個方向
 
 - **WHEN** 名字是「Taylor」，Brisbane 依序加入 Casey 和 Blake，有 Taylor 付的 120.00 AUD 的 Groceries，分給 Taylor 和 Casey，以及 Casey 付的 60.00 USD 的 Tickets，分給 Taylor、Casey 和 Blake
-- **THEN** Brisbane 的卡片由上而下是「Brisbane」、「3 members」、「Your share: A$60.00」、「You're owed: A$60.00」、「Your share: $20.00」、「You owe: $20.00」
+- **THEN** Brisbane 的卡片依序是「Brisbane」、「3 members」、「You owe: $20.00」、「You're owed: A$60.00」，沒有「Your share」
+
+#### Scenario: 同一個方向幾個幣別
+
+- **WHEN** Brisbane 有 Taylor 付的 120.00 AUD 的 Groceries，分給 Taylor 和 Casey，以及 Taylor 付的 60.00 USD 的 Dinner，分給 Taylor、Casey 和 Blake
+- **THEN** 卡片上是「Your share: A$60.00, $20.00」和「You're owed: A$60.00, $40.00」
 
 #### Scenario: 打平
 
@@ -1516,12 +1526,12 @@ The mobile app SHALL 在群組的卡片上、成員人數的下面，依幣別�
 #### Scenario: 還沒有支出
 
 - **WHEN** Brisbane 還沒有支出
-- **THEN** 卡片由上而下是「Brisbane」、「1 member」和「No spending yet」
+- **THEN** 卡片依序是「Brisbane」、「1 member」和「No spending yet」
 
 #### Scenario: 螢幕閱讀器
 
-- **WHEN** 螢幕閱讀器讀「幾個幣別」的 Brisbane 的卡片
-- **THEN** 讀出名稱「Open Brisbane」，接著依序是「3 members」、「Your share: A$60.00」、「You're owed: A$60.00」、「Your share: $20.00」、「You owe: $20.00」
+- **WHEN** 螢幕閱讀器讀「兩個方向」的 Brisbane 的卡片
+- **THEN** 讀出名稱「Open Brisbane」，接著依序是「3 members」、「You owe: $20.00」、「You're owed: A$60.00」
 
 #### Scenario: 從 Expenses 分頁新增之後
 
@@ -1618,13 +1628,13 @@ WHILE 群組的卡片露出「Archive」，WHEN 使用者從這張卡片或露�
 - **WHEN** 在 Android 手機重複上述拖曳
 - **THEN** 結果相同，pt 在 Android 以 dp 計
 
-### Requirement: GROUPS-79.1 (e2e) 往左拖群組的卡片時清單不捲動
+### Requirement: GROUPS-79.2 (e2e) 往左拖群組的卡片時清單不捲動
 
-WHEN 使用者從還沒露出「Archive」的群組的卡片開始拖曳，且手指開始移動時橫向位移大於縱向位移，the mobile app SHALL 容許手指的縱向偏移，放手前清單都不捲動，往左拖時依 GROUPS-47.1 露出「Archive」；開始移動時縱向位移大於或等於橫向位移就是捲動清單，不露出「Archive」，方向確定後直到放手都不改變。
+WHEN 使用者從還沒露出「Archive」的群組的卡片開始拖曳，且手指開始移動時橫向位移大於縱向位移，the mobile app SHALL 容許手指的縱向偏移，放手前清單都不捲動，往左拖時依 GROUPS-47.1 露出「Archive」，超過 SHELL-69.1 的位置時依它觸發；開始移動時縱向位移大於或等於橫向位移就是捲動清單，不露出「Archive」，方向確定後直到放手都不改變。
 
 #### Scenario: 斜向往左拖
 
-- **WHEN** Groups 根畫面的群組多到能捲動，從一張卡片往左約 280 pt、往上約 170 pt 拖曳後放手
+- **WHEN** Groups 根畫面的群組多到能捲動，從一張卡片往左約 200 pt、往上約 150 pt 拖曳後放手
 - **THEN** 這張卡片露出「Archive」，清單沒有捲動，這張卡片還在原來的位置
 
 #### Scenario: 主要是上下拖
@@ -1634,7 +1644,7 @@ WHEN 使用者從還沒露出「Archive」的群組的卡片開始拖曳，且�
 
 #### Scenario: Android
 
-- **WHEN** 在 Android 手機重複上述拖曳
+- **WHEN** 在 Android 手機重複上述拖曳，往左不超過 SHELL-69.1 的位置
 - **THEN** 結果相同，pt 在 Android 以 dp 計
 
 ### Requirement: GROUPS-80.1 (e2e) iOS 26 以上從收起的卡片水平往右拖返回
@@ -1650,3 +1660,74 @@ WHERE iOS 26 以上，WHILE 未封存群組的畫面開著，WHEN 使用者從�
 
 - **WHEN** 從 Dinner 的卡片往右約 280 pt、往上約 90 pt 拖曳
 - **THEN** 系統可能捲動清單並留在 Brisbane 的畫面，卡片不露出也不打開明細
+
+### Requirement: GROUPS-100.1 群組的畫面的大標題
+
+The mobile app SHALL 在群組的畫面的標題列下方，用大字顯示群組名稱，標題列上不顯示名稱；大標題捲出畫面之後，標題列才顯示名稱。大標題是一個按鈕，名稱是群組名稱，預設收起只佔一行，按一下展開成完整的名稱，再按一下收起；未封存的群組長按時打開 Rename Group（GROUPS-40.3），螢幕閱讀器讀出無障礙提示「Shows the full name. Long press renames the group.」；封存的群組沒有這個提示。找不到群組時，標題列是「Group Details」。
+
+#### Scenario: 打開群組
+
+- **WHEN** 打開 Brisbane 的畫面
+- **THEN** 標題列沒有「Brisbane」；標題列下方是名稱「Brisbane」的按鈕，標示為收起，無障礙提示是「Shows the full name. Long press renames the group.」
+
+#### Scenario: 展開和收起
+
+- **WHEN** 打開名稱是 300 個「a」的群組，按大標題，再按一次
+- **THEN** 第一次按完標示為展開，完整顯示 300 個「a」；第二次按完標示為收起，只佔一行
+
+#### Scenario: 封存的群組
+
+- **WHEN** 打開封存的 Brisbane 的畫面，按大標題
+- **THEN** 標示為展開，沒有無障礙提示
+
+#### Scenario: 捲出畫面
+
+- **WHEN** 把 Brisbane 的畫面往下捲到大標題捲出畫面
+- **THEN** 標題列顯示「Brisbane」
+
+#### Scenario: 找不到的群組
+
+- **WHEN** 以不存在的群組 ID 打開群組的畫面
+- **THEN** 標題列是「Group Details」，沒有大標題
+
+### Requirement: GROUPS-101.1 (manual) 長群組名先縮小再漸層
+
+The mobile app SHALL 讓群組的畫面的大標題放不下時先縮小，最小到 24 pt，還放不下才尾端漸層消失（SHELL-68.1）；展開時維持同一個字級，換行顯示完整的名稱。
+
+#### Scenario: 稍長的名稱
+
+- **WHEN** 打開名稱是「Brisbane Road Trip 2026」的群組
+- **THEN** 大標題縮小到放得下，沒有漸層
+
+#### Scenario: 很長的名稱
+
+- **WHEN** 打開名稱是 300 個「a」的群組，再按大標題
+- **THEN** 收起時字級是 24 pt，尾端漸層消失；展開時字級不變，顯示完整的名稱
+
+### Requirement: GROUPS-102.1 在 Group actions 打開 Group Categories
+
+WHEN 使用者在 Group actions 選「Categories」，the mobile app SHALL 打開蓋在群組的畫面上的 sheet，網址是 `/manage-categories?scopeKind=group&spaceId=<群組 ID>`，內容是這個群組的 Group Categories（CATEGORIES-23.4）；按「Close」，或 iOS 上往下滑、Android 上按返回鍵時關閉，回到群組的畫面。封存的群組打開時是唯讀的（CATEGORIES-43.1）。
+
+#### Scenario: 打開
+
+- **WHEN** 在 Brisbane 的畫面選 Group actions 的「Categories」
+- **THEN** 網址是 `/manage-categories`，加上 `scopeKind=group` 和 Brisbane 的群組 ID；標題是「Group Categories」，列出 Brisbane 的分類
+
+#### Scenario: 關閉
+
+- **WHEN** 按「Close」
+- **THEN** 回到 Brisbane 的畫面
+
+#### Scenario: 封存的群組
+
+- **WHEN** 封存 Brisbane 之後，在它的畫面選 Group actions 的「Categories」
+- **THEN** 打開唯讀的 Group Categories，沒有「Add category」
+
+### Requirement: GROUPS-103.1 (manual) 群組的卡片一樣高
+
+The mobile app SHALL 讓 Groups 根畫面上每張群組的卡片一樣高，不管內容是兩行金額還是「No spending yet」。
+
+#### Scenario: 幾種卡片
+
+- **WHEN** 有還沒有支出的 Brisbane、打平的 Tokyo，以及同時有 You owe 和 You're owed 的 Paris
+- **THEN** 三張卡片一樣高

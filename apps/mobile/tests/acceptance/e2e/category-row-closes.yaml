@@ -1,0 +1,111 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[CATEGORIES-50.1] Scrolling the list or pressing a row closes a category row that shows its action'
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- tapOn: Manage Categories
+- waitForAnimationToEnd
+# The default nine rows do not overflow.
+- evalScript: ${output.category = 1}
+- repeat:
+    times: 8
+    commands:
+      - tapOn: Add category
+      - waitForAnimationToEnd
+      - tapOn: Category name
+      - inputText: Scroll ${output.category}
+      - waitForAnimationToEnd
+      - tapOn:
+          text: Add
+          enabled: true
+      - waitForAnimationToEnd
+      - assertNotVisible: Category name
+      - evalScript: ${output.category = output.category + 1}
+- scrollUntilVisible:
+    element: Food & Dining
+    direction: UP
+- waitForAnimationToEnd
+# Scrolling, from another row. iOS keeps some offscreen nodes, so a row that has gone is one no
+# longer below the fixed bar.
+- swipe:
+    from:
+      text: Shopping
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Remove
+- swipe:
+    from:
+      text: Health
+    direction: UP
+- waitForAnimationToEnd
+- assertNotVisible:
+    text: Food & Dining
+    below: Add category
+- assertNotVisible: Remove
+- assertNotVisible: Edit Category
+- assertNotVisible: Delete Category\?
+- scrollUntilVisible:
+    element: Food & Dining
+    direction: UP
+- waitForAnimationToEnd
+# Scrolling, from the row itself.
+- swipe:
+    from:
+      text: Shopping
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Remove
+- swipe:
+    from:
+      text: Shopping
+    direction: UP
+- waitForAnimationToEnd
+- assertNotVisible:
+    text: Food & Dining
+    below: Add category
+- assertNotVisible: Remove
+- assertNotVisible: Edit Category
+- assertNotVisible: Delete Category\?
+- scrollUntilVisible:
+    element: Food & Dining
+    direction: UP
+- waitForAnimationToEnd
+# Pressing another row.
+- swipe:
+    from:
+      text: Shopping
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Remove
+- tapOn: Health
+- waitForAnimationToEnd
+- assertVisible: Edit Category
+- copyTextFrom: Category name
+- assertTrue: ${maestro.copiedText === 'Health'}
+- tapOn: Cancel
+- waitForAnimationToEnd
+- assertNotVisible: Remove
+- assertVisible: Shopping
+# Pressing the row itself.
+- swipe:
+    from:
+      text: Shopping
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Remove
+- tapOn: Shopping
+- waitForAnimationToEnd
+- assertVisible: Edit Category
+- copyTextFrom: Category name
+- assertTrue: ${maestro.copiedText === 'Shopping'}
+- tapOn: Cancel
+- waitForAnimationToEnd
+- assertNotVisible: Remove
+- assertVisible: Shopping

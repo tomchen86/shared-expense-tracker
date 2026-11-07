@@ -89,11 +89,42 @@ function insideText(view: HostView, root: HostView) {
   return false;
 }
 
+/** Whether `view` or a view around it is fully transparent, as text kept only to measure it is. */
+function isInvisible(view: HostView) {
+  for (let node: HostView | null = view; node; node = node.parent)
+    if (StyleSheet.flatten(node.props.style)?.opacity === 0) return true;
+  return false;
+}
+
+/** Whether two views sit side by side: the nearest view around both lays its children out in a row. */
+export function inOneRow(one: HostView, other: HostView) {
+  const around = new Set<HostView>();
+  for (let node: HostView | null = one; node; node = node.parent)
+    around.add(node);
+  for (let node: HostView | null = other; node; node = node.parent)
+    if (around.has(node))
+      return StyleSheet.flatten(node.props.style)?.flexDirection === 'row';
+  return false;
+}
+
+/**
+ * Expects a text to stay on one line and to end with no ellipsis, as text that fades
+ * out does (SHELL-68.1). Jest lays nothing out, so this reads what it asks the native
+ * text for.
+ */
+export function expectOneFadingLine(text: HostView) {
+  expect(text.props.numberOfLines).toBe(1);
+  expect(text.props.ellipsizeMode).toBe('clip');
+}
+
 /** The lines of text shown inside `root`, top to bottom. */
 export const linesIn = (root: HostView) =>
   root
     .queryAll(
-      (view) => String(view.type) === 'Text' && !insideText(view, root),
+      (view) =>
+        String(view.type) === 'Text' &&
+        !insideText(view, root) &&
+        !isInvisible(view),
       { includeSelf: true },
     )
     .flatMap((view) => textOf(view).split('\n'))
@@ -159,7 +190,7 @@ export const thisMonthLines = () =>
 // Category color dots
 
 /** The palette (CATEGORIES-1.2). */
-const PALETTE = [
+export const PALETTE = [
   '#D81B60',
   '#1E88E5',
   '#FBC02D',

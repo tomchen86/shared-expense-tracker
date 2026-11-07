@@ -22,9 +22,7 @@ export function Sheet({
   cancel,
   confirm,
   onClose,
-  onAfterClose,
   dismissible = true,
-  list,
   children,
 }: SheetProps) {
   const id = useId();
@@ -38,12 +36,10 @@ export function Sheet({
     else setContentHeight(0);
   }, [visible]);
   const [headerHeight, setHeaderHeight] = useState(0);
-  const longList = list && contentHeight + 80 > height / 2;
   // RNS sizes a modal's native scroll view to the sheet, while its origin stays
   // below the header. Reserve that overrun when the sheet is shorter than its
   // content so the last row can scroll above the header and bottom safe area.
   const scrollEndSpace =
-    longList ||
     contentHeight + headerHeight + insets.bottom > height - insets.top
       ? headerHeight + insets.bottom
       : 0;
@@ -56,6 +52,10 @@ export function Sheet({
           {
             type: 'button',
             title: action.label,
+            icon: {
+              type: 'sfSymbol',
+              name: variant === 'plain' ? 'xmark' : 'checkmark',
+            },
             accessibilityLabel: action.label,
             disabled: !!action.disabled,
             onPress: action.onPress,
@@ -71,10 +71,7 @@ export function Sheet({
       style={StyleSheet.absoluteFill}
       pointerEvents="box-none"
       onFinishTransitioning={() => {
-        if (!visible) {
-          setPresented(false);
-          onAfterClose?.();
-        }
+        if (!visible) setPresented(false);
       }}
     >
       <ScreenStackItem
@@ -89,7 +86,7 @@ export function Sheet({
           screenId={id}
           activityState={2}
           stackPresentation="formSheet"
-          sheetAllowedDetents={longList ? [0.5, 1] : 'fitToContents'}
+          sheetAllowedDetents="fitToContents"
           sheetInitialDetentIndex={0}
           sheetGrabberVisible
           sheetExpandsWhenScrolledToEdge={false}

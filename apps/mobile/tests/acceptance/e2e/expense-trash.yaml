@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-70.2] [LEDGER-71.3] [LEDGER-73.1] [LEDGER-75.3] [LEDGER-76.1] [LEDGER-77.2] [LEDGER-78.2] [LEDGER-79.3] Swipes an expense card left to move it to the trash, undoes it, moves it again, keeps it in the trash after a restart, then restores it from Trash'
+name: '[LEDGER-70.2] [LEDGER-71.3] [LEDGER-73.2] [LEDGER-75.3] [LEDGER-76.1] [LEDGER-77.3] [LEDGER-78.3] [LEDGER-79.3] Swipes an expense card left to move it to the trash, undoes it, moves it again, keeps it in the trash after a restart, then restores it from Trash'
 ---
 - launchApp:
     clearState: true

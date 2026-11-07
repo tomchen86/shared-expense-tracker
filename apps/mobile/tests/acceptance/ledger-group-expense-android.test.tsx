@@ -5,8 +5,13 @@ import { fireEvent, waitFor } from '@testing-library/react-native';
 import {
   amountField,
   expectForm,
+  categoryOptions,
   fillForm,
+  formCategory,
   formTitle,
+  openCategoryList,
+  openEditExpense,
+  storedExpenses,
   nameOf,
   openNewExpense,
   phoneDatabase,
@@ -18,19 +23,38 @@ import {
 import { openDetails } from './ledger-expense-list-app';
 import { expenseHeaderButtons } from './ledger-trash-app';
 import { allowWrites, settle } from './shell-appearance-app';
-import { navigationBarTitles, tab, tapTab } from './shell-tabs-app';
+import {
+  nativeViews,
+  navigationBarTitles,
+  tab,
+  tapTab,
+} from './shell-tabs-app';
 import { isOpen, openGroup } from './group-details-app';
 import {
+  ADD_NEW_CATEGORY,
   addGroupExpense,
+  addNewCategoryFromForm,
   archiveGroup,
-  categorySheetTitle,
+  chooseGroup,
+  choosePayer,
+  closeList,
   detailBarsOn,
   editOn,
   expectDetailsOn,
+  expectList,
+  expectListClosed,
   groupAddButton,
   groupCard,
-  openCategorySheet,
+  isListOpen,
+  isNewCategoryOpen,
+  isSplitOn,
+  listButtons,
+  listOptions,
+  openNewCategory,
+  openRow,
+  pressInList,
   rowValue,
+  setSplit,
   startWithGroups,
 } from './ledger-group-expense-app';
 import type { Database } from '../../src/storage';
@@ -96,18 +120,144 @@ const addDinner = () =>
     sharers: ['Blake', 'Taylor (You)', 'Casey'],
   });
 
-test('[LEDGER-62.1] goes back to the form, with its inputs, when Back is pressed on the categories screen', async () => {
+test('[LEDGER-62.2] goes back to the form, with its inputs and category, when Back is pressed on New Category', async () => {
   await startWithGroups(BRISBANE);
   await openNewExpense();
   await fillForm({ amount: '8.75', title: 'Coffee' });
-  await openCategorySheet();
+  await openNewCategory();
 
-  await pressBack();
+  await fireEvent(nativeViews(/^Modal$/).at(-1)!, 'requestClose');
+  await settle();
 
-  await waitFor(() => expect(categorySheetTitle()).toBeUndefined());
+  await waitFor(() => expect(isNewCategoryOpen()).toBe(false));
   expect(formTitle()).toBe('New Expense');
   expect(amountField().props.value).toBe('8.75');
   expect(titleField().props.value).toBe('Coffee');
+  expect(formCategory()).toBe('Food & Dining');
+});
+
+test('[LEDGER-62.2] selects the category added from + Add New Category on Android', async () => {
+  await startWithGroups(BRISBANE);
+  await openNewExpense();
+  await fillForm({ amount: '8.75', title: 'Coffee' });
+
+  await addNewCategoryFromForm('Gym');
+
+  expect(formTitle()).toBe('New Expense');
+  expect(amountField().props.value).toBe('8.75');
+  expect(formCategory()).toBe('Gym');
+});
+
+test('[LEDGER-46.2] opens Select Group when the switch is turned on, listing the unarchived groups', async () => {
+  await startWithGroups({ Brisbane: [], Tokyo: [], Paris: [] });
+  await archiveGroup('Tokyo');
+  await tapTab('Expenses');
+  await openNewExpense();
+
+  await setSplit(true);
+
+  await expectList('Select Group');
+  expect(listOptions('Select Group')).toEqual([
+    ['Brisbane', false],
+    ['Paris', false],
+  ]);
+});
+
+test('[LEDGER-46.2] keeps the switch on with no group when Select Group is cancelled', async () => {
+  await startWithGroups(BRISBANE);
+  await openNewExpense();
+  await setSplit(true);
+
+  await closeList('Select Group');
+
+  expect(isSplitOn()).toBe(true);
+  expect(rowValue('Group')).toBe('not selected');
+});
+
+test('[LEDGER-46.2] keeps the group and the payer when Select Group is cancelled after a group is chosen', async () => {
+  await startWithGroups(BRISBANE);
+  await openNewExpense();
+  await chooseGroup('Brisbane');
+  await choosePayer('Taylor (You)');
+
+  await openRow('Group');
+  await closeList('Select Group');
+
+  expect(rowValue('Group')).toBe('Brisbane');
+  expect(rowValue('Paid by')).toBe('Taylor (You)');
+});
+
+test('[LEDGER-46.2] shows only Cancel in Select Group when there are no groups', async () => {
+  await startWithGroups();
+  await openNewExpense();
+
+  await setSplit(true);
+
+  await expectList('Select Group');
+  expect(listOptions('Select Group')).toEqual([]);
+  expect(listButtons('Select Group')).toEqual(['Cancel']);
+});
+
+test('[LEDGER-48.2] keeps the payer when Who Paid? is cancelled', async () => {
+  await startWithGroups(BRISBANE);
+  await openNewExpense();
+  await chooseGroup('Brisbane');
+  await choosePayer('Casey');
+
+  await openRow('Paid by');
+  await closeList('Who Paid?');
+
+  expect(rowValue('Paid by')).toBe('Casey');
+});
+
+test("[LEDGER-17.5] leaves + Add New Category out of the list on an archived group's expense on Android", async () => {
+  await startWithGroups(BRISBANE);
+  await addDinner();
+  const [dinner] = await storedExpenses();
+  await archiveGroup('Brisbane');
+  await tapTab('Expenses');
+  await settle();
+  await openEditExpense(dinner.id);
+
+  await openCategoryList();
+
+  expect(categoryOptions(['Food & Dining'])).toHaveLength(1);
+  expect(categoryOptions([ADD_NEW_CATEGORY])).toEqual([]);
+});
+
+test('[LEDGER-101.1] closes a list with Back, keeping what the form had', async () => {
+  await startWithGroups(BRISBANE);
+  await openNewExpense();
+  await chooseGroup('Brisbane');
+  await choosePayer('Casey');
+  await openRow('Paid by');
+
+  await fireEvent(nativeViews(/^Modal$/).at(-1)!, 'requestClose');
+  await settle();
+
+  await expectListClosed('Who Paid?');
+  expect(rowValue('Paid by')).toBe('Casey');
+});
+
+test('[LEDGER-101.1] opens the lists as sheets titled Select Group, Who Paid? and Split Between, with Cancel or Done', async () => {
+  await startWithGroups(BRISBANE);
+  await openNewExpense();
+  await chooseGroup('Brisbane');
+
+  await openRow('Group');
+  expect(listButtons('Select Group')).toContain('Cancel');
+  await closeList('Select Group');
+
+  await openRow('Paid by');
+  expect(listButtons('Who Paid?')).toContain('Cancel');
+  await closeList('Who Paid?');
+
+  await openRow('Split between');
+  expect(listButtons('Split Between')).toContain('Done');
+  await pressInList('Split Between', 'Casey');
+  expect(isListOpen('Split Between')).toBe(true);
+  await closeList('Split Between');
+  expect(rowValue('Split between')).toBe('1 person');
 });
 
 test("[GROUPS-63.1] goes back to the group's screen when Back is pressed on the details", async () => {
@@ -138,7 +288,7 @@ test("[GROUPS-64.1] opens New Expense for the group from the + button on the gro
   expect(rowValue('Group')).toBe('Brisbane');
 });
 
-test("[LEDGER-66.2] [LEDGER-72.2] puts Edit and, at its right, Expense actions on a group expense's details on Android", async () => {
+test("[LEDGER-66.3] [LEDGER-72.2] puts Edit and, at its right, Expense actions on a group expense's details on Android", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await tapTab('Expenses');

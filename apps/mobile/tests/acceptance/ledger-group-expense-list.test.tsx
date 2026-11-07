@@ -27,9 +27,11 @@ import {
   opacityIn,
   openDetails,
   readOut,
+  inOneRow,
   shownInOrder,
   startExpensesAt,
   thisMonthLines,
+  expectOneFadingLine,
 } from './ledger-expense-list-app';
 import {
   actionLabels,
@@ -264,27 +266,28 @@ test("[LEDGER-64.2] keeps listing an archived group's expense", async () => {
 
 // The card
 
-test("[LEDGER-65.3] shows the group's name between the category and the date, with your share as the amount", async () => {
+test("[LEDGER-65.4] shows the group's name at the right of the category, reads it before the date, with your share as the amount", async () => {
   await startWithGroups(BRISBANE);
 
   await addDinner();
 
   await showExpenses();
-  const expected = [
-    'Dinner',
-    '$33.34',
-    'Food & Dining',
-    'Brisbane',
-    'Oct 30, 2026',
-  ];
+  const expected = ['Dinner', '$33.34', 'Food & Dining', 'Brisbane'];
   await waitFor(() =>
     expect(shownInOrder(linesIn(card('Dinner')), expected)).toEqual(expected),
   );
   expect(cards()).toHaveLength(1);
-  expect(shownInOrder([readOut(card('Dinner'))], expected)).toEqual(expected);
+  expect(linesIn(card('Dinner'))).not.toContain('Oct 30, 2026');
+  const shown = within(card('Dinner'));
+  expect(
+    inOneRow(shown.getByText('Food & Dining'), shown.getByText('Brisbane')),
+  ).toBe(true);
+  expectOneFadingLine(shown.getByText('Brisbane'));
+  const read = [...expected, 'Oct 30, 2026'];
+  expect(shownInOrder([readOut(card('Dinner'))], read)).toEqual(read);
 });
 
-test('[LEDGER-65.3] shows $0.00 on the card of a group expense you only paid', async () => {
+test('[LEDGER-65.4] shows $0.00 on the card of a group expense you only paid', async () => {
   await startWithGroups(BRISBANE);
 
   await addGroupExpense({
@@ -302,7 +305,7 @@ test('[LEDGER-65.3] shows $0.00 on the card of a group expense you only paid', a
   );
 });
 
-test('[LEDGER-65.3] counts only your share of a group expense in This Month', async () => {
+test('[LEDGER-65.4] counts only your share of a group expense in This Month', async () => {
   await startWithGroups(BRISBANE);
   await addExpense();
 
@@ -312,7 +315,7 @@ test('[LEDGER-65.3] counts only your share of a group expense in This Month', as
   await waitFor(() => expect(thisMonthLines()).toEqual(['This Month: $42.09']));
 });
 
-test('[LEDGER-65.3] marks the group as archived on the card until the group is restored', async () => {
+test('[LEDGER-65.4] marks the group as archived on the card until the group is restored', async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
 
@@ -328,7 +331,7 @@ test('[LEDGER-65.3] marks the group as archived on the card until the group is r
   expect(linesIn(card('Dinner'))).not.toContain('Brisbane · Archived');
 });
 
-test("[LEDGER-65.3] shows the group's new name on the card", async () => {
+test("[LEDGER-65.4] shows the group's new name on the card", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
 
@@ -352,7 +355,7 @@ test("[LEDGER-71.3] offers Delete expense on a group expense's card, as on a per
   expect(actionLabels(card('Dinner'))).toContain('Delete expense');
 });
 
-test("[LEDGER-65.3] [LEDGER-33.2] shows the category's color dot on a group expense's card, and <name> (Archived) once the group's category is archived", async () => {
+test("[LEDGER-65.4] [LEDGER-33.3] shows the category's color dot on a group expense's card, and <name> (Archived) once the group's category is archived", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await showExpenses();
@@ -372,13 +375,7 @@ test("[LEDGER-65.3] [LEDGER-33.2] shows the category's color dot on a group expe
   const { id } = await storedGroup(file, 'Brisbane');
   await archiveGroupCategory(id, 'Food & Dining');
 
-  const expected = [
-    'Dinner',
-    '$33.34',
-    'Food & Dining (Archived)',
-    'Brisbane',
-    'Oct 30, 2026',
-  ];
+  const expected = ['Dinner', '$33.34', 'Food & Dining (Archived)', 'Brisbane'];
   await waitFor(() =>
     expect(shownInOrder(linesIn(card('Dinner')), expected)).toEqual(expected),
   );
@@ -390,7 +387,7 @@ test("[LEDGER-65.3] [LEDGER-33.2] shows the category's color dot on a group expe
 
 // The details
 
-test('[LEDGER-66.2] shows what you paid, your share, what you are owed, then each payment and share', async () => {
+test('[LEDGER-66.3] shows what you paid, your share, what you are owed, then each payment and share', async () => {
   await startWithGroups(BRISBANE);
   await addGroupExpense({
     group: 'Brisbane',
@@ -405,6 +402,8 @@ test('[LEDGER-66.2] shows what you paid, your share, what you are owed, then eac
   const expected = [
     'Dinner',
     '$60.00',
+    'Oct 30, 2026',
+    'Food & Dining',
     'YOUR POSITION',
     'You paid',
     '$60.00',
@@ -422,18 +421,14 @@ test('[LEDGER-66.2] shows what you paid, your share, what you are owed, then eac
     '$20.00',
     'Blake',
     '$20.00',
-    'DETAILS',
     'Group',
     'Brisbane',
-    'Category',
-    'Food & Dining',
-    'Date',
-    'Oct 30, 2026',
   ];
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
+  expect(detailLines()).not.toContain('DETAILS');
 });
 
-test('[LEDGER-66.2] says what you owe when someone else paid', async () => {
+test('[LEDGER-66.3] says what you owe when someone else paid', async () => {
   await startWithGroups(BRISBANE);
   await addGroupExpense({
     group: 'Brisbane',
@@ -460,7 +455,7 @@ test('[LEDGER-66.2] says what you owe when someone else paid', async () => {
   expect(detailLines()).not.toContain('You are owed');
 });
 
-test('[LEDGER-66.2] says Settled up when what you paid is your share', async () => {
+test('[LEDGER-66.3] says Settled up when what you paid is your share', async () => {
   await startWithGroups(BRISBANE);
   await addGroupExpense({
     group: 'Brisbane',
@@ -483,7 +478,7 @@ test('[LEDGER-66.2] says Settled up when what you paid is your share', async () 
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
 });
 
-test("[LEDGER-66.2] shows $0.00 and Settled up on the details of a group expense you have no part in, opened from the group's screen", async () => {
+test("[LEDGER-66.3] shows $0.00 and Settled up on the details of a group expense you have no part in, opened from the group's screen", async () => {
   await startWithGroups(BRISBANE);
   await addGroupExpense({
     group: 'Brisbane',
@@ -508,7 +503,7 @@ test("[LEDGER-66.2] shows $0.00 and Settled up on the details of a group expense
   expect(shownInOrder(detailLinesOn('Groups'), expected)).toEqual(expected);
 });
 
-test('[LEDGER-66.2] lists the split in its stored order by current names, a former member by their name', async () => {
+test('[LEDGER-66.3] lists the split in its stored order by current names, a former member by their name', async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await renameInGroup('Brisbane', 'Casey', 'Cass');
@@ -525,13 +520,13 @@ test('[LEDGER-66.2] lists the split in its stored order by current names, a form
     '$33.34',
     'Cass',
     '$33.33',
-    'DETAILS',
+    'Group',
   ];
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
   expect(detailLines()).not.toContain('Former member');
 });
 
-test('[LEDGER-66.2] shows the note after the DETAILS section', async () => {
+test('[LEDGER-66.3] shows the note after the Group row', async () => {
   await startWithGroups(BRISBANE);
   await addGroupExpense({
     group: 'Brisbane',
@@ -543,11 +538,11 @@ test('[LEDGER-66.2] shows the note after the DETAILS section', async () => {
 
   await openDetails('Dinner');
 
-  const expected = ['DETAILS', 'Group', 'Brisbane', 'Date', 'NOTE', 'Birthday'];
+  const expected = ['Group', 'Brisbane', 'NOTE', 'Birthday'];
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
 });
 
-test("[LEDGER-66.2] opens a group expense's details from its URL", async () => {
+test("[LEDGER-66.3] opens a group expense's details from its URL", async () => {
   const app = await startWithGroups(BRISBANE);
   await addDinner();
   const [dinner] = await storedExpenses();
@@ -561,7 +556,7 @@ test("[LEDGER-66.2] opens a group expense's details from its URL", async () => {
   expect(detailLinesOn('Expenses')).not.toContain(NOT_FOUND);
 });
 
-test("[LEDGER-66.2] [LEDGER-72.2] puts Expense actions, with Delete in red, at the right of Edit on a group expense's details", async () => {
+test("[LEDGER-66.3] [LEDGER-72.2] puts Expense actions, with Delete in red, at the right of Edit on a group expense's details", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await showExpenses();
@@ -578,7 +573,7 @@ test("[LEDGER-66.2] [LEDGER-72.2] puts Expense actions, with Delete in red, at t
   ]);
 });
 
-test("[LEDGER-66.2] [LEDGER-37.2] shows the category's color dot on a group expense's details, and <name> (Archived) once the group's category is archived", async () => {
+test("[LEDGER-66.3] [LEDGER-37.3] shows the category's color dot on a group expense's details, and <name> (Archived) once the group's category is archived", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   const { id } = await storedGroup(file, 'Brisbane');
@@ -586,25 +581,14 @@ test("[LEDGER-66.2] [LEDGER-37.2] shows the category's color dot on a group expe
 
   await openDetails('Dinner');
 
-  const expected = [
-    'DETAILS',
-    'Group',
-    'Brisbane',
-    'Category',
-    'Food & Dining (Archived)',
-    'Date',
-  ];
+  const expected = ['Food & Dining (Archived)', 'Group', 'Brisbane'];
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
   expect(dotColors(detailScreen())).toEqual(['#D81B60']);
   const [dot] = colorDots(detailScreen());
   const details = within(detailScreen());
-  expect(
-    inTreeOrder(
-      details.getByText('Category'),
-      dot,
-      details.getByText('Food & Dining (Archived)'),
-    ),
-  ).toBe(true);
+  expect(inTreeOrder(dot, details.getByText('Food & Dining (Archived)'))).toBe(
+    true,
+  );
   expect(isUnread(dot)).toBe(true);
   expect(opacityIn(detailScreen(), dot)).toBe(1);
 });
@@ -625,12 +609,10 @@ test("[LEDGER-67.2] shows the shared history notice and the status of an archive
     SHARED_HISTORY,
     SHARED_HISTORY_TEXT,
     'YOUR POSITION',
-    'DETAILS',
     'Group',
     'Brisbane',
     'Status',
     'Archived · Read-only',
-    'Category',
   ];
   expect(shownInOrder(detailLines(), expected)).toEqual(expected);
   expect(editOn('Expenses')?.disabled).toBe(true);

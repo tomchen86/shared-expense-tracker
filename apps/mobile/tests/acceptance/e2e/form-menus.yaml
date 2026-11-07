@@ -1,0 +1,98 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[LEDGER-100.1] The form's lists are system menus: one choice closes them, Split between stays open, a press outside only closes them, and the keyboard stays"
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- tapOn: Enter your name
+- inputText: Taylor
+- pressKey: Enter
+- tapOn: Groups
+- tapOn: Add group
+- waitForAnimationToEnd
+- inputText: Brisbane
+- tapOn: Create
+- waitForAnimationToEnd
+- tapOn: Open Brisbane
+- tapOn: Group actions
+- tapOn: Members
+- tapOn: Add Member
+- inputText: Casey
+- pressKey: Enter
+- waitForAnimationToEnd
+- tapOn: Close
+- waitForAnimationToEnd
+- tapOn: Add expense
+- waitForAnimationToEnd
+# Typing: the keyboard stays while the menu is open, and the caret comes back.
+# A press on the form's margin, outside the menu, closes it.
+- tapOn: Expense title
+- inputText: Dinner
+- tapOn: Category, Food & Dining
+- waitForAnimationToEnd
+- assertVisible: Shopping
+- assertVisible: \+ Add New Category
+- takeScreenshot: category-menu-over-keyboard
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
+- assertVisible: Category, Food & Dining
+- assertNotVisible: \+ Add New Category
+- inputText: ' out'
+- assertVisible: Dinner out
+# One choice closes the menu.
+- tapOn: Category, Food & Dining
+- waitForAnimationToEnd
+- tapOn: Shopping
+- waitForAnimationToEnd
+- assertVisible: Category, Shopping
+- assertNotVisible: \+ Add New Category
+- inputText: ' again'
+- assertVisible: Dinner out again
+- scrollUntilVisible:
+    element: Split between, Choose people
+    direction: DOWN
+    centerElement: true
+# Split between stays open while people are chosen.
+- tapOn: Split between, Choose people
+- waitForAnimationToEnd
+- takeScreenshot: split-between-menu
+- tapOn: Taylor \(You\)
+- waitForAnimationToEnd
+- assertVisible:
+    text: Taylor \(You\)
+    selected: true
+- tapOn: Casey
+- waitForAnimationToEnd
+- assertVisible:
+    text: Casey
+    selected: true
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
+- assertVisible: Split between, 2 people
+- assertNotVisible: Taylor \(You\)
+# A press on the Group row, outside the menu, only closes the menu.
+- scrollUntilVisible:
+    element: Category, Shopping
+    direction: UP
+- tapOn: Category, Shopping
+- waitForAnimationToEnd
+- assertVisible: Transportation
+- tapOn:
+    point: 10%,76%
+- waitForAnimationToEnd
+- assertNotVisible: Transportation
+- assertNotVisible: Brisbane
+- assertVisible: Group, Brisbane
+# The same press now opens Select Group, so the one before was on that row.
+- tapOn:
+    point: 10%,76%
+- waitForAnimationToEnd
+- assertVisible: Brisbane

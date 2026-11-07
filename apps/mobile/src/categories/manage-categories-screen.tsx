@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useRef, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -15,14 +15,11 @@ import {
   useFocusEffect,
   useLocalSearchParams,
 } from 'expo-router';
-import {
-  GestureDetector,
-  GestureHandlerRootView,
-  useNativeGesture,
-} from 'react-native-gesture-handler';
 import { listGroups } from '../groups';
 import { categoryExpenseCounts } from '../ledger/expenses';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
+import { HeaderActions } from '../ui/header-actions';
+import { SwipeScrollView } from '../ui/swipe-action';
 import { useThemeColors } from '../ui/theme';
 import { useSheetScroll } from '../ui/use-sheet-scroll';
 import { CategoryForm } from './category-form';
@@ -53,7 +50,6 @@ export function ManageCategoriesScreen({
   const identity = useLocalIdentity();
   const colors = useThemeColors();
   const sheetScroll = useSheetScroll(asSheet);
-  const scrollGesture = useNativeGesture();
   const { scopeKind, spaceId } = useLocalSearchParams();
   const groupId =
     scopeKind === 'group' && typeof spaceId === 'string' && spaceId
@@ -135,12 +131,6 @@ export function ManageCategoriesScreen({
       () => undefined,
     );
   }
-  const latestAfterRead = useRef(afterRead);
-  latestAfterRead.current = afterRead;
-  const openAddForm = useCallback(
-    () => latestAfterRead.current(() => setFormState({ kind: 'add' })),
-    [],
-  );
 
   async function handleSave(input: { name: string; color: string }) {
     if (formState?.kind === 'edit') {
@@ -283,50 +273,6 @@ export function ManageCategoriesScreen({
   const otherCategories = editingCategory
     ? categories.filter((category) => category.id !== editingCategory.id)
     : categories;
-  const screenOptions = useMemo(
-    () => ({
-      title: groupId ? 'Group Categories' : 'Manage Categories',
-      fullScreenGestureEnabled: false,
-      headerLeft: asSheet
-        ? () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              onPress={() =>
-                router.canGoBack() ? router.back() : router.replace('/')
-              }
-              style={styles.cancel}
-            >
-              <Text style={{ color: colors.accent }}>Close</Text>
-            </Pressable>
-          )
-        : undefined,
-      headerRight:
-        groupExists && !groupArchived
-          ? () => (
-              <Pressable
-                accessibilityLabel="Add category"
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={openAddForm}
-                style={({ pressed }) => [
-                  styles.addButton,
-                  pressed && styles.addButtonPressed,
-                ]}
-              >
-                <Text
-                  accessible={false}
-                  style={[styles.addIcon, { color: colors.accent }]}
-                >
-                  +
-                </Text>
-              </Pressable>
-            )
-          : undefined,
-    }),
-    [openAddForm, groupId, groupExists, groupArchived, colors.accent, asSheet],
-  );
-
   const activeCategories = categories.filter(
     (category) => !category.isArchived,
   );
@@ -346,7 +292,6 @@ export function ManageCategoriesScreen({
           category={category}
           used={(expenseCounts.get(category.id) ?? 0) > 0}
           readOnly={groupArchived}
-          scrollGesture={scrollGesture}
           onPress={
             isUncategorizedCategory(category) || groupArchived
               ? undefined
@@ -374,191 +319,197 @@ export function ManageCategoriesScreen({
 
   if (error) throw error;
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView
-        edges={['left', 'right']}
-        style={[styles.screen, { backgroundColor: colors.background }]}
-      >
-        <Stack.Screen
-          options={{ ...screenOptions, ...sheetScroll.screenOptions }}
-        />
+    <SafeAreaView
+      edges={['left', 'right']}
+      style={[styles.screen, { backgroundColor: colors.background }]}
+    >
+      <Stack.Screen
+        options={{
+          title: groupId ? 'Group Categories' : 'Manage Categories',
+          fullScreenGestureEnabled: false,
+          ...sheetScroll.screenOptions,
+        }}
+      />
+      <HeaderActions
+        cancel={
+          asSheet
+            ? {
+                label: 'Close',
+                onPress: () =>
+                  router.canGoBack() ? router.back() : router.replace('/'),
+              }
+            : undefined
+        }
+        add={
+          groupExists && !groupArchived
+            ? {
+                label: 'Add category',
+                onPress: () => afterRead(() => setFormState({ kind: 'add' })),
+              }
+            : undefined
+        }
+      />
 
-        {groupExists === false && (
-          <ScrollView
-            {...sheetScroll.scrollProps}
-            contentContainerStyle={[
-              styles.content,
-              { paddingBottom: 32 + sheetScroll.bottomPadding },
-            ]}
-          >
-            <Text style={{ color: colors.text }}>Group not found.</Text>
-          </ScrollView>
-        )}
-        {groupExists && (
-          <GestureDetector gesture={scrollGesture}>
-            <ScrollView
-              {...sheetScroll.scrollProps}
-              contentContainerStyle={[
-                styles.content,
-                { paddingBottom: 32 + sheetScroll.bottomPadding },
+      {groupExists === false && (
+        <ScrollView
+          {...sheetScroll.scrollProps}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: 32 + sheetScroll.bottomPadding },
+          ]}
+        >
+          <Text style={{ color: colors.text }}>Group not found.</Text>
+        </ScrollView>
+      )}
+      {groupExists && (
+        <SwipeScrollView
+          {...sheetScroll.scrollProps}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: 32 + sheetScroll.bottomPadding },
+          ]}
+        >
+          {groupArchived && (
+            <Text style={[styles.readOnlyNotice, { color: colors.text }]}>
+              Archived group. Categories are read-only.
+            </Text>
+          )}
+          <View style={styles.sectionHeader}>
+            <Text
+              accessibilityRole="header"
+              style={[
+                styles.sectionLabel,
+                { marginBottom: 0, color: colors.textMuted },
               ]}
             >
-              {groupArchived && (
-                <Text style={[styles.readOnlyNotice, { color: colors.text }]}>
-                  Archived group. Categories are read-only.
-                </Text>
-              )}
-              <View style={styles.sectionHeader}>
-                <Text
-                  accessibilityRole="header"
-                  style={[
-                    styles.sectionLabel,
-                    { marginBottom: 0, color: colors.textMuted },
-                  ]}
-                >
-                  CATEGORIES
-                </Text>
-                {!groupArchived && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="About categories"
-                    hitSlop={8}
-                    style={styles.about}
-                    onPress={() =>
-                      Alert.alert(
-                        'About Categories',
-                        'Tap a category to edit it. Swipe left to remove a category. Categories used by expenses can be archived or moved, so historical classifications stay intact. Uncategorized is reserved and cannot be renamed or removed.',
-                      )
-                    }
-                  >
-                    <Text style={{ color: colors.accent }}>ⓘ</Text>
-                  </Pressable>
-                )}
-              </View>
+              CATEGORIES
+            </Text>
+            {!groupArchived && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="About categories"
+                hitSlop={8}
+                style={styles.about}
+                onPress={() =>
+                  Alert.alert(
+                    'About Categories',
+                    'Tap a category to edit it. Swipe left to remove a category. Categories used by expenses can be archived or moved, so historical classifications stay intact. Uncategorized is reserved and cannot be renamed or removed.',
+                  )
+                }
+              >
+                <Text style={{ color: colors.accent }}>ⓘ</Text>
+              </Pressable>
+            )}
+          </View>
+          <View style={[styles.section, { backgroundColor: colors.surface }]}>
+            {rows(activeCategories)}
+          </View>
+          {archivedCategories.length > 0 && (
+            <View
+              style={[styles.archived, { backgroundColor: colors.background }]}
+            >
+              <Text
+                accessibilityRole="header"
+                style={[styles.sectionLabel, { color: colors.textMuted }]}
+              >
+                ARCHIVED
+              </Text>
               <View
                 style={[styles.section, { backgroundColor: colors.surface }]}
               >
-                {rows(activeCategories)}
+                {rows(archivedCategories)}
               </View>
-              {archivedCategories.length > 0 && (
-                <View
-                  style={[
-                    styles.archived,
-                    { backgroundColor: colors.background },
-                  ]}
-                >
-                  <Text
-                    accessibilityRole="header"
-                    style={[styles.sectionLabel, { color: colors.textMuted }]}
-                  >
-                    ARCHIVED
-                  </Text>
-                  <View
-                    style={[
-                      styles.section,
-                      { backgroundColor: colors.surface },
-                    ]}
-                  >
-                    {rows(archivedCategories)}
-                  </View>
-                  <Text style={[styles.footer, { color: colors.textMuted }]}>
-                    Archived categories remain on historical expenses and in
-                    Insights.
-                  </Text>
-                </View>
-              )}
-            </ScrollView>
-          </GestureDetector>
-        )}
+              <Text style={[styles.footer, { color: colors.textMuted }]}>
+                Archived categories remain on historical expenses and in
+                Insights.
+              </Text>
+            </View>
+          )}
+        </SwipeScrollView>
+      )}
 
-        {groupExists && formState !== null && (
-          <CategoryForm
-            editingCategory={editingCategory}
-            onCancel={() => setFormState(null)}
-            onSave={handleSave}
-            otherCategories={otherCategories}
-          />
-        )}
-        {groupExists && movingCategory && (
-          <Modal
-            allowSwipeDismissal={!updating}
-            animationType="slide"
-            onRequestClose={cancelMove}
-            presentationStyle="pageSheet"
-            visible
-          >
-            <SafeAreaProvider>
-              <SafeAreaView
-                style={{ flex: 1, backgroundColor: colors.background }}
+      {groupExists && formState !== null && (
+        <CategoryForm
+          editingCategory={editingCategory}
+          onCancel={() => setFormState(null)}
+          onSave={handleSave}
+          otherCategories={otherCategories}
+        />
+      )}
+      {groupExists && movingCategory && (
+        <Modal
+          allowSwipeDismissal={!updating}
+          animationType="slide"
+          onRequestClose={cancelMove}
+          presentationStyle="pageSheet"
+          visible
+        >
+          <SafeAreaProvider>
+            <SafeAreaView
+              style={{ flex: 1, backgroundColor: colors.background }}
+            >
+              <View
+                style={[
+                  styles.moveHeader,
+                  { borderBottomColor: colors.separator },
+                ]}
               >
-                <View
-                  style={[
-                    styles.moveHeader,
-                    { borderBottomColor: colors.separator },
-                  ]}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel"
+                  disabled={updating}
+                  accessibilityState={{ disabled: updating }}
+                  onPress={cancelMove}
+                  style={styles.cancel}
                 >
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Cancel"
-                    disabled={updating}
-                    accessibilityState={{ disabled: updating }}
-                    onPress={cancelMove}
-                    style={styles.cancel}
-                  >
-                    <Text style={{ color: colors.accent }}>Cancel</Text>
-                  </Pressable>
-                  <Text
-                    accessibilityRole="header"
-                    style={[styles.moveTitle, { color: colors.text }]}
-                  >
-                    Move {movingCategory.name} Expenses
-                  </Text>
-                </View>
-                <ScrollView contentContainerStyle={styles.content}>
-                  <View
-                    style={[
-                      styles.section,
-                      { backgroundColor: colors.surface },
-                    ]}
-                  >
-                    {activeCategories
-                      .filter((category) => category.id !== movingCategory.id)
-                      .map((category) => (
-                        <Pressable
-                          key={category.id}
-                          accessibilityRole="button"
-                          accessibilityLabel={category.name}
-                          accessibilityState={{ disabled: updating }}
-                          disabled={updating}
-                          onPress={() => move(category)}
-                          style={({ pressed }) => [
-                            styles.row,
-                            pressed && {
-                              backgroundColor: colors.pressedSurface,
-                            },
+                  <Text style={{ color: colors.accent }}>Cancel</Text>
+                </Pressable>
+                <Text
+                  accessibilityRole="header"
+                  style={[styles.moveTitle, { color: colors.text }]}
+                >
+                  Move {movingCategory.name} Expenses
+                </Text>
+              </View>
+              <ScrollView contentContainerStyle={styles.content}>
+                <View
+                  style={[styles.section, { backgroundColor: colors.surface }]}
+                >
+                  {activeCategories
+                    .filter((category) => category.id !== movingCategory.id)
+                    .map((category) => (
+                      <Pressable
+                        key={category.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={category.name}
+                        accessibilityState={{ disabled: updating }}
+                        disabled={updating}
+                        onPress={() => move(category)}
+                        style={({ pressed }) => [
+                          styles.row,
+                          pressed && {
+                            backgroundColor: colors.pressedSurface,
+                          },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.colorDot,
+                            { backgroundColor: category.color },
                           ]}
-                        >
-                          <View
-                            style={[
-                              styles.colorDot,
-                              { backgroundColor: category.color },
-                            ]}
-                          />
-                          <Text
-                            style={[styles.rowLabel, { color: colors.text }]}
-                          >
-                            {category.name}
-                          </Text>
-                        </Pressable>
-                      ))}
-                  </View>
-                </ScrollView>
-              </SafeAreaView>
-            </SafeAreaProvider>
-          </Modal>
-        )}
-      </SafeAreaView>
-    </GestureHandlerRootView>
+                        />
+                        <Text style={[styles.rowLabel, { color: colors.text }]}>
+                          {category.name}
+                        </Text>
+                      </Pressable>
+                    ))}
+                </View>
+              </ScrollView>
+            </SafeAreaView>
+          </SafeAreaProvider>
+        </Modal>
+      )}
+    </SafeAreaView>
   );
 }
 
@@ -566,19 +517,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 32 },
   readOnlyNotice: { fontSize: 16, marginBottom: 20 },
-  addButton: {
-    minWidth: 36,
-    minHeight: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addButtonPressed: {
-    opacity: 0.6,
-  },
-  addIcon: {
-    fontSize: 28,
-    lineHeight: 30,
-  },
   sectionLabel: {
     fontSize: 13,
     marginLeft: 16,

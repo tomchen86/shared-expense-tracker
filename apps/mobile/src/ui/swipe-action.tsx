@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -13,7 +14,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type ScrollViewProps,
 } from 'react-native';
@@ -27,11 +27,16 @@ import {
 } from 'react-native-gesture-handler';
 import { useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useThemeColors } from './theme';
 
-const WIDTH = 96;
-const GAP = 8;
-const OPEN = -(WIDTH + GAP);
+/** How a card, which has a caption under its action, and a row of a list, which has none, are drawn. */
+const CARD = { width: 72, gap: 8, circle: 44, icon: 20, radius: 12 };
+const LIST_ROW = { width: 60, gap: 0, circle: 36, icon: 17, radius: 0 };
+
+// Past this share of the row's width, letting go runs the action.
+const FULL_SWIPE = 0.6;
 
 const SwipeList = createContext<{
   scrollGesture: NativeGesture;
@@ -80,61 +85,131 @@ export function SwipeScrollView({
   );
 }
 
+/** Closes the rows of the surrounding SwipeScrollView that show their action. */
+export function useCloseSwipeRows() {
+  const { openRows } = useContext(SwipeList)!;
+  return () => openRows.forEach((close) => close());
+}
+
 export function SwipeAction({
   children,
-  label,
+  caption,
+  icon,
   accessibilityLabel,
-  disabled,
+  disabled = false,
+  staysInList = false,
   onPress,
 }: {
   children: ReactNode;
-  label: string;
-  accessibilityLabel: string;
-  disabled: boolean;
+  /** The text under the action's circle. A row without one is drawn as a row of a list. */
+  caption?: string;
+  icon: SymbolViewProps['name'];
+  accessibilityLabel?: string;
+  /** The row moves nothing, and a sideways drag on it stays a drag. */
+  disabled?: boolean;
+  /** The row is still there after its action, so it closes then, as opposed to leaving the list. */
+  staysInList?: boolean;
   onPress: () => void;
 }) {
   const colors = useThemeColors();
   const { scrollGesture, openRows, backSwipe, touch } = useContext(SwipeList)!;
+  const metrics = caption ? CARD : LIST_ROW;
+  const openOffset = -(metrics.width + metrics.gap);
   const [translation] = useState(() => new Animated.Value(0));
+  // 0 at rest, 1 once a full swipe would run the action.
+  const [armedProgress] = useState(() => new Animated.Value(0));
   const offset = useRef(0);
+  const rowWidth = useRef(0);
+  const armed = useRef(false);
+  const comeBackTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(comeBackTimer.current), []);
+  const latestPress = useRef(onPress);
+  useLayoutEffect(() => {
+    latestPress.current = onPress;
+  });
+  // The action is only there once the row moves, since a long list has many rows that never do.
+  const [revealed, setRevealed] = useState(false);
   const [open, setOpen] = useState(false);
+
+  const setArmed = useCallback(
+    (next: boolean) => {
+      if (armed.current === next) return;
+      armed.current = next;
+      if (next)
+        void impactAsync(ImpactFeedbackStyle.Medium).catch(() => undefined);
+      Animated.timing(armedProgress, {
+        toValue: next ? 1 : 0,
+        duration: 140,
+        useNativeDriver: false,
+      }).start();
+    },
+    [armedProgress],
+  );
   const finish = useCallback(
     (next: number) => {
+      setArmed(false);
       offset.current = next;
       setOpen(next !== 0);
       Animated.spring(translation, {
         toValue: next,
-        useNativeDriver: true,
+        useNativeDriver: false,
         overshootClamping: true,
-      }).start();
+      }).start(({ finished }) => {
+        if (finished && next === 0) setRevealed(false);
+      });
     },
-    [translation],
+    [setArmed, translation],
   );
+  const runAction = useCallback(() => {
+    Animated.timing(translation, {
+      toValue: -rowWidth.current,
+      duration: 160,
+      useNativeDriver: false,
+    }).start(() => {
+      latestPress.current();
+      if (staysInList) finish(0);
+      // ponytail: the row normally leaves the list once the action is saved; if it stays (a failed
+      // save), it comes back after this pause. Have onPress report the save if the pause shows.
+      else comeBackTimer.current = setTimeout(() => finish(0), 800);
+    });
+  }, [finish, staysInList, translation]);
   const follow = useCallback(
-    (moved: number) =>
-      translation.setValue(Math.max(OPEN, Math.min(0, offset.current + moved))),
-    [translation],
+    (moved: number) => {
+      if (disabled) return;
+      const next = Math.max(
+        -rowWidth.current,
+        Math.min(0, offset.current + moved),
+      );
+      translation.setValue(next);
+      setArmed(next < -rowWidth.current * FULL_SWIPE);
+    },
+    [disabled, setArmed, translation],
   );
   const release = useCallback(
-    (canceled: boolean, velocityX: number, moved: number) =>
+    (canceled: boolean, velocityX: number, moved: number) => {
+      if (disabled) return;
+      if (!canceled && armed.current) {
+        runAction();
+        return;
+      }
       finish(
         canceled
           ? offset.current
           : velocityX > 500
             ? 0
-            : offset.current + moved < OPEN / 2 || velocityX < -500
-              ? OPEN
+            : offset.current + moved < openOffset / 2 || velocityX < -500
+              ? openOffset
               : 0,
-      ),
-    [finish],
+      );
+    },
+    [disabled, finish, openOffset, runAction],
   );
   const leavesRightDrag = backSwipe && !open;
   const pan = usePanGesture({
-    enabled: !disabled,
     // Decide on the UI thread, before the native scroll recognizer takes the drag, and keep that
-    // direction until release, as a category row does. From JavaScript, a quick drag can end before
-    // the answer arrives and count as a tap. The row itself follows from JavaScript, since animated
-    // styles on every row take a long list half as long again to mount.
+    // direction until release. From JavaScript, a quick drag can end before the answer arrives and
+    // count as a tap. The row itself follows from JavaScript, since animated styles on every row
+    // take a long list half as long again to mount.
     manualActivation: true,
     block: scrollGesture,
     onTouchesDown: (event) => {
@@ -152,6 +227,9 @@ export function SwipeAction({
       if (dx > dy && !(leavesRightDrag && moved > 0))
         GestureStateManager.activate(event.handlerTag);
       else GestureStateManager.fail(event.handlerTag);
+    },
+    onActivate: () => {
+      scheduleOnRN(setRevealed, !disabled);
     },
     onUpdate: (event) => {
       scheduleOnRN(follow, event.translationX);
@@ -176,29 +254,34 @@ export function SwipeAction({
 
   return (
     <GestureDetector gesture={pan}>
-      <View style={styles.container}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={accessibilityLabel}
-          accessibilityElementsHidden={!open}
-          importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
-          accessibilityState={{ disabled }}
-          disabled={disabled || !open}
-          onPress={onPress}
-          style={({ pressed }) => [
-            styles.action,
-            {
-              backgroundColor: pressed ? colors.pressedSurface : colors.surface,
-            },
-          ]}
-        >
-          <Text style={{ color: colors.accent, fontSize: 17 }}>{label}</Text>
-        </Pressable>
+      <View
+        onLayout={(event) => {
+          rowWidth.current = event.nativeEvent.layout.width;
+        }}
+        style={[styles.container, { borderRadius: metrics.radius }]}
+      >
+        {revealed && (
+          <ActionButton
+            metrics={metrics}
+            caption={caption}
+            icon={icon}
+            accessibilityLabel={accessibilityLabel}
+            enabled={!disabled && open}
+            shown={open}
+            translation={translation}
+            armedProgress={armedProgress}
+            onPress={() => {
+              if (staysInList) finish(0);
+              onPress();
+            }}
+          />
+        )}
         <Animated.View
           style={[
             styles.row,
             {
-              backgroundColor: colors.background,
+              borderRadius: metrics.radius,
+              backgroundColor: caption ? colors.background : colors.surface,
               transform: [{ translateX: translation }],
             },
           ]}
@@ -210,24 +293,110 @@ export function SwipeAction({
   );
 }
 
+/**
+ * What a row reveals: a red circle with a white symbol, over its caption. Once a full swipe would
+ * run the action, the circle becomes a capsule that follows the row's edge, growing to the left past
+ * this button. The button itself is only the revealed part, since its middle is where a screen
+ * reader presses.
+ */
+function ActionButton({
+  metrics,
+  caption,
+  icon,
+  accessibilityLabel,
+  enabled,
+  shown,
+  translation,
+  armedProgress,
+  onPress,
+}: {
+  metrics: typeof CARD;
+  caption?: string;
+  icon: SymbolViewProps['name'];
+  accessibilityLabel?: string;
+  enabled: boolean;
+  shown: boolean;
+  translation: Animated.Value;
+  armedProgress: Animated.Value;
+  onPress: () => void;
+}) {
+  const colors = useThemeColors();
+  const { width, gap, circle, icon: iconSize } = metrics;
+  const [pillWidth] = useState(() =>
+    Animated.add(
+      circle,
+      Animated.multiply(
+        armedProgress,
+        Animated.add(Animated.multiply(translation, -1), -(width + gap)),
+      ),
+    ),
+  );
+  const [captionOpacity] = useState(() =>
+    armedProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+  );
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityElementsHidden={!shown}
+      importantForAccessibility={shown ? 'auto' : 'no-hide-descendants'}
+      accessibilityState={{ disabled: !enabled }}
+      disabled={!enabled}
+      onPress={onPress}
+      style={[styles.action, { width }]}
+    >
+      {({ pressed }) => (
+        <>
+          <Animated.View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={[
+              styles.pill,
+              {
+                width: pillWidth,
+                height: circle,
+                marginRight: (width - circle) / 2,
+                paddingLeft: (circle - iconSize) / 2,
+                borderRadius: circle / 2,
+                backgroundColor: colors.error,
+              },
+              pressed && styles.pressed,
+            ]}
+          >
+            <SymbolView name={icon} size={iconSize} tintColor="#FFFFFF" />
+          </Animated.View>
+          {caption && (
+            <Animated.Text
+              numberOfLines={1}
+              style={[
+                styles.caption,
+                { width, color: colors.textMuted, opacity: captionOpacity },
+              ]}
+            >
+              {caption}
+            </Animated.Text>
+          )}
+        </>
+      )}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   list: { flex: 1 },
-  container: {
-    overflow: 'hidden',
-    borderCurve: 'continuous',
-    borderRadius: 12,
-  },
-  // The row and the action match the card's shape, so no square corner shows between them.
-  row: { borderCurve: 'continuous', borderRadius: 12 },
+  container: { overflow: 'hidden', borderCurve: 'continuous' },
+  // The row matches the card's shape, so no square corner shows behind it.
+  row: { borderCurve: 'continuous' },
   action: {
-    borderCurve: 'continuous',
-    borderRadius: 12,
     position: 'absolute',
     right: 0,
     top: 0,
     bottom: 0,
-    width: WIDTH,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-end',
+    gap: 4,
   },
+  pill: { justifyContent: 'center', alignItems: 'flex-start' },
+  pressed: { opacity: 0.6 },
+  caption: { fontSize: 12, textAlign: 'center' },
 });

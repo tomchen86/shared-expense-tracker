@@ -1,33 +1,14 @@
-import { Pressable, StyleSheet, View } from 'react-native';
-import {
-  GlassView,
-  isGlassEffectAPIAvailable,
-  isLiquidGlassAvailable,
-} from 'expo-glass-effect';
+import { Pressable, StyleSheet } from 'react-native';
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 import { SymbolView } from 'expo-symbols';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AddButtonProps } from './add-button';
-import { useReduceTransparency } from './reduce-transparency';
+import { GlassSurface } from './glass-surface';
 import { useThemeColors } from './theme';
 
 export function AddButton({ label = 'Add expense', onPress }: AddButtonProps) {
   const colors = useThemeColors();
   const { bottom } = useSafeAreaInsets();
-  const reduceTransparency = useReduceTransparency();
-  const glass =
-    !reduceTransparency &&
-    isGlassEffectAPIAvailable() &&
-    isLiquidGlassAvailable();
-  const icon = (
-    <SymbolView
-      name="plus"
-      size={28}
-      tintColor={colors.text}
-      accessibilityElementsHidden
-      accessible={false}
-    />
-  );
 
   return (
     <Pressable
@@ -43,19 +24,15 @@ export function AddButton({ label = 'Add expense', onPress }: AddButtonProps) {
         pressed && styles.pressed,
       ]}
     >
-      {glass ? (
-        <GlassView
-          isInteractive
-          glassEffectStyle="regular"
-          style={styles.surface}
-        >
-          {icon}
-        </GlassView>
-      ) : (
-        <View style={[styles.surface, { backgroundColor: colors.surface }]}>
-          {icon}
-        </View>
-      )}
+      <GlassSurface style={styles.surface}>
+        <SymbolView
+          name="plus"
+          size={28}
+          tintColor={colors.text}
+          accessibilityElementsHidden
+          accessible={false}
+        />
+      </GlassSurface>
     </Pressable>
   );
 }

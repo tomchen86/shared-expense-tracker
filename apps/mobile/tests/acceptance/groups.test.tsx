@@ -753,7 +753,7 @@ test("[SHELL-13.1] shows only a back arrow named Back on a group's screen", asyn
   await openCard('Brisbane');
 
   await waitFor(() =>
-    expect(navigationBars(tab('Groups')).at(-1)?.props.title).toBe('Brisbane'),
+    expect(navigationBarTitles(tab('Groups')).at(-1)).toBe('Brisbane'),
   );
   const pushed = navigationBars(tab('Groups')).at(-1)?.props;
   // The native stack hides the back title with backButtonDisplayMode on iOS 14
@@ -807,7 +807,7 @@ test('[GROUPS-17.1] creates a second group with the same name', async () => {
   expect(first.id).not.toBe(second.id);
 });
 
-test('[GROUPS-18.1] shows a long name on one line of its card, cut off at the end', async () => {
+test('[GROUPS-18.2] shows a long name on one line of its card, with no ellipsis', async () => {
   await startWithName();
   const name = 'a'.repeat(300);
 
@@ -816,7 +816,7 @@ test('[GROUPS-18.1] shows a long name on one line of its card, cut off at the en
   // Jest lays nothing out, so the test reads what the card asks the native text for.
   const shown = within(cards()[0]).getByText(name);
   expect(shown.props.numberOfLines).toBe(1);
-  expect(shown.props.ellipsizeMode ?? 'tail').toBe('tail');
+  expect(shown.props.ellipsizeMode).toBe('clip');
   expect(cardNames()).toEqual([`Open ${name}`]);
 });
 

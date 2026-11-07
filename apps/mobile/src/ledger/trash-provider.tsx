@@ -138,9 +138,11 @@ export function TrashProvider({ children }: { children: ReactNode }) {
       {notice && (
         <BottomNotice
           message="Moved to Trash"
-          action="Undo"
-          accessibilityLabel={`Undo deletion of ${notice.expense.title}`}
-          onPress={() => void actions.restore(notice.expense.id)}
+          action={{
+            label: 'Undo',
+            accessibilityLabel: `Undo deletion of ${notice.expense.title}`,
+            onPress: () => void actions.restore(notice.expense.id),
+          }}
         />
       )}
     </TrashContext.Provider>

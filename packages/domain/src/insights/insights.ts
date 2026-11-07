@@ -35,7 +35,12 @@ export type InsightContext =
       personalParticipantId: string;
       participants: readonly { id: string; userId?: string }[];
     }
-  | { kind: 'group'; groupId: string };
+  | {
+      kind: 'group';
+      groupId: string;
+      /** Your member in the group, whose share each currency reports. */
+      ownMemberId?: string;
+    };
 
 export interface InsightCategoryTotal {
   name: string;
@@ -47,6 +52,8 @@ export interface InsightCategoryTotal {
 export interface InsightCurrency {
   currency: string;
   totalMinor: number;
+  /** Your share of the total, given the context's `ownMemberId`. */
+  yourShareMinor?: number;
   comparison: {
     previousTotalMinor: number;
     deltaMinor: number;
@@ -94,6 +101,7 @@ interface CategoryTotal {
 
 interface CurrencyTotal {
   totalMinor: number;
+  yourShareMinor?: number;
   categories: Map<string, CategoryTotal>;
 }
 
@@ -156,11 +164,20 @@ function countedAmount(
   return total;
 }
 
+function yourShareOf(expense: InsightExpense, context: InsightContext) {
+  if (context.kind !== 'group' || context.ownMemberId === undefined)
+    return undefined;
+  return expense.shares
+    .filter((share) => share.participant === context.ownMemberId)
+    .reduce((sum, share) => sum + share.amountMinor, 0);
+}
+
 function addExpense(
   periods: PeriodTotals,
   key: string,
   expense: InsightExpense,
   amountMinor: number,
+  yourShareMinor: number | undefined,
   category: InsightCategory | undefined,
   categoryKey: string,
 ): boolean {
@@ -186,6 +203,9 @@ function addExpense(
     });
   }
   currency.totalMinor += amountMinor;
+  // Your shares cannot exceed the checked currency total.
+  if (yourShareMinor !== undefined)
+    currency.yourShareMinor = (currency.yourShareMinor ?? 0) + yourShareMinor;
   currencies.set(expense.currency, currency);
   periods.set(key, currencies);
   return true;
@@ -233,8 +253,11 @@ function buildPeriods(
     const currencies = [...totals.keys()]
       .sort()
       .map((currency): InsightCurrency => {
-        const { totalMinor, categories: categoryTotals } =
-          totals.get(currency)!;
+        const {
+          totalMinor,
+          yourShareMinor,
+          categories: categoryTotals,
+        } = totals.get(currency)!;
         const categories = [...categoryTotals.values()]
           .map(({ amountMinor, category, source }) => {
             const { name, color } = category ?? fallbackDetails(source);
@@ -259,6 +282,7 @@ function buildPeriods(
         return {
           currency,
           totalMinor,
+          ...(yourShareMinor === undefined ? {} : { yourShareMinor }),
           comparison: previous
             ? {
                 previousTotalMinor,
@@ -314,6 +338,7 @@ export function buildInsights(input: {
     if (!isLocalDate(expense.date)) continue;
     const amountMinor = countedAmount(expense, context, participantIds);
     if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) continue;
+    const yourShareMinor = yourShareOf(expense, context);
 
     // Matched expenses merge by name into the first category of that name (INSIGHTS-6.2).
     const matched =
@@ -332,6 +357,7 @@ export function buildInsights(input: {
         expense.date.slice(0, 7),
         expense,
         amountMinor,
+        yourShareMinor,
         category,
         categoryKey,
       ) ||
@@ -340,6 +366,7 @@ export function buildInsights(input: {
         expense.date.slice(0, 4),
         expense,
         amountMinor,
+        yourShareMinor,
         category,
         categoryKey,
       )

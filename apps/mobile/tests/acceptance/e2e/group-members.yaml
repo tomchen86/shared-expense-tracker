@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[GROUPS-20.2] [GROUPS-22.2] [GROUPS-23.2] [GROUPS-24.2] [GROUPS-25.2] [GROUPS-26.1] [GROUPS-29.2] [GROUPS-30.2] [GROUPS-31.2] [GROUPS-34.2] [GROUPS-40.2] [GROUPS-41.1] Opens Members from the Group actions menu, adds two members in its name field, removes one from their action sheet with the keyboard up, adds them back, swipes Members down, then renames the group from its title'
+name: '[GROUPS-20.2] [GROUPS-22.3] [GROUPS-23.2] [GROUPS-24.2] [GROUPS-25.2] [GROUPS-26.1] [GROUPS-29.2] [GROUPS-30.2] [GROUPS-31.2] [GROUPS-34.2] [GROUPS-40.3] [GROUPS-41.1] Opens Members from the Group actions menu, adds two members in its name field, removes one from their action sheet with the keyboard up, adds them back, swipes Members down, then renames the group from its title'
 ---
 - launchApp:
     clearState: true
@@ -71,8 +71,8 @@ name: '[GROUPS-20.2] [GROUPS-22.2] [GROUPS-23.2] [GROUPS-24.2] [GROUPS-25.2] [GR
 - waitForAnimationToEnd
 - assertNotVisible: Taylor (You)
 - assertVisible: No expenses in this group yet.
-# The group's title is a button that opens Rename Group.
-- tapOn: Brisbane
+# A long press on the group's large title opens Rename Group.
+- longPressOn: Brisbane
 - waitForAnimationToEnd
 - assertVisible: Rename Group
 # The name field has the focus and holds the group's name.
