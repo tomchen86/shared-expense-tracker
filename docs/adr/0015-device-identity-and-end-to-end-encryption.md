@@ -23,28 +23,29 @@ Not covered:
 
 JavaScript on the phone runs on Hermes, which has no Web Crypto. The API verifies on Node and on Workers, with 10 ms of CPU per request on the free plan (ADR-0007). Tests run on Node (ADR-0006), so a cipher that exists only in native code would not be the one they exercise.
 
-Measured on Hermes with no JIT, in a Release build on React Native 0.88 with the audited noble libraries at 2.4.0:
+Medians on an iPhone 14 Pro Max, on Hermes with no JIT, in a Release build on React Native 0.88 with the noble libraries at 2.4.0:
 
-| | iPhone 14 Pro Max | Simulator on an M5 Mac |
-|---|---|---|
-| Encrypt or decrypt 1 KB | PENDING | 0.4 ms |
-| Decrypt and parse 100 events of about 620 bytes | PENDING | 23 ms |
-| Encrypt or decrypt 64 KB, the largest event | PENDING | 19 ms |
-| Encrypt or decrypt 256 KB | PENDING | 80 ms |
-| Encrypt or decrypt 5 MB | PENDING | 1.5 s |
-| SHA-256 of 256 KB | PENDING | 83 ms |
-| Ed25519 sign | PENDING | 4.7 ms |
-| Ed25519 verify | PENDING | 15 ms |
-| X25519 agreement | PENDING | 12 ms |
-| First Ed25519 key after the app starts | PENDING | 102 ms |
-| AES-GCM in native code through `expo-crypto`, 5 MB | PENDING | 2 to 4 ms |
+| | Time |
+|---|---|
+| Encrypt or decrypt 1 KB | 0.45 ms |
+| Decrypt and parse 100 events of about 620 bytes | 31 ms |
+| Encrypt or decrypt 64 KB, the largest event | 24 ms |
+| Encrypt or decrypt 256 KB | 100 ms |
+| Encrypt or decrypt 5 MB | 1.9 s |
+| SHA-256 of 256 KB | 98 ms |
+| Ed25519 sign | 5.5 ms |
+| Ed25519 verify | 15 ms |
+| X25519 agreement | 12 ms |
+| First Ed25519 key after the app starts | 123 ms |
+| AES-GCM in native code through `expo-crypto`, 1 KB | 0.6 ms |
+| AES-GCM in native code through `expo-crypto`, 5 MB | 5 to 8 ms |
 
 On Node, Web Crypto verified a noble signature in 0.07 ms and hashed 64 KB in 0.04 ms.
 
 Also considered:
 
-- Encrypting in native code, with `expo-crypto`'s AES-GCM or libsodium in a native module: hundreds of times faster on a snapshot, but event-sized data is already fast enough, Jest could not run it, and AES-GCM's 12-byte nonce limits how many random nonces one key can safely take.
-- Signing each event with its author's key, so a member cannot write as another: a page of 100 events would take over a second more to check, to guard against members who can already change every record.
+- Encrypting in native code, with `expo-crypto`'s AES-GCM or libsodium in a native module: hundreds of times faster on a snapshot, but event-sized data is already fast enough and `expo-crypto` saves nothing on 1 KB, Jest could not run it, and AES-GCM's 12-byte nonce limits how many random nonces one key can safely take.
+- Signing each event with its author's key, so a member cannot write as another: a page of 100 events would take 1.5 s more to check, to guard against members who can already change every record.
 - Ratcheting group keys as Signal and MLS do: forward secrecy for events the server deletes within 30 days and the phones hold in plain text, at the cost of much more state to keep in step.
 - HPKE (RFC 9180) for boxes: its authenticated mode with a pre-shared key does what a box does here, for one more dependency.
 
@@ -114,7 +115,7 @@ Transfer codes:
 - The API and its database hold nothing that opens a ledger. They see which devices belong to which group, when they sync, and how much data moves.
 - A member can write an event that names another device; the API's check that the uploader is the device named stops this unless the server helps. So a name on a change, as in 「Bob 改成 350」, is trusted as far as the members trust each other.
 - Whoever holds a leaked link can read the group's name and its members' names and apply under any name. The person approving sees only a name, so approval is the only gate, and approving a stranger hands them the ledger.
-- Encryption runs on the JavaScript thread, so a chunk holds it for up to the measured time. Android hardware has not been measured; #126 measures it on a real Android phone. If a slow phone needs it, the version byte lets snapshots move to a native cipher without changing anything else.
+- Encryption and hashing run on the JavaScript thread. On the iPhone above, a snapshot chunk holds it for about 100 ms to encrypt or decrypt, and an upload about 100 ms more to hash for its signature, so uploading 5 MB costs about 4 s in those pieces and downloading about 2 s. Ordinary sync does not pay this, only joins, returning phones, and transfers. Android hardware has not been measured; #126 measures it on a real Android phone. If a slow phone needs it, the version byte lets snapshots move to a native cipher, and `expo-crypto`'s `digest` can take over the hash, without changing anything else.
 - JavaScript cannot promise constant time, as noble's README says. A timing attack needs code running on the same phone, which could read SQLite instead.
 - A phone that loses the seed, through a restore onto another phone or a reinstall on Android, loses its access and keeps its data. The member comes back through takeover.
 - Each request writes a nonce row to PostgreSQL, which counts against Hyperdrive's free query limit. The rows are cleared with the other expired data (#155).
