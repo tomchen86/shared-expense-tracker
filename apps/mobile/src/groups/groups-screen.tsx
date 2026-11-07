@@ -1,34 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  AccessibilityInfo,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { AccessibilityInfo, StyleSheet, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { formatCurrency, groupAmounts } from '@shared-expense/domain';
+import { groupAmounts } from '@shared-expense/domain';
 import { useLocalIdentity } from '../shell';
 import { useExpenses } from '../ledger/use-expenses';
 import { AddButton } from '../ui/add-button';
-import { GroupedSection } from '../ui/grouped-section';
+import { BottomNotice } from '../ui/bottom-notice';
 import { useThemeColors } from '../ui/theme';
 import { useTabRootBack } from '../ui/use-tab-root-back';
-import { SwipeAction, SwipeScrollView } from '../ui/swipe-action';
+import { SwipeScrollView } from '../ui/swipe-action';
 import { useDisplayLocale } from '../ui/use-display-locale';
+import { groupCardLines } from './format-balance';
+import { GroupCard } from './group-card';
 import { useGroups } from './use-groups';
 import { useGroupArchive } from './use-group-archive';
 import { useRequireName } from './use-require-name';
-import { formatBalance } from './format-balance';
 
 export function GroupsScreen() {
   useTabRootBack('/');
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
   const requireName = useRequireName();
   const [groups, setGroups] = useGroups();
   const expenses = useExpenses();
@@ -70,80 +61,28 @@ export function GroupsScreen() {
             No groups yet. Tap + to create a group.
           </Text>
         ) : (
-          activeGroups?.map((group) => {
-            const lines = [
-              `${group.members.length} ${group.members.length === 1 ? 'member' : 'members'}`,
-            ];
-            if (expenses) {
-              const amounts = groupAmounts(expenses, group);
-              const ownId = group.members.find(
-                (member) => member.userId === userId,
-              )!.id;
-              if (amounts.length === 0) lines.push('No spending yet');
-              for (const { currency, members } of amounts) {
-                const own = members.get(ownId)!;
-                lines.push(
-                  `Your share: ${formatCurrency(own.share, currency, locale)}`,
-                  formatBalance(own.net, currency, locale, true),
-                );
+          activeGroups?.map((group) => (
+            <GroupCard
+              key={group.id}
+              group={group}
+              lines={
+                expenses
+                  ? groupCardLines(
+                      groupAmounts(expenses, group),
+                      group.members.find((member) => member.userId === userId)!
+                        .id,
+                      locale,
+                    )
+                  : ['', '']
               }
-            }
-            return (
-              <View key={group.id} style={styles.card}>
-                <SwipeAction
-                  label="Archive"
-                  accessibilityLabel={`Archive ${group.name}`}
-                  disabled={pending.has(group.id)}
-                  onPress={() => archive(group.id)}
-                >
-                  <GroupedSection>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Open ${group.name}`}
-                      accessibilityValue={{ text: lines.join(', ') }}
-                      accessibilityActions={
-                        pending.has(group.id)
-                          ? []
-                          : [{ name: 'archive', label: 'Archive group' }]
-                      }
-                      onAccessibilityAction={(event) => {
-                        if (event.nativeEvent.actionName === 'archive')
-                          archive(group.id);
-                      }}
-                      onPress={() => router.push(`/groups/${group.id}`)}
-                      style={({ pressed }) => [
-                        styles.row,
-                        pressed && { backgroundColor: colors.pressedSurface },
-                      ]}
-                    >
-                      <Text
-                        numberOfLines={1}
-                        style={[styles.name, { color: colors.text }]}
-                      >
-                        {group.name}
-                      </Text>
-                      {lines.map((line, index) => (
-                        <Text
-                          key={index}
-                          style={[styles.detail, { color: colors.textMuted }]}
-                        >
-                          {line}
-                        </Text>
-                      ))}
-                    </Pressable>
-                  </GroupedSection>
-                </SwipeAction>
-              </View>
-            );
-          })
+              archiving={pending.has(group.id)}
+              onArchive={() => archive(group.id)}
+            />
+          ))
         )}
       </SwipeScrollView>
       {notice && (
-        <GroupedSection style={[styles.notice, { bottom: insets.bottom + 92 }]}>
-          <Text style={{ color: colors.text, fontSize: 15 }}>
-            Group archived · Find it in Settings
-          </Text>
-        </GroupedSection>
+        <BottomNotice message="Group archived · Find it in Settings" />
       )}
       <AddButton
         label="Add group"
@@ -159,9 +98,4 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 112 },
   empty: { textAlign: 'center', marginTop: 48, fontSize: 16 },
-  card: { marginBottom: 12 },
-  notice: { position: 'absolute', left: 20, right: 20, padding: 16 },
-  row: { padding: 16, minHeight: 56, justifyContent: 'center' },
-  name: { fontSize: 17 },
-  detail: { fontSize: 15, marginTop: 8 },
 });

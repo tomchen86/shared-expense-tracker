@@ -17,9 +17,7 @@ export function useSheetScroll(enabled = true) {
   return {
     screenOptions: enabled
       ? {
-          sheetAllowedDetents: overflowing
-            ? [0.85, 1]
-            : ('fitToContents' as const),
+          sheetAllowedDetents: overflowing ? [1] : ('fitToContents' as const),
           sheetInitialDetentIndex: 0,
           sheetExpandsWhenScrolledToEdge: false,
         }

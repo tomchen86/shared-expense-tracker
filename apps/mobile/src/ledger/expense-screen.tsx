@@ -137,9 +137,18 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
             <Text style={[styles.title, { color: colors.text }]}>
               {expense.title}
             </Text>
-            <Text style={[styles.amount, { color: colors.text }]}>
-              {formatCurrency(expense.amountMinor, expense.currency, locale)}
-            </Text>
+            <View style={styles.amountRow}>
+              <Text style={[styles.amount, { color: colors.text }]}>
+                {formatCurrency(expense.amountMinor, expense.currency, locale)}
+              </Text>
+              <Text style={[styles.date, { color: colors.textMuted }]}>
+                {formatExpenseDate(expense.date, locale)}
+              </Text>
+            </View>
+            <CategoryTag
+              color={expense.category.color}
+              name={expense.categoryLabel}
+            />
             {expense.group?.archived && !trashed && (
               <GroupedSection style={styles.history}>
                 <Text style={{ color: colors.text }}>Shared history</Text>
@@ -221,46 +230,14 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
                 ))}
               </>
             )}
-            <Text style={[styles.heading, { color: colors.textMuted }]}>
-              DETAILS
-            </Text>
-            <GroupedSection>
-              {expense.group && (
+            {expense.group && (
+              <GroupedSection style={styles.groupRows}>
                 <DetailRow label="Group" value={expense.group.name} />
-              )}
-              {expense.group?.archived && (
-                <DetailRow label="Status" value="Archived · Read-only" />
-              )}
-              <View style={styles.row}>
-                <Text style={{ color: colors.text }}>Category</Text>
-                <View style={styles.category}>
-                  <View
-                    accessible={false}
-                    style={[
-                      styles.dot,
-                      { backgroundColor: expense.category.color },
-                    ]}
-                  />
-                  <Text style={[styles.value, { color: colors.textMuted }]}>
-                    {expense.categoryLabel}
-                  </Text>
-                </View>
-              </View>
-              <View
-                style={[
-                  styles.row,
-                  {
-                    borderTopWidth: StyleSheet.hairlineWidth,
-                    borderTopColor: colors.separator,
-                  },
-                ]}
-              >
-                <Text style={{ color: colors.text }}>Date</Text>
-                <Text style={[styles.value, { color: colors.textMuted }]}>
-                  {formatExpenseDate(expense.date, locale)}
-                </Text>
-              </View>
-            </GroupedSection>
+                {expense.group.archived && (
+                  <DetailRow label="Status" value="Archived · Read-only" />
+                )}
+              </GroupedSection>
+            )}
             {expense.note && (
               <>
                 <Text style={[styles.heading, { color: colors.textMuted }]}>
@@ -280,6 +257,21 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
           </Text>
         ) : null}
       </ScrollView>
+    </View>
+  );
+}
+
+/** The expense's category as a capsule tinted with its color. */
+function CategoryTag({ color, name }: { color: string; name: string }) {
+  const colors = useThemeColors();
+  return (
+    <View
+      accessible
+      accessibilityLabel={`Category, ${name}`}
+      style={[styles.tag, { backgroundColor: `${color}2E` }]}
+    >
+      <View style={[styles.tagDot, { backgroundColor: color }]} />
+      <Text style={[styles.tagName, { color: colors.text }]}>{name}</Text>
     </View>
   );
 }
@@ -304,7 +296,30 @@ const styles = StyleSheet.create({
   },
   content: { padding: 20, paddingBottom: 40 },
   title: { fontSize: 26, fontWeight: '700' },
-  amount: { fontSize: 32, fontWeight: '600', marginTop: 8 },
+  amountRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    columnGap: 12,
+  },
+  amount: { fontSize: 32, fontWeight: '600' },
+  date: { fontSize: 15 },
+  tag: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  tagDot: { width: 10, height: 10, borderRadius: 5 },
+  tagName: { flexShrink: 1, fontSize: 15, fontWeight: '500' },
+  groupRows: { marginTop: 28 },
   history: { padding: 16, marginTop: 20, gap: 8 },
   heading: { marginTop: 28, marginBottom: 8, marginLeft: 16, fontSize: 13 },
   row: {
@@ -316,13 +331,6 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   value: { flexShrink: 1, textAlign: 'right' },
-  category: {
-    flexShrink: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  dot: { width: 12, height: 12, borderRadius: 6 },
   note: { padding: 16, fontSize: 17 },
   missing: { textAlign: 'center', marginTop: 48, fontSize: 16 },
 });

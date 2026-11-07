@@ -44,6 +44,7 @@ export function HeaderActions({
   cancel,
   confirm,
   edit,
+  add,
   menu,
   choices,
 }: HeaderActionsProps) {
@@ -63,6 +64,7 @@ export function HeaderActions({
             {edit && (
               <ActionButton {...edit} icon="edit" color={colors.accent} />
             )}
+            {add && <ActionButton {...add} icon="add" color={colors.accent} />}
             {confirm && (
               <ActionButton {...confirm} icon="check" color={colors.accent} />
             )}
@@ -105,7 +107,10 @@ export function HeaderActions({
                         text: action.label,
                         onPress: action.onPress,
                       })),
-                      { text: 'Cancel', style: 'cancel' },
+                      // A dialog holds three buttons and drops any others.
+                      ...(enabledActions.length < 3
+                        ? [{ text: 'Cancel', style: 'cancel' as const }]
+                        : []),
                     ],
                     { cancelable: true },
                   )
