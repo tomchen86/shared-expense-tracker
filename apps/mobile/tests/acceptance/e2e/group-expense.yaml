@@ -12,14 +12,11 @@ name: "[LEDGER-68.2] [GROUPS-64.1] [LEDGER-46.2] [LEDGER-48.2] [LEDGER-49.2] [LE
 - tapOn: Settings
 - tapOn: Enter your name
 - inputText: Taylor
-# On a slow runner, typing can start before the field takes it and garble the name.
-- copyTextFrom: Your name
-- runFlow:
-    when:
-      true: ${maestro.copiedText !== 'Taylor'}
-    commands:
-      - eraseText: 20
-      - inputText: Taylor
+# On a slow runner, typing can start before the field takes it and garble the name,
+# so type it again. Maestro cannot check the name first: on iOS it reads a text
+# field's placeholder, not what was typed.
+- eraseText: 20
+- inputText: Taylor
 - pressKey: Enter
 - waitForAnimationToEnd
 - tapOn: Groups
