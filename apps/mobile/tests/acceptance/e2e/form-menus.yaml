@@ -12,6 +12,14 @@ name: "[LEDGER-100.1] The form's lists are system menus, one choice closes them,
 - tapOn: Settings
 - tapOn: Enter your name
 - inputText: Taylor
+# On a slow runner, typing can start before the field takes it and garble the name.
+- copyTextFrom: Your name
+- runFlow:
+    when:
+      true: ${maestro.copiedText !== 'Taylor'}
+    commands:
+      - eraseText: 20
+      - inputText: Taylor
 - pressKey: Enter
 - tapOn: Groups
 - tapOn: Add group

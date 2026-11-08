@@ -19,6 +19,14 @@ name: '[GROUPS-4.1] [GROUPS-6.1] [GROUPS-8.1] [GROUPS-13.1] [GROUPS-16.1] Asks f
     selected: true
 - tapOn: Enter your name
 - inputText: Taylor
+# On a slow runner, typing can start before the field takes it and garble the name.
+- copyTextFrom: Your name
+- runFlow:
+    when:
+      true: ${maestro.copiedText !== 'Taylor'}
+    commands:
+      - eraseText: 20
+      - inputText: Taylor
 - pressKey: Enter
 - waitForAnimationToEnd
 - tapOn: Groups
