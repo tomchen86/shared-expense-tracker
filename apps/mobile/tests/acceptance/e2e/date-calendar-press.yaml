@@ -1,0 +1,63 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[LEDGER-103.1] The press that closes the date calendar reaches nothing on the form'
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- tapOn: Enter your name
+- inputText: Taylor
+- pressKey: Enter
+- tapOn: Groups
+- tapOn: Add group
+- waitForAnimationToEnd
+- inputText: Brisbane
+- tapOn: Create
+- waitForAnimationToEnd
+- tapOn: Open Brisbane
+- tapOn: Group actions
+- tapOn: Members
+- tapOn: Add Member
+- inputText: Casey
+- pressKey: Enter
+- waitForAnimationToEnd
+- tapOn: Close
+- waitForAnimationToEnd
+- tapOn: Add expense
+- waitForAnimationToEnd
+# While the calendar is open, only its own controls can be found by name, so these
+# presses go where Category and Expense title are, above the calendar. The second
+# press on each point shows that the first one was on that row.
+- tapOn: Date Picker
+- waitForAnimationToEnd
+- assertVisible: Previous Month
+- tapOn:
+    point: 20%,41%
+- waitForAnimationToEnd
+- assertNotVisible: Previous Month
+- assertNotVisible: Transportation
+- tapOn:
+    point: 20%,41%
+- waitForAnimationToEnd
+- assertVisible: Transportation
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
+- tapOn: Date Picker
+- waitForAnimationToEnd
+- assertVisible: Previous Month
+- tapOn:
+    point: 50%,25%
+- waitForAnimationToEnd
+- assertNotVisible: Previous Month
+- inputText: Lost
+- assertNotVisible: Lost
+- tapOn:
+    point: 50%,25%
+- inputText: Kept
+- assertVisible: Kept

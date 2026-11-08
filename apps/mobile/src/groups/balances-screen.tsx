@@ -64,7 +64,7 @@ export function BalancesScreen() {
                         {member.userId === userId ? ' (You)' : ''}
                       </Text>
                       <Text style={{ color: colors.text }}>
-                        {formatBalance(balance.net, currency, locale, false)}
+                        {formatBalance(balance.net, currency, locale)}
                       </Text>
                       <Text style={{ color: colors.textMuted }}>
                         Paid {formatCurrency(balance.paid, currency, locale)} ·

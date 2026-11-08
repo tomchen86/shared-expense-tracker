@@ -265,7 +265,7 @@ test('[INSIGHTS-29.1] compares a year with the previous year', async () => {
 
   await expectPeriod('2025');
   expect(totalCards()).toEqual([
-    ['TOTAL SPENT', '$15.00', '$5.00 more than 2024, 50.0 percent.'],
+    ['$15.00', '$5.00 more than 2024, 50.0 percent.'],
   ]);
 });
 

@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LEDGER-62.1] [LEDGER-54.1] [GROUPS-61.2] [LEDGER-65.3] [LEDGER-70.2] [LEDGER-88.1] [GROUPS-80.1] [LEDGER-75.3] [LEDGER-77.2] [LEDGER-78.2] [LEDGER-79.3] [LEDGER-84.1] [LEDGER-67.2] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share; swipes its card left to move it to the trash on both, finds that swiping its card on Trash opens nothing, restores it, archives the group, and finds that swiping its card opens nothing"
+name: "[LEDGER-68.2] [GROUPS-64.1] [LEDGER-46.2] [LEDGER-48.2] [LEDGER-49.2] [LEDGER-62.2] [LEDGER-54.1] [GROUPS-61.3] [LEDGER-65.4] [LEDGER-70.2] [LEDGER-88.1] [GROUPS-80.1] [LEDGER-75.3] [LEDGER-77.3] [LEDGER-78.3] [LEDGER-79.3] [LEDGER-84.1] [LEDGER-67.2] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share; swipes its card left to move it to the trash on both, finds that swiping its card on Trash opens nothing, restores it, archives the group, and finds that swiping its card opens nothing"
 ---
 - launchApp:
     clearState: true
@@ -50,45 +50,25 @@ name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LE
 # category form's Add is enabled while Group Categories is open.
 - tapOn: Category, Food & Dining
 - waitForAnimationToEnd
-# Start inside the medium picker; a screen-center scroll starts above it.
-- swipe:
-    from:
-      text: Shopping
-    direction: UP
-- waitForAnimationToEnd
-- scrollUntilVisible:
-    element: \+ Add New Category
-    direction: DOWN
 - tapOn: \+ Add New Category
 - waitForAnimationToEnd
-- assertVisible: Group Categories
-- tapOn: Add category
-- waitForAnimationToEnd
+- assertVisible: New Category
 - tapOn: Category name
 - inputText: Flights
 - tapOn:
     text: Add
     enabled: true
 - waitForAnimationToEnd
-- assertVisible: Flights
-- tapOn: Close
-- waitForAnimationToEnd
-- assertNotVisible: Group Categories
+- assertNotVisible: New Category
 - assertVisible: New Expense
 - assertVisible: Dinner
-- tapOn: Category, Food & Dining
-- waitForAnimationToEnd
-- swipe:
-    from:
-      text: Shopping
-    direction: UP
-- waitForAnimationToEnd
-- scrollUntilVisible:
-    element: Flights
-    direction: DOWN
-- tapOn: Flights
-- waitForAnimationToEnd
 - assertVisible: Category, Flights
+# Where the simulator shows the software keyboard, it covers the rows below Date, and iOS still
+# reports them as visible, so scrollUntilVisible would not scroll and the next press would land
+# on the keyboard. A press on the form's margin closes it first.
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
 # Bring all financial rows into view before opening their pickers. Returning from
 # Paid by must still leave Split between directly usable, with no further scroll.
 - scrollUntilVisible:
@@ -97,31 +77,28 @@ name: "[LEDGER-68.1] [GROUPS-64.1] [LEDGER-46.1] [LEDGER-48.1] [LEDGER-49.1] [LE
 # Choosing the group the form already has closes Select Group and keeps the inputs.
 - tapOn: Group, Brisbane
 - waitForAnimationToEnd
-- assertVisible: Select Group
 - tapOn:
     text: Brisbane
     selected: true
 - waitForAnimationToEnd
-- assertNotVisible: Select Group
 - assertVisible: Group, Brisbane
 - assertVisible: Dinner
 - assertVisible: Category, Flights
 - tapOn: Paid by, not selected
 - waitForAnimationToEnd
-- assertVisible: Who Paid\?
 - tapOn: Casey
 - waitForAnimationToEnd
-- assertNotVisible: Who Paid\?
 - assertVisible: Paid by, Casey
 - assertVisible: Dinner
 - tapOn: Split between, Choose people
 - waitForAnimationToEnd
-- assertVisible: Split Between
 - tapOn: Taylor \(You\)
-- tapOn: Casey
-- tapOn: Done
 - waitForAnimationToEnd
-- assertNotVisible: Split Between
+- tapOn: Casey
+- waitForAnimationToEnd
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
 - assertVisible: Split between, 2 people
 - assertVisible: Dinner
 - tapOn:

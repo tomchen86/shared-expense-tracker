@@ -44,7 +44,7 @@ export const groupTotalButtons = (group: string) =>
       linesIn(button).some((line) => line.startsWith('Group Total')),
     );
 
-/** A line of your net balance on the group's screen (GROUPS-69.1). */
+/** A line of your net balance on the group's screen (GROUPS-69.2). */
 const BALANCE = /^(You're owed: |You owe: |Settled up$)/;
 
 /** The lines of your net balance on the group's screen, top to bottom. */

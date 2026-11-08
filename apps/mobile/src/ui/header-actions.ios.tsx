@@ -6,6 +6,7 @@ export function HeaderActions({
   cancel,
   confirm,
   edit,
+  add,
   menu,
   choices,
 }: HeaderActionsProps) {
@@ -15,12 +16,11 @@ export function HeaderActions({
         {cancel && (
           <Stack.Toolbar.Button
             variant="plain"
+            icon="xmark"
             accessibilityLabel={cancel.label}
             disabled={cancel.disabled}
             onPress={cancel.onPress}
-          >
-            {cancel.label}
-          </Stack.Toolbar.Button>
+          />
         )}
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
@@ -33,6 +33,15 @@ export function HeaderActions({
           >
             {edit.label}
           </Stack.Toolbar.Button>
+        )}
+        {add && (
+          <Stack.Toolbar.Button
+            variant="plain"
+            icon="plus"
+            accessibilityLabel={add.label}
+            disabled={add.disabled}
+            onPress={add.onPress}
+          />
         )}
         {menu && (
           <Stack.Toolbar.Menu
@@ -71,12 +80,11 @@ export function HeaderActions({
         {confirm && (
           <Stack.Toolbar.Button
             variant="prominent"
+            icon="checkmark"
             accessibilityLabel={confirm.label}
             disabled={confirm.disabled}
             onPress={confirm.onPress}
-          >
-            {confirm.label}
-          </Stack.Toolbar.Button>
+          />
         )}
       </Stack.Toolbar>
     </>

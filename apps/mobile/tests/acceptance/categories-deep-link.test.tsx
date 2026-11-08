@@ -117,7 +117,7 @@ test('[CATEGORIES-24.1] opens the personal scope for a deep link whose spaceId i
   expect(textsOn('Manage Categories')).not.toContain('Group not found.');
 });
 
-test("[CATEGORIES-23.3] opens a group's Group Categories for a deep link with its ID", async () => {
+test("[CATEGORIES-23.4] opens a group's Group Categories for a deep link with its ID", async () => {
   const brisbane = await startWithBrisbane();
 
   await openDeepLink(

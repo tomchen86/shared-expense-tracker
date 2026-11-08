@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ComponentRef, type ReactNode } from 'react';
+import { useRef, type ComponentRef, type ReactNode } from 'react';
 import {
   Modal,
   Pressable,
@@ -18,10 +18,7 @@ export interface SheetProps {
   cancel?: HeaderAction;
   confirm?: HeaderAction;
   onClose: () => void;
-  onAfterClose?: () => void;
   dismissible?: boolean;
-  /** Lists start at medium height when their content is taller than half the screen. */
-  list?: boolean;
   children: ReactNode;
 }
 
@@ -31,16 +28,12 @@ export function Sheet({
   cancel,
   confirm,
   onClose,
-  onAfterClose,
   dismissible = true,
   children,
 }: SheetProps) {
   const colors = useThemeColors();
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const keyboardInset = useKeyboardInset(scroll);
-  useEffect(() => {
-    if (!visible) onAfterClose?.();
-  }, [visible, onAfterClose]);
   function action(item: HeaderAction | undefined) {
     return item ? (
       <Pressable

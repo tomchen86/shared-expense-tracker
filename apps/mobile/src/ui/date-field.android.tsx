@@ -35,8 +35,10 @@ export function DateField({
           justifyContent: 'space-between',
         }}
       >
-        <Text style={{ color: colors.text }}>{label}</Text>
-        <Text style={{ color: colors.textMuted }}>{formattedDate}</Text>
+        <Text style={{ color: colors.text, fontSize: 17 }}>{label}</Text>
+        <Text style={{ color: colors.textMuted, fontSize: 17 }}>
+          {formattedDate}
+        </Text>
       </Pressable>
       {open && !disabled && (
         <DateTimePicker

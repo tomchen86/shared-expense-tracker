@@ -1,8 +1,9 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import { FadeText } from '../ui/fade-text';
 import { GroupedSection } from '../ui/grouped-section';
 import { useThemeColors } from '../ui/theme';
 
-/** This Month: a line per currency total of this month, as one button (LEDGER-35.2). */
+/** This Month: one line with the total of each currency this month, as a button (LEDGER-35.3). */
 export function ThisMonthButton({
   totals,
   onPress,
@@ -22,11 +23,9 @@ export function ThisMonthButton({
           pressed && { backgroundColor: colors.pressedSurface },
         ]}
       >
-        {(totals.length === 0 ? ['—'] : totals).map((total) => (
-          <Text key={total} style={[styles.total, { color: colors.text }]}>
-            {`This Month: ${total}`}
-          </Text>
-        ))}
+        <FadeText style={[styles.total, { color: colors.text }]}>
+          {`This Month: ${totals.length === 0 ? '—' : totals.join(', ')}`}
+        </FadeText>
       </Pressable>
     </GroupedSection>
   );

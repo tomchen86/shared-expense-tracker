@@ -212,11 +212,8 @@ const DELETE_GYM = [
 const DETAILS_OF_COFFEE_RUN = [
   'Coffee run',
   '$8.75',
-  'DETAILS',
-  'Category',
-  'Shopping',
-  'Date',
   'Dec 25, 2024',
+  'Shopping',
   'NOTE',
   'Morning treat',
 ];
@@ -428,20 +425,21 @@ test('[LEDGER-72.2] offers no Expense actions with Expense not found.', async ()
 
 // The Undo notice
 
-test('[LEDGER-73.1] shows Moved to Trash · Undo and announces it once the move is saved', async () => {
+test('[LEDGER-73.2] shows Moved to Trash and Undo, with no dot, and announces it once the move is saved', async () => {
   await startExpenses();
   await addExpense();
 
   await deleteByAction('Coffee run');
 
-  const expected = [MOVED, '·', 'Undo'];
+  const expected = [MOVED, 'Undo'];
   expect(shownInOrder(noticeLines(), expected)).toEqual(expected);
+  expect(noticeLines()).not.toContain('·');
   expect(undoButton('Coffee run')).not.toBeNull();
   expect(within(undoButton('Coffee run')!).getByText('Undo')).toBeOnTheScreen();
   expect(announcements()).toEqual([movedAnnouncement('Coffee run')]);
 });
 
-test('[LEDGER-73.1] shows and announces nothing before the move is saved', async () => {
+test('[LEDGER-73.2] shows and announces nothing before the move is saved', async () => {
   await startExpenses();
   await addExpense();
   const writes = holdWrites();
@@ -455,7 +453,7 @@ test('[LEDGER-73.1] shows and announces nothing before the move is saved', async
   expect(noticeShown()).toBe(true);
 });
 
-test('[LEDGER-73.1] keeps the notice and its Undo on another tab', async () => {
+test('[LEDGER-73.2] keeps the notice and its Undo on another tab', async () => {
   await startExpenses();
   await addExpense();
   await deleteByAction('Coffee run');
@@ -468,7 +466,7 @@ test('[LEDGER-73.1] keeps the notice and its Undo on another tab', async () => {
   await expectCards(['Coffee run']);
 });
 
-test('[LEDGER-73.1] gives the Undo to the newest expense moved to the trash', async () => {
+test('[LEDGER-73.2] gives the Undo to the newest expense moved to the trash', async () => {
   await startWithTwo();
   await deleteByAction('Coffee run');
   await wait(3000);
@@ -706,7 +704,7 @@ test('[LEDGER-76.1] shows no count at the Trash row before the Settings root rea
 
 // Trash
 
-test('[LEDGER-77.2] lists the expenses in the trash, the last one moved in first', async () => {
+test('[LEDGER-77.3] lists the expenses in the trash, the last one moved in first', async () => {
   await startExpenses();
   await addExpense({ title: 'A', date: '2025-01-03' });
   await addExpense({ title: 'B', date: '2025-01-01' });
@@ -720,7 +718,7 @@ test('[LEDGER-77.2] lists the expenses in the trash, the last one moved in first
   await expectTrash(['B', 'C', 'A']);
 });
 
-test('[LEDGER-77.2] puts an expense moved to the trash again on top', async () => {
+test('[LEDGER-77.3] puts an expense moved to the trash again on top', async () => {
   await startExpenses();
   await addExpense({ title: 'A', date: '2025-01-03' });
   await addExpense({ title: 'B', date: '2025-01-01' });
@@ -738,7 +736,7 @@ test('[LEDGER-77.2] puts an expense moved to the trash again on top', async () =
   await expectTrash(['A', 'B', 'C']);
 });
 
-test('[LEDGER-77.2] shows the cards on Trash as the expense list does, without Delete', async () => {
+test('[LEDGER-77.3] shows the cards on Trash as the expense list does, without Delete', async () => {
   await startExpenses();
   await addExpense({ note: 'Morning treat' });
   await deleteByAction('Coffee run');
@@ -747,10 +745,12 @@ test('[LEDGER-77.2] shows the cards on Trash as the expense list does, without D
 
   await expectTrash(['Coffee run']);
   const shown = trashCard('Coffee run');
-  const expected = ['Coffee run', '$8.75', 'Food & Dining', 'Oct 30, 2026'];
+  const expected = ['Coffee run', '$8.75', 'Food & Dining'];
   expect(shownInOrder(linesIn(shown), expected)).toEqual(expected);
   expect(linesIn(shown)).not.toContain('Morning treat');
-  expect(shownInOrder([readOut(shown)], expected)).toEqual(expected);
+  expect(linesIn(shown)).not.toContain('Oct 30, 2026');
+  const read = [...expected, 'Oct 30, 2026'];
+  expect(shownInOrder([readOut(shown)], read)).toEqual(read);
   expect(actionLabels(shown)).not.toContain('Delete expense');
   expect(
     within(screenOf('Trash')).queryByLabelText('Delete Coffee run expense', {
@@ -759,7 +759,30 @@ test('[LEDGER-77.2] shows the cards on Trash as the expense list does, without D
   ).toBeNull();
 });
 
-test('[LEDGER-77.2] [LEDGER-78.2] shows an archived category as (Archived) on Trash and the read-only details', async () => {
+test('[LEDGER-102.1] puts the date above each run of cards of that day on Trash, in the order they were moved', async () => {
+  await startExpenses();
+  await addExpense({ title: 'A' });
+  await addExpense({ title: 'B', date: '2026-10-29' });
+  await addExpense({ title: 'C' });
+  await deleteByAction('A');
+  await deleteByAction('B');
+  await deleteByAction('C');
+
+  await openTrash();
+
+  await expectTrash(['C', 'B', 'A']);
+  const expected = [
+    'Oct 30, 2026',
+    'C',
+    'Oct 29, 2026',
+    'B',
+    'Oct 30, 2026',
+    'A',
+  ];
+  expect(shownInOrder(trashLines(), expected)).toEqual(expected);
+});
+
+test('[LEDGER-77.3] [LEDGER-78.3] shows an archived category as (Archived) on Trash and the read-only details', async () => {
   await startExpenses();
   await addGymExpense();
   await deleteByAction('Squat rack');
@@ -774,7 +797,7 @@ test('[LEDGER-77.2] [LEDGER-78.2] shows an archived category as (Archived) on Tr
   expect(expenseLines('Settings')).toContain('Gym (Archived)');
 });
 
-test('[LEDGER-77.2] lists only the expenses in the trash', async () => {
+test('[LEDGER-77.3] lists only the expenses in the trash', async () => {
   await startWithTwo();
 
   await deleteByAction('Lunch');
@@ -783,7 +806,7 @@ test('[LEDGER-77.2] lists only the expenses in the trash', async () => {
   await expectTrash(['Lunch']);
 });
 
-test('[LEDGER-77.2] shows an expense moved to the trash while Trash stays open', async () => {
+test('[LEDGER-77.3] shows an expense moved to the trash while Trash stays open', async () => {
   await startWithTwo();
   await openTrash();
   await waitFor(() => expect(trashLines()).toEqual([NO_DELETED]));
@@ -795,7 +818,7 @@ test('[LEDGER-77.2] shows an expense moved to the trash while Trash stays open',
   await expectTrash(['Lunch']);
 });
 
-test('[LEDGER-77.2] shows only No deleted expenses. on an empty Trash', async () => {
+test('[LEDGER-77.3] shows only No deleted expenses. on an empty Trash', async () => {
   await startExpenses();
 
   await openTrash();
@@ -804,7 +827,7 @@ test('[LEDGER-77.2] shows only No deleted expenses. on an empty Trash', async ()
   expect(trashCards()).toEqual([]);
 });
 
-test('[LEDGER-77.2] never shows No deleted expenses. while Trash reads the expenses', async () => {
+test('[LEDGER-77.3] never shows No deleted expenses. while Trash reads the expenses', async () => {
   const first = await startWithTwo();
   await deleteByAction('Lunch');
   await first.unmount();
@@ -823,7 +846,7 @@ test('[LEDGER-77.2] never shows No deleted expenses. while Trash reads the expen
 
 // The read-only details
 
-test('[LEDGER-78.2] pushes the read-only details of a card on Trash onto the Settings tab', async () => {
+test('[LEDGER-78.3] pushes the read-only details of a card on Trash onto the Settings tab', async () => {
   const app = await startExpenses();
   await addFullCoffeeRun();
   const id = await idOf('Coffee run');
@@ -846,7 +869,7 @@ test('[LEDGER-78.2] pushes the read-only details of a card on Trash onto the Set
   ).toBeOnTheScreen();
 });
 
-test('[LEDGER-78.2] puts only Expense actions, with Delete Permanently in red, on the read-only details on iOS', async () => {
+test('[LEDGER-78.3] puts only Expense actions, with Delete Permanently in red, on the read-only details on iOS', async () => {
   await startExpenses();
   await addExpense();
   await deleteByAction('Coffee run');
@@ -863,7 +886,7 @@ test('[LEDGER-78.2] puts only Expense actions, with Delete Permanently in red, o
   ]);
 });
 
-test('[LEDGER-78.2] pushes one read-only details when a card on Trash is pressed twice', async () => {
+test('[LEDGER-78.3] pushes one read-only details when a card on Trash is pressed twice', async () => {
   await startExpenses();
   await addExpense();
   await deleteByAction('Coffee run');
@@ -885,7 +908,7 @@ test('[LEDGER-78.2] pushes one read-only details when a card on Trash is pressed
   expect(navigationBarTitles(tab('Settings'))).toEqual(['Settings', 'Trash']);
 });
 
-test('[LEDGER-78.2] goes back from the read-only details to Trash', async () => {
+test('[LEDGER-78.3] goes back from the read-only details to Trash', async () => {
   await startExpenses();
   await addExpense();
   await deleteByAction('Coffee run');
@@ -899,7 +922,7 @@ test('[LEDGER-78.2] goes back from the read-only details to Trash', async () => 
   await expectTrash(['Coffee run']);
 });
 
-test('[LEDGER-78.2] never shows Expense not found. while the read-only details load', async () => {
+test('[LEDGER-78.3] never shows Expense not found. while the read-only details load', async () => {
   await startExpenses();
   await addExpense();
   await deleteByAction('Coffee run');
@@ -917,7 +940,7 @@ test('[LEDGER-78.2] never shows Expense not found. while the read-only details l
   expect(screen.queryByText(NOT_FOUND)).toBeNull();
 });
 
-test('[LEDGER-78.2] shows only Expense not found. at the Trash URL of an expense that is not in the trash', async () => {
+test('[LEDGER-78.3] shows only Expense not found. at the Trash URL of an expense that is not in the trash', async () => {
   const first = await startWithTwo();
   const lunch = await idOf('Lunch');
   await first.unmount();
@@ -931,7 +954,7 @@ test('[LEDGER-78.2] shows only Expense not found. at the Trash URL of an expense
   expect(hasExpenseActions('Settings')).toBe(false);
 });
 
-test('[LEDGER-78.2] shows only Expense not found. once Undo takes the expense out of the trash', async () => {
+test('[LEDGER-78.3] shows only Expense not found. once Undo takes the expense out of the trash', async () => {
   await startExpenses();
   await addExpense();
   await deleteByAction('Coffee run');
@@ -944,7 +967,7 @@ test('[LEDGER-78.2] shows only Expense not found. once Undo takes the expense ou
   expect(hasExpenseActions('Settings')).toBe(false);
 });
 
-test('[LEDGER-78.2] shows only Expense not found. at the Trash URL of an ID that is no expense', async () => {
+test('[LEDGER-78.3] shows only Expense not found. at the Trash URL of an ID that is no expense', async () => {
   await startExpensesAt(`/settings/trash/${NO_EXPENSE_ID}`);
 
   await waitFor(() => expect(expenseBars('Settings')).toHaveLength(1));
@@ -1369,6 +1392,7 @@ test('[SHELL-53.1] leaves menu actions that are not marked destructive as they a
   ).toEqual([
     ['Members', false],
     ['Rename Group', false],
+    ['Categories', false],
   ]);
 });
 
@@ -1423,14 +1447,15 @@ const PALETTE = [
   '#F2858D',
 ];
 const PALETTE_COLORS = new Set(
-  PALETTE.map((color) => (processColor(color) as number) >>> 0),
+  PALETTE.map((color) => (processColor(color) as number) & 0xffffff),
 );
 
 function appColors(root: Parameters<typeof fixedColors>[0]) {
   return {
     colors: new Map(
       [...fixedColors(root)].filter(
-        ([, { color }]) => !PALETTE_COLORS.has(color),
+        // A category's tag is its color made lighter, still the user's data.
+        ([, { color }]) => !PALETTE_COLORS.has(color & 0xffffff),
       ),
     ),
     uncolored: textsWithoutColor(root),

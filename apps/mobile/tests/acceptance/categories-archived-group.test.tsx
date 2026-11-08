@@ -27,6 +27,7 @@ import {
   restoreGroup,
   startWithGroups,
   storedGroup,
+  closeCategorySheet,
 } from './ledger-group-expense-app';
 import { listCategories } from '../../src/categories';
 import { openNodeDatabase } from '../../src/storage/node';
@@ -147,7 +148,22 @@ function inAButton(view: ReturnType<typeof screenOf>) {
   return false;
 }
 
-test("[CATEGORIES-23.3] opens a group's Group Categories at the URL the expense form uses", async () => {
+test('[CATEGORIES-22.2] opens Manage Categories over the current screen at /manage-categories, until Close', async () => {
+  await startWithGroups({ Brisbane: [] });
+  await addCategory('Gym');
+
+  await push('/manage-categories');
+
+  await waitFor(() => expect(categorySheetTitle()).toBe('Manage Categories'));
+  await settle();
+  expect(within(categorySheet()).getByText('Gym')).toBeOnTheScreen();
+
+  await closeCategorySheet();
+
+  expect(categorySheetTitle()).toBeUndefined();
+});
+
+test("[CATEGORIES-23.4] opens a group's Group Categories at the URL Group actions uses", async () => {
   await startWithGroups({ Brisbane: [] });
   const brisbane = await storedGroup(file, 'Brisbane');
   await addCategory('Flights', brisbane.id);

@@ -1,17 +1,15 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GlassSurface } from './glass-surface';
 import { useThemeColors } from './theme';
 
+/** A capsule above the + button and the tab bar: a message, with a button when `action` is given. */
 export function BottomNotice({
   message,
   action,
-  accessibilityLabel,
-  onPress,
 }: {
   message: string;
-  action: string;
-  accessibilityLabel: string;
-  onPress: () => void;
+  action?: { label: string; accessibilityLabel: string; onPress: () => void };
 }) {
   const colors = useThemeColors();
   const { bottom } = useSafeAreaInsets();
@@ -20,23 +18,32 @@ export function BottomNotice({
       pointerEvents="box-none"
       style={[styles.overlay, { bottom: bottom + 172 }]}
     >
-      <View
-        style={[
-          styles.notice,
-          { backgroundColor: colors.surface, borderColor: colors.separator },
-        ]}
+      <GlassSurface
+        style={styles.notice}
+        opaqueStyle={[styles.opaque, { borderColor: colors.separator }]}
       >
-        <Text style={[styles.message, { color: colors.text }]}>{message}</Text>
-        <Text style={{ color: colors.textMuted }}>·</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={accessibilityLabel}
-          onPress={onPress}
-          style={styles.action}
+        <Text
+          style={[
+            styles.message,
+            { color: colors.text },
+            !action && styles.messageOnly,
+          ]}
         >
-          <Text style={{ color: colors.accent, fontSize: 17 }}>{action}</Text>
-        </Pressable>
-      </View>
+          {message}
+        </Text>
+        {action && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={action.accessibilityLabel}
+            onPress={action.onPress}
+            style={styles.action}
+          >
+            <Text style={[styles.actionLabel, { color: colors.accent }]}>
+              {action.label}
+            </Text>
+          </Pressable>
+        )}
+      </GlassSurface>
     </View>
   );
 }
@@ -47,13 +54,15 @@ const styles = StyleSheet.create({
   notice: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingLeft: 16,
+    gap: 4,
+    paddingLeft: 20,
     paddingRight: 4,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 24,
+    overflow: 'hidden',
   },
+  opaque: { borderWidth: StyleSheet.hairlineWidth },
   message: { flexShrink: 1, fontSize: 17, paddingVertical: 12 },
+  messageOnly: { paddingRight: 16 },
   action: {
     minHeight: 48,
     minWidth: 64,
@@ -61,4 +70,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 12,
   },
+  actionLabel: { fontSize: 17, fontWeight: '600' },
 });

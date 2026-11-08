@@ -138,3 +138,56 @@ test('expense order cannot change snapshot selection, category identity, or char
     ).toEqual(expected);
   }
 });
+
+test("a group's insights add up your share per period and currency", () => {
+  const yourShares = (ownMemberId?: string) =>
+    buildInsights({
+      expenses: [
+        expense({
+          date: '2024-12-10',
+          shares: [{ participant: 'you', amountMinor: 30 }],
+        }),
+        expense({
+          shares: [
+            { participant: 'you', amountMinor: 20 },
+            { participant: 'casey', amountMinor: 80 },
+          ],
+        }),
+        expense({ currency: 'JPY', shares: [] }),
+        expense({
+          spaceId: 'other',
+          shares: [{ participant: 'you', amountMinor: 100 }],
+        }),
+      ],
+      categories: [],
+      context: { kind: 'group', groupId: 'trip', ownMemberId },
+      chartPreference: 'auto',
+    })!.months.map(({ key, currencies }) => [
+      key,
+      currencies.map(({ currency, yourShareMinor }) => [
+        currency,
+        yourShareMinor,
+      ]),
+    ]);
+
+  expect(yourShares('you')).toEqual([
+    ['2024-12', [['USD', 30]]],
+    [
+      '2025-01',
+      [
+        ['JPY', 0],
+        ['USD', 20],
+      ],
+    ],
+  ]);
+  expect(yourShares()).toEqual([
+    ['2024-12', [['USD', undefined]]],
+    [
+      '2025-01',
+      [
+        ['JPY', undefined],
+        ['USD', undefined],
+      ],
+    ],
+  ]);
+});
