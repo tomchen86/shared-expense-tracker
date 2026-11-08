@@ -2,6 +2,7 @@ import { useRef, useSyncExternalStore } from 'react';
 import {
   AccessibilityInfo,
   Appearance,
+  Dimensions,
   StyleSheet,
   Text,
   processColor,
@@ -130,6 +131,40 @@ export async function changeReduceTransparency(enabled: boolean) {
 /** How many times the app has asked whether Reduce Transparency is on. */
 export const reduceTransparencyQuestions = () =>
   jest.mocked(AccessibilityInfo.isReduceTransparencyEnabled).mock.calls.length;
+
+// The phone's text size
+
+/** iOS's text sizes as React Native reports them: the default, the largest outside the accessibility sizes, and the smallest and largest of those. */
+export const IOS_TEXT_SIZE = {
+  default: 1,
+  largest: 1.353,
+  smallestAccessibility: 1.786,
+  largestAccessibility: 3.571,
+} as const;
+
+// Jest's React Native reports 2: on iOS a size between its two smallest accessibility sizes,
+// and Android's 200%. Both are already sizes at which group cards stack (GROUPS-104.1).
+const jestTextSize = Dimensions.get('window').fontScale;
+
+function reportTextSize(fontScale: number) {
+  const window = Dimensions.get('window');
+  const whole = Dimensions.get('screen');
+  Dimensions.set({
+    window: { ...window, fontScale },
+    screen: { ...whole, fontScale },
+  });
+}
+
+/** The user picks a text size in the phone's settings, as React Native reports it: 1.3 for Android's 130%. */
+export const setTextSize = (fontScale: number) =>
+  act(async () => reportTextSize(fontScale));
+
+/**
+ * Puts back the text size Jest starts with, for the tests after. It updates nothing on screen,
+ * so it needs no act: call it from a top-level afterEach, which runs after Testing Library's
+ * cleanup has unmounted the app. One inside a describe would run before that cleanup.
+ */
+export const resetTextSize = () => reportTextSize(jestTextSize);
 
 // The phone database
 
