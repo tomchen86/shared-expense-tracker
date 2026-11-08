@@ -149,8 +149,9 @@ test('fails on a name the seed does not define, or a field it does not have', as
     }),
   ).rejects.toThrow('The seed names Brisbane, which is not there');
   await expect(
+    // A flow's JSON can have any field, which only the check finds.
     applySeed(database, identity, {
       expenses: [{ title: 'Dinner', amount: '12', paid_by: 'Casey' }],
-    } as Seed),
+    } as unknown as Seed),
   ).rejects.toThrow("The seed's expenses have no field paid_by");
 });
