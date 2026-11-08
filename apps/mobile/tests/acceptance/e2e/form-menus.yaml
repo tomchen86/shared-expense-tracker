@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-100.1] The form's lists are system menus: one choice closes them, Split between stays open, a press outside only closes them, and the keyboard stays"
+name: "[LEDGER-100.1] The form's lists are system menus, one choice closes them, Split between stays open, a press outside only closes them, and the keyboard stays"
 ---
 - launchApp:
     clearState: true
@@ -81,6 +81,12 @@ name: "[LEDGER-100.1] The form's lists are system menus: one choice closes them,
 - waitForAnimationToEnd
 - assertVisible: Split between, 2 people
 - assertNotVisible: Taylor \(You\)
+# The rest presses a row by its place on the screen, so it starts with the keyboard closed: where
+# the simulator shows the software keyboard, it covers the rows below Date. A press on the form's
+# margin with no menu open closes it.
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
 # A press on the Group row, outside the menu, only closes the menu.
 - scrollUntilVisible:
     element: Category, Shopping
