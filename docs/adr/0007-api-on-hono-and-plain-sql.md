@@ -1,7 +1,7 @@
 # ADR-0007: API on Hono and plain SQL, first on Cloudflare Workers
 
 - Date: 2026-10-29
-- Status: Accepted
+- Status: Accepted; parts are superseded by ADR-0015
 
 ## Context
 

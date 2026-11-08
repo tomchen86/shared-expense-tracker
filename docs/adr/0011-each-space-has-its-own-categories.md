@@ -1,7 +1,7 @@
 # ADR-0011: Each space has its own categories
 
 - Date: 2026-11-02
-- Status: Accepted
+- Status: Accepted; parts are superseded by ADR-0016
 
 ## Context
 
