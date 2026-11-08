@@ -1,0 +1,19 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[GROUPS-4.1] Asks for your name before New Group opens, and goes to Settings for it'
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Groups
+- assertVisible: No groups yet. Tap + to create a group.
+- tapOn: Add group
+- assertVisible: Username Required
+- tapOn: Go to Settings
+- assertVisible:
+    text: Settings
+    selected: true

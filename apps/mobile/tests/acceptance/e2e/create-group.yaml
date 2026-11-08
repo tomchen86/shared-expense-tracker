@@ -1,31 +1,10 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[GROUPS-4.1] [GROUPS-6.1] [GROUPS-8.1] [GROUPS-13.1] [GROUPS-16.1] Asks for a name first, closes New Group when it is swiped down, then creates a group that is still there after a restart'
+name: '[GROUPS-6.1] [GROUPS-8.1] [GROUPS-13.1] [GROUPS-16.1] Closes New Group when it is swiped down, then creates a group that is still there after a restart'
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      text: Expenses
-      selected: true
-    timeout: 30000
-- waitForAnimationToEnd
-- tapOn: Groups
-- assertVisible: No groups yet. Tap + to create a group.
-- tapOn: Add group
-- assertVisible: Username Required
-- tapOn: Go to Settings
-- assertVisible:
-    text: Settings
-    selected: true
-- tapOn: Enter your name
-- inputText: Taylor
-# On a slow runner, typing can start before the field takes it and garble the name,
-# so type it again. Maestro cannot check the name first: on iOS it reads a text
-# field's placeholder, not what was typed.
-- eraseText: 20
-- inputText: Taylor
-- pressKey: Enter
-- waitForAnimationToEnd
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"name":"Taylor"}'
 - tapOn: Groups
 - tapOn: Add group
 - assertVisible: New Group

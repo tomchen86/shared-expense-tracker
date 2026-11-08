@@ -5,34 +5,12 @@ tags:
 ---
 # An Android dialog shows three buttons and drops any others, which Jest cannot see, so this also
 # runs there: scripts/e2e-android.sh.
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      text: Expenses
-      selected: true
-    timeout: 30000
-- waitForAnimationToEnd
-- tapOn: Settings
-- waitForAnimationToEnd
-- tapOn: Enter your name
-- inputText: Taylor
-# On a slow runner, typing can start before the field takes it and garble the name,
-# so type it again. Maestro cannot check the name first: on iOS it reads a text
-# field's placeholder, not what was typed.
-- eraseText: 20
-- inputText: Taylor
-- pressKey: Enter
-- waitForAnimationToEnd
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"name":"Taylor","groups":[{"name":"Brisbane"}]}'
 - tapOn: Groups
 - waitForAnimationToEnd
-- tapOn: Add group
-- waitForAnimationToEnd
-- assertVisible: New Group
-- inputText: Brisbane
-- tapOn: Create
-- waitForAnimationToEnd
-- assertNotVisible: New Group
 - tapOn: Open Brisbane.*
 - waitForAnimationToEnd
 - tapOn: Group actions

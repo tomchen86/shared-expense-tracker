@@ -1,0 +1,18 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[LEDGER-67.2] [LEDGER-84.1] [LEDGER-65.4] Finds an archived group's expense on Expenses marked Archived, and finds that swiping its card opens nothing"
+---
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"name":"Taylor","groups":[{"name":"Brisbane","members":["Casey"],"archived":true}],"expenses":[{"title":"Dinner","amount":"100.01","group":"Brisbane","paidBy":"Casey","splitBetween":["Taylor","Casey"]}]}'
+# Once the group is archived, its expense's card has no Delete: swiping it left on
+# Expenses opens nothing.
+- assertVisible: .*Dinner.*Archived.*
+- swipe:
+    from:
+      text: .*Dinner.*Archived.*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertNotVisible: Delete.*
+- assertNotVisible: Shared history
+- assertVisible: .*Dinner.*Archived.*

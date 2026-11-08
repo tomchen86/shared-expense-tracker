@@ -5,38 +5,10 @@ tags:
 ---
 # Eight cards and seven groups, so that one is under the middle of any screen: this also runs on the
 # small Android screen of scripts/e2e-android.sh, where the first card sits elsewhere.
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      text: Expenses
-      selected: true
-    timeout: 30000
-- waitForAnimationToEnd
-- evalScript: ${output.card = 1}
-- repeat:
-    times: 8
-    commands:
-      - tapOn: Add expense
-      - assertVisible: New Expense
-      - tapOn: Expense title
-      - inputText: Card ${output.card}
-      - tapOn: Amount in .*
-      - inputText: '1'
-      - tapOn:
-          text: Add
-          enabled: true
-      - waitForAnimationToEnd
-      - assertNotVisible: New Expense
-      - evalScript: ${output.card = output.card + 1}
-# Starting again, with no form still closing.
-- launchApp
-- extendedWaitUntil:
-    visible:
-      text: Expenses
-      selected: true
-    timeout: 30000
-- waitForAnimationToEnd
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"name":"Taylor","groups":[{"name":"Group 1"},{"name":"Group 2"},{"name":"Group 3"},{"name":"Group 4"},{"name":"Group 5"},{"name":"Group 6"},{"name":"Group 7"}],"expenses":[{"title":"Card 1","amount":"1"},{"title":"Card 2","amount":"1"},{"title":"Card 3","amount":"1"},{"title":"Card 4","amount":"1"},{"title":"Card 5","amount":"1"},{"title":"Card 6","amount":"1"},{"title":"Card 7","amount":"1"},{"title":"Card 8","amount":"1"}]}'
 # A short swipe only reveals the action. It stays short of 60% of the card on a 360 dp screen too.
 - swipe:
     start: 85%, 50%
@@ -66,31 +38,8 @@ tags:
 - assertVisible: Undo deletion of ${output.card}
 - assertVisible: Moved to Trash
 - assertNotVisible: ${output.card}, .*
-- tapOn: Settings
-- waitForAnimationToEnd
-- tapOn: Enter your name
-- inputText: Taylor
-# On a slow runner, typing can start before the field takes it and garble the name,
-# so type it again. Maestro cannot check the name first: on iOS it reads a text
-# field's placeholder, not what was typed.
-- eraseText: 20
-- inputText: Taylor
-- pressKey: Enter
-- waitForAnimationToEnd
 - tapOn: Groups
 - waitForAnimationToEnd
-- evalScript: ${output.group = 1}
-- repeat:
-    times: 7
-    commands:
-      - tapOn: Add group
-      - waitForAnimationToEnd
-      - assertVisible: New Group
-      - inputText: Group ${output.group}
-      - tapOn: Create
-      - waitForAnimationToEnd
-      - assertNotVisible: New Group
-      - evalScript: ${output.group = output.group + 1}
 - swipe:
     start: 85%, 50%
     end: 35%, 50%

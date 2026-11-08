@@ -1,0 +1,37 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[GROUPS-25.2] [GROUPS-26.1] [GROUPS-29.2] [GROUPS-30.2] [GROUPS-34.2] Removes a member from their action sheet with the keyboard up, closes the emptied name field, and adds them back'
+---
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"name":"Taylor","groups":[{"name":"Brisbane","members":["Blake","Casey"]}]}'
+- tapOn: Groups
+- tapOn: Open Brisbane
+- tapOn: Group actions
+- tapOn: Members
+- waitForAnimationToEnd
+- tapOn: Add Member
+- waitForAnimationToEnd
+# With the keyboard up, the first tap on a member opens their menu, and the field keeps its name.
+- inputText: Dana
+- tapOn: Blake
+- assertVisible: If removed, their historical payments and shares will be retained.
+- tapOn: Remove from Group
+- waitForAnimationToEnd
+- assertNotVisible: Blake
+- assertVisible: Dana
+# Return on the emptied field closes it and Add Member comes back.
+- tapOn: Member name
+- eraseText: 10
+- pressKey: Enter
+- waitForAnimationToEnd
+- assertNotVisible: Member name
+- tapOn: Add Member
+- waitForAnimationToEnd
+# Typed in capitals, which the keyboard keeps, so only a match that ignores case finds Blake.
+- inputText: BLAKE
+- pressKey: Enter
+- assertVisible: Add Blake Back?
+- tapOn: Add Back
+- waitForAnimationToEnd
+- assertVisible: Blake
