@@ -4,9 +4,7 @@ import { DateField } from '../../src/ui/date-field';
 // iOS passes the press that closes the compact date picker's calendar on to the
 // form, so the form has to know when a press opened it (date-field.ios.tsx).
 
-const WIDTH = 300;
-
-async function pressedAt(locationX: number, disabled = false) {
+async function pressed(on: 'date' | 'label', disabled = false) {
   const onOpen = jest.fn();
   await render(
     <DateField
@@ -18,21 +16,21 @@ async function pressedAt(locationX: number, disabled = false) {
       onOpen={onOpen}
     />,
   );
-  await fireEvent(screen.root!, 'layout', {
-    nativeEvent: { layout: { width: WIDTH } },
-  });
-  await fireEvent(screen.root!, 'touchEnd', { nativeEvent: { locationX } });
+  const [date] = screen.container.queryAll(
+    (view) => view.props.displayedComponents !== undefined,
+  );
+  await fireEvent(on === 'date' ? date : screen.getByText('Date'), 'touchEnd');
   return onOpen;
 }
 
 test('a press on the date reports that the calendar opened', async () => {
-  expect(await pressedAt(WIDTH - 40)).toHaveBeenCalledTimes(1);
+  expect(await pressed('date')).toHaveBeenCalledTimes(1);
 });
 
 test('a press on the label does not', async () => {
-  expect(await pressedAt(40)).not.toHaveBeenCalled();
+  expect(await pressed('label')).not.toHaveBeenCalled();
 });
 
 test('a press on a disabled field does not', async () => {
-  expect(await pressedAt(WIDTH - 40, true)).not.toHaveBeenCalled();
+  expect(await pressed('date', true)).not.toHaveBeenCalled();
 });
