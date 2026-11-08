@@ -1,4 +1,10 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { FadeText } from '../ui/fade-text';
 import { GroupedSection } from '../ui/grouped-section';
 import { SwipeAction } from '../ui/swipe-action';
@@ -20,6 +26,8 @@ export function GroupCard({
   onArchive: () => void;
 }) {
   const colors = useThemeColors();
+  // iOS's accessibility text sizes start at 1.786, after 1.353; Android's 150% is 1.5, after 1.3.
+  const stacked = useWindowDimensions().fontScale >= 1.5;
   const count = `${group.members.length} ${group.members.length === 1 ? 'member' : 'members'}`;
   return (
     <View style={styles.card}>
@@ -49,7 +57,7 @@ export function GroupCard({
               pressed && { backgroundColor: colors.pressedSurface },
             ]}
           >
-            <View style={styles.nameRow}>
+            <View style={[styles.nameRow, stacked && styles.stacked]}>
               <FadeText
                 containerStyle={styles.nameBox}
                 style={[styles.name, { color: colors.text }]}
@@ -80,6 +88,7 @@ const styles = StyleSheet.create({
   card: { marginBottom: 12 },
   row: { padding: 16, minHeight: 56, justifyContent: 'center' },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  stacked: { flexDirection: 'column', alignItems: 'stretch', gap: 8 },
   nameBox: { flex: 1 },
   name: { fontSize: 18, fontWeight: '700' },
   count: { fontSize: 14 },

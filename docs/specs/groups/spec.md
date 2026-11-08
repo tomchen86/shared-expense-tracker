@@ -1480,13 +1480,13 @@ The mobile app SHALL 在 Balances 依幣別代碼排序，為群組不在垃圾�
 - **WHEN** Brisbane 有 Taylor 付、Taylor 和 Casey 分攤的 60.00 USD 的 Dinner，以及 Casey 付、只有 Blake 分攤的 25.00 USD 的 Taxi，把 Blake 移出 Brisbane，再把 Taxi 移到垃圾桶
 - **THEN** Balances 沒有 Blake；按 Undo 提示的「Undo」之後又有 Blake
 
-### Requirement: GROUPS-72.2 群組的卡片顯示成員人數
+### Requirement: GROUPS-72.3 群組的卡片顯示成員人數
 
-The mobile app SHALL 在群組的卡片上、群組名稱那一行的右邊顯示群組的成員人數，一位時是「1 member」，其他時候是「<人數> members」；前成員不算在內。群組名稱是粗體。
+The mobile app SHALL 在群組的卡片上、群組名稱那一行的右邊顯示群組的成員人數，一位時是「1 member」，其他時候是「<人數> members」；前成員不算在內。群組名稱是粗體。字級很大時，成員人數改在名稱的下一行（GROUPS-104.1）。
 
 #### Scenario: 新建立的群組
 
-- **WHEN** 建立「Brisbane」
+- **WHEN** 以預設的字級建立「Brisbane」
 - **THEN** Brisbane 的卡片依序是「Brisbane」和「1 member」，「1 member」在「Brisbane」右邊
 
 #### Scenario: 加入成員
@@ -1731,3 +1731,27 @@ The mobile app SHALL 讓 Groups 根畫面上每張群組的卡片一樣高，不
 
 - **WHEN** 有還沒有支出的 Brisbane、打平的 Tokyo，以及同時有 You owe 和 You're owed 的 Paris
 - **THEN** 三張卡片一樣高
+
+#### Scenario: 最大的字級
+
+- **WHEN** iOS 上把字級設成最大的輔助使用字級，有同樣三個群組
+- **THEN** 三張卡片仍然一樣高，名稱、成員人數和下面兩行都在卡片裡，沒有被切掉
+
+### Requirement: GROUPS-104.1 字級很大時，群組卡片的成員人數在名稱下一行
+
+WHILE 手機的字級是 iOS 的輔助使用字級，或 Android 的字型大小在 150% 以上，the mobile app SHALL 在群組的卡片上把成員人數放在群組名稱的下一行，讓名稱使用整行的寬度，仍然只佔一行，放不下時尾端漸層消失（SHELL-68.1）；比這小的字級，成員人數在名稱右邊（GROUPS-72.3）。
+
+#### Scenario: iOS 的輔助使用字級
+
+- **WHEN** iOS 上把字級設成最小的輔助使用字級，建立「Brisbane」；再把字級設成最大的輔助使用字級
+- **THEN** 兩種字級時，Brisbane 的卡片都依序是「Brisbane」和「1 member」，「1 member」在「Brisbane」下一行；「Brisbane」只佔一行，放不下時尾端漸層消失
+
+#### Scenario: iOS 最大的一般字級
+
+- **WHEN** iOS 上把字級設成最大的非輔助使用字級，建立「Brisbane」
+- **THEN** 「1 member」仍在「Brisbane」右邊
+
+#### Scenario: Android
+
+- **WHEN** Android 上把字型大小設成 150%，建立「Brisbane」；再依序設成 200% 和 130%
+- **THEN** 150% 和 200% 時「1 member」在「Brisbane」下一行；130% 時回到「Brisbane」右邊
