@@ -1,6 +1,6 @@
 name: e2e
 
-# The E2E flows on a Release build for the iOS simulator (ADR-0008, ADR-0015). Not a required
+# The E2E flows on a Release build for the iOS simulator (ADR-0008, ADR-0017). Not a required
 # check: it runs after each merge to main that changes what the flows run on, so a failure
 # points to that merge, and by hand, never on pull requests. One job prepares the app, four
 # run a quarter of the flows each, and the last checks the trace over all their reports.
@@ -41,10 +41,10 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           run_install: false
-      - uses: actions/setup-node@v7.0.0
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -54,10 +54,10 @@ jobs:
         id: xcode
         run: echo "build=$(xcodebuild -version | awk '/Build version/ {print $3}')" >> "$GITHUB_OUTPUT"
       # The native build changes only with these files and Xcode. While they stay the same, the
-      # app built for them gets this merge's JavaScript instead of a new build (ADR-0015).
+      # app built for them gets this merge's JavaScript instead of a new build (ADR-0017).
       - name: Restore the native build
         id: cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ env.BUILT }}
           key: ios-release-${{ steps.xcode.outputs.build }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json', 'patches/**', 'apps/mobile/package.json', 'apps/mobile/app.json', 'apps/mobile/assets/**', 'scripts/e2e-ios.sh') }}
@@ -68,7 +68,7 @@ jobs:
           cp "$BUILT/main.jsbundle" "$RUNNER_TEMP/built.jsbundle"
       - name: Save the native build
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ${{ env.BUILT }}
           key: ${{ steps.cache.outputs.cache-primary-key }}
@@ -82,7 +82,7 @@ jobs:
       # An artifact keeps no executable bits, so the app travels as a tarball.
       - name: Pack the app
         run: tar -czf app.tgz -C "$(dirname "$BUILT")" "$APP"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: app
           path: app.tgz
@@ -109,7 +109,7 @@ jobs:
           echo "$MAESTRO_SHA256  $RUNNER_TEMP/maestro.zip" | shasum -a 256 -c -
           unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/maestro/bin" >> "$GITHUB_PATH"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: app
       - name: Run a quarter of the flows
@@ -123,7 +123,7 @@ jobs:
         run: if [ -d reports/e2e/output ]; then tar -czf reports/e2e/output.tgz -C reports/e2e output; fi
       - name: Reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-reports-${{ matrix.shard }}
           path: |
@@ -139,7 +139,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: e2e-reports-*
           path: reports/e2e
