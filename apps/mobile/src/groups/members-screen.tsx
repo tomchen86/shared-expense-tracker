@@ -47,7 +47,7 @@ export function MembersScreen({
   );
   const sheetScrollProps: ScrollViewProps = sheetScroll.scrollProps;
 
-  const [group, setGroup] = useGroup(id);
+  const [group, setGroup] = useGroup(id, { startFromLatest: true });
   const base = inSettings ? '/settings/archived-groups' : '/groups';
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
