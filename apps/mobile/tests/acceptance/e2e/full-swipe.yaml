@@ -57,20 +57,23 @@ tags:
 - assertNotVisible:
     text: Delete .* expense
     enabled: true
-# All the way to the left runs it.
+# All the way to the left runs it. Its notice closes after 5 seconds, which a slow runner can use
+# up before it presses Undo, so this only checks that Undo shows; other flows press it.
 - swipe:
     start: 90%, 50%
     end: 3%, 50%
     duration: 500
-- waitForAnimationToEnd
+- assertVisible: Undo deletion of ${output.card}
 - assertVisible: Moved to Trash
 - assertNotVisible: ${output.card}, .*
-- tapOn: Undo deletion of ${output.card}
-- waitForAnimationToEnd
-- assertVisible: ${output.card}, .*
 - tapOn: Settings
 - waitForAnimationToEnd
 - tapOn: Enter your name
+- inputText: Taylor
+# On a slow runner, typing can start before the field takes it and garble the name,
+# so type it again. Maestro cannot check the name first: on iOS it reads a text
+# field's placeholder, not what was typed.
+- eraseText: 20
 - inputText: Taylor
 - pressKey: Enter
 - waitForAnimationToEnd
