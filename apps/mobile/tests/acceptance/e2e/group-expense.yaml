@@ -63,6 +63,12 @@ name: "[LEDGER-68.2] [GROUPS-64.1] [LEDGER-46.2] [LEDGER-48.2] [LEDGER-49.2] [LE
 - assertVisible: New Expense
 - assertVisible: Dinner
 - assertVisible: Category, Flights
+# Where the simulator shows the software keyboard, it covers the rows below Date, and iOS still
+# reports them as visible, so scrollUntilVisible would not scroll and the next press would land
+# on the keyboard. A press on the form's margin closes it first.
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
 # Bring all financial rows into view before opening their pickers. Returning from
 # Paid by must still leave Split between directly usable, with no further scroll.
 - scrollUntilVisible:
