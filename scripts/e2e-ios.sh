@@ -5,7 +5,7 @@
 #   bash scripts/e2e-ios.sh <udid>   run on the app already on that simulator, such as the
 #                                    debug build of iOS hand checks (AGENTS.md, Commands)
 #
-# The e2e workflow splits the first of these across runners (ADR-0015):
+# The e2e workflow splits the first of these across runners (ADR-0017):
 #
 #   bash scripts/e2e-ios.sh --build  only build the Release app
 #   bash scripts/e2e-ios.sh --repack put this checkout's JavaScript into the Release app built

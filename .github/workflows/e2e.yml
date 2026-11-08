@@ -1,6 +1,6 @@
 name: e2e
 
-# The E2E flows on a Release build for the iOS simulator (ADR-0008, ADR-0015). Not a required
+# The E2E flows on a Release build for the iOS simulator (ADR-0008, ADR-0017). Not a required
 # check: it runs after each merge to main that changes what the flows run on, so a failure
 # points to that merge, and by hand, never on pull requests. One job prepares the app, four
 # run a quarter of the flows each, and the last checks the trace over all their reports.
@@ -54,7 +54,7 @@ jobs:
         id: xcode
         run: echo "build=$(xcodebuild -version | awk '/Build version/ {print $3}')" >> "$GITHUB_OUTPUT"
       # The native build changes only with these files and Xcode. While they stay the same, the
-      # app built for them gets this merge's JavaScript instead of a new build (ADR-0015).
+      # app built for them gets this merge's JavaScript instead of a new build (ADR-0017).
       - name: Restore the native build
         id: cache
         uses: actions/cache/restore@v4
