@@ -1,0 +1,28 @@
+# Starts the app with no data but SEED, JSON in the shape of Seed in apps/mobile/src/shell/e2e-seed.ts
+# (ADR-0018), and waits for Expenses. iOS gets it as a launch argument, which lasts for this launch
+# only; Android, where an app reads no launch argument without native code, gets it in a link.
+# Not a flow of its own: Maestro runs only the files at the top of a folder.
+appId: com.tomchen.sharedexpensetracker
+---
+- runScript: encode-seed.js
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - launchApp:
+          clearState: true
+          arguments:
+            seed: ${output.seed}
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - stopApp
+      - clearState
+      - openLink: shared-expense-tracker://?seed=${output.seed}
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd

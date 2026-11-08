@@ -2,11 +2,14 @@ import { useEffect, useMemo, type ReactNode } from 'react';
 import { LogBox } from 'react-native';
 import type { Database } from '../storage';
 import { openPhoneDatabase } from '../storage/expo';
+import { seedFromLaunch } from './e2e-seed';
 import { LocalDataGate } from './local-data-gate';
 
-// E2E flows run on a debug build, where LogBox notices can cover the tab bar
-// (ADR-0008). Metro inlines EXPO_PUBLIC_ variables when it bundles.
-if (process.env.EXPO_PUBLIC_E2E === '1') LogBox.ignoreAllLogs();
+// Builds for the E2E flows are bundled with EXPO_PUBLIC_E2E=1: they keep LogBox notices off the
+// tab bar of a debug build (ADR-0008) and write the data a flow passes at launch (ADR-0018).
+// Metro inlines EXPO_PUBLIC_ variables when it bundles, so a store build does neither.
+const e2e = process.env.EXPO_PUBLIC_E2E === '1';
+if (e2e) LogBox.ignoreAllLogs();
 
 /** Owns the phone connection; the gate is also usable with a real test database. */
 export function PhoneLocalData({ children }: { children: ReactNode }) {
@@ -35,7 +38,11 @@ export function PhoneLocalData({ children }: { children: ReactNode }) {
     return lifetime.close;
   }, [lifetime]);
   return (
-    <LocalDataGate openDatabase={lifetime.open} development={__DEV__}>
+    <LocalDataGate
+      openDatabase={lifetime.open}
+      development={__DEV__}
+      seed={e2e ? seedFromLaunch : undefined}
+    >
       {children}
     </LocalDataGate>
   );

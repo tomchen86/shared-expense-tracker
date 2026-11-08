@@ -6,38 +6,10 @@ tags:
 # Android's scroll view takes a slanted drag before JavaScript hears of it, so this also runs
 # there: scripts/e2e-android.sh. A list that cannot scroll never takes the drag, so it needs eight cards,
 # which also let it move a whole card under any point.
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      text: Expenses
-      selected: true
-    timeout: 30000
-- waitForAnimationToEnd
-- evalScript: ${output.card = 1}
-- repeat:
-    times: 8
-    commands:
-      - tapOn: Add expense
-      - assertVisible: New Expense
-      - tapOn: Expense title
-      - inputText: Card ${output.card}
-      - tapOn: Amount in .*
-      - inputText: '1'
-      - tapOn:
-          text: Add
-          enabled: true
-      - waitForAnimationToEnd
-      - assertNotVisible: New Expense
-      - evalScript: ${output.card = output.card + 1}
-# Starting again, with no form still closing.
-- launchApp
-- extendedWaitUntil:
-    visible:
-      text: Expenses
-      selected: true
-    timeout: 30000
-- waitForAnimationToEnd
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"expenses":[{"title":"Card 1","amount":"1"},{"title":"Card 2","amount":"1"},{"title":"Card 3","amount":"1"},{"title":"Card 4","amount":"1"},{"title":"Card 5","amount":"1"},{"title":"Card 6","amount":"1"},{"title":"Card 7","amount":"1"},{"title":"Card 8","amount":"1"}]}'
 # Every swipe here starts from this point, which seeing Delete proves is on a card. Left and up,
 # far enough that a list moving with the finger would bring another card under the point, and
 # short of SHELL-69.1's 60% of the card, which would run the action.

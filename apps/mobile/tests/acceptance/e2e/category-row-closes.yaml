@@ -1,36 +1,13 @@
 appId: com.tomchen.sharedexpensetracker
 name: '[CATEGORIES-50.1] Scrolling the list or pressing a row closes a category row that shows its action'
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      text: Expenses
-      selected: true
-    timeout: 30000
-- waitForAnimationToEnd
+# The default nine rows do not overflow.
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"categories":[{"name":"Scroll 1"},{"name":"Scroll 2"},{"name":"Scroll 3"},{"name":"Scroll 4"},{"name":"Scroll 5"},{"name":"Scroll 6"},{"name":"Scroll 7"},{"name":"Scroll 8"}]}'
 - tapOn: Settings
 - tapOn: Manage Categories
-- waitForAnimationToEnd
-# The default nine rows do not overflow.
-- evalScript: ${output.category = 1}
-- repeat:
-    times: 8
-    commands:
-      - tapOn: Add category
-      - waitForAnimationToEnd
-      - tapOn: Category name
-      - inputText: Scroll ${output.category}
-      - waitForAnimationToEnd
-      - tapOn:
-          text: Add
-          enabled: true
-      - waitForAnimationToEnd
-      - assertNotVisible: Category name
-      - evalScript: ${output.category = output.category + 1}
-- scrollUntilVisible:
-    element: Food & Dining
-    direction: UP
 - waitForAnimationToEnd
 # Scrolling, from another row. iOS keeps some offscreen nodes, so a row that has gone is one no
 # longer below the fixed bar.
