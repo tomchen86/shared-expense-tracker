@@ -1,4 +1,4 @@
-# ADR-0015: The e2e workflow runs four shards and reuses the native build
+# ADR-0017: The e2e workflow runs four shards and reuses the native build
 
 - Date: 2026-11-08
 - Status: Accepted
