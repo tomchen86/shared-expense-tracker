@@ -8,7 +8,7 @@ const onlyDomainApi = 'imports only @shared-expense/domain/api';
 const onlySrc = 'Relative imports in apps/api/src stay inside it';
 const standsAlone = 'stands alone';
 
-// Each exists on just one of Node 22.22 and workerd with wrangler.jsonc's settings, as
+// Each exists on just one of Node 26.13 and workerd with wrangler.jsonc's settings, as
 // measured by walking globalThis on both. Those up to WorkerGlobalScope have types in the
 // `lib` that portable code compiles with, so lint is all that stops them.
 const oneRuntimeGlobals = [
@@ -21,10 +21,7 @@ const oneRuntimeGlobals = [
   'reportError',
   'origin',
   'caches',
-  'URLPattern',
   'EventSource',
-  'CloseEvent',
-  'ErrorEvent',
   'PromiseRejectionEvent',
   'ExtendableEvent',
   'FetchEvent',
@@ -32,6 +29,11 @@ const oneRuntimeGlobals = [
   'CacheStorage',
   'ServiceWorkerGlobalScope',
   'WorkerGlobalScope',
+  'Temporal',
+  'localStorage',
+  'sessionStorage',
+  'Storage',
+  'QuotaExceededError',
   'Body',
   'Cloudflare',
   'FixedLengthStream',
