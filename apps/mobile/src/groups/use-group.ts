@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { useLocalDatabase } from '../shell';
 import {
@@ -9,11 +9,28 @@ import {
 } from './index';
 
 type GroupDetails = Group & { formerMembers: GroupMember[] };
+type Database = ReturnType<typeof useLocalDatabase>;
 
-/** Refresh after a sheet closes; undefined means the first read is still pending. */
-export function useGroup(id: string) {
+// Each database's latest group details that a screen holds, with the changes it made. On
+// iOS, a sheet sized to its contents that grows after it opens can keep its screen at the
+// first, shorter height and cut off the last rows; a sheet that starts from these has the
+// group's rows in its first layout.
+const latest = new WeakMap<Database, Map<string, GroupDetails | null>>();
+
+/**
+ * Refresh after a sheet closes; undefined means the first read is still pending. With
+ * `startFromLatest`, it starts from the details another screen holds, until its own read.
+ * A form that starts editing from the group should read it fresh instead.
+ */
+export function useGroup(id: string, { startFromLatest = false } = {}) {
   const database = useLocalDatabase();
-  const [group, setGroup] = useState<GroupDetails | null>();
+  const [group, setGroup] = useState<GroupDetails | null | undefined>(() =>
+    startFromLatest ? latest.get(database)?.get(id) : undefined,
+  );
+  useEffect(() => {
+    if (group !== undefined)
+      latest.set(database, (latest.get(database) ?? new Map()).set(id, group));
+  }, [database, id, group]);
   const [error, setError] = useState<unknown>();
   const pending = useRef<Promise<GroupDetails | null>>(undefined);
   useFocusEffect(
