@@ -12,6 +12,11 @@ name: '[LEDGER-100.1] With no groups yet, Select Group holds only a disabled No 
 - tapOn: Settings
 - tapOn: Enter your name
 - inputText: Taylor
+# On a slow runner, typing can start before the field takes it and garble the name,
+# so type it again. Maestro cannot check the name first: on iOS it reads a text
+# field's placeholder, not what was typed.
+- eraseText: 20
+- inputText: Taylor
 - pressKey: Enter
 - tapOn: Expenses
 - tapOn: Add expense
