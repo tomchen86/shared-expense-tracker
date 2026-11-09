@@ -4,9 +4,9 @@ A bookkeeping app for personal and shared expenses: no sign-up by default, works
 
 ## Commands
 
-- `bash scripts/check.sh`: lint, format check, typecheck, tests, then the requirement trace, which runs even when a step fails. Tests write JUnit XML to `reports/junit/`. The API's tests need PostgreSQL.
-- `docker compose -f apps/api/compose.yaml up -d --wait`: start the PostgreSQL that the API's tests connect to, at `127.0.0.1:55432`. Every worktree on the machine shares this one container; each test makes its own database in it. Do not stop or remove it: another session's tests may be running in it. If `up` fails with `Conflict`, another session is starting it, so run the command again. Without it the API's tests fail and say how to start it. `TEST_DATABASE_URL` points them at another server.
-- `pnpm test:mobile`: every test except the API's, without Docker, for a session that only changes the phone. CI still runs the API's tests.
+- `bash scripts/check.sh`: lint, format check, typecheck, tests, then the requirement trace, which runs even when a step fails. Tests write JUnit XML to `reports/junit/`.
+- `docker compose -f apps/api/compose.yaml up -d --wait`: start the PostgreSQL the API's tests need. Every worktree on the machine shares this one container: never stop or remove it, and if `up` fails with `Conflict`, another session is starting it, so run the command again.
+- `pnpm test:mobile`: every test except the API's, without Docker, for a session that only changes the phone.
 - `pnpm --filter api dev`: the API on Node. `pnpm --filter api dev:workers`: the API on Wrangler's local Workers runtime. `pnpm --filter api migrate`: run its migrations (`DATABASE_URL`). All default to the PostgreSQL above.
 - `gh pr checks <N> --watch --fail-fast`: wait for CI; returns at the first failure.
 - `gh run view <run-id> --log-failed`: read only the failed steps. `gh run rerun <run-id> --failed` reruns failed jobs; use it for flaky infrastructure, never to retry a real test failure.
@@ -38,8 +38,7 @@ A bookkeeping app for personal and shared expenses: no sign-up by default, works
 6. Every change reaches the default branch through a PR. With an issue: branch with `gh issue develop <N> --checkout` and put `Closes #<N>` in the PR. Without one: write `No issue: <reason>` instead.
 7. One session, one working directory. If the directory you start in has uncommitted changes you did not make, or another session works there, stop and tell the owner; otherwise work there or in a `git worktree add` of your own. Never switch branches, pull, or commit in a directory another session uses.
 8. Split and settlement amounts and offline sync are level-2 areas (ADR-0001): when code in them is added, set a branch coverage threshold on its paths in the test config at the measured value. It only goes up.
-9. The API's tests and `wrangler dev` bypass Hyperdrive, so a check runs against the real Hyperdrive and PostgreSQL, through `wrangler dev --remote` or a separate test deployment (ADR-0007): a write, a read back, and a transaction. It runs before the API first goes live, and after that in every PR that changes `apps/api/wrangler.jsonc`, `apps/api/src/workers.ts`, `apps/api/src/database/connect.ts`, the installed version of `postgres` (`apps/api/package.json`, `pnpm-lock.yaml`), or the Hyperdrive configuration. The owner runs it, because sessions hold no Cloudflare credentials: the PR's author prepares the exact commands, and the result goes in the PR's Verification before merge.
-10. `apps/api/compose.yaml`, the CI workflows, and Neon run the same PostgreSQL major version. A change to it changes all three; a test compares the first two, and the check in rule 9 also reads Neon's with `SHOW server_version`.
+9. The API's tests and `wrangler dev` bypass Hyperdrive, so a check runs against the real Hyperdrive and PostgreSQL, through `wrangler dev --remote` or a separate test deployment (ADR-0007): a write, a read back, a transaction, and `SHOW server_version`, whose major version matches the one in `apps/api/compose.yaml`. It runs before the API first goes live, and after that in every PR that changes `apps/api/wrangler.jsonc`, `apps/api/src/workers.ts`, `apps/api/src/database/connect.ts`, the installed version of `postgres` (`apps/api/package.json`, `pnpm-lock.yaml`), or the Hyperdrive configuration. The owner runs it, because sessions hold no Cloudflare credentials: the PR's author prepares the exact commands, and the result goes in the PR's Verification before merge.
 
 ## Roles
 
