@@ -19,6 +19,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export MAESTRO_CLI_NO_ANALYTICS=1 MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 # CocoaPods fails without a UTF-8 locale
+# Only a bundle made with this writes the data a flow passes at launch (ADR-0018).
+export EXPO_PUBLIC_E2E=1
 app=SharedExpenseTracker
 products=$PWD/apps/mobile/ios/build/Build/Products/Release-iphonesimulator
 rm -rf reports/e2e && mkdir -p reports/e2e/junit

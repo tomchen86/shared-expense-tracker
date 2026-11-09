@@ -1,14 +1,6 @@
 appId: com.tomchen.sharedexpensetracker
 name: '[INSIGHTS-30.1] [INSIGHTS-33.2] [INSIGHTS-36.2] [INSIGHTS-37.1] Moves between periods on Insights by swiping the period name, in the Period sheet, in the year menu, and with Month and Year'
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      text: Expenses
-      selected: true
-    timeout: 30000
-- waitForAnimationToEnd
 # The names of this month, last month and the years around them, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
 - evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'
@@ -16,50 +8,16 @@ name: '[INSIGHTS-30.1] [INSIGHTS-33.2] [INSIGHTS-36.2] [INSIGHTS-37.1] Moves bet
 - evalScript: '${output.thisYear = String(new Date().getFullYear())}'
 - evalScript: '${output.lastYear = String(new Date().getFullYear() - 1)}'
 - evalScript: '${output.lastMonthsYear = String(new Date().getMonth() === 0 ? new Date().getFullYear() - 1 : new Date().getFullYear())}'
-# Expenses today, on the 15th of last month, and on the 15th of this month last year. The
-# calendar names each day, as in "Thursday 15 October"; a tap outside it closes it.
-- tapOn: Add expense
-- tapOn: Expense title
-- inputText: Today
-- tapOn: Amount in .*
-- inputText: '3.00'
-- tapOn:
-    text: Add
-    enabled: true
-- waitForAnimationToEnd
-- tapOn: Add expense
-- tapOn: Expense title
-- inputText: Last month
-- tapOn: Amount in .*
-- inputText: '2.00'
-- tapOn: Date Picker
-- tapOn: Previous Month
-- tapOn: '\w+,? (15 \w+|\w+ 15)'
-- tapOn:
-    point: 50%,95%
-- waitForAnimationToEnd
-- tapOn:
-    text: Add
-    enabled: true
-- waitForAnimationToEnd
-- tapOn: Add expense
-- tapOn: Expense title
-- inputText: Last year
-- tapOn: Amount in .*
-- inputText: '1.00'
-- tapOn: Date Picker
-- repeat:
-    times: 12
-    commands:
-      - tapOn: Previous Month
-- tapOn: '\w+,? (15 \w+|\w+ 15)'
-- tapOn:
-    point: 50%,95%
-- waitForAnimationToEnd
-- tapOn:
-    text: Add
-    enabled: true
-- waitForAnimationToEnd
+# Expenses today, on the 15th of last month, and on the 15th of this month last year.
+- evalScript: '${output.lastMonth15 = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 15)}'
+- evalScript: "${output.lastMonthDate = output.lastMonth15.getFullYear() + '-' + ('0' + (output.lastMonth15.getMonth() + 1)).slice(-2) + '-15'}"
+- evalScript: "${output.lastYearDate = (new Date().getFullYear() - 1) + '-' + ('0' + (new Date().getMonth() + 1)).slice(-2) + '-15'}"
+# Maestro reads ${…} up to the last } in the value, so a seed with dates is built in one script.
+- evalScript: "${output.seedJson = JSON.stringify({ expenses: [{ title: 'Today', amount: '3.00' }, { title: 'Last month', amount: '2.00', date: output.lastMonthDate }, { title: 'Last year', amount: '1.00', date: output.lastYearDate }] })}"
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: ${output.seedJson}
 - tapOn: View expense insights\..*
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}

@@ -231,15 +231,17 @@ export function SwipeAction({
     onActivate: () => {
       scheduleOnRN(setRevealed, !disabled);
     },
+    // How far the finger is from where it went down, not the pan's translation: on a busy phone
+    // the pan starts late, and its translation missed half of a quick drag, so a card stayed open.
     onUpdate: (event) => {
-      scheduleOnRN(follow, event.translationX);
+      scheduleOnRN(follow, event.absoluteX - touch.value.x);
     },
     onDeactivate: (event) => {
       scheduleOnRN(
         release,
         event.canceled,
         event.velocityX,
-        event.translationX,
+        event.absoluteX - touch.value.x,
       );
     },
   });

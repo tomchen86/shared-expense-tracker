@@ -5,47 +5,10 @@ tags:
 ---
 # Android's scroll view takes a slanted drag before JavaScript hears of it, so this also runs
 # there: scripts/e2e-android.sh. A list that cannot scroll never takes the drag, so it needs seven cards.
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      text: Expenses
-      selected: true
-    timeout: 30000
-- waitForAnimationToEnd
-- tapOn: Settings
-- waitForAnimationToEnd
-- tapOn: Enter your name
-- inputText: Taylor
-# On a slow runner, typing can start before the field takes it and garble the name,
-# so type it again. Maestro cannot check the name first: on iOS it reads a text
-# field's placeholder, not what was typed.
-- eraseText: 20
-- inputText: Taylor
-- pressKey: Enter
-- waitForAnimationToEnd
-- tapOn: Groups
-- waitForAnimationToEnd
-- evalScript: ${output.group = 1}
-- repeat:
-    times: 7
-    commands:
-      - tapOn: Add group
-      - waitForAnimationToEnd
-      - assertVisible: New Group
-      - inputText: Group ${output.group}
-      - tapOn: Create
-      - waitForAnimationToEnd
-      - assertNotVisible: New Group
-      - evalScript: ${output.group = output.group + 1}
-# Starting again, with no form still closing.
-- launchApp
-- extendedWaitUntil:
-    visible:
-      text: Expenses
-      selected: true
-    timeout: 30000
-- waitForAnimationToEnd
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"name":"Taylor","groups":[{"name":"Group 1"},{"name":"Group 2"},{"name":"Group 3"},{"name":"Group 4"},{"name":"Group 5"},{"name":"Group 6"},{"name":"Group 7"}]}'
 - tapOn: Groups
 - waitForAnimationToEnd
 # Every swipe here starts from this point, which seeing Archive proves is on a card. Left and up,

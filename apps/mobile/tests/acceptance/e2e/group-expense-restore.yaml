@@ -1,0 +1,27 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[LEDGER-77.3] [LEDGER-78.3] [LEDGER-79.3] [LEDGER-84.1] Finds a group expense on Trash at its full amount, finds that swiping its card opens nothing, opens it and restores it'
+---
+# Taylor's share of Dinner is $50.01, so a card at $100.01 shows the full amount.
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"name":"Taylor","groups":[{"name":"Brisbane","members":["Casey"]}],"expenses":[{"title":"Dinner","amount":"100.01","group":"Brisbane","paidBy":"Casey","splitBetween":["Taylor","Casey"],"trashed":true}]}'
+# On Trash the card shows the full amount and has no Delete: swiping it left opens
+# nothing, and a tap opens its read-only details.
+- tapOn: Settings
+- tapOn: Trash, 1
+- waitForAnimationToEnd
+- swipe:
+    from:
+      text: .*Dinner.*\$100\.01.*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertNotVisible: This expense is in the Trash.
+- assertNotVisible: Delete.*
+- assertVisible: Empty Trash
+- tapOn: .*Dinner.*\$100\.01.*
+- waitForAnimationToEnd
+- assertVisible: This expense is in the Trash.
+- tapOn: Restore
+- waitForAnimationToEnd
+- assertVisible: No deleted expenses.

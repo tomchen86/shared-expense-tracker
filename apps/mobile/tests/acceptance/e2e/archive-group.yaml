@@ -1,30 +1,11 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[GROUPS-47.1] [GROUPS-48.1] [GROUPS-49.1] [GROUPS-51.1] [GROUPS-52.1] [GROUPS-53.2] [GROUPS-54.1] [GROUPS-55.2] [GROUPS-57.1] [GROUPS-60.1] Archives a group by swiping its card, keeps it archived after a restart, then restores it from its screen on the Settings tab'
+name: '[GROUPS-47.1] [GROUPS-48.1] [GROUPS-49.1] [GROUPS-60.1] Archives a group by swiping its card left, with a notice, and keeps it archived after a restart'
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      text: Expenses
-      selected: true
-    timeout: 30000
-- waitForAnimationToEnd
-- tapOn: Settings
-- tapOn: Enter your name
-- inputText: Taylor
-# On a slow runner, typing can start before the field takes it and garble the name,
-# so type it again. Maestro cannot check the name first: on iOS it reads a text
-# field's placeholder, not what was typed.
-- eraseText: 20
-- inputText: Taylor
-- pressKey: Enter
-- waitForAnimationToEnd
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"name":"Taylor","groups":[{"name":"Brisbane"}]}'
 - tapOn: Groups
-- tapOn: Add group
-- assertVisible: New Group
-- waitForAnimationToEnd
-- inputText: Brisbane
-- tapOn: Create
 - waitForAnimationToEnd
 # Swiping the card to the left shows its Archive button.
 - swipe:
@@ -51,16 +32,3 @@ name: '[GROUPS-47.1] [GROUPS-48.1] [GROUPS-49.1] [GROUPS-51.1] [GROUPS-52.1] [GR
 - waitForAnimationToEnd
 - tapOn: Groups
 - assertVisible: No groups yet. Tap + to create a group.
-- tapOn: Settings
-- tapOn: Archived groups, 1
-- assertVisible: Restore Brisbane
-- tapOn: Open Brisbane
-- assertVisible: Archived group. Expenses and allocations are read-only.
-- tapOn: Restore Group
-- waitForAnimationToEnd
-- assertNotVisible: Archived group. Expenses and allocations are read-only.
-- assertNotVisible: Restore Group
-- tapOn: Back
-- assertVisible: No archived groups.
-- tapOn: Groups
-- assertVisible: Open Brisbane

@@ -102,6 +102,12 @@ export type ExpenseFormProps = LoadedForm & {
   reread: () => Promise<LoadedForm>;
 };
 
+/** The currency a new expense starts in: the region's, or USD when the app has no format for it. */
+export function defaultCurrency() {
+  const reported = getLocales()[0]?.currencyCode ?? 'USD';
+  return currencyDecimals(reported) === undefined ? 'USD' : reported;
+}
+
 /** The draft on the form: what it holds, what can be chosen, and saving it. */
 export function useExpenseForm({
   categories,
@@ -120,7 +126,6 @@ export function useExpenseForm({
     Intl.DateTimeFormat().resolvedOptions().timeZone,
   );
   const [initial] = useState(() => {
-    const reported = getLocales()[0]?.currencyCode ?? 'USD';
     const groupId = groupLocked ? expense.spaceId : initialGroupId;
     const spaceId = groupId ?? identity.personalSpaceId;
     return {
@@ -130,9 +135,7 @@ export function useExpenseForm({
       participants: groupLocked
         ? expense.shares.map((share) => share.participant)
         : ([] as string[]),
-      currency:
-        expense?.currency ??
-        (currencyDecimals(reported) === undefined ? 'USD' : reported),
+      currency: expense?.currency ?? defaultCurrency(),
       amount: expense
         ? formatAmount(expense.amountMinor, expense.currency)!
         : '',

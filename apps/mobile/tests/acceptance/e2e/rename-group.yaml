@@ -1,0 +1,21 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[GROUPS-40.3] [GROUPS-41.1] Renames a group from a long press on its title'
+---
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"name":"Taylor","groups":[{"name":"Brisbane"}]}'
+- tapOn: Groups
+- tapOn: Open Brisbane
+- waitForAnimationToEnd
+# A long press on the group's large title opens Rename Group.
+- longPressOn: Brisbane
+- waitForAnimationToEnd
+- assertVisible: Rename Group
+# The name field has the focus and holds the group's name.
+- eraseText: 20
+- inputText: Tokyo
+- tapOn: Save
+- waitForAnimationToEnd
+- assertNotVisible: Rename Group
+- assertVisible: Tokyo

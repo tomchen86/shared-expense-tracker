@@ -46,6 +46,11 @@ export interface LocalDataGateProps {
   /** The caller closes the returned connections when the app closes. */
   openDatabase: () => Promise<Database>;
   development: boolean;
+  /** Writes test data before the first screen shows (ADR-0018), and returns your identity after it. */
+  seed?: (
+    database: Database,
+    identity: LocalIdentity,
+  ) => Promise<LocalIdentity>;
   children: ReactNode;
 }
 
@@ -57,6 +62,7 @@ type Startup =
 export function LocalDataGate({
   openDatabase,
   development,
+  seed,
   children,
 }: LocalDataGateProps): ReactElement {
   const transparency = useReduceTransparencyController();
@@ -71,7 +77,7 @@ export function LocalDataGate({
       const transparencyReady = waitUntilReady();
       const database = await openDatabase();
       if (!active) return;
-      const { identity, appearance, chartType } = await initializeDatabase(
+      const initialized = await initializeDatabase(
         database,
         appMigrations,
         development,
@@ -89,6 +95,10 @@ export function LocalDataGate({
           };
         },
       );
+      const { appearance, chartType } = initialized;
+      const identity = seed
+        ? await seed(database, initialized.identity)
+        : initialized.identity;
       await transparencyReady;
       if (!active) return;
       applyAppearanceOption(appearance);
@@ -103,7 +113,7 @@ export function LocalDataGate({
     return () => {
       active = false;
     };
-  }, [openDatabase, development, waitUntilReady]);
+  }, [openDatabase, development, seed, waitUntilReady]);
 
   if (startup.status === 'ready') {
     const { database } = startup.data;

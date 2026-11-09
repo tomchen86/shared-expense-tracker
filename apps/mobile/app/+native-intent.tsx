@@ -9,7 +9,8 @@ export function redirectSystemPath({
   path: string;
   initial: boolean;
 }) {
-  return path.startsWith(SCHEME)
-    ? `/${path.slice(SCHEME.length).replace(/^\/+/, '')}`
-    : path;
+  if (!path.startsWith(SCHEME)) return path;
+  const route = path.slice(SCHEME.length).replace(/^\/+/, '');
+  // An E2E flow's seed (ADR-0018) is read when the app starts, not routed.
+  return route.startsWith('?seed=') ? '/' : `/${route}`;
 }

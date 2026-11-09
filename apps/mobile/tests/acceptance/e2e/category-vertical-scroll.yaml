@@ -6,80 +6,21 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
 - repeat:
     times: 2
     commands:
-      - launchApp:
-          clearState: true
-      - extendedWaitUntil:
-          visible:
-            text: Expenses
-            selected: true
-          timeout: 30000
-      - waitForAnimationToEnd
-      - tapOn: Settings
-      - tapOn: Enter your name
-      - inputText: Taylor
-      # On a slow runner, typing can start before the field takes it and garble the name,
-      # so type it again. Maestro cannot check the name first: on iOS it reads a text
-      # field's placeholder, not what was typed.
-      - eraseText: 20
-      - inputText: Taylor
-      - pressKey: Enter
-      - waitForAnimationToEnd
-      - tapOn: Expenses
+      # Travel archived after its expense moved to Health, as Remove and Move Expenses… leave it,
+      # and twelve rows more than the default nine, which do not overflow.
+      - runFlow:
+          when:
+            true: ${output.scope === 'personal'}
+          file: common/launch-with-seed.yaml
+          env:
+            SEED: '{"name":"Taylor","categories":[{"name":"Travel","archived":true},{"name":"Scroll 1"},{"name":"Scroll 2"},{"name":"Scroll 3"},{"name":"Scroll 4"},{"name":"Scroll 5"},{"name":"Scroll 6"},{"name":"Scroll 7"},{"name":"Scroll 8"},{"name":"Scroll 9"},{"name":"Scroll 10"},{"name":"Scroll 11"},{"name":"Scroll 12"}],"expenses":[{"title":"Train","amount":"3","category":"Health"}]}'
       - runFlow:
           when:
             true: ${output.scope === 'group'}
-          commands:
-            - tapOn: Groups
-            - tapOn: Add group
-            - waitForAnimationToEnd
-            - inputText: Brisbane
-            - tapOn: Create
-            - waitForAnimationToEnd
-            - tapOn: Open Brisbane
-      # Save a Travel expense so Travel can be archived through the public UI.
-      - tapOn: Add expense
-      - waitForAnimationToEnd
-      - tapOn: Amount in .*
-      - inputText: '3'
-      - tapOn: Expense title
-      - inputText: Train
-      - tapOn: Category, Food & Dining
-      - waitForAnimationToEnd
-      - tapOn: Travel
-      - waitForAnimationToEnd
-      - assertVisible: Category, Travel
-      - runFlow:
-          when:
-            true: ${output.scope === 'group'}
-          commands:
-            - scrollUntilVisible:
-                element: Paid by, not selected
-                direction: DOWN
-                centerElement: true
-                # Rows near the end of the form never reach the center, so Maestro
-                # swipes a few more times first, which can outlast the default 20 s.
-                timeout: 60000
-            - tapOn: Paid by, not selected
-            - waitForAnimationToEnd
-            - tapOn: Taylor \(You\)
-            - waitForAnimationToEnd
-            - scrollUntilVisible:
-                element: Split between, Choose people
-                direction: DOWN
-                centerElement: true
-                timeout: 60000
-            - tapOn: Split between, Choose people
-            - waitForAnimationToEnd
-            - tapOn: Taylor \(You\)
-            - waitForAnimationToEnd
-            - tapOn:
-                point: 3%,50%
-            - waitForAnimationToEnd
-      - tapOn:
-          text: Add
-          enabled: true
-      - waitForAnimationToEnd
-      - assertNotVisible: New Expense
+          file: common/launch-with-seed.yaml
+          env:
+            SEED: '{"name":"Taylor","groups":[{"name":"Brisbane"}],"categories":[{"name":"Travel","group":"Brisbane","archived":true},{"name":"Scroll 1","group":"Brisbane"},{"name":"Scroll 2","group":"Brisbane"},{"name":"Scroll 3","group":"Brisbane"},{"name":"Scroll 4","group":"Brisbane"},{"name":"Scroll 5","group":"Brisbane"},{"name":"Scroll 6","group":"Brisbane"},{"name":"Scroll 7","group":"Brisbane"},{"name":"Scroll 8","group":"Brisbane"},{"name":"Scroll 9","group":"Brisbane"},{"name":"Scroll 10","group":"Brisbane"},{"name":"Scroll 11","group":"Brisbane"},{"name":"Scroll 12","group":"Brisbane"}],"expenses":[{"title":"Train","amount":"3","group":"Brisbane","category":"Health","splitBetween":["Taylor"]}]}'
+      - evalScript: "${output.rows = ['Food & Dining', 'Transportation', 'Shopping', 'Entertainment', 'Bills & Utilities', 'Health', 'Other', 'Uncategorized', 'Scroll 1', 'Scroll 2', 'Scroll 3', 'Scroll 4', 'Scroll 5', 'Scroll 6', 'Scroll 7', 'Scroll 8', 'Scroll 9', 'Scroll 10', 'Scroll 11', 'Scroll 12']}"
       - runFlow:
           when:
             true: ${output.scope === 'personal'}
@@ -90,41 +31,15 @@ name: '[CATEGORIES-47.1] Vertical drags scroll long personal and group category 
           when:
             true: ${output.scope === 'group'}
           commands:
+            - tapOn: Groups
+            - tapOn: Open Brisbane
+            - waitForAnimationToEnd
             - tapOn: Group actions
             - waitForAnimationToEnd
             - tapOn: Categories
             - waitForAnimationToEnd
             - assertVisible: Group Categories
       - waitForAnimationToEnd
-      - swipe:
-          from:
-            text: Travel
-          direction: LEFT
-      - waitForAnimationToEnd
-      - tapOn: Remove
-      - assertVisible: Archive “Travel”\?
-      - tapOn: Move Expenses…
-      - tapOn: Health
-      - waitForAnimationToEnd
-      - assertVisible: Restore Travel
-      # Twelve additional rows guarantee overflow; the default nine do not.
-      - evalScript: "${output.rows = ['Food & Dining', 'Transportation', 'Shopping', 'Entertainment', 'Bills & Utilities', 'Health', 'Other', 'Uncategorized']}"
-      - evalScript: ${output.category = 1}
-      - repeat:
-          times: 12
-          commands:
-            - tapOn: Add category
-            - waitForAnimationToEnd
-            - tapOn: Category name
-            - inputText: Scroll ${output.category}
-            - waitForAnimationToEnd
-            - tapOn:
-                text: Add
-                enabled: true
-            - waitForAnimationToEnd
-            - assertNotVisible: Category name
-            - evalScript: ${output.rows.push('Scroll ' + output.category)}
-            - evalScript: ${output.category = output.category + 1}
       - scrollUntilVisible:
           element: Food & Dining
           direction: UP

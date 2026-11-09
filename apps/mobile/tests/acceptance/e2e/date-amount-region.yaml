@@ -2,31 +2,28 @@ appId: com.tomchen.sharedexpensetracker
 name: "[LEDGER-30.2] [LEDGER-40.2] Shows the date field, the date above the card and the card's amount in English with the phone's region, whatever its language"
 ---
 # The date field is iOS's own date picker, so only a flow can read it. iOS's list of locales has
-# en_AU and en_TW but no en_VN, which the picker would ignore.
+# en_AU and en_TW but no en_VN, which the picker would ignore. The seed's amount is in the
+# region's currency, as the form's would be (ADR-0018).
+- runScript:
+    file: common/encode-seed.js
+    env:
+      SEED: '{"expenses":[{"title":"Coffee","amount":"8.75"}]}'
 - launchApp:
     clearState: true
     arguments:
       AppleLanguages: '(zh-Hant-AU)'
       AppleLocale: zh_AU
+      seed: ${output.seed}
 - extendedWaitUntil:
     visible:
       text: Expenses
       selected: true
     timeout: 30000
 - waitForAnimationToEnd
+- assertVisible: .*Coffee\W+\$8\.75\W.*\d{1,2} [A-Z][a-z]{2,3} \d{4}.*
+- assertVisible: \d{1,2} [A-Z][a-z]{2,3} \d{4}
 - tapOn: Add expense
 - assertVisible: New Expense
-- assertVisible: \d{1,2} [A-Z][a-z]{2,3} \d{4}
-- tapOn: Expense title
-- inputText: Coffee
-- tapOn: Amount in .*
-- inputText: '8.75'
-- tapOn:
-    text: Add
-    enabled: true
-- waitForAnimationToEnd
-- assertNotVisible: New Expense
-- assertVisible: .*Coffee\W+\$8\.75\W.*\d{1,2} [A-Z][a-z]{2,3} \d{4}.*
 - assertVisible: \d{1,2} [A-Z][a-z]{2,3} \d{4}
 - launchApp:
     clearState: true

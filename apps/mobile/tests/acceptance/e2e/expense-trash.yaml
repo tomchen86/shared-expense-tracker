@@ -1,25 +1,10 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-70.2] [LEDGER-71.3] [LEDGER-73.2] [LEDGER-75.3] [LEDGER-76.1] [LEDGER-77.3] [LEDGER-78.3] [LEDGER-79.3] Swipes an expense card left to move it to the trash, undoes it, moves it again, keeps it in the trash after a restart, then restores it from Trash'
+name: '[LEDGER-70.2] [LEDGER-71.3] [LEDGER-73.2] [LEDGER-75.3] Swipes an expense card left to move it to the trash, undoes it, moves it again, and keeps it in the trash after a restart'
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      text: Expenses
-      selected: true
-    timeout: 30000
-- waitForAnimationToEnd
-- tapOn: Add expense
-- assertVisible: New Expense
-- tapOn: Expense title
-- inputText: Coffee run
-- tapOn: Amount in .*
-- inputText: '8.75'
-- tapOn:
-    text: Add
-    enabled: true
-- waitForAnimationToEnd
-- assertNotVisible: New Expense
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"expenses":[{"title":"Coffee run","amount":"8.75"}]}'
 # Swiping the card to the left shows its Delete button.
 - swipe:
     from:
@@ -54,11 +39,4 @@ name: '[LEDGER-70.2] [LEDGER-71.3] [LEDGER-73.2] [LEDGER-75.3] [LEDGER-76.1] [LE
 - waitForAnimationToEnd
 - assertNotVisible: Coffee run, .*
 - tapOn: Settings
-- tapOn: Trash, 1
-- tapOn: Coffee run, .*
-- assertVisible: This expense is in the Trash.
-- tapOn: Restore
-- waitForAnimationToEnd
-- assertVisible: No deleted expenses.
-- tapOn: Expenses
-- assertVisible: Coffee run, .*
+- assertVisible: Trash, 1

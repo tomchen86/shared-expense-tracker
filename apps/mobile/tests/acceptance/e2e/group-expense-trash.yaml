@@ -1,0 +1,75 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[LEDGER-70.2] [LEDGER-88.1] [GROUPS-80.1] [LEDGER-75.3] Swipes a group expense's card left on the group's screen, closes it with a drag up and one to the right, goes back with a drag to the right from the closed card, moves it to the trash and undoes it, then moves it to the trash from Expenses"
+---
+# Casey paid Dinner, shared by Taylor and Casey in that order, so Taylor's share has the
+# extra cent: $100.01 on the group's screen, $50.01 on Expenses.
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"name":"Taylor","groups":[{"name":"Brisbane","members":["Casey"]}],"expenses":[{"title":"Dinner","amount":"100.01","group":"Brisbane","paidBy":"Casey","splitBetween":["Taylor","Casey"]}]}'
+- tapOn: Groups
+- tapOn: Open Brisbane
+- waitForAnimationToEnd
+- assertVisible: .*Dinner.*\$100\.01.*
+# Dragging up from an open card bounces this short list, which closes the card.
+- swipe:
+    from:
+      text: .*Dinner.*\$100\.01.*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Delete Dinner expense
+- swipe:
+    from:
+      text: .*Dinner.*\$100\.01.*
+    direction: UP
+- waitForAnimationToEnd
+- assertNotVisible: Delete Dinner expense
+- assertVisible: .*Dinner.*\$100\.01.*
+# The same drag to the right only closes an open card; from a closed card, it is iOS's back
+# gesture. It starts well left of the middle, since the gesture needs half the screen's width.
+- swipe:
+    from:
+      text: .*Dinner.*\$100\.01.*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Delete Dinner expense
+- swipe:
+    start: 20%, 38%
+    end: 90%, 38%
+    duration: 300
+- waitForAnimationToEnd
+- assertNotVisible: Delete Dinner expense
+- assertVisible: Group actions
+- swipe:
+    start: 20%, 38%
+    end: 90%, 38%
+    duration: 300
+- waitForAnimationToEnd
+- assertNotVisible: Group actions
+- tapOn: Open Brisbane
+- waitForAnimationToEnd
+- assertVisible: .*Dinner.*\$100\.01.*
+# Swiping the card left on the group's screen shows its Delete, which moves it to
+# the trash; Undo puts it back.
+- swipe:
+    from:
+      text: .*Dinner.*\$100\.01.*
+    direction: LEFT
+- waitForAnimationToEnd
+- tapOn: Delete Dinner expense
+- assertVisible: Moved to Trash
+- assertVisible: No expenses in this group yet.
+- tapOn: Undo deletion of Dinner
+- waitForAnimationToEnd
+- assertVisible: .*Dinner.*\$100\.01.*
+- tapOn: Expenses
+- waitForAnimationToEnd
+- assertVisible: .*Dinner.*\$50\.01.*
+- swipe:
+    from:
+      text: .*Dinner.*\$50\.01.*
+    direction: LEFT
+- waitForAnimationToEnd
+- tapOn: Delete Dinner expense
+- assertVisible: Moved to Trash
+- assertNotVisible: .*Dinner.*\$50\.01.*

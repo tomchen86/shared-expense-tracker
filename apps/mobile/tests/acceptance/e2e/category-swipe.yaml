@@ -1,31 +1,11 @@
 appId: com.tomchen.sharedexpensetracker
 name: '[CATEGORIES-32.3] Swipes a category left to remove it, finds nothing to swipe on Uncategorized, then swipes an archived category that no expense uses left to delete it'
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      text: Expenses
-      selected: true
-    timeout: 30000
-- waitForAnimationToEnd
 # An expense in Travel, so that removing Travel asks to archive it.
-- tapOn: Add expense
-- assertVisible: New Expense
-- tapOn: Expense title
-- inputText: Train
-- tapOn: Amount in .*
-- inputText: '3'
-- tapOn: Category, Food & Dining
-- waitForAnimationToEnd
-- tapOn: Travel
-- waitForAnimationToEnd
-- assertVisible: Category, Travel
-- tapOn:
-    text: Add
-    enabled: true
-- waitForAnimationToEnd
-- assertNotVisible: New Expense
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"expenses":[{"title":"Train","amount":"3","category":"Travel"}]}'
 - tapOn: Settings
 - tapOn: Manage Categories
 - assertVisible: CATEGORIES
