@@ -1,0 +1,26 @@
+# The PostgreSQL the API's tests and local runs connect to:
+#   docker compose -f apps/api/compose.yaml up -d --wait
+# CI and Neon run the same major version.
+
+# A fixed name, so every worktree on this machine shares one container and each test
+# makes its own database in it.
+name: shared-expense-tracker-api
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - 127.0.0.1:55432:5432
+    # In memory, so a killed test run's database goes when the container does. That is
+    # no reason to stop it: other sessions' tests may be running in it.
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      # Over TCP: during its first start, the image also runs a temporary server that
+      # only answers on the Unix socket.
+      test: [CMD, pg_isready, -h, 127.0.0.1, -U, postgres]
+      interval: 2s
+      timeout: 5s
+      retries: 15

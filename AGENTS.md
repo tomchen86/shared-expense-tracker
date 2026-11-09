@@ -5,6 +5,9 @@ A bookkeeping app for personal and shared expenses: no sign-up by default, works
 ## Commands
 
 - `bash scripts/check.sh`: lint, format check, typecheck, tests, then the requirement trace, which runs even when a step fails. Tests write JUnit XML to `reports/junit/`.
+- `docker compose -f apps/api/compose.yaml up -d --wait`: start the PostgreSQL the API's tests need. Every worktree on the machine shares this one container: never stop or remove it, and if `up` fails with `Conflict`, another session is starting it, so run the command again.
+- `pnpm test:mobile`: every test except the API's, without Docker, for a session that only changes the phone.
+- `pnpm --filter api dev`: the API on Node. `pnpm --filter api dev:workers`: the API on Wrangler's local Workers runtime. `pnpm --filter api migrate`: run its migrations (`DATABASE_URL`). All default to the PostgreSQL above.
 - `gh pr checks <N> --watch --fail-fast`: wait for CI; returns at the first failure.
 - `gh run view <run-id> --log-failed`: read only the failed steps. `gh run rerun <run-id> --failed` reruns failed jobs; use it for flaky infrastructure, never to retry a real test failure.
 - `gh pr update-branch <N>`: bring a PR branch up to date with the default branch.
@@ -18,7 +21,7 @@ A bookkeeping app for personal and shared expenses: no sign-up by default, works
 
 - Structure (fields, types, API shapes, database constraints): the code, or files generated from it. Never restate it in prose.
 - Behavior: `docs/specs/<capability>/spec.md`, one `### Requirement:` per rule.
-- Acceptance tests: `apps/mobile/tests/acceptance`, `packages/domain/tests/acceptance`
+- Acceptance tests: `apps/api/tests/acceptance`, `apps/mobile/tests/acceptance`, `packages/domain/tests/acceptance`
   The tests that cite requirement IDs, as literal paths from the repo root; `scripts/spec-check.sh` reads this line from main's copy of this file. Keep a listed directory tracked with a `.gitkeep` when empty. The E2E flows (ADR-0008) are the ones in `apps/mobile/tests/acceptance/e2e/`. All other tests live elsewhere and cite no IDs.
 - Reasons: `docs/adr/`. Overview: `docs/architecture.md`.
 - Direction: `docs/roadmap.md`. The owner decides it; do not edit it unless asked.
@@ -35,6 +38,7 @@ A bookkeeping app for personal and shared expenses: no sign-up by default, works
 6. Every change reaches the default branch through a PR. With an issue: branch with `gh issue develop <N> --checkout` and put `Closes #<N>` in the PR. Without one: write `No issue: <reason>` instead.
 7. One session, one working directory. If the directory you start in has uncommitted changes you did not make, or another session works there, stop and tell the owner; otherwise work there or in a `git worktree add` of your own. Never switch branches, pull, or commit in a directory another session uses.
 8. Split and settlement amounts and offline sync are level-2 areas (ADR-0001): when code in them is added, set a branch coverage threshold on its paths in the test config at the measured value. It only goes up.
+9. The API's tests and `wrangler dev` bypass Hyperdrive, so a check runs against the real Hyperdrive and PostgreSQL, through `wrangler dev --remote` or a separate test deployment (ADR-0007): a write, a read back, a transaction, and `SHOW server_version`, whose major version matches the one in `apps/api/compose.yaml`. It runs before the API first goes live, and after that in every PR that changes `apps/api/wrangler.jsonc`, `apps/api/src/workers.ts`, `apps/api/src/database/connect.ts`, the installed version of `postgres` (`apps/api/package.json`, `pnpm-lock.yaml`), or the Hyperdrive configuration. The owner runs it, because sessions hold no Cloudflare credentials: the PR's author prepares the exact commands, and the result goes in the PR's Verification before merge.
 
 ## Roles
 

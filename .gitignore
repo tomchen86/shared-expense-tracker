@@ -3,6 +3,7 @@ reports/
 node_modules/
 .pnpm-store/
 .expo/
+.wrangler/
 dist/
 coverage/
 apps/mobile/android/

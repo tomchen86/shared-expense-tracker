@@ -13,6 +13,19 @@ jobs:
     # A template repository has no project to check yet.
     if: ${{ !github.event.repository.is_template }}
     runs-on: ubuntu-latest
+    # The API's tests connect to it. Same port and major version as apps/api/compose.yaml.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
