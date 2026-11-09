@@ -9,6 +9,15 @@ name: '[CATEGORIES-50.1] Scrolling the list or pressing a row closes a category 
 - tapOn: Settings
 - tapOn: Manage Categories
 - waitForAnimationToEnd
+# Down to the last row and back, as the list had moved when the flow typed these categories: on
+# CI a left swipe right after Manage Categories opened left Shopping closed, on both tries.
+- scrollUntilVisible:
+    element: Scroll 8
+    direction: DOWN
+- scrollUntilVisible:
+    element: Food & Dining
+    direction: UP
+- waitForAnimationToEnd
 # Scrolling, from another row. iOS keeps some offscreen nodes, so a row that has gone is one no
 # longer below the fixed bar.
 - swipe:
