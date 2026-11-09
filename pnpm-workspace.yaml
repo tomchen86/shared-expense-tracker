@@ -1,10 +1,13 @@
 packages:
+  - apps/api
   - apps/mobile
   - packages/domain
 
 allowBuilds:
   '@parcel/watcher': false
+  esbuild: false
   unrs-resolver: false
+  workerd: false
 
 # Keep local and CI installs on the same node_modules layout.
 enableGlobalVirtualStore: false
