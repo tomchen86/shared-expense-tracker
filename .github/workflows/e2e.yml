@@ -137,6 +137,9 @@ jobs:
     if: ${{ !cancelled() && needs.flows.result != 'skipped' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read # e2e_flaky.py downloads earlier runs' e2e-junit
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
@@ -145,3 +148,18 @@ jobs:
           path: reports/e2e
       - name: Check that each (e2e) requirement has a passing flow
         run: python3 scripts/trace_check.py --e2e --reports reports/e2e
+      # The reports without their screenshots, small enough for later runs to download.
+      - name: Keep the JUnit reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-junit
+          path: reports/e2e/*/junit/
+          if-no-files-found: ignore
+      # A table in the run's summary; it never decides whether the run passes.
+      - name: Count the flows that failed their first try
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/e2e_flaky.py --fetch 20 reports/e2e >> "$GITHUB_STEP_SUMMARY"
