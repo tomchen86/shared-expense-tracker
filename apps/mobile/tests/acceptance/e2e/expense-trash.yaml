@@ -12,8 +12,8 @@ name: '[LEDGER-70.2] [LEDGER-71.3] [LEDGER-73.2] [LEDGER-75.3] Swipes an expense
     direction: LEFT
 - waitForAnimationToEnd
 - tapOn: Delete Coffee run expense
-- assertVisible: Moved to Trash
-- assertNotVisible: Coffee run, .*
+# Undo right away: the notice goes after 5 seconds, which two checks can use up on a slow runner.
+# The second deletion below checks the notice and the card leaving.
 - tapOn: Undo deletion of Coffee run
 - waitForAnimationToEnd
 - assertVisible: Coffee run, .*
@@ -24,6 +24,7 @@ name: '[LEDGER-70.2] [LEDGER-71.3] [LEDGER-73.2] [LEDGER-75.3] Swipes an expense
 - waitForAnimationToEnd
 - tapOn: Delete Coffee run expense
 - assertVisible: Moved to Trash
+- assertNotVisible: Coffee run, .*
 # The notice goes after 5 seconds.
 - extendedWaitUntil:
     notVisible: Moved to Trash
