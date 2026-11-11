@@ -50,15 +50,14 @@ name: "[LEDGER-70.2] [LEDGER-88.1] [GROUPS-80.1] [LEDGER-75.3] Swipes a group ex
 - waitForAnimationToEnd
 - assertVisible: .*Dinner.*\$100\.01.*
 # Swiping the card left on the group's screen shows its Delete, which moves it to
-# the trash; Undo puts it back.
+# the trash; Undo puts it back. Undo comes right away: the notice goes after 5 seconds, which
+# checks in between can use up on a slow runner, so the second deletion checks the rest.
 - swipe:
     from:
       text: .*Dinner.*\$100\.01.*
     direction: LEFT
 - waitForAnimationToEnd
 - tapOn: Delete Dinner expense
-- assertVisible: Moved to Trash
-- assertVisible: No expenses in this group yet.
 - tapOn: Undo deletion of Dinner
 - waitForAnimationToEnd
 - assertVisible: .*Dinner.*\$100\.01.*
@@ -73,3 +72,7 @@ name: "[LEDGER-70.2] [LEDGER-88.1] [GROUPS-80.1] [LEDGER-75.3] Swipes a group ex
 - tapOn: Delete Dinner expense
 - assertVisible: Moved to Trash
 - assertNotVisible: .*Dinner.*\$50\.01.*
+# The group's screen, still open on Groups, has nothing left to show.
+- tapOn: Groups
+- waitForAnimationToEnd
+- assertVisible: No expenses in this group yet.

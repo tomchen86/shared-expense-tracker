@@ -72,6 +72,10 @@ if [ -z "$udid" ]; then
   xcrun simctl spawn "$udid" launchctl bootout user/foreground/com.apple.apsd || echo "Could not stop apsd" >&2
   xcrun simctl install "$udid" "$built"
 fi
+# A simulator's English keyboard shows its Slide to Type introduction once, when it next takes up
+# Slide to Type, which on a busy runner can be in the middle of a flow's typing: it covers the
+# keyboard and the rest of the typing is lost. Mark it as seen, as on a phone in use.
+xcrun simctl spawn "$udid" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true
 
 # On a CI runner, the first start of Maestro's iOS driver on a new simulator can take minutes.
 export MAESTRO_DRIVER_STARTUP_TIMEOUT=${MAESTRO_DRIVER_STARTUP_TIMEOUT:-300000} # ms
