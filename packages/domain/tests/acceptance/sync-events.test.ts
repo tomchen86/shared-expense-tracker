@@ -150,6 +150,15 @@ test.each<[string, unknown]>([
     'a deletion marked in text',
     { ...deletion('expense', 'dinner', CREATED), deleted: 'true' },
   ],
+  [
+    'a deletion with an extra field',
+    { ...deletion('expense', 'dinner', CREATED), reason: 'duplicate' },
+  ],
+  ['a deletion with an empty record id', deletion('expense', '', CREATED)],
+  [
+    'a deletion with a negative counter',
+    deletion('category', 'cat-fuel', at(1000, -1)),
+  ],
 ])('[SYNC-4.1] refuses %s for its structure', (_case, content) => {
   expect(judge(content)).toEqual(refused('structure'));
 });
