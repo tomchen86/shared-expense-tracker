@@ -6,6 +6,7 @@
     "dev": "tsx watch src/node.ts",
     "dev:workers": "wrangler dev",
     "migrate": "tsx src/node.ts migrate",
+    "check:hyperdrive": "tsx tests/hyperdrive/check.ts",
     "typecheck": "tsc6 --noEmit && tsc6 --noEmit --project tsconfig.test.json"
   },
   "dependencies": {

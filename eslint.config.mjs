@@ -71,6 +71,13 @@ const domainImports = {
 };
 // In a selector, a regex ends at the first bare slash.
 const domainSelector = domainImports.regex.replaceAll('/', '\\/');
+// ADR-0019: a deploy runs the migrations before it uploads the Worker.
+const runMigrationsImport = {
+  regex: '(^|/)migrate(\\.[cm]?[jt]s)?$',
+  importNames: ['runMigrations'],
+  message:
+    'A deploy runs the migrations, through apps/api/src/node.ts; no request does (ADR-0019).',
+};
 const domainApiStandsAlone =
   'The API imports this directory, so it stands alone and brings no bookkeeping rules with it (ADR-0003, ADR-0007).';
 
@@ -130,6 +137,7 @@ export default [
         {
           patterns: [
             domainImports,
+            runMigrationsImport,
             {
               // Listed rather than excluded, so that a new library gets asked this question.
               regex:
@@ -172,6 +180,15 @@ export default [
           selector,
           message: `Import statically, so lint can read it. ${onlyInEntryFiles}`,
         })),
+      ],
+    },
+  },
+  {
+    files: ['apps/api/src/workers.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        { patterns: [domainImports, runMigrationsImport] },
       ],
     },
   },
