@@ -186,6 +186,11 @@ async function main(): Promise<void> {
   // So a signal lets the request in flight finish, and the check then ends as it always
   // does: it drops the table and stops Wrangler.
   const interrupted = new AbortController();
+  // The same when its output closes, with the terminal or with a `| tee` that the Ctrl-C
+  // ended first: an error from printing would otherwise end the check where it stands.
+  for (const output of [process.stdout, process.stderr]) {
+    output.on('error', () => {});
+  }
   for (const signal of SIGNALS) {
     process.on(signal, () => {
       if (interrupted.signal.aborted) return;

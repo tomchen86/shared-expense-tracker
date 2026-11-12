@@ -82,8 +82,38 @@ describe('interrupted', () => {
         }),
       // As the terminal's Ctrl-C does: to the check's process group, which Wrangler's is not.
       interrupt: () => process.kill(-child.pid!, 'SIGINT'),
+      /** As a closed terminal, or a `| tee` that ended first: whatever it prints next fails. */
+      closeOutput: () => {
+        child.stdout.destroy();
+        child.stderr.destroy();
+      },
     };
   }
+
+  /** Runs `during` while the check waits in its write, which goes on once `during` ends. */
+  const whileItsWriteWaits = (
+    check: ReturnType<typeof startCheck>,
+    during: () => void | Promise<void>,
+  ) =>
+    database.sql.begin(async (transaction) => {
+      // Nothing creates a table while this is held.
+      await transaction`LOCK TABLE pg_class IN SHARE ROW EXCLUSIVE MODE`;
+      const waiting = () => transaction`
+        SELECT 1 FROM pg_locks
+        WHERE relation = 'pg_class'::regclass AND NOT granted
+          AND database = (
+            SELECT oid FROM pg_database WHERE datname = current_database()
+          )`;
+      while ((await waiting()).length === 0) {
+        await Promise.race([
+          new Promise((resolve) => setTimeout(resolve, 50)),
+          check.code.then(() => {
+            throw new Error(`The check ended first:\n${check.output()}`);
+          }),
+        ]);
+      }
+      await during();
+    });
 
   const leftBehind = () =>
     readdirSync(temporary).filter((name) =>
@@ -94,23 +124,7 @@ describe('interrupted', () => {
     'a Hyperdrive check interrupted between its write and its end drops its table and stops Wrangler',
     async () => {
       const check = startCheck();
-      await database.sql.begin(async (transaction) => {
-        // Nothing creates a table while this is held, so the check waits in its write.
-        await transaction`LOCK TABLE pg_class IN SHARE ROW EXCLUSIVE MODE`;
-        const waiting = () => transaction`
-          SELECT 1 FROM pg_locks
-          WHERE relation = 'pg_class'::regclass AND NOT granted
-            AND database = (
-              SELECT oid FROM pg_database WHERE datname = current_database()
-            )`;
-        while ((await waiting()).length === 0) {
-          await Promise.race([
-            new Promise((resolve) => setTimeout(resolve, 50)),
-            check.code.then(() => {
-              throw new Error(`The check ended first:\n${check.output()}`);
-            }),
-          ]);
-        }
+      await whileItsWriteWaits(check, async () => {
         check.interrupt();
         await check.printed('SIGINT: stopping after the request in flight');
       });
@@ -121,6 +135,21 @@ describe('interrupted', () => {
         'FAIL  read back: The check was interrupted\n',
       );
       expect(check.output()).toContain('ok    drop the table the check made\n');
+      await expect(
+        database.sql`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,
+      ).resolves.toEqual([]);
+      expect(leftBehind()).toEqual([]);
+    },
+    COMMAND_TIMEOUT_MS,
+  );
+
+  test(
+    'a Hyperdrive check whose output closes still runs to its end',
+    async () => {
+      const check = startCheck();
+      await whileItsWriteWaits(check, check.closeOutput);
+
+      await expect(check.code).resolves.toBe(0);
       await expect(
         database.sql`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,
       ).resolves.toEqual([]);
