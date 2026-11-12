@@ -17,6 +17,16 @@ test('wrangler.jsonc has the two environments of ADR-0019', () => {
   expect(Object.keys(wrangler.env)).toEqual(environments);
 });
 
+test('the top level, which names no environment, binds no real Hyperdrive configuration', () => {
+  expect(wrangler.hyperdrive).toEqual([
+    {
+      binding: 'HYPERDRIVE',
+      id: '0'.repeat(32),
+      localConnectionString: expect.stringContaining('@127.0.0.1:'),
+    },
+  ]);
+});
+
 test.each(environments)(
   '%s binds a real Hyperdrive configuration of its own',
   (environment) => {
