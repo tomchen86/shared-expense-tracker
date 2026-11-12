@@ -71,13 +71,21 @@ const domainImports = {
 };
 // In a selector, a regex ends at the first bare slash.
 const domainSelector = domainImports.regex.replaceAll('/', '\\/');
-// ADR-0019: a deploy runs the migrations before it uploads the Worker.
-const runMigrationsImport = {
+// What no-restricted-imports does not read.
+const domainSyntax = [
+  `ImportExpression[source.value=/${domainSelector}/]`,
+  `TSImportType[argument.literal.value=/${domainSelector}/]`,
+  `CallExpression[callee.name='require'][arguments.0.value=/${domainSelector}/]`,
+].map((selector) => ({ selector, message: domainImports.message }));
+// ADR-0019: a deploy runs the migrations before it uploads the Worker. The whole module,
+// whatever it exports under whatever name; a type runs nothing.
+const migrateImports = {
   regex: '(^|/)migrate(\\.[cm]?[jt]s)?$',
-  importNames: ['runMigrations'],
+  allowTypeImports: true,
   message:
     'A deploy runs the migrations, through apps/api/src/node.ts; no request does (ADR-0019).',
 };
+const migrateSelector = migrateImports.regex.replaceAll('/', '\\/');
 const domainApiStandsAlone =
   'The API imports this directory, so it stands alone and brings no bookkeeping rules with it (ADR-0003, ADR-0007).';
 
@@ -118,14 +126,7 @@ export default [
         'error',
         { patterns: [domainImports] },
       ],
-      'no-restricted-syntax': [
-        'error',
-        ...[
-          `ImportExpression[source.value=/${domainSelector}/]`,
-          `TSImportType[argument.literal.value=/${domainSelector}/]`,
-          `CallExpression[callee.name='require'][arguments.0.value=/${domainSelector}/]`,
-        ].map((selector) => ({ selector, message: domainImports.message })),
-      ],
+      'no-restricted-syntax': ['error', ...domainSyntax],
     },
   },
   {
@@ -137,7 +138,7 @@ export default [
         {
           patterns: [
             domainImports,
-            runMigrationsImport,
+            migrateImports,
             {
               // Listed rather than excluded, so that a new library gets asked this question.
               regex:
@@ -188,7 +189,16 @@ export default [
     rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',
-        { patterns: [domainImports, runMigrationsImport] },
+        { patterns: [domainImports, migrateImports] },
+      ],
+      // An entry file may import dynamically, so its dynamic imports are read here.
+      'no-restricted-syntax': [
+        'error',
+        ...domainSyntax,
+        ...[
+          `ImportExpression[source.value=/${migrateSelector}/]`,
+          `CallExpression[callee.name='require'][arguments.0.value=/${migrateSelector}/]`,
+        ].map((selector) => ({ selector, message: migrateImports.message })),
       ],
     },
   },

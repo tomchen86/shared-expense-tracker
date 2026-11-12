@@ -181,6 +181,33 @@ const rejected = [
     "import { runMigrations } from './database/migrate';",
     noRequestMigrates,
   ],
+  // The module, not one name in it.
+  [
+    'apps/api/src/app.ts',
+    "import { migrateAll } from './database/migrate';",
+    noRequestMigrates,
+  ],
+  [
+    'apps/api/src/app.ts',
+    "import migrate from './database/migrate';",
+    noRequestMigrates,
+  ],
+  [portable, "export * from '../database/migrate';", noRequestMigrates],
+  [
+    'apps/api/src/workers.ts',
+    "import migrate from './database/migrate';",
+    noRequestMigrates,
+  ],
+  [
+    'apps/api/src/workers.ts',
+    "const { runMigrations } = await import('./database/migrate');",
+    noRequestMigrates,
+  ],
+  [
+    'apps/api/src/workers.ts',
+    "const { runMigrations } = require('./database/migrate.ts');",
+    noRequestMigrates,
+  ],
   // A file's extension does not change which boundary it is inside.
   ...['js', 'jsx', 'mjs', 'cjs', 'ts', 'tsx', 'mts', 'cts'].flatMap(
     (extension) => [
@@ -244,6 +271,11 @@ const allowed = [
     "import { runMigrations } from '../src/database/migrate';",
   ],
   ['apps/api/src/workers.ts', "import { connect } from 'cloudflare:sockets';"],
+  [
+    'apps/api/src/workers.ts',
+    "import type { Migration } from './database/migrate';",
+  ],
+  ['apps/api/src/workers.ts', "await import('cloudflare:sockets');"],
   ['apps/api/src/workers.ts', 'self; caches.default; new WebSocketPair();'],
   ['apps/api/tests/any.test.ts', "import fs from 'node:fs'; process.env.CI;"],
   [

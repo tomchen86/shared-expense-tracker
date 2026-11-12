@@ -28,9 +28,10 @@ The options as of 2026-11-11:
 
 ## Consequences
 
-- Staging follows `main` without anyone deploying it. A merge that changes only the phone app deploys nothing.
+- Staging follows `main` without anyone deploying it. A merge deploys when it changes a path the Worker is built from. The lockfile and the root `package.json` are among those paths, so a merge that only upgrades one of the phone app's dependencies deploys the same Worker again.
 - Between the migrations and the upload, and for as long as an upload keeps failing, the Worker deployed before runs on the new schema. So a migration keeps that Worker working: it adds first, and a later deploy removes what the old code used, once no deployed Worker uses it. Rolling a Worker back with Wrangler does not roll the schema back, for the same reason.
-- All pending migrations run in one transaction (ADR-0007), so one that fails stops the deploy before the upload and leaves the database as it was.
+- The runner applies all pending migrations in one transaction, so one that fails stops the deploy before the upload and leaves the database as it was.
+- When the upload succeeds and the `/health` request then fails, the run fails with the new Worker already answering requests, and nothing puts the one before back. That environment stays broken until the owner rolls the Worker back with Wrangler or a fix merges. The request also cannot tell which Worker answered: just after an upload, a 200 may still come from the one deployed before.
 - Production gets every migration `main` has when the owner starts its deploy. Nothing but the staging deploys before it has run them first.
 - The bot can start a production deploy, but it waits until the owner approves it.
 - The workflow can run only once it is on `main`, so a change to it is first tried by the deploy its own merge starts.

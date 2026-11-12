@@ -9,7 +9,15 @@ export interface RunningCommand {
   stop(): Promise<void>;
 }
 
-function start(name: string, args: string[], env: NodeJS.ProcessEnv) {
+/**
+ * Starts a command from apps/api's node_modules in a process group of its own, for the
+ * caller to read, signal, and wait for.
+ */
+export function startCommand(
+  name: string,
+  args: string[],
+  env: NodeJS.ProcessEnv,
+) {
   return spawn(path.join(API_ROOT, 'node_modules/.bin', name), args, {
     cwd: API_ROOT,
     env: { ...process.env, NO_COLOR: '1', ...env },
@@ -19,13 +27,17 @@ function start(name: string, args: string[], env: NodeJS.ProcessEnv) {
   });
 }
 
-/** Starts a command from apps/api's node_modules and waits for it to print its URL. */
+/**
+ * Starts a command from apps/api's node_modules and waits for it to print its URL. Until
+ * then only `interrupted` stops it: the terminal's Ctrl-C does not reach its process group.
+ */
 export function startServerCommand(
   name: string,
   args: string[],
   env: NodeJS.ProcessEnv,
+  interrupted?: AbortSignal,
 ): Promise<RunningCommand> {
-  const child = start(name, args, env);
+  const child = startCommand(name, args, env);
   const exited = new Promise<void>((resolve) =>
     child.once('exit', () => resolve()),
   );
@@ -51,13 +63,21 @@ export function startServerCommand(
       const url = /(?:listening|Ready) on (http:\S+)/.exec(output)?.[1];
       if (url) {
         clearTimeout(timer);
+        interrupted?.removeEventListener('abort', interrupt);
         resolve({ url, stop });
       }
     };
+    const interrupt = () => void stop();
     child.stdout.on('data', read);
     child.stderr.on('data', read);
-    child.once('exit', (code) => fail(`exited with code ${code}`));
+    child.once('exit', (code) =>
+      fail(
+        interrupted?.aborted ? 'was interrupted' : `exited with code ${code}`,
+      ),
+    );
     child.once('error', (error) => fail(`did not start: ${error.message}`));
+    if (interrupted?.aborted) interrupt();
+    else interrupted?.addEventListener('abort', interrupt, { once: true });
   });
 }
 
@@ -67,7 +87,7 @@ export function runCommand(
   args: string[],
   env: NodeJS.ProcessEnv,
 ): Promise<number | null> {
-  const child = start(name, args, env);
+  const child = startCommand(name, args, env);
   return new Promise((resolve, reject) => {
     child.once('error', reject);
     child.once('exit', resolve);

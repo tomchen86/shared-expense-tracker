@@ -2,7 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { constants, tmpdir } from 'node:os';
 import path from 'node:path';
 import { isHealthResponse } from '@shared-expense/domain/api';
 import { startServerCommand } from '../support/command';
@@ -11,6 +11,7 @@ import type { HyperdriveCheckResponse, HyperdriveCheckStep } from './worker';
 
 const API_ROOT = path.resolve(__dirname, '../..');
 const REQUEST_TIMEOUT_MS = 60_000;
+const SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const;
 const USAGE = `Usage: pnpm --filter api check:hyperdrive <staging|production|local> [wrangler options]
 
   staging, production  Runs this checkout's Worker on Cloudflare with that environment's
@@ -45,8 +46,11 @@ function composeMajor(): number {
   return Number(/image: postgres:(\d+)/.exec(compose)?.[1]);
 }
 
-/** Runs every step against the Worker at `base`, and returns one report line per step. */
-async function check(base: string): Promise<{ lines: string[]; ok: boolean }> {
+/**
+ * Runs every step against the Worker at `base` and prints one report line per step. After
+ * `interrupted`, it runs no further step but the last, which drops the table.
+ */
+async function check(base: string, interrupted: AbortSignal): Promise<boolean> {
   const table = `hyperdrive_check_${randomUUID().replaceAll('-', '')}`;
   const request = (pathname: string, init?: RequestInit) =>
     fetch(new URL(pathname, base), {
@@ -77,22 +81,23 @@ async function check(base: string): Promise<{ lines: string[]; ok: boolean }> {
     }
   };
 
-  const lines: string[] = [];
   let ok = true;
+  const fail = (name: string, reason: string) => {
+    ok = false;
+    console.log(`FAIL  ${name}: ${reason}`);
+  };
   const step = async (name: string, action: () => Promise<string | void>) => {
     try {
-      lines.push(`ok    ${(await action()) ?? name}`);
+      console.log(`ok    ${(await action()) ?? name}`);
     } catch (error) {
-      ok = false;
-      lines.push(
-        `FAIL  ${name}: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      fail(name, error instanceof Error ? error.message : String(error));
     }
   };
   /** After a failure, the steps that build on it would only repeat it. */
   const steps = async (all: [string, () => Promise<string | void>][]) => {
     for (const [name, action] of all) {
       if (!ok) return;
+      if (interrupted.aborted) return fail(name, 'The check was interrupted');
       await step(name, action);
     }
   };
@@ -165,7 +170,7 @@ async function check(base: string): Promise<{ lines: string[]; ok: boolean }> {
   await step('drop the table the check made', async () => {
     await run('drop');
   });
-  return { lines, ok };
+  return ok;
 }
 
 async function main(): Promise<void> {
@@ -176,6 +181,25 @@ async function main(): Promise<void> {
     process.exitCode = 2;
     return;
   }
+  // Wrangler runs in a process group of its own, which the terminal's Ctrl-C does not
+  // reach, and a check that stopped there would leave it running and the table in place.
+  // So a signal lets the request in flight finish, and the check then ends as it always
+  // does: it drops the table and stops Wrangler.
+  const interrupted = new AbortController();
+  for (const signal of SIGNALS) {
+    process.on(signal, () => {
+      if (interrupted.signal.aborted) return;
+      console.error(`${signal}: stopping after the request in flight`);
+      interrupted.abort(signal);
+    });
+  }
+  const changed = git('status', '--porcelain') ? ', with changes' : '';
+  console.log(
+    [
+      `Hyperdrive check on ${target} (${where.where})`,
+      `at ${git('rev-parse', '--short', 'HEAD')}${changed}`,
+    ].join('\n'),
+  );
   // Wranglers started together collide on their default ports and state directory.
   const state = mkdtempSync(path.join(tmpdir(), 'api-hyperdrive-check-'));
   try {
@@ -195,27 +219,24 @@ async function main(): Promise<void> {
               process.env.DATABASE_URL,
           }
         : {},
+      interrupted.signal,
     );
     try {
-      const { lines, ok } = await check(worker.url);
-      const changed = git('status', '--porcelain') ? ', with changes' : '';
-      console.log(
-        [
-          `Hyperdrive check on ${target} (${where.where})`,
-          `at ${git('rev-parse', '--short', 'HEAD')}${changed}`,
-          ...lines,
-        ].join('\n'),
-      );
-      if (!ok) process.exitCode = 1;
+      if (!(await check(worker.url, interrupted.signal))) process.exitCode = 1;
     } finally {
       await worker.stop();
     }
   } finally {
     rmSync(state, { recursive: true, force: true });
+    if (interrupted.signal.aborted) {
+      // What a shell reports for a command that a signal ended.
+      const signal = interrupted.signal.reason as (typeof SIGNALS)[number];
+      process.exitCode = 128 + constants.signals[signal];
+    }
   }
 }
 
 void main().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
+  process.exitCode ||= 1;
 });
