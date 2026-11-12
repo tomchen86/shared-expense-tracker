@@ -22,6 +22,8 @@ import {
   HKDF_TESTS,
   LOW_ORDER_PUBLIC_KEYS,
   SHARED_SECRET,
+  X25519_ONE_ITERATION,
+  X25519_TESTS,
   bytesFrom,
   concat,
   eachBitFlipped,
@@ -30,9 +32,14 @@ import {
   insideLargerBuffer,
   toHex,
   utf8,
+  webCryptoVerifies,
 } from './sharing-crypto-vectors';
 
 type Failure = 'undecryptable' | 'unsupported-version';
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
 
 const EMPTY = new Uint8Array(0);
 const UNDECRYPTABLE = { ok: false, reason: 'undecryptable' };
@@ -156,27 +163,6 @@ const BOX_VARIETIES = [EMPTY, content, bytesFrom(9, 1000)].flatMap(
       })),
     ),
 );
-
-async function webCryptoVerifies(
-  publicKey: Uint8Array,
-  signature: Uint8Array,
-  message: Uint8Array,
-): Promise<boolean> {
-  // As the API does: the raw public key, then Web Crypto's Ed25519.
-  const imported = await webcrypto.subtle.importKey(
-    'raw',
-    new Uint8Array(publicKey),
-    'Ed25519',
-    false,
-    ['verify'],
-  );
-  return webcrypto.subtle.verify(
-    'Ed25519',
-    imported,
-    new Uint8Array(signature),
-    new Uint8Array(message),
-  );
-}
 
 // Encrypting
 
@@ -396,29 +382,38 @@ test.each(ED25519_TESTS)(
 test.each([0, 1, 200, 65_536])(
   '[SHARING-6.1] Web Crypto verifies the signature of %i bytes with the public key, and nothing else',
   async (size) => {
+    const verifies = (
+      publicKey: Uint8Array,
+      signature: Uint8Array,
+      message: Uint8Array,
+    ) => webCryptoVerifies(webcrypto.subtle, publicKey, signature, message);
     const secretKey = bytesFrom(0x30, 32);
     const publicKey = signingPublicKey(secretKey);
     const message = bytesFrom(3, size);
     const signature = sign({ secretKey, message });
     expect(publicKey).toHaveLength(32);
     expect(signature).toHaveLength(64);
-    expect(await webCryptoVerifies(publicKey, signature, message)).toBe(true);
+    expect(await verifies(publicKey, signature, message)).toBe(true);
 
     const otherMessage = concat(message, fromHex('00'));
-    expect(await webCryptoVerifies(publicKey, signature, otherMessage)).toBe(
-      false,
-    );
+    expect(await verifies(publicKey, signature, otherMessage)).toBe(false);
     for (const index of [0, 31, 32, 63]) {
       expect(
-        await webCryptoVerifies(publicKey, flipBit(signature, index), message),
+        await verifies(publicKey, flipBit(signature, index), message),
       ).toBe(false);
     }
     const otherPublicKey = signingPublicKey(bytesFrom(0x31, 32));
-    expect(await webCryptoVerifies(otherPublicKey, signature, message)).toBe(
-      false,
-    );
+    expect(await verifies(otherPublicKey, signature, message)).toBe(false);
   },
 );
+
+test('[SHARING-5.1][SHARING-6.1] gives the public key and the signature when the secret key and the message are views into larger buffers', () => {
+  const [, , test3] = ED25519_TESTS;
+  const secretKey = insideLargerBuffer(fromHex(test3.secretKey));
+  const message = insideLargerBuffer(fromHex(test3.message));
+  expect(toHex(signingPublicKey(secretKey))).toBe(test3.publicKey);
+  expect(toHex(sign({ secretKey, message }))).toBe(test3.signature);
+});
 
 // Boxes
 
@@ -432,9 +427,70 @@ test.each([
   },
 );
 
-test('[SHARING-7.1] gives the box public key of another secret key', () => {
-  expect(toHex(boxPublicKey(carol.secretKey))).toBe(CAROL.publicKey);
+test('[SHARING-7.1][SHARING-13.1] RFC 7748 5.2: after one iteration, the box public key of the base point as a secret key', () => {
+  expect(toHex(boxPublicKey(fromHex(X25519_ONE_ITERATION.secretKey)))).toBe(
+    X25519_ONE_ITERATION.publicKey,
+  );
 });
+
+test.each([
+  CAROL,
+  ...X25519_TESTS.map(({ scalar, publicKey }) => ({
+    secretKey: scalar,
+    publicKey,
+  })),
+])(
+  '[SHARING-7.1] gives the box public key of the secret key $secretKey',
+  ({ secretKey, publicKey }) => {
+    expect(toHex(boxPublicKey(fromHex(secretKey)))).toBe(publicKey);
+  },
+);
+
+test.each(X25519_TESTS)(
+  '[SHARING-8.1][SHARING-13.1] RFC 7748 5.2, $name vector: its scalar seals a box for its u-coordinate under a key from its output',
+  ({ scalar, u, output, publicKey, sealed: expected }) => {
+    const parts = { context, nonce: aliceSeals.nonce, plaintext: content };
+    const made = sealBox({
+      senderSecretKey: fromHex(scalar),
+      recipientPublicKey: fromHex(u),
+      ...parts,
+    });
+    expect(toHex(made)).toBe(expected);
+    // The same box from the RFC's output: the u-coordinate goes into the key as given.
+    expect(toHex(made)).toBe(
+      toHex(
+        boxFrom(fromHex(output), {
+          senderPublicKey: fromHex(publicKey),
+          recipientPublicKey: fromHex(u),
+          ...parts,
+        }),
+      ),
+    );
+  },
+);
+
+test.each(X25519_TESTS)(
+  '[SHARING-9.1][SHARING-13.1] RFC 7748 5.2, $name vector: its scalar opens a box from its u-coordinate sealed under a key from its output',
+  ({ scalar, u, output, publicKey }) => {
+    const received = boxFrom(fromHex(output), {
+      senderPublicKey: fromHex(u),
+      recipientPublicKey: fromHex(publicKey),
+      context,
+      nonce: aliceSeals.nonce,
+      plaintext: content,
+    });
+    expect(
+      shown(
+        openBox({
+          recipientSecretKey: fromHex(scalar),
+          senderPublicKey: fromHex(u),
+          context,
+          box: received,
+        }),
+      ),
+    ).toEqual(opened(content));
+  },
+);
 
 test("[SHARING-8.1][SHARING-13.1] seals Alice's box for Bob under a key from RFC 7748 6.1's shared secret", () => {
   const made = sealBox(aliceSeals);
@@ -469,6 +525,20 @@ test('[SHARING-8.1] seals each content, context and salt as the ciphertext under
     return toHex(made) !== toHex(expected);
   });
   expect(different.map(({ label }) => label)).toEqual([]);
+});
+
+test('[SHARING-8.1] seals the same box when every input is a view into a larger buffer', () => {
+  const inside = {
+    senderSecretKey: insideLargerBuffer(alice.secretKey),
+    recipientPublicKey: insideLargerBuffer(bob.publicKey),
+    context: insideLargerBuffer(context),
+    nonce: insideLargerBuffer(aliceSeals.nonce),
+    plaintext: insideLargerBuffer(content),
+  };
+  expect(toHex(sealBox(inside))).toBe(BOX.sealed);
+  expect(toHex(sealBox({ ...inside, salt: insideLargerBuffer(salt) }))).toBe(
+    BOX.sealedWithSalt,
+  );
 });
 
 test("[SHARING-9.1][SHARING-13.1] Bob opens Alice's box, sealed under a key from RFC 7748 6.1's shared secret", () => {
@@ -507,6 +577,20 @@ test('[SHARING-9.1] opens each content, context and salt sealed between two othe
     return !result.ok || toHex(result.plaintext) !== toHex(parts.plaintext);
   });
   expect(unopened.map(({ label }) => label)).toEqual([]);
+});
+
+test('[SHARING-9.1] opens the box when every input is a view into a larger buffer', () => {
+  expect(
+    shown(
+      openBox({
+        recipientSecretKey: insideLargerBuffer(bob.secretKey),
+        senderPublicKey: insideLargerBuffer(alice.publicKey),
+        context: insideLargerBuffer(context),
+        salt: insideLargerBuffer(salt),
+        box: insideLargerBuffer(boxWithSalt),
+      }),
+    ),
+  ).toEqual(opened(content));
 });
 
 test('[SHARING-10.1] reports undecryptable when another phone opens the box', () => {
@@ -712,9 +796,23 @@ test('[SHARING-12.1][SHARING-13.1] RFC 5869 A.3 has no salt: leaving the salt ou
   ).toBe(noSalt.key);
 });
 
-// Random numbers come from the caller
+test('[SHARING-12.1] derives the same key when the secret, the salt and the purpose are views into larger buffers', () => {
+  const [a1] = HKDF_TESTS;
+  expect(
+    toHex(
+      deriveKey({
+        secret: insideLargerBuffer(fromHex(a1.secret)),
+        salt: insideLargerBuffer(fromHex(a1.salt)),
+        purpose: insideLargerBuffer(fromHex(a1.purpose)),
+      }),
+    ),
+  ).toBe(a1.key);
+});
 
-test('[SHARING-14.1] gives the same result each time for the same input', () => {
+// Keys, nonces and salts come from the caller
+
+test('[SHARING-14.1] gives the same result each time for the same input, and never uses Math.random', () => {
+  const weakRandom = jest.spyOn(Math, 'random');
   const run = () => ({
     ciphertext: toHex(
       encrypt({
@@ -737,9 +835,11 @@ test('[SHARING-14.1] gives the same result each time for the same input', () => 
       deriveKey({ secret: 'example-link-secret', purpose: 'example/card' }),
     ),
   });
-  const first = run();
-  expect(run()).toEqual(first);
-  expect(run()).toEqual(first);
+  const runs = [run(), run(), run()];
+  const asked = weakRandom.mock.calls.length;
+  expect(runs[1]).toEqual(runs[0]);
+  expect(runs[2]).toEqual(runs[0]);
+  expect(asked).toBe(0);
 });
 
 // Wrong lengths

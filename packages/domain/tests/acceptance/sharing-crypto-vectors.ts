@@ -1,5 +1,32 @@
 // Published test vectors and known answers for the encryption tools, as
 // docs/specs/sharing/spec.md lists them. Bytes are written as hex.
+import type { webcrypto } from 'node:crypto';
+
+/**
+ * Whether Web Crypto accepts an Ed25519 signature, checked as the API checks one: from
+ * the raw public key. The caller passes Web Crypto's `subtle`, since one test file runs
+ * without the global one and cannot import Node's.
+ */
+export async function webCryptoVerifies(
+  subtle: webcrypto.SubtleCrypto,
+  publicKey: Uint8Array,
+  signature: Uint8Array,
+  message: Uint8Array,
+): Promise<boolean> {
+  const imported = await subtle.importKey(
+    'raw',
+    new Uint8Array(publicKey),
+    'Ed25519',
+    false,
+    ['verify'],
+  );
+  return subtle.verify(
+    'Ed25519',
+    imported,
+    new Uint8Array(signature),
+    new Uint8Array(message),
+  );
+}
 
 export function fromHex(text: string): Uint8Array {
   const digits = text.replace(/\s+/g, '');
@@ -173,6 +200,38 @@ export const BOB = {
 export const SHARED_SECRET =
   '4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742';
 
+// X25519: RFC 7748, 5.2. `output` is X25519(scalar, u). `publicKey` is the scalar's own
+// public key, and `sealed` the box of SHARING-8.1's scenario that the scalar seals for u
+// with BOX's context, nonce and content and no salt; OpenSSL gives both. The second u has
+// its top bit set, which X25519 ignores.
+export const X25519_TESTS = [
+  {
+    name: 'first',
+    scalar: 'a546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac4',
+    u: 'e6db6867583030db3594c1a424b15f7c726624ec26b3353b10a903a6d0ab1c4c',
+    output: 'c3da55379de9c6908e94ea4df28d084f32eccf03491c71f754b4075577a28552',
+    publicKey:
+      '1c9fd88f45606d932a80c71824ae151d15d73e77de38e8e000852e614fae7019',
+    sealed:
+      '01000102030405060708090a0b0c0d0e0f1011121314151617a021ddb343b5ac4627fb81a59dad919a871e69efea840a413b5669546faf50dff21344b607fde4390498f33714dd7c47',
+  },
+  {
+    name: 'second',
+    scalar: '4b66e9d4d1b4673c5ad22691957d6af5c11b6421e0ea01d42ca4169e7918ba0d',
+    u: 'e5210f12786811d3f4b7959d0538ae2c31dbe7106fc03c3efc4cd549c715a493',
+    output: '95cbde9476e8907d7aade45cb4b873f88b595a68799fa152e6f8f7647aac7957',
+    publicKey:
+      'ff63fe57bfbf43fa3f563628b149af704d3db625369c49983650347a6a71e00e',
+    sealed:
+      '01000102030405060708090a0b0c0d0e0f1011121314151617bb4113dee6e0799c425c8973f940b5cbe70a567d9b8be2bc19e146faed7377159d1b18097924a880b0cb5a1ae9be208e',
+  },
+];
+/** RFC 7748 5.2, after one iteration: X25519 of the base point 9 with itself. */
+export const X25519_ONE_ITERATION = {
+  secretKey: '0900000000000000000000000000000000000000000000000000000000000000',
+  publicKey: '422c8e7a6227d7bca1350b3e2bb7279f7897b87bb6854b783c60e80311ae3079',
+};
+
 // A third phone, in no standard: 32 bytes counting up from 0xc0, and the X25519 public
 // key OpenSSL gives for them.
 export const CAROL = {
@@ -218,8 +277,8 @@ export const BOX = {
     '01000102030405060708090a0b0c0d0e0f101112131415161761b3d7e611ddb3cf5578d4239d2d9d3e4d2d4e0d843b71ed1e8cad9c7d5b21ebde39f4fe2d8f662086f1a1e393d48aa0',
 };
 
-// X25519 gives 32 zero bytes for these public keys, whatever the secret key. The last
-// two are the first and the fifth with the top bit set, which X25519 ignores.
+// Every 32 bytes for which X25519 gives 32 zero bytes, whatever the secret key: the seven
+// points of low order, then each with its top bit set, which X25519 ignores.
 export const LOW_ORDER_PUBLIC_KEYS = [
   '0000000000000000000000000000000000000000000000000000000000000000',
   '0100000000000000000000000000000000000000000000000000000000000000',
@@ -229,7 +288,12 @@ export const LOW_ORDER_PUBLIC_KEYS = [
   'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
   'eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
   '0000000000000000000000000000000000000000000000000000000000000080',
+  '0100000000000000000000000000000000000000000000000000000000000080',
+  'e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b880',
+  '5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f11d7',
   'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+  'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+  'eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
 ];
 
 // SHARING-12.1's scenarios: the key of each secret and purpose given as text.

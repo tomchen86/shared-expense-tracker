@@ -1,6 +1,6 @@
-// This import comes first: it takes Web Crypto away before the tools load.
-import { restoreWebCrypto } from './sharing-crypto-remove-web-crypto';
-import nodeCrypto from 'node:crypto';
+// This import comes first: it takes Web Crypto and Buffer away before the tools load, so
+// they load and run as on Hermes.
+import { restoreGlobals } from './sharing-crypto-like-hermes';
 import {
   boxPublicKey,
   decrypt,
@@ -21,23 +21,24 @@ import {
   fromHex,
   toHex,
   utf8,
+  webCryptoVerifies,
 } from './sharing-crypto-vectors';
 
-afterAll(restoreWebCrypto);
+// Hermes has no Node modules either: in this file, importing `crypto` or `node:crypto`
+// fails, for the tools and for whatever they import.
+jest.mock('crypto', () => {
+  throw new Error('Hermes has no crypto module, so the tools cannot import it');
+});
 
-test('[SHARING-14.1] gives the same results where the runtime has no Web Crypto, and asks it for no random numbers', () => {
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+afterAll(restoreGlobals);
+
+test('[SHARING-14.1] gives the same results where the runtime has no Web Crypto, no Buffer and no crypto module, and never uses Math.random', () => {
   expect('crypto' in globalThis).toBe(false);
-  const sources = {
-    'Math.random': jest.spyOn(Math, 'random'),
-    randomBytes: jest.spyOn(nodeCrypto, 'randomBytes'),
-    randomFillSync: jest.spyOn(nodeCrypto, 'randomFillSync'),
-    randomInt: jest.spyOn(nodeCrypto, 'randomInt'),
-    randomUUID: jest.spyOn(nodeCrypto, 'randomUUID'),
-    'webcrypto.getRandomValues': jest.spyOn(
-      nodeCrypto.webcrypto,
-      'getRandomValues',
-    ),
-  };
+  expect('Buffer' in globalThis).toBe(false);
+  const weakRandom = jest.spyOn(Math, 'random');
 
   const key = fromHex(DRAFT.key);
   const associatedData = fromHex(DRAFT.associatedData);
@@ -86,10 +87,7 @@ test('[SHARING-14.1] gives the same results where the runtime has no Web Crypto,
     ),
     derived: toHex(deriveKey({ secret, purpose })),
   };
-  const asked = Object.entries(sources)
-    .filter(([, source]) => source.mock.calls.length > 0)
-    .map(([name]) => name);
-  Object.values(sources).forEach((source) => source.mockRestore());
+  const asked = weakRandom.mock.calls.length;
 
   expect(results).toEqual({
     ciphertext: sealed,
@@ -101,5 +99,30 @@ test('[SHARING-14.1] gives the same results where the runtime has no Web Crypto,
     boxContent: BOX.plaintext,
     derived,
   });
-  expect(asked).toEqual([]);
+  expect(asked).toBe(0);
 });
+
+test.each(ED25519_TESTS)(
+  '[SHARING-14.1] RFC 8032 $name where the runtime is like Hermes: its public key, and its signature, which Web Crypto verifies',
+  async ({ secretKey, publicKey, message, signature }) => {
+    expect('crypto' in globalThis).toBe(false);
+    const made = sign({
+      secretKey: fromHex(secretKey),
+      message: fromHex(message),
+    });
+    expect(toHex(signingPublicKey(fromHex(secretKey)))).toBe(publicKey);
+    expect(toHex(made)).toBe(signature);
+
+    // The test itself may reach past the mock for Web Crypto, as the API has one.
+    const { webcrypto } =
+      jest.requireActual<typeof import('node:crypto')>('node:crypto');
+    expect(
+      await webCryptoVerifies(
+        webcrypto.subtle,
+        fromHex(publicKey),
+        made,
+        fromHex(message),
+      ),
+    ).toBe(true);
+  },
+);
