@@ -1,0 +1,81 @@
+name: deploy
+
+# Deploys the API (ADR-0019): to staging after each merge to main that changes what the
+# Worker is built from, and to the environment chosen when started by hand. Each
+# environment's secrets live in the GitHub environment of the same name, which only a run on
+# main may use; production's also waits for the owner's approval.
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/api/**
+      - '!apps/api/tests/**'
+      - packages/domain/src/api/**
+      - packages/domain/package.json
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .nvmrc
+      - .github/workflows/deploy.yml
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy main
+        required: true
+        type: choice
+        options: [staging, production]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    # A template repository has no API to deploy yet.
+    if: ${{ !github.event.repository.is_template }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ inputs.environment || 'staging' }}
+    # One deploy per environment at a time, and none stops halfway: the next one waits.
+    concurrency:
+      group: deploy-${{ inputs.environment || 'staging' }}
+      cancel-in-progress: false
+    env:
+      ENVIRONMENT: ${{ inputs.environment || 'staging' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install the API's dependencies
+        run: pnpm install --frozen-lockfile --filter api...
+      # Before the upload, so the new Worker never meets a database older than its code.
+      # Straight to PostgreSQL: only a Worker reaches Hyperdrive. Neon's connection string
+      # asks for channel binding, which postgres.js would send to the server as a setting
+      # it does not have, so the server's certificate is checked instead.
+      - name: Run the migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          : "${DATABASE_URL:?The $ENVIRONMENT environment has no DATABASE_URL secret}"
+          url="${DATABASE_URL%%\?*}?sslmode=verify-full"
+          echo "::add-mask::$url"
+          DATABASE_URL="$url" pnpm --filter api migrate
+      - name: Upload the Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/deploy.ndjson
+        run: pnpm --filter api exec wrangler deploy --env "$ENVIRONMENT"
+      # It answers only after a query through the real Hyperdrive. A new Worker's address
+      # takes a moment to exist, and a sleeping Neon database a moment to wake.
+      - name: Request /health from the deployed Worker
+        run: |
+          url=$(jq --exit-status --raw-output \
+            'select(.type == "deploy") | first(.targets[] | select(endswith(".workers.dev")))' \
+            "$RUNNER_TEMP/deploy.ndjson")
+          curl --fail-with-body --silent --show-error --max-time 30 \
+            --retry 8 --retry-delay 5 --retry-all-errors "$url/health"

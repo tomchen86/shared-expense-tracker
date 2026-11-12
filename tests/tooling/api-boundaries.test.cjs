@@ -7,6 +7,7 @@ const onlyInEntryFiles = 'Only apps/api/src/node.ts and workers.ts';
 const onlyDomainApi = 'imports only @shared-expense/domain/api';
 const onlySrc = 'Relative imports in apps/api/src stay inside it';
 const standsAlone = 'stands alone';
+const noRequestMigrates = 'no request does';
 
 // Each exists on just one of Node 26.13 and workerd with wrangler.jsonc's settings, as
 // measured by walking globalThis on both. Those up to WorkerGlobalScope have types in the
@@ -164,6 +165,49 @@ const rejected = [
     "import { Hono } from 'hono';",
     standsAlone,
   ],
+  [
+    portable,
+    "import { runMigrations } from '../database/migrate';",
+    noRequestMigrates,
+  ],
+  [portable, "import * as m from '../database/migrate';", noRequestMigrates],
+  [
+    'apps/api/src/app.ts',
+    "import { runMigrations } from './database/migrate.ts';",
+    noRequestMigrates,
+  ],
+  [
+    'apps/api/src/workers.ts',
+    "import { runMigrations } from './database/migrate';",
+    noRequestMigrates,
+  ],
+  // The module, not one name in it.
+  [
+    'apps/api/src/app.ts',
+    "import { migrateAll } from './database/migrate';",
+    noRequestMigrates,
+  ],
+  [
+    'apps/api/src/app.ts',
+    "import migrate from './database/migrate';",
+    noRequestMigrates,
+  ],
+  [portable, "export * from '../database/migrate';", noRequestMigrates],
+  [
+    'apps/api/src/workers.ts',
+    "import migrate from './database/migrate';",
+    noRequestMigrates,
+  ],
+  [
+    'apps/api/src/workers.ts',
+    "const { runMigrations } = await import('./database/migrate');",
+    noRequestMigrates,
+  ],
+  [
+    'apps/api/src/workers.ts',
+    "const { runMigrations } = require('./database/migrate.ts');",
+    noRequestMigrates,
+  ],
   // A file's extension does not change which boundary it is inside.
   ...['js', 'jsx', 'mjs', 'cjs', 'ts', 'tsx', 'mts', 'cts'].flatMap(
     (extension) => [
@@ -217,7 +261,21 @@ const allowed = [
     "import { serve } from '@hono/node-server'; process.env.PORT;",
   ],
   ['apps/api/src/node.ts', "await import('node:fs');"],
+  [
+    'apps/api/src/node.ts',
+    "import { runMigrations } from './database/migrate';",
+  ],
+  [portable, "import type { Migration } from '../database/migrate';"],
+  [
+    'apps/api/tests/any.test.ts',
+    "import { runMigrations } from '../src/database/migrate';",
+  ],
   ['apps/api/src/workers.ts', "import { connect } from 'cloudflare:sockets';"],
+  [
+    'apps/api/src/workers.ts',
+    "import type { Migration } from './database/migrate';",
+  ],
+  ['apps/api/src/workers.ts', "await import('cloudflare:sockets');"],
   ['apps/api/src/workers.ts', 'self; caches.default; new WebSocketPair();'],
   ['apps/api/tests/any.test.ts', "import fs from 'node:fs'; process.env.CI;"],
   [
@@ -273,6 +331,6 @@ test.each(allowed)('%s allows %s', (file, code) => {
   expect(
     messages
       .get(`${file}: ${code}`)
-      .filter((message) => /ADR-000|add it to th/.test(message)),
+      .filter((message) => /ADR-00|add it to th/.test(message)),
   ).toEqual([]);
 });

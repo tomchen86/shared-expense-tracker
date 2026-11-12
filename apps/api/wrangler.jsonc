@@ -6,14 +6,33 @@
   // postgres.js runs on Workers through Cloudflare's Node.js compatibility (ADR-0007).
   "compatibility_flags": ["nodejs_compat"],
   "send_metrics": false,
+  // Only the deployed version answers: every earlier upload would otherwise keep a URL of
+  // its own.
+  "preview_urls": false,
+  // The top level is local development, and its id stands for no Hyperdrive
+  // configuration, so a command that names no environment reaches no real database.
+  // `wrangler dev` ignores the id and connects to localConnectionString, or to the URL in
+  // CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE when that is set.
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      // No real Hyperdrive configuration yet. `wrangler dev` ignores this and connects to
-      // localConnectionString, or to the URL in
-      // CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE when that is set.
       "id": "00000000000000000000000000000000",
       "localConnectionString": "postgres://postgres:postgres@127.0.0.1:55432/postgres",
     },
   ],
+  // What the deploy workflow deploys (ADR-0019). Each environment is a Worker of its own,
+  // named <name>-<environment>, with its own Hyperdrive configuration and database. An id
+  // is not a secret: the connection string it stands for stays in Cloudflare.
+  "env": {
+    "staging": {
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE", "id": "0ec424b6cf0245308fadb9383ec84fb9" },
+      ],
+    },
+    "production": {
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE", "id": "10328b8378164f55ad154498415451b1" },
+      ],
+    },
+  },
 }
