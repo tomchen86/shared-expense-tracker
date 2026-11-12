@@ -96,8 +96,12 @@ export interface SyncMerge {
   record: SyncRecord;
   /** The latest stamp the phone has seen, this event's included (SYNC-15.1). */
   seen: SyncStamp;
-  /** The money change this event replaced without its author having seen it (SYNC-14.1). */
-  overridden?: { stamp: SyncStamp; money: SyncMoney };
+}
+
+/** A money change this phone made itself: the stamp of its event and the money it set. */
+export interface SyncMoneyChange {
+  stamp: SyncStamp;
+  money: SyncMoney;
 }
 
 /** Negative when `a` is earlier than `b`, positive when it is later, 0 when they are the same stamp. */
@@ -138,6 +142,19 @@ export function mergeSyncEvent(input: {
   event: SyncEvent;
 }): SyncMerge {
   throw new Error(`Not implemented: mergeSyncEvent(${input.event.id})`);
+}
+
+/**
+ * Whether `event` overrode `mine`, this phone's own money change, without its author
+ * having seen it (SYNC-14.1). It looks at these two only, never at the record.
+ */
+export function overridesSyncMoney(
+  event: SyncEvent,
+  mine: SyncMoneyChange,
+): boolean {
+  throw new Error(
+    `Not implemented: overridesSyncMoney(${event.id}, ${mine.stamp.device})`,
+  );
 }
 
 /** Every unit's value, or undefined while the record lacks a unit or once it is deleted. */

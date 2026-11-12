@@ -4,13 +4,16 @@ import {
   change,
   CREATED,
   deletion,
+  dinner,
   DINNER,
   DINNER_MONEY,
   dinnerChange,
   dinnerCreated,
   FUEL_CATEGORY,
   judge,
+  receive,
   refused,
+  type Phone,
 } from './sync-fixtures';
 
 const RECEIVED = 1_700_000_000_000;
@@ -457,12 +460,36 @@ test('[SYNC-9.1] does not check the clock of a change that has no receive time y
   expect(judge(content)).toEqual(VALID(content));
 });
 
-test('[SYNC-9.1] a refused stamp does not move the next change forward', () => {
-  const seen = at(RECEIVED, 0, 'phone-a');
+test('[SYNC-9.1] refuses a deletion stamped an hour after it was received', () => {
+  const removal = deletion(
+    'expense',
+    'dinner',
+    at(RECEIVED + HOUR, 0, 'phone-b'),
+  );
 
-  expect(judge(stampedAt(RECEIVED + HOUR), RECEIVED)).toEqual(refused('clock'));
+  expect(judge(removal, RECEIVED)).toEqual(refused('clock'));
+  expect(judge(removal)).toEqual(VALID(removal));
+});
+
+test('[SYNC-9.1] refused stamps move neither the phone nor its next change forward', () => {
+  const phone: Phone = {
+    records: { 'expense/dinner': dinner() },
+    seen: at(RECEIVED, 0, 'phone-a'),
+  };
+  const tooNew = [
+    stampedAt(RECEIVED + HOUR),
+    deletion('expense', 'dinner', at(RECEIVED + HOUR, 0, 'phone-b')),
+  ].map((content) => ({ content, receivedAtMs: RECEIVED }));
+
+  const after = tooNew.reduce(receive, phone);
+
+  expect(after).toEqual(phone);
   expect(
-    nextSyncStamp({ seen, nowMs: RECEIVED + 1000, device: 'phone-a' }),
+    nextSyncStamp({
+      seen: after.seen,
+      nowMs: RECEIVED + 1000,
+      device: 'phone-a',
+    }),
   ).toEqual(at(RECEIVED + 1000, 0, 'phone-a'));
 });
 

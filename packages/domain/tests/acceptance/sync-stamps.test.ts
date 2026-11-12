@@ -67,3 +67,44 @@ test('[SYNC-2.1] changes made one after another get later and later stamps', () 
     at(6000, 0, 'phone-a'),
   ]);
 });
+
+test.each<[string, number]>([
+  ['negative', -1],
+  ['fractional', 1.5],
+  ['not a number', Number.NaN],
+  ['past the largest safe integer', Number.MAX_SAFE_INTEGER + 1],
+])('[SYNC-18.1] throws when the corrected time is %s', (_case, nowMs) => {
+  expect(nextSyncStamp({ nowMs: 5000, device: 'phone-a' })).toEqual(
+    at(5000, 0, 'phone-a'),
+  );
+  expect(() => nextSyncStamp({ nowMs, device: 'phone-a' })).toThrow();
+});
+
+test.each(['', 'phone a', 'phöne'])(
+  '[SYNC-18.1] throws when the device to stamp for is %p',
+  (device) => {
+    expect(nextSyncStamp({ nowMs: 5000, device: 'phone-a' })).toEqual(
+      at(5000, 0, 'phone-a'),
+    );
+    expect(() => nextSyncStamp({ nowMs: 5000, device })).toThrow();
+  },
+);
+
+test('[SYNC-18.1] throws when no stamp later than the one seen exists', () => {
+  const largest = Number.MAX_SAFE_INTEGER;
+
+  expect(
+    nextSyncStamp({
+      seen: at(largest, largest - 1, 'phone-b'),
+      nowMs: 5000,
+      device: 'phone-a',
+    }),
+  ).toEqual(at(largest, largest, 'phone-a'));
+  expect(() =>
+    nextSyncStamp({
+      seen: at(largest, largest, 'phone-b'),
+      nowMs: 5000,
+      device: 'phone-a',
+    }),
+  ).toThrow();
+});

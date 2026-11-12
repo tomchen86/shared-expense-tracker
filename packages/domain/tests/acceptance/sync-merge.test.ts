@@ -3,8 +3,10 @@ import {
   compareSyncStamps,
   mergeSyncEvent,
   nextSyncStamp,
+  overridesSyncMoney,
   syncRecordValues,
   type SyncMoney,
+  type SyncMoneyChange,
   type SyncStamp,
   type SyncUnits,
 } from '../../src';
@@ -315,82 +317,80 @@ const lunchChange = (
   base?: SyncStamp,
 ) => change('expense', 'lunch', stamp, values, base);
 
-/** Lunch after its first event and the changes given, all on top of that first event. */
-const lunch = (...changes: unknown[]) =>
-  merged([lunchChange(LUNCH_CREATED, LUNCH), ...changes]);
-
-const yourMoney = (value: SyncMoney) =>
-  lunchChange(YOURS, { money: value }, LUNCH_CREATED);
-
-test('[SYNC-14.1] names the money change that a concurrent later change replaced', () => {
-  const record = lunch(yourMoney(lunchMoney(320)));
-
-  const result = merge(
-    record,
-    lunchChange(BOBS, { money: lunchMoney(350) }, LUNCH_CREATED),
-  );
-
-  expect(unit(result.record, 'money')).toEqual({
-    value: lunchMoney(350),
-    stamp: BOBS,
-  });
-  expect(result.overridden).toEqual({ stamp: YOURS, money: lunchMoney(320) });
+/** Your own change of Lunch's money, made on top of its first event. */
+const yours = (value = lunchMoney(320)): SyncMoneyChange => ({
+  stamp: YOURS,
+  money: value,
 });
 
-test('[SYNC-14.1] names it when the later change carries no base', () => {
-  const result = merge(
-    lunch(yourMoney(lunchMoney(320))),
-    lunchChange(BOBS, { money: lunchMoney(350) }),
-  );
+/** Whether the event overrode your money change. */
+const overrides = (content: unknown, mine = yours()) =>
+  overridesSyncMoney(valid(content), mine);
 
-  expect(unit(result.record, 'money')).toEqual({
-    value: lunchMoney(350),
-    stamp: BOBS,
-  });
-  expect(result.overridden).toEqual({ stamp: YOURS, money: lunchMoney(320) });
+/** Bob's change of Lunch's money to 350. */
+const bobs = (stamp: SyncStamp, base?: SyncStamp, value = lunchMoney(350)) =>
+  lunchChange(stamp, { money: value }, base);
+
+test('[SYNC-14.1] a later money change made without seeing yours overrode it, however often it is asked', () => {
+  const event = bobs(BOBS, LUNCH_CREATED);
+
+  expect(overrides(event)).toBe(true);
+  expect(overrides(event)).toBe(true);
 });
 
-test.each<[string, SyncStamp]>([
-  ['the change it replaces', YOURS],
-  ['a change later than the one it replaces', at(5500, 0, 'phone-carol')],
-])(
-  '[SYNC-14.1] names nothing when the later change was made on top of %s',
-  (_case, base) => {
-    const result = merge(
-      lunch(yourMoney(lunchMoney(320))),
-      lunchChange(BOBS, { money: lunchMoney(350) }, base),
-    );
+test.each<[string, unknown]>([
+  ['that carries no base', bobs(BOBS)],
+  [
+    'that is later by its device only',
+    bobs(at(5000, 0, 'phone-zed'), LUNCH_CREATED),
+  ],
+  [
+    'that changes the title too',
+    lunchChange(
+      BOBS,
+      { title: 'Late lunch', money: lunchMoney(350) },
+      LUNCH_CREATED,
+    ),
+  ],
+])('[SYNC-14.1] a money change %s overrode yours', (_case, event) => {
+  expect(overrides(event)).toBe(true);
+});
 
-    expect(unit(result.record, 'money')).toEqual({
+test.each<[string, unknown]>([
+  ['made on top of yours', bobs(BOBS, YOURS)],
+  [
+    'made on top of a change later than yours',
+    bobs(BOBS, at(5500, 0, 'phone-carol')),
+  ],
+  ['stamped earlier than yours', bobs(at(4000, 0, 'phone-bob'), LUNCH_CREATED)],
+  ['that is your own event', bobs(YOURS, LUNCH_CREATED, lunchMoney(320))],
+])('[SYNC-14.1] a money change %s did not override it', (_case, event) => {
+  expect(overrides(event)).toBe(false);
+});
+
+test('[SYNC-14.1] a third phone changing the money first does not hide that yours was overridden', () => {
+  const carols = bobs(at(5500, 0, 'phone-carol'), YOURS, lunchMoney(330));
+  const bobsEvent = bobs(BOBS, LUNCH_CREATED);
+  const onYourPhone = merged([
+    lunchChange(LUNCH_CREATED, LUNCH),
+    lunchChange(YOURS, { money: lunchMoney(320) }, LUNCH_CREATED),
+  ]);
+
+  for (const order of bothOrders(carols, bobsEvent)) {
+    expect(unit(merged(order, onYourPhone), 'money')).toEqual({
       value: lunchMoney(350),
       stamp: BOBS,
     });
-    expect(result.overridden).toBeUndefined();
-  },
-);
-
-test('[SYNC-14.1] names nothing when the earlier change arrives after the later one', () => {
-  const record = lunch(
-    lunchChange(BOBS, { money: lunchMoney(350) }, LUNCH_CREATED),
-  );
-
-  const result = merge(record, yourMoney(lunchMoney(320)));
-
-  expect(result.record).toEqual(record);
-  expect(result.overridden).toBeUndefined();
+    expect(order.map((event) => overrides(event))).toEqual(
+      order.map((event) => event === bobsEvent),
+    );
+  }
 });
 
-test('[SYNC-14.1] names nothing when both changes hold exactly the same money', () => {
-  const result = merge(
-    lunch(yourMoney(lunchMoney(350))),
-    lunchChange(BOBS, { money: lunchMoney(350) }, LUNCH_CREATED),
+test('[SYNC-14.1] a change to exactly the same money did not override yours', () => {
+  expect(overrides(bobs(BOBS, LUNCH_CREATED), yours(lunchMoney(350)))).toBe(
+    false,
   );
-
-  expect(unit(result.record, 'money')).toEqual({
-    value: lunchMoney(350),
-    stamp: BOBS,
-  });
-  expect(result.overridden).toBeUndefined();
 });
 
 test.each<[string, SyncMoney]>([
@@ -402,40 +402,22 @@ test.each<[string, SyncMoney]>([
     { ...lunchMoney(350), shares: [share('you', 176), share('bob', 174)] },
   ],
 ])(
-  '[SYNC-14.1] names the replaced change when the amount is the same but %s',
+  '[SYNC-14.1] a change to the same amount overrode yours when %s',
   (_case, bobsMoney) => {
-    const result = merge(
-      lunch(yourMoney(lunchMoney(350))),
-      lunchChange(BOBS, { money: bobsMoney }, LUNCH_CREATED),
-    );
-
-    expect(result.overridden).toEqual({ stamp: YOURS, money: lunchMoney(350) });
+    expect(
+      overrides(bobs(BOBS, LUNCH_CREATED, bobsMoney), yours(lunchMoney(350))),
+    ).toBe(true);
   },
 );
 
-test('[SYNC-14.1] names nothing when another unit is replaced', () => {
-  const record = lunch(lunchChange(YOURS, { title: 'Brunch' }, LUNCH_CREATED));
-
-  const result = merge(
-    record,
+test.each<[string, unknown]>([
+  [
+    'changes only the title',
     lunchChange(BOBS, { title: 'Late lunch' }, LUNCH_CREATED),
-  );
-
-  expect(unit(result.record, 'title')).toEqual({
-    value: 'Late lunch',
-    stamp: BOBS,
-  });
-  expect(result.overridden).toBeUndefined();
-});
-
-test('[SYNC-14.1] names nothing when the record is deleted', () => {
-  const result = merge(
-    lunch(yourMoney(lunchMoney(320))),
-    deletion('expense', 'lunch', BOBS),
-  );
-
-  expect(result.record).toEqual(deleted(BOBS, 'expense', 'lunch'));
-  expect(result.overridden).toBeUndefined();
+  ],
+  ['deletes the expense', deletion('expense', 'lunch', BOBS)],
+])('[SYNC-14.1] an event that %s did not override yours', (_case, event) => {
+  expect(overrides(event)).toBe(false);
 });
 
 test('[SYNC-15.1] the first event merged is the latest stamp seen', () => {
@@ -496,6 +478,16 @@ test('[SYNC-15.1] an event that changes no unit still counts as seen', () => {
 
   expect(result.record).toEqual(gone);
   expect(result.seen).toEqual(at(2500, 0, 'phone-b'));
+});
+
+test('[SYNC-15.1] a deletion counts as seen too', () => {
+  const result = merge(
+    dinner(),
+    deletion('expense', 'dinner', at(6000, 0, 'phone-b')),
+    at(5000, 0, 'phone-a'),
+  );
+
+  expect(result.seen).toEqual(at(6000, 0, 'phone-b'));
 });
 
 test('[SYNC-15.1] the next change is stamped after the event just merged', () => {
@@ -572,24 +564,20 @@ test('[SYNC-16.1] a group shows its name', () => {
   expect(syncRecordValues(group)).toEqual({ name: 'Brisbane' });
 });
 
-test('[SYNC-17.1] merging an event again changes nothing and names nothing', () => {
-  const changedAt = at(5000, 0, 'phone-a');
-  const record = merged(
-    [dinnerChange(changedAt, { money: TEN_THOUSAND })],
-    dinner(),
-  );
-  const event = dinnerChange(at(6000, 0, 'phone-b'), {
-    title: 'Supper',
-    money: TWO_WAYS,
-  });
+test.each<[string, unknown]>([
+  [
+    'a change',
+    dinnerChange(at(6000, 0, 'phone-b'), { title: 'Supper', money: TWO_WAYS }),
+  ],
+  ['a deletion', deletion('expense', 'dinner', at(6000, 0, 'phone-b'))],
+  ["the record's first event", dinnerCreated()],
+])('[SYNC-17.1] merging %s again changes nothing', (_case, event) => {
+  const once = merge(dinner(), event, CREATED);
 
-  const once = merge(record, event, changedAt);
-
-  expect(once.overridden).toEqual({ stamp: changedAt, money: TEN_THOUSAND });
   let again = once;
   for (let repeat = 0; repeat < 2; repeat += 1) {
     again = merge(again.record, event, again.seen);
-    expect(again).toEqual({ record: once.record, seen: once.seen });
+    expect(again).toEqual(once);
   }
 });
 
@@ -861,6 +849,15 @@ const REFUSED: Delivery[] = [
     ),
     receivedAtMs: T0 + 30_000,
   },
+  // A deletion stamped an hour after it was received.
+  {
+    content: deletion(
+      'expense',
+      'dinner',
+      at(T0 + 30_000 + 3_600_000, 1, BLAKE),
+    ),
+    receivedAtMs: T0 + 30_000,
+  },
 ];
 
 const stampOf = (delivery: Delivery) =>
@@ -893,40 +890,6 @@ test('[SYNC-17.1] refused events leave the result as if they had never been sent
     ).toEqual(EXPECTED);
   }
 });
-
-test.each<[string, string, unknown, unknown]>([
-  ['titles', 'title', 'Supper', 'Late dinner'],
-  ['a note and no note', 'note', 'Window seat', null],
-  ['trashed marks', 'trashed', true, false],
-  [
-    'categories',
-    'category',
-    { ...DINNER.category, name: 'Food' },
-    { ...DINNER.category, name: 'Dining' },
-  ],
-  ['money', 'money', TEN_THOUSAND, TWO_WAYS],
-])(
-  '[SYNC-17.1] two different %s with the same stamp leave the same one in either order',
-  (_case, name, one, other) => {
-    const stamp = at(2000, 0, 'phone-a');
-    const first = {
-      ...dinnerChange(stamp, {}),
-      units: { [name]: { value: one } },
-    };
-    const second = {
-      ...dinnerChange(stamp, {}),
-      units: { [name]: { value: other } },
-    };
-
-    const [forwards, backwards] = bothOrders(first, second).map((order) =>
-      merged(order, dinner()),
-    );
-
-    expect(forwards).toEqual(backwards);
-    expect(unit(forwards, name)?.stamp).toEqual(stamp);
-    expect([one, other]).toContainEqual(unit(forwards, name)?.value);
-  },
-);
 
 const DEVICES = ['phone-a', 'phone-b', 'phone-c'];
 
@@ -992,13 +955,53 @@ function randomEvent(random: () => number): unknown {
   };
 }
 
+interface RandomEvent {
+  stamp: SyncStamp;
+  type: string;
+  id: string;
+  units?: Record<string, { value: unknown }>;
+}
+
+/**
+ * How many units, in records that are never deleted, have a latest stamp that events
+ * setting different values share. Read from the events alone, without merging them.
+ */
+function unitsEndingOnASharedStamp(deliveries: readonly Delivery[]): number {
+  const events = deliveries.map(({ content }) => content as RandomEvent);
+  const isLater = (a: SyncStamp, b: SyncStamp) =>
+    a.ms !== b.ms
+      ? a.ms > b.ms
+      : a.counter !== b.counter
+        ? a.counter > b.counter
+        : a.device > b.device;
+  const deletedRecords = new Set(
+    events.filter(({ units }) => !units).map(({ type, id }) => `${type}/${id}`),
+  );
+  const latest = new Map<string, { stamp: SyncStamp; values: Set<string> }>();
+  for (const { stamp, type, id, units } of events) {
+    if (deletedRecords.has(`${type}/${id}`)) continue;
+    for (const [name, { value }] of Object.entries(units ?? {})) {
+      const key = `${type}/${id}/${name}`;
+      const found = latest.get(key);
+      if (!found || isLater(stamp, found.stamp)) {
+        latest.set(key, { stamp, values: new Set([JSON.stringify(value)]) });
+      } else if (!isLater(found.stamp, stamp)) {
+        found.values.add(JSON.stringify(value));
+      }
+    }
+  }
+  return [...latest.values()].filter(({ values }) => values.size > 1).length;
+}
+
 test('[SYNC-17.1] 150 random events with crowded stamps merge to one result in 50 shuffled orders', () => {
-  // With this seed, seven units of four records end on a stamp that two different values share.
   const random = seeded(2026);
   const deliveries = Array.from({ length: 150 }, () => ({
     content: randomEvent(random),
     receivedAtMs: 2000,
   }));
+
+  // The order of the merges can only matter where a unit's latest stamp is shared.
+  expect(unitsEndingOnASharedStamp(deliveries)).toBe(7);
 
   for (const { content, receivedAtMs } of deliveries) {
     expect(checkSyncEvent(content, { receivedAtMs })).toEqual({
@@ -1015,6 +1018,187 @@ test('[SYNC-17.1] 150 random events with crowded stamps merge to one result in 5
     expect(receiveAll(shuffledWithRepeats(deliveries, random))).toEqual(
       reference,
     );
+  }
+});
+
+const TIED = at(2000, 0, 'phone-a');
+
+/** An event at the shared stamp that sets one unit. */
+const tied = (type: string, id: string, name: string, value: unknown) => ({
+  version: 1,
+  stamp: TIED,
+  type,
+  id,
+  units: { [name]: { value } },
+});
+
+const FIRST_EVENTS: Record<string, unknown> = {
+  'expense/dinner': dinnerCreated(),
+  'category/cat-fuel': change('category', 'cat-fuel', CREATED, FUEL_CATEGORY),
+  'group/brisbane': change('group', 'brisbane', CREATED, {
+    name: 'Brisbane Trip',
+  }),
+  'member/blake': change('member', 'blake', CREATED, {
+    name: 'Blake',
+    removed: false,
+  }),
+};
+
+const FOOD = DINNER.category;
+
+// [what stays, record, unit, the smaller value, the larger value]
+test.each<[string, string, string, unknown, unknown]>([
+  [
+    'the title whose first letter is larger',
+    'expense/dinner',
+    'title',
+    'Late dinner',
+    'Supper',
+  ],
+  [
+    'the longer title when one starts with the other',
+    'expense/dinner',
+    'title',
+    'Dinner',
+    'Dinner at eight',
+  ],
+  [
+    'a lowercase title over an uppercase one',
+    'expense/dinner',
+    'title',
+    'Supper',
+    'dinner',
+  ],
+  ['a title outside ASCII', 'expense/dinner', 'title', 'Supper', '晚餐'],
+  [
+    'the title with the larger code unit, not code point',
+    'expense/dinner',
+    'title',
+    '😀',
+    '～',
+  ],
+  ['the later date', 'expense/dinner', 'date', '2025-03-14', '2025-03-15'],
+  ['a note over no note', 'expense/dinner', 'note', null, 'Window seat'],
+  ['in the trash over out of it', 'expense/dinner', 'trashed', false, true],
+  [
+    'the category with the larger color, whatever its ID',
+    'expense/dinner',
+    'category',
+    FUEL.category,
+    FOOD,
+  ],
+  [
+    'the category with the larger ID, whatever its name',
+    'expense/dinner',
+    'category',
+    { ...FOOD, id: 'cat-a', name: 'Zoo' },
+    { ...FOOD, id: 'cat-b', name: 'Apple' },
+  ],
+  [
+    'the category with the larger name',
+    'expense/dinner',
+    'category',
+    { ...FOOD, name: 'Dining' },
+    { ...FOOD, name: 'Food' },
+  ],
+  [
+    'the money with the larger amount, whatever its currency',
+    'expense/dinner',
+    'money',
+    TEN_THOUSAND,
+    money({ currency: 'JPY' }),
+  ],
+  [
+    'the money with the larger currency, whatever its payments',
+    'expense/dinner',
+    'money',
+    money({ currency: 'JPY', payments: [share('taylor', 10001)] }),
+    DINNER_MONEY,
+  ],
+  [
+    'the money with the larger payer, whatever its shares',
+    'expense/dinner',
+    'money',
+    TWO_WAYS,
+    money({ payments: [share('taylor', 10001)] }),
+  ],
+  [
+    'the money whose first payment is larger, whoever made it',
+    'expense/dinner',
+    'money',
+    money({ payments: [share('casey', 6000), share('taylor', 4001)] }),
+    money({ payments: [share('blake', 10001)] }),
+  ],
+  [
+    'the money whose first share is larger, however many shares',
+    'expense/dinner',
+    'money',
+    DINNER_MONEY,
+    TWO_WAYS,
+  ],
+  [
+    'the money whose first share is held by the larger participant',
+    'expense/dinner',
+    'money',
+    money({ shares: [share('blake', 5000), share('taylor', 5001)] }),
+    money({ shares: [share('taylor', 5000), share('blake', 5001)] }),
+  ],
+  [
+    'the money with one more payment',
+    'expense/dinner',
+    'money',
+    DINNER_MONEY,
+    money({ payments: [share('casey', 10001), share('taylor', 0)] }),
+  ],
+  ['the larger group name', 'group/brisbane', 'name', 'Brisbane', 'Brissie'],
+  ['a removed member', 'member/blake', 'removed', false, true],
+  ['an archived category', 'category/cat-fuel', 'archived', false, true],
+  [
+    'the larger category color',
+    'category/cat-fuel',
+    'color',
+    '#1E88E5',
+    '#43A047',
+  ],
+])(
+  '[SYNC-19.1] two events with one stamp leave %s',
+  (_case, key, name, smaller, larger) => {
+    const [type, id] = key.split('/');
+    const record = merged([FIRST_EVENTS[key]]);
+    const events = bothOrders(
+      tied(type, id, name, smaller),
+      tied(type, id, name, larger),
+    );
+
+    for (const order of events) {
+      expect(unit(merged(order, record), name)).toEqual({
+        value: larger,
+        stamp: TIED,
+      });
+    }
+  },
+);
+
+test('[SYNC-19.1] three events with one stamp leave the largest value in all six orders', () => {
+  const [supper, lateDinner, atEight] = [
+    'Supper',
+    'Late dinner',
+    'Dinner at eight',
+  ].map((title) => tied('expense', 'dinner', 'title', title));
+  const orders = [
+    [supper, lateDinner, atEight],
+    [supper, atEight, lateDinner],
+    [lateDinner, supper, atEight],
+    [lateDinner, atEight, supper],
+    [atEight, supper, lateDinner],
+    [atEight, lateDinner, supper],
+  ];
+
+  for (const order of orders) {
+    expect(unit(merged(order, dinner()), 'title')).toEqual({
+      value: 'Supper',
+      stamp: TIED,
+    });
   }
 });
 
