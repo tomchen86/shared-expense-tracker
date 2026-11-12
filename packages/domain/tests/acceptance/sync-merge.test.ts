@@ -319,6 +319,7 @@ const lunchChange = (
 
 /** Your own change of Lunch's money, made on top of its first event. */
 const yours = (value = lunchMoney(320)): SyncMoneyChange => ({
+  id: 'lunch',
   stamp: YOURS,
   money: value,
 });
@@ -364,6 +365,7 @@ test.each<[string, unknown]>([
   ],
   ['stamped earlier than yours', bobs(at(4000, 0, 'phone-bob'), LUNCH_CREATED)],
   ['that is your own event', bobs(YOURS, LUNCH_CREATED, lunchMoney(320))],
+  ['stamped exactly like yours, with other money', bobs(YOURS, LUNCH_CREATED)],
 ])('[SYNC-14.1] a money change %s did not override it', (_case, event) => {
   expect(overrides(event)).toBe(false);
 });
@@ -1201,6 +1203,26 @@ test('[SYNC-19.1] three events with one stamp leave the largest value in all six
     });
   }
 });
+
+test.each<[string, unknown]>([
+  [
+    'a money change of another expense',
+    dinnerChange(BOBS, { money: TEN_THOUSAND }),
+  ],
+  [
+    'a category with the same id',
+    change('category', 'lunch', BOBS, { name: 'Lunch' }),
+  ],
+  ['the deletion of another expense', deletion('expense', 'dinner', BOBS)],
+])(
+  '[SYNC-18.1] throws when asked whether %s overrode your change to Lunch',
+  (_case, content) => {
+    const event = valid(content);
+
+    expect(overrides(bobs(BOBS, LUNCH_CREATED))).toBe(true);
+    expect(() => overridesSyncMoney(event, yours())).toThrow();
+  },
+);
 
 test.each<[string, unknown]>([
   ['another expense', change('expense', 'fuel', at(2000), { title: 'Fuel' })],

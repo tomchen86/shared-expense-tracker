@@ -98,8 +98,10 @@ export interface SyncMerge {
   seen: SyncStamp;
 }
 
-/** A money change this phone made itself: the stamp of its event and the money it set. */
+/** A money change this phone made itself: the expense, the stamp of its event, and the money it set. */
 export interface SyncMoneyChange {
+  /** The ID of the expense whose money was changed. */
+  id: string;
   stamp: SyncStamp;
   money: SyncMoney;
 }
