@@ -16,6 +16,7 @@ docker compose -f apps/api/compose.yaml up -d --wait  # the PostgreSQL the API's
 pnpm --filter api dev             # the API on Node
 pnpm --filter api dev:workers     # the API on Wrangler's local Workers runtime
 pnpm --filter api migrate         # run the API's migrations on DATABASE_URL
+pnpm --filter api check:hyperdrive staging  # the check against the real Hyperdrive; needs a Cloudflare login
 ```
 
 The workspace contains the mobile toolchain, the API, and the shared domain module.
@@ -34,6 +35,10 @@ The API's tests connect to a real PostgreSQL, through the Node entry file. With 
 from `apps/api/tests/support/api.ts`, each test gets a new database with the real
 migrations and a server of its own, so sessions sharing the container never meet. When
 PostgreSQL cannot be reached, the tests fail and say how to start it.
+
+The `deploy` workflow deploys the API to staging after each merge to `main` that changes
+it, and to production when the owner starts it. Each deploy runs the migrations before it
+uploads the Worker (ADR-0019).
 
 Domain source is typechecked using only ES2022 types. Its tests are checked separately
 with Jest and Node types, so test tooling cannot enable Node APIs in domain code.
