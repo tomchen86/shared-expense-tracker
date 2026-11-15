@@ -1,0 +1,29 @@
+# Dependabot keeps the commit SHAs that the workflows pin their actions to up to date, along
+# with the release named in the comment after each one. tests/tooling/action-pins.test.cjs
+# fails if a workflow refers to an action by a tag, which its owner could move.
+#
+# Only the github-actions ecosystem. There are no npm version updates: the phone app's
+# dependency versions follow its Expo SDK, so bumps one package at a time would keep opening
+# pull requests that cannot merge. Dependencies are upgraded by hand, together with the SDK.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    # "/" covers the workflows in .github/workflows.
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    # Leave a release out until it is 7 days old, so a release that is withdrawn or found to
+    # be malicious in its first days never reaches a job that holds secrets.
+    cooldown:
+      default-days: 7
+    # One pull request a week for all actions, majors included: one review, one CI run, and
+    # at most one staging deploy when it merges (deploy.yml is among the deploy's paths).
+    groups:
+      actions:
+        patterns: ['*']
+    # The group makes one pull request. Below the default of 5, so that pull requests left
+    # unmerged do not pile up, and above 1, so that one left open never blocks a replacement.
+    open-pull-requests-limit: 2
+    # No commit-message prefix: the squash commit takes the pull request's title, and this
+    # repository's titles are plain sentences.

@@ -65,6 +65,8 @@ Once per issue that changes behavior:
 2. Implementer: `skills/implement/SKILL.md`. Push to the same branch until the tests pass, then mark the PR ready.
 3. Reviewer: `skills/review-pr/SKILL.md`. Review, and report with the commands the owner runs to merge.
 
+Dependabot (`.github/dependabot.yml`) opens a weekly PR that moves the actions' SHA pins; it changes no behavior. A reviewer reviews it with `skills/review-pr/SKILL.md` and also checks that each new SHA is the commit of the release in its comment (`gh api repos/<owner>/<repo>/commits/<release> --jq .sha`). Its description, which the squash commit takes, has no `Closes #` or `No issue:`, so the merge command adds `--body "No issue: <reason>"`. To bring it up to date with main, comment only `@dependabot rebase`: other commits pushed to it stop Dependabot from updating it. CI's `check` does not run the actions only `e2e.yml` uses: the `e2e` run after the merge is their first. A merge that changes `deploy.yml` deploys to staging (ADR-0019).
+
 ## PR comments
 
 - Report on the PR: findings, questions, and progress go in a PR comment (`gh pr comment <N>`); the owner gets a brief summary and the link. Commands only the owner runs, such as merge commands, go to the owner, never into a comment.
