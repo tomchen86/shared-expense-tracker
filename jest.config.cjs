@@ -22,6 +22,7 @@ module.exports = {
   coverageThreshold: {
     './packages/domain/src/ledger/money.ts': { branches: 100 },
     // Measured using acceptance tests alone, so test:traced enforces these too.
+    './packages/domain/src/crypto/index.ts': { branches: 100 },
     './packages/domain/src/groups/amounts.ts': { branches: 100 },
     './packages/domain/src/insights/insights.ts': { branches: 98.87 },
     './apps/mobile/src/groups/group-card.tsx': { branches: 83.33 },
