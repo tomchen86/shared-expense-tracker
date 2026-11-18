@@ -10,7 +10,9 @@ import { openExpoDatabase } from './expo';
 
 /** Where `createTemporaryDirectory` makes its directories, under the phone's cache. */
 const OWN = 'Backup';
-/** Where expo-document-picker puts its copies, under the phone's cache, on iOS and Android. */
+// ponytail: the directory expo-document-picker 58 copies into, on iOS and Android, which
+// it does not export. If an upgrade renames it, a copy left by an app that was ended
+// mid-import stays until the system clears the cache; move the copy on pick then.
 const PICKED = 'DocumentPicker';
 
 const toUri = (path: string) =>
