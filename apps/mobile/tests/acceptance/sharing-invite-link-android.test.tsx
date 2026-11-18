@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { Alert, BackHandler, DeviceEventEmitter } from 'react-native';
-import { act, waitFor } from '@testing-library/react-native';
+import { act, screen, waitFor, within } from '@testing-library/react-native';
 import type { Database } from '../../src/storage';
 import {
   navigationBarTitles,
@@ -10,6 +10,7 @@ import {
   startApp,
   tab,
 } from './shell-tabs-app';
+import { iconNames } from './shell-actions-app';
 import {
   allowWrites,
   fakePhoneAppearance,
@@ -17,6 +18,7 @@ import {
   testDatabase,
 } from './shell-appearance-app';
 import {
+  barTitled,
   expectClosed,
   expectOpen,
   headerButtons,
@@ -32,6 +34,7 @@ import {
   WHOLE_LINK,
   forgetLinks,
   inviteLinksOpen,
+  launchAppFromLink,
   receiveLink,
   startAppFromLink,
 } from './sharing-invite-link-app';
@@ -118,8 +121,36 @@ test('[SHARING-71.1] opens Invite Link from the bottom over Settings on Android,
   await expectOpen(TITLE);
   risesFromTheBottom();
   expect(headerButtons(TITLE)).toEqual({ left: ['Close'], right: [] });
+  const close = within(barTitled(TITLE)!).getByRole('button', {
+    name: 'Close',
+  });
+  await waitFor(() => expect(iconNames(close, 'android')).toEqual(['close']));
   expect(textsOn(TITLE)).toEqual([WHOLE_LINK]);
   expect(selectedTab()).toBe('Settings');
+});
+
+test('[SHARING-71.1] shows only the loading indicator while the local data opens on Android, then Invite Link over the Expenses root, when a link starts the app', async () => {
+  let finishOpening!: () => void;
+  const opening = new Promise<void>((resolve) => {
+    finishOpening = resolve;
+  });
+  mockOpen = async () => {
+    await opening;
+    return testDatabase(file);
+  };
+
+  await launchAppFromLink(WHOLE_LINK);
+  await settle();
+
+  expect(screen.getByLabelText('Restoring local data')).toBeOnTheScreen();
+  expect(inviteLinksOpen()).toBe(0);
+  expect(screen.queryByText(WHOLE_LINK)).toBeNull();
+  finishOpening();
+  await settle();
+  await expectOpen(TITLE);
+  expect(textsOn(TITLE)).toEqual([WHOLE_LINK]);
+  expect(selectedTab()).toBe('Expenses');
+  expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses']);
 });
 
 test.each([WHOLE_LINK, APP_SCHEME_LINK, ...OTHER_SPELLINGS])(

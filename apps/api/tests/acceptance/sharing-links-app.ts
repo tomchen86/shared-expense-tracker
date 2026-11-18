@@ -131,7 +131,7 @@ const collapse = (text: string) => text.replace(/\s+/g, ' ').trim();
 
 /** What the page shows a person, top to bottom: its text outside scripts and styles. */
 export function pageTexts(document: Document) {
-  const hidden = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE']);
+  const hidden = new Set(['SCRIPT', 'STYLE']);
   const texts: string[] = [];
   const visit = (node: Node) => {
     // 3 is a text node, 1 an element.
@@ -198,13 +198,24 @@ export const inline = (document: Document, tag: 'script' | 'style') =>
     (element) => element.textContent ?? '',
   );
 
+const LOADING_ELEMENTS = new Set([
+  'LINK',
+  'IFRAME',
+  'FRAME',
+  'OBJECT',
+  'EMBED',
+]);
+
 export interface ShownPage {
   document: Document;
   /** The page's address once its scripts have run. */
   address: string;
   /** Everything the page's scripts tried to request, open, or connect to. */
   reached: string[];
-  /** Elements the scripts made that load something: those with a `src`. */
+  /**
+   * Elements that load something, whether the page has them or its scripts only made
+   * them: those with a `src` or `srcset`, and every link, frame, object and embed.
+   */
   loading: string[];
   /**
    * What the browser would report: script errors, and navigation, which jsdom does not do.
@@ -292,8 +303,13 @@ export async function show(html: string, url: string): Promise<ShownPage> {
     document,
     address: window.location.href,
     reached,
-    loading: [...made, ...document.querySelectorAll('*')]
-      .filter((element) => element.hasAttribute('src'))
+    loading: [...new Set([...made, ...document.querySelectorAll('*')])]
+      .filter(
+        (element) =>
+          element.hasAttribute('src') ||
+          element.hasAttribute('srcset') ||
+          LOADING_ELEMENTS.has(element.nodeName),
+      )
       .map((element) => element.outerHTML),
     errors: errors.filter(
       (error) => !error.startsWith('Could not parse CSS stylesheet'),

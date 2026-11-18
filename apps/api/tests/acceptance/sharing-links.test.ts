@@ -526,3 +526,35 @@ describe('without its database', () => {
     }
   });
 });
+
+describe('HEAD', () => {
+  test.each([ASSOCIATION, ASSET_LINKS, INVITE])(
+    '[SHARING-76.1] answers HEAD %s as it answers GET, with no content',
+    async (path) => {
+      const server = await api.start(EVERYTHING);
+      const get = await server.fetch(path);
+      expect(get.status).toBe(200);
+
+      const head = await server.fetch(path, { method: 'HEAD' });
+
+      expect(head.status).toBe(200);
+      expect(head.headers.get('content-type')).toBe(
+        get.headers.get('content-type'),
+      );
+      expect(head.headers.get('content-security-policy')).toBe(
+        get.headers.get('content-security-policy'),
+      );
+      expect(await head.text()).toBe('');
+    },
+  );
+
+  test('[SHARING-76.1] answers HEAD /i/a/b with a 4xx, while HEAD /i/a is answered', async () => {
+    const server = await api.start(EVERYTHING);
+    expect((await server.fetch('/i/a', { method: 'HEAD' })).status).toBe(200);
+
+    const response = await server.fetch('/i/a/b', { method: 'HEAD' });
+
+    expect(response.status).toBeGreaterThanOrEqual(400);
+    expect(response.status).toBeLessThan(500);
+  });
+});

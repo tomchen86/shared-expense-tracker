@@ -8,10 +8,11 @@ import { settle } from './shell-appearance-app';
 import { screenOf } from './group-details-app';
 
 // The invite link tests hand the app a link the two ways the system does. While the
-// app runs, a link arrives through expo-linking's url event, as in the categories
-// deep link tests. When a link starts the app, the app asks the system which link
-// that was: expo-linking's getLinkingURL on iOS, React Native's getInitialURL on
-// Android. The tests answer both, and read the Invite Link sheet the app opens.
+// app runs, a link arrives at every listener the app registered for the url event,
+// through expo-linking, as Expo Router does, or through React Native's Linking.
+// When a link starts the app, the app asks the system which link that was:
+// expo-linking's getLinkingURL on iOS, React Native's getInitialURL on Android.
+// The tests answer both, and read the Invite Link sheet the app opens.
 
 const APP = path.join(__dirname, '../../app');
 
@@ -36,50 +37,68 @@ export const OTHER_SPELLINGS = [
 ];
 export const LONG_LINK = `https://links.example.test/i/3q2-7wEjRWeJq83vEjRWeA#${'a'.repeat(2000)}`;
 
+type LinkListener = (event: { url: string }) => void;
+
 let launchLink: string | null = null;
-let deliver: ((event: { url: string }) => void) | undefined;
+const listeners = new Set<LinkListener>();
+
+/** Takes a listener for links as the system does, whichever library the app asks through. */
+function listen(type: string, listener: LinkListener) {
+  if (type === 'url') listeners.add(listener);
+  return { remove: () => void listeners.delete(listener) };
+}
 
 // Expo Router keeps the expo-linking functions it finds when the app first starts in
 // a test file, so these two go in once, before that, and answer from what each test
 // has set.
 Object.assign(jest.requireMock<typeof import('expo-linking')>('expo-linking'), {
   getLinkingURL: () => launchLink,
-  addEventListener: (
-    type: string,
-    listener: (event: { url: string }) => void,
-  ) => {
-    if (type === 'url') deliver = listener;
-    return { remove: () => undefined };
-  },
+  addEventListener: listen,
 });
 
-/** Before each test: no link has started the app, and none has arrived. */
+/**
+ * Before each test: no link has started the app, none has arrived, and React
+ * Native's own Linking answers as expo-linking does.
+ */
 export function forgetLinks() {
   launchLink = null;
-  deliver = undefined;
+  listeners.clear();
   jest
     .spyOn(Linking, 'getInitialURL')
     .mockImplementation(async () => launchLink);
+  jest
+    .spyOn(Linking, 'addEventListener')
+    .mockImplementation(
+      (type, listener) =>
+        listen(type, listener) as ReturnType<typeof Linking.addEventListener>,
+    );
 }
 
-/** Hands the running app `url`, as the system does with a link opened in another app. */
+/**
+ * Hands the running app `url`, as the system does with a link opened in another
+ * app: every listener the app has registered gets it.
+ */
 export async function receiveLink(url: string) {
-  if (deliver === undefined) throw new Error('The app listens for no links');
-  const listener = deliver;
-  await act(async () => listener({ url }));
+  if (listeners.size === 0) throw new Error('The app listens for no links');
+  await act(async () => {
+    for (const listener of [...listeners]) listener({ url });
+  });
   await settle();
 }
 
 /**
- * Starts the app as the system does when `url` launches it, and waits until its
- * local data has opened. The test gives Expo Router no address of its own, so the
- * app asks the system which link started it.
+ * Starts the app as the system does when `url` launches it, without waiting for its
+ * local data. The test gives Expo Router no address of its own, so the app asks the
+ * system which link started it.
  */
-export async function startAppFromLink(url: string) {
+export function launchAppFromLink(url: string) {
   launchLink = url;
-  const app = await renderRouter(APP, {
-    initialUrl: null as unknown as string,
-  });
+  return renderRouter(APP, { initialUrl: null as unknown as string });
+}
+
+/** Starts the app as `launchAppFromLink` does and waits until its local data has opened. */
+export async function startAppFromLink(url: string) {
+  const app = await launchAppFromLink(url);
   await waitFor(() =>
     expect(screen.queryByLabelText('Restoring local data')).toBeNull(),
   );

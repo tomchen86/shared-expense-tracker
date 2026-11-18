@@ -2,10 +2,11 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { Alert } from 'react-native';
-import { waitFor } from '@testing-library/react-native';
+import { screen, waitFor } from '@testing-library/react-native';
 import type { Database } from '../../src/storage';
 import {
   navigationBarTitles,
+  openApp,
   push,
   selectedTab,
   startApp,
@@ -25,8 +26,10 @@ import {
 } from './groups-app';
 import {
   allowWrites,
+  endAppProcess,
   fakePhoneAppearance,
   fakeReduceTransparency,
+  settle,
 } from './shell-appearance-app';
 import {
   barItems,
@@ -48,6 +51,7 @@ import {
   WHOLE_LINK,
   forgetLinks,
   inviteLinksOpen,
+  launchAppFromLink,
   receiveLink,
   showsEveryLine,
   shownLink,
@@ -92,6 +96,39 @@ async function receiveOnSettings(link: string) {
   await startApp('/settings');
   await receiveLink(link);
   await expectOpen(TITLE);
+}
+
+/** Keeps the local data from opening until the returned function is called. */
+function holdOpening() {
+  let finish!: () => void;
+  const opening = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  mockOpen = async () => {
+    await opening;
+    return testDatabaseWithReads(file);
+  };
+  return async () => {
+    finish();
+    await settle();
+  };
+}
+
+function expectOnlyLoading() {
+  expect(screen.getByLabelText('Restoring local data')).toBeOnTheScreen();
+  expect(inviteLinksOpen()).toBe(0);
+  expect(screen.queryByText(WHOLE_LINK)).toBeNull();
+  expect(screen.queryByText(SECOND_LINK)).toBeNull();
+}
+
+async function expectOnlyLoadError() {
+  expect(
+    await screen.findByText('Unable to Load Local Data'),
+  ).toBeOnTheScreen();
+  expect(screen.getByText('Your data was not changed.')).toBeOnTheScreen();
+  expect(inviteLinksOpen()).toBe(0);
+  expect(screen.queryByText(WHOLE_LINK)).toBeNull();
+  expect(screen.queryByText(SECOND_LINK)).toBeNull();
 }
 
 async function expectOnSettingsRoot() {
@@ -186,6 +223,54 @@ test('[SHARING-71.1] opens Invite Link over an open form', async () => {
   await expectOpen(TITLE);
   expect(textsOn(TITLE)).toEqual([WHOLE_LINK]);
   expect(newGroupIsOpen()).toBe(true);
+});
+
+test('[SHARING-71.1] shows only the loading indicator while the local data opens, then Invite Link over the Expenses root, when a link starts the app', async () => {
+  const finishOpening = holdOpening();
+
+  await launchAppFromLink(WHOLE_LINK);
+
+  expectOnlyLoading();
+  await finishOpening();
+  await expectOpen(TITLE);
+  expect(textsOn(TITLE)).toEqual([WHOLE_LINK]);
+  expect(selectedTab()).toBe('Expenses');
+  expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses']);
+});
+
+test('[SHARING-71.1] opens one Invite Link once the local data has opened, with the last of the links that arrived while it was opening', async () => {
+  const finishOpening = holdOpening();
+  await openApp('/settings');
+  expect(screen.getByLabelText('Restoring local data')).toBeOnTheScreen();
+
+  await receiveLink(WHOLE_LINK);
+  await receiveLink(SECOND_LINK);
+
+  expectOnlyLoading();
+  await finishOpening();
+  await expectOpen(TITLE);
+  expect(textsOn(TITLE)).toEqual([SECOND_LINK]);
+  expect(inviteLinksOpen()).toBe(1);
+  await pressOnBar(TITLE, 'Close');
+  await expectOnSettingsRoot();
+});
+
+test('[SHARING-71.1] shows only the load error, without Invite Link, when a link starts the app and its local data cannot open, and opens Invite Link for that link once the data can', async () => {
+  mockOpen = async () => {
+    throw new Error('disk unavailable');
+  };
+
+  const app = await launchAppFromLink(WHOLE_LINK);
+
+  await expectOnlyLoadError();
+  await receiveLink(SECOND_LINK);
+  await expectOnlyLoadError();
+
+  await endAppProcess(app);
+  mockOpen = async () => testDatabaseWithReads(file);
+  await startAppFromLink(WHOLE_LINK);
+  await expectOpen(TITLE);
+  expect(textsOn(TITLE)).toEqual([WHOLE_LINK]);
 });
 
 test('[SHARING-72.1] closes Invite Link with Close and is back on the Settings root', async () => {

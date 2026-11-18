@@ -42,6 +42,7 @@ Also considered:
 - The domain is in every link, in the app's entitlements, and in its manifest. Changing it later needs a new build and breaks the links already sent, which last seven days.
 - The app is signed with a team in the Apple Developer Program from now on, which has a yearly fee.
 - An app ID or fingerprint has to be right before a build reaches people: Apple's servers and installed apps pick up a corrected file only after a day to a week.
+- On Android 11 and lower, an app opens its links directly only when every hostname it claims lists its certificate. So each environment also lists the certificates of the builds given to people, and a locally built app, whose certificate production does not list, opens no link directly there: hand checks of the links use Android 12 or later.
 - The page is the first HTML the API serves, and the API now answers people as well as phones. It stays one document with no build step. A second page is the time to decide where web pages live.
 - The download links come from configuration, so the internal test's links (#158) and later the stores' are a change of configuration, not of code.
 - The hostnames and the configuration are in `apps/api/wrangler.jsonc`, so the change that adds them runs `AGENTS.md`'s rule 9.
