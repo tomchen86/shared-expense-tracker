@@ -361,7 +361,7 @@ test('[GROUPS-40.3] opens Rename Group rising from the bottom with Cancel on the
 // On Android the forms are in the Groups tab's stack, so the tab bar stays
 // reachable while one saves.
 
-test('[GROUPS-31.2] adds the member once it is saved, even when Settings was selected while it saved', async () => {
+test('[GROUPS-31.3] adds the member once it is saved, even when Settings was selected while it saved', async () => {
   await startInMembers();
   await openMemberField();
   await fireEvent.changeText(memberField()!, 'Blake');

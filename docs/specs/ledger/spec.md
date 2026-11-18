@@ -2,7 +2,7 @@
 
 ## Purpose
 
-記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、和群組分攤、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。群組支出是屬於一個群組的空間的支出，付款和分攤都記在這個群組的成員的成員 ID 下；成員、你的成員、前成員和成員現在的名稱見 groups。你的 participant 是個人 participant，以及每個群組裡你的成員；一筆支出裡你付的，是它的付款裡你的 participant 的金額總和，你的份額是它的分攤裡你的 participant 的金額總和。和你有關的群組支出，是付款或分攤裡有你的 participant 的群組支出，分攤的金額是 0 也算。表單的空間在「Split with others」開著並選了群組時是那個群組，其他時候是個人空間；分攤的欄位是「Split with others」、群組、付款人和分攤的人；表單的清單是分類清單、Select Group、Who Paid? 和 Split Between：iOS 上是系統選單（LEDGER-100.1），Android 上是 sheet（LEDGER-101.1）；關閉清單是不選任何一項就離開清單，iOS 上是按 sheet 裡選單外面的地方，Android 上是按 Cancel 或 Done，或按返回鍵。分攤的順序是分攤的人被選的先後（LEDGER-49.2），存下之後是存著的順序（LEDGER-58.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期、備註或分攤的欄位（LEDGER-59.1）有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是 This Month（LEDGER-35.3），下面是支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。手機的語言不影響 app 顯示的金額和日期：手機地區的貨幣格式，是英文加手機的地區用來顯示一個幣別的金額的格式，手機回報不出地區或平台沒有這個地區的英文格式時只用英文；手機的地區是手機設定的地區，不是語言標籤裡的地區；手機地區的日期格式見 LEDGER-30.2。刪除支出是把它移到垃圾桶：本機資料把它標成在垃圾桶裡，它的其他資料都不變，所以垃圾桶裡的支出仍是存著的支出，仍算使用它的分類（CATEGORIES-34.1、35.1、40.1）；還原是拿掉這個標記，永久刪除是把這筆支出和它的付款、分攤從本機資料刪掉。Undo 提示是支出移到垃圾桶之後，顯示在畫面底部、可以按 Undo 的提示；Undo 時間是 5 秒，螢幕閱讀器開著時是 15 秒，螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。Trash 是 Settings 分頁上列出垃圾桶裡的支出的畫面；唯讀明細是在 Trash 點卡片後推入、顯示垃圾桶裡一筆支出的畫面。
+記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、和群組分攤、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。群組支出是屬於一個群組的空間的支出，付款和分攤都記在這個群組的成員的成員 ID 下；成員、你的成員、前成員和成員現在的名稱見 groups。你的 participant 是個人 participant，以及每個群組裡你的成員；一筆支出裡你付的，是它的付款裡你的 participant 的金額總和，你的份額是它的分攤裡你的 participant 的金額總和。和你有關的群組支出，是付款或分攤裡有你的 participant 的群組支出，分攤的金額是 0 也算。表單的空間在「Split with others」開著並選了群組時是那個群組，其他時候是個人空間；分攤的欄位是「Split with others」、群組、付款人和分攤的人；表單的清單是分類清單、Select Group、Who Paid? 和 Split Between：iOS 上是系統選單（LEDGER-100.1），Android 上是 sheet（LEDGER-101.1）；關閉清單是不選任何一項就離開清單，iOS 上是按 sheet 裡選單外面的地方，Android 上是按 Cancel 或 Done，或按返回鍵。分攤的順序是分攤的人被選的先後（LEDGER-49.2），存下之後是存著的順序（LEDGER-58.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期、備註或分攤的欄位（LEDGER-59.1）有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是 This Month（LEDGER-35.3），下面是支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。手機的語言不影響 app 顯示的金額和日期：手機地區的貨幣格式，是英文加手機的地區用來顯示一個幣別的金額的格式，手機回報不出地區或平台沒有這個地區的英文格式時只用英文；手機的地區是手機設定的地區，不是語言標籤裡的地區；手機地區的日期格式見 LEDGER-30.2。刪除支出是把它移到垃圾桶：本機資料把它標成在垃圾桶裡，它的其他資料都不變，所以垃圾桶裡的支出仍是存著的支出，仍算使用它的分類（CATEGORIES-34.1、35.1、40.1）；還原是拿掉這個標記，永久刪除是把這筆支出和它的付款、分攤從本機資料刪掉，只有個人支出能永久刪除（LEDGER-80.2、LEDGER-81.2）。Undo 提示是支出移到垃圾桶之後，顯示在畫面底部、可以按 Undo 的提示；Undo 時間是 5 秒，螢幕閱讀器開著時是 15 秒，螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。Trash 是 Settings 分頁上列出垃圾桶裡的支出的畫面；唯讀明細是在 Trash 點卡片後推入、顯示垃圾桶裡一筆支出的畫面。
 
 ## Requirements
 
@@ -1960,9 +1960,9 @@ The mobile app SHALL 在 Trash 依移到垃圾桶的先後，最後移入的在�
 - **WHEN** 有垃圾桶裡的 Lunch 時開啟 app 並打開 Trash，Trash 還沒讀完存著的支出
 - **THEN** 沒有「No deleted expenses.」；讀完之後顯示 Lunch 的卡片
 
-### Requirement: LEDGER-78.3 點 Trash 的卡片推入唯讀明細
+### Requirement: LEDGER-78.4 點 Trash 的卡片推入唯讀明細
 
-WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推入這筆支出的唯讀明細，網址是 `/settings/trash/<支出的 ID>`，標題是「Expense」，最上面是「This expense is in the Trash.」，下面是名稱為「Restore」的按鈕，再下面是和明細一樣的支出的內容：個人支出照 LEDGER-37.3，群組支出照 LEDGER-66.3，群組已封存時「Group」後面還有 LEDGER-67.2 的「Status」，但沒有它的「Shared history」那段說明；標題列沒有「Edit」，只有名稱是「Expense actions」的選單（SHELL-47.2、SHELL-48.2），裡面只有破壞性的「Delete Permanently」（SHELL-53.1）。連點兩次也只推入一個唯讀明細，返回時回到 Trash；從推入到讀完支出，都不顯示「Expense not found.」。唯讀明細跟著存著的支出：網址裡的 ID 不是垃圾桶裡的支出，或打開之後那一筆因為別處的操作（例如 Undo 提示的 Undo）離開了垃圾桶時，SHALL 只顯示「Expense not found.」，標題列沒有選單。
+WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推入這筆支出的唯讀明細，網址是 `/settings/trash/<支出的 ID>`，標題是「Expense」，最上面是「This expense is in the Trash.」，下面是名稱為「Restore」的按鈕，再下面是和明細一樣的支出的內容：個人支出照 LEDGER-37.3，群組支出照 LEDGER-66.3，群組已封存時「Group」後面還有 LEDGER-67.2 的「Status」，但沒有它的「Shared history」那段說明；標題列沒有「Edit」；個人支出的標題列只有名稱是「Expense actions」的選單（SHELL-47.2、SHELL-48.2），裡面只有破壞性的「Delete Permanently」（SHELL-53.1），群組支出不能永久刪除，它的標題列沒有選單。連點兩次也只推入一個唯讀明細，返回時回到 Trash；從推入到讀完支出，都不顯示「Expense not found.」。唯讀明細跟著存著的支出：網址裡的 ID 不是垃圾桶裡的支出，或打開之後那一筆因為別處的操作（例如 Undo 提示的 Undo）離開了垃圾桶時，SHALL 只顯示「Expense not found.」，標題列沒有選單。
 
 #### Scenario: 點卡片
 
@@ -2012,7 +2012,7 @@ WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推�
 #### Scenario: 群組支出
 
 - **WHEN** 把 Brisbane 的 Dinner（6000 USD、Food & Dining、`2026-10-30`，Taylor 付款，依序分給 Taylor、Casey 和 Blake）移到垃圾桶，在 Trash 點它的卡片
-- **THEN** 由上而下依序顯示「This expense is in the Trash.」、「Restore」、「Dinner」、「$60.00」、「Oct 30, 2026」、「Food & Dining」、「YOUR POSITION」、「You paid」、「$60.00」、「Your share」、「$20.00」、「You are owed」、「$40.00」、「PAID BY」、「Taylor (You)」、「$60.00」、「SPLIT」、「Taylor (You)」、「$20.00」、「Casey」、「$20.00」、「Blake」、「$20.00」、「Group」、「Brisbane」；標題列只有「Expense actions」
+- **THEN** 由上而下依序顯示「This expense is in the Trash.」、「Restore」、「Dinner」、「$60.00」、「Oct 30, 2026」、「Food & Dining」、「YOUR POSITION」、「You paid」、「$60.00」、「Your share」、「$20.00」、「You are owed」、「$40.00」、「PAID BY」、「Taylor (You)」、「$60.00」、「SPLIT」、「Taylor (You)」、「$20.00」、「Casey」、「$20.00」、「Blake」、「$20.00」、「Group」、「Brisbane」；標題列沒有「Edit」，也沒有「Expense actions」
 
 #### Scenario: 群組封存了
 
@@ -2053,9 +2053,9 @@ WHEN 使用者在唯讀明細按「Restore」，the mobile app SHALL 不另外�
 - **WHEN** Dinner 在垃圾桶裡時封存 Brisbane，再在 Trash 打開 Dinner，按「Restore」
 - **THEN** 沒有跳出提示框；回到 Trash，只顯示「No deleted expenses.」；從 Archived Groups 打開 Brisbane 的畫面時有 Dinner 的卡片，卡片上是「Brisbane · Archived」，沒有「Delete expense」動作
 
-### Requirement: LEDGER-80.1 選 Delete Permanently 時先確認再永久刪除
+### Requirement: LEDGER-80.2 選 Delete Permanently 時先確認再永久刪除個人支出
 
-WHEN 使用者在唯讀明細的 Expense actions 選「Delete Permanently」，the mobile app SHALL 跳出標題「Delete Expense?」、內容「This permanently deletes the expense.」的提示框，選項是「Cancel」和破壞性的「Delete」：按 Delete 就永久刪除這筆支出，存好後返回 Trash，它不再出現在任何畫面上，也不再算使用它的分類；按 Cancel 什麼都不變。
+WHEN 使用者在個人支出的唯讀明細的 Expense actions 選「Delete Permanently」，the mobile app SHALL 跳出標題「Delete Expense?」、內容「This permanently deletes the expense.」的提示框，選項是「Cancel」和破壞性的「Delete」：按 Delete 就永久刪除這筆支出，存好後返回 Trash，它不再出現在任何畫面上，也不再算使用它的分類；按 Cancel 什麼都不變。群組支出不能永久刪除，不管它的群組是不是共同帳本（sync）：它只能留在垃圾桶裡或還原（LEDGER-78.4）。
 
 #### Scenario: 永久刪除
 
@@ -2079,12 +2079,12 @@ WHEN 使用者在唯讀明細的 Expense actions 選「Delete Permanently」，t
 
 #### Scenario: 群組支出
 
-- **WHEN** Brisbane 的 Dinner 在垃圾桶裡，在它的唯讀明細選「Delete Permanently」，再按「Delete」
-- **THEN** 回到 Trash，只顯示「No deleted expenses.」；本機資料沒有 Dinner，也沒有它的付款和分攤
+- **WHEN** Brisbane 的 Dinner 在垃圾桶裡，打開它的唯讀明細
+- **THEN** 標題列沒有「Expense actions」，也就沒有「Delete Permanently」；Dinner 只能按「Restore」還原
 
-### Requirement: LEDGER-81.1 Empty Trash 先確認再清空垃圾桶
+### Requirement: LEDGER-81.2 Empty Trash 先確認再清空垃圾桶裡的個人支出
 
-WHILE 垃圾桶裡有支出，the mobile app SHALL 在 Trash 的卡片上方顯示名稱為「Empty Trash」的按鈕；按下時跳出標題「Empty Trash?」、內容「This permanently deletes the expenses in the Trash.」的提示框，選項是「Cancel」和破壞性的「Empty Trash」：按 Empty Trash 就永久刪除垃圾桶裡所有的支出，存好後 Trash 只顯示「No deleted expenses.」；按 Cancel 什麼都不變。垃圾桶裡沒有支出時，SHALL 不顯示這個按鈕。
+WHILE 垃圾桶裡有個人支出，the mobile app SHALL 在 Trash 的卡片上方顯示名稱為「Empty Trash」的按鈕；按下時跳出標題「Empty Trash?」、內容「This permanently deletes the expenses in the Trash.」的提示框，選項是「Cancel」和破壞性的「Empty Trash」：按 Empty Trash 就永久刪除垃圾桶裡所有的個人支出，群組支出留在垃圾桶裡（LEDGER-80.2），存好後 Trash 只剩群組支出的卡片，沒有群組支出時只顯示「No deleted expenses.」；按 Cancel 什麼都不變。垃圾桶裡沒有個人支出時，SHALL 不顯示這個按鈕。
 
 #### Scenario: 清空
 
@@ -2119,7 +2119,12 @@ WHILE 垃圾桶裡有支出，the mobile app SHALL 在 Trash 的卡片上方顯�
 #### Scenario: 群組支出
 
 - **WHEN** 垃圾桶裡有 Coffee run 和 Brisbane 的 Dinner，在 Trash 按「Empty Trash」，再按提示框的「Empty Trash」
-- **THEN** Trash 只顯示「No deleted expenses.」；本機資料沒有 Coffee run 和 Dinner
+- **THEN** Trash 只剩 Dinner 的卡片，沒有「Empty Trash」按鈕；本機資料沒有 Coffee run，Dinner 和它的付款、分攤都還在
+
+#### Scenario: 只有群組支出
+
+- **WHEN** 垃圾桶裡只有 Brisbane 的 Dinner 時打開 Trash
+- **THEN** 有 Dinner 的卡片，沒有「Empty Trash」按鈕
 
 ### Requirement: LEDGER-82.1 垃圾桶的變更存不進去時提示
 

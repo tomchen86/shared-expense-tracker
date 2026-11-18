@@ -601,7 +601,7 @@ test('[GROUPS-30.2] closes the name field, adding no one, when Return is pressed
   expect(await storedMemberNames(file, 'Brisbane')).toEqual(['Taylor']);
 });
 
-test('[GROUPS-31.2] adds a member with the name trimmed, listed last, and keeps the name field, empty and focused, for the next', async () => {
+test('[GROUPS-31.3] adds a member with the name trimmed, listed last, and keeps the name field, empty and focused, for the next', async () => {
   await startInMembers();
   await openMemberField();
 
@@ -618,7 +618,7 @@ test('[GROUPS-31.2] adds a member with the name trimmed, listed last, and keeps 
   ]);
 });
 
-test('[GROUPS-31.2] adds the next member from the same name field', async () => {
+test('[GROUPS-31.3] adds the next member from the same name field', async () => {
   await startInMembers();
   await openMemberField();
   await addInField('Blake');
@@ -636,7 +636,7 @@ test('[GROUPS-31.2] adds the next member from the same name field', async () => 
   ]);
 });
 
-test('[GROUPS-31.2] adds as many members as you like, in the order they join', async () => {
+test('[GROUPS-31.3] adds as many members as you like, in the order they join', async () => {
   const names = Array.from({ length: 30 }, (_, index) => `Member ${index + 1}`);
 
   await startInMembers(names);
@@ -647,7 +647,7 @@ test('[GROUPS-31.2] adds as many members as you like, in the order they join', a
   ]);
 }, 60_000);
 
-test('[GROUPS-31.2] keeps a member name of 300 characters in full', async () => {
+test('[GROUPS-31.3] keeps a member name of 300 characters in full', async () => {
   await startInMembers();
   await openMemberField();
   const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
@@ -1458,7 +1458,7 @@ test("[GROUPS-41.1] keeps the group's new name after a restart", async () => {
   expect(cardNames()).toEqual(['Open Tokyo 2026']);
 });
 
-test("[GROUPS-17.1] lets a group be renamed to another group's name", async () => {
+test("[GROUPS-17.2] lets a group be renamed to another group's name", async () => {
   await startWithName();
   await createGroup('Trip');
   await createGroup('Paris');

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡的支出（GROUPS-61.3），支出的卡片、明細和垃圾桶見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上的 Group Total 和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
+群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。共同帳本是在這支手機上已經變成共同帳本的群組（sync）。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡的支出（GROUPS-61.3），支出的卡片、明細和垃圾桶見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上的 Group Total 和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
 
 ## Requirements
 
@@ -310,9 +310,9 @@ WHEN app 重新啟動，the mobile app SHALL 保留每個群組、它們建立�
 - **WHEN** 依序建立「Brisbane」和「Tokyo」後重新啟動 app
 - **THEN** Groups 根畫面由上而下是 Brisbane、Tokyo；兩個群組的 ID、名稱和成員都和重新啟動前一樣
 
-### Requirement: GROUPS-17.1 群組名稱不限長度，也可以重複
+### Requirement: GROUPS-17.2 群組名稱不限長度，也可以重複
 
-The mobile app SHALL 讓群組名稱不限長度，也可以和其他群組的名稱相同。
+The mobile app SHALL 讓群組名稱不限長度，也可以和其他群組的名稱相同；共同帳本的名稱寫成的事件太大時不儲存（SYNC-27.1）。
 
 #### Scenario: 很長的名稱
 
@@ -541,9 +541,9 @@ WHEN 使用者在 Members 的名稱欄位按 Return，而名稱去掉頭尾空�
 - **WHEN** 名稱欄位是空的，或只有「   」，按 Return
 - **THEN** 沒有新增成員；名稱欄位收起，最後一列又是「Add Member」
 
-### Requirement: GROUPS-31.2 按 Return 時加入新的成員
+### Requirement: GROUPS-31.3 按 Return 時加入新的成員
 
-WHEN 使用者在 Members 的名稱欄位按 Return，而名稱去掉頭尾空白後不是空的，也和群組的成員、這個群組的前成員都不同名，the mobile app SHALL 以去掉頭尾空白的名稱把一位新的成員加入群組，存好後把他列在成員的最後，名稱欄位清空並保有焦點，仍在最下面，可以接著加下一位；成員的人數和名稱的長度都沒有上限。
+WHEN 使用者在 Members 的名稱欄位按 Return，而名稱去掉頭尾空白後不是空的，也和群組的成員、這個群組的前成員都不同名，the mobile app SHALL 以去掉頭尾空白的名稱把一位新的成員加入群組，存好後把他列在成員的最後，名稱欄位清空並保有焦點，仍在最下面，可以接著加下一位；名稱的長度沒有上限，還不是共同帳本的群組，成員的人數也沒有上限。共同帳本的人數見 GROUPS-105.1，名稱寫成的事件太大時見 SYNC-27.1。
 
 #### Scenario: 去掉頭尾空白
 
@@ -557,7 +557,7 @@ WHEN 使用者在 Members 的名稱欄位按 Return，而名稱去掉頭尾空�
 
 #### Scenario: 很多成員
 
-- **WHEN** 在 Brisbane 一位一位加入 30 位成員
+- **WHEN** 在還不是共同帳本的 Brisbane 一位一位加入 30 位成員
 - **THEN** Brisbane 有 31 位成員，依加入的先後排列
 
 #### Scenario: 很長的名稱
@@ -1755,3 +1755,37 @@ WHILE 手機的字級是 iOS 的輔助使用字級，或 Android 的字型大小
 
 - **WHEN** Android 上把字型大小設成 150%，建立「Brisbane」；再依序設成 200% 和 130%
 - **THEN** 150% 和 200% 時「1 member」在「Brisbane」下一行；130% 時回到「Brisbane」右邊
+
+### Requirement: GROUPS-105.1 共同帳本有 20 位成員時不能再加
+
+WHILE 未封存的共同帳本有 20 位以上的成員，the mobile app SHALL 在它的 Members 不顯示「Add Member」和名稱欄位，在成員的下面顯示「A shared group can have up to 20 members.」；加入第 20 位成員存好後，名稱欄位就收起。前成員不算；別支手機加入的成員讓人數超過 20 位時每一位都留下（SYNC-37.1）；成員少於 20 位時，SHALL 照常顯示「Add Member」，不顯示這句話。
+
+#### Scenario: 20 位成員
+
+- **WHEN** 你和 19 位成員的共同帳本 Brisbane，打開它的 Members
+- **THEN** 由上而下是 20 位成員，最後是「A shared group can have up to 20 members.」；沒有「Add Member」，也沒有名稱欄位
+
+#### Scenario: 加入第 20 位
+
+- **WHEN** Brisbane 有 19 位成員，在 Members 的名稱欄位輸入「Tina」，按 Return
+- **THEN** Tina 排在成員的最後，名稱欄位收起，沒有「Add Member」，最後是這句話
+
+#### Scenario: 移出一位
+
+- **WHEN** 接著把一位成員移出 Brisbane
+- **THEN** Members 最後又是「Add Member」，沒有這句話
+
+#### Scenario: 前成員不算
+
+- **WHEN** Brisbane 有 21 位成員，移出兩位之後變成共同帳本
+- **THEN** Members 列出 19 位成員和「Add Member」，沒有這句話
+
+#### Scenario: 別支手機讓人數超過 20 位
+
+- **WHEN** Brisbane 有 20 位成員，Members 開著時套用別支手機加入 Dana 的事件，之後一位一位移出兩位成員
+- **THEN** 先是列出 21 位成員，沒有「Add Member」；移出一位之後有 20 位，仍沒有「Add Member」；再移出一位之後有 19 位，最後是「Add Member」
+
+#### Scenario: 還不是共同帳本
+
+- **WHEN** 還不是共同帳本的群組有 31 位成員
+- **THEN** Members 最後仍是「Add Member」（GROUPS-31.3）
