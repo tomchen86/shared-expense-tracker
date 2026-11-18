@@ -52,6 +52,15 @@ module.exports = {
     './apps/mobile/src/categories/merged-category.ts': { branches: 100 },
     './apps/mobile/src/categories/repository.ts': { branches: 88.23 },
     './apps/mobile/src/groups/index.ts': { branches: 79.16 },
+    // Device identity and signed requests: what lets a phone reach the API that a shared
+    // ledger syncs through, and what the API checks before it takes anything (ADR-0015,
+    // ADR-0022).
+    './packages/domain/src/api/signed-request.ts': { branches: 100 },
+    './apps/api/src/sharing/devices.ts': { branches: 92.85 },
+    './apps/api/src/sharing/ip.ts': { branches: 93.33 },
+    './apps/api/src/sharing/signed-requests.ts': { branches: 100 },
+    './apps/mobile/src/sharing/api-request.ts': { branches: 98.03 },
+    './apps/mobile/src/sharing/device-identity.ts': { branches: 100 },
   },
   testTimeout: 15000,
 };
