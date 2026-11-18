@@ -1,6 +1,12 @@
+import {
+  canAddGroupMember,
+  syncRecordValues,
+  type SyncRecord,
+} from '@shared-expense/domain';
 import { createUuid, type Database, type SqlExecutor } from '../storage';
 import { ensureDefaultCategories } from '../categories/repository';
 import type { LocalIdentity } from '../shell';
+import { sharedGroup, writeLocalChange } from '../sync/records';
 
 export interface GroupMember {
   id: string;
@@ -12,7 +18,38 @@ export interface Group {
   id: string;
   name: string;
   archived: boolean;
+  shared: boolean;
   members: GroupMember[];
+}
+
+export async function applyMergedGroup(
+  tx: SqlExecutor,
+  groupId: string,
+  record: Extract<SyncRecord, { type: 'group' | 'member' }>,
+) {
+  if (record.type === 'group') {
+    const name = record.units.name!.value; // A group's only unit.
+    const { changes } = await tx.run(
+      'UPDATE groups SET name = ? WHERE id = ? AND name <> ?',
+      [name, groupId, name],
+    );
+    return changes > 0;
+  }
+  const member = syncRecordValues(record);
+  if (!member) return false;
+  // This phone represents its own linked member. Keep the received removed unit
+  // in sync storage, including its stamp for ordering.
+  const removed =
+    'excluded.removed AND group_members.userId IS NOT (SELECT userId FROM local_identity WHERE singleton = 1)';
+  const { changes } = await tx.run(
+    `INSERT INTO group_members (id, groupId, name, removed, position)
+     VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(position), 0) + 1 FROM group_members WHERE groupId = ?))
+     ON CONFLICT (id) DO UPDATE SET name = excluded.name, removed = ${removed}
+     WHERE group_members.groupId = excluded.groupId
+       AND (group_members.name, group_members.removed) IS NOT (excluded.name, ${removed})`,
+    [record.id, groupId, member.name, Number(member.removed), groupId],
+  );
+  return changes > 0;
 }
 
 /** Every group in the local data, in the order they were created. */
@@ -21,11 +58,14 @@ export async function listGroups(database: SqlExecutor): Promise<Group[]> {
     id: string;
     name: string;
     archived: number;
+    shared: number;
     memberId: string | null;
     userId: string | null;
     memberName: string;
-  }>(`SELECT g.id, g.name, g.archived, m.id AS memberId, m.userId, m.name AS memberName
-      FROM groups g LEFT JOIN group_members m ON m.groupId = g.id AND m.removed = 0
+  }>(`SELECT g.id, g.name, g.archived, s.groupId IS NOT NULL AS shared,
+             m.id AS memberId, m.userId, m.name AS memberName
+      FROM groups g LEFT JOIN sync_groups s ON s.groupId = g.id
+      LEFT JOIN group_members m ON m.groupId = g.id AND m.removed = 0
       ORDER BY g.position, m.position`);
   const groups = new Map<string, Group>();
   for (const row of rows) {
@@ -35,6 +75,7 @@ export async function listGroups(database: SqlExecutor): Promise<Group[]> {
         id: row.id,
         name: row.name,
         archived: row.archived === 1,
+        shared: row.shared === 1,
         members: [],
       };
       groups.set(row.id, group);
@@ -114,22 +155,23 @@ export const memberNameKey = (name: string) => name.trim().toLowerCase();
 
 export class MemberNameExistsError extends Error {}
 
-async function checkMemberName(
-  transaction: SqlExecutor,
-  groupId: string,
-  name: string,
-  memberId?: string,
-) {
-  if (!name.trim()) throw new Error('A member name is required');
-  const members = await transaction.all<GroupMember>(
+function listCurrentMembers(transaction: SqlExecutor, groupId: string) {
+  return transaction.all<GroupMember>(
     'SELECT id, userId, name FROM group_members WHERE groupId = ? AND removed = 0',
     [groupId],
   );
+}
+
+function checkMemberName(
+  members: readonly GroupMember[],
+  name: string,
+  memberId?: string,
+) {
+  const key = memberNameKey(name);
+  if (!key) throw new Error('A member name is required');
   if (
     members.some(
-      (member) =>
-        member.id !== memberId &&
-        memberNameKey(member.name) === memberNameKey(name),
+      (member) => member.id !== memberId && memberNameKey(member.name) === key,
     )
   )
     throw new MemberNameExistsError();
@@ -148,22 +190,32 @@ export function addGroupMember(
         )
       : undefined;
     if (formerMemberId && !former) throw new Error('Former member not found');
-    await checkMemberName(transaction, groupId, former?.name ?? name);
+    const memberName = former?.name ?? name.trim();
+    const members = await listCurrentMembers(transaction, groupId);
+    checkMemberName(members, memberName);
+    const shared = await sharedGroup(transaction, groupId);
+    if (!canAddGroupMember(shared !== undefined, members.length))
+      throw new Error('Shared group member limit reached');
+    const id = former?.id ?? (await nextId(transaction));
     if (former) {
       await transaction.run(
         `UPDATE group_members SET removed = 0,
          position = (SELECT COALESCE(MAX(position), 0) + 1 FROM group_members WHERE groupId = ?)
          WHERE id = ? AND groupId = ?`,
-        [groupId, former.id, groupId],
+        [groupId, id, groupId],
       );
     } else {
-      const id = await nextId(transaction);
       await transaction.run(
         `INSERT INTO group_members (id, groupId, userId, name, position)
          SELECT ?, ?, NULL, ?, COALESCE(MAX(position), 0) + 1 FROM group_members WHERE groupId = ?`,
-        [id, groupId, name.trim(), groupId],
+        [id, groupId, memberName, groupId],
       );
     }
+    if (shared)
+      await writeLocalChange(transaction, shared, 'member', id, {
+        name: memberName,
+        removed: false,
+      });
   });
 }
 
@@ -180,6 +232,11 @@ export function removeGroupMember(
       [groupId, groupId, memberId],
     );
     if (result.changes !== 1) throw new Error('Member cannot be removed');
+    const shared = await sharedGroup(transaction, groupId);
+    if (shared)
+      await writeLocalChange(transaction, shared, 'member', memberId, {
+        removed: true,
+      });
   });
 }
 
@@ -190,12 +247,19 @@ export function renameGroupMember(
   name: string,
 ): Promise<void> {
   return database.transaction(async (transaction) => {
-    await checkMemberName(transaction, groupId, name, memberId);
+    const memberName = name.trim();
+    const members = await listCurrentMembers(transaction, groupId);
+    checkMemberName(members, memberName, memberId);
     const result = await transaction.run(
       'UPDATE group_members SET name = ? WHERE groupId = ? AND id = ? AND removed = 0',
-      [name.trim(), groupId, memberId],
+      [memberName, groupId, memberId],
     );
     if (result.changes !== 1) throw new Error('Member not found');
+    const shared = await sharedGroup(transaction, groupId);
+    if (shared)
+      await writeLocalChange(transaction, shared, 'member', memberId, {
+        name: memberName,
+      });
   });
 }
 
@@ -205,11 +269,17 @@ export function renameGroup(
   name: string,
 ): Promise<void> {
   return database.transaction(async (transaction) => {
-    if (!name.trim()) throw new Error('A group name is required');
+    const groupName = name.trim();
+    if (!groupName) throw new Error('A group name is required');
     const result = await transaction.run(
       'UPDATE groups SET name = ? WHERE id = ?',
-      [name.trim(), groupId],
+      [groupName, groupId],
     );
     if (result.changes !== 1) throw new Error('Group not found');
+    const shared = await sharedGroup(transaction, groupId);
+    if (shared)
+      await writeLocalChange(transaction, shared, 'group', groupId, {
+        name: groupName,
+      });
   });
 }

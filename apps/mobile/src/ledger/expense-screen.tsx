@@ -31,7 +31,7 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   const [leavingExpense, setLeavingExpense] = useState<ExpenseView>();
   const [, showReadError] = useState();
   const expense = leavingExpense ?? expenses?.find((item) => item.id === id);
-  const { userId } = useLocalIdentity();
+  const { userId, personalSpaceId } = useLocalIdentity();
   const position = expense ? expense.yourPaid - expense.yourShare : 0;
 
   async function changeAndReturn(change: () => Promise<boolean>) {
@@ -92,7 +92,7 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
               }
         }
         menu={
-          expense
+          expense && (!trashed || expense.spaceId === personalSpaceId)
             ? {
                 label: 'Expense actions',
                 actions: [

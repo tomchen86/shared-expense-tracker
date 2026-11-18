@@ -9,15 +9,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import {
-  router,
-  Stack,
-  useFocusEffect,
-  useLocalSearchParams,
-} from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { listGroups } from '../groups';
 import { categoryExpenseCounts } from '../ledger/expenses';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
+import { useSyncedFocusEffect } from '../sync/use-synced-focus-effect';
 import { HeaderActions } from '../ui/header-actions';
 import { SwipeScrollView } from '../ui/swipe-action';
 import { useThemeColors } from '../ui/theme';
@@ -80,7 +76,9 @@ export function ManageCategoriesScreen({
   const updatingRef = useRef(false);
   const [updating, setUpdating] = useState(false);
 
-  useFocusEffect(
+  useSyncedFocusEffect(
+    database,
+    managedSpaceId,
     useCallback(() => {
       let active = true;
       const read = Promise.all([

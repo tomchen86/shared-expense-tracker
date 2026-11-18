@@ -184,6 +184,11 @@ test('development reset clears views, triggers, quoted names, and foreign-key cy
     { name: 'group_members' },
     { name: 'groups' },
     { name: 'local_identity' },
+    { name: 'sync_clock' },
+    { name: 'sync_groups' },
+    { name: 'sync_outbox' },
+    { name: 'sync_records' },
+    { name: 'sync_refusals' },
   ]);
   expect(await database.all('PRAGMA foreign_keys')).toEqual([
     { foreign_keys: 1 },
@@ -246,7 +251,7 @@ test('adding group storage preserves existing identity, appearance, categories a
   expect(await database.all(identityColumns)).toEqual(identity);
   expect(
     await database.all(
-      'SELECT id, name, color, isDefault, position, createdByUserId, spaceId FROM categories',
+      'SELECT id, name, color, isDefault, position, createdByUserId, spaceId, isUncategorized FROM categories',
     ),
   ).toEqual(categories);
   expect(

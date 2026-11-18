@@ -69,6 +69,9 @@ export interface SyncDeletion {
 
 export type SyncEvent = SyncChange | SyncDeletion;
 
+/** The encrypted event limit, less the version byte, nonce and authentication tag (ADR-0021). */
+export const MAX_SYNC_PLAINTEXT_BYTES = 65_536 - 41;
+
 /** One record as merged so far. */
 export type SyncRecord = {
   [T in SyncRecordType]: {
@@ -240,9 +243,9 @@ export function overridesSyncMoney(
 }
 
 /** Every unit's value, or undefined while the record lacks a unit or once it is deleted. */
-export function syncRecordValues(
-  record: SyncRecord,
-): SyncUnits[SyncRecordType] | undefined {
+export function syncRecordValues<R extends SyncRecord>(
+  record: R,
+): SyncUnits[R['type']] | undefined {
   if (record.deleted) return undefined;
   const units: Record<string, { value: unknown } | undefined> = record.units;
   const values: Record<string, unknown> = {};
@@ -251,7 +254,16 @@ export function syncRecordValues(
     if (!unit) return undefined;
     values[name] = unit.value;
   }
-  return values as SyncUnits[SyncRecordType];
+  return values as SyncUnits[R['type']];
+}
+
+/** Whether two values of the unit named `unit` are the same, compared as a merge compares them (SYNC-19.1). */
+export function sameSyncUnitValue(
+  unit: string,
+  a: unknown,
+  b: unknown,
+): boolean {
+  return compareUnitValues(unit, a, b) === 0;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
