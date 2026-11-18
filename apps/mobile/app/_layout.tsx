@@ -1,5 +1,13 @@
+import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import {
+  DarkTheme,
+  DefaultTheme,
+  router,
+  Stack,
+  ThemeProvider,
+} from 'expo-router';
+import { onInviteLink } from '../src/sharing/invite-links';
 import { formPresentation } from '../src/ui/form-presentation';
 import { nativeStatusBarStyle } from '../src/ui/appearance';
 import { PhoneLocalData } from '../src/shell/phone-local-data';
@@ -10,6 +18,13 @@ export const unstable_settings = { screenErrorBoundary: ReadError };
 
 function ThemedStack() {
   const scheme = useColorScheme();
+  useEffect(
+    () =>
+      onInviteLink((link) => {
+        router.navigate({ pathname: '/i/invite', params: { link } });
+      }),
+    [],
+  );
   return (
     <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack
@@ -19,6 +34,10 @@ function ThemedStack() {
         }}
       >
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="i/invite"
+          options={{ ...formPresentation, title: 'Invite Link' }}
+        />
         <Stack.Screen
           name="expenses/new"
           options={{ ...formPresentation, title: 'New Expense' }}

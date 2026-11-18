@@ -22,11 +22,12 @@ export function startServer(options: {
   appLinks?: AppLinks;
 }): Promise<NodeServer> {
   const sql = connect(options.databaseUrl);
+  const appLinks = options.appLinks ?? {};
   const hostname = '127.0.0.1';
   return new Promise((resolve, reject) => {
     const server = serve(
       {
-        fetch: (request) => app.fetch(request, { sql }),
+        fetch: (request) => app.fetch(request, { sql, appLinks }),
         hostname,
         port: options.port ?? 0,
       },

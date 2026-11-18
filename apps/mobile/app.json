@@ -4,8 +4,36 @@
     "slug": "shared-expense-tracker",
     "scheme": "shared-expense-tracker",
     "userInterfaceStyle": "automatic",
-    "ios": { "bundleIdentifier": "com.tomchen.sharedexpensetracker" },
-    "android": { "package": "com.tomchen.sharedexpensetracker" },
+    "ios": {
+      "appleTeamId": "493B2XZLZD",
+      "bundleIdentifier": "com.tomchen.sharedexpensetracker",
+      "associatedDomains": [
+        "applinks:shared-expense-tracker-api-staging.tomchen86.workers.dev",
+        "applinks:shared-expense-tracker-api-production.tomchen86.workers.dev"
+      ]
+    },
+    "android": {
+      "package": "com.tomchen.sharedexpensetracker",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "category": ["BROWSABLE", "DEFAULT"],
+          "data": [
+            {
+              "scheme": "https",
+              "host": "shared-expense-tracker-api-staging.tomchen86.workers.dev",
+              "pathPrefix": "/i/"
+            },
+            {
+              "scheme": "https",
+              "host": "shared-expense-tracker-api-production.tomchen86.workers.dev",
+              "pathPrefix": "/i/"
+            }
+          ]
+        }
+      ]
+    },
     "plugins": ["expo-router"]
   }
 }
