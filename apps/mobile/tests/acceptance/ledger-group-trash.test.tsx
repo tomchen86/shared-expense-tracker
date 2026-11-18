@@ -230,7 +230,7 @@ test('[LEDGER-71.3] moves group expenses to the trash from their cards without a
   await waitFor(() => expect(groupLines('Brisbane')).toContain(NO_EXPENSES));
 });
 
-test('[LEDGER-64.2] leaves a group expense in the trash off the expense list', async () => {
+test('[LEDGER-64.3] leaves a group expense in the trash off the expense list', async () => {
   await startWithGroups(BRISBANE);
   await addExpense();
   await addDinner();

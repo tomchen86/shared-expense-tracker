@@ -35,7 +35,7 @@ import {
   linesIn,
   phoneDatabaseWithReads,
   startExpensesAt,
-  thisMonthLines,
+  listTotal,
 } from './ledger-expense-list-app';
 import { deleteByAction, restoreFromTrash } from './ledger-trash-app';
 import {
@@ -319,12 +319,12 @@ test("[INSIGHTS-15.1] never shows Group not found. while a group's Insights read
 
 // What Insights counts
 
-test('[INSIGHTS-16.1] counts your share of group expenses in the personal Insights, as This Month does', async () => {
+test('[INSIGHTS-16.1] counts your share of group expenses in the personal Insights, as the total above the expense list does', async () => {
   await startWithGroups(BRISBANE);
   await addExpense({ amount: '8.75' });
   await addDinner();
   await tapTab('Expenses');
-  await waitFor(() => expect(thisMonthLines()).toEqual(['This Month: $28.75']));
+  await waitFor(() => expect(listTotal()).toEqual(['$28.75']));
 
   await openInsights();
 
@@ -624,7 +624,7 @@ test('[INSIGHTS-19.1] shows no No expenses yet before Insights has read the expe
 
 // Periods
 
-test('[INSIGHTS-21.1] selects the latest month when Insights opens', async () => {
+test('[INSIGHTS-21.2] selects the latest month when Insights opens', async () => {
   await insightsWith(
     ['2024-12-31', '1.00'],
     ['2025-01-20', '2.00'],
@@ -635,7 +635,7 @@ test('[INSIGHTS-21.1] selects the latest month when Insights opens', async () =>
   expect(totals()).toEqual(['$3.00']);
 });
 
-test('[INSIGHTS-21.1] selects the latest month again when Insights opens again', async () => {
+test('[INSIGHTS-21.2] selects the latest month again when Insights opens again', async () => {
   await insightsWith(
     ['2024-12-31', '1.00'],
     ['2025-01-20', '2.00'],
@@ -650,7 +650,7 @@ test('[INSIGHTS-21.1] selects the latest month again when Insights opens again',
   expect(selectedPeriod()).toBe('March 2025');
 });
 
-test('[INSIGHTS-28.1] shows Previous period, the period name and Next period above the total cards', async () => {
+test('[INSIGHTS-28.2] shows Previous period, the period name and Next period above the total cards', async () => {
   await insightsWith(['2025-01-20', '1.00'], ['2025-03-10', '3.00']);
 
   const previous = previousButton()!;

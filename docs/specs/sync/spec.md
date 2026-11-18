@@ -877,22 +877,22 @@ WHEN 手機 app 套用共同帳本收到的事件，the mobile app SHALL 依交�
 
 ### Requirement: SYNC-29.1 套用的支出顯示在每個畫面
 
-WHEN 套用的事件讓共同帳本的一筆支出的六個單位到齊，或改了已經到齊的支出，the mobile app SHALL 讓存著的這筆支出是合併的結果，並讓開著的畫面不必重新啟動就照新的資料顯示：支出清單和 This Month、群組的畫面和群組的金額、明細、Trash、Balances 和 Insights。剛到齊的支出算是這時新增的（LEDGER-28.1），之後的修改不改變它在同一天裡的位置；「在不在垃圾桶裡」從否變成是，算是這時移到垃圾桶（LEDGER-77.3），沒有 Undo 提示，從是變成否就回到原來的位置；單位還沒到齊的支出不出現在任何畫面。
+WHEN 套用的事件讓共同帳本的一筆支出的六個單位到齊，或改了已經到齊的支出，the mobile app SHALL 讓存著的這筆支出是合併的結果，並讓開著的畫面不必重新啟動就照新的資料顯示：支出清單和清單上方的總額、群組的畫面和群組的金額、明細、Trash、Balances 和 Insights。剛到齊的支出算是這時新增的（LEDGER-28.1），之後的修改不改變它在同一天裡的位置；「在不在垃圾桶裡」從否變成是，算是這時移到垃圾桶（LEDGER-77.3），沒有 Undo 提示，從是變成否就回到原來的位置；單位還沒到齊的支出不出現在任何畫面。
 
 #### Scenario: 支出清單
 
 - **WHEN** 有 Dinner，支出清單開著時套用 Lunch 的第一個事件
-- **THEN** 卡片由上而下是 Lunch、Dinner；Lunch 的卡片是「Lunch」、「$15.00」、「Food & Dining」、「Brisbane」，卡片上方是「This Month: $48.34」
+- **THEN** 卡片由上而下是 Lunch、Dinner；Lunch 的卡片是「Lunch」、「$15.00」、「Food & Dining」、「Brisbane」，清單上方的總額是「$48.34」
 
 #### Scenario: 群組的畫面
 
 - **WHEN** 有 Dinner，Brisbane 的畫面開著時，依序套用 Lunch 和 Taxi（2500 USD，Casey 付款，只有 Blake 分攤）的第一個事件
-- **THEN** 卡片由上而下是 Taxi、Lunch、Dinner；Lunch 的卡片是「Lunch」、「$30.00」、「Food & Dining」、「Paid by Casey」，卡片上方是「Group Total: $155.01」
+- **THEN** 卡片由上而下是 Taxi、Lunch、Dinner；Lunch 的卡片是「Lunch」、「$30.00」、「Food & Dining」、「Paid by Casey」，期間列是「Group Total」，總額是「$155.01」
 
 #### Scenario: 和你無關的支出
 
 - **WHEN** 套用 Taxi 的第一個事件
-- **THEN** Brisbane 的畫面有 Taxi 的卡片，支出清單沒有（LEDGER-64.2）
+- **THEN** Brisbane 的畫面有 Taxi 的卡片，支出清單沒有（LEDGER-64.3）
 
 #### Scenario: Balances 和 Insights
 
@@ -917,7 +917,7 @@ WHEN 套用的事件讓共同帳本的一筆支出的六個單位到齊，或改
 #### Scenario: 別支手機把支出移到垃圾桶
 
 - **WHEN** 個人支出 Coffee run 已經在垃圾桶裡，有 Dinner 和你付款、自己分攤的 2500 USD 的 Taxi，套用把 Dinner 移到垃圾桶的事件
-- **THEN** 支出清單只剩 Taxi，卡片上方是「This Month: $25.00」，沒有 Undo 提示；Trash 由上而下是 Dinner、Coffee run
+- **THEN** 支出清單只剩 Taxi，清單上方的總額是「$25.00」，沒有 Undo 提示；Trash 由上而下是 Dinner、Coffee run
 
 #### Scenario: 別支手機還原
 
@@ -946,7 +946,7 @@ WHEN 套用永久刪除共同帳本支出的事件，the mobile app SHALL 把這
 #### Scenario: 支出清單上的支出
 
 - **WHEN** 有 Dinner，套用永久刪除它的事件
-- **THEN** 支出清單沒有卡片，是「This Month: —」；Brisbane 的畫面沒有卡片；Trash 只顯示「No deleted expenses.」；存著的支出沒有 Dinner
+- **THEN** 支出清單沒有卡片，清單上方的總額是「—」；Brisbane 的畫面沒有卡片；Trash 只顯示「No deleted expenses.」；存著的支出沒有 Dinner
 
 #### Scenario: 垃圾桶裡的支出
 

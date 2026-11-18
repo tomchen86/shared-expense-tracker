@@ -379,3 +379,22 @@ export function buildInsights(input: {
     years: buildPeriods(years, chartPreference),
   };
 }
+
+/**
+ * The counted expenses dated from `from` to `to`, both days included, as one period's
+ * currencies with no comparison, or undefined when a total is rejected (INSIGHTS-44.1).
+ */
+export function buildRangeInsights(input: {
+  expenses: readonly InsightExpense[];
+  categories: readonly InsightCategory[];
+  context: InsightContext;
+  chartPreference: InsightChartPreference;
+  /** YYYY-MM-DD */
+  from: string;
+  /** YYYY-MM-DD */
+  to: string;
+}): InsightCurrency[] | undefined {
+  // The spec author's stub, so that the acceptance tests build: it counts nothing yet.
+  void input;
+  return [];
+}

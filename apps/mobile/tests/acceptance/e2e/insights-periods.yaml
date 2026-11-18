@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[INSIGHTS-30.1] [INSIGHTS-33.2] [INSIGHTS-36.2] [INSIGHTS-37.1] Moves between periods on Insights by swiping the period name, in the Period sheet, in the year menu, and with Month and Year'
+name: '[INSIGHTS-30.2] [INSIGHTS-33.2] [INSIGHTS-36.2] [INSIGHTS-37.1] Moves between periods on Insights by swiping the period name, in the Period sheet, in the year menu, and with Month, Year and Custom'
 ---
 # The names of this month, last month and the years around them, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
@@ -87,7 +87,7 @@ name: '[INSIGHTS-30.1] [INSIGHTS-33.2] [INSIGHTS-36.2] [INSIGHTS-37.1] Moves bet
 - tapOn: Cancel
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.thisMonth} ${output.lastYear}
-# INSIGHTS-30.1: Year selects the year of the selected month.
+# INSIGHTS-30.2: Year selects the year of the selected month.
 - tapOn: Year
 - waitForAnimationToEnd
 - assertVisible:
@@ -103,7 +103,17 @@ name: '[INSIGHTS-30.1] [INSIGHTS-33.2] [INSIGHTS-36.2] [INSIGHTS-37.1] Moves bet
 - assertVisible:
     text: Previous period
     enabled: true
-# INSIGHTS-30.1: Month selects the latest month of that year.
+# INSIGHTS-30.2: Month selects the latest month of that year.
+- tapOn: Month
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+# INSIGHTS-30.2: Custom shows dates in place of the period name and its arrows, and Month
+# brings back the month the dates end in.
+- tapOn: Custom
+- waitForAnimationToEnd
+- assertNotVisible: Choose period\..*
+- assertNotVisible: Previous period
+- assertVisible: Total spent.*
 - tapOn: Month
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}

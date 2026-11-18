@@ -2,7 +2,7 @@
 
 ## Purpose
 
-記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、和群組分攤、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。群組支出是屬於一個群組的空間的支出，付款和分攤都記在這個群組的成員的成員 ID 下；成員、你的成員、前成員和成員現在的名稱見 groups。你的 participant 是個人 participant，以及每個群組裡你的成員；一筆支出裡你付的，是它的付款裡你的 participant 的金額總和，你的份額是它的分攤裡你的 participant 的金額總和。和你有關的群組支出，是付款或分攤裡有你的 participant 的群組支出，分攤的金額是 0 也算。表單的空間在「Split with others」開著並選了群組時是那個群組，其他時候是個人空間；分攤的欄位是「Split with others」、群組、付款人和分攤的人；表單的清單是分類清單、Select Group、Who Paid? 和 Split Between：iOS 上是系統選單（LEDGER-100.1），Android 上是 sheet（LEDGER-101.1）；關閉清單是不選任何一項就離開清單，iOS 上是按 sheet 裡選單外面的地方，Android 上是按 Cancel 或 Done，或按返回鍵。分攤的順序是分攤的人被選的先後（LEDGER-49.2），存下之後是存著的順序（LEDGER-58.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期、備註或分攤的欄位（LEDGER-59.1）有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是 This Month（LEDGER-35.3），下面是支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。手機的語言不影響 app 顯示的金額和日期：手機地區的貨幣格式，是英文加手機的地區用來顯示一個幣別的金額的格式，手機回報不出地區或平台沒有這個地區的英文格式時只用英文；手機的地區是手機設定的地區，不是語言標籤裡的地區；手機地區的日期格式見 LEDGER-30.2。刪除支出是把它移到垃圾桶：本機資料把它標成在垃圾桶裡，它的其他資料都不變，所以垃圾桶裡的支出仍是存著的支出，仍算使用它的分類（CATEGORIES-34.1、35.1、40.1）；還原是拿掉這個標記，永久刪除是把這筆支出和它的付款、分攤從本機資料刪掉，只有個人支出能永久刪除（LEDGER-80.2、LEDGER-81.2）。Undo 提示是支出移到垃圾桶之後，顯示在畫面底部、可以按 Undo 的提示；Undo 時間是 5 秒，螢幕閱讀器開著時是 15 秒，螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。Trash 是 Settings 分頁上列出垃圾桶裡的支出的畫面；唯讀明細是在 Trash 點卡片後推入、顯示垃圾桶裡一筆支出的畫面。
+記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、和群組分攤、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。群組支出是屬於一個群組的空間的支出，付款和分攤都記在這個群組的成員的成員 ID 下；成員、你的成員、前成員和成員現在的名稱見 groups。你的 participant 是個人 participant，以及每個群組裡你的成員；一筆支出裡你付的，是它的付款裡你的 participant 的金額總和，你的份額是它的分攤裡你的 participant 的金額總和。和你有關的群組支出，是付款或分攤裡有你的 participant 的群組支出，分攤的金額是 0 也算。表單的空間在「Split with others」開著並選了群組時是那個群組，其他時候是個人空間；分攤的欄位是「Split with others」、群組、付款人和分攤的人；表單的清單是分類清單、Select Group、Who Paid? 和 Split Between：iOS 上是系統選單（LEDGER-100.1），Android 上是 sheet（LEDGER-101.1）；關閉清單是不選任何一項就離開清單，iOS 上是按 sheet 裡選單外面的地方，Android 上是按 Cancel 或 Done，或按返回鍵。分攤的順序是分攤的人被選的先後（LEDGER-49.2），存下之後是存著的順序（LEDGER-58.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期、備註或分攤的欄位（LEDGER-59.1）有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是期間列（LEDGER-108.1）和清單上方的總額（LEDGER-35.4），下面是期間裡的支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。期間是支出清單或群組的畫面現在顯示的那一段日期：某個月、某一年、最近三個月、自訂範圍或全部期間（LEDGER-107.1），兩個畫面各有自己的期間；這個月是今天所在的月份，上個月是它的前一個月，今年是今天所在的年份；期間的名稱是期間列上顯示的名稱（LEDGER-108.1）。一個畫面可列的支出，是不看期間時它會列出的支出：支出清單是不在垃圾桶裡的個人支出和不在垃圾桶裡、和你有關的群組支出，群組的畫面是這個群組不在垃圾桶裡的支出。清單上方的總額是期間列下面的那一行，支出清單的見 LEDGER-35.4，群組的畫面的見 GROUPS-68.4。Filters 是從支出清單或群組的畫面打開、設定那個畫面顯示哪些支出的畫面（LEDGER-109.1）。手機的語言不影響 app 顯示的金額和日期：手機地區的貨幣格式，是英文加手機的地區用來顯示一個幣別的金額的格式，手機回報不出地區或平台沒有這個地區的英文格式時只用英文；手機的地區是手機設定的地區，不是語言標籤裡的地區；手機地區的日期格式見 LEDGER-30.2。刪除支出是把它移到垃圾桶：本機資料把它標成在垃圾桶裡，它的其他資料都不變，所以垃圾桶裡的支出仍是存著的支出，仍算使用它的分類（CATEGORIES-34.1、35.1、40.1）；還原是拿掉這個標記，永久刪除是把這筆支出和它的付款、分攤從本機資料刪掉，只有個人支出能永久刪除（LEDGER-80.2、LEDGER-81.2）。Undo 提示是支出移到垃圾桶之後，顯示在畫面底部、可以按 Undo 的提示；Undo 時間是 5 秒，螢幕閱讀器開著時是 15 秒，螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。Trash 是 Settings 分頁上列出垃圾桶裡的支出的畫面；唯讀明細是在 Trash 點卡片後推入、顯示垃圾桶裡一筆支出的畫面。
 
 ## Requirements
 
@@ -711,19 +711,29 @@ The mobile app SHALL 讓日期欄位用手機地區的日期格式顯示日期�
 - **WHEN** 在日期欄位選 `2024-12-25`
 - **THEN** 日期欄位顯示「Dec 25, 2024」
 
-### Requirement: LEDGER-31.2 支出清單依序列出個人支出
+### Requirement: LEDGER-31.3 支出清單依序列出期間裡的個人支出
 
-The mobile app SHALL 在支出清單上，依 LEDGER-28.1 的順序由上而下列出每筆不在垃圾桶裡的個人支出的卡片；新增、修改、移到垃圾桶或還原支出之後回到支出清單，或重新啟動 app 之後，卡片都和存著的支出一致。
+The mobile app SHALL 在支出清單上，依 LEDGER-28.1 的順序由上而下列出每筆不在垃圾桶裡、日期在支出清單的期間裡（LEDGER-107.1）的個人支出的卡片；新增、修改、移到垃圾桶或還原支出之後回到支出清單，或重新啟動 app 之後，卡片都和存著的支出一致。修改之後日期不在期間裡的支出，卡片離開支出清單，期間不變。
 
 #### Scenario: 不同的日期
 
-- **WHEN** 依序新增日期是 `2025-01-01` 的「A」、`2025-01-03` 的「B」、`2025-01-02` 的「C」
+- **WHEN** 今天是 `2026-10-30`，依序新增日期是 `2026-10-01` 的「A」、`2026-10-03` 的「B」、`2026-10-02` 的「C」
 - **THEN** 卡片由上而下是 B、C、A
 
 #### Scenario: 同一天
 
-- **WHEN** 依序新增日期都是 `2025-01-01` 的「E」、「F」和「D」
+- **WHEN** 依序新增日期都是 `2026-10-01` 的「E」、「F」和「D」
 - **THEN** 卡片由上而下是 D、F、E
+
+#### Scenario: 只列出期間裡的
+
+- **WHEN** 今天是 `2026-10-30`，有日期是 `2026-10-01` 的「Coffee run」、`2026-09-30` 的「Lunch」和 `2025-10-15` 的「Dinner」
+- **THEN** 期間是 October 2026 時卡片只有 Coffee run；換成 September 2026 時只有 Lunch；換成全部期間時由上而下是 Coffee run、Lunch、Dinner
+
+#### Scenario: 修改之後不在期間裡
+
+- **WHEN** 期間是 October 2026，在 Edit Expense 把 `2026-10-01` 的「Coffee run」的日期改成 `2026-09-15` 後按 Save
+- **THEN** 表單關閉後支出清單沒有 Coffee run 的卡片，期間仍是 October 2026；換成 September 2026 時有它的卡片
 
 #### Scenario: 新增之後
 
@@ -747,7 +757,7 @@ The mobile app SHALL 在支出清單上，依 LEDGER-28.1 的順序由上而下�
 
 ### Requirement: LEDGER-32.2 沒有支出時顯示提示
 
-WHILE 本機資料裡沒有支出清單要列出的支出（LEDGER-31.2、LEDGER-64.2），the mobile app SHALL 在支出清單上顯示「No expenses to display. Add a personal expense or get involved in a group expense.」，沒有任何卡片。
+WHILE 本機資料裡沒有支出清單可列的支出，the mobile app SHALL 在支出清單上顯示「No expenses to display. Add a personal expense or get involved in a group expense.」，沒有任何卡片；期間是哪一個都一樣。
 
 #### Scenario: 第一次啟動
 
@@ -768,6 +778,11 @@ WHILE 本機資料裡沒有支出清單要列出的支出（LEDGER-31.2、LEDGER
 
 - **WHEN** 只有一筆 Brisbane 的支出，Casey 付款，Casey 和 Taylor 分攤
 - **THEN** 沒有這句話，只有它的卡片
+
+#### Scenario: 只有其他期間的支出
+
+- **WHEN** 今天是 `2026-10-30`，只有日期是 `2026-09-30` 的支出，期間是 October 2026
+- **THEN** 沒有這句話，顯示的是 LEDGER-116.1 的提示
 
 ### Requirement: LEDGER-33.3 卡片的內容
 
@@ -822,59 +837,84 @@ The mobile app SHALL 在卡片上只用一行顯示標題，放不下時尾端�
 - **WHEN** 新增標題是 200 個「a」的支出
 - **THEN** 卡片上的標題只佔一行，放不下的部分不顯示，也沒有「…」；螢幕閱讀器讀出完整的 200 個「a」
 
-### Requirement: LEDGER-35.3 This Month 依幣別加總這個月的卡片金額，點了打開 Insights
+### Requirement: LEDGER-35.4 支出清單上方的總額依幣別加總期間裡的卡片金額，點了打開同一段期間的 Insights
 
-The mobile app SHALL 在支出清單的卡片上方顯示一行「This Month: <日期在這個月的卡片用到的每個幣別的卡片金額總和，依幣別代碼排序，以「, 」隔開>」，這個月是今天所在的月份，放不下時尾端漸層消失（SHELL-68.1）；沒有日期在這個月的卡片時是「This Month: —」。這一行是一個按鈕，螢幕閱讀器讀出「View expense insights. Spent this month <依同樣的順序、以「, 」隔開的每個總和>.」，沒有日期在這個月的卡片時讀出「View expense insights. Nothing spent this month.」；按一下就以 `/insights` 推入個人的 Insights（INSIGHTS-13.1），連按兩次也只推入一個。
+The mobile app SHALL 在支出清單的期間列下面、卡片上方顯示清單上方的總額：一行「<支出清單上的卡片用到的每個幣別的卡片金額總和，依幣別代碼排序，以「, 」隔開>」，放不下時尾端漸層消失（SHELL-68.1），沒有卡片時是「—」；期間是全部期間時不加總，這一行是卡片的張數「<張數> expenses」，只有一張時是「1 expense」。這一行是一個按鈕，右邊有「›」，螢幕閱讀器讀出「View expense insights. Spent in <期間的名稱> <依同樣的順序、以「, 」隔開的每個總和>.」，沒有卡片時讀出「View expense insights. Nothing spent in <期間的名稱>.」，全部期間時讀出「View expense insights. <這一行的張數>.」，都不讀「›」，再讀出無障礙提示「Opens Insights」；按一下就在 Expenses 分頁推入開在同一段期間的個人的 Insights（INSIGHTS-13.1、INSIGHTS-45.1）：期間是某個月時以 `/insights?period=<那個月的 YYYY-MM>`，是某一年時以 `/insights?period=<那一年的 YYYY>`，是最近三個月或自訂範圍時以 `/insights?from=<期間的第一天>&to=<期間的最後一天>`，是全部期間時和這個月一樣，連按兩次也只推入一個。
 
 #### Scenario: 一個幣別
 
 - **WHEN** 今天是 `2026-10-30`，有日期是今天的 875 USD 和 1250 USD 兩筆支出
-- **THEN** 卡片上方只有「This Month: $21.25」；螢幕閱讀器把它讀成按鈕「View expense insights. Spent this month $21.25.」
+- **THEN** 期間列是「October 2026」，它下面、卡片上方只有「$21.25」；螢幕閱讀器把它讀成按鈕「View expense insights. Spent in October 2026 $21.25.」，提示是「Opens Insights」
 
 #### Scenario: 幾個幣別
 
 - **WHEN** 依序新增日期都是今天的 30 AUD、875 USD、1200 JPY
-- **THEN** 卡片由上而下是 JPY、USD、AUD 的支出；卡片上方是一行「This Month: A$0.30, ¥1,200, $8.75」，螢幕閱讀器讀出「View expense insights. Spent this month A$0.30, ¥1,200, $8.75.」
+- **THEN** 卡片由上而下是 JPY、USD、AUD 的支出；總額是一行「A$0.30, ¥1,200, $8.75」，螢幕閱讀器讀出「View expense insights. Spent in October 2026 A$0.30, ¥1,200, $8.75.」
 
-#### Scenario: 只算這個月
+#### Scenario: 只算期間裡的
 
 - **WHEN** 今天是 `2026-10-30`，有日期是 `2026-10-01` 的 875 USD、`2026-09-30` 的 1250 USD 和 `2025-10-15` 的 300 USD
-- **THEN** 三張卡片都在支出清單上，卡片上方只有「This Month: $8.75」
+- **THEN** 期間是 October 2026 時總額是「$8.75」，換成 September 2026 時是「$12.50」，換成今年時是「$21.25」
 
-#### Scenario: 這個月沒有支出
+#### Scenario: 期間裡沒有支出
 
-- **WHEN** 今天是 `2026-10-30`，只有日期是 `2026-09-30` 的支出
-- **THEN** 它的卡片在支出清單上，卡片上方只有「This Month: —」，螢幕閱讀器讀出「View expense insights. Nothing spent this month.」
+- **WHEN** 今天是 `2026-10-30`，只有日期是 `2026-09-30` 的支出，期間是 October 2026
+- **THEN** 總額是「—」，螢幕閱讀器讀出「View expense insights. Nothing spent in October 2026.」
 
 #### Scenario: 月初，UTC 還在上個月
 
-- **WHEN** 手機的時區是 `Asia/Taipei`，當地是 `2026-11-01` 上午 0:30（UTC 還是 10 月 31 日），有日期是 `2026-10-31` 和 `2026-11-01` 的 875 USD 和 300 USD
-- **THEN** 卡片上方只有「This Month: $3.00」
+- **WHEN** 手機的時區是 `Asia/Taipei`，當地是 `2026-11-01` 上午 0:30（UTC 還是 10 月 31 日），有日期是 `2026-10-31` 和 `2026-11-01` 的 875 USD 和 300 USD，開啟 app
+- **THEN** 期間列是「November 2026」，總額是「$3.00」
+
+#### Scenario: 全部期間
+
+- **WHEN** 有三筆支出，把期間換成全部期間
+- **THEN** 這一行是「3 expenses」，沒有金額，螢幕閱讀器讀出「View expense insights. 3 expenses.」；只有一筆支出時是「1 expense」
 
 #### Scenario: 按一下
 
-- **WHEN** 有 875 USD 的支出時按「This Month: $8.75」
-- **THEN** 分頁列仍選中 Expenses，Expenses 分頁的堆疊由下而上是「Expenses」根畫面和「Insights」，網址是 `/insights`
+- **WHEN** 今天是 `2026-10-30`，有今天的 875 USD 的支出，期間是 October 2026 時按「$8.75」
+- **THEN** 分頁列仍選中 Expenses，Expenses 分頁的堆疊由下而上是「Expenses」根畫面和「Insights」，網址是 `/insights`；Insights 選中的期間是「October 2026」
+
+#### Scenario: 上個月
+
+- **WHEN** 今天是 `2026-10-30`，有 `2026-10-01` 和 `2026-09-30` 的支出，期間換成 September 2026 之後按總額
+- **THEN** Insights 選中的期間是「September 2026」，不是最新的「October 2026」
+
+#### Scenario: 今年
+
+- **WHEN** 期間換成今年之後按總額
+- **THEN** Insights 是年份模式，選中的期間是「2026」
+
+#### Scenario: 最近三個月和自訂範圍
+
+- **WHEN** 今天是 `2026-10-30`，期間換成最近三個月之後按總額；或換成自訂範圍，From 是 `2026-09-10`、To 是 `2026-10-05`，再按總額
+- **THEN** Insights 是自訂模式，From 和 To 分別是「Aug 1, 2026」和「Oct 30, 2026」，或「Sep 10, 2026」和「Oct 5, 2026」
+
+#### Scenario: 全部期間時開在這個月
+
+- **WHEN** 今天是 `2026-10-30`，有 `2026-10-01` 和 `2026-09-30` 的支出，期間換成全部期間之後按「2 expenses」
+- **THEN** Insights 選中的期間是「October 2026」
 
 #### Scenario: 連按兩次
 
-- **WHEN** 連按兩次「This Month: $8.75」
+- **WHEN** 連按兩次「$8.75」
 - **THEN** 只推入一個 Insights；返回一次就回到支出清單
 
 #### Scenario: 沒有支出
 
-- **WHEN** 第一次啟動 app
-- **THEN** 卡片上方只有「This Month: —」，螢幕閱讀器讀出「View expense insights. Nothing spent this month.」；按了推入 Insights
+- **WHEN** 今天是 `2026-10-30`，第一次啟動 app
+- **THEN** 期間列是「October 2026」，總額是「—」，螢幕閱讀器讀出「View expense insights. Nothing spent in October 2026.」；按了推入 Insights
 
 #### Scenario: 修改之後
 
 - **WHEN** 把 875 USD 的支出的金額改成「12.50」
-- **THEN** 回到支出清單時是「This Month: $12.50」
+- **THEN** 回到支出清單時總額是「$12.50」
 
 #### Scenario: 總和超過單筆的上限
 
 - **WHEN** 有兩筆日期是今天的 999,999,999,999 USD 的支出
-- **THEN** 是「This Month: $19,999,999,999.98」
+- **THEN** 總額是「$19,999,999,999.98」
 
 ### Requirement: LEDGER-36.1 點卡片推入明細
 
@@ -984,7 +1024,7 @@ IF 明細網址裡的 ID 不是任何支出的 ID，THEN the mobile app SHALL �
 
 ### Requirement: LEDGER-40.2 金額和日期用手機地區的格式
 
-The mobile app SHALL 讓卡片、This Month 和明細，用手機地區的貨幣格式和幣別的小數位數（LEDGER-1.1）顯示金額，讓卡片上方的日期（LEDGER-102.1）和明細用手機地區的日期格式（LEDGER-30.2）顯示支出的日期，日期不因手機的時區提早或延後一天。
+The mobile app SHALL 讓卡片、清單上方的總額和明細，用手機地區的貨幣格式和幣別的小數位數（LEDGER-1.1）顯示金額，讓卡片上方的日期（LEDGER-102.1）和明細用手機地區的日期格式（LEDGER-30.2）顯示支出的日期，日期不因手機的時區提早或延後一天。
 
 #### Scenario: 英文（美國）
 
@@ -1028,12 +1068,12 @@ The mobile app SHALL 讓卡片、This Month 和明細，用手機地區的貨幣
 
 ### Requirement: LEDGER-41.3 (manual) 手機上的金額和日期格式
 
-WHERE iPhone 或 Android 手機，the mobile app SHALL 讓卡片、卡片上方的日期、This Month 和明細，用英文加手機的地區顯示金額和日期（LEDGER-40.2），在 UTC 以東的時區，日期也不提早一天；格式由各個平台決定，iPhone 和 Android 可以不一樣。
+WHERE iPhone 或 Android 手機，the mobile app SHALL 讓卡片、卡片上方的日期、清單上方的總額和明細，用英文加手機的地區顯示金額和日期（LEDGER-40.2），在 UTC 以東的時區，日期也不提早一天；格式由各個平台決定，iPhone 和 Android 可以不一樣。
 
 #### Scenario: 英文（美國）
 
 - **WHEN** 手機的語言和地區設成英文（美國），新增 8.75 USD 的支出
-- **THEN** 卡片和明細的金額是「$8.75」，日期是今天，例如「Oct 30, 2026」；This Month 是「This Month: $8.75」
+- **THEN** 卡片和明細的金額是「$8.75」，日期是今天，例如「Oct 30, 2026」；清單上方的總額是「$8.75」
 
 #### Scenario: 繁體中文（台灣）
 
@@ -1074,23 +1114,23 @@ WHERE iPhone 或 Android 手機，WHEN 支出清單捲到最底，the mobile app
 - **WHEN** 有 20 筆支出，把支出清單捲到最底
 - **THEN** 最後一張卡片整張在 + 按鈕上方，沒有被擋住
 
-### Requirement: LEDGER-43.2 讀完支出之前不顯示沒有支出的樣子
+### Requirement: LEDGER-43.3 讀完支出之前不顯示沒有支出的樣子
 
-WHILE 支出清單還沒讀完存著的支出，the mobile app SHALL 不顯示 LEDGER-32.2 的提示和「This Month: —」。
+WHILE 支出清單還沒讀完存著的支出，the mobile app SHALL 不顯示 LEDGER-32.2 的提示、LEDGER-116.1 的提示和清單上方的總額「—」。
 
 #### Scenario: 開啟 app
 
 - **WHEN** 有 Coffee run 時開啟 app，支出清單還沒讀完存著的支出
-- **THEN** 支出清單沒有「No expenses to display. Add a personal expense or get involved in a group expense.」和「This Month: —」；讀完之後顯示 Coffee run 的卡片
+- **THEN** 支出清單沒有「No expenses to display. Add a personal expense or get involved in a group expense.」、「No Expenses in October 2026」和「—」；讀完之後顯示 Coffee run 的卡片和總額「$8.75」
 
 ### Requirement: LEDGER-44.2 從明細返回時清單已經是新的
 
-WHEN 從明細打開的 Edit Expense 存好支出，the mobile app SHALL 在從明細返回之前，就讓明細底下的支出清單顯示存著的卡片和 This Month，返回時不先出現修改前的內容。
+WHEN 從明細打開的 Edit Expense 存好支出，the mobile app SHALL 在從明細返回之前，就讓明細底下的支出清單顯示存著的卡片和清單上方的總額，返回時不先出現修改前的內容。
 
 #### Scenario: 改了金額再返回
 
 - **WHEN** 在 875 USD 的 Coffee run 的明細按「Edit」，把金額改成「9.25」後按 Save，再從明細返回
-- **THEN** 支出清單一出現就是「$9.25」和「This Month: $9.25」，沒有先出現「$8.75」
+- **THEN** 支出清單一出現，卡片和清單上方的總額就都是「$9.25」，沒有先出現「$8.75」
 
 ### Requirement: LEDGER-45.1 「Split with others」開關
 
@@ -1523,9 +1563,9 @@ IF 表單開著時，表單上的分類被刪除（CATEGORIES-34.1），THEN the
 - **WHEN** 在選了 Brisbane 的 New Expense，從「+ Add New Category」新增「Flights」，再從以網址打開的 Brisbane 的 Group Categories 刪除 Flights
 - **THEN** 分類按鈕是「Category, Uncategorized」，是 Brisbane 的 Uncategorized；打開清單時只有 Uncategorized 標示為已選取
 
-### Requirement: LEDGER-64.2 支出清單也列出和你有關的群組支出
+### Requirement: LEDGER-64.3 支出清單也列出期間裡和你有關的群組支出
 
-The mobile app SHALL 在支出清單上，和個人支出一起依 LEDGER-28.1 的順序列出每筆不在垃圾桶裡、和你有關的群組支出的卡片，封存的群組的也列出；和你無關的群組支出不列出。
+The mobile app SHALL 在支出清單上，和個人支出一起依 LEDGER-28.1 的順序列出每筆不在垃圾桶裡、日期在支出清單的期間裡（LEDGER-107.1）、和你有關的群組支出的卡片，封存的群組的也列出；和你無關的群組支出不列出。
 
 #### Scenario: 你分攤的
 
@@ -1549,7 +1589,7 @@ The mobile app SHALL 在支出清單上，和個人支出一起依 LEDGER-28.1 �
 
 #### Scenario: 和個人支出排在一起
 
-- **WHEN** 依序新增日期是 `2025-01-02` 的個人支出「Coffee run」、`2025-01-03` 的 Brisbane 的「Dinner」、`2025-01-01` 的 Brisbane 的「Taxi」，Taylor 都有分攤
+- **WHEN** 今天是 `2026-10-30`，依序新增日期是 `2026-10-02` 的個人支出「Coffee run」、`2026-10-03` 的 Brisbane 的「Dinner」、`2026-10-01` 的 Brisbane 的「Taxi」，Taylor 都有分攤
 - **THEN** 卡片由上而下是 Dinner、Coffee run、Taxi
 
 #### Scenario: 封存的群組
@@ -1562,9 +1602,14 @@ The mobile app SHALL 在支出清單上，和個人支出一起依 LEDGER-28.1 �
 - **WHEN** 把 Dinner 移到垃圾桶
 - **THEN** 支出清單沒有 Dinner 的卡片
 
+#### Scenario: 不在期間裡的
+
+- **WHEN** 今天是 `2026-10-30`，Brisbane 有 `2026-09-30` 的「Dinner」，Taylor 有分攤，支出清單的期間是 October 2026
+- **THEN** 支出清單沒有 Dinner 的卡片；換成 September 2026 時有
+
 ### Requirement: LEDGER-65.4 群組支出的卡片
 
-The mobile app SHALL 讓群組支出的卡片在分類那一行的右邊顯示群組的名稱，群組已封存時是「<群組名稱> · Archived」，放不下時尾端漸層消失（SHELL-68.1），螢幕閱讀器在分類和日期之間讀出它；群組的畫面上的卡片照 GROUPS-61.3；群組支出的卡片金額是你的份額，只有付款沒有分攤時是 0，所以 This Month 也只算你的份額（LEDGER-35.3）。
+The mobile app SHALL 讓群組支出的卡片在分類那一行的右邊顯示群組的名稱，群組已封存時是「<群組名稱> · Archived」，放不下時尾端漸層消失（SHELL-68.1），螢幕閱讀器在分類和日期之間讀出它；群組的畫面上的卡片照 GROUPS-61.4；群組支出的卡片金額是你的份額，只有付款沒有分攤時是 0，所以清單上方的總額也只算你的份額（LEDGER-35.4）。
 
 #### Scenario: 卡片
 
@@ -1576,10 +1621,10 @@ The mobile app SHALL 讓群組支出的卡片在分類那一行的右邊顯示�
 - **WHEN** Taylor 付款，只有 Casey 和 Blake 分攤
 - **THEN** 卡片金額是「$0.00」
 
-#### Scenario: This Month
+#### Scenario: 清單上方的總額
 
-- **WHEN** 除了 Dinner，還有一筆 875 USD 的個人支出
-- **THEN** 是「This Month: $42.09」
+- **WHEN** 除了 Dinner，還有一筆 `2026-10-30` 的 875 USD 的個人支出
+- **THEN** 清單上方的總額是「$42.09」
 
 #### Scenario: 封存和還原
 
@@ -1684,7 +1729,7 @@ WHEN 使用者在支出清單或群組的畫面，把個人支出或未封存群
 
 ### Requirement: LEDGER-71.3 刪除支出時移到垃圾桶
 
-WHEN 使用者按個人支出或未封存群組的支出的卡片左滑露出的「Delete」、使用這些卡片上名稱是「Delete expense」的輔助功能動作，或在它們的明細的 Expense actions 選「Delete」（LEDGER-72.2），the mobile app SHALL 不另外確認，就把這筆支出移到垃圾桶，存好後才把它的卡片移出支出清單和群組的畫面、不再把它算進 This Month 和群組的金額（GROUPS-75.1），支出清單沒有其他卡片時顯示 LEDGER-32.2 的提示，群組的畫面沒有其他卡片時顯示 GROUPS-20.2 的提示，重新啟動 app 之後也一樣；存好之前再按一次或再用一次，也只移一次；重新啟動 app 之後它仍在垃圾桶裡，以網址打開它的明細，或明細開著時它在另一個畫面被移到垃圾桶，明細都和 LEDGER-39.1 一樣只顯示「Expense not found.」，標題列沒有「Edit」和「Expense actions」。
+WHEN 使用者按個人支出或未封存群組的支出的卡片左滑露出的「Delete」、使用這些卡片上名稱是「Delete expense」的輔助功能動作，或在它們的明細的 Expense actions 選「Delete」（LEDGER-72.2），the mobile app SHALL 不另外確認，就把這筆支出移到垃圾桶，存好後才把它的卡片移出支出清單和群組的畫面、不再把它算進清單上方的總額和群組的金額（GROUPS-75.1），支出清單沒有其他可列的支出時顯示 LEDGER-32.2 的提示，群組沒有其他不在垃圾桶裡的支出時顯示 GROUPS-20.2 的提示，重新啟動 app 之後也一樣；存好之前再按一次或再用一次，也只移一次；重新啟動 app 之後它仍在垃圾桶裡，以網址打開它的明細，或明細開著時它在另一個畫面被移到垃圾桶，明細都和 LEDGER-39.1 一樣只顯示「Expense not found.」，標題列沒有「Edit」和「Expense actions」。
 
 #### Scenario: 卡片的輔助功能動作
 
@@ -1694,12 +1739,12 @@ WHEN 使用者按個人支出或未封存群組的支出的卡片左滑露出的
 #### Scenario: 移到垃圾桶
 
 - **WHEN** 有 875 USD 的 Coffee run 和 1250 USD 的 Lunch，對 Lunch 的卡片使用「Delete expense」
-- **THEN** 沒有跳出提示框；卡片只剩 Coffee run，卡片上方是「This Month: $8.75」
+- **THEN** 沒有跳出提示框；卡片只剩 Coffee run，清單上方的總額是「$8.75」
 
 #### Scenario: 最後一筆
 
 - **WHEN** 只有 Coffee run 時把它移到垃圾桶，再重新啟動 app
-- **THEN** 移到垃圾桶之後和重新啟動之後，支出清單都顯示「No expenses to display. Add a personal expense or get involved in a group expense.」和「This Month: —」，沒有卡片
+- **THEN** 移到垃圾桶之後和重新啟動之後，支出清單都顯示「No expenses to display. Add a personal expense or get involved in a group expense.」和總額「—」，沒有卡片
 
 #### Scenario: 存好之前
 
@@ -1850,16 +1895,16 @@ The mobile app SHALL 讓 Undo 提示從那一筆存好時起顯示 Undo 時間�
 
 ### Requirement: LEDGER-75.3 按 Undo 時還原支出
 
-WHEN 使用者按 Undo 提示的「Undo」，the mobile app SHALL 不另外確認，就把這筆支出從垃圾桶還原，存好後收起提示，讓它的卡片照 LEDGER-31.2、LEDGER-64.2 和 GROUPS-61.3 回到支出清單和群組的畫面上依 LEDGER-28.1 該在的位置，再照 LEDGER-35.3 算進 This Month 和群組的金額（GROUPS-75.1），也不再出現在 Trash。
+WHEN 使用者按 Undo 提示的「Undo」，the mobile app SHALL 不另外確認，就把這筆支出從垃圾桶還原，存好後收起提示，讓它的卡片照 LEDGER-31.3、LEDGER-64.3 和 GROUPS-61.4 回到支出清單和群組的畫面上依 LEDGER-28.1 該在的位置，再照 LEDGER-35.4 算進清單上方的總額和群組的金額（GROUPS-75.1），也不再出現在 Trash。
 
 #### Scenario: 按 Undo
 
 - **WHEN** 有 875 USD 的 Coffee run 和 1250 USD 的 Lunch，把 Lunch 移到垃圾桶後按「Undo」
-- **THEN** 沒有跳出提示框，提示收起；卡片由上而下又是 Lunch、Coffee run，卡片上方是「This Month: $21.25」；Trash 只顯示「No deleted expenses.」
+- **THEN** 沒有跳出提示框，提示收起；卡片由上而下又是 Lunch、Coffee run，清單上方的總額是「$21.25」；Trash 只顯示「No deleted expenses.」
 
 #### Scenario: 原來的位置
 
-- **WHEN** 依序新增日期都是 `2025-01-01` 的「E」、「F」和「D」，把 F 移到垃圾桶後按「Undo」
+- **WHEN** 今天是 `2026-10-30`，依序新增日期都是 `2026-10-01` 的「E」、「F」和「D」，把 F 移到垃圾桶後按「Undo」
 - **THEN** 卡片由上而下仍是 D、F、E
 
 #### Scenario: 從明細刪除之後
@@ -2026,17 +2071,17 @@ WHEN 使用者點 Trash 的卡片，the mobile app SHALL 在 Settings 分頁推�
 
 ### Requirement: LEDGER-79.3 按 Restore 時從垃圾桶還原
 
-WHEN 使用者在唯讀明細按「Restore」，the mobile app SHALL 不另外確認，就把這筆支出從垃圾桶還原，存好後返回 Trash，讓它不再出現在 Trash，照 LEDGER-31.2、LEDGER-64.2 和 GROUPS-61.3 回到支出清單和群組的畫面上依 LEDGER-28.1 該在的位置，再照 LEDGER-35.3 算進 This Month 和群組的金額（GROUPS-75.1）；群組已封存時也一樣還原，它回到封存群組的畫面上，照 LEDGER-67.2 只能看；存好之前再按一次，也只還原一次、只返回一次。
+WHEN 使用者在唯讀明細按「Restore」，the mobile app SHALL 不另外確認，就把這筆支出從垃圾桶還原，存好後返回 Trash，讓它不再出現在 Trash，照 LEDGER-31.3、LEDGER-64.3 和 GROUPS-61.4 回到支出清單和群組的畫面上依 LEDGER-28.1 該在的位置，再照 LEDGER-35.4 算進清單上方的總額和群組的金額（GROUPS-75.1）；群組已封存時也一樣還原，它回到封存群組的畫面上，照 LEDGER-67.2 只能看；存好之前再按一次，也只還原一次、只返回一次。
 
 #### Scenario: 還原
 
-- **WHEN** 依序新增日期都是 `2025-01-01` 的「E」、「F」和「D」，把 F 移到垃圾桶，在 Trash 打開 F，按「Restore」
+- **WHEN** 今天是 `2026-10-30`，依序新增日期都是 `2026-10-01` 的「E」、「F」和「D」，把 F 移到垃圾桶，在 Trash 打開 F，按「Restore」
 - **THEN** 沒有跳出提示框；回到 Trash，只顯示「No deleted expenses.」；支出清單由上而下是 D、F、E
 
 #### Scenario: 和移到垃圾桶之前一樣
 
-- **WHEN** 還原 875 USD、Shopping、`2024-12-25`、備註「Morning treat」的 Coffee run，再打開它的明細
-- **THEN** 支出清單上有它的卡片；它的日期不在這個月，所以卡片上方是「This Month: —」；明細依序顯示「Coffee run」、「$8.75」、「Dec 25, 2024」、「Shopping」、「NOTE」、「Morning treat」
+- **WHEN** 新增 875 USD、Shopping、`2024-12-25`、備註「Morning treat」的 Coffee run，支出清單的期間換成 December 2024（LEDGER-117.1）；把它移到垃圾桶後還原，再打開它的明細
+- **THEN** 支出清單上有它的卡片，清單上方的總額又是「$8.75」；明細依序顯示「Coffee run」、「$8.75」、「Dec 25, 2024」、「Shopping」、「NOTE」、「Morning treat」
 
 #### Scenario: 存好之前
 
@@ -2471,3 +2516,346 @@ WHERE iOS，WHILE 手機的字級是輔助使用字級，WHEN 使用者按支出
 - **WHEN** iOS 上把字級設成最小的輔助使用字級，打開 New Expense，按「Date Picker」，再按「Expense note」那裡
 - **THEN** 第一下打開日曆；第二下只關閉日曆，備註欄位沒有取得焦點；再按一次同一個地方才取得焦點
 
+### Requirement: LEDGER-107.1 支出清單和群組的畫面一次顯示一個期間
+
+The mobile app SHALL 讓支出清單和群組的畫面各自一次只顯示一個期間，卡片和清單上方的總額都只算日期在期間裡的支出（LEDGER-31.3、LEDGER-64.3、GROUPS-61.4）：某個月是那個月的第一天到最後一天，某一年是那一年的 1 月 1 日到 12 月 31 日，最近三個月是這個月往前數第二個月的第一天到今天，自訂範圍是 From 到 To（LEDGER-112.1），全部期間是所有的日期；期間包含它的第一天和最後一天。支出清單在 app 啟動時是這個月，匯入完成、回到 app 載入後的樣子時也是（BACKUP-14.1）；群組的畫面每次打開時是全部期間。期間不存進本機資料，重新啟動 app 之後不留著。
+
+#### Scenario: 啟動
+
+- **WHEN** 今天是 `2026-10-30`，開啟 app
+- **THEN** 支出清單的期間是 October 2026
+
+#### Scenario: 月的頭尾
+
+- **WHEN** 有日期是 `2026-08-31`、`2026-09-01`、`2026-09-30` 和 `2026-10-01` 的支出，支出清單的期間是 September 2026
+- **THEN** 只有 `2026-09-01` 和 `2026-09-30` 那兩筆的卡片
+
+#### Scenario: 年的頭尾
+
+- **WHEN** 有日期是 `2024-12-31`、`2025-01-01`、`2025-12-31` 和 `2026-01-01` 的支出，支出清單的期間是 2025
+- **THEN** 只有 `2025-01-01` 和 `2025-12-31` 那兩筆的卡片
+
+#### Scenario: 最近三個月
+
+- **WHEN** 今天是 `2026-10-30`，有日期是 `2026-07-31`、`2026-08-01` 和 `2026-10-30` 的支出，支出清單的期間是最近三個月
+- **THEN** 只有 `2026-08-01` 和 `2026-10-30` 那兩筆的卡片
+
+#### Scenario: 跨年的最近三個月
+
+- **WHEN** 今天是 `2026-01-15`，有日期是 `2025-10-31` 和 `2025-11-01` 的支出，支出清單的期間是最近三個月
+- **THEN** 只有 `2025-11-01` 那一筆的卡片
+
+#### Scenario: 群組的畫面每次打開
+
+- **WHEN** 打開 Brisbane 的畫面，把期間換成這個月，返回 Groups 根畫面，再打開 Brisbane 的畫面
+- **THEN** 兩次打開時期間都是全部期間
+
+#### Scenario: 兩個畫面各有自己的期間
+
+- **WHEN** 把支出清單的期間換成 September 2026，再打開 Brisbane 的畫面
+- **THEN** Brisbane 的畫面是全部期間；回到 Expenses 分頁，支出清單仍是 September 2026
+
+#### Scenario: 重新啟動
+
+- **WHEN** 今天是 `2026-10-30`，把支出清單的期間換成 September 2026 之後重新啟動 app
+- **THEN** 支出清單的期間是 October 2026
+
+#### Scenario: 匯入之後
+
+- **WHEN** 今天是 `2026-11-18`，把支出清單的期間換成 October 2026 之後，從 Settings 匯入一個匯出檔
+- **THEN** 匯入完成時支出清單的期間是 November 2026
+
+### Requirement: LEDGER-108.1 期間列
+
+The mobile app SHALL 在支出清單的卡片上方顯示期間列，群組的畫面有不在垃圾桶裡的支出時也顯示（GROUPS-68.4）：中間是期間的名稱，某個月是「<英文月份> <年份>」（同 INSIGHTS-4.1），某一年是年份，最近三個月是「<第一個月英文月份的前三個字母> – <這個月英文月份的前三個字母> <今年的年份>」，第一個月在去年時它後面也有年份，自訂範圍是「Custom Range」，全部期間在支出清單是「All Time」、在群組的畫面是「Group Total」；名稱只佔一行，放不下時尾端漸層消失（SHELL-68.1），螢幕閱讀器把它讀成「Choose period. <期間的名稱>」。WHILE 期間是某個月或某一年，the mobile app SHALL 在名稱左邊放名稱是「Previous period」的按鈕、右邊放名稱是「Next period」的按鈕，按一下就把期間換成前一個或後一個月或年，那個月或那一年沒有支出也一樣；期間是這個月或今年時「Next period」停用，按了沒有反應。期間是最近三個月、自訂範圍或全部期間時，SHALL 沒有這兩個按鈕。
+
+#### Scenario: 這個月
+
+- **WHEN** 今天是 `2026-10-30`，開啟 app
+- **THEN** 支出清單的卡片上方由左而右是「Previous period」、「October 2026」和「Next period」；「Next period」停用
+
+#### Scenario: 往前再往後
+
+- **WHEN** 按「Previous period」，再按「Next period」
+- **THEN** 第一次按完期間列是「September 2026」，「Next period」可以按；第二次按完是「October 2026」，「Next period」停用
+
+#### Scenario: 跨年
+
+- **WHEN** 今天是 `2026-01-15`，按「Previous period」
+- **THEN** 期間列是「December 2025」
+
+#### Scenario: 沒有支出的月份
+
+- **WHEN** 今天是 `2026-10-30`，只有日期是 `2026-10-01` 的支出，按兩次「Previous period」
+- **THEN** 期間列依序是「September 2026」和「August 2026」，「Previous period」都可以按
+
+#### Scenario: 年
+
+- **WHEN** 今天是 `2026-10-30`，把期間換成今年，再按「Previous period」
+- **THEN** 換成今年時期間列是「2026」，「Next period」停用；按完是「2025」，「Next period」可以按
+
+#### Scenario: 最近三個月
+
+- **WHEN** 今天是 `2026-10-30`，把期間換成最近三個月；或今天是 `2026-01-15`，把期間換成最近三個月
+- **THEN** 期間列分別是「Aug – Oct 2026」和「Nov 2025 – Jan 2026」，都沒有「Previous period」和「Next period」
+
+#### Scenario: 自訂範圍和全部期間
+
+- **WHEN** 把支出清單的期間換成自訂範圍，再換成全部期間
+- **THEN** 期間列分別是「Custom Range」和「All Time」，都沒有「Previous period」和「Next period」
+
+#### Scenario: 群組的畫面
+
+- **WHEN** 打開有支出的 Brisbane 的畫面
+- **THEN** 期間列是「Group Total」，沒有「Previous period」和「Next period」
+
+### Requirement: LEDGER-109.1 在 Filters 的 Date 選期間
+
+The mobile app SHALL 在支出清單和群組的畫面的標題列放名稱是「Filters」的篩選動作（SHELL-72.1），找不到群組或畫面讀不出本機資料（SHELL-60.1）時沒有；按一下就開啟從畫面底部升起、蓋在這個畫面上的 Filters，標題是「Filters」，標題列只有確認「Done」（SHELL-47.2、SHELL-48.2），按 Done、把 Filters 往下滑或按 Android 的返回鍵就關閉。Filters 裡有名稱是「Date, <值>」的一列，值是這個畫面現在的期間：這個月是「This Month」，上個月是「Last Month」，最近三個月是「Last 3 Months」，今年是「This Year」，全部期間是「All Time」，自訂範圍是「Custom Range」，其他的月或年是期間的名稱（LEDGER-108.1）；按這一列就打開標題是「Date」的清單，依序列出這六個選項，只標出現在的期間那一個，現在的期間是其他的月或年時都不標出；選一個選項就關閉清單，立即把這個畫面的期間換成它，Filters 仍開著。期間是自訂範圍時，Date 下面再有名稱是「From」和「To」的兩列日期欄位，和期間列下面的是同一組日期（LEDGER-112.1）。Date 的清單和支出表單的清單一樣，iOS 上是從那一列彈出的系統選單，Android 上是 sheet（LEDGER-100.1、LEDGER-101.1）。
+
+#### Scenario: 開啟
+
+- **WHEN** 今天是 `2026-10-30`，在支出清單按「Filters」
+- **THEN** Filters 從底部升起，蓋在支出清單上，標題是「Filters」，標題列只有「Done」；裡面是「Date, This Month」
+
+#### Scenario: 六個選項
+
+- **WHEN** 按「Date, This Month」
+- **THEN** 清單依序是「This Month」、「Last Month」、「Last 3 Months」、「This Year」、「All Time」和「Custom Range」，只有 This Month 標示為已選取
+
+#### Scenario: 選上個月
+
+- **WHEN** 選「Last Month」，再按「Done」
+- **THEN** 選了之後 Filters 仍開著，那一列是「Date, Last Month」；按 Done 之後支出清單的期間列是「September 2026」，卡片是日期在 9 月的支出
+
+#### Scenario: 其他的月
+
+- **WHEN** 在支出清單按兩次「Previous period」，再按「Filters」，按「Date」那一列
+- **THEN** 那一列是「Date, August 2026」，清單裡沒有選項標示為已選取
+
+#### Scenario: 自訂範圍
+
+- **WHEN** 在 Filters 的 Date 選「Custom Range」
+- **THEN** 「Date, Custom Range」下面是「From」和「To」；在這裡把 From 選成 `2026-09-10` 之後按「Done」，期間列下面的 From 也是「Sep 10, 2026」
+
+#### Scenario: 往下滑或按返回鍵
+
+- **WHEN** 在 iOS 上把 Filters 往下滑，或在 Android 上按返回鍵
+- **THEN** Filters 關閉，回到原來的畫面，期間是在 Filters 選的那一個
+
+#### Scenario: 群組的畫面
+
+- **WHEN** 在有支出的 Brisbane 的畫面按「Filters」，在 Date 選「This Month」，再按「Done」
+- **THEN** 打開時那一列是「Date, All Time」；按 Done 之後 Brisbane 的畫面的期間列是「October 2026」，支出清單的期間不變
+
+#### Scenario: 封存的群組和找不到的群組
+
+- **WHEN** 從 Archived Groups 打開封存的 Brisbane 的畫面；或以 `/groups/00000000-0000-4000-8000-000000000000` 開啟 app
+- **THEN** 封存的 Brisbane 的標題列有「Filters」；找不到的群組的標題列沒有
+
+### Requirement: LEDGER-110.1 (e2e) iOS 上期間的名稱是系統選單
+
+WHERE iOS，the mobile app SHALL 讓期間列上期間的名稱是一個系統選單，名稱後面有向下的箭頭：按一下就從名稱彈出選單，依序列出 LEDGER-109.1 的六個選項，標出現在的期間那一個；選一個選項就關閉選單，把這個畫面的期間換成它，和在 Filters 的 Date 選是同一個設定。
+
+#### Scenario: 選上個月
+
+- **WHEN** iOS 上有今天和上個月 15 日的支出，在支出清單按期間的名稱，選「Last Month」
+- **THEN** 選單依序列出「This Month」、「Last Month」、「Last 3 Months」、「This Year」、「All Time」和「Custom Range」；選了之後期間的名稱是上個月，卡片只有上個月那一筆；打開 Filters 時是「Date, Last Month」
+
+#### Scenario: 全部期間
+
+- **WHEN** 接著按期間的名稱，選「All Time」
+- **THEN** 期間的名稱是「All Time」，兩筆支出的卡片都在，清單上方是「2 expenses」
+
+#### Scenario: 自訂範圍
+
+- **WHEN** 接著按期間的名稱，選「Custom Range」
+- **THEN** 期間的名稱是「Custom Range」，它下面出現 From 和 To 兩個日期
+
+### Requirement: LEDGER-111.1 Android 上按期間的名稱打開 Filters
+
+WHERE Android，the mobile app SHALL 讓期間列上期間的名稱是名稱為「Choose period. <期間的名稱>」的按鈕，按一下就開啟 Filters（LEDGER-109.1），在那裡的 Date 選期間。
+
+#### Scenario: 從期間的名稱選上個月
+
+- **WHEN** Android 上今天是 `2026-10-30`，在支出清單按「Choose period. October 2026」，在 Filters 的 Date 選「Last Month」，再按「Done」
+- **THEN** 按了之後開啟 Filters，裡面是「Date, This Month」；按 Done 之後期間的名稱是「Choose period. September 2026」
+
+### Requirement: LEDGER-112.1 自訂範圍的起訖日期
+
+WHILE 支出清單或群組的畫面的期間是自訂範圍，the mobile app SHALL 在期間列下面、清單上方的總額上面顯示一列：名稱是「From」和「To」的兩個日期欄位，中間是「–」，用手機地區的日期格式顯示日期（LEDGER-30.2），都最晚只能選今天；選了日期就立即照新的範圍顯示卡片和總額。這個畫面第一次換成自訂範圍時，From 是這個月的第一天，To 是今天；之後再換成自訂範圍，是這個畫面上次的 From 和 To。From 晚於 To 時，範圍是 To 那一天到 From 那一天。期間不是自訂範圍時，SHALL 沒有這一列。
+
+#### Scenario: 第一次
+
+- **WHEN** 今天是 `2026-10-30`，把支出清單的期間換成自訂範圍
+- **THEN** 期間列下面是 From「Oct 1, 2026」、「–」和 To「Oct 30, 2026」，再下面是總額；卡片是日期在 10 月 1 日到 30 日的支出
+
+#### Scenario: 含頭尾
+
+- **WHEN** 有日期是 `2026-09-09`、`2026-09-10`、`2026-09-20` 和 `2026-09-21` 的支出，把 From 選成 `2026-09-10`、To 選成 `2026-09-20`
+- **THEN** 只有 `2026-09-10` 和 `2026-09-20` 那兩筆的卡片，總額是這兩筆的
+
+#### Scenario: 不能選今天之後
+
+- **WHEN** 今天是 `2026-10-30`，打開 From 或 To 的日期選擇器
+- **THEN** 最晚只能選 `2026-10-30`
+
+#### Scenario: From 晚於 To
+
+- **WHEN** 有日期是 `2026-10-04`、`2026-10-05`、`2026-10-20` 和 `2026-10-21` 的支出，把 From 選成 `2026-10-20`、To 選成 `2026-10-05`
+- **THEN** 只有 `2026-10-05` 和 `2026-10-20` 那兩筆的卡片
+
+#### Scenario: 換走再換回
+
+- **WHEN** From 是 `2026-09-10`、To 是 `2026-09-20` 時把期間換成今年，再換成自訂範圍
+- **THEN** 換成今年時沒有 From 和 To 那一列；換回自訂範圍時 From 和 To 仍是「Sep 10, 2026」和「Sep 20, 2026」
+
+#### Scenario: 群組的畫面
+
+- **WHEN** 把 Brisbane 的畫面的期間換成自訂範圍
+- **THEN** 期間列「Custom Range」下面是 From 和 To，再下面是總額和你的淨額
+
+### Requirement: LEDGER-113.1 (manual) 自訂範圍那一列出現和消失有動畫
+
+WHERE iPhone 或 Android 手機，WHEN 期間換成自訂範圍或從自訂範圍換成別的期間，the mobile app SHALL 讓 From 和 To 那一列淡入或淡出，它下面的總額和卡片平順地往下或往上移到新的位置，不是一下跳過去。
+
+#### Scenario: 出現
+
+- **WHEN** 在支出清單把期間從這個月換成自訂範圍
+- **THEN** From 和 To 淡入，總額和卡片往下滑到它們下面
+
+#### Scenario: 消失
+
+- **WHEN** 把期間從自訂範圍換成這個月
+- **THEN** From 和 To 淡出，總額和卡片往上滑回期間列下面
+
+### Requirement: LEDGER-114.1 (e2e) 在期間列或總額上左右滑動換期間
+
+WHILE 支出清單或群組的畫面的期間是某個月或某一年，WHEN 使用者在期間列、清單上方的總額或 LEDGER-116.1 的提示上往右滑，the mobile app SHALL 把期間換成前一個月或年；WHEN 使用者往左滑，the mobile app SHALL 換成後一個月或年，期間是這個月或今年時往左滑沒有作用；往上或往下滑時期間不變。期間是最近三個月、自訂範圍或全部期間時，左右滑動沒有作用。在卡片上左右滑動不換期間（LEDGER-70.2）。
+
+#### Scenario: 往右滑再往左滑
+
+- **WHEN** 有今天和上個月 15 日的支出，在支出清單的期間的名稱上往右滑，再往左滑
+- **THEN** 往右滑之後期間是上個月，卡片是上個月那一筆，「Next period」可以按；往左滑之後又是這個月，「Next period」停用
+
+#### Scenario: 這個月往左滑
+
+- **WHEN** 期間是這個月時在期間的名稱上往左滑
+- **THEN** 期間不變
+
+#### Scenario: 在總額上滑
+
+- **WHEN** 期間是這個月時，在清單上方的總額上往右滑
+- **THEN** 期間是上個月
+
+#### Scenario: 在卡片上滑
+
+- **WHEN** 把一張卡片往左滑
+- **THEN** 卡片露出「Delete」，期間不變
+
+#### Scenario: 全部期間
+
+- **WHEN** 期間是全部期間時在期間的名稱上往右滑
+- **THEN** 期間不變
+
+### Requirement: LEDGER-115.1 (manual) 換期間時畫面跟著手指走
+
+WHERE iPhone 或 Android 手機，the mobile app SHALL 在手指開始移動時就決定是換期間還是捲動清單，之後不變；換期間時期間的名稱、總額和卡片跟著手指走，放開後新的期間從那一邊滑進來；按「Previous period」或「Next period」時，新的期間也從那個按鈕的那一邊滑進來。
+
+#### Scenario: 斜著滑
+
+- **WHEN** 在清單上方的總額上斜著往右滑，水平比垂直多
+- **THEN** 期間的名稱、總額和卡片跟著手指走，放開後換成前一個月，清單沒有捲動
+
+#### Scenario: 上下滑
+
+- **WHEN** 卡片比畫面長時，從清單上方的總額往上滑
+- **THEN** 清單捲動，期間不變，畫面沒有左右移動
+
+#### Scenario: 按箭頭
+
+- **WHEN** 按「Previous period」
+- **THEN** 前一個月從左邊滑進來
+
+### Requirement: LEDGER-116.1 期間裡沒有支出時說明，並連到更早有支出的期間
+
+WHILE 支出清單或群組的畫面的期間不是全部期間、期間裡沒有卡片，而這個畫面有可列的支出，the mobile app SHALL 在清單上方的總額下面顯示標題「No Expenses in <期間>」，<期間> 是期間的名稱，自訂範圍時是「<範圍的第一天> – <範圍的最後一天>」，用手機地區的日期格式（LEDGER-30.2）。這個畫面可列的支出裡有日期比期間的第一天早的時，the mobile app SHALL 在標題下面放名稱是「Show <名稱>」的按鈕：期間是某一年時，<名稱> 是其中日期最晚的那一筆所在的年份，其他時候是它所在的月份的名稱（LEDGER-108.1）；按一下就把期間換成那一年或那個月。沒有更早的支出時沒有這個按鈕。
+
+#### Scenario: 這個月沒有支出
+
+- **WHEN** 今天是 `2026-10-30`，支出清單有日期是 `2026-08-15` 和 `2026-06-01` 的支出，期間是 October 2026
+- **THEN** 總額「—」下面是標題「No Expenses in October 2026」和按鈕「Show August 2026」，沒有卡片
+
+#### Scenario: 按 Show
+
+- **WHEN** 按「Show August 2026」
+- **THEN** 期間列是「August 2026」，卡片是 `2026-08-15` 那一筆，沒有「No Expenses in」
+
+#### Scenario: 年
+
+- **WHEN** 今天是 `2026-10-30`，只有日期是 `2024-03-05` 的支出，期間是今年
+- **THEN** 是「No Expenses in 2026」和「Show 2024」；按了之後期間列是「2024」
+
+#### Scenario: 最近三個月
+
+- **WHEN** 今天是 `2026-10-30`，只有日期是 `2026-05-20` 的支出，期間是最近三個月
+- **THEN** 是「No Expenses in Aug – Oct 2026」和「Show May 2026」；按了之後期間列是「May 2026」
+
+#### Scenario: 自訂範圍
+
+- **WHEN** 今天是 `2026-10-30`，只有日期是 `2026-09-30` 的支出，期間是自訂範圍，From 是 `2026-10-01`、To 是 `2026-10-30`
+- **THEN** 是「No Expenses in Oct 1, 2026 – Oct 30, 2026」和「Show September 2026」
+
+#### Scenario: 只有比較晚的支出
+
+- **WHEN** 今天是 `2026-10-30`，只有日期是 `2026-10-01` 的支出，期間是 August 2026
+- **THEN** 是「No Expenses in August 2026」，沒有「Show」的按鈕
+
+#### Scenario: 沒有任何支出
+
+- **WHEN** 第一次啟動 app
+- **THEN** 沒有「No Expenses in」，顯示的是 LEDGER-32.2 的提示
+
+#### Scenario: 群組的畫面
+
+- **WHEN** 今天是 `2026-10-30`，Brisbane 只有 `2026-09-30` 的「Dinner」，把 Brisbane 的畫面的期間換成這個月
+- **THEN** 是「No Expenses in October 2026」和「Show September 2026」，沒有「No expenses in this group yet.」；按了之後有 Dinner 的卡片
+
+### Requirement: LEDGER-117.1 新增的支出不在期間裡時，把期間換成它的月份
+
+WHEN 使用者在 New Expense 存下一筆支出（LEDGER-21.2、LEDGER-54.1），而它是支出清單或群組的畫面可列的支出、日期卻不在那個畫面的期間裡，the mobile app SHALL 把那個畫面的期間換成這筆支出的日期所在的月份，表單關閉後那個畫面就有它的卡片；日期在期間裡時期間不變。只有新增會換期間：修改支出（LEDGER-31.3）、把支出從垃圾桶還原（LEDGER-75.3、LEDGER-79.3）和套用收到的事件（sync）都不換。
+
+#### Scenario: 上個月的支出
+
+- **WHEN** 今天是 `2026-10-30`，支出清單的期間是 October 2026，新增日期是 `2026-09-12` 的「Lunch」
+- **THEN** 表單關閉後期間列是「September 2026」，有 Lunch 的卡片
+
+#### Scenario: 期間裡的支出
+
+- **WHEN** 期間是 October 2026，新增日期是 `2026-10-05` 的「Lunch」
+- **THEN** 期間列仍是「October 2026」，有 Lunch 的卡片
+
+#### Scenario: 從一年換成月份
+
+- **WHEN** 今天是 `2026-10-30`，支出清單的期間是今年，新增日期是 `2025-12-20` 的「Lunch」
+- **THEN** 期間列是「December 2025」
+
+#### Scenario: 全部期間
+
+- **WHEN** 支出清單的期間是全部期間，新增日期是 `2025-12-20` 的「Lunch」
+- **THEN** 期間列仍是「All Time」，有 Lunch 的卡片
+
+#### Scenario: 群組的畫面
+
+- **WHEN** 今天是 `2026-10-30`，Brisbane 的畫面的期間是 October 2026，在 Brisbane 的畫面按「Add expense」，新增日期是 `2026-08-15`、Taylor 有分攤的「Dinner」
+- **THEN** Brisbane 的畫面的期間列是「August 2026」，有 Dinner 的卡片；回到 Expenses 分頁時，支出清單的期間列也是「August 2026」，有 Dinner 的卡片
+
+#### Scenario: 和你無關的群組支出
+
+- **WHEN** 支出清單的期間是 October 2026，在 Brisbane 新增日期是 `2026-08-15`、Casey 付款、只有 Blake 分攤的「Taxi」
+- **THEN** 支出清單的期間列仍是「October 2026」
+
+#### Scenario: 還原不換期間
+
+- **WHEN** 今天是 `2026-10-30`，期間是 September 2026 時把 `2026-09-12` 的 Lunch 移到垃圾桶，按「Next period」之後按 Undo 提示的「Undo」
+- **THEN** 期間列仍是「October 2026」，沒有 Lunch 的卡片；按「Previous period」之後有

@@ -2,9 +2,9 @@
 
 ## Purpose
 
-支出分析：計算規則，以及手機 app 上顯示它的 Insights。計算規則是個人或群組情境下計入哪些支出、各計多少，依月份和年份建立期間，分幣別和類別加總，與上一個期間比較，以及每個幣別畫哪種圖；這些規則放在 `packages/domain`（ADR-0002）。金額都是最小單位的整數（ADR-0004），支出日期是 `YYYY-MM-DD`（LEDGER-8.1）。domain 只計算交給它的支出和類別清單，不判斷支出是否在垃圾桶裡，也不看群組或類別是否已封存。兩個類別名稱相同，是指兩邊都去掉頭尾空白並轉成小寫後相同，比法同 CATEGORIES-4.1。
+支出分析：計算規則，以及手機 app 上顯示它的 Insights。計算規則是個人或群組情境下計入哪些支出、各計多少，依月份和年份建立期間，也替一段日期範圍算出一個期間，分幣別和類別加總，與上一個期間比較，以及每個幣別畫哪種圖；這些規則放在 `packages/domain`（ADR-0002）。金額都是最小單位的整數（ADR-0004），支出日期是 `YYYY-MM-DD`（LEDGER-8.1）。domain 只計算交給它的支出和類別清單，不判斷支出是否在垃圾桶裡，也不看群組或類別是否已封存。兩個類別名稱相同，是指兩邊都去掉頭尾空白並轉成小寫後相同，比法同 CATEGORIES-4.1。
 
-Insights 是手機 app 上分析支出的畫面：個人的 Insights 分析個人情境（INSIGHTS-1.1），群組的 Insights 分析一個群組（INSIGHTS-2.1），兩者的畫面相同。計入的支出是 domain 計入的支出（INSIGHTS-3.1）。Insights 一次看一種期間：月份模式看月份期間，年份模式看年份期間（INSIGHTS-4.1）；選中的期間是 Insights 現在顯示的期間，上一期是它之前最近的同一種期間，下一期是它之後最近的同一種期間，最早和最新的期間是現在這一種期間裡最早和最新的那一個；期間名稱是 INSIGHTS-4.1 的名稱。期間選擇器是點期間名稱時打開、選一個期間的地方。圖表類型是 Auto、Donut 或 Bar（INSIGHTS-10.1），存在本機資料裡，個人和群組的 Insights 用同一個。手機地區的貨幣格式見 LEDGER-40.2；手機地區的數字格式和百分比格式，是貨幣格式用的同一個語言和地區用來顯示數字和百分比的格式。螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。
+Insights 是手機 app 上分析支出的畫面：個人的 Insights 分析個人情境（INSIGHTS-1.1），群組的 Insights 分析一個群組（INSIGHTS-2.1），兩者的畫面相同。計入的支出是 domain 計入的支出（INSIGHTS-3.1）。Insights 一次看一種期間：月份模式看月份期間，年份模式看年份期間（INSIGHTS-4.1），自訂模式看 From 到 To 這一段日期（INSIGHTS-46.1）；選中的期間是 Insights 現在顯示的期間，上一期是它之前最近的同一種期間，下一期是它之後最近的同一種期間，最早和最新的期間是現在這一種期間裡最早和最新的那一個；期間名稱是 INSIGHTS-4.1 的名稱。自訂模式下，選中的期間是 From 到 To 的範圍裡計入的支出算出的期間（INSIGHTS-44.1），範圍裡沒有計入的支出時沒有選中的期間；它沒有上一期和下一期，也沒有期間名稱。期間選擇器是點期間名稱時打開、選一個期間的地方。圖表類型是 Auto、Donut 或 Bar（INSIGHTS-10.1），存在本機資料裡，個人和群組的 Insights 用同一個。手機地區的貨幣格式見 LEDGER-40.2；手機地區的數字格式和百分比格式，是貨幣格式用的同一個語言和地區用來顯示數字和百分比的格式。螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。
 
 ## Requirements
 
@@ -340,7 +340,7 @@ The mobile app SHALL 讓個人的 Insights 依 INSIGHTS-1.1 分析所有不在�
 #### Scenario: 個人的 Insights 算你的份額
 
 - **WHEN** 存過名字「Taylor」，2026 年 10 月有 875 USD 的個人支出「Coffee run」，和 Brisbane 的 6000 USD 的「Dinner」，Casey 付款，依序分給 Taylor、Casey 和 Blake
-- **THEN** 個人的 Insights 的總額是「$28.75」，和支出清單上的「This Month: $28.75」一樣
+- **THEN** 個人的 Insights 的總額是「$28.75」，和支出清單上方的總額「$28.75」一樣
 
 #### Scenario: 和你無關的群組支出
 
@@ -438,13 +438,13 @@ IF domain 因為總額超過上限拒絕計算（INSIGHTS-12.1），THEN the mob
 - **WHEN** 2026 年的 USD 支出加起來超過 9,007,199,254,740,991，例如 9,008 筆 999,999,999,999 USD 的支出
 - **THEN** 只顯示「Totals Too Large」和「These totals are too large to show.」，標題列沒有「Chart visualization」
 
-### Requirement: INSIGHTS-21.1 打開時選中最新的月份
+### Requirement: INSIGHTS-21.2 打開時選中最新的月份
 
-WHEN Insights 打開，the mobile app SHALL 用月份模式，選中最新的月份期間。
+WHEN Insights 打開而網址沒有指定期間（INSIGHTS-45.1），the mobile app SHALL 用月份模式，選中最新的月份期間。
 
 #### Scenario: 好幾個月份
 
-- **WHEN** 支出的日期是 `2024-12-31`、`2025-01-20` 和 `2025-03-10`，打開 Insights
+- **WHEN** 支出的日期是 `2024-12-31`、`2025-01-20` 和 `2025-03-10`，以 `/insights` 打開 Insights
 - **THEN** 選中的期間是「March 2025」
 
 #### Scenario: 再打開一次
@@ -631,14 +631,19 @@ IF 圖表類型存不進本機資料，THEN the mobile app SHALL 跳出標題「
 - **WHEN** 寫入失敗後資料庫恢復，再選一次「Bar」
 - **THEN** Bar 打勾，圖是橫條圖；重新啟動 app 之後仍是 Bar
 
-### Requirement: INSIGHTS-28.1 期間的控制
+### Requirement: INSIGHTS-28.2 期間的控制
 
-WHILE Insights 有選中的期間，the mobile app SHALL 在總額卡上方，由上而下顯示名稱是「Period aggregation」的單選群組，依序是「Month」和「Year」，標出現在的模式；以及一列由左而右是名稱為「Previous period」的按鈕、期間名稱和名稱為「Next period」的按鈕。有兩個以上的期間時，期間名稱後面有箭頭，按了打開期間選擇器（INSIGHTS-35.1）；除了 iOS 的年份選單（INSIGHTS-37.1），這時期間名稱是名稱為「Choose period. <期間名稱>」的按鈕。
+WHILE Insights 有選中的期間，或在自訂模式而 Insights 有計入的支出（From 到 To 的範圍裡沒有也算），the mobile app SHALL 在總額卡上方，由上而下顯示名稱是「Period aggregation」的單選群組，依序是「Month」、「Year」和「Custom」，標出現在的模式；月份和年份模式時，它下面是一列由左而右是名稱為「Previous period」的按鈕、期間名稱和名稱為「Next period」的按鈕，自訂模式時這一列換成 From 和 To（INSIGHTS-46.1）。有兩個以上的期間時，期間名稱後面有箭頭，按了打開期間選擇器（INSIGHTS-35.1）；除了 iOS 的年份選單（INSIGHTS-37.1），這時期間名稱是名稱為「Choose period. <期間名稱>」的按鈕。
 
 #### Scenario: 好幾個月份
 
 - **WHEN** 支出的日期是 `2025-01-20` 和 `2025-03-10`，打開 Insights
-- **THEN** 總額卡上方是標出 Month 的「Period aggregation」，和由左而右的「Previous period」、「March 2025」和「Next period」；「March 2025」是名稱為「Choose period. March 2025」的按鈕
+- **THEN** 總額卡上方是標出 Month 的「Period aggregation」，依序是「Month」、「Year」和「Custom」，和由左而右的「Previous period」、「March 2025」和「Next period」；「March 2025」是名稱為「Choose period. March 2025」的按鈕
+
+#### Scenario: 自訂模式
+
+- **WHEN** 接著選「Custom」
+- **THEN** 標出 Custom；「Period aggregation」下面是 From 和 To，沒有「Previous period」、期間名稱和「Next period」
 
 ### Requirement: INSIGHTS-29.1 切換月份和年份
 
@@ -664,23 +669,28 @@ WHEN 使用者在月份模式選「Year」，the mobile app SHALL 換成年份�
 - **WHEN** 2024 年有 1000 USD，2025 年有 1500 USD，年份模式選中 2025
 - **THEN** 比較是「$5.00 more than 2024, 50.0 percent.」
 
-### Requirement: INSIGHTS-30.1 (e2e) iOS 的 Month 和 Year
+### Requirement: INSIGHTS-30.2 (e2e) iOS 的 Month、Year 和 Custom
 
-WHERE iOS，the mobile app SHALL 把 Month 和 Year 的單選群組顯示成系統的分段控制，點一個選項就選中那個模式。
+WHERE iOS，the mobile app SHALL 把 Month、Year 和 Custom 的單選群組顯示成系統的分段控制，點一個選項就選中那個模式。
 
 #### Scenario: 切到年份再切回月份
 
 - **WHEN** iOS 上打開有這個月和上個月的支出的 Insights，點「Year」，再點「Month」
 - **THEN** 點「Year」之後期間名稱是今年，點「Month」之後是這個月
 
-### Requirement: INSIGHTS-31.1 Android 的 Month 和 Year
+#### Scenario: 切到自訂
 
-WHERE Android，the mobile app SHALL 把 Month 和 Year 的單選群組顯示成並排的「Month」和「Year」兩個按鈕，螢幕閱讀器把現在的模式念成已勾選。
+- **WHEN** iOS 上接著點「Custom」，再點「Month」
+- **THEN** 點「Custom」之後沒有期間名稱，出現 From 和 To 兩個日期；點「Month」之後期間名稱又是這個月
+
+### Requirement: INSIGHTS-31.2 Android 的 Month、Year 和 Custom
+
+WHERE Android，the mobile app SHALL 把 Month、Year 和 Custom 的單選群組顯示成並排的「Month」、「Year」和「Custom」三個按鈕，螢幕閱讀器把現在的模式念成已勾選。
 
 #### Scenario: 打開 Insights
 
 - **WHEN** Android 上打開有支出的 Insights
-- **THEN** 「Period aggregation」裡是並排的「Month」和「Year」，Month 是已勾選
+- **THEN** 「Period aggregation」裡是並排的「Month」、「Year」和「Custom」，Month 是已勾選
 
 ### Requirement: INSIGHTS-32.1 上一期和下一期
 
@@ -874,3 +884,155 @@ WHERE iOS，the mobile app SHALL 讓 Period 面板的 Cancel 和 Close 是 ✕ �
 
 - **WHEN** iOS 上在月份模式按期間名稱
 - **THEN** 面板左邊是 ✕，右邊是 prominent 的 ✓，顏色是系統的
+
+### Requirement: INSIGHTS-44.1 日期範圍的期間
+
+WHEN 給一段起訖日期，the domain package SHALL 把日期在起日到訖日之間（含這兩天）的計入支出（INSIGHTS-1.1 到 INSIGHTS-3.1）當成一個期間，照 INSIGHTS-5.1 到 INSIGHTS-8.1、INSIGHTS-10.1 和 INSIGHTS-11.1 算出每個幣別的總額、類別和圖；這個期間沒有比較（INSIGHTS-9.1），範圍裡沒有計入的支出時沒有任何幣別。IF 範圍裡某個幣別的總額超過 9,007,199,254,740,991，THEN the domain package SHALL 拒絕計算這個範圍。
+
+#### Scenario: 含起訖兩天
+
+- **WHEN** 支出的日期是 `2025-01-09`、`2025-01-10`、`2025-01-20` 和 `2025-01-21`，金額是 100、200、400 和 800 USD，範圍是 `2025-01-10` 到 `2025-01-20`
+- **THEN** USD 的總額是 600
+
+#### Scenario: 跨月和跨年
+
+- **WHEN** `2024-12-31` 有 200 USD，`2025-01-02` 有 300 USD，`2025-02-01` 有 500 USD，範圍是 `2024-12-15` 到 `2025-01-15`
+- **THEN** USD 的總額是 500，沒有比較
+
+#### Scenario: 同一天
+
+- **WHEN** `2025-01-10` 有 200 USD 和 2000 JPY，`2025-01-11` 有 400 USD，範圍是 `2025-01-10` 到 `2025-01-10`
+- **THEN** 依序是 JPY 2000 和 USD 200
+
+#### Scenario: 類別和圖
+
+- **WHEN** 範圍裡有 Food 的 600 USD 和 Travel 的 200 USD，範圍外還有 Travel 的 5000 USD，偏好是 Auto
+- **THEN** USD 的類別依序是 Food 600、75% 和 Travel 200、25%，圖是畫出這兩個類別的環圈圖
+
+#### Scenario: 對不到類別時用範圍裡日期最晚的快照
+
+- **WHEN** 三筆 `categoryId` 都是清單裡沒有的 `gone`：`2025-01-05` 的快照是「Snacks」，`2025-01-20` 的是「Treats」，`2025-02-10` 的是「Sweets」，範圍是 `2025-01-01` 到 `2025-01-31`
+- **THEN** 類別的名稱是 Treats
+
+#### Scenario: 範圍裡沒有計入的支出
+
+- **WHEN** 只有 `2025-03-10` 的支出，範圍是 `2025-01-01` 到 `2025-01-31`；或範圍裡只有金額是 0 的支出
+- **THEN** 沒有任何幣別，不是拒絕計算
+
+#### Scenario: 個人情境
+
+- **WHEN** 個人情境下，範圍裡有個人空間的 1200 和一筆 10000 的群組支出，個人 participant 分攤 2000
+- **THEN** 總額是 3200
+
+#### Scenario: 剛好在上限
+
+- **WHEN** `2024-12-31` 有 9,007,199,254,740,990 USD，`2025-01-01` 有 1 USD，範圍是 `2024-12-31` 到 `2025-01-01`
+- **THEN** USD 的總額是 9,007,199,254,740,991
+
+#### Scenario: 範圍的總額超過上限
+
+- **WHEN** `2024-12-31` 有 9,007,199,254,740,990 USD，`2025-01-01` 有 2 USD，兩個年份各自都沒有超過，範圍是 `2024-12-31` 到 `2025-01-01`
+- **THEN** 拒絕計算這個範圍
+
+### Requirement: INSIGHTS-45.1 網址指定的期間
+
+WHEN 個人或群組的 Insights 的網址（INSIGHTS-13.1、INSIGHTS-14.1）帶有 `period=<YYYY-MM>`，the mobile app SHALL 用月份模式打開，選中那個月份；帶有 `period=<YYYY>` 時，SHALL 用年份模式打開，選中那一年。指定的月份或年份不是期間時，SHALL 改選同一年最新的同一種期間，同一年沒有時改選最新的同一種期間（同 INSIGHTS-40.1）。帶有 `from=<YYYY-MM-DD>` 和 `to=<YYYY-MM-DD>` 時，SHALL 用自訂模式打開，From 和 To 是這兩個日期，晚於今天的改成今天，這時不看 `period`。IF `period` 不是有效的月份或年份，或 `from` 和 `to` 沒有同時給、其中一個不是有效的支出日期（LEDGER-9.1），THEN the mobile app SHALL 當成網址沒有指定期間（INSIGHTS-21.2）。
+
+#### Scenario: 月份
+
+- **WHEN** 支出的日期是 `2024-12-31`、`2025-01-20` 和 `2025-03-10`，以 `/insights?period=2025-01` 開啟 app
+- **THEN** 標出 Month，選中的期間是「January 2025」，不是最新的「March 2025」
+
+#### Scenario: 年份
+
+- **WHEN** 以 `/insights?period=2024` 開啟 app
+- **THEN** 標出 Year，選中的期間是「2024」
+
+#### Scenario: 這個月沒有支出
+
+- **WHEN** 以 `/insights?period=2025-02` 開啟 app；或以 `/insights?period=2026-10` 開啟 app
+- **THEN** 選中的期間分別是同一年最新的「March 2025」，和同一年沒有月份期間時最新的「March 2025」
+
+#### Scenario: 這一年沒有支出
+
+- **WHEN** 以 `/insights?period=2023` 開啟 app
+- **THEN** 標出 Year，選中的期間是最新的「2025」
+
+#### Scenario: 日期範圍
+
+- **WHEN** 今天是 `2026-10-30`，以 `/insights?from=2025-01-01&to=2025-01-31` 開啟 app
+- **THEN** 標出 Custom，From 和 To 是「Jan 1, 2025」和「Jan 31, 2025」，總額是 `2025-01-20` 那一筆的
+
+#### Scenario: 晚於今天
+
+- **WHEN** 今天是 `2026-10-30`，以 `/insights?from=2026-10-01&to=2026-10-31` 開啟 app
+- **THEN** From 是「Oct 1, 2026」，To 是「Oct 30, 2026」
+
+#### Scenario: 兩種都有
+
+- **WHEN** 以 `/insights?period=2024-12&from=2025-01-01&to=2025-01-31` 開啟 app
+- **THEN** 標出 Custom，From 和 To 是「Jan 1, 2025」和「Jan 31, 2025」
+
+#### Scenario: 無效的期間
+
+- **WHEN** 以 `/insights?period=2025-13`、`/insights?period=abc`、`/insights?from=2025-01-01`，或 `/insights?from=2025-02-30&to=2025-03-10` 開啟 app
+- **THEN** 都標出 Month，選中的期間是最新的「March 2025」
+
+#### Scenario: 群組的 Insights
+
+- **WHEN** Brisbane 有 `2026-09-30` 的 2500 USD 和 `2026-10-29` 的 6000 USD 的支出，以 `/groups/insights?groupId=<Brisbane 的群組 ID>&period=2026-09` 開啟 app
+- **THEN** 選中的期間是「September 2026」，總額是「$25.00」
+
+### Requirement: INSIGHTS-46.1 自訂模式
+
+WHEN 使用者在月份或年份模式選「Custom」，the mobile app SHALL 換成自訂模式，From 是選中的期間的第一天，To 是它的最後一天，晚於今天時是今天。WHILE Insights 在自訂模式，the mobile app SHALL 在「Period aggregation」下面顯示一列：名稱是「From」和「To」的兩個日期欄位，中間是「–」，用手機地區的日期格式顯示日期（LEDGER-30.2），都最晚只能選今天；總額卡、每個幣別的類別和圖，都是 From 到 To 的範圍照 INSIGHTS-44.1 算出的，From 晚於 To 時是 To 到 From，總額卡沒有比較；選了日期就立即照新的範圍顯示，在內容上滑動不換期間。範圍裡沒有計入的支出時，SHALL 在 From 和 To 下面只顯示標題「No Expenses in These Dates」和「Choose other dates to see spending insights.」，標題列沒有「Chart visualization」選單；domain 拒絕計算這個範圍時，SHALL 在 From 和 To 下面只顯示標題「Totals Too Large」和「These totals are too large to show.」，標題列也沒有那個選單。WHEN 使用者在自訂模式選「Month」或「Year」，the mobile app SHALL 換成那個模式，選中範圍的最後一天所在的月份或年份，它不是期間時照 INSIGHTS-45.1 改選。
+
+#### Scenario: 從月份換成自訂
+
+- **WHEN** 今天是 `2026-10-30`，支出的日期是 `2025-01-20` 和 `2025-03-10`，選中 March 2025 時選「Custom」
+- **THEN** 標出 Custom，From 是「Mar 1, 2025」，To 是「Mar 31, 2025」，總額是 `2025-03-10` 那一筆的，沒有比較
+
+#### Scenario: 這個月和今年
+
+- **WHEN** 今天是 `2026-10-30`，選中 October 2026 時選「Custom」；或年份模式選中 2026 時選「Custom」
+- **THEN** From 分別是「Oct 1, 2026」和「Jan 1, 2026」，To 都是「Oct 30, 2026」
+
+#### Scenario: 改日期
+
+- **WHEN** 有 `2025-01-20` 的 800 USD 和 `2025-03-10` 的 1200 USD，把 From 選成 `2025-01-01`、To 選成 `2025-03-31`
+- **THEN** 總額卡依序是「TOTAL SPENT」和「$20.00」，沒有比較；類別和圖是這兩筆的
+
+#### Scenario: 不能選今天之後
+
+- **WHEN** 今天是 `2026-10-30`，打開 From 或 To 的日期選擇器
+- **THEN** 最晚只能選 `2026-10-30`
+
+#### Scenario: From 晚於 To
+
+- **WHEN** 把 From 選成 `2025-03-31`、To 選成 `2025-01-01`
+- **THEN** 總額仍是「$20.00」
+
+#### Scenario: 範圍裡沒有支出
+
+- **WHEN** 把 From 選成 `2025-02-01`、To 選成 `2025-02-28`
+- **THEN** From 和 To 下面只有標題「No Expenses in These Dates」和「Choose other dates to see spending insights.」，沒有總額卡，標題列沒有「Chart visualization」；「Period aggregation」和 From、To 都還在
+
+#### Scenario: 群組的 Insights
+
+- **WHEN** 名字是「Taylor」，Brisbane 有 `2025-01-20` Casey 付的 60.00 USD 的 Dinner，分給 Taylor、Casey 和 Blake，在 Brisbane 的 Insights 選「Custom」，把 From 選成 `2025-01-01`、To 選成 `2025-01-31`
+- **THEN** 總額卡依序是「TOTAL SPENT」、「$60.00」和「Your share: $20.00」
+
+#### Scenario: 換回月份和年份
+
+- **WHEN** From 是 `2025-01-01`、To 是 `2025-03-31` 時選「Month」；或選「Year」
+- **THEN** 選中的期間分別是「March 2025」和「2025」
+
+#### Scenario: 換回月份時那個月沒有支出
+
+- **WHEN** From 是 `2025-01-01`、To 是 `2025-02-28` 時選「Month」
+- **THEN** 選中的期間是同一年最新的「March 2025」
+
+#### Scenario: 範圍的總額超過上限
+
+- **WHEN** 2025 年和 2026 年的 USD 支出各自沒有超過 9,007,199,254,740,991，加起來超過，From 和 To 包含這兩年
+- **THEN** From 和 To 下面只有「Totals Too Large」和「These totals are too large to show.」；把範圍縮到 2026 年之後顯示 2026 年的總額

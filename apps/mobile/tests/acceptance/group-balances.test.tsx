@@ -82,6 +82,7 @@ import {
   showGroup,
 } from './group-balances-app';
 import { expectInsights, expectTotals } from './insights-app';
+import { periodName } from './ledger-list-period-app';
 import type { Database, SqlValue } from '../../src/storage';
 
 // Runs on iOS; group-balances-android.test.tsx checks the Android back button. Each
@@ -236,7 +237,7 @@ const addSushi = (payer = 'Casey') =>
 
 // The Group Total
 
-test('[GROUPS-68.3] shows the Group Total of one currency above the cards, counting every expense of the group', async () => {
+test('[GROUPS-68.4] shows Group Total on the period row and the total of one currency under it, above the cards, counting every expense of the group', async () => {
   await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
 
@@ -245,16 +246,16 @@ test('[GROUPS-68.3] shows the Group Total of one currency above the cards, count
   await waitFor(() =>
     expect(groupTotals('Brisbane')).toEqual(['Group Total: $125.01']),
   );
-  const expected = ['Group Total: $125.01', 'Taxi', 'Dinner'];
+  const expected = ['Group Total', '$125.01', 'Taxi', 'Dinner'];
   expect(shownInOrder(groupLines('Brisbane'), expected)).toEqual(expected);
   const buttons = groupTotalButtons('Brisbane');
   expect(buttons).toHaveLength(1);
-  expect(within(buttons[0]).getByText('›')).toBeOnTheScreen();
+  expect(linesIn(buttons[0])).toEqual(['$125.01', '›']);
   expect(asRead(nameOf(buttons[0]))).toBe('Group Total: $125.01');
   expect(buttons[0].props.accessibilityHint).toBe('Opens Insights');
 });
 
-test('[GROUPS-68.3] joins the currencies on one Group Total line, sorted by currency code', async () => {
+test('[GROUPS-68.4] joins the currencies on one line of the total, sorted by currency code', async () => {
   await startWithGroups(BRISBANE);
   // The JPY expense comes first, so the cards, newest first, put USD first.
   await addSushi();
@@ -262,16 +263,16 @@ test('[GROUPS-68.3] joins the currencies on one Group Total line, sorted by curr
 
   await showGroup('Brisbane');
 
-  const expected = ['Group Total: ¥3,000, $125.01'];
-  await waitFor(() => expect(groupTotals('Brisbane')).toEqual(expected));
+  await waitFor(() =>
+    expect(groupTotals('Brisbane')).toEqual(['Group Total: ¥3,000, $125.01']),
+  );
   const buttons = groupTotalButtons('Brisbane');
   expect(buttons).toHaveLength(1);
-  expectOneFadingLine(within(buttons[0]).getByText(expected[0]));
-  expect(linesIn(buttons[0]).filter((line) => line !== '›')).toEqual(expected);
-  expect(within(buttons[0]).getAllByText('›')).toHaveLength(1);
+  expectOneFadingLine(within(buttons[0]).getByText('¥3,000, $125.01'));
+  expect(linesIn(buttons[0])).toEqual(['¥3,000, $125.01', '›']);
 });
 
-test("[GROUPS-68.3] shows the Group Total that counts an expense's new amount", async () => {
+test("[GROUPS-68.4] shows the Group Total that counts an expense's new amount", async () => {
   await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
   await showGroup('Brisbane');
@@ -290,7 +291,7 @@ test("[GROUPS-68.3] shows the Group Total that counts an expense's new amount", 
   );
 });
 
-test("[GROUPS-68.3] pushes the group's Insights onto the Groups tab when the Group Total is pressed", async () => {
+test("[GROUPS-68.4] pushes the group's Insights onto the Groups tab when the Group Total is pressed", async () => {
   const app = await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
   await showGroup('Brisbane');
@@ -309,7 +310,7 @@ test("[GROUPS-68.3] pushes the group's Insights onto the Groups tab when the Gro
   await expectTotals(['$125.01'], 'Groups');
 });
 
-test('[GROUPS-68.3] pushes one Insights when the Group Total is pressed twice', async () => {
+test('[GROUPS-68.4] pushes one Insights when the Group Total is pressed twice', async () => {
   await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
   await showGroup('Brisbane');
@@ -328,16 +329,17 @@ test('[GROUPS-68.3] pushes one Insights when the Group Total is pressed twice', 
   ]);
 });
 
-test('[GROUPS-68.3] shows no Group Total on a group without expenses', async () => {
+test('[GROUPS-68.4] shows no period row and no total on a group without expenses', async () => {
   await startWithGroups(BRISBANE);
 
   await showGroup('Brisbane');
 
   await waitFor(() => expect(groupLines('Brisbane')).toContain(NO_EXPENSES));
   expect(groupTotals('Brisbane')).toEqual([]);
+  expect(periodName(screenOf('Brisbane'))).toBeUndefined();
 });
 
-test("[GROUPS-68.3] shows an archived group's Group Total below Restore Group and above the cards", async () => {
+test("[GROUPS-68.4] shows an archived group's period row and total below Restore Group and above the cards", async () => {
   await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
   await archiveGroup('Brisbane');
@@ -345,13 +347,19 @@ test("[GROUPS-68.3] shows an archived group's Group Total below Restore Group an
 
   await openArchivedGroup('Brisbane');
 
-  const expected = ['Restore Group', 'Group Total: $125.01', 'Taxi', 'Dinner'];
+  const expected = [
+    'Restore Group',
+    'Group Total',
+    '$125.01',
+    'Taxi',
+    'Dinner',
+  ];
   await waitFor(() =>
     expect(shownInOrder(groupLines('Brisbane'), expected)).toEqual(expected),
   );
 });
 
-test("[GROUPS-68.3] pushes an archived group's Insights onto the Settings tab when its Group Total is pressed", async () => {
+test("[GROUPS-68.4] pushes an archived group's Insights onto the Settings tab when its Group Total is pressed", async () => {
   const app = await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
   await archiveGroup('Brisbane');
@@ -378,7 +386,7 @@ test("[GROUPS-68.3] pushes an archived group's Insights onto the Settings tab wh
 /** Taylor pays for Dinner, 60.00 split between all three, and is owed 40.00. */
 const addTaylorsDinner = () => addToBrisbane('Dinner', '60.00', YOU, EVERYONE);
 
-test('[GROUPS-69.2] shows what you are owed below the Group Total, as one button above the cards', async () => {
+test('[GROUPS-69.3] shows what you are owed below the total, as one button above the cards', async () => {
   await startWithGroups(BRISBANE);
   await addTaylorsDinner();
   await addToBrisbane('Taxi', '25.00', 'Casey', ['Blake']);
@@ -388,7 +396,7 @@ test('[GROUPS-69.2] shows what you are owed below the Group Total, as one button
   await waitFor(() =>
     expect(balanceLines('Brisbane')).toEqual(["You're owed: $40.00"]),
   );
-  const expected = ['Group Total: $85.00', "You're owed: $40.00", 'Taxi'];
+  const expected = ['Group Total', '$85.00', "You're owed: $40.00", 'Taxi'];
   expect(shownInOrder(groupLines('Brisbane'), expected)).toEqual(expected);
   const buttons = balanceButtons('Brisbane');
   expect(buttons).toHaveLength(1);
@@ -397,7 +405,7 @@ test('[GROUPS-69.2] shows what you are owed below the Group Total, as one button
   expect(buttons[0].props.accessibilityHint).toBe('Opens Balances');
 });
 
-test('[GROUPS-69.2] says what you owe when someone else paid', async () => {
+test('[GROUPS-69.3] says what you owe when someone else paid', async () => {
   await startWithGroups(BRISBANE);
   await addToBrisbane('Dinner', '60.00', 'Casey', EVERYONE);
 
@@ -408,7 +416,7 @@ test('[GROUPS-69.2] says what you owe when someone else paid', async () => {
   );
 });
 
-test('[GROUPS-69.2] says Settled up when your share is what you paid', async () => {
+test('[GROUPS-69.3] says Settled up when your share is what you paid', async () => {
   await startWithGroups(BRISBANE);
   await addToBrisbane('Coffee', '20.00', YOU, [YOU]);
 
@@ -417,7 +425,7 @@ test('[GROUPS-69.2] says Settled up when your share is what you paid', async () 
   await waitFor(() => expect(balanceLines('Brisbane')).toEqual(['Settled up']));
 });
 
-test('[GROUPS-69.2] says Settled up when the group has only expenses you have no part in', async () => {
+test('[GROUPS-69.3] says Settled up when the group has only expenses you have no part in', async () => {
   await startWithGroups(BRISBANE);
   await addToBrisbane('Taxi', '25.00', 'Casey', ['Blake']);
 
@@ -426,7 +434,7 @@ test('[GROUPS-69.2] says Settled up when the group has only expenses you have no
   await waitFor(() => expect(balanceLines('Brisbane')).toEqual(['Settled up']));
 });
 
-test('[GROUPS-69.2] puts what you owe above what you are owed, in one button', async () => {
+test('[GROUPS-69.3] puts what you owe above what you are owed, in one button', async () => {
   await startWithGroups(BRISBANE);
   // The JPY expense comes first, so the cards, newest first, put USD first.
   await addSushi();
@@ -442,7 +450,7 @@ test('[GROUPS-69.2] puts what you owe above what you are owed, in one button', a
   expect(within(buttons[0]).getAllByText('›')).toHaveLength(1);
 });
 
-test('[GROUPS-69.2] joins the currencies of one direction on one line, sorted by currency code', async () => {
+test('[GROUPS-69.3] joins the currencies of one direction on one line, sorted by currency code', async () => {
   await startWithGroups(BRISBANE);
   await addToBrisbane('Taxi', '60.00', YOU, [YOU, 'Casey'], 'AUD');
   await addTaylorsDinner();
@@ -459,7 +467,7 @@ test('[GROUPS-69.2] joins the currencies of one direction on one line, sorted by
   );
 });
 
-test('[GROUPS-69.2] leaves out a currency in which you are settled up', async () => {
+test('[GROUPS-69.3] leaves out a currency in which you are settled up', async () => {
   await startWithGroups(BRISBANE);
   await addSushi();
   await addToBrisbane('Coffee', '20.00', YOU, [YOU]);
@@ -470,7 +478,7 @@ test('[GROUPS-69.2] leaves out a currency in which you are settled up', async ()
   expect(balanceLines('Brisbane')).toEqual(['You owe: ¥1,500']);
 });
 
-test('[GROUPS-69.2] shows no balance on a group without expenses', async () => {
+test('[GROUPS-69.3] shows no balance on a group without expenses', async () => {
   await startWithGroups(BRISBANE);
 
   await showGroup('Brisbane');
@@ -480,7 +488,7 @@ test('[GROUPS-69.2] shows no balance on a group without expenses', async () => {
   expect(balanceButtons('Brisbane')).toEqual([]);
 });
 
-test("[GROUPS-69.2] [GROUPS-70.1] opens Balances rising from the bottom over the group's screen, with only Close, when your balance is pressed, also when you paid nothing", async () => {
+test("[GROUPS-69.3] [GROUPS-70.1] opens Balances rising from the bottom over the group's screen, with only Close, when your balance is pressed, also when you paid nothing", async () => {
   await startWithGroups(BRISBANE);
   await addToBrisbane('Dinner', '60.00', 'Casey', EVERYONE);
   await showGroup('Brisbane');
@@ -936,7 +944,7 @@ async function addSharedDinnerAndTaxi() {
   await addToBrisbane('Taxi', '30.00', 'Casey', EVERYONE);
 }
 
-test("[GROUPS-61.3] leaves an expense in the trash off the group's screen", async () => {
+test("[GROUPS-61.4] leaves an expense in the trash off the group's screen", async () => {
   await startWithGroups(BRISBANE);
   await addSharedDinnerAndTaxi();
   await showGroup('Brisbane');

@@ -1,0 +1,71 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[LEDGER-110.1] [LEDGER-109.1] Chooses Last Month, All Time and Custom Range in the system menu on the period's name, and finds each on the Date row of Filters"
+---
+# The names of this month and last month, by the simulator's clock.
+- evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
+- evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'
+- evalScript: '${output.lastMonth = output.months[(new Date().getMonth() + 11) % 12]}'
+- evalScript: '${output.thisYear = String(new Date().getFullYear())}'
+- evalScript: '${output.lastMonthsYear = String(new Date().getMonth() === 0 ? new Date().getFullYear() - 1 : new Date().getFullYear())}'
+# Expenses today and on the 15th of last month.
+- evalScript: '${output.lastMonth15 = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 15)}'
+- evalScript: "${output.lastMonthDate = output.lastMonth15.getFullYear() + '-' + ('0' + (output.lastMonth15.getMonth() + 1)).slice(-2) + '-15'}"
+# Maestro reads ${…} up to the last } in the value, so a seed with dates is built in one script.
+- evalScript: "${output.seedJson = JSON.stringify({ expenses: [{ title: 'Today', amount: '3.00' }, { title: 'Last month', amount: '2.00', date: output.lastMonthDate }] })}"
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: ${output.seedJson}
+# The list opens on this month.
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible: Today, .*
+- assertNotVisible: Last month, .*
+# LEDGER-110.1: the name is a system menu of the six periods; Last Month shows last month's card.
+- tapOn: Choose period\..*
+- assertVisible: This Month
+- assertVisible: Last Month
+- assertVisible: Last 3 Months
+- assertVisible: This Year
+- assertVisible: All Time
+- assertVisible: Custom Range
+- tapOn: Last Month
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
+- assertVisible: Last month, .*
+- assertNotVisible: Today, .*
+# LEDGER-109.1: the Date row of Filters is the same setting.
+- tapOn: Filters
+- waitForAnimationToEnd
+- assertVisible: Date, Last Month
+- tapOn: Done
+- waitForAnimationToEnd
+# All Time shows both cards and how many there are.
+- tapOn: Choose period\..*
+- tapOn: All Time
+- waitForAnimationToEnd
+- assertVisible: Choose period\. All Time
+- assertVisible: Today, .*
+- assertVisible: Last month, .*
+- assertVisible: View expense insights\. 2 expenses\.
+- assertNotVisible: Previous period
+# Custom Range starts on this month up to today, without arrows; Filters shows its two dates.
+- tapOn: Choose period\..*
+- tapOn: Custom Range
+- waitForAnimationToEnd
+- assertVisible: Choose period\. Custom Range
+- assertVisible: Today, .*
+- assertNotVisible: Last month, .*
+- assertNotVisible: Previous period
+- tapOn: Filters
+- waitForAnimationToEnd
+- assertVisible: Date, Custom Range
+- assertVisible: From
+- assertVisible: To
+# The Date row's own menu changes the period too.
+- tapOn: Date, Custom Range
+- tapOn: This Month
+- waitForAnimationToEnd
+- assertVisible: Date, This Month
+- tapOn: Done
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}

@@ -69,6 +69,8 @@ export function holdReads() {
 
 /** Starts the app at `url`, in Taipei on 2026-10-30, as startExpenses does at `/`. */
 export async function startExpensesAt(url: string) {
+  jest.useFakeTimers();
+  setPhoneClock('Asia/Taipei', '2026-10-30T04:00:00Z');
   const app = await startApp(url);
   setPhoneClock('Asia/Taipei', '2026-10-30T04:00:00Z');
   await settle();
@@ -160,14 +162,57 @@ export function shownInOrder(
 export const expensesRoot = () =>
   nativeViews(/^RNSScreen$/, tab('Expenses'))[0];
 
-/** The cards on the expense list, top to bottom: its buttons besides the + button and This Month. */
+/**
+ * Whether `view` is part of what the screen `root` shows itself: not of its title bar, nor of a
+ * sheet or a dialog over it. A sheet's own screen holds a stack for its navigation bar, whose
+ * pushed screen is still the sheet.
+ */
+export function inContentOf(root: HostView, view: HostView) {
+  for (let node = view.parent; node; node = node.parent) {
+    if (node === root) return true;
+    const type = String(node.type);
+    if (type === 'RNSScreenStackHeaderConfig' || type === 'Modal') return false;
+    const presentation: unknown = node.props.stackPresentation;
+    if (
+      /^RNS(Modal)?Screen$/.test(type) &&
+      presentation !== undefined &&
+      presentation !== 'push'
+    )
+      return false;
+  }
+  return false;
+}
+
+const LIST_CONTROLS = [
+  /^Previous period$/,
+  /^Next period$/,
+  /^Choose period\. /,
+  /^Show /,
+  /^From$/,
+  /^To$/,
+];
+
+/**
+ * Whether a button above a list's cards is one of the list's own controls: the period row, the
+ * dates of a custom range, the total, a group's net balance, or the way out of a period with no
+ * expense (LEDGER-108.1 to LEDGER-116.1, GROUPS-68.4, GROUPS-69.3).
+ */
+export const isListControl = (button: HostView) =>
+  LIST_CONTROLS.some((name) => name.test(nameOf(button))) ||
+  ['Opens Insights', 'Opens Balances'].includes(
+    String(button.props.accessibilityHint),
+  );
+
+/** The cards on the expense list, top to bottom: its buttons besides the + button and the list's controls. */
 export const cards = () =>
   within(expensesRoot())
     .queryAllByRole('button')
     .filter(
       (button) =>
+        inContentOf(expensesRoot(), button) &&
         nameOf(button) !== 'Add expense' &&
-        !nameOf(button).startsWith('View expense insights.'),
+        !nameOf(button).startsWith('View expense insights.') &&
+        !isListControl(button),
     );
 
 /** The card whose first line is `title`. */
@@ -183,9 +228,21 @@ export const cardTitles = () => cards().map((shown) => linesIn(shown)[0]);
 /** What a screen reader reads for a card: its name. */
 export const readOut = (shown: HostView) => asRead(nameOf(shown));
 
-/** The This Month lines on the expense list, top to bottom. */
-export const thisMonthLines = () =>
-  linesIn(expensesRoot()).filter((line) => line.startsWith('This Month'));
+/** The button under the period row that shows the list's total and opens Insights (LEDGER-35.4). */
+export const listTotalButton = () =>
+  within(expensesRoot()).getByRole('button', {
+    name: /^View expense insights\./,
+  });
+
+/**
+ * What the total above the cards shows, without the › at its right: one line, or nothing while
+ * the list shows no total.
+ */
+export const listTotal = () =>
+  within(expensesRoot())
+    .queryAllByRole('button', { name: /^View expense insights\./ })
+    .flatMap(linesIn)
+    .filter((line) => line !== '›');
 
 // Category color dots
 

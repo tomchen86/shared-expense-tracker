@@ -676,13 +676,11 @@ test("[GROUPS-22.3] lists Members and Categories in an archived group's Group ac
   await openArchived('Brisbane');
 
   await waitFor(() =>
-    expect(barItems('Brisbane').right).toEqual([
-      {
-        menu: 'Group actions',
-        icon: 'ellipsis.circle',
-        items: ['Members', 'Categories'],
-      },
-    ]),
+    expect(barItems('Brisbane').right).toContainEqual({
+      menu: 'Group actions',
+      icon: 'ellipsis.circle',
+      items: ['Members', 'Categories'],
+    }),
   );
 });
 
@@ -764,13 +762,11 @@ test("[GROUPS-57.1] restores a group from its screen, which then is a group's sc
 
   expect(alertsShown()).toEqual([]);
   await waitFor(() => expect(textsOn('Tokyo')).toEqual([NO_EXPENSES]));
-  expect(barItems('Tokyo').right).toEqual([
-    {
-      menu: 'Group actions',
-      icon: 'ellipsis.circle',
-      items: ['Members', 'Rename Group', 'Categories'],
-    },
-  ]);
+  expect(barItems('Tokyo').right).toContainEqual({
+    menu: 'Group actions',
+    icon: 'ellipsis.circle',
+    items: ['Members', 'Rename Group', 'Categories'],
+  });
   await goBackFrom('Tokyo');
   await waitFor(() =>
     expect(textsOn('Archived Groups')).toEqual([NO_ARCHIVED]),

@@ -1170,3 +1170,23 @@ The mobile app SHALL 在 Settings 根畫面的 APP 區塊後面顯示 DATA 區�
 
 - **WHEN** 點「Export Data」，或點「Import Data」
 - **THEN** Settings 分頁的堆疊仍只有「Settings」根畫面，目前的網址仍是 `/settings`
+
+### Requirement: SHELL-72.1 標題列的篩選動作
+
+The mobile app SHALL 把畫面給的篩選動作放在標題列右邊：iOS 上是 plain 樣式、圖示是 SF Symbol `line.3.horizontal.decrease` 的按鈕，Android 上是至少 48×48 dp 的 Material Symbols `filter_list` 圖示按鈕，無障礙名稱都是畫面給的名稱；畫面同時給了選單時，選單在篩選動作的右邊。
+
+#### Scenario: iOS
+
+- **WHEN** iOS 上開啟 app
+- **THEN** Expenses 分頁的標題列右邊是 plain、圖示 `line.3.horizontal.decrease`、名稱「Filters」的按鈕
+
+#### Scenario: Android
+
+- **WHEN** Android 上開啟 app
+- **THEN** Expenses 分頁的標題列右邊是名稱「Filters」的 `filter_list`，至少 48×48 dp
+
+#### Scenario: 和選單一起
+
+- **WHEN** 打開 Brisbane 的畫面
+- **THEN** 標題列右邊由左而右是「Filters」和名稱「Group actions」的選單
+

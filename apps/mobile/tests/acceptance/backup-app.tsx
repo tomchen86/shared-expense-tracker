@@ -341,6 +341,10 @@ export async function startOn(
   } = {},
 ) {
   running.phone = phone;
+  // Set before the app starts as well, as startExpenses does: the expense list opens on the
+  // month of the day the app starts on (LEDGER-107.1).
+  jest.useFakeTimers();
+  setPhoneClock(timeZone, now);
   const app = await startApp(url, TEST_ROUTES);
   setPhoneClock(timeZone, now);
   await settle();

@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-68.2] [GROUPS-64.1] [LEDGER-46.2] [LEDGER-48.2] [LEDGER-49.2] [LEDGER-62.2] [LEDGER-54.1] [GROUPS-61.3] [LEDGER-65.4] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share"
+name: "[LEDGER-68.2] [GROUPS-64.1] [LEDGER-46.2] [LEDGER-48.2] [LEDGER-49.2] [LEDGER-62.2] [LEDGER-54.1] [GROUPS-61.4] [LEDGER-65.4] Adds a group expense from the group's screen, with a category added over the form, then finds it on the group's screen at its full amount and on Expenses at your share"
 ---
 - runFlow:
     file: common/launch-with-seed.yaml
