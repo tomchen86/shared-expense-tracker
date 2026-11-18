@@ -300,7 +300,7 @@ test("[GROUPS-23.2] lets Members be swiped down, back on the group's screen", as
   expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups', 'Brisbane']);
 });
 
-test("[GROUPS-24.2] lists only you, as a button marked (You) with a chevron, in a new group's Members", async () => {
+test("[GROUPS-24.3] lists only you, as a button marked (You) with a chevron, in a new group's Members", async () => {
   await startInMembers();
 
   await expectMembers(['Taylor (You)', 'Add Member']);
@@ -309,7 +309,7 @@ test("[GROUPS-24.2] lists only you, as a button marked (You) with a chevron, in 
   ).toBeOnTheScreen();
 });
 
-test('[GROUPS-24.2] lists the members in the order they joined, each other member as a button named after them, with a chevron', async () => {
+test('[GROUPS-24.3] lists the members in the order they joined, each other member as a button named after them, with a chevron', async () => {
   // Not in alphabetical order, so a list sorted by name fails.
   await startInMembers(['Casey', 'Blake']);
 
@@ -601,7 +601,7 @@ test('[GROUPS-30.2] closes the name field, adding no one, when Return is pressed
   expect(await storedMemberNames(file, 'Brisbane')).toEqual(['Taylor']);
 });
 
-test('[GROUPS-31.2] adds a member with the name trimmed, listed last, and keeps the name field, empty and focused, for the next', async () => {
+test('[GROUPS-31.3] adds a member with the name trimmed, listed last, and keeps the name field, empty and focused, for the next', async () => {
   await startInMembers();
   await openMemberField();
 
@@ -618,7 +618,7 @@ test('[GROUPS-31.2] adds a member with the name trimmed, listed last, and keeps 
   ]);
 });
 
-test('[GROUPS-31.2] adds the next member from the same name field', async () => {
+test('[GROUPS-31.3] adds the next member from the same name field', async () => {
   await startInMembers();
   await openMemberField();
   await addInField('Blake');
@@ -636,7 +636,7 @@ test('[GROUPS-31.2] adds the next member from the same name field', async () => 
   ]);
 });
 
-test('[GROUPS-31.2] adds as many members as you like, in the order they join', async () => {
+test('[GROUPS-31.3] adds as many members as you like, in the order they join', async () => {
   const names = Array.from({ length: 30 }, (_, index) => `Member ${index + 1}`);
 
   await startInMembers(names);
@@ -647,7 +647,7 @@ test('[GROUPS-31.2] adds as many members as you like, in the order they join', a
   ]);
 }, 60_000);
 
-test('[GROUPS-31.2] keeps a member name of 300 characters in full', async () => {
+test('[GROUPS-31.3] keeps a member name of 300 characters in full', async () => {
   await startInMembers();
   await openMemberField();
   const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
@@ -793,7 +793,7 @@ test('[GROUPS-33.2] says a member has the name, without asking to add anyone bac
   ]);
 });
 
-test('[GROUPS-34.2] asks to add a former member back, then adds them back last with their member ID and name', async () => {
+test('[GROUPS-34.3] asks to add a former member back, then adds them back last with their member ID and name', async () => {
   await startInMembers(['Blake', 'Casey']);
   const blake = await storedMember(file, 'Brisbane', 'Blake');
   await removeMember('Blake');
@@ -822,7 +822,7 @@ test('[GROUPS-34.2] asks to add a former member back, then adds them back last w
   expect(members[2]).toEqual(blake);
 });
 
-test('[GROUPS-34.2] keeps the name in the field when Cancel is pressed instead of Add Back', async () => {
+test('[GROUPS-34.3] keeps the name in the field when Cancel is pressed instead of Add Back', async () => {
   await startInMembers(['Blake', 'Casey']);
   await removeMember('Blake');
   await waitFor(() => expect(membersShown()).not.toContain('Blake'));
@@ -842,7 +842,7 @@ test('[GROUPS-34.2] keeps the name in the field when Cancel is pressed instead o
   ]);
 });
 
-test('[GROUPS-34.2] asks about the most recently removed of the former members with the name', async () => {
+test('[GROUPS-34.3] asks about the most recently removed of the former members with the name', async () => {
   await startInMembers(['Blake', 'Casey']);
   const blake = await storedMember(file, 'Brisbane', 'Blake');
   const casey = await storedMember(file, 'Brisbane', 'Casey');
@@ -867,7 +867,7 @@ test('[GROUPS-34.2] asks about the most recently removed of the former members w
   expect(JSON.stringify(localData(file))).toContain(blake.id);
 });
 
-test('[GROUPS-34.2] asks about the most recently removed former member with the name, even one who joined earlier', async () => {
+test('[GROUPS-34.3] asks about the most recently removed former member with the name, even one who joined earlier', async () => {
   // Blake joins first but leaves last, so neither the order of joining nor of
   // the rows picks him.
   await startInMembers(['Blake', 'Casey']);
@@ -894,7 +894,7 @@ test('[GROUPS-34.2] asks about the most recently removed former member with the 
   expect(JSON.stringify(localData(file))).toContain(casey.id);
 });
 
-test('[GROUPS-34.2] adds a former member back with their member ID after a restart', async () => {
+test('[GROUPS-34.3] adds a former member back with their member ID after a restart', async () => {
   const app = await startInMembers(['Blake']);
   const blake = await storedMember(file, 'Brisbane', 'Blake');
   await removeMember('Blake');
@@ -915,7 +915,7 @@ test('[GROUPS-34.2] adds a former member back with their member ID after a resta
   expect(await storedMember(file, 'Brisbane', 'Blake')).toEqual(blake);
 });
 
-test("[GROUPS-34.2] adds a new member, without asking, for the name of another group's former member", async () => {
+test("[GROUPS-34.3] adds a new member, without asking, for the name of another group's former member", async () => {
   const app = await startWithName();
   await createGroup('Brisbane');
   await createGroup('Tokyo');
@@ -1458,7 +1458,7 @@ test("[GROUPS-41.1] keeps the group's new name after a restart", async () => {
   expect(cardNames()).toEqual(['Open Tokyo 2026']);
 });
 
-test("[GROUPS-17.1] lets a group be renamed to another group's name", async () => {
+test("[GROUPS-17.2] lets a group be renamed to another group's name", async () => {
   await startWithName();
   await createGroup('Trip');
   await createGroup('Paris');

@@ -24,6 +24,7 @@ import {
   type GroupMember,
 } from '../groups';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
+import { SyncEventTooLargeError } from '../sync/records';
 import {
   ArchivedExpenseError,
   listExpenses,
@@ -338,7 +339,9 @@ export function useExpenseForm({
       else
         Alert.alert(
           'Unable to Save Expense',
-          'Your expense could not be saved. Please try again.',
+          error instanceof SyncEventTooLargeError
+            ? 'This expense is too large to sync. Shorten the title or note and try again.'
+            : 'Your expense could not be saved. Please try again.',
         );
     } finally {
       savingRef.current = false;

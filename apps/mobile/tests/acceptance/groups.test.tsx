@@ -782,7 +782,7 @@ test('[GROUPS-16.1] keeps the groups, their order and their members after a rest
   expect(await storedGroups(file)).toEqual(before);
 });
 
-test('[GROUPS-17.1] keeps a name of 300 characters in full', async () => {
+test('[GROUPS-17.2] keeps a name of 300 characters in full', async () => {
   await startWithName();
   await openNewGroup();
   const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
@@ -795,7 +795,7 @@ test('[GROUPS-17.1] keeps a name of 300 characters in full', async () => {
   expect(await storedNames()).toEqual(['a'.repeat(300)]);
 });
 
-test('[GROUPS-17.1] creates a second group with the same name', async () => {
+test('[GROUPS-17.2] creates a second group with the same name', async () => {
   await startWithName();
 
   await createGroup('Trip');
