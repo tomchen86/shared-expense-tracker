@@ -167,6 +167,35 @@ describe('a registration', () => {
   );
 });
 
+describe('two key pairs that register one device ID together', () => {
+  test('leave the device to one of them, and the other is refused for its signature', async () => {
+    for (let round = 0; round < 5; round += 1) {
+      const first = newPhone();
+      const second = newPhone(first.deviceId);
+
+      const answers = await Promise.all(
+        [first, second].map((phone) =>
+          sendTo(server.url, registrationBy(phone, { timestampMs: NOW })),
+        ),
+      );
+
+      expect(answers.map((answer) => answer.status).sort()).toEqual([200, 401]);
+      expect(answers.find((answer) => answer.status === 401)).toEqual(
+        SIGNATURE,
+      );
+      const winner = answers[0].status === 200 ? first : second;
+      const loser = winner === first ? second : first;
+      expect(
+        await database.sql`
+          SELECT encode(public_key, 'hex') AS key FROM devices
+          WHERE id = ${first.deviceId}`,
+      ).toEqual([{ key: winner.publicKey }]);
+      expect((await sendTo(server.url, signed(winner))).status).toBe(404);
+      expect(await sendTo(server.url, signed(loser))).toEqual(SIGNATURE);
+    }
+  });
+});
+
 describe('the path a signature covers', () => {
   test('is the path the server routes the request on', async () => {
     const phone = await registered();

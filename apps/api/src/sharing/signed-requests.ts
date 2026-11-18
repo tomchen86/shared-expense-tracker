@@ -22,11 +22,12 @@ const SIGNATURE = /^[0-9a-f]{128}$/;
 const refuse = (refusal: Refusal) =>
   Response.json(refusal, { status: REFUSAL_STATUS[refusal.error] });
 
-/** The path with its query, as the request's URL writes it after the host. */
-function pathOf(url: string): string {
-  const start = url.indexOf('/', url.indexOf('://') + 3);
-  return start < 0 ? '/' : url.slice(start);
-}
+/**
+ * The path with its query, as the request's URL writes it after the host: every runtime
+ * gives a URL with a path, which is `/` at the least.
+ */
+const pathOf = (url: string) =>
+  url.slice(url.indexOf('/', url.indexOf('://') + 3));
 
 /** What the bytes say as JSON; undefined when they are not JSON in UTF-8. */
 function jsonOf(bytes: Uint8Array): unknown {
