@@ -950,7 +950,7 @@ test('[INSIGHTS-23.4] shows amounts and percentages in English with the region o
   ]);
 });
 
-test('[INSIGHTS-23.4] reads the heading as a heading and each row as one button, without its dot', async () => {
+test('[INSIGHTS-23.4] reads the heading as a heading and each row as one item, without its dot', async () => {
   await insightsWith(
     ['2025-01-10', '6.00', 'Food & Dining'],
     ['2025-01-11', '2.00', 'Transportation'],

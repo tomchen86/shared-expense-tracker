@@ -1174,6 +1174,11 @@ The mobile app SHALL 在類別的支出的那三行下面，依 LEDGER-28.1 的�
 - **WHEN** Coffee run 和 Dinner 都在 October 2026，在 Manage Categories 把個人空間的 Food & Dining 改名為「Meals」，個人的 Insights 有 Meals 和 Food & Dining 兩列
 - **THEN** 按 Meals 那一列，標題是「Meals」，只有 Coffee run 的卡片；按 Food & Dining 那一列，只有 Dinner 的卡片
 
+#### Scenario: 名稱只差大小寫的分類
+
+- **WHEN** 依序建立 Tokyo 和 Brisbane，Tokyo 的分類是「flights」，Brisbane 的是「Flights」；先新增 Brisbane 的 300 USD 的「To Brisbane」，再新增 Tokyo 的 200 USD 的「To Tokyo」，都是 Taylor 付款、自己分攤；個人的 Insights 只有一列「flights」（INSIGHTS-17.1），按那一列
+- **THEN** 標題是「flights」，最上面是「$5.00」和「2 expenses」，卡片由上而下是 To Tokyo 和 To Brisbane；To Brisbane 的卡片上的分類仍是它自己的「Flights」
+
 #### Scenario: 封存的分類
 
 - **WHEN** 有 Shopping 的 875 USD 的「Shoes」時封存 Shopping，按 Shopping 那一列
@@ -1234,7 +1239,7 @@ The mobile app SHALL 讓類別的支出只能看：卡片沒有名稱是「Delet
 
 ### Requirement: INSIGHTS-52.1 類別的支出跟著存著的支出
 
-WHEN 使用者從類別的支出打開的明細修改支出或把它移到垃圾桶之後回到類別的支出，the mobile app SHALL 讓金額、筆數和卡片都和存著的支出一致，期間、幣別、類別和標題仍是打開時的：不再算進那一列的支出離開這個畫面，金額或標題改了的照新的顯示；一筆都沒有時，金額是這個幣別的 0，筆數是「0 expenses」，下面沒有卡片，也沒有其他提示。在明細的 Expense actions 選「Delete」時，SHALL 照 LEDGER-72.2 存好後返回類別的支出，並照 LEDGER-73.2 顯示 Undo 提示；按「Undo」之後，這筆支出的卡片回到類別的支出。
+The mobile app SHALL 讓類別的支出的金額、筆數和卡片都和存著的支出一致，期間、幣別、類別和畫面的標題仍是打開時的：新增、修改、移到垃圾桶或還原支出之後回到類別的支出時都一樣，不管是在它打開的明細、另一個分頁還是 Trash 做的；類別的支出開著時套用收到的事件（SYNC-29.1），也不必重新啟動就照新的資料顯示。這時才算進那一列的支出照 LEDGER-28.1 出現在它的位置，不再算進那一列的支出離開這個畫面，支出的金額或標題改了的照新的顯示；日期不在期間裡的支出不出現，期間不像 LEDGER-117.1 那樣換成它的月份。一筆都沒有時，金額是這個幣別的 0，筆數是「0 expenses」，下面沒有卡片，也沒有其他提示。在明細的 Expense actions 選「Delete」時，SHALL 照 LEDGER-72.2 存好後返回類別的支出，並照 LEDGER-73.2 顯示 Undo 提示；按「Undo」之後，這筆支出的卡片回到類別的支出。
 
 #### Scenario: 改了金額
 
@@ -1260,6 +1265,16 @@ WHEN 使用者從類別的支出打開的明細修改支出或把它移到垃圾
 
 - **WHEN** 接著按「Undo」
 - **THEN** Coffee run 的卡片回到 Food & Dining，最上面是「$28.75」和「2 expenses」
+
+#### Scenario: 在另一個分頁新增
+
+- **WHEN** 個人的 Insights 打開的 Food & Dining 開在 Expenses 分頁，有 Coffee run 和 Dinner；到 Groups 分頁，在 Brisbane 的畫面新增 Food & Dining 的 3000 USD 的「Lunch」，Casey 付款，Taylor 和 Casey 分攤，再回到 Expenses 分頁
+- **THEN** 最上面是「October 2026」、「$43.75」和「3 expenses」，卡片由上而下是 Lunch、Dinner、Coffee run
+
+#### Scenario: 開著時套用另一支手機的事件
+
+- **WHEN** Brisbane 是共同帳本，有 10001 USD 的 Dinner，Casey 付款，依序分給 Blake、Taylor 和 Casey；個人的 Insights 打開的 Food & Dining 開著時，依序套用另一支手機新增的兩筆 Food & Dining 支出的第一個事件，都是 3000 USD、Casey 付款、Taylor 和 Casey 分攤：日期是 `2026-09-15` 的「Brunch」和日期是 `2026-10-30` 的「Lunch」
+- **THEN** 不必重新啟動，最上面是「October 2026」、「$48.34」和「2 expenses」，卡片由上而下是 Lunch、Dinner，沒有 Brunch
 
 #### Scenario: 一筆都沒有了
 

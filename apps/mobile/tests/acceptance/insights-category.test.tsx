@@ -4,8 +4,10 @@ import * as path from 'node:path';
 import { ActionSheetIOS } from 'react-native';
 import { fireEvent, waitFor, within } from '@testing-library/react-native';
 import {
+  addCategory,
   addExpense,
   archiveCategory,
+  chooseCategory,
   editCategory,
   expectForm,
   expectFormClosed,
@@ -45,13 +47,17 @@ import {
   SHARED_HISTORY,
   addGroupExpense,
   archiveGroup,
+  choosePayer,
+  chooseSharers,
   detailBarsOn,
   detailLinesOn,
   editOn,
   expectDetailsOn,
+  groupAddButton,
   startWithGroups,
   storedGroup,
 } from './ledger-group-expense-app';
+import { showGroup } from './group-balances-app';
 import {
   currentAggregation,
   expectInsights,
@@ -662,6 +668,42 @@ test("[INSIGHTS-49.1] lists under each row what Insights counts there after a pe
   expect(categoryCardTitles(FOOD)).toEqual(['Dinner']);
 });
 
+test("[INSIGHTS-49.1] lists the expenses of every category merged into the row, also those whose category's name differs from the row's by case", async () => {
+  // Tokyo is created first, so the row takes its name, flights (INSIGHTS-17.1).
+  await startWithGroups({ Tokyo: [], Brisbane: [] });
+  await addCategory('flights', await groupId('Tokyo'));
+  await addCategory('Flights', await groupId('Brisbane'));
+  await addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Taylor (You)',
+    sharers: ['Taylor (You)'],
+    amount: '3.00',
+    title: 'To Brisbane',
+    category: 'Flights',
+  });
+  await addGroupExpense({
+    group: 'Tokyo',
+    payer: 'Taylor (You)',
+    sharers: ['Taylor (You)'],
+    amount: '2.00',
+    title: 'To Tokyo',
+    category: 'flights',
+  });
+  await openInsights();
+  expect(rows()).toEqual([['flights', '$5.00 · 100.0%']]);
+
+  await openCategory('flights');
+
+  await expectCategorySummary(
+    ['October 2026', '$5.00', '2 expenses'],
+    'flights',
+  );
+  expect(categoryCardTitles('flights')).toEqual(['To Tokyo', 'To Brisbane']);
+  const expected = ['To Brisbane', '$3.00', 'Flights', 'Brisbane'];
+  const [, toBrisbane] = categoryCardLines('flights');
+  expect(shownInOrder(toBrisbane, expected)).toEqual(expected);
+});
+
 test("[INSIGHTS-49.1] titles the screen with the archived category's name alone, and marks it Archived on the card", async () => {
   await startExpensesAt('/');
   await addExpense({ amount: '8.75', category: 'Shopping', title: 'Shoes' });
@@ -880,6 +922,29 @@ test("[INSIGHTS-52.1] goes back to the category's expenses when Delete is chosen
 
   await expectCategorySummary(['October 2026', '$28.75', '2 expenses'], FOOD);
   expect(categoryCardTitles(FOOD)).toEqual(['Dinner', 'Coffee run']);
+});
+
+test("[INSIGHTS-52.1] shows an expense added on another tab while the category's expenses are open, and keeps the period", async () => {
+  await startWithCoffeeAndDinner();
+  await openInsights();
+  await openCategory(FOOD);
+  await expectCategorySummary(['October 2026', '$28.75', '2 expenses'], FOOD);
+
+  await showGroup('Brisbane');
+  const add = groupAddButton('Brisbane');
+  expect(add).toBeDefined();
+  await fireEvent.press(add!);
+  await expectForm('New Expense');
+  await fillForm({ amount: '30.00', title: 'Lunch' });
+  await choosePayer('Casey');
+  await chooseSharers('Taylor (You)', 'Casey');
+  await chooseCategory(FOOD);
+  await press('Add');
+  await expectFormClosed();
+  await tapTab('Expenses');
+
+  await expectCategorySummary(['October 2026', '$43.75', '3 expenses'], FOOD);
+  expect(categoryCardTitles(FOOD)).toEqual(['Lunch', 'Dinner', 'Coffee run']);
 });
 
 test('[INSIGHTS-52.1] shows a zero amount and 0 expenses, and nothing else, once the category has no expense left in the period', async () => {
