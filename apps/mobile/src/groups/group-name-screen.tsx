@@ -43,7 +43,7 @@ function GroupNameScreen({ form }: { form: Form }) {
     id: string;
     memberId?: string;
   }>();
-  const [group] = useGroup(id);
+  const [group] = useGroup(id, { watchSync: false });
   const colors = useThemeColors();
   if (!group)
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;

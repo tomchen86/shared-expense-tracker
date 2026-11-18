@@ -132,10 +132,23 @@ export function changedSyncUnits<V extends object>(
 
 /** Negative when `a` is earlier than `b`, positive when it is later, 0 when they are the same stamp. */
 export function compareSyncStamps(a: SyncStamp, b: SyncStamp): number {
+  return stampOrder(a, b, 0);
+}
+
+/** Stable member and category order across phones, including an exact stamp tie. */
+export function compareSyncRecordOrder(
+  a: { id: string; stamp: SyncStamp },
+  b: { id: string; stamp: SyncStamp },
+): number {
+  return stampOrder(a.stamp, b.stamp, compare(a.id, b.id));
+}
+
+function stampOrder(a: SyncStamp, b: SyncStamp, tie: number): number {
   return (
     compare(a.ms, b.ms) ||
     compare(a.counter, b.counter) ||
-    compare(a.device, b.device)
+    compare(a.device, b.device) ||
+    tie
   );
 }
 

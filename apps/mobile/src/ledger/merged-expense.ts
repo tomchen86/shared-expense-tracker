@@ -7,6 +7,23 @@ import { resolveExpenseCategory } from '../categories/repository';
 import type { SqlExecutor } from '../storage';
 import { writeExpenseRows } from './expenses';
 
+/** A category has arrived. Each waiting expense gets its own saved label and color back. */
+export async function restoreMergedExpenseCategories(
+  tx: SqlExecutor,
+  groupId: string,
+  categoryId: string,
+) {
+  await tx.run(
+    `UPDATE expenses AS e SET categoryId = ?,
+       categoryName = json_extract(s.record, '$.units.category.value.name'),
+       categoryColor = json_extract(s.record, '$.units.category.value.color')
+     FROM sync_records AS s
+     WHERE s.groupId = ? AND s.type = 'expense' AND s.id = e.id AND e.spaceId = s.groupId
+       AND e.categoryId <> ? AND json_extract(s.record, '$.units.category.value.id') = ?`,
+    [categoryId, groupId, categoryId, categoryId],
+  );
+}
+
 /** Returns whether the merge changed the expense that screens read. */
 export async function applyMergedExpense(
   tx: SqlExecutor,

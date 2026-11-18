@@ -59,7 +59,7 @@ export async function shareGroup(
       const units = Object.fromEntries(
         Object.entries(values).map(([name, value]) => [name, { value, stamp }]),
       );
-      await storeSyncRecord(tx, groupId, { type, id, units }, stamp);
+      await storeSyncRecord(tx, groupId, { type, id, units }, stamp, true);
     }
 
     await seed('group', groupId, group);

@@ -132,7 +132,10 @@ type ExpenseInput = Pick<
   'title' | 'amountMinor' | 'currency' | 'date' | 'note'
 > & { categoryId: string };
 
-type ExpenseListener = (leftTrash?: ReadonlySet<string>) => void;
+type ExpenseListener = (
+  leftTrash?: ReadonlySet<string>,
+  syncedGroupId?: string,
+) => void;
 const listeners = new WeakMap<Database, Set<ExpenseListener>>();
 
 /** Mounted screens also refresh while another screen covers them. */
@@ -154,8 +157,11 @@ export function subscribeToExpenses(
 export function notifyExpensesChanged(
   database: Database,
   leftTrash?: ReadonlySet<string>,
+  syncedGroupId?: string,
 ) {
-  listeners.get(database)?.forEach((listener) => listener(leftTrash));
+  listeners
+    .get(database)
+    ?.forEach((listener) => listener(leftTrash, syncedGroupId));
 }
 
 export interface GroupSplit {

@@ -338,6 +338,168 @@ test('a shared expense keeps its category snapshot until a different category is
   ]);
 });
 
+test('restores each waiting expense’s saved category even when another default has the reserved name', async () => {
+  const dinner = await save();
+  input.title = 'Lunch';
+  const lunch = await save();
+  await shareTrip();
+  const groupId = split.groupId;
+  const categories = await listCategories(database, groupId);
+  const fallback = categories.find((item) => item.isUncategorized)!;
+  const ms = (await latestStamp(database))!.ms + 1;
+  const stamp = { ms, counter: 0, device: 'remote' };
+  const id = 'late-category';
+  const assignments = [
+    { id, name: 'Before rename', color: '#102030' },
+    { id, name: 'After rename', color: '#abcdef' },
+  ];
+  await applySyncEvents(database, groupId, [
+    received({
+      version: 1,
+      type: 'category',
+      id: input.categoryId,
+      stamp,
+      units: { name: { value: 'Uncategorized' } },
+    }),
+    ...[dinner, lunch].map((expense, index) =>
+      received({
+        version: 1,
+        type: 'expense',
+        id: expense.id,
+        stamp,
+        units: { category: { value: assignments[index] } },
+      }),
+    ),
+  ]);
+  const savedCategories = async () =>
+    (await listExpenses(database)).map((item) => item.category);
+  expect((await savedCategories()).map((item) => item.id)).toEqual([
+    fallback.id,
+    fallback.id,
+  ]);
+  await applySyncEvents(database, groupId, [
+    received({
+      version: 1,
+      type: 'category',
+      id: input.categoryId,
+      stamp,
+      deleted: true,
+    }),
+    received({
+      version: 1,
+      type: 'category',
+      id,
+      stamp,
+      units: {
+        name: { value: 'Current name' },
+        color: { value: '#999999' },
+        archived: { value: true },
+      },
+    }),
+  ]);
+  expect(await savedCategories()).toEqual([assignments[1], assignments[0]]);
+  const storedCategories = await listCategories(database, groupId);
+  expect(storedCategories).toContainEqual(fallback);
+  expect(storedCategories.map((item) => item.id)).not.toContain(
+    input.categoryId,
+  );
+  expect(storedCategories.find((item) => item.id === id)).toMatchObject({
+    isDefault: false,
+    isArchived: true,
+    createdByUserId: undefined,
+  });
+});
+
+test('rolls back a failed position swap and orders equal creation stamps by ID on retry', async () => {
+  await shareTrip();
+  const groupId = split.groupId;
+  const stamp = {
+    ms: (await latestStamp(database))!.ms + 1,
+    counter: 0,
+    device: 'remote',
+  };
+  const category = (id: string) =>
+    received({
+      version: 1,
+      type: 'category',
+      id,
+      stamp,
+      units: {
+        name: { value: id },
+        color: { value: '#123456' },
+        archived: { value: false },
+      },
+    });
+  await applySyncEvents(database, groupId, [category('z')]);
+  const slots = () =>
+    database.all('SELECT id, position FROM categories ORDER BY position');
+  const before = await slots();
+  const earlier = category('a');
+  await database.exec(`CREATE TRIGGER reject_position BEFORE UPDATE OF position ON categories
+    WHEN OLD.position < 0 BEGIN SELECT RAISE(ABORT, 'position write failed'); END`);
+  await expect(applySyncEvents(database, groupId, [earlier])).rejects.toThrow(
+    'position write failed',
+  );
+  expect(await slots()).toEqual(before);
+  expect(
+    await readSyncRecord(database, groupId, 'category', 'a'),
+  ).toBeUndefined();
+  await database.exec('DROP TRIGGER reject_position');
+  await applySyncEvents(database, groupId, [earlier]);
+  expect(
+    (await listCategories(database, groupId)).slice(-2).map((item) => item.id),
+  ).toEqual(['a', 'z']);
+});
+
+test('an event predating sharing cannot move a seeded category', async () => {
+  await shareTrip();
+  const groupId = split.groupId;
+  const before = await listCategories(database, groupId);
+  const { id } = before[3];
+  const seeded = await readSyncRecord(database, groupId, 'category', id);
+  await applySyncEvents(database, groupId, [
+    received({
+      version: 1,
+      type: 'category',
+      id,
+      stamp: { ms: 0, counter: 0, device: 'remote' },
+      units: { name: { value: 'Earlier' } },
+    }),
+  ]);
+  expect(await listCategories(database, groupId)).toEqual(before);
+  expect(await readSyncRecord(database, groupId, 'category', id)).toEqual(
+    seeded,
+  );
+});
+
+test('keeps this phone’s linked member present while retaining a remote removal stamp', async () => {
+  await shareTrip();
+  const [group] = await listGroups(database);
+  const own = group.members.find(
+    (member) => member.userId === identity.userId,
+  )!;
+  const stamp = {
+    ms: (await latestStamp(database))!.ms + 1,
+    counter: 0,
+    device: 'remote',
+  };
+  await applySyncEvents(database, group.id, [
+    received({
+      version: 1,
+      type: 'member',
+      id: own.id,
+      stamp,
+      units: { removed: { value: true } },
+    }),
+  ]);
+  expect((await listGroups(database))[0].members.at(-1)).toEqual(own);
+  expect(
+    await readSyncRecord(database, group.id, 'member', own.id),
+  ).toMatchObject({
+    record: { units: { removed: { value: true, stamp } } },
+  });
+});
+
 test('writes in either shared group follow the same clock when the wall clock goes back', async () => {
   const clock = jest.spyOn(Date, 'now').mockReturnValue(1_000);
   try {

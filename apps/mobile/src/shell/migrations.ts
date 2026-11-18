@@ -1,11 +1,14 @@
-import { categoryMigrations } from '../categories/migrations';
+import {
+  categoryMigrations,
+  syncedCategoriesMigration,
+} from '../categories/migrations';
 import { groupArchiveMigration, groupMigrations } from '../groups/migrations';
 import {
   expenseAllocationOrderMigration,
   expenseMigrations,
   expenseTrashMigration,
 } from '../ledger/migrations';
-import { syncMigration } from '../sync/migrations';
+import { syncMigration, syncSeededRecordsMigration } from '../sync/migrations';
 
 /** Every capability's SQL migrations, in the order they run (ADR-0006). */
 export const appMigrations: readonly string[] = [
@@ -32,4 +35,6 @@ export const appMigrations: readonly string[] = [
     ADD COLUMN chartType TEXT NOT NULL DEFAULT 'auto'
     CHECK (chartType IN ('auto', 'donut', 'bar'))`,
   syncMigration,
+  syncedCategoriesMigration,
+  syncSeededRecordsMigration,
 ];

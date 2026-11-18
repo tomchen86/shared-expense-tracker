@@ -15,6 +15,7 @@ export interface Category {
   name: string;
   color: string;
   isDefault: boolean;
+  isUncategorized: boolean;
   isArchived: boolean;
   /** The user ID of whoever added the category. */
   createdByUserId?: string;
@@ -27,15 +28,16 @@ interface CategoryRow {
   name: string;
   color: string;
   isDefault: number;
+  isUncategorized: number;
   isArchived: number;
   createdByUserId: string | null;
   spaceId: string;
 }
 
 export function isUncategorizedCategory(
-  category: Pick<Category, 'name' | 'isDefault'>,
+  category: Pick<Category, 'isUncategorized'>,
 ): boolean {
-  return category.isDefault && category.name === UNCATEGORIZED_NAME;
+  return category.isUncategorized;
 }
 
 /** Keep the expense's saved label and color while the assigned category exists in its group. */
@@ -49,9 +51,13 @@ export async function resolveExpenseCategory(
     [assigned.id, groupId],
   );
   if (known) return assigned;
-  const [uncategorized] = await tx.all<typeof assigned>(
-    'SELECT id, name, color FROM categories WHERE spaceId = ? AND isDefault = 1 AND name = ?',
-    [groupId, UNCATEGORIZED_NAME],
+  return groupUncategorized(tx, groupId);
+}
+
+export async function groupUncategorized(tx: SqlExecutor, groupId: string) {
+  const [uncategorized] = await tx.all<Pick<Category, 'id' | 'name' | 'color'>>(
+    'SELECT id, name, color FROM categories WHERE spaceId = ? AND isUncategorized = 1',
+    [groupId],
   );
   return uncategorized;
 }
@@ -78,13 +84,14 @@ export async function ensureDefaultCategories(
 
   for (const [index, category] of DEFAULT_CATEGORIES.entries()) {
     await transaction.run(
-      'INSERT INTO categories (id, name, color, isDefault, position, spaceId) VALUES (?, ?, ?, 1, ?, ?)',
+      'INSERT INTO categories (id, name, color, isDefault, position, spaceId, isUncategorized) VALUES (?, ?, ?, 1, ?, ?, ?)',
       [
         uniqueIds[index],
         category.name,
         category.color,
         row.position + index + 1,
         spaceId,
+        Number(category.name === UNCATEGORIZED_NAME),
       ],
     );
   }
@@ -95,7 +102,7 @@ export async function listCategories(
   spaceId?: string,
 ): Promise<Category[]> {
   const rows = await database.all<CategoryRow>(
-    `SELECT id, name, color, isDefault, isArchived, createdByUserId, spaceId FROM categories${spaceId === undefined ? '' : ' WHERE spaceId = ?'} ORDER BY position ASC`,
+    `SELECT * FROM categories${spaceId === undefined ? '' : ' WHERE spaceId = ?'} ORDER BY position ASC`,
     spaceId === undefined ? [] : [spaceId],
   );
   return rows.map((row) => ({
@@ -103,6 +110,7 @@ export async function listCategories(
     name: row.name,
     color: row.color,
     isDefault: row.isDefault === 1,
+    isUncategorized: row.isUncategorized === 1,
     isArchived: row.isArchived === 1,
     createdByUserId: row.createdByUserId ?? undefined,
     spaceId: row.spaceId,
@@ -146,6 +154,7 @@ export async function createCategory(
       name: input.name,
       color: input.color,
       isDefault: false,
+      isUncategorized: false,
       isArchived: false,
       createdByUserId: input.createdByUserId,
       spaceId: input.spaceId,
@@ -183,8 +192,8 @@ async function writeCategoryArchived(
   group: SharedGroup | undefined,
 ) {
   const result = await transaction.run(
-    'UPDATE categories SET isArchived = ? WHERE id = ? AND NOT (isDefault = 1 AND name = ?)',
-    [archived ? 1 : 0, id, UNCATEGORIZED_NAME],
+    'UPDATE categories SET isArchived = ? WHERE id = ? AND isUncategorized = 0',
+    [archived ? 1 : 0, id],
   );
   if (result.changes !== 1)
     throw new Error('Category cannot be archived or restored');
@@ -201,8 +210,8 @@ export async function deleteCategory(
     // The expense foreign key also prevents deleting a category that became used
     // after the confirmation opened.
     const result = await transaction.run(
-      'DELETE FROM categories WHERE id = ? AND NOT (isDefault = 1 AND name = ?)',
-      [id, UNCATEGORIZED_NAME],
+      'DELETE FROM categories WHERE id = ? AND isUncategorized = 0',
+      [id],
     );
     if (result.changes !== 1) throw new Error('Category cannot be deleted');
     if (group)
@@ -246,8 +255,8 @@ export async function updateCategory(
   await database.transaction(async (transaction) => {
     const { id, name, color } = input;
     const result = await transaction.run(
-      'UPDATE categories SET name = ?, color = ? WHERE id = ? AND NOT (isDefault = 1 AND name = ?)',
-      [name, color, id, UNCATEGORIZED_NAME],
+      'UPDATE categories SET name = ?, color = ? WHERE id = ? AND isUncategorized = 0',
+      [name, color, id],
     );
     if (result.changes === 0) throw new Error('Category cannot be updated');
     const group = await sharedGroupForCategory(transaction, id);

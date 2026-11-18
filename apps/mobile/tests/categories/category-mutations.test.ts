@@ -1,3 +1,4 @@
+import { DEFAULT_CATEGORIES } from '@shared-expense/domain';
 import { ensureDefaultCategories, listCategories } from '../../src/categories';
 import { categoryMigrations } from '../../src/categories/migrations';
 import {
@@ -14,6 +15,7 @@ import {
   type Database,
 } from '../../src/storage';
 import { openNodeDatabase } from '../../src/storage/node';
+import { syncSeededRecordsMigration } from '../../src/sync/migrations';
 
 let database: Database;
 beforeEach(() => {
@@ -23,8 +25,8 @@ afterEach(async () => {
   await database.close();
 });
 
-async function prepare(migrations = appMigrations) {
-  return initializeDatabase(database, migrations, false, async (tx) => {
+async function prepare() {
+  return initializeDatabase(database, appMigrations, false, async (tx) => {
     const identity = await ensureLocalIdentity(tx);
     await ensureDefaultCategories(tx, identity.personalSpaceId);
     return identity;
@@ -32,10 +34,19 @@ async function prepare(migrations = appMigrations) {
 }
 
 test('upgrades an existing database without changing its categories, identity or expenses', async () => {
-  const identity = await prepare(
+  const identity = await initializeDatabase(
+    database,
     appMigrations.slice(0, appMigrations.indexOf(categoryMigrations[1])),
+    false,
+    ensureLocalIdentity,
   );
-  const before = await database.all<{ id: string }>(
+  // Seed the schema as that version did, before reserved categories had a flag.
+  for (const [position, { name, color }] of DEFAULT_CATEGORIES.entries())
+    await database.run(
+      'INSERT INTO categories (id, name, color, position, isDefault, spaceId) VALUES (?, ?, ?, ?, 1, ?)',
+      [String(position), name, color, position, identity.personalSpaceId],
+    );
+  const before = await database.all<{ id: string; name: string }>(
     'SELECT * FROM categories ORDER BY position',
   );
   // Seed the old schema directly: today's save and read code uses later migrations.
@@ -56,7 +67,13 @@ test('upgrades an existing database without changing its categories, identity or
 
   expect(
     await database.all('SELECT * FROM categories ORDER BY position'),
-  ).toEqual(before.map((row) => ({ ...row, isArchived: 0 })));
+  ).toEqual(
+    before.map((row) => ({
+      ...row,
+      isArchived: 0,
+      isUncategorized: Number(row.name === 'Uncategorized'),
+    })),
+  );
   expect(await ensureLocalIdentity(database)).toEqual(identity);
   expect(await database.all('SELECT * FROM expenses')).toEqual(
     expenses.map((expense) => ({ ...expense, trashOrder: null })),
@@ -66,6 +83,55 @@ test('upgrades an existing database without changing its categories, identity or
     { participant: identity.personalParticipantId, amountMinor: 1250 },
   ]);
   expect(lunch.shares).toEqual(lunch.payments);
+});
+
+test('upgrading distinguishes categories stamped at sharing from local and remote creations', async () => {
+  await runMigrations(
+    database,
+    appMigrations.slice(0, appMigrations.indexOf(syncSeededRecordsMigration)),
+  );
+  await database.exec(`
+    INSERT INTO groups (id, name, position) VALUES ('g', 'Trip', 1);
+    INSERT INTO sync_groups (groupId, device) VALUES ('g', 'here');
+  `);
+  for (const [index, id] of ['seeded', 'local', 'remote'].entries()) {
+    const stamp = {
+      ms: 1000,
+      counter: index,
+      device: id === 'remote' ? 'there' : 'here',
+    };
+    const values = { name: id, color: '#123456', archived: false };
+    const units = Object.fromEntries(
+      Object.entries(values).map(([key, value]) => [key, { value, stamp }]),
+    );
+    const record = { id, type: 'category', units };
+    await database.run(
+      'INSERT INTO sync_records (groupId, type, id, created, record) VALUES (?, ?, ?, ?, ?)',
+      ['g', record.type, id, JSON.stringify(stamp), JSON.stringify(record)],
+    );
+    if (id === 'local') {
+      const event = {
+        ...record,
+        version: 1,
+        stamp,
+        units: Object.fromEntries(
+          Object.entries(values).map(([key, value]) => [key, { value }]),
+        ),
+      };
+      await database.run(
+        'INSERT INTO sync_outbox (groupId, id, content) VALUES (?, ?, ?)',
+        ['g', 'event', JSON.stringify(event)],
+      );
+    }
+  }
+  await runMigrations(database, appMigrations);
+  expect(
+    await database.all('SELECT id, seeded FROM sync_records ORDER BY id'),
+  ).toEqual([
+    { id: 'local', seeded: 0 },
+    { id: 'remote', seeded: 0 },
+    { id: 'seeded', seeded: 1 },
+  ]);
 });
 
 test('rejects reserved, missing, archived and wrong-space mutation targets without changing expenses', async () => {

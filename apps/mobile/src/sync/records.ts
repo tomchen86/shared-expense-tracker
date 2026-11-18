@@ -52,14 +52,19 @@ export async function readSyncRecord(
   type: SyncRecordType,
   id: string,
 ) {
-  const [row] = await tx.all<{ created: string; record: string }>(
-    'SELECT created, record FROM sync_records WHERE groupId = ? AND type = ? AND id = ?',
+  const [row] = await tx.all<{
+    created: string;
+    record: string;
+    seeded: number;
+  }>(
+    'SELECT created, record, seeded FROM sync_records WHERE groupId = ? AND type = ? AND id = ?',
     [groupId, type, id],
   );
   if (row)
     return {
       created: JSON.parse(row.created) as SyncStamp,
       record: JSON.parse(row.record) as SyncRecord,
+      seeded: row.seeded === 1,
     };
 }
 
@@ -68,9 +73,10 @@ export async function storeSyncRecord(
   groupId: string,
   record: SyncRecord,
   created: SyncStamp,
+  seeded = false,
 ) {
   await tx.run(
-    `INSERT INTO sync_records (groupId, type, id, created, record) VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO sync_records (groupId, type, id, created, record, seeded) VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT (groupId, type, id) DO UPDATE SET created = excluded.created, record = excluded.record
      WHERE created <> excluded.created OR record <> excluded.record`,
     [
@@ -79,6 +85,7 @@ export async function storeSyncRecord(
       record.id,
       JSON.stringify(created),
       JSON.stringify(record),
+      Number(seeded),
     ],
   );
 }

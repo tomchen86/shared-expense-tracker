@@ -1,4 +1,8 @@
-import { canAddGroupMember } from '@shared-expense/domain';
+import {
+  canAddGroupMember,
+  syncRecordValues,
+  type SyncRecord,
+} from '@shared-expense/domain';
 import { createUuid, type Database, type SqlExecutor } from '../storage';
 import { ensureDefaultCategories } from '../categories/repository';
 import type { LocalIdentity } from '../shell';
@@ -16,6 +20,36 @@ export interface Group {
   archived: boolean;
   shared: boolean;
   members: GroupMember[];
+}
+
+export async function applyMergedGroup(
+  tx: SqlExecutor,
+  groupId: string,
+  record: Extract<SyncRecord, { type: 'group' | 'member' }>,
+) {
+  if (record.type === 'group') {
+    const name = record.units.name!.value; // A group's only unit.
+    const { changes } = await tx.run(
+      'UPDATE groups SET name = ? WHERE id = ? AND name <> ?',
+      [name, groupId, name],
+    );
+    return changes > 0;
+  }
+  const member = syncRecordValues(record);
+  if (!member) return false;
+  // This phone represents its own linked member. Keep the received removed unit
+  // in sync storage, including its stamp for ordering.
+  const removed =
+    'excluded.removed AND group_members.userId IS NOT (SELECT userId FROM local_identity WHERE singleton = 1)';
+  const { changes } = await tx.run(
+    `INSERT INTO group_members (id, groupId, name, removed, position)
+     VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(position), 0) + 1 FROM group_members WHERE groupId = ?))
+     ON CONFLICT (id) DO UPDATE SET name = excluded.name, removed = ${removed}
+     WHERE group_members.groupId = excluded.groupId
+       AND (group_members.name, group_members.removed) IS NOT (excluded.name, ${removed})`,
+    [record.id, groupId, member.name, Number(member.removed), groupId],
+  );
+  return changes > 0;
 }
 
 /** Every group in the local data, in the order they were created. */

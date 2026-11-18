@@ -27,8 +27,8 @@ afterEach(async () => {
   await database.close();
 });
 
-async function prepare(migrations = appMigrations) {
-  return initializeDatabase(database, migrations, false, async (tx) => {
+async function prepare() {
+  return initializeDatabase(database, appMigrations, false, async (tx) => {
     const identity = await ensureLocalIdentity(tx);
     await ensureDefaultCategories(tx, identity.personalSpaceId);
     return identity;
@@ -61,9 +61,18 @@ test('upgrading preserves existing expenses, payments, shares, row order and mig
     0,
     appMigrations.indexOf(expenseTrashMigration),
   );
-  const identity = await prepare(previous);
-  const [category] = await listCategories(database, identity.personalSpaceId);
-  // Seed the pre-trash schema: current save/read code also needs allocation positions.
+  const identity = await initializeDatabase(
+    database,
+    previous,
+    false,
+    ensureLocalIdentity,
+  );
+  const category = { id: 'food', name: 'Food & Dining', color: '#D81B60' };
+  // Seed the category and allocations as the pre-trash schema stored them.
+  await database.run(
+    'INSERT INTO categories (id, name, color, isDefault, position, spaceId) VALUES (?, ?, ?, 1, 1, ?)',
+    [category.id, category.name, category.color, identity.personalSpaceId],
+  );
   for (const title of ['First', 'Second']) {
     await database.run(
       `INSERT INTO expenses (id, title, amountMinor, currency, date, categoryId, categoryName, categoryColor, spaceId)

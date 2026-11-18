@@ -5,9 +5,13 @@ import {
   type SyncEvent,
   type SyncRefusal,
 } from '@shared-expense/domain';
+import { applyMergedCategory } from '../categories/merged-category';
+import { groupUncategorized } from '../categories/repository';
+import { applyMergedGroup } from '../groups';
 import { notifyExpensesChanged } from '../ledger/expenses';
 import { applyMergedExpense } from '../ledger/merged-expense';
 import type { Database, SqlExecutor } from '../storage';
+import { orderSyncedRows } from './positions';
 import {
   latestStamp,
   readSyncRecord,
@@ -63,13 +67,15 @@ export async function applySyncEvents(
   events: readonly ReceivedSyncEvent[],
 ): Promise<void> {
   const leftTrash = new Set<string>();
-  const expensesChanged = await database.transaction(async (tx) => {
+  const changed = await database.transaction(async (tx) => {
     if (!(await sharedGroup(tx, groupId)))
       throw new Error('Not a shared ledger');
     // Sharing seeds at least the group's own stamp in the same transaction.
     const initial = (await latestStamp(tx))!;
+    const uncategorized = await groupUncategorized(tx, groupId);
     let seen = initial;
-    let changed = false;
+    let visibleChange = false;
+    const toOrder = new Set<'member' | 'category'>();
     for (const received of events) {
       const verdict = checkSyncEvent(received.content, received);
       if (verdict.status === 'unsupported')
@@ -94,28 +100,47 @@ export async function applySyncEvents(
       const previous = await readSyncRecord(tx, groupId, event.type, event.id);
       const merged = mergeSyncEvent({ record: previous?.record, seen, event });
       seen = merged.seen;
+      const { record } = merged;
+      // The stamp has been seen, but no event replaces the reserved category's seeded record.
+      if (record.type === 'category' && record.id === uncategorized.id)
+        continue;
       const created =
-        previous && compareSyncStamps(previous.created, event.stamp) <= 0
+        previous &&
+        (previous.seeded ||
+          compareSyncStamps(previous.created, event.stamp) <= 0)
           ? previous.created
           : event.stamp;
-      await storeSyncRecord(tx, groupId, merged.record, created);
-      if (
-        merged.record.type === 'expense' &&
-        (await applyMergedExpense(tx, groupId, merged.record, previous?.record))
-      ) {
-        changed = true;
-        if (
-          previous?.record.type === 'expense' &&
-          previous.record.units.trashed?.value &&
-          !merged.record.units.trashed?.value
-        )
-          leftTrash.add(event.id);
+      await storeSyncRecord(tx, groupId, record, created);
+      if (record.type === 'member' || record.type === 'category')
+        toOrder.add(record.type);
+      switch (record.type) {
+        case 'group':
+        case 'member':
+          if (await applyMergedGroup(tx, groupId, record)) visibleChange = true;
+          break;
+        case 'category':
+          if (await applyMergedCategory(tx, groupId, record, uncategorized))
+            visibleChange = true;
+          break;
+        case 'expense':
+          if (await applyMergedExpense(tx, groupId, record, previous?.record)) {
+            visibleChange = true;
+            if (
+              previous?.record.type === 'expense' &&
+              previous.record.units.trashed?.value &&
+              !record.units.trashed?.value
+            )
+              leftTrash.add(event.id);
+          }
+          break;
       }
     }
+    for (const type of toOrder)
+      if (await orderSyncedRows(tx, groupId, type)) visibleChange = true;
     if (compareSyncStamps(seen, initial) > 0) await saveLatestStamp(tx, seen);
-    return changed;
+    return visibleChange;
   });
-  if (expensesChanged) notifyExpensesChanged(database, leftTrash);
+  if (changed) notifyExpensesChanged(database, leftTrash, groupId);
 }
 
 /** Refusals retain their original envelope and receipt order across restarts. */
