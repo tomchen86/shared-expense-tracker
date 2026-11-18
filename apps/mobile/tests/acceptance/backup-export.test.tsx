@@ -18,6 +18,7 @@ import {
   dataRow,
   exportData,
   failWrites,
+  failWritesAfter,
   goOffline,
   leaveNoRoomForTemporaryFiles,
   makeRoomForTemporaryFiles,
@@ -389,6 +390,31 @@ test('[BACKUP-7.1] reports a failed export and leaves nothing behind when the sh
   expect(await nextAlert(1)).toEqual(EXPORT_FAILED);
   expect(temporaryFiles(phone)).toEqual([]);
 });
+
+test('[BACKUP-7.1] deletes what it had written when a later write of the export fails', async () => {
+  await startWithTaylorsData();
+  const before = dataIn(phone.database);
+
+  // The second write of the export fails, then the third, and so on, until an
+  // export goes through with every write allowed.
+  for (let allowed = 1; ; allowed += 1) {
+    const shown = alertsShown().length;
+    failWritesAfter(allowed);
+
+    await pressRow('Export Data');
+    await waitFor(() =>
+      expect(sharedFiles().length + alertsShown().length).toBe(shown + 1),
+    );
+    await settle();
+    allowWrites();
+    if (sharedFiles().length === 1) break;
+
+    expect(alertsShown().at(-1)).toEqual(EXPORT_FAILED);
+    expect(temporaryFiles(phone)).toEqual([]);
+    expect(dataIn(phone.database)).toEqual(before);
+    expect(allowed).toBeLessThan(1000);
+  }
+}, 60_000);
 
 test('[BACKUP-7.1] exports when Export Data is pressed again after a failed export', async () => {
   await startWithTaylorsData();

@@ -43,7 +43,9 @@ import {
   taylorsExport,
   temporaryFiles,
   withADifferentMigration,
+  withAnExportTimeThatIsNoTime,
   withFields,
+  withoutAnExportTime,
   writeData,
   writeSamsData,
   type Phone,
@@ -188,6 +190,19 @@ test("[BACKUP-11.1] writes the export time in English with the phone's region wh
   ]);
 });
 
+test('[BACKUP-11.1] writes the export time in plain English when the phone reports no region', async () => {
+  const { file } = await taylorsExport();
+  setPhoneLanguage('ja');
+  await startOn(phone);
+
+  await chooseFile(file);
+
+  expect(await nextAlert(1)).toEqual([
+    REPLACE,
+    replaceMessage(TAYLORS_EXPORT_TIME, '2 groups', '3 expenses'),
+  ]);
+});
+
 test('[BACKUP-11.1] writes the export time in the time zone the device is in', async () => {
   const { file } = await taylorsExport();
   await startOn(phone, { timeZone: 'America/Los_Angeles' });
@@ -329,10 +344,14 @@ test("[BACKUP-14.1] goes back to the Expenses tab and shows the file's data on e
 
   await tapTab('Settings');
   await waitFor(() => expect(nameField()).toHaveDisplayValue('Taylor'));
-  expect(
-    screen.getByRole('button', { name: 'Archived groups, 1' }),
-  ).toBeOnTheScreen();
-  expect(screen.getByRole('button', { name: 'Trash, 1' })).toBeOnTheScreen();
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Archived groups, 1' }),
+    ).toBeOnTheScreen(),
+  );
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Trash, 1' })).toBeOnTheScreen(),
+  );
   expect(alertsShown()).toHaveLength(1);
 });
 
@@ -423,6 +442,14 @@ const UNUSABLE: [
   [
     'a copy of a phone database, which has no export time',
     (_file, samsPhone) => copyOf(samsPhone.database),
+  ],
+  [
+    'an export file whose export time was deleted',
+    (file) => withoutAnExportTime(file),
+  ],
+  [
+    'an export file whose export time is not a time',
+    (file) => withAnExportTimeThatIsNoTime(file),
   ],
 ];
 
@@ -551,6 +578,22 @@ const AGAINST_THE_RULES: [string, string][] = [
     "INSERT INTO group_members (id, groupId, userId, name, position) VALUES ('ghost', 'missing', NULL, 'Ghost', 1)",
   ],
   ['no local identity', 'DELETE FROM local_identity'],
+  [
+    'an expense in a space that is neither the personal space nor a group',
+    "UPDATE expenses SET spaceId = 'nowhere' WHERE title = 'Coffee run'",
+  ],
+  [
+    'a category in a space that is neither the personal space nor a group',
+    "UPDATE categories SET spaceId = 'nowhere' WHERE name = 'Shopping' AND spaceId = (SELECT personalSpaceId FROM local_identity)",
+  ],
+  [
+    'a group expense paid by someone who is not a member of the group',
+    `UPDATE expense_payments SET participant = 'stranger' WHERE expenseId = ${DINNER}`,
+  ],
+  [
+    'a personal expense shared by a member of a group',
+    `UPDATE expense_shares SET participant = (SELECT id FROM group_members WHERE name = 'Casey') WHERE expenseId = ${COFFEE_RUN}`,
+  ],
 ];
 
 test.each(AGAINST_THE_RULES)(
@@ -583,7 +626,18 @@ test('[BACKUP-17.1] writes nothing and asks for an update when the file comes fr
   expectNothingChanged(app, before);
 });
 
-test('[BACKUP-18.1] upgrades a file from an older version and imports it like any other', async () => {
+test('[BACKUP-17.1] says the file cannot be used when a file from a newer version is damaged', async () => {
+  const { file } = await taylorsExport();
+  const app = await startWithSamsData();
+  const before = dataIn(phone.database);
+
+  await chooseFile(firstHalfOf(await fromANewerVersion(file)));
+
+  expect(await nextAlert(1)).toEqual(CANNOT_USE_FILE);
+  expectNothingChanged(app, before);
+});
+
+test('[BACKUP-18.1] upgrades a file from before Insights had a chart type and imports it like any other', async () => {
   const { file, data } = await taylorsExport();
   const older = await fromBeforeChartTypes(file);
   expect(dataIn(older)._migrations.length).toBeLessThan(appMigrations.length);
@@ -621,6 +675,21 @@ test('[BACKUP-18.1] checks the rules on a file from an older version after upgra
   expectNothingChanged(app, before);
 });
 
+test('[BACKUP-18.1] says the file cannot be used when one of its missing migrations cannot run', async () => {
+  const { file } = await taylorsExport();
+  const older = edited(
+    await fromBeforeChartTypes(file),
+    'ALTER TABLE local_identity ADD COLUMN chartType TEXT',
+  );
+  const app = await startWithSamsData();
+  const before = dataIn(phone.database);
+
+  await chooseFile(older);
+
+  expect(await nextAlert(1)).toEqual(CANNOT_USE_FILE);
+  expectNothingChanged(app, before);
+});
+
 test('[BACKUP-19.1] imports with no network and makes no request', async () => {
   const { file, data } = await taylorsExport();
   await startOn(phone);
@@ -632,15 +701,15 @@ test('[BACKUP-19.1] imports with no network and makes no request', async () => {
   expect(requests()).toBe(0);
 });
 
-test('[BACKUP-20.1] keeps the local data as it was when a write fails at any step, and imports once writes work again', async () => {
+test('[BACKUP-20.1] keeps the local data as it was whichever write fails, and imports once every write works', async () => {
   const { file, data } = await taylorsExport();
   const app = await startWithSamsData();
   const before = dataIn(phone.database);
   let failures = 0;
 
-  // The first write after Replace fails, then the second, the third, the fourth,
-  // and from there twice as far each time, until every write goes through.
-  for (let allowed = 0; ; allowed = allowed < 3 ? allowed + 1 : allowed * 2) {
+  // The first write after Replace fails, then the second, and so on through the
+  // last one, until an import goes through with every write allowed.
+  for (let allowed = 0; ; allowed += 1) {
     const shown = alertsShown().length;
     await chooseFile(file);
     expect((await nextAlert(shown + 1))[0]).toBe(REPLACE);
@@ -658,12 +727,13 @@ test('[BACKUP-20.1] keeps the local data as it was when a write fails at any ste
     failures += 1;
     expect(alertsShown().at(-1)).toEqual(IMPORT_FAILED);
     expectNothingChanged(app, before);
-    expect(allowed).toBeLessThan(100_000);
+    expect(allowed).toBeLessThan(1000);
   }
 
   expect(failures).toBeGreaterThan(0);
   expect(dataIn(phone.database)).toEqual(data);
-});
+  // One import for each write of an import, which takes longer than one test's time.
+}, 120_000);
 
 test('[BACKUP-21.1] leaves no temporary file after an import', async () => {
   const { file } = await taylorsExport();

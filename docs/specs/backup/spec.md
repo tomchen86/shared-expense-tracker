@@ -145,7 +145,7 @@ The mobile app SHALL 不把這支手機的私鑰和任何一把群組鑰匙放�
 
 ### Requirement: BACKUP-10.1 點 Import Data 時打開檔案選擇畫面
 
-WHEN 使用者在 Settings 根畫面點「Import Data」，the mobile app SHALL 打開檔案選擇畫面，讓使用者選任何一個檔案；使用者取消時 SHALL 什麼都不做。
+WHEN 使用者在 Settings 根畫面點「Import Data」，the mobile app SHALL 打開檔案選擇畫面，讓使用者選任何一個檔案，使用者取消時什麼都不做。
 
 #### Scenario: 打開
 
@@ -170,6 +170,11 @@ WHEN 使用者選了一個可以匯入的匯出檔，the mobile app SHALL 在寫
 
 - **WHEN** 手機第一個偏好的語言和地區是繁體中文（澳洲），裝置在台北，選了同一個匯出檔
 - **THEN** 內容裡的匯出時間是「18 Nov 2026 at 2:32 pm」
+
+#### Scenario: 手機回報不出地區
+
+- **WHEN** 手機第一個偏好的語言是日文，沒有地區，裝置在台北，選了同一個匯出檔
+- **THEN** 內容裡的匯出時間是「Nov 18, 2026 at 2:32 PM」，不是日文的寫法
 
 #### Scenario: 裝置在別的時區
 
@@ -250,7 +255,7 @@ WHEN 匯入完成，the mobile app SHALL 不必重新啟動就回到 app 載入�
 
 ### Requirement: BACKUP-15.1 不能用的檔案不寫入
 
-IF 使用者選的檔案不能用，THEN the mobile app SHALL 不寫入任何資料，本機資料和畫面都不變，並跳出標題「Unable to Import Data」、內容「This file is damaged or was not exported by this app. Your data was not changed.」的提示框。檔案不能用，是指它符合下面任何一項：不是 SQLite 資料庫檔；不完整或損壞；沒有 migration 紀錄，或它的 migration 紀錄和 app 的 migration 清單開頭對不上；裡面有 BACKUP-24.1 不允許的東西；沒有匯出時間；內容違反 BACKUP-16.1 的規則。開發版也一樣，不會因為 migration 對不上就刪掉本機資料（SHELL-5.1）。
+IF 使用者選的檔案不能用，THEN the mobile app SHALL 不寫入任何資料，本機資料和畫面都不變，並跳出標題「Unable to Import Data」、內容「This file is damaged or was not exported by this app. Your data was not changed.」的提示框。檔案不能用，是指它符合下面任何一項：不是 SQLite 資料庫檔；不完整或損壞；沒有 migration 紀錄，或它的 migration 紀錄和 app 的 migration 清單開頭對不上；裡面有 BACKUP-24.1 不允許的東西；沒有匯出時間，或匯出時間不是一個有效的時刻；內容違反 BACKUP-16.1 的規則。沒有損壞、版本比 app 新的匯出檔不算在這裡，照 BACKUP-17.1 處理。開發版也一樣，不會因為 migration 對不上就刪掉本機資料（SHELL-5.1）。
 
 #### Scenario: 不是資料庫
 
@@ -274,7 +279,12 @@ IF 使用者選的檔案不能用，THEN the mobile app SHALL 不寫入任何資
 
 #### Scenario: 沒有匯出時間
 
-- **WHEN** 選了一個直接從手機複製出來的本機資料庫檔，它的 migration 紀錄和 app 的一樣，但沒有匯出時間
+- **WHEN** 選了一個直接從手機複製出來的本機資料庫檔，它的 migration 紀錄和 app 的一樣，但沒有匯出時間；或一個匯出時間被刪掉的匯出檔
+- **THEN** 跳出這個提示框，本機資料不變
+
+#### Scenario: 匯出時間不是時刻
+
+- **WHEN** 選了一個匯出檔，它記的匯出時間被改成不是時刻的值，例如文字「not a time」
 - **THEN** 跳出這個提示框，本機資料不變
 
 #### Scenario: 開發版
@@ -284,7 +294,7 @@ IF 使用者選的檔案不能用，THEN the mobile app SHALL 不寫入任何資
 
 ### Requirement: BACKUP-24.1 匯出檔裡只能有預期的表和索引
 
-IF 使用者選的資料庫檔裡，除了 app 的 migration 建出來的表和索引、以及匯出檔記匯出時間的那一張表之外還有別的東西，或其中一張表、一個索引的定義和 migration 建出來的不一樣，THEN the mobile app SHALL 照 BACKUP-15.1 不寫入並提示。別的東西是指任何 view、任何 trigger、多出來的表和多出來的索引；定義包括欄位、型別、預設值和限制。版本比 app 舊的匯出檔，view 和 trigger 在升級之前就不能有，表和索引是拿升級之後的和 migration 建出來的比（BACKUP-18.1）。
+IF 使用者選的資料庫檔裡，除了 app 的 migration 建出來的表和索引、以及匯出檔記匯出時間的那一張表之外還有別的東西，或其中一張表、一個索引的定義和 migration 建出來的不一樣，THEN the mobile app SHALL 照 BACKUP-15.1 不寫入並提示。別的東西是指任何 view、任何 trigger、多出來的表和多出來的索引；定義包括欄位、型別、預設值和限制。版本比 app 舊的匯出檔，view 和 trigger 在升級之前就不能有，表和索引是拿升級之後的和 migration 建出來的比（BACKUP-18.1）；版本比 app 新的匯出檔不照這一條檢查（BACKUP-17.1）。
 
 #### Scenario: 多了一個 trigger
 
@@ -313,7 +323,7 @@ IF 使用者選的資料庫檔裡，除了 app 的 migration 建出來的表和�
 
 ### Requirement: BACKUP-16.1 內容違反規則的匯出檔不寫入
 
-IF 匯出檔的內容違反規則，THEN the mobile app SHALL 照 BACKUP-15.1 不寫入並提示。規則是：資料庫自己的限制都成立，也就是每張表的 CHECK、NOT NULL、UNIQUE、主鍵和 foreign key；有本機身分；每筆支出的付款加總和分攤加總都等於它的金額；每筆支出的幣別是支援的幣別（LEDGER-1.1）；每筆支出的日期是有效的支出日期（LEDGER-9.1）。
+IF 匯出檔的內容違反規則，THEN the mobile app SHALL 照 BACKUP-15.1 不寫入並提示。規則只有這些：資料庫自己的限制都成立，也就是每張表的 CHECK、NOT NULL、UNIQUE、主鍵和 foreign key；有本機身分；每個分類和每筆支出所屬的空間，是本機身分的個人空間或匯出檔裡的一個群組；個人空間的支出，付款和分攤都記在個人 participant 下，群組的支出，付款和分攤都記在那個群組的成員下，前成員也算；每筆支出的付款加總和分攤加總都等於它的金額；每筆支出的幣別是支援的幣別（LEDGER-1.1）；每筆支出的日期是有效的支出日期（LEDGER-9.1）。
 
 #### Scenario: 分攤加起來不等於金額
 
@@ -350,14 +360,34 @@ IF 匯出檔的內容違反規則，THEN the mobile app SHALL 照 BACKUP-15.1 �
 - **WHEN** 匯出檔裡的本機身分被刪掉
 - **THEN** 跳出「Unable to Import Data」，本機資料不變
 
+#### Scenario: 空間不存在
+
+- **WHEN** 匯出檔裡 Coffee run 所屬的空間被改成一個不是個人空間、也不是任何群組的 ID；或個人空間的分類 Shopping 所屬的空間被改成這樣的 ID
+- **THEN** 跳出「Unable to Import Data」，本機資料不變
+
+#### Scenario: 付款或分攤的人不在那個空間
+
+- **WHEN** 匯出檔裡 Dinner 的付款被記在一個不是 Brisbane 成員的 ID 下；或個人支出 Coffee run 的分攤被記在 Casey 的成員 ID 下
+- **THEN** 跳出「Unable to Import Data」，本機資料不變
+
+#### Scenario: 前成員
+
+- **WHEN** 匯出檔是 Taylor 的資料，Dinner 的分攤裡有已經被移出的 Blake
+- **THEN** 不算違反規則，跳出的是「Replace All Data?」
+
 ### Requirement: BACKUP-17.1 比 app 新的匯出檔不寫入，請使用者更新 app
 
-IF 匯出檔的版本比 app 新，THEN the mobile app SHALL 不寫入任何資料，本機資料和畫面都不變，並跳出標題「Unable to Import Data」、內容「This file was exported by a newer version of the app. Update the app, then try again. Your data was not changed.」的提示框；開發版也一樣。
+IF 使用者選的檔案是沒有損壞的 SQLite 資料庫檔，而它的版本比 app 新，THEN the mobile app SHALL 不寫入任何資料，本機資料和畫面都不變，並跳出標題「Unable to Import Data」、內容「This file was exported by a newer version of the app. Update the app, then try again. Your data was not changed.」的提示框，不再照 BACKUP-24.1 和 BACKUP-16.1 檢查它，因為新版的匯出檔本來就可能有 app 不認得的表和欄位；開發版也一樣。
 
 #### Scenario: 新版 app 的匯出檔
 
-- **WHEN** 選了一個多跑了一個 migration 的 app 所匯出的匯出檔
-- **THEN** 跳出這個提示框，沒有確認框，本機資料和選檔案之前一樣
+- **WHEN** 選了一個多跑了一個 migration、因此多了一張表的 app 所匯出的匯出檔
+- **THEN** 跳出這個提示框，不是「This file is damaged or was not exported by this app.」；沒有確認框，本機資料和選檔案之前一樣
+
+#### Scenario: 損壞的新版匯出檔
+
+- **WHEN** 選了一個只剩前半的新版匯出檔
+- **THEN** 跳出的是 BACKUP-15.1 的提示框，本機資料不變
 
 #### Scenario: 開發版
 
@@ -366,16 +396,21 @@ IF 匯出檔的版本比 app 新，THEN the mobile app SHALL 不寫入任何資�
 
 ### Requirement: BACKUP-18.1 比 app 舊的匯出檔升級之後匯入
 
-WHEN 使用者選了一個版本比 app 舊的匯出檔，the mobile app SHALL 先在它的複本上跑它還沒跑過的 migration（ADR-0006），再把升級後的內容當成匯出檔，照 BACKUP-11.1 到 BACKUP-16.1 處理；確認框和同一個版本的匯出檔一樣，不另外說明它是舊版的。
+WHEN 使用者選了一個版本比 app 舊的匯出檔，the mobile app SHALL 先在它的複本上跑它還沒跑過的 migration（ADR-0006），再把升級後的內容當成匯出檔，照 BACKUP-11.1 到 BACKUP-16.1 和 BACKUP-24.1 處理；確認框和同一個版本的匯出檔一樣，不另外說明它是舊版的。有一個 migration 跑不完的檔案是不能用的檔案（BACKUP-15.1）。
 
 #### Scenario: 還沒有圖表類型的 app 所匯出的檔案
 
-- **WHEN** 選了一個少跑了最後一個 migration 的 app 所匯出的 Taylor 的資料，那時還沒有 Insights 的圖表類型
+- **WHEN** 選了一個 app 在加上 Insights 圖表類型的那個 migration 之前所匯出的 Taylor 的資料
 - **THEN** 跳出「Replace All Data?」，內容寫的是「has 2 groups and 3 expenses」；按「Replace」之後，支出、分類、群組、成員、本機身分、名字和外觀選項都和匯出時一樣，圖表類型是 Auto，本機資料的 migration 紀錄和 app 的 migration 清單一樣
 
 #### Scenario: 升級後違反規則
 
 - **WHEN** 選了一個比 app 舊的匯出檔，裡面 Dinner 的分攤加起來不等於金額
+- **THEN** 跳出「Unable to Import Data」，本機資料不變
+
+#### Scenario: migration 跑不完
+
+- **WHEN** 選了一個比 app 舊的匯出檔，它已經有一個叫 `chartType` 的欄位，所以加上圖表類型的那個 migration 跑不完
 - **THEN** 跳出「Unable to Import Data」，本機資料不變
 
 ### Requirement: BACKUP-19.1 沒有網路時照常匯入
@@ -452,6 +487,11 @@ WHERE iPhone 或 Android 手機，the mobile app SHALL 讓使用者從分享畫�
 
 - **WHEN** 在 Android 手機上做同樣的事，從分享畫面把匯出檔存到雲端硬碟或手機上的檔案；清除 app 的資料，點「Import Data」，選剛才的檔案並按「Replace」
 - **THEN** 每個畫面都和匯出時一樣
+
+#### Scenario: 換平台
+
+- **WHEN** 把 iPhone 匯出的檔案拿到 Android 手機上匯入；再把 Android 手機匯出的檔案拿到 iPhone 上匯入
+- **THEN** 兩次都跳出「Replace All Data?」，按「Replace」之後每個畫面都和匯出時一樣
 
 #### Scenario: 交給別的 app
 

@@ -699,10 +699,78 @@ export async function withADifferentMigration(): Promise<string> {
   return file;
 }
 
+/** The names of the tables the app's migrations make. */
+async function appTables(): Promise<Set<string>> {
+  const database = openNodeDatabase(':memory:');
+  await runMigrations(database, appMigrations);
+  const tables = await database.all<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type = 'table'",
+  );
+  await database.close();
+  return new Set(tables.map((table) => table.name));
+}
+
+/**
+ * The export file's own tables: those the app's migrations do not make. ADR-0020
+ * keeps the export time in one, whatever it is called.
+ */
+async function ownTablesOf(file: string): Promise<string[]> {
+  const known = await appTables();
+  const own = Object.keys(dataIn(file)).filter((name) => !known.has(name));
+  if (own.length === 0)
+    throw new Error('The export file has no table of its own (ADR-0020)');
+  return own;
+}
+
+/** `file` with the rows of its own tables, and so its export time, deleted. */
+export async function withoutAnExportTime(file: string): Promise<string> {
+  const own = await ownTablesOf(file);
+  return edited(file, own.map((name) => `DELETE FROM "${name}"`).join('; '));
+}
+
+/**
+ * `file` with every value in its own tables, and so its export time, replaced by one
+ * that is no moment in time: text that is no date, or a number past the last date
+ * JavaScript can hold, in milliseconds or in seconds. A
+ * column that is the table's row ID stays as it is.
+ */
+export async function withAnExportTimeThatIsNoTime(
+  file: string,
+): Promise<string> {
+  const copy = copyOf(file);
+  const database = new DatabaseSync(copy, {
+    enableForeignKeyConstraints: false,
+  });
+  try {
+    database.exec('PRAGMA ignore_check_constraints = ON');
+    for (const name of await ownTablesOf(file)) {
+      const columns = database
+        .prepare(`PRAGMA table_info("${name}")`)
+        .all() as {
+        name: string;
+        type: string;
+        pk: number;
+      }[];
+      const changes = columns
+        .filter((column) => !(column.pk > 0 && /INT/i.test(column.type)))
+        .map((column) =>
+          /INT|REAL|FLOA|DOUB|NUM/i.test(column.type)
+            ? `"${column.name}" = 9000000000000000`
+            : `"${column.name}" = 'not a time'`,
+        );
+      database.exec(`UPDATE "${name}" SET ${changes.join(', ')}`);
+    }
+  } finally {
+    database.close();
+  }
+  return copy;
+}
+
 /**
  * `file` as the version of the app before Insights had a chart type would have
  * exported it: that version's schema and migration records, every row the current
- * export has in the columns that version had, and the export's own table as it is.
+ * export has in the tables and columns that version had, and the export's own
+ * tables as they are. A table that a later migration makes is left for the upgrade.
  */
 export async function fromBeforeChartTypes(file: string): Promise<string> {
   const copy = path.join(outside(), path.basename(file));
@@ -712,6 +780,7 @@ export async function fromBeforeChartTypes(file: string): Promise<string> {
   const older = openNodeDatabase(copy);
   await runMigrations(older, appMigrations.slice(0, chartTypes));
   await older.close();
+  const known = await appTables();
 
   const database = new DatabaseSync(copy, {
     enableForeignKeyConstraints: false,
@@ -727,7 +796,10 @@ export async function fromBeforeChartTypes(file: string): Promise<string> {
     const had = new Set(tablesOf('main').map((table) => table.name));
     for (const { name, sql } of tablesOf('current')) {
       if (name === '_migrations') continue;
-      if (!had.has(name)) database.exec(sql);
+      if (!had.has(name)) {
+        if (known.has(name)) continue;
+        database.exec(sql);
+      }
       const columns = (
         database.prepare(`PRAGMA main.table_info("${name}")`).all() as {
           name: string;
