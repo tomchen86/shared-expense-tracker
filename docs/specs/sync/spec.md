@@ -850,6 +850,11 @@ WHEN 手機 app 套用共同帳本收到的事件，the mobile app SHALL 依交�
 - **WHEN** 套用 Lunch 的第一個事件、把它的標題改成「Brunch」的事件、另一筆支出 Taxi 的第一個事件和永久刪除 Taxi 的事件之後，把這四個事件原樣再套用一次，再以不同的順序套用一次
 - **THEN** 本機資料和第一次套用之後一樣，支出清單只有 Brunch
 
+#### Scenario: 分類的事件再收到一次
+
+- **WHEN** 套用分類 Hotels 的第一個事件、把它改名為「Stays」的事件和把 Other 封存的事件之後，把這三個事件原樣再套用一次，再以相反的順序套用一次
+- **THEN** 本機資料和第一次套用之後一樣
+
 #### Scenario: 比較晚的修改先到
 
 - **WHEN** 套用 Lunch 的第一個事件之後，先套用 `T+62000/0/phone-b` 把標題改成「Late lunch」的事件，再套用 `T+61000/0/phone-b` 改成「Brunch」的事件
@@ -923,6 +928,11 @@ WHEN 套用的事件讓共同帳本的一筆支出的六個單位到齊，或改
 
 - **WHEN** 依序把 Dinner 和 Coffee run 移到垃圾桶之後，套用別支手機也把 Dinner 移到垃圾桶的事件
 - **THEN** Trash 由上而下仍是 Coffee run、Dinner
+
+#### Scenario: 垃圾桶裡的支出被改了標題
+
+- **WHEN** 依序把 Dinner 和 Coffee run 移到垃圾桶之後，套用別支手機把 Dinner 的標題改成「Supper」的事件
+- **THEN** Trash 由上而下是 Coffee run、Supper
 
 #### Scenario: 重新啟動
 
