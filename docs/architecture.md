@@ -28,6 +28,8 @@ Name top-level directories only. File paths go stale.
 - The API stores data only in PostgreSQL, in tests too (ADR-0002).
 - The API's code runs unchanged on Node and on Cloudflare Workers; only one entry file per runtime knows which (ADR-0007).
 - The API runs in a staging and a production environment, each with its own Worker, Hyperdrive configuration, and database; a deploy runs the migrations before it uploads the Worker, and no request runs them (ADR-0019).
+- The API checks every request's signature before routing, unless the route is public; a refused request changes nothing in its database (ADR-0022).
+- The phone sends every request to the API through one function, which signs it with the phone's own key (ADR-0015, ADR-0022).
 - On the phone, data lives in SQLite; zustand holds only screen state (ADR-0002).
 - The phone keeps all its data in one SQLite database; every capability's migrations run in one app-wide order and never change once a release tag contains them (ADR-0006).
 - Only `apps/mobile/src/storage/` imports `expo-sqlite`; tests run the same migrations and queries on SQLite in Node (ADR-0006).

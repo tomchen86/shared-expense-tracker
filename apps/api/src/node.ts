@@ -13,11 +13,28 @@ export interface NodeServer {
   close(): Promise<void>;
 }
 
-/** Serves the API on Node, with one client and its connections for every request. */
-export function startServer(options: {
+export interface NodeServerOptions {
   databaseUrl: string;
   port?: number;
-}): Promise<NodeServer> {
+  /**
+   * The API's time, in milliseconds since the Unix epoch: the system clock unless given.
+   * Stub: not used yet (docs/specs/sharing/spec.md).
+   */
+  now?: () => number;
+  /**
+   * The address a request came from: the connection's remote address unless given.
+   * Stub: not used yet.
+   */
+  clientIp?: (request: Request) => string;
+  /**
+   * The key of the keyed hash that stands for an IP in the database (SHARING-42.1).
+   * Stub: not used yet.
+   */
+  ipHashKey?: string;
+}
+
+/** Serves the API on Node, with one client and its connections for every request. */
+export function startServer(options: NodeServerOptions): Promise<NodeServer> {
   const sql = connect(options.databaseUrl);
   const hostname = '127.0.0.1';
   return new Promise((resolve, reject) => {
