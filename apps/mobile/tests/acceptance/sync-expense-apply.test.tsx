@@ -3,6 +3,7 @@ import {
   addCategory,
   addExpense,
   editExpense,
+  fillForm,
   restart,
   storedExpenses,
 } from './ledger-expense-app';
@@ -17,6 +18,7 @@ import {
   shownInOrder,
   listTotal,
 } from './ledger-expense-list-app';
+import { chooseSort } from './ledger-list-find-app';
 import {
   expectPeriod,
   periodName,
@@ -43,6 +45,7 @@ import {
   openBalances,
   showGroup,
 } from './group-balances-app';
+import { screenOf } from './group-details-app';
 import { expectTotals, openInsights } from './insights-app';
 import { allowWrites, failWritesAfter } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
@@ -59,6 +62,7 @@ import {
   created,
   deleted,
   eachTestGetsAPhone,
+  editWith,
   eventsOf,
   everything,
   expenseTitled,
@@ -71,6 +75,7 @@ import {
   refused,
   relayed,
   removalAlert,
+  setClock,
   stamped,
   startShared,
   tryReceive,
@@ -854,4 +859,88 @@ test("[SYNC-32.1] leaves another group as it is when a group event in a shared l
   expect([await groupNamed('Brisbane'), await groupNamed('Tokyo')]).toEqual(
     before,
   );
+});
+
+// The time an expense was last changed (LEDGER-120.1), seen in the Recently Edited order
+
+/** Adds Brisbane's Taxi for 25.00 on this phone: Casey pays, split between Taylor and Casey. */
+const addTaxi = () =>
+  addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Casey',
+    sharers: [YOU, 'Casey'],
+    title: 'Taxi',
+    amount: '25.00',
+  });
+
+test('[LEDGER-120.1] takes the moment an applied event was stamped as the time the expense it adds or changes was last changed', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  await addTaxi();
+  await showGroup('Brisbane');
+  await chooseSort(screenOf('Brisbane'), 'Recently Edited');
+  // Both were added at the same moment, so the one added later comes first.
+  expect(groupCardTitles('Brisbane')).toEqual(['Taxi', 'Dinner']);
+
+  await receive(brisbane, await lunchCreated(at(LATER + MINUTE)));
+
+  await waitFor(() =>
+    expect(groupCardTitles('Brisbane')).toEqual(['Lunch', 'Taxi', 'Dinner']),
+  );
+
+  const dinner = await expenseTitled('Dinner');
+  await receive(
+    brisbane,
+    changed('expense', dinner.id, at(LATER + 2 * MINUTE), { title: 'Supper' }),
+  );
+
+  await waitFor(() =>
+    expect(groupCardTitles('Brisbane')).toEqual(['Supper', 'Lunch', 'Taxi']),
+  );
+});
+
+test('[LEDGER-120.1] keeps the later time when an applied event was stamped before the expense was last changed on this phone', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  await addTaxi();
+  setClock(LATER + 2 * MINUTE);
+  await editWith((await expenseTitled('Taxi')).id, () =>
+    fillForm({ title: 'Cab' }),
+  );
+  setClock(LATER + 3 * MINUTE);
+  const dinner = await expenseTitled('Dinner');
+  await editWith(dinner.id, () => fillForm({ title: 'Supper' }));
+  await showGroup('Brisbane');
+  await chooseSort(screenOf('Brisbane'), 'Recently Edited');
+  expect(groupCardTitles('Brisbane')).toEqual(['Supper', 'Cab']);
+
+  await receive(
+    brisbane,
+    changed('expense', dinner.id, at(LATER + MINUTE), { note: 'Window seat' }),
+  );
+
+  expect((await expenseTitled('Supper')).note).toBe('Window seat');
+  expect(groupCardTitles('Brisbane')).toEqual(['Supper', 'Cab']);
+});
+
+test('[LEDGER-120.1] leaves the time an expense was last changed as it is when the same event arrives again', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  const lunch = relayed(await lunchCreated(at(LATER + MINUTE)));
+  await receiveEvents(brisbane, lunch);
+  setClock(LATER + 2 * MINUTE);
+  await editWith((await expenseTitled('Dinner')).id, () =>
+    fillForm({ title: 'Supper' }),
+  );
+  await showGroup('Brisbane');
+  await chooseSort(screenOf('Brisbane'), 'Recently Edited');
+  expect(groupCardTitles('Brisbane')).toEqual(['Supper', 'Lunch']);
+
+  setClock(LATER + 3 * MINUTE);
+  await receiveEvents(brisbane, lunch);
+
+  expect(groupCardTitles('Brisbane')).toEqual(['Supper', 'Lunch']);
 });

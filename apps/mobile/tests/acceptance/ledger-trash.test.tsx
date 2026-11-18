@@ -228,7 +228,7 @@ const addFullCoffeeRun = () =>
 
 // The expense list
 
-test('[LEDGER-31.3] leaves an expense in the trash off the list, also after the app restarts', async () => {
+test('[LEDGER-31.4] leaves an expense in the trash off the list, also after the app restarts', async () => {
   const app = await startWithTwo();
 
   await deleteByAction('Lunch');

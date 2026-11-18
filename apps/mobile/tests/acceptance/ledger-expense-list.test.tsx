@@ -187,7 +187,7 @@ const LONG_NOTE = 'b'.repeat(500);
 
 // The expense list
 
-test('[LEDGER-31.3] lists the personal expenses newest date first', async () => {
+test('[LEDGER-31.4] lists the personal expenses newest date first', async () => {
   await startExpenses();
   await addExpense({ title: 'A', date: '2026-10-01' });
   await addExpense({ title: 'B', date: '2026-10-03' });
@@ -196,7 +196,7 @@ test('[LEDGER-31.3] lists the personal expenses newest date first', async () => 
   expect(cardTitles()).toEqual(['B', 'C', 'A']);
 });
 
-test('[LEDGER-31.3] lists the expense added later first on the same date', async () => {
+test('[LEDGER-31.4] lists the expense added later first on the same date', async () => {
   await startExpenses();
   await addExpense({ title: 'E', date: '2026-10-01' });
   await addExpense({ title: 'F', date: '2026-10-01' });
@@ -205,7 +205,7 @@ test('[LEDGER-31.3] lists the expense added later first on the same date', async
   expect(cardTitles()).toEqual(['D', 'F', 'E']);
 });
 
-test('[LEDGER-31.3] shows a new expense on top once New Expense closes', async () => {
+test('[LEDGER-31.4] shows a new expense on top once New Expense closes', async () => {
   await startExpenses();
   await addExpense({ title: 'Coffee run' });
 
@@ -214,7 +214,7 @@ test('[LEDGER-31.3] shows a new expense on top once New Expense closes', async (
   expect(cardTitles()).toEqual(['Lunch', 'Coffee run']);
 });
 
-test('[LEDGER-31.3] shows the change to an expense once Edit Expense closes', async () => {
+test('[LEDGER-31.4] shows the change to an expense once Edit Expense closes', async () => {
   await startExpenses();
   await addExpense();
   const expense = await onlyExpense();
@@ -227,7 +227,7 @@ test('[LEDGER-31.3] shows the change to an expense once Edit Expense closes', as
   expect(linesIn(expensesRoot())).not.toContain('Coffee run');
 });
 
-test('[LEDGER-31.3] keeps the cards after the app restarts', async () => {
+test('[LEDGER-31.4] keeps the cards after the app restarts', async () => {
   const app = await startExpenses();
   await addExpense({ title: 'Coffee run' });
   await addExpense({ title: 'Lunch' });
@@ -440,7 +440,7 @@ test('[LEDGER-102.1] puts the date above each run of cards of that day, once, as
 
 // The total above the cards
 
-test('[LEDGER-35.4] sums the cards of one currency under the period row, in a button that reads the total', async () => {
+test('[LEDGER-35.5] sums the cards of one currency under the period row, in a button that reads the total', async () => {
   await startExpenses();
   await addExpense({ amount: '8.75' });
   await addExpense({ title: 'Lunch', amount: '12.50' });
@@ -456,7 +456,7 @@ test('[LEDGER-35.4] sums the cards of one currency under the period row, in a bu
   expect(shownInOrder(linesIn(expensesRoot()), expected)).toEqual(expected);
 });
 
-test('[LEDGER-35.4] joins the currencies on one line above the cards, by currency code', async () => {
+test('[LEDGER-35.5] joins the currencies on one line above the cards, by currency code', async () => {
   setPhoneLanguage('en-US');
   await startExpenses();
 
@@ -478,7 +478,7 @@ test('[LEDGER-35.4] joins the currencies on one line above the cards, by currenc
   );
 });
 
-test('[LEDGER-35.4] sums only the cards of the period shown', async () => {
+test('[LEDGER-35.5] sums only the cards of the period shown', async () => {
   await startExpenses();
   await addExpense({ title: 'Coffee run', amount: '8.75', date: '2026-10-01' });
   await addExpense({ title: 'Lunch', amount: '12.50', date: '2026-09-30' });
@@ -495,7 +495,7 @@ test('[LEDGER-35.4] sums only the cards of the period shown', async () => {
   expect(listTotal()).toEqual(['$21.25']);
 });
 
-test('[LEDGER-35.4] shows a dash and reads Nothing spent when the period has no card', async () => {
+test('[LEDGER-35.5] shows a dash and reads Nothing spent when the period has no card', async () => {
   await startExpenses();
   await addExpense({ title: 'Lunch', amount: '12.50', date: '2026-09-30' });
 
@@ -508,7 +508,7 @@ test('[LEDGER-35.4] shows a dash and reads Nothing spent when the period has no 
   );
 });
 
-test("[LEDGER-35.4] takes this month from the phone's time zone at the start of a month", async () => {
+test("[LEDGER-35.5] takes this month from the phone's time zone at the start of a month", async () => {
   // 00:30 on November 1 in Taipei is still October 31 in UTC.
   await startExpenses('Asia/Taipei', '2026-10-31T16:30:00Z');
 
@@ -523,7 +523,7 @@ test("[LEDGER-35.4] takes this month from the phone's time zone at the start of 
   expect(listTotal()).toEqual(['$3.00']);
 });
 
-test('[LEDGER-35.4] shows 0 expenses, not a dash, on All Time when there is no expense', async () => {
+test('[LEDGER-35.5] shows 0 expenses, not a dash, on All Time when there is no expense', async () => {
   await startExpenses();
 
   await choosePeriod('Expenses', 'All Time');
@@ -532,7 +532,7 @@ test('[LEDGER-35.4] shows 0 expenses, not a dash, on All Time when there is no e
   expect(readOut(listTotalButton())).toBe('View expense insights. 0 expenses.');
 });
 
-test('[LEDGER-35.4] shows how many cards there are in place of a total on All Time', async () => {
+test('[LEDGER-35.5] shows how many cards there are in place of a total on All Time', async () => {
   await startExpenses();
   await addExpense({ title: 'Coffee run', date: '2026-10-01' });
 
@@ -550,7 +550,7 @@ test('[LEDGER-35.4] shows how many cards there are in place of a total on All Ti
   expect(linesIn(expensesRoot()).join('\n')).not.toContain('$26.25');
 });
 
-test('[LEDGER-35.4] pushes Insights onto the Expenses tab at /insights, on the month the list shows, when the total is pressed', async () => {
+test('[LEDGER-35.5] pushes Insights onto the Expenses tab at /insights, on the month the list shows, when the total is pressed', async () => {
   const app = await startExpenses();
   await addExpense();
 
@@ -566,7 +566,7 @@ test('[LEDGER-35.4] pushes Insights onto the Expenses tab at /insights, on the m
   expect(selectedPeriod()).toBe('October 2026');
 });
 
-test('[LEDGER-35.4] opens Insights on an earlier month the list shows, not on the latest one', async () => {
+test('[LEDGER-35.5] opens Insights on an earlier month the list shows, not on the latest one', async () => {
   await startExpenses();
   await addExpense({ title: 'Coffee run', amount: '8.75', date: '2026-10-01' });
   await addExpense({ title: 'Lunch', amount: '12.50', date: '2026-09-30' });
@@ -580,7 +580,7 @@ test('[LEDGER-35.4] opens Insights on an earlier month the list shows, not on th
   await expectTotals(['$12.50']);
 });
 
-test('[LEDGER-35.4] opens Insights on the year the list shows', async () => {
+test('[LEDGER-35.5] opens Insights on the year the list shows', async () => {
   await startExpenses();
   await addExpense({ title: 'Coffee run', amount: '8.75', date: '2026-10-01' });
   await addExpense({ title: 'Lunch', amount: '12.50', date: '2025-09-30' });
@@ -594,7 +594,7 @@ test('[LEDGER-35.4] opens Insights on the year the list shows', async () => {
   await expectTotals(['$8.75']);
 });
 
-test('[LEDGER-35.4] opens Insights on the dates of Last 3 Months and of a custom range', async () => {
+test('[LEDGER-35.5] opens Insights on the dates of Last 3 Months and of a custom range', async () => {
   await startExpenses();
   await addExpense({ title: 'Coffee run', amount: '8.75', date: '2026-10-01' });
   await addExpense({ title: 'Lunch', amount: '12.50', date: '2026-09-12' });
@@ -626,7 +626,7 @@ test('[LEDGER-35.4] opens Insights on the dates of Last 3 Months and of a custom
   await expectTotals(['$21.25']);
 });
 
-test('[LEDGER-35.4] opens Insights on this month when the list is on All Time', async () => {
+test('[LEDGER-35.5] opens Insights on this month when the list is on All Time', async () => {
   await startExpenses();
   await addExpense({ title: 'Coffee run', amount: '8.75', date: '2026-10-01' });
   await addExpense({ title: 'Lunch', amount: '12.50', date: '2026-09-30' });
@@ -639,7 +639,7 @@ test('[LEDGER-35.4] opens Insights on this month when the list is on All Time', 
   expect(selectedPeriod()).toBe('October 2026');
 });
 
-test('[LEDGER-35.4] pushes one Insights when the total is pressed twice', async () => {
+test('[LEDGER-35.5] pushes one Insights when the total is pressed twice', async () => {
   await startExpenses();
   await addExpense();
 
@@ -659,7 +659,7 @@ test('[LEDGER-35.4] pushes one Insights when the total is pressed twice', async 
   );
 });
 
-test('[LEDGER-35.4] shows a dash before there are expenses and still opens Insights', async () => {
+test('[LEDGER-35.5] shows a dash before there are expenses and still opens Insights', async () => {
   await startExpenses();
 
   await waitFor(() => expect(listTotal()).toEqual(['—']));
@@ -671,7 +671,7 @@ test('[LEDGER-35.4] shows a dash before there are expenses and still opens Insig
   await expectInsights();
 });
 
-test('[LEDGER-35.4] follows a changed amount', async () => {
+test('[LEDGER-35.5] follows a changed amount', async () => {
   await startExpenses();
   await addExpense({ amount: '8.75' });
   const expense = await onlyExpense();
@@ -682,7 +682,7 @@ test('[LEDGER-35.4] follows a changed amount', async () => {
   expect(listTotal()).toEqual(['$12.50']);
 });
 
-test('[LEDGER-35.4] sums past the largest amount of a single expense', async () => {
+test('[LEDGER-35.5] sums past the largest amount of a single expense', async () => {
   await startExpenses();
   await addExpense({ amount: '9999999999.99' });
   await addExpense({ title: 'Lunch', amount: '9999999999.99' });
@@ -1118,14 +1118,14 @@ test('[SHELL-13.1] shows only a back arrow named Back on the details', async () 
   );
 });
 
-test('[SHELL-25.1] [LEDGER-108.1] puts the period row, the total and the cards in the scroll view the Expenses large title follows', async () => {
+test('[SHELL-25.1] [LEDGER-108.2] puts the period row, the total and the cards in the scroll view the Expenses large title follows', async () => {
   await startExpenses();
   await addExpense();
 
   const scrollView = scrollViewTheTitleFollows();
 
   expect(scrollView?.props.contentInsetAdjustmentBehavior).toBe('automatic');
-  // The period row, the total above the cards (LEDGER-35.4) and a card.
+  // The period row, the total above the cards (LEDGER-35.5) and a card.
   const lines = linesIn(scrollView!);
   const expected = ['October 2026', '$8.75', 'Coffee run'];
   expect(shownInOrder(lines, expected)).toEqual(expected);

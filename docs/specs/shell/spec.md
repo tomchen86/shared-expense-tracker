@@ -1190,3 +1190,32 @@ The mobile app SHALL 把畫面給的篩選動作放在標題列右邊：iOS 上�
 - **WHEN** 打開 Brisbane 的畫面
 - **THEN** 標題列右邊由左而右是「Filters」和名稱「Group actions」的選單
 
+
+### Requirement: SHELL-73.1 標題列的搜尋
+
+The mobile app SHALL 把畫面給的搜尋放進原生標題列，用的是系統的搜尋欄位，提示文字是畫面給的文字：iOS 上請系統把它放成標題列上的搜尋鈕，iOS 26 以上搜尋鈕在標題列的右邊，按了在標題列展開搜尋欄位，較早的 iOS 由系統決定搜尋欄位的位置；Android 上是標題列右邊的搜尋圖示，按了在標題列展開搜尋欄位。使用者每改一次搜尋欄位的文字，the mobile app SHALL 把整段文字交給畫面。iOS 上按搜尋欄位的取消或關閉、Android 上關閉搜尋欄位時，搜尋結束，the mobile app SHALL 把搜尋的文字當成空的。畫面沒有給搜尋時，標題列沒有搜尋欄位。
+
+#### Scenario: iOS
+
+- **WHEN** iOS 上開啟 app
+- **THEN** Expenses 分頁的標題列有系統的搜尋欄位，提示文字是「Search」，放成標題列上的搜尋鈕
+
+#### Scenario: Android
+
+- **WHEN** Android 上開啟 app
+- **THEN** Expenses 分頁的標題列有系統的搜尋欄位，提示文字是「Search」
+
+#### Scenario: 改文字
+
+- **WHEN** 搜尋欄位的文字依序變成「c」、「co」和「cof」
+- **THEN** 畫面依序拿到「c」、「co」和「cof」
+
+#### Scenario: 結束
+
+- **WHEN** 搜尋欄位的文字是「cof」時，在 iOS 上按搜尋欄位的取消，或在 Android 上關閉搜尋欄位
+- **THEN** 畫面的搜尋文字是空的
+
+#### Scenario: 沒有搜尋的畫面
+
+- **WHEN** 打開 Settings 分頁，或支出的明細
+- **THEN** 標題列沒有搜尋欄位

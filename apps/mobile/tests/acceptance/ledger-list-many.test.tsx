@@ -8,7 +8,8 @@ import {
 import { balanceLines, groupTotals } from './group-balances-app';
 import { openGroup } from './group-details-app';
 import { resetPhone } from './ledger-expense-app';
-import { cardTitles, listTotal } from './ledger-expense-list-app';
+import { cardTitles, expensesRoot, listTotal } from './ledger-expense-list-app';
+import { listCount, typeSearch } from './ledger-list-find-app';
 import { groupCardTitles } from './ledger-group-expense-app';
 import { choosePeriod } from './ledger-list-period-app';
 import {
@@ -116,4 +117,23 @@ test("[LEDGER-118.1] draws only the first cards of a group's 300 expenses, and c
   expectOnlyTheFirstCards(groupCardTitles('Brisbane'));
   expect(groupTotals('Brisbane')).toEqual(['Group Total: $300.00']);
   expect(balanceLines('Brisbane')).toEqual(["You're owed: $150.00"]);
+});
+
+test('[LEDGER-126.1] [LEDGER-118.1] counts every expense a search matches, over every date, while it draws only the first cards', async () => {
+  const phone = newPhone();
+  // Expense 300 is dated today and each one before it a day earlier, back to January.
+  const day = (back: number) =>
+    new Date(Date.UTC(2026, 10, 18 - back)).toISOString().slice(0, 10);
+  await writeData(phone, {
+    expenses: manyExpenses().map((expense, index) => ({
+      ...expense,
+      date: day(COUNT - 1 - index),
+    })),
+  });
+  await startOn(phone, { url: '/' });
+
+  await typeSearch('Expenses', 'expense');
+
+  expect(listCount(expensesRoot())).toBe('300 items');
+  expectOnlyTheFirstCards(cardTitles());
 });

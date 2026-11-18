@@ -109,7 +109,7 @@ test('[LEDGER-111.1] opens Filters from the name on the period row, a button rea
   expect(cardTitles()).toEqual(['Lunch']);
 });
 
-test('[LEDGER-108.1] steps to the month before with Previous period on Android', async () => {
+test('[LEDGER-108.2] steps to the month before with Previous period on Android', async () => {
   await startExpenses();
 
   await pressPreviousPeriod(expensesRoot());
@@ -141,7 +141,7 @@ test('[LEDGER-109.1] closes Filters on the back button, with the period chosen i
   expect(periodName(expensesRoot())).toBe('2026');
 });
 
-test("[LEDGER-112.1] shows From and To under the period row as dates in the phone's format on Android", async () => {
+test("[LEDGER-112.2] shows From and To under the period row as dates in the phone's format on Android", async () => {
   await startExpenses();
 
   await choosePeriod('Expenses', 'Custom Range');
