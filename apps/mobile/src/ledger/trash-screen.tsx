@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useLocalIdentity } from '../shell';
 import { useThemeColors } from '../ui/theme';
 import { DatedCards } from './dated-cards';
 import { ExpenseCard } from './expense-card';
@@ -16,6 +17,7 @@ import { useTrashActions } from './trash-provider';
 export function TrashScreen() {
   const colors = useThemeColors();
   const expenses = useExpenses(true);
+  const { personalSpaceId } = useLocalIdentity();
   const { remove } = useTrashActions();
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -30,29 +32,33 @@ export function TrashScreen() {
             </Text>
           ) : (
             <>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Empty Trash"
-                style={styles.emptyButton}
-                onPress={() =>
-                  Alert.alert(
-                    'Empty Trash?',
-                    'This permanently deletes the expenses in the Trash.',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Empty Trash',
-                        style: 'destructive',
-                        onPress: () => void remove(),
-                      },
-                    ],
-                  )
-                }
-              >
-                <Text style={{ color: colors.error, fontSize: 17 }}>
-                  Empty Trash
-                </Text>
-              </Pressable>
+              {expenses.some(
+                (expense) => expense.spaceId === personalSpaceId,
+              ) && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Empty Trash"
+                  style={styles.emptyButton}
+                  onPress={() =>
+                    Alert.alert(
+                      'Empty Trash?',
+                      'This permanently deletes the expenses in the Trash.',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Empty Trash',
+                          style: 'destructive',
+                          onPress: () => void remove(),
+                        },
+                      ],
+                    )
+                  }
+                >
+                  <Text style={{ color: colors.error, fontSize: 17 }}>
+                    Empty Trash
+                  </Text>
+                </Pressable>
+              )}
               <DatedCards
                 expenses={expenses}
                 card={(expense) => (

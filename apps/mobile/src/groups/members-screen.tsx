@@ -12,6 +12,10 @@ import {
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
+import {
+  canAddGroupMember,
+  MAX_SHARED_GROUP_MEMBERS,
+} from '@shared-expense/domain';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
@@ -28,6 +32,7 @@ import {
   removeGroupMember,
   type GroupMember,
 } from './index';
+import { nameSaveErrorMessage } from './name-save-error';
 import { useGroup } from './use-group';
 
 const ALREADY_EXISTS = 'A member with this name already exists.';
@@ -48,6 +53,8 @@ export function MembersScreen({
   const sheetScrollProps: ScrollViewProps = sheetScroll.scrollProps;
 
   const [group, setGroup] = useGroup(id, { startFromLatest: true });
+  const editable = group && !group.archived;
+  const canAdd = group && canAddGroupMember(group.shared, group.members.length);
   const base = inSettings ? '/settings/archived-groups' : '/groups';
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -56,6 +63,12 @@ export function MembersScreen({
   const [duplicate, setDuplicate] = useState(false);
   const field = useRef<ComponentRef<typeof TextInput>>(null);
   usePreventRemove(busy, () => {});
+  // Another phone took the last place: the field closes, and is empty when it opens again.
+  if (adding && canAdd === false) {
+    setAdding(false);
+    setName('');
+    setDuplicate(false);
+  }
 
   function showDuplicate() {
     setDuplicate(true);
@@ -74,8 +87,7 @@ export function MembersScreen({
       setGroup(
         (current) =>
           current && {
-            ...current,
-            members: updated.members,
+            ...updated,
             formerMembers: current.formerMembers.filter(
               (member) => member.id !== former?.id,
             ),
@@ -83,13 +95,15 @@ export function MembersScreen({
       );
       setName('');
       setDuplicate(false);
-      field.current?.focus();
+      if (canAddGroupMember(updated.shared, updated.members.length))
+        field.current?.focus();
+      else setAdding(false);
     } catch (error) {
       if (error instanceof MemberNameExistsError) showDuplicate();
       else
         Alert.alert(
           'Unable to Add Member',
-          'The member could not be saved. Please try again.',
+          nameSaveErrorMessage(error, 'member'),
         );
     } finally {
       busyRef.current = false;
@@ -261,8 +275,8 @@ export function MembersScreen({
               </Pressable>
             );
           })}
-          {group &&
-            !group.archived &&
+          {editable &&
+            canAdd &&
             (adding ? (
               <View>
                 <TextInput
@@ -311,6 +325,11 @@ export function MembersScreen({
               </Pressable>
             ))}
         </GroupedSection>
+        {editable && !canAdd && (
+          <Text style={[styles.footer, { color: colors.textMuted }]}>
+            {`A shared group can have up to ${MAX_SHARED_GROUP_MEMBERS} members.`}
+          </Text>
+        )}
       </ScrollView>
     </>
   );
@@ -328,4 +347,5 @@ const styles = StyleSheet.create({
   name: { flex: 1, fontSize: 17 },
   input: { minHeight: 54, paddingHorizontal: 16, fontSize: 17 },
   error: { fontSize: 15, marginHorizontal: 16, marginBottom: 12 },
+  footer: { fontSize: 13, marginHorizontal: 16, marginTop: 8 },
 });
