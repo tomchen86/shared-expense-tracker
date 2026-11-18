@@ -1,6 +1,6 @@
 /**
  * The apps that open an environment's invite links, and where to get them: what the two
- * verification files and the download page are made from (ADR-0022). Each environment has
+ * verification files and the download page are made from (ADR-0023). Each environment has
  * its own, and every part may be missing.
  */
 export interface AppLinks {

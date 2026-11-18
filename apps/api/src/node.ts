@@ -18,7 +18,7 @@ export interface NodeServer {
 export function startServer(options: {
   databaseUrl: string;
   port?: number;
-  /** What this environment's verification files and download page say (ADR-0022). */
+  /** What this environment's verification files and download page say (ADR-0023). */
   appLinks?: AppLinks;
 }): Promise<NodeServer> {
   const sql = connect(options.databaseUrl);

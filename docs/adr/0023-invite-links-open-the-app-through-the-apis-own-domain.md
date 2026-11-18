@@ -1,4 +1,4 @@
-# ADR-0022: Invite links open the app through the API's own domain
+# ADR-0023: Invite links open the app through the API's own domain
 
 - Date: 2026-11-18
 - Status: Accepted
