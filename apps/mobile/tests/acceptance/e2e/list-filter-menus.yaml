@@ -1,0 +1,158 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[LEDGER-134.1] [LEDGER-133.1] [LEDGER-131.1] Shows the capsule row once a filter is on, chooses categories and a ledger from the system menus of their capsules, which stay open, and a payer on a group's screen"
+---
+# Five expenses of today. Taylor pays Dinner and Casey pays Taxi; both are split with Taylor, so
+# the expense list shows all five.
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"name":"Taylor","groups":[{"name":"Brisbane","members":["Casey"]}],"expenses":[{"title":"Coffee","amount":"4.00"},{"title":"Shoes","amount":"20.00","category":"Shopping"},{"title":"Train","amount":"30.00","category":"Travel"},{"title":"Dinner","amount":"60.00","group":"Brisbane"},{"title":"Taxi","amount":"25.00","group":"Brisbane","paidBy":"Casey"}]}'
+# LEDGER-133.1: no capsule row while no filter is on.
+- assertVisible: Filters
+- assertNotVisible: Category
+- assertNotVisible: Ledger
+# LEDGER-131.1: a lowest amount that every expense passes turns a filter on, so the row shows.
+- tapOn: Filters
+- waitForAnimationToEnd
+- tapOn: Lowest amount
+- inputText: '1'
+- tapOn: Done
+- waitForAnimationToEnd
+- assertVisible: Filters, on
+- assertVisible: Category
+- assertVisible: Ledger
+- assertVisible: Paid by Me
+- assertVisible: Amount, 1 or more
+- assertVisible: 5 items
+# LEDGER-134.1: the Category capsule is a system menu of the categories the expenses use. It
+# stays open while categories are chosen.
+- tapOn: Category
+- waitForAnimationToEnd
+- assertVisible: Food & Dining
+- assertVisible: Shopping
+- assertVisible: Travel
+- tapOn: Shopping
+- waitForAnimationToEnd
+- assertVisible:
+    text: Shopping
+    selected: true
+- tapOn: Travel
+- waitForAnimationToEnd
+- assertVisible:
+    text: Travel
+    selected: true
+- assertVisible: Food & Dining
+# A press outside the menu, on the list's margin, closes it.
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
+- assertVisible: Category, 2 Categories
+- assertVisible: 2 items
+- assertVisible: Train, .*
+- assertVisible: Shoes, .*
+- assertNotVisible: Coffee, .*
+- assertNotVisible: Dinner, .*
+# A second press on a chosen category takes it off.
+- tapOn: Category, 2 Categories
+- waitForAnimationToEnd
+- tapOn: Travel
+- waitForAnimationToEnd
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
+- assertVisible: Category, Shopping
+- assertVisible: 1 item
+- assertVisible: Shoes, .*
+- assertNotVisible: Train, .*
+- tapOn: Category, Shopping
+- waitForAnimationToEnd
+- tapOn: Shopping
+- waitForAnimationToEnd
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
+- assertVisible: Category
+- assertVisible: 5 items
+# The Ledger capsule lists Personal and the group.
+- tapOn: Ledger
+- waitForAnimationToEnd
+- assertVisible: Personal
+- assertVisible: Brisbane
+- tapOn: Brisbane
+- waitForAnimationToEnd
+- assertVisible: Personal
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
+- assertVisible: Ledger, Brisbane
+- assertVisible: 2 items
+- assertVisible: Dinner, .*
+- assertVisible: Taxi, .*
+- assertNotVisible: Coffee, .*
+# A group's screen has Paid by in place of Ledger and Paid by Me, and a filter of its own.
+- tapOn: Groups
+- tapOn: Open Brisbane
+- waitForAnimationToEnd
+- assertVisible: Filters
+- assertNotVisible: Paid by
+- tapOn: Filters
+- waitForAnimationToEnd
+- tapOn: Lowest amount
+- inputText: '1'
+- tapOn: Done
+- waitForAnimationToEnd
+- assertVisible: Category
+- assertVisible: Paid by
+- assertVisible: Amount, 1 or more
+- assertNotVisible: Ledger
+- assertNotVisible: Paid by Me
+- tapOn: Paid by
+- waitForAnimationToEnd
+- assertVisible: You
+- assertVisible: Casey
+- tapOn: Casey
+- waitForAnimationToEnd
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
+- assertVisible: Paid by, Casey
+- assertVisible: 1 item
+- assertVisible: Taxi, .*
+- assertNotVisible: Dinner, .*
+# The amount goes, in the popover of its capsule, so Paid by is the only condition that is on.
+- tapOn: Amount, 1 or more
+- waitForAnimationToEnd
+- eraseText: 1
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
+- assertVisible: Paid by, Casey
+- assertVisible: Amount
+# LEDGER-134.1: taking the last condition off in the menu keeps the menu and the row, so another
+# payer can be chosen at once.
+- tapOn: Paid by, Casey
+- waitForAnimationToEnd
+- tapOn: Casey
+- waitForAnimationToEnd
+- assertVisible: You
+- tapOn: You
+- waitForAnimationToEnd
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
+- assertVisible: Paid by, You
+- assertVisible: Dinner, .*
+- assertNotVisible: Taxi, .*
+# A menu that closes with no condition on takes the row with it.
+- tapOn: Paid by, You
+- waitForAnimationToEnd
+- tapOn: You
+- waitForAnimationToEnd
+- tapOn:
+    point: 3%,50%
+- waitForAnimationToEnd
+- assertNotVisible: Paid by.*
+- assertNotVisible: Category
+- assertVisible: Filters
+- assertVisible: Dinner, .*
+- assertVisible: Taxi, .*

@@ -18,14 +18,14 @@ import type { MenuFieldProps } from '../../src/ui/menu-field';
 // screen. They read the period row, the total under it and the words of a period with no expense
 // from what the list shows and from the names a screen reader reads, and press the arrows as
 // buttons. The name on the period row is a system menu on iOS (LEDGER-110.1), which only an E2E
-// flow can open, so the tests choose a period in Filters (LEDGER-109.1): its Date row is the ui/
+// flow can open, so the tests choose a period in Filters (LEDGER-109.2): its Date row is the ui/
 // MenuField, read and pressed as the expense form's rows are (ledger-expense-app), and the dates
 // of a custom range are the ui/ DateField, whose props the tests read and call. Filters is found
 // by its title: a navigation bar, or on Android the header of the sheet it is drawn in.
 
 type HostView = ReturnType<typeof nativeViews>[number];
 
-/** The periods a list offers by name, in the order of the Date list (LEDGER-109.1). */
+/** The periods a list offers by name, in the order of the Date list (LEDGER-109.2). */
 export const PERIOD_OPTIONS = [
   'This Month',
   'Last Month',
@@ -118,7 +118,7 @@ export const pressNextPeriod = (root: HostView) =>
 
 // The total under the period row
 
-/** The buttons of the list in `root` that open Insights: its total (LEDGER-35.5, GROUPS-68.5). */
+/** The buttons of the list in `root` that open Insights: its total (LEDGER-35.6, GROUPS-68.6). */
 export const totalButtons = (root: HostView) =>
   ownButtons(root).filter(
     (button) => button.props.accessibilityHint === 'Opens Insights',
@@ -143,7 +143,7 @@ export async function pressTotal(root: HostView) {
 
 // A period with no expense
 
-/** The No Expenses in <period> heading of the list in `root`, if it shows one (LEDGER-116.2). */
+/** The No Expenses in <period> heading of the list in `root`, if it shows one (LEDGER-116.3). */
 export const emptyPeriodTitle = (root: HostView) =>
   within(root)
     .queryAllByRole('header')
@@ -237,13 +237,20 @@ export function rightOfBar(barTitle: string) {
   return { items: onIos, buttons: onAndroidHeader };
 }
 
-/** Whether the bar titled `barTitle` offers Filters. */
-export function hasFilters(barTitle: string) {
+/**
+ * What a screen reader reads for the Filters action of the bar titled `barTitle`: Filters, or
+ * Filters, on while the list has a filter (LEDGER-132.1). Undefined while the bar has none.
+ */
+export function filtersActionName(barTitle: string) {
   const { items, buttons } = rightOfBar(barTitle);
-  return [...items.map(({ name }) => name), ...buttons.map(nameOf)].includes(
-    'Filters',
+  return [...items.map(({ name }) => name), ...buttons.map(nameOf)].find(
+    (name) => name !== undefined && /^Filters(, on)?$/.test(name),
   );
 }
+
+/** Whether the bar titled `barTitle` offers Filters. */
+export const hasFilters = (barTitle: string) =>
+  filtersActionName(barTitle) !== undefined;
 
 // Filters
 
@@ -277,9 +284,10 @@ export async function expectFilters() {
 
 /** Presses Filters on the navigation bar titled `barTitle`: Expenses, or a group's name. */
 export async function openFilters(barTitle: string) {
-  if (!hasFilters(barTitle))
+  const name = filtersActionName(barTitle);
+  if (name === undefined)
     throw new Error(`The bar titled ${barTitle} has no Filters`);
-  await barActionOn(barTitled(barTitle)!, 'Filters').press();
+  await barActionOn(barTitled(barTitle)!, name).press();
   await expectFilters();
 }
 

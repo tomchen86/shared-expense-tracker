@@ -191,19 +191,34 @@ const LIST_CONTROLS = [
   /^From$/,
   /^To$/,
   /^Sort By, /,
+  /^Clear Filters$/,
 ];
+
+/** Whether `view` is inside a scroll view that scrolls sideways, as a capsule of the capsule row is (LEDGER-133.1). */
+function inSidewaysScrollView(view: HostView) {
+  for (let node = view.parent; node; node = node.parent)
+    if (
+      typeof node.type === 'string' &&
+      /ScrollView$/.test(node.type) &&
+      (node.props.horizontal === true || /Horizontal/.test(node.type))
+    )
+      return true;
+  return false;
+}
 
 /**
  * Whether a button above a list's cards is one of the list's own controls: the period row, the
  * dates of a custom range, the total, a group's net balance, the way out of a period with no
- * expense, or the sort button (LEDGER-108.2 to LEDGER-116.2, LEDGER-122.1, GROUPS-68.5,
+ * expense, the sort button, a capsule of the capsule row, or the Clear Filters under a notice
+ * (LEDGER-108.2 to LEDGER-116.3, LEDGER-122.1, LEDGER-133.1, LEDGER-138.1, GROUPS-68.6,
  * GROUPS-69.4).
  */
 export const isListControl = (button: HostView) =>
   LIST_CONTROLS.some((name) => name.test(nameOf(button))) ||
   ['Opens Insights', 'Opens Balances'].includes(
     String(button.props.accessibilityHint),
-  );
+  ) ||
+  inSidewaysScrollView(button);
 
 /** The cards on the expense list, top to bottom: its buttons besides the + button and the list's controls. */
 export const cards = () =>
@@ -230,7 +245,7 @@ export const cardTitles = () => cards().map((shown) => linesIn(shown)[0]);
 /** What a screen reader reads for a card: its name. */
 export const readOut = (shown: HostView) => asRead(nameOf(shown));
 
-/** The button under the period row that shows the list's total and opens Insights (LEDGER-35.5). */
+/** The button under the period row that shows the list's total and opens Insights (LEDGER-35.6). */
 export const listTotalButton = () =>
   within(expensesRoot()).getByRole('button', {
     name: /^View expense insights\./,

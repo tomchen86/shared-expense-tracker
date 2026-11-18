@@ -248,7 +248,7 @@ export async function endSearch(barTitle: string) {
   await settle();
 }
 
-/** The No Results for “<text>” heading of the list in `root`, if it shows one (LEDGER-127.1). */
+/** The No Results for “<text>” heading of the list in `root`, if it shows one (LEDGER-127.2). */
 export const noResultsTitle = (root: HostView) =>
   within(root)
     .queryAllByRole('header')

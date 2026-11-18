@@ -187,7 +187,7 @@ test('[SHELL-73.1] puts the system search field in the header of the expense lis
   expect(searchField('Expenses')?.props.placeholder).toBe('Search');
 });
 
-test('[LEDGER-125.1] [LEDGER-126.1] [SHELL-73.1] searches at each change of the text on Android, and ends the search when the field closes', async () => {
+test('[LEDGER-125.2] [LEDGER-126.2] [SHELL-73.1] searches at each change of the text on Android, and ends the search when the field closes', async () => {
   await startExpenses();
   await spend('Coffee run');
   await spend('Lunch');
@@ -209,7 +209,7 @@ test('[LEDGER-125.1] [LEDGER-126.1] [SHELL-73.1] searches at each change of the 
   expect(listCount(expensesRoot())).toBeUndefined();
 });
 
-test('[LEDGER-127.1] says No Results for the text on Android', async () => {
+test('[LEDGER-127.2] says No Results for the text on Android', async () => {
   await startExpenses();
   await spend('Coffee run');
 

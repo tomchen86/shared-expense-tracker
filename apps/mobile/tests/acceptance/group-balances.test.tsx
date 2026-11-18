@@ -237,7 +237,7 @@ const addSushi = (payer = 'Casey') =>
 
 // The Group Total
 
-test('[GROUPS-68.5] shows Group Total on the period row and the total of one currency under it, above the cards, counting every expense of the group', async () => {
+test('[GROUPS-68.6] shows Group Total on the period row and the total of one currency under it, above the cards, counting every expense of the group', async () => {
   await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
 
@@ -255,7 +255,7 @@ test('[GROUPS-68.5] shows Group Total on the period row and the total of one cur
   expect(buttons[0].props.accessibilityHint).toBe('Opens Insights');
 });
 
-test('[GROUPS-68.5] joins the currencies on one line of the total, sorted by currency code', async () => {
+test('[GROUPS-68.6] joins the currencies on one line of the total, sorted by currency code', async () => {
   await startWithGroups(BRISBANE);
   // The JPY expense comes first, so the cards, newest first, put USD first.
   await addSushi();
@@ -272,7 +272,7 @@ test('[GROUPS-68.5] joins the currencies on one line of the total, sorted by cur
   expect(linesIn(buttons[0])).toEqual(['¥3,000, $125.01', '›']);
 });
 
-test("[GROUPS-68.5] shows the Group Total that counts an expense's new amount", async () => {
+test("[GROUPS-68.6] shows the Group Total that counts an expense's new amount", async () => {
   await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
   await showGroup('Brisbane');
@@ -291,7 +291,7 @@ test("[GROUPS-68.5] shows the Group Total that counts an expense's new amount", 
   );
 });
 
-test("[GROUPS-68.5] pushes the group's Insights onto the Groups tab when the Group Total is pressed", async () => {
+test("[GROUPS-68.6] pushes the group's Insights onto the Groups tab when the Group Total is pressed", async () => {
   const app = await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
   await showGroup('Brisbane');
@@ -310,7 +310,7 @@ test("[GROUPS-68.5] pushes the group's Insights onto the Groups tab when the Gro
   await expectTotals(['$125.01'], 'Groups');
 });
 
-test('[GROUPS-68.5] pushes one Insights when the Group Total is pressed twice', async () => {
+test('[GROUPS-68.6] pushes one Insights when the Group Total is pressed twice', async () => {
   await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
   await showGroup('Brisbane');
@@ -329,7 +329,7 @@ test('[GROUPS-68.5] pushes one Insights when the Group Total is pressed twice', 
   ]);
 });
 
-test('[GROUPS-68.5] shows no period row and no total on a group without expenses', async () => {
+test('[GROUPS-68.6] shows no period row and no total on a group without expenses', async () => {
   await startWithGroups(BRISBANE);
 
   await showGroup('Brisbane');
@@ -339,7 +339,7 @@ test('[GROUPS-68.5] shows no period row and no total on a group without expenses
   expect(periodName(screenOf('Brisbane'))).toBeUndefined();
 });
 
-test("[GROUPS-68.5] shows an archived group's period row and total below Restore Group and above the cards", async () => {
+test("[GROUPS-68.6] shows an archived group's period row and total below Restore Group and above the cards", async () => {
   await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
   await archiveGroup('Brisbane');
@@ -359,7 +359,7 @@ test("[GROUPS-68.5] shows an archived group's period row and total below Restore
   );
 });
 
-test("[GROUPS-68.5] pushes an archived group's Insights onto the Settings tab when its Group Total is pressed", async () => {
+test("[GROUPS-68.6] pushes an archived group's Insights onto the Settings tab when its Group Total is pressed", async () => {
   const app = await startWithGroups(BRISBANE);
   await addDinnerAndTaxi();
   await archiveGroup('Brisbane');
@@ -944,7 +944,7 @@ async function addSharedDinnerAndTaxi() {
   await addToBrisbane('Taxi', '30.00', 'Casey', EVERYONE);
 }
 
-test("[GROUPS-61.5] leaves an expense in the trash off the group's screen", async () => {
+test("[GROUPS-61.6] leaves an expense in the trash off the group's screen", async () => {
   await startWithGroups(BRISBANE);
   await addSharedDinnerAndTaxi();
   await showGroup('Brisbane');

@@ -317,7 +317,7 @@ test('[LEDGER-121.1] lists the cards newest first until an order is chosen, on t
   expect(sortName(brisbane())).toBe('Sort By, Newest First');
 });
 
-test('[LEDGER-121.1] [LEDGER-31.4] lists the oldest first as the exact reverse of newest first', async () => {
+test('[LEDGER-121.1] [LEDGER-31.5] lists the oldest first as the exact reverse of newest first', async () => {
   await startExpenses();
   await spend('A', '2026-10-01');
   await spend('B', '2026-10-03');
@@ -371,7 +371,7 @@ test('[LEDGER-121.1] compares amounts of different currencies by the number on t
   expect(cardTitles()).toEqual(['A', 'B', 'C']);
 });
 
-test("[LEDGER-121.1] [LEDGER-64.4] sorts the expense list by your share of a group expense, and a group's screen by the whole amount", async () => {
+test("[LEDGER-121.1] [LEDGER-64.5] sorts the expense list by your share of a group expense, and a group's screen by the whole amount", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '60.00');
   await spend('Lunch', '2026-10-30', '25.00');
@@ -386,7 +386,7 @@ test("[LEDGER-121.1] [LEDGER-64.4] sorts the expense list by your share of a gro
   expect(groupCardTitles('Brisbane')).toEqual(['Taxi', 'Dinner']);
 });
 
-test("[GROUPS-61.5] [LEDGER-121.1] lists a group's cards in the order chosen on its screen", async () => {
+test("[GROUPS-61.6] [LEDGER-121.1] lists a group's cards in the order chosen on its screen", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '60.00');
   await brisbaneSpends('Taxi', '25.00');
