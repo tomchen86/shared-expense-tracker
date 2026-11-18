@@ -25,9 +25,10 @@ const steps = {
     await sql`UPDATE ${sql(table)} SET value = 'changed' WHERE id = 1`;
   },
   async commit(sql: Sql, table: string) {
-    await sql.begin(async (transaction) => {
-      // The kind of lock each signed request takes on its device (src/sharing/devices.ts),
-      // under keys no request uses: Hyperdrive has to let it through to PostgreSQL.
+    // As each signed request's transaction begins and locks its device
+    // (src/sharing/devices.ts), under keys no request uses: Hyperdrive has to let both
+    // through to PostgreSQL.
+    await sql.begin('isolation level read committed', async (transaction) => {
       await transaction`SELECT pg_advisory_xact_lock(${0}, ${0})`;
       await transaction`UPDATE ${transaction(table)} SET value = 'committed' WHERE id = 1`;
       await transaction`INSERT INTO ${transaction(table)} VALUES (2, 'committed too')`;

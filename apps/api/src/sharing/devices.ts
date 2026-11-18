@@ -61,9 +61,12 @@ export function acceptRequest(
   const { deviceId, publicKey, nonce, timestampMs, now, registration } =
     request;
   return sql.begin<'accepted' | 'cannot-count' | Refusal>(
+    // Said outright, whatever the database's default is: the checks rely on each
+    // statement seeing what was committed before it began.
+    'isolation level read committed',
     async (transaction) => {
       // Held until the transaction ends. Each statement after it sees what the requests
-      // before this one committed.
+      // that held the lock before this one committed.
       await transaction`
         SELECT pg_advisory_xact_lock(${DEVICE_LOCKS}, ${lockKey(deviceId)})`;
       const [device] = await transaction<
