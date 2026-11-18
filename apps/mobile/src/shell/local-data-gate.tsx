@@ -1,5 +1,6 @@
 import {
   createContext,
+  Fragment,
   useContext,
   useEffect,
   useState,
@@ -9,7 +10,11 @@ import {
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import type { InsightChartPreference } from '@shared-expense/domain';
 import { ensureDefaultCategories } from '../categories/repository';
-import { initializeDatabase, type Database } from '../storage';
+import {
+  initializeDatabase,
+  type Database,
+  type SqlExecutor,
+} from '../storage';
 import { applyAppearanceOption, type AppearanceOption } from '../ui/appearance';
 import {
   ReduceTransparencyProvider,
@@ -34,7 +39,23 @@ interface LocalData {
   chartType: InsightChartPreference;
 }
 
+/** What the app keeps in memory of the local data, read in the transaction that opens or replaces it. */
+async function readLocalData(transaction: SqlExecutor) {
+  return {
+    identity: await ensureLocalIdentity(transaction),
+    appearance: await readLocalAppearance(transaction),
+    chartType: await readLocalChartType(transaction),
+  };
+}
+
 interface LocalDataContextValue extends LocalData {
+  /**
+   * Runs `replace` in one transaction, then starts everything inside the gate again on
+   * the data it wrote, as the app is after loading (BACKUP-14.1). A failure changes nothing.
+   */
+  replaceData: (
+    replace: (transaction: SqlExecutor) => Promise<void>,
+  ) => Promise<void>;
   saveName: (name: string) => Promise<void>;
   saveAppearance: (appearance: AppearanceOption) => Promise<void>;
   saveChartType: (chartType: InsightChartPreference) => Promise<void>;
@@ -46,6 +67,8 @@ export interface LocalDataGateProps {
   /** The caller closes the returned connections when the app closes. */
   openDatabase: () => Promise<Database>;
   development: boolean;
+  /** Called once `replaceData` has replaced the local data, just before everything inside starts again. */
+  onReplaced?: () => void;
   /** Writes test data before the first screen shows (ADR-0018), and returns your identity after it. */
   seed?: (
     database: Database,
@@ -57,11 +80,12 @@ export interface LocalDataGateProps {
 type Startup =
   | { status: 'loading' }
   | { status: 'error' }
-  | { status: 'ready'; data: LocalData };
+  | { status: 'ready'; data: LocalData; starts: number };
 
 export function LocalDataGate({
   openDatabase,
   development,
+  onReplaced,
   seed,
   children,
 }: LocalDataGateProps): ReactElement {
@@ -82,17 +106,12 @@ export function LocalDataGate({
         appMigrations,
         development,
         async (transaction) => {
-          const localIdentity = await ensureLocalIdentity(transaction);
+          const data = await readLocalData(transaction);
           await ensureDefaultCategories(
             transaction,
-            localIdentity.personalSpaceId,
+            data.identity.personalSpaceId,
           );
-          const savedAppearance = await readLocalAppearance(transaction);
-          return {
-            identity: localIdentity,
-            appearance: savedAppearance,
-            chartType: await readLocalChartType(transaction),
-          };
+          return data;
         },
       );
       const { appearance, chartType } = initialized;
@@ -105,6 +124,7 @@ export function LocalDataGate({
       setStartup({
         status: 'ready',
         data: { database, identity, appearance, chartType },
+        starts: 0,
       });
     }
     void open().catch(() => {
@@ -117,6 +137,25 @@ export function LocalDataGate({
 
   if (startup.status === 'ready') {
     const { database } = startup.data;
+    async function replaceData(
+      replace: (transaction: SqlExecutor) => Promise<void>,
+    ) {
+      const data = await database.transaction(async (transaction) => {
+        await replace(transaction);
+        return readLocalData(transaction);
+      });
+      applyAppearanceOption(data.appearance);
+      onReplaced?.();
+      setStartup((current) =>
+        current.status === 'ready' && current.data.database === database
+          ? {
+              status: 'ready',
+              data: { database, ...data },
+              starts: current.starts + 1,
+            }
+          : current,
+      );
+    }
     async function saveName(name: string) {
       await saveLocalName(database, name);
       setStartup((current) =>
@@ -157,9 +196,16 @@ export function LocalDataGate({
     return (
       <ReduceTransparencyProvider controller={transparency}>
         <LocalDataContext.Provider
-          value={{ ...startup.data, saveName, saveAppearance, saveChartType }}
+          value={{
+            ...startup.data,
+            replaceData,
+            saveName,
+            saveAppearance,
+            saveChartType,
+          }}
         >
-          {children}
+          {/* Everything inside keeps no state from the data that was replaced. */}
+          <Fragment key={startup.starts}>{children}</Fragment>
         </LocalDataContext.Provider>
       </ReduceTransparencyProvider>
     );
@@ -197,6 +243,9 @@ export function useLocalIdentity(): LocalIdentity {
 }
 export function useLocalDatabase(): Database {
   return useLocalData().database;
+}
+export function useReplaceLocalData(): LocalDataContextValue['replaceData'] {
+  return useLocalData().replaceData;
 }
 export function useSaveLocalName(): LocalDataContextValue['saveName'] {
   return useLocalData().saveName;

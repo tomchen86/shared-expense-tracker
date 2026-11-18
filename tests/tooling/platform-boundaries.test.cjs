@@ -130,6 +130,29 @@ test.each([
 });
 
 test.each([
+  ['expo-file-system', "import { File } from 'expo-file-system';"],
+  ['expo-file-system', "const files = require('expo-file-system/legacy');"],
+  ['expo-sharing', "import { shareAsync } from 'expo-sharing';"],
+  ['expo-document-picker', "export * from 'expo-document-picker';"],
+])(
+  'rejects the phone files, share sheet, and file picker outside storage: %s in %s',
+  (name, code) => {
+    write('src/backup/export.ts', code);
+    expect(checkPlatformBoundaries(mobile)).toEqual([
+      expect.stringContaining(`only src/storage/ may import ${name}`),
+    ]);
+  },
+);
+
+test('allows the phone files, share sheet, and file picker in storage', () => {
+  write(
+    'src/storage/expo-files.ts',
+    "import { getDocumentAsync } from 'expo-document-picker'; import { File } from 'expo-file-system'; import { shareAsync } from 'expo-sharing';",
+  );
+  expect(checkPlatformBoundaries(mobile)).toEqual([]);
+});
+
+test.each([
   "import { value } from '../shell/model';",
   "export { value } from '@/shell/model';",
   "const model = import('@/shell/model');",

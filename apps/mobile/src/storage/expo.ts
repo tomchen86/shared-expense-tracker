@@ -1,10 +1,16 @@
 import { openDatabaseAsync } from 'expo-sqlite';
 import { createDatabase, type Database, type SqlValue } from './database';
 
-export async function openPhoneDatabase(): Promise<Database> {
-  const connection = await openDatabaseAsync('app.db', {
-    useNewConnection: true,
-  });
+/** Opens the SQLite database file `name`, in `directory` or else where the phone keeps its databases. */
+export async function openExpoDatabase(
+  name: string,
+  directory?: string,
+): Promise<Database> {
+  const connection = await openDatabaseAsync(
+    name,
+    { useNewConnection: true },
+    directory,
+  );
   try {
     await connection.execAsync('PRAGMA foreign_keys = ON');
   } catch (error) {
@@ -19,3 +25,6 @@ export async function openPhoneDatabase(): Promise<Database> {
     close: () => connection.closeAsync(),
   });
 }
+
+export const openPhoneDatabase = (): Promise<Database> =>
+  openExpoDatabase('app.db');

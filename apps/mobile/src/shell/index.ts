@@ -3,6 +3,7 @@ export {
   useChartType,
   useLocalIdentity,
   useLocalDatabase,
+  useReplaceLocalData,
   useSaveChartType,
 } from './local-data-gate';
 export type { LocalDataGateProps } from './local-data-gate';

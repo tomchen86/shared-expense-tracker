@@ -110,8 +110,13 @@ function checkPlatformBoundaries(mobile) {
         const specifier = reference.text;
         const resolved = ts.resolveModuleName(specifier, file, options, ts.sys)
           .resolvedModule?.resolvedFileName;
-        if (!inStorage && /^expo-sqlite(?:\/|$)/.test(specifier)) {
-          report(reference, 'only src/storage/ may import expo-sqlite');
+        // The phone's database (ADR-0006), files, share sheet, and file picker (ADR-0020).
+        const [onlyInStorage] =
+          /^expo-(sqlite|file-system|sharing|document-picker)(?=\/|$)/.exec(
+            specifier,
+          ) ?? [];
+        if (!inStorage && onlyInStorage) {
+          report(reference, `only src/storage/ may import ${onlyInStorage}`);
         }
         if (
           inStorage &&

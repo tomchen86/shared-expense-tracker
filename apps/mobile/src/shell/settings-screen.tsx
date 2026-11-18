@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type ComponentRef } from 'react';
+import {
+  Fragment,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+} from 'react';
 import {
   AccessibilityInfo,
   Alert,
@@ -18,6 +24,7 @@ import { GroupedSection } from '../ui/grouped-section';
 import { useThemeColors } from '../ui/theme';
 import { useKeyboardInset } from '../ui/use-keyboard-inset';
 import { useTabRootBack } from '../ui/use-tab-root-back';
+import { useBackup } from '../backup';
 import { useGroups } from '../groups/use-groups';
 import { useExpenses } from '../ledger/use-expenses';
 import {
@@ -48,6 +55,7 @@ export function SettingsScreen() {
   const saveName = useSaveLocalName();
   const appearance = useAppearanceOption();
   const saveAppearance = useSaveAppearanceOption();
+  const backup = useBackup();
   const [name, setName] = useState(identity.name);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingAppearance, setIsSavingAppearance] = useState(false);
@@ -280,6 +288,60 @@ export function SettingsScreen() {
             </Text>
           </Pressable>
         </GroupedSection>
+
+        <Text
+          accessibilityRole="header"
+          style={[
+            styles.sectionLabel,
+            styles.nextSection,
+            { color: colors.textMuted },
+          ]}
+        >
+          DATA
+        </Text>
+        <GroupedSection>
+          {(
+            [
+              ['Export Data', backup.exportData],
+              ['Import Data', backup.importData],
+            ] as const
+          ).map(([label, start], index) => (
+            <Fragment key={label}>
+              {index > 0 && (
+                <View
+                  style={[
+                    styles.separator,
+                    { backgroundColor: colors.separator },
+                  ]}
+                />
+              )}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={label}
+                disabled={backup.busy}
+                onPress={() => void start()}
+                style={({ pressed }) => [
+                  styles.row,
+                  pressed && { backgroundColor: colors.pressedSurface },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.rowLabel,
+                    { color: backup.busy ? colors.textMuted : colors.accent },
+                  ]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            </Fragment>
+          ))}
+        </GroupedSection>
+        <Text style={[styles.note, { color: colors.textMuted }]}>
+          Export saves all the data on this phone to a file. The file is not
+          encrypted, so anyone who has it can read it. Import replaces all the
+          data on this phone with the data in a file.
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
