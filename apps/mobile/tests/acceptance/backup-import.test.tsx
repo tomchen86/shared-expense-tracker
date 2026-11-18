@@ -21,6 +21,7 @@ import {
   exportData,
   exportFrom,
   failWritesAfter,
+  filePicker,
   fileWith,
   firstHalfOf,
   fromANewerVersion,
@@ -157,6 +158,47 @@ test('[BACKUP-10.1] does nothing when the user cancels in the file picker', asyn
 
   expect(alertsShown()).toEqual([]);
   expectNothingChanged(app, before);
+});
+
+test('[BACKUP-26.1] says the data could not be imported when the file picker cannot open, and opens it on the next press', async () => {
+  const { file } = await taylorsExport();
+  const app = await startWithSamsData();
+  const before = dataIn(phone.database);
+  filePicker('cannot open');
+
+  await pressRow('Import Data');
+
+  expect(await nextAlert(1)).toEqual(IMPORT_FAILED);
+  await settle();
+  expect(alertsShown()).toEqual([IMPORT_FAILED]);
+  expectNothingChanged(app, before);
+  for (const row of ['Export Data', 'Import Data'] as const)
+    expect(dataRow(row)).toBeEnabled();
+
+  filePicker('opens');
+  await chooseFile(file);
+
+  expect((await nextAlert(2))[0]).toBe(REPLACE);
+});
+
+test('[BACKUP-26.1] says the data could not be imported when the file picker cannot hand over the picked file, and asks about it on the next try', async () => {
+  const { file } = await taylorsExport();
+  const app = await startWithSamsData();
+  const before = dataIn(phone.database);
+  filePicker('cannot hand over the file');
+
+  await chooseFile(file);
+
+  expect(await nextAlert(1)).toEqual(IMPORT_FAILED);
+  await settle();
+  expect(alertsShown()).toEqual([IMPORT_FAILED]);
+  expectNothingChanged(app, before);
+
+  filePicker('opens');
+  await chooseFile(file);
+
+  expect((await nextAlert(2))[0]).toBe(REPLACE);
+  expect(dataIn(phone.database)).toEqual(before);
 });
 
 test("[BACKUP-11.1] asks before writing anything, with the file's export time and its counts", async () => {
@@ -536,6 +578,9 @@ test('[BACKUP-24.1] writes nothing for a file from an older version that has a t
 
 const DINNER = "(SELECT id FROM expenses WHERE title = 'Dinner')";
 const COFFEE_RUN = "(SELECT id FROM expenses WHERE title = 'Coffee run')";
+/** Adds a member of a group that is not in the file, which no foreign key allows. */
+const GHOST_MEMBER =
+  "INSERT INTO group_members (id, groupId, userId, name, position) VALUES ('ghost', 'missing', NULL, 'Ghost', 1)";
 
 /** Edits to Taylor's export file that break one rule each. Dinner is 10001 minor units. */
 const AGAINST_THE_RULES: [string, string][] = [
@@ -575,7 +620,7 @@ const AGAINST_THE_RULES: [string, string][] = [
   ],
   [
     'a member of a group that is not there, against a foreign key',
-    "INSERT INTO group_members (id, groupId, userId, name, position) VALUES ('ghost', 'missing', NULL, 'Ghost', 1)",
+    GHOST_MEMBER,
   ],
   ['no local identity', 'DELETE FROM local_identity'],
   [
@@ -619,6 +664,19 @@ test('[BACKUP-17.1] writes nothing and asks for an update when the file comes fr
   const before = dataIn(phone.database);
 
   await chooseFile(await fromANewerVersion(file));
+
+  expect(await nextAlert(1)).toEqual(NEWER_FILE);
+  await settle();
+  expect(alertsShown()).toEqual([NEWER_FILE]);
+  expectNothingChanged(app, before);
+});
+
+test('[BACKUP-17.1] asks for an update when a file from a newer version has a member of a group that is not there, against a foreign key', async () => {
+  const { file } = await taylorsExport();
+  const app = await startWithSamsData();
+  const before = dataIn(phone.database);
+
+  await chooseFile(edited(await fromANewerVersion(file), GHOST_MEMBER));
 
   expect(await nextAlert(1)).toEqual(NEWER_FILE);
   await settle();

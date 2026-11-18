@@ -181,6 +181,25 @@ WHEN 使用者在 Settings 根畫面點「Import Data」，the mobile app SHALL 
 - **WHEN** 點「Import Data」，在檔案選擇畫面取消
 - **THEN** 沒有提示框，本機資料和點之前一樣，停在 Settings 根畫面
 
+### Requirement: BACKUP-26.1 檔案選擇畫面打不開或交不出檔案時提示
+
+IF 使用者點「Import Data」之後檔案選擇畫面打不開，或它交不出使用者所選檔案的複本，THEN the mobile app SHALL 不寫入任何資料，本機資料和畫面都不變，並跳出標題「Unable to Import Data」、內容「Your data could not be imported. Your data was not changed.」的提示框。
+
+#### Scenario: 打不開
+
+- **WHEN** 點「Import Data」，檔案選擇畫面打不開
+- **THEN** 跳出這個提示框；本機資料和點之前一樣，停在 Settings 根畫面，「Export Data」和「Import Data」恢復可以點
+
+#### Scenario: 交不出複本
+
+- **WHEN** 點「Import Data」並選了 Taylor 的資料的匯出檔，但檔案選擇畫面交不出它的複本，例如手機沒有空間放複本
+- **THEN** 跳出這個提示框，沒有確認框，本機資料不變
+
+#### Scenario: 再試一次
+
+- **WHEN** 檔案選擇畫面恢復正常之後，再點「Import Data」並選同一個匯出檔
+- **THEN** 跳出「Replace All Data?」
+
 ### Requirement: BACKUP-11.1 寫入之前顯示摘要並確認
 
 WHEN 使用者選了一個可以匯入的匯出檔，the mobile app SHALL 在寫入任何資料之前跳出確認框：標題「Replace All Data?」，內容「This file was exported on <匯出時間> and has <群組數> and <支出數>. Importing it replaces all the data on this phone. This cannot be undone.」，選項是「Cancel」和破壞性的「Replace」。匯出時間是手機地區的日期格式（LEDGER-30.2）的日期、「at」、和英文加手機的地區所用的短時間格式的時和分，手機回報不出地區或平台沒有這個地區的英文格式時只用英文，都以裝置所在的時區顯示；群組數是匯出檔裡的群組有幾個，封存的也算，寫成「1 group」或「2 groups」；支出數是匯出檔裡個人和群組的支出有幾筆，垃圾桶裡的不算，寫成「1 expense」或「2 expenses」，0 也用複數。
@@ -401,7 +420,12 @@ IF 匯出檔的內容違反規則，THEN the mobile app SHALL 照 BACKUP-15.1 �
 
 ### Requirement: BACKUP-17.1 比 app 新的匯出檔不寫入，請使用者更新 app
 
-IF 使用者選的檔案是沒有損壞的 SQLite 資料庫檔，而它的版本比 app 新，THEN the mobile app SHALL 不寫入任何資料，本機資料和畫面都不變，並跳出標題「Unable to Import Data」、內容「This file was exported by a newer version of the app. Update the app, then try again. Your data was not changed.」的提示框，不再照 BACKUP-24.1 和 BACKUP-16.1 檢查它，因為新版的匯出檔本來就可能有 app 不認得的表和欄位；開發版也一樣。
+IF 使用者選的檔案是沒有損壞的 SQLite 資料庫檔，而它的版本比 app 新，THEN the mobile app SHALL 不寫入任何資料，本機資料和畫面都不變，並跳出標題「Unable to Import Data」、內容「This file was exported by a newer version of the app. Update the app, then try again. Your data was not changed.」的提示框，不再照 BACKUP-24.1 和 BACKUP-16.1 檢查它，因為新版的匯出檔本來就可能有 app 不認得的表和欄位；開發版也一樣。沒有損壞，是指 SQLite 自己檢查這個檔案的完整性時找不到問題；這項檢查不看 foreign key。
+
+#### Scenario: 違反 foreign key 的新版匯出檔
+
+- **WHEN** 選了一個新版匯出檔，裡面有一位成員屬於一個不存在的群組
+- **THEN** 跳出這個提示框，不是「This file is damaged or was not exported by this app.」；本機資料不變
 
 #### Scenario: 新版 app 的匯出檔
 
