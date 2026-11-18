@@ -6,9 +6,15 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./api": "./src/api/index.ts"
+    "./api": "./src/api/index.ts",
+    "./crypto": "./src/crypto/index.ts"
   },
   "scripts": {
     "typecheck": "tsc6 --noEmit && tsc6 --noEmit --project tsconfig.test.json"
+  },
+  "dependencies": {
+    "@noble/ciphers": "2.4.0",
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0"
   }
 }
