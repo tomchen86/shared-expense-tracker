@@ -1790,6 +1790,11 @@ WHILE 未封存的共同帳本有 20 位以上的成員，the mobile app SHALL �
 - **WHEN** Brisbane 有 20 位成員，Members 開著時套用別支手機加入 Dana 的事件，之後一位一位移出兩位成員
 - **THEN** 先是列出 21 位成員，沒有「Add Member」；移出一位之後有 20 位，仍沒有「Add Member」；再移出一位之後有 19 位，最後是「Add Member」
 
+#### Scenario: 名稱欄位開著時別支手機加入第 20 位
+
+- **WHEN** Brisbane 有 19 位成員，Members 的名稱欄位裡有「Tina」時，套用別支手機加入 Dana 的事件；之後移出一位成員，再按「Add Member」
+- **THEN** 先是名稱欄位收起，最後是這句話；按「Add Member」之後，名稱欄位是空的（GROUPS-29.2）
+
 #### Scenario: 還不是共同帳本
 
 - **WHEN** 還不是共同帳本的群組有 31 位成員
