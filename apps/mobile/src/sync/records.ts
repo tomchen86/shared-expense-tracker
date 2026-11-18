@@ -1,9 +1,9 @@
 import {
-  changedSyncUnits,
   checkSyncEvent,
   MAX_SYNC_PLAINTEXT_BYTES,
   mergeSyncEvent,
   nextSyncStamp,
+  sameSyncUnitValue,
   type SyncRecord,
   type SyncRecordType,
   type SyncStamp,
@@ -103,33 +103,42 @@ export function expenseSyncValues(expense: Expense): SyncUnits['expense'] {
   };
 }
 
-/** Called inside the transaction that writes the capability's own rows. */
-export async function writeLocalChange<T extends SyncRecordType>(
+/**
+ * The units among `values` whose value differs from the stored one, each with the stamp
+ * it replaces as its base, and with no base where nothing was stored (SYNC-23.1).
+ */
+export function changedUnits(values: object, stored: SyncRecord['units']) {
+  const current: Record<
+    string,
+    { value: unknown; stamp: SyncStamp } | undefined
+  > = stored;
+  const changes: Record<string, { value: unknown; base?: SyncStamp }> = {};
+  for (const [name, value] of Object.entries(values)) {
+    const unit = current[name];
+    if (!unit) changes[name] = { value };
+    else if (!sameSyncUnitValue(name, value, unit.value))
+      changes[name] = { value, base: unit.stamp };
+  }
+  return changes;
+}
+
+type StoredRecord = Awaited<ReturnType<typeof readSyncRecord>>;
+
+/** Stamps, checks, measures and stores one event of this phone, with the record it changes. */
+async function writeEvent(
   tx: SqlExecutor,
   group: SharedGroup,
-  type: T,
-  id: string,
-  values: Partial<SyncUnits[T]> | (T extends 'category' ? 'delete' : never),
+  previous: StoredRecord,
+  change: { type: SyncRecordType; id: string } & (
+    { units: object } | { deleted: true }
+  ),
 ) {
-  const previous = await readSyncRecord(tx, group.groupId, type, id);
-  let change;
-  if (values === 'delete') {
-    change = { deleted: true };
-  } else {
-    const units = changedSyncUnits(values, previous?.record.units ?? {});
-    if (Object.keys(units).length === 0) return;
-    change = { units };
-  }
-
   const stamp = nextSyncStamp({
     seen: await latestStamp(tx),
     nowMs: Date.now(),
     device: group.device,
   });
-  const verdict = checkSyncEvent(
-    { version: 1, stamp, type, id, ...change },
-    null,
-  );
+  const verdict = checkSyncEvent({ version: 1, stamp, ...change }, null);
   if (verdict.status !== 'valid') throw new Error('Invalid local sync event');
   const content = JSON.stringify(verdict.event);
   if (new TextEncoder().encode(content).byteLength > MAX_SYNC_PLAINTEXT_BYTES)
@@ -145,4 +154,44 @@ export async function writeLocalChange<T extends SyncRecordType>(
     [await createUuid(tx), group.groupId, content],
   );
   await saveLatestStamp(tx, stamp);
+}
+
+/**
+ * Writes the event for a change to a shared ledger's record, holding the units among
+ * `values` that changed, or nothing when none did. Called inside the transaction that
+ * writes the capability's own rows (SYNC-21.1).
+ */
+export async function writeLocalChange<T extends SyncRecordType>(
+  tx: SqlExecutor,
+  group: SharedGroup,
+  type: T,
+  id: string,
+  values: Partial<SyncUnits[T]>,
+) {
+  const previous = await readSyncRecord(tx, group.groupId, type, id);
+  const units = changedUnits(values, previous?.record.units ?? {});
+  if (Object.keys(units).length === 0) return;
+  await writeEvent(tx, group, previous, { type, id, units });
+}
+
+/**
+ * Writes the event that deletes a shared ledger's category for good, and keeps its
+ * tombstone. The app writes none for an expense (ADR-0021).
+ */
+export async function writeLocalDeletion(
+  tx: SqlExecutor,
+  group: SharedGroup,
+  categoryId: string,
+) {
+  const previous = await readSyncRecord(
+    tx,
+    group.groupId,
+    'category',
+    categoryId,
+  );
+  await writeEvent(tx, group, previous, {
+    type: 'category',
+    id: categoryId,
+    deleted: true,
+  });
 }

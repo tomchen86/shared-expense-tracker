@@ -1,10 +1,7 @@
-import {
-  changedSyncUnits,
-  syncRecordValues,
-  type SyncRecord,
-} from '@shared-expense/domain';
+import { syncRecordValues, type SyncRecord } from '@shared-expense/domain';
 import { resolveExpenseCategory } from '../categories/repository';
 import type { SqlExecutor } from '../storage';
+import { changedUnits } from '../sync/records';
 import { writeExpenseRows } from './expenses';
 
 /** A category has arrived. Each waiting expense gets its own saved label and color back. */
@@ -43,7 +40,7 @@ export async function applyMergedExpense(
   const values = syncRecordValues(record);
   if (
     !values ||
-    Object.keys(changedSyncUnits(values, previous?.units ?? {})).length === 0
+    Object.keys(changedUnits(values, previous?.units ?? {})).length === 0
   )
     return false;
 

@@ -4,6 +4,7 @@ import { moveExpensesToCategory } from '../ledger/expenses';
 import {
   sharedGroup,
   writeLocalChange,
+  writeLocalDeletion,
   type SharedGroup,
 } from '../sync/records';
 
@@ -214,8 +215,7 @@ export async function deleteCategory(
       [id],
     );
     if (result.changes !== 1) throw new Error('Category cannot be deleted');
-    if (group)
-      await writeLocalChange(transaction, group, 'category', id, 'delete');
+    if (group) await writeLocalDeletion(transaction, group, id);
   });
 }
 

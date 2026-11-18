@@ -57,7 +57,8 @@ export async function deleteTrashedExpenses(
 ): Promise<boolean> {
   const { changes } = await database.transaction((tx) =>
     tx.run(
-      `DELETE FROM expenses WHERE spaceId = (SELECT personalSpaceId FROM local_identity WHERE personalSpaceId = ?)
+      // A group's expense is never deleted for good, whichever space is asked for (LEDGER-80.2).
+      `DELETE FROM expenses WHERE spaceId = ? AND spaceId NOT IN (SELECT id FROM groups)
        AND trashOrder IS NOT NULL${id === undefined ? '' : ' AND id = ?'}`,
       id === undefined ? [spaceId] : [spaceId, id],
     ),

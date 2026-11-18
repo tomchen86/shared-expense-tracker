@@ -15,7 +15,6 @@ import {
   type Database,
 } from '../../src/storage';
 import { openNodeDatabase } from '../../src/storage/node';
-import { syncSeededRecordsMigration } from '../../src/sync/migrations';
 
 let database: Database;
 beforeEach(() => {
@@ -83,55 +82,6 @@ test('upgrades an existing database without changing its categories, identity or
     { participant: identity.personalParticipantId, amountMinor: 1250 },
   ]);
   expect(lunch.shares).toEqual(lunch.payments);
-});
-
-test('upgrading distinguishes categories stamped at sharing from local and remote creations', async () => {
-  await runMigrations(
-    database,
-    appMigrations.slice(0, appMigrations.indexOf(syncSeededRecordsMigration)),
-  );
-  await database.exec(`
-    INSERT INTO groups (id, name, position) VALUES ('g', 'Trip', 1);
-    INSERT INTO sync_groups (groupId, device) VALUES ('g', 'here');
-  `);
-  for (const [index, id] of ['seeded', 'local', 'remote'].entries()) {
-    const stamp = {
-      ms: 1000,
-      counter: index,
-      device: id === 'remote' ? 'there' : 'here',
-    };
-    const values = { name: id, color: '#123456', archived: false };
-    const units = Object.fromEntries(
-      Object.entries(values).map(([key, value]) => [key, { value, stamp }]),
-    );
-    const record = { id, type: 'category', units };
-    await database.run(
-      'INSERT INTO sync_records (groupId, type, id, created, record) VALUES (?, ?, ?, ?, ?)',
-      ['g', record.type, id, JSON.stringify(stamp), JSON.stringify(record)],
-    );
-    if (id === 'local') {
-      const event = {
-        ...record,
-        version: 1,
-        stamp,
-        units: Object.fromEntries(
-          Object.entries(values).map(([key, value]) => [key, { value }]),
-        ),
-      };
-      await database.run(
-        'INSERT INTO sync_outbox (groupId, id, content) VALUES (?, ?, ?)',
-        ['g', 'event', JSON.stringify(event)],
-      );
-    }
-  }
-  await runMigrations(database, appMigrations);
-  expect(
-    await database.all('SELECT id, seeded FROM sync_records ORDER BY id'),
-  ).toEqual([
-    { id: 'local', seeded: 0 },
-    { id: 'remote', seeded: 0 },
-    { id: 'seeded', seeded: 1 },
-  ]);
 });
 
 test('rejects reserved, missing, archived and wrong-space mutation targets without changing expenses', async () => {

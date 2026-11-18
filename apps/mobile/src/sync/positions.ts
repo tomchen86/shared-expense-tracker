@@ -1,4 +1,4 @@
-import { compareSyncRecordOrder, type SyncStamp } from '@shared-expense/domain';
+import { compareSyncStamps, type SyncStamp } from '@shared-expense/domain';
 import type { SqlExecutor } from '../storage';
 
 /** Reuse just this group's position slots, including any allocated during this batch. */
@@ -24,7 +24,13 @@ export async function orderSyncedRows(
   const slots = rows.map((row) => row.position).sort((a, b) => a - b);
   const ordered = rows
     .map((row) => ({ ...row, stamp: JSON.parse(row.stamp) as SyncStamp }))
-    .sort(compareSyncRecordOrder);
+    // Two records share a stamp only when an event was forged; their IDs, compared by
+    // code unit as the domain compares strings, then keep one order on every phone.
+    .sort(
+      (a, b) =>
+        compareSyncStamps(a.stamp, b.stamp) ||
+        Number(a.id > b.id) - Number(a.id < b.id),
+    );
   const moves = ordered
     .map((row, index) => ({ ...row, target: slots[index] }))
     .filter((row) => row.position !== row.target);

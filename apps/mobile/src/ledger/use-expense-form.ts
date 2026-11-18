@@ -25,7 +25,6 @@ import {
 } from '../groups';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { SyncEventTooLargeError } from '../sync/records';
-import { subscribeToSyncedGroup } from '../sync/use-synced-focus-effect';
 import {
   ArchivedExpenseError,
   listExpenses,
@@ -51,58 +50,42 @@ export function useExpenseFormData(
   const [loaded, setLoaded] = useState<LoadedForm>();
   const [error, setError] = useState<unknown>();
   const latestRead = useRef<Promise<LoadedForm>>(undefined);
-  const readOptions = useCallback(
-    (expenseRead: Promise<Expense | undefined>) => {
-      const request = Promise.all([
-        listCategories(database),
-        expenseRead,
-        listGroups(database),
-      ]).then(async ([categories, expense, groups]) => {
-        const formerMembers = expense
-          ? await listFormerMembers(database, expense.spaceId)
-          : [];
-        return {
-          categories,
-          expense,
-          groups,
-          formerMembers,
-          initialGroupId: groups.find(
-            (group) => group.id === initialGroupId && !group.archived,
-          )?.id,
-        };
-      });
-      latestRead.current = request;
-      request.then(
-        (form) => {
-          if (latestRead.current === request) setLoaded(form);
-        },
-        (failure: unknown) => {
-          if (latestRead.current === request) setError(failure);
-        },
-      );
-      return request;
-    },
-    [database, initialGroupId],
-  );
   const read = useCallback(() => {
-    const expense = expenseId
-      ? listExpenses(database).then((rows) =>
-          rows.find(
-            (item) => item.id === expenseId && item.trashOrder === undefined,
-          ),
-        )
-      : Promise.resolve(undefined);
-    return readOptions(expense);
-  }, [database, expenseId, readOptions]);
+    const request = Promise.all([
+      listCategories(database),
+      expenseId ? listExpenses(database) : Promise.resolve([] as Expense[]),
+      listGroups(database),
+    ]).then(async ([categories, expenses, groups]) => {
+      const expense = expenses.find(
+        (item) => item.id === expenseId && item.trashOrder === undefined,
+      );
+      const formerMembers = expense
+        ? await listFormerMembers(database, expense.spaceId)
+        : [];
+      return {
+        categories,
+        expense,
+        groups,
+        formerMembers,
+        initialGroupId: groups.find(
+          (group) => group.id === initialGroupId && !group.archived,
+        )?.id,
+      };
+    });
+    latestRead.current = request;
+    request.then(
+      (form) => {
+        if (latestRead.current === request) setLoaded(form);
+      },
+      (failure: unknown) => {
+        if (latestRead.current === request) setError(failure);
+      },
+    );
+    return request;
+  }, [database, expenseId, initialGroupId]);
   useEffect(() => {
     void read();
   }, [read, focused]);
-  useEffect(() => {
-    return subscribeToSyncedGroup(database, undefined, () => {
-      // Refresh the choices around the draft. Its expense was read when the form opened.
-      void readOptions(latestRead.current!.then((form) => form.expense));
-    });
-  }, [database, readOptions]);
   if (error) throw error;
   return { loaded, latestRead: () => latestRead.current!, reread: read };
 }

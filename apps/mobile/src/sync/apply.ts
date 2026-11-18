@@ -36,6 +36,28 @@ export interface RefusedSyncEvent extends ReceivedSyncEvent {
   reason: SyncRefusal;
 }
 
+type AppliedListener = (groupId: string) => void;
+const listeners = new WeakMap<Database, Set<AppliedListener>>();
+
+/**
+ * Calls `listener` with the shared ledger's ID each time events applied to one have
+ * changed what the screens read. Returns the function that ends it.
+ */
+export function subscribeToAppliedEvents(
+  database: Database,
+  listener: AppliedListener,
+) {
+  let subscribers = listeners.get(database);
+  if (!subscribers) {
+    subscribers = new Set();
+    listeners.set(database, subscribers);
+  }
+  subscribers.add(listener);
+  return () => {
+    subscribers.delete(listener);
+  };
+}
+
 const recordOwners = {
   expense: ['expenses', 'spaceId'],
   member: ['group_members', 'groupId'],
@@ -140,7 +162,11 @@ export async function applySyncEvents(
     if (compareSyncStamps(seen, initial) > 0) await saveLatestStamp(tx, seen);
     return visibleChange;
   });
-  if (changed) notifyExpensesChanged(database, leftTrash, groupId);
+  if (changed) {
+    // An expense's card names its group, its members and its category.
+    notifyExpensesChanged(database, leftTrash);
+    listeners.get(database)?.forEach((listener) => listener(groupId));
+  }
 }
 
 /** Refusals retain their original envelope and receipt order across restarts. */

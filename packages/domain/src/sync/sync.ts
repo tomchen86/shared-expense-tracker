@@ -41,14 +41,6 @@ export interface SyncUnits {
 
 export type SyncRecordType = keyof SyncUnits;
 
-type ChangedUnits<V> = {
-  [U in keyof V]?: {
-    value: V[U];
-    /** The stamp this unit replaced. Left out when it had none. */
-    base?: SyncStamp;
-  };
-};
-
 /** An event that changes units of one record. A record's first event holds them all. */
 export type SyncChange = {
   [T in SyncRecordType]: {
@@ -56,7 +48,13 @@ export type SyncChange = {
     stamp: SyncStamp;
     type: T;
     id: string;
-    units: ChangedUnits<SyncUnits[T]>;
+    units: {
+      [U in keyof SyncUnits[T]]?: {
+        value: SyncUnits[T][U];
+        /** The stamp this unit had on the phone that made the change. Left out when it had none. */
+        base?: SyncStamp;
+      };
+    };
   };
 }[SyncRecordType];
 
@@ -110,45 +108,12 @@ export interface SyncMoneyChange {
   money: SyncMoney;
 }
 
-/** The supplied units that differ from their stored values, with the bases for a local edit. */
-export function changedSyncUnits<V extends object>(
-  values: V,
-  stored: SyncRecord['units'],
-): ChangedUnits<V> {
-  const current: Record<
-    string,
-    { value: unknown; stamp: SyncStamp } | undefined
-  > = stored;
-  const changes: ChangedUnits<V> = {};
-  for (const name of Object.keys(values) as (keyof V & string)[]) {
-    const unit = current[name];
-    const value = values[name];
-    if (!unit) changes[name] = { value };
-    else if (compareUnitValues(name, value, unit.value) !== 0)
-      changes[name] = { value, base: unit.stamp };
-  }
-  return changes;
-}
-
 /** Negative when `a` is earlier than `b`, positive when it is later, 0 when they are the same stamp. */
 export function compareSyncStamps(a: SyncStamp, b: SyncStamp): number {
-  return stampOrder(a, b, 0);
-}
-
-/** Stable member and category order across phones, including an exact stamp tie. */
-export function compareSyncRecordOrder(
-  a: { id: string; stamp: SyncStamp },
-  b: { id: string; stamp: SyncStamp },
-): number {
-  return stampOrder(a.stamp, b.stamp, compare(a.id, b.id));
-}
-
-function stampOrder(a: SyncStamp, b: SyncStamp, tie: number): number {
   return (
     compare(a.ms, b.ms) ||
     compare(a.counter, b.counter) ||
-    compare(a.device, b.device) ||
-    tie
+    compare(a.device, b.device)
   );
 }
 
@@ -290,6 +255,15 @@ export function syncRecordValues<R extends SyncRecord>(
     values[name] = unit.value;
   }
   return values as SyncUnits[R['type']];
+}
+
+/** Whether two values of the unit named `unit` are the same, compared as a merge compares them (SYNC-19.1). */
+export function sameSyncUnitValue(
+  unit: string,
+  a: unknown,
+  b: unknown,
+): boolean {
+  return compareUnitValues(unit, a, b) === 0;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

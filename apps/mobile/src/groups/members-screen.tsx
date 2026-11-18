@@ -12,7 +12,10 @@ import {
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
-import { canAddGroupMember } from '@shared-expense/domain';
+import {
+  canAddGroupMember,
+  MAX_SHARED_GROUP_MEMBERS,
+} from '@shared-expense/domain';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
@@ -319,7 +322,7 @@ export function MembersScreen({
         </GroupedSection>
         {editable && !canAdd && (
           <Text style={[styles.footer, { color: colors.textMuted }]}>
-            A shared group can have up to 20 members.
+            {`A shared group can have up to ${MAX_SHARED_GROUP_MEMBERS} members.`}
           </Text>
         )}
       </ScrollView>
