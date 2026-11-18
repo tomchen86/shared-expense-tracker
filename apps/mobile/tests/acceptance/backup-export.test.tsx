@@ -13,6 +13,7 @@ import {
   alertsShown,
   allowWrites,
   beforeStatement,
+  close,
   closeShareSheet,
   dataIn,
   dataRow,
@@ -20,11 +21,14 @@ import {
   failWrites,
   failWritesAfter,
   goOffline,
+  keepTemporaryFilesFromBeingRemoved,
+  leaveATemporaryFileOn,
   leaveNoRoomForTemporaryFiles,
   makeRoomForTemporaryFiles,
   newPhone,
   nextAlert,
   pressRow,
+  removalsTried,
   removePhones,
   resetPhones,
   rowsOf,
@@ -336,19 +340,6 @@ test('[BACKUP-5.1] exports with no network and makes no request', async () => {
   expect(requests()).toBe(0);
 });
 
-test.each(['shares', 'cancels'] as const)(
-  '[BACKUP-6.1] leaves no temporary file and shows nothing once the user %s in the share sheet',
-  async (answer) => {
-    await startWithTaylorsData();
-    shareSheet(answer);
-
-    await exportData();
-
-    expect(temporaryFiles(phone)).toEqual([]);
-    expect(alertsShown()).toEqual([]);
-  },
-);
-
 test('[BACKUP-6.1] keeps the file where the share sheet can read it while the sheet is open', async () => {
   await startWithTaylorsData();
   shareSheet('stays open');
@@ -356,10 +347,78 @@ test('[BACKUP-6.1] keeps the file where the share sheet can read it while the sh
   const shared = await exportData();
 
   expect(fs.readFileSync(shared.onPhone)).toEqual(fs.readFileSync(shared.copy));
+});
 
-  await closeShareSheet();
+test.each(['shares', 'cancels'] as const)(
+  '[BACKUP-6.1] shows nothing and keeps the file for the app that took it once the user %s and the share sheet closes',
+  async (answer) => {
+    await startWithTaylorsData();
+    shareSheet(answer);
 
-  expect(temporaryFiles(phone)).toEqual([]);
+    const shared = await exportData();
+    await settle();
+
+    expect(alertsShown()).toEqual([]);
+    expect(fs.readFileSync(shared.onPhone)).toEqual(
+      fs.readFileSync(shared.copy),
+    );
+  },
+);
+
+test('[BACKUP-25.1] keeps only the latest export among the temporary files', async () => {
+  await startWithTaylorsData();
+  await exportData();
+
+  const second = await exportData();
+
+  expect(temporaryFiles(phone)).toHaveLength(1);
+  expect(fs.readFileSync(second.onPhone)).toEqual(fs.readFileSync(second.copy));
+});
+
+test('[BACKUP-25.1] deletes the export file when the app starts again', async () => {
+  const app = await startWithTaylorsData();
+  await exportData();
+  expect(temporaryFiles(phone)).toHaveLength(1);
+  await close(app);
+
+  await startOn(phone);
+
+  await waitFor(() => expect(temporaryFiles(phone)).toEqual([]));
+});
+
+test('[BACKUP-25.1] deletes the export file of an app that was ended while the share sheet was open', async () => {
+  const app = await startWithTaylorsData();
+  shareSheet('stays open');
+  await exportData();
+  await close(app);
+
+  await startOn(phone);
+
+  await waitFor(() => expect(temporaryFiles(phone)).toEqual([]));
+});
+
+test("[BACKUP-25.1] deletes a file picker's copy that an earlier run left behind", async () => {
+  leaveATemporaryFileOn(phone);
+
+  await startOn(phone);
+
+  await waitFor(() => expect(temporaryFiles(phone)).toEqual([]));
+});
+
+test('[BACKUP-25.1] starts and exports as usual when the earlier temporary files cannot be deleted', async () => {
+  leaveATemporaryFileOn(phone);
+  keepTemporaryFilesFromBeingRemoved();
+
+  await startOn(phone);
+  await waitFor(() => expect(removalsTried()).toBeGreaterThan(0));
+  const triedAtStart = removalsTried();
+  expect(dataRow('Export Data')).toBeEnabled();
+
+  const shared = await exportData();
+
+  expect(removalsTried()).toBeGreaterThan(triedAtStart);
+  expect(isSqliteDatabase(shared.copy)).toBe(true);
+  expect(alertsShown()).toEqual([]);
 });
 
 test.each([

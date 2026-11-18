@@ -188,6 +188,8 @@ const HELD = Symbol('held');
 
 const system = {
   noRoomForTemporaryFiles: false,
+  temporaryFilesCannotBeRemoved: false,
+  removalsTried: 0,
   shareSheet: 'shares' as 'shares' | 'cancels' | 'cannot open' | 'stays open',
   closeShareSheet: undefined as (() => void) | undefined,
   shared: [] as SharedFile[],
@@ -201,6 +203,14 @@ export const phoneFiles = {
   async createTemporaryDirectory() {
     if (system.noRoomForTemporaryFiles) throw new Error('No space left');
     return fs.mkdtempSync(path.join(runningPhone().temporary, 'made-'));
+  },
+  async removeTemporaryFiles() {
+    system.removalsTried += 1;
+    if (system.temporaryFilesCannotBeRemoved)
+      throw new Error('The temporary files cannot be removed');
+    const { temporary } = runningPhone();
+    for (const name of fs.readdirSync(temporary))
+      fs.rmSync(path.join(temporary, name), { recursive: true, force: true });
   },
   async removePath(target: string) {
     fs.rmSync(target, { recursive: true, force: true });
@@ -248,6 +258,28 @@ export function leaveNoRoomForTemporaryFiles() {
 
 export function makeRoomForTemporaryFiles() {
   system.noRoomForTemporaryFiles = false;
+}
+
+/** The phone refuses when the app asks to delete all its earlier temporary files. */
+export function keepTemporaryFilesFromBeingRemoved() {
+  system.temporaryFilesCannotBeRemoved = true;
+}
+
+/** How many times the app has tried to delete all its temporary files. */
+export const removalsTried = () => system.removalsTried;
+
+/**
+ * A temporary file an earlier run of the app left on `phone`, as when the system
+ * ends the app while the file picker's copy is still there.
+ */
+export function leaveATemporaryFileOn(phone: Phone) {
+  fs.writeFileSync(
+    path.join(
+      fs.mkdtempSync(path.join(phone.temporary, 'picked-')),
+      'Expenses Backup 2026-11-17 0900.sqlite',
+    ),
+    'left behind',
+  );
 }
 
 /**
@@ -830,6 +862,8 @@ export function resetPhones() {
   running.filesOpened = [];
   allowWrites();
   system.noRoomForTemporaryFiles = false;
+  system.temporaryFilesCannotBeRemoved = false;
+  system.removalsTried = 0;
   system.shareSheet = 'shares';
   system.closeShareSheet = undefined;
   system.shared = [];

@@ -16,6 +16,13 @@ export const createTemporaryDirectory = (): Promise<string> => notImplemented();
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const removePath = (path: string): Promise<void> => notImplemented();
 
+/**
+ * Deletes every directory `createTemporaryDirectory` made and every copy `pickFile`
+ * handed out, with everything in them, whether this run of the app made them or an
+ * earlier one.
+ */
+export const removeTemporaryFiles = (): Promise<void> => notImplemented();
+
 /** Opens the SQLite database file at `path`, making an empty one when there is no file. */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const openDatabaseFile = (path: string): Promise<Database> =>
@@ -32,6 +39,6 @@ export const shareFile = (path: string): Promise<void> => notImplemented();
 /**
  * Opens the system file picker for any kind of file. Resolves with the path of a copy
  * of the file the user picked, which the caller deletes, or with `undefined` when the
- * user cancels.
+ * user cancels. The copy is among the files `removeTemporaryFiles` deletes.
  */
 export const pickFile = (): Promise<string | undefined> => notImplemented();
