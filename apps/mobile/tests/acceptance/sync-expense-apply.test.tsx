@@ -26,9 +26,9 @@ import {
   deleteByAction,
   expectCards,
   expectTrash,
-  noticeShown,
   openTrash,
   trashLines,
+  undoButton,
 } from './ledger-trash-app';
 import {
   balancesLines,
@@ -437,7 +437,7 @@ test('[SYNC-29.1] moves an expense another phone deleted to the top of Trash wit
 
   await expectCards(['Taxi']);
   expect(thisMonthLines()).toEqual(['This Month: $25.00']);
-  expect(noticeShown()).toBe(false);
+  expect(undoButton('Dinner')).toBeNull();
   await openTrash();
   await expectTrash(['Dinner', 'Coffee run']);
 
