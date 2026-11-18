@@ -839,7 +839,7 @@ The mobile app SHALL 在卡片上只用一行顯示標題，放不下時尾端�
 
 ### Requirement: LEDGER-35.4 支出清單上方的總額依幣別加總期間裡的卡片金額，點了打開同一段期間的 Insights
 
-The mobile app SHALL 在支出清單的期間列下面、卡片上方顯示清單上方的總額：一行「<支出清單上的卡片用到的每個幣別的卡片金額總和，依幣別代碼排序，以「, 」隔開>」，放不下時尾端漸層消失（SHELL-68.1），沒有卡片時是「—」；期間是全部期間時不加總，這一行是卡片的張數「<張數> expenses」，只有一張時是「1 expense」。這一行是一個按鈕，右邊有「›」，螢幕閱讀器讀出「View expense insights. Spent in <期間的名稱> <依同樣的順序、以「, 」隔開的每個總和>.」，沒有卡片時讀出「View expense insights. Nothing spent in <期間的名稱>.」，全部期間時讀出「View expense insights. <這一行的張數>.」，都不讀「›」，再讀出無障礙提示「Opens Insights」；按一下就在 Expenses 分頁推入開在同一段期間的個人的 Insights（INSIGHTS-13.1、INSIGHTS-45.1）：期間是某個月時以 `/insights?period=<那個月的 YYYY-MM>`，是某一年時以 `/insights?period=<那一年的 YYYY>`，是最近三個月或自訂範圍時以 `/insights?from=<期間的第一天>&to=<期間的最後一天>`，是全部期間時和這個月一樣，連按兩次也只推入一個。
+The mobile app SHALL 在支出清單的期間列下面、卡片上方顯示清單上方的總額：一行「<支出清單上的卡片用到的每個幣別的卡片金額總和，依幣別代碼排序，以「, 」隔開>」，放不下時尾端漸層消失（SHELL-68.1），沒有卡片時是「—」；期間是全部期間時不加總，這一行是卡片的張數「<張數> expenses」，只有一張時是「1 expense」；張數只寫數字，不加千分位，例如「2000 expenses」。這一行是一個按鈕，右邊有「›」，螢幕閱讀器讀出「View expense insights. Spent in <期間的名稱> <依同樣的順序、以「, 」隔開的每個總和>.」，沒有卡片時讀出「View expense insights. Nothing spent in <期間的名稱>.」，全部期間時讀出「View expense insights. <這一行的張數>.」，都不讀「›」，再讀出無障礙提示「Opens Insights」；按一下就在 Expenses 分頁推入開在同一段期間的個人的 Insights（INSIGHTS-13.1、INSIGHTS-45.1）：期間是某個月時以 `/insights?period=<那個月的 YYYY-MM>`，是某一年時以 `/insights?period=<那一年的 YYYY>`，是最近三個月或自訂範圍時以 `/insights?from=<期間的第一天>&to=<期間的最後一天>`，是全部期間時和這個月一樣，連按兩次也只推入一個。
 
 #### Scenario: 一個幣別
 
@@ -2859,3 +2859,41 @@ WHEN 使用者在 New Expense 存下一筆支出（LEDGER-21.2、LEDGER-54.1）�
 
 - **WHEN** 今天是 `2026-10-30`，期間是 September 2026 時把 `2026-09-12` 的 Lunch 移到垃圾桶，按「Next period」之後按 Undo 提示的「Undo」
 - **THEN** 期間列仍是「October 2026」，沒有 Lunch 的卡片；按「Previous period」之後有
+
+### Requirement: LEDGER-118.1 清單只畫出看得到和附近的卡片
+
+WHILE 支出清單或群組的畫面的期間裡的支出比螢幕上和它上下附近放得下的多，the mobile app SHALL 只畫出螢幕上和附近的那些支出的卡片，其他的捲到附近時才畫出來。沒有畫出來的支出仍然在清單上：卡片由上而下的順序不變（LEDGER-31.3、LEDGER-64.3、GROUPS-61.4），可以一路捲到最後一張；清單上方的總額和張數（LEDGER-35.4、GROUPS-68.4）、你的淨額（GROUPS-69.3），以及期間裡有沒有支出（LEDGER-32.2、LEDGER-116.1），都照期間裡全部的支出算，不是只算畫出來的卡片。
+
+#### Scenario: 一個月有 300 筆
+
+- **WHEN** 今天是 `2026-11-18`，有依序新增、日期都是今天、每筆 100 USD 的 300 筆個人支出「Expense 1」到「Expense 300」，開啟 app
+- **THEN** 支出清單畫出的卡片不到 300 張，從最上面的 Expense 300 起依序往下，中間沒有跳過；清單上方的總額是「$300.00」
+
+#### Scenario: 全部期間
+
+- **WHEN** 接著把期間換成 All Time
+- **THEN** 畫出的卡片仍不到 300 張，從最上面的 Expense 300 起依序往下；清單上方的總額是「300 expenses」
+
+#### Scenario: 群組的畫面
+
+- **WHEN** 名字是「Taylor」，Brisbane 有 Taylor 和 Casey，以及依序新增、日期都是今天、每筆 100 USD、Taylor 付款、兩人分攤的 300 筆支出「Expense 1」到「Expense 300」，打開 Brisbane 的畫面
+- **THEN** 畫出的卡片不到 300 張，從最上面的 Expense 300 起依序往下；清單上方的總額讀成「Group Total: $300.00」，你的淨額是「You're owed: $150.00」
+
+### Requirement: LEDGER-119.1 (manual) 支出很多時清單一樣快
+
+WHERE iPhone 或 Android 手機，WHILE 一個畫面可列的支出有 2,000 筆，the mobile app SHALL 在打開群組的畫面或換期間之後 1 秒內顯示期間裡最上面的卡片；用手指拖著捲動時，捲到的地方已經有卡片；一路捲到最後一張，app 都沒有因為用掉太多記憶體而被系統關掉。
+
+#### Scenario: 全部期間
+
+- **WHEN** 手機上有分散在兩年裡的 2,000 筆個人支出，在支出清單把期間換成 All Time
+- **THEN** 1 秒內顯示最新的那幾張卡片，清單上方的總額是「2000 expenses」
+
+#### Scenario: 捲到最後一張
+
+- **WHEN** 接著用手指拖著，一直捲到清單的最下面
+- **THEN** 捲到的地方都已經有卡片；最下面是日期最早的那一筆，app 沒有被系統關掉
+
+#### Scenario: 群組的畫面
+
+- **WHEN** 一個群組有 2,000 筆支出，打開它的畫面
+- **THEN** 1 秒內顯示最新的那幾張卡片；捲到最下面時和支出清單一樣
