@@ -26,6 +26,7 @@ import {
   deleteByAction,
   expectCards,
   expectTrash,
+  noticeShown,
   openTrash,
   trashLines,
   undoButton,
@@ -574,6 +575,62 @@ test('[SYNC-30.1] no longer counts it as using its category', async () => {
     'This permanently removes the category.',
   ]);
   await closeGroupCategories();
+});
+
+// The Undo notice of an expense another phone takes out of the trash
+
+test('[SYNC-44.1] hides the Undo notice of an expense once another phone restores it', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  const dinner = await expenseTitled('Dinner');
+  await deleteByAction('Dinner');
+  expect(undoButton('Dinner')).not.toBeNull();
+
+  await receive(
+    brisbane,
+    changed('expense', dinner.id, at(LATER + 1000), { trashed: false }),
+  );
+
+  expect(noticeShown()).toBe(false);
+  await expectCards(['Dinner']);
+});
+
+test('[SYNC-44.1] hides the Undo notice of an expense once another phone deletes it for good', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  const dinner = await expenseTitled('Dinner');
+  await deleteByAction('Dinner');
+  expect(undoButton('Dinner')).not.toBeNull();
+
+  await receive(brisbane, deleted('expense', dinner.id, at(LATER + 1000)));
+
+  expect(noticeShown()).toBe(false);
+});
+
+test('[SYNC-44.1] keeps the Undo notice of an expense when another phone restores another one', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  await addGroupExpense({
+    group: 'Brisbane',
+    title: 'Taxi',
+    amount: '25.00',
+    payer: YOU,
+    sharers: [YOU],
+  });
+  const taxi = await expenseTitled('Taxi');
+  await deleteByAction('Taxi');
+  await deleteByAction('Dinner');
+
+  await receive(
+    brisbane,
+    changed('expense', taxi.id, at(LATER + 1000), { trashed: false }),
+  );
+
+  await expectCards(['Taxi']);
+  expect(undoButton('Dinner')).not.toBeNull();
 });
 
 // Events that do not apply
