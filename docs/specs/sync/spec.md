@@ -742,7 +742,7 @@ WHEN 使用者存下共同帳本支出的修改（LEDGER-56.1、LEDGER-60.1）�
 
 ### Requirement: SYNC-24.1 移到垃圾桶和還原寫成「在不在垃圾桶裡」的修改
 
-WHEN 使用者把共同帳本的支出移到垃圾桶（LEDGER-71.3），或按 Undo 或 Restore 把它從垃圾桶還原（LEDGER-75.3、LEDGER-79.3），the mobile app SHALL 寫一個只改「在不在垃圾桶裡」的事件，帶著根據的版本：移到垃圾桶是「是」，還原是「否」。
+WHEN 使用者把共同帳本的支出移到垃圾桶（LEDGER-71.3），或按 Undo 或 Restore 把它從垃圾桶還原（LEDGER-75.4、LEDGER-79.4），the mobile app SHALL 寫一個只改「在不在垃圾桶裡」的事件，帶著根據的版本：移到垃圾桶是「是」，還原是「否」。
 
 #### Scenario: 刪除再 Undo
 
@@ -1046,7 +1046,7 @@ WHEN 使用者在共同帳本加入新的成員（GROUPS-31.3）、把前成員�
 
 ### Requirement: SYNC-35.1 封存留在這支手機上
 
-The mobile app SHALL 把共同帳本的封存留在這支手機上：封存或還原共同帳本（GROUPS-48.1、GROUPS-57.1）不寫事件；共同帳本封存時照常套用收到的事件，它仍是封存的，照封存群組的樣子顯示合併的結果（GROUPS-55.2、LEDGER-67.2），從垃圾桶還原它的支出（LEDGER-79.3）也照常寫事件。
+The mobile app SHALL 把共同帳本的封存留在這支手機上：封存或還原共同帳本（GROUPS-48.1、GROUPS-57.1）不寫事件；共同帳本封存時照常套用收到的事件，它仍是封存的，照封存群組的樣子顯示合併的結果（GROUPS-55.2、LEDGER-67.2），從垃圾桶還原它的支出（LEDGER-79.4）也照常寫事件。
 
 #### Scenario: 封存和還原
 

@@ -79,7 +79,11 @@ import {
 } from './group-details-app';
 import { balanceLines, showGroup } from './group-balances-app';
 import { openArchivedGroup, openArchivedGroups } from './group-archive-app';
-import { deleteByAction, pressUndo } from './ledger-trash-app';
+import {
+  deleteByAction,
+  pressUndo,
+  restoreFromTrash,
+} from './ledger-trash-app';
 import { expectInsights, expectTotals, selectedPeriod } from './insights-app';
 import { allowWrites, settle } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
@@ -502,6 +506,8 @@ test('[LEDGER-109.1] changes the period at once when one is chosen, keeps Filter
   expect(await dateOptions()).toEqual(
     PERIOD_OPTIONS.map((name) => [name, name === 'Last Month']),
   );
+  // Already, under Filters.
+  expect(periodName(expensesRoot())).toBe('September 2026');
 
   await closeFilters();
 
@@ -806,7 +812,13 @@ test("[LEDGER-116.1] says a group's period holds no expenses, not that the group
   expect(groupCardTitles('Brisbane')).toEqual([]);
   expect(emptyPeriodTitle(brisbane())).toBe('No Expenses in October 2026');
   expect(groupLines('Brisbane')).not.toContain(NO_EXPENSES);
-  expect(groupLines('Brisbane')).toContain('Show September 2026');
+  // Where the cards would be: under your net balance, which counts Dinner still (GROUPS-69.3).
+  const expected = [
+    'You owe: $20.00',
+    'No Expenses in October 2026',
+    'Show September 2026',
+  ];
+  expect(shownInOrder(groupLines('Brisbane'), expected)).toEqual(expected);
 
   await pressShowEarlier(brisbane());
 
@@ -891,7 +903,7 @@ test('[LEDGER-117.1] leaves the expense list where it is when the new group expe
   expect(cardTitles()).toEqual(['Coffee run']);
 });
 
-test('[LEDGER-117.1] leaves the period when an expense comes back from the trash', async () => {
+test('[LEDGER-117.1] [LEDGER-75.4] leaves the period when Undo puts back an expense dated outside it', async () => {
   await startExpenses();
   await spend('Lunch', '2026-09-12');
   await expectPeriod(expensesRoot, 'September 2026');
@@ -900,6 +912,24 @@ test('[LEDGER-117.1] leaves the period when an expense comes back from the trash
   await expectPeriod(expensesRoot, 'October 2026');
 
   await pressUndo('Lunch');
+
+  expect(periodName(expensesRoot())).toBe('October 2026');
+  expect(cardTitles()).toEqual([]);
+  await pressPreviousPeriod(expensesRoot());
+  await expectPeriod(expensesRoot, 'September 2026');
+  expect(cardTitles()).toEqual(['Lunch']);
+});
+
+test('[LEDGER-117.1] [LEDGER-79.4] leaves the period when Restore puts back an expense dated outside it', async () => {
+  await startExpenses();
+  await spend('Lunch', '2026-09-12');
+  await expectPeriod(expensesRoot, 'September 2026');
+  await deleteByAction('Lunch');
+  await pressNextPeriod(expensesRoot());
+  await expectPeriod(expensesRoot, 'October 2026');
+
+  await restoreFromTrash('Lunch');
+  await tapTab('Expenses');
 
   expect(periodName(expensesRoot())).toBe('October 2026');
   expect(cardTitles()).toEqual([]);

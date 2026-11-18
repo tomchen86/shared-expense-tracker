@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { ActionSheetIOS } from 'react-native';
-import { waitFor } from '@testing-library/react-native';
+import { screen, waitFor } from '@testing-library/react-native';
 import {
   addExpense,
   resetPhone,
@@ -11,6 +11,7 @@ import {
 } from './ledger-expense-app';
 import {
   allowReads,
+  holdReads,
   phoneDatabaseWithReads,
   startExpensesAt,
 } from './ledger-expense-list-app';
@@ -21,6 +22,7 @@ import {
   storedGroup,
 } from './ledger-group-expense-app';
 import {
+  NO_EXPENSES,
   aggregationNames,
   chartKinds,
   chartMenu,
@@ -29,6 +31,7 @@ import {
   expectPeriod,
   expectTotals,
   headings,
+  insightsBars,
   insightsLines,
   insightsScreen,
   nextButton,
@@ -239,6 +242,20 @@ test.each([
   },
 );
 
+test.each([
+  '?period=2025-01&from=2025-02-30&to=2025-03-10',
+  '?period=2025-01&from=2025-01-05',
+])(
+  '[INSIGHTS-45.1] opens on the period the URL names when its dates are not both there and valid: %s',
+  async (query) => {
+    await insightsAt(query, ...THREE_MONTHS);
+
+    expect(currentAggregation()).toBe('Month');
+    expect(selectedPeriod()).toBe('January 2025');
+    expect(totals()).toEqual(['$2.00']);
+  },
+);
+
 test('[INSIGHTS-45.1] opens on the named month when the app starts at the URL', async () => {
   const first = await startExpensesAt('/');
   for (const [date, amount] of THREE_MONTHS) await spend(date, amount);
@@ -382,6 +399,37 @@ test('[INSIGHTS-46.1] says the dates hold no expenses under From and To, without
 
   await waitFor(() => expect(totals()).toEqual(['$3.00']));
   expect(insightsLines()).not.toContain(NO_EXPENSES_IN_DATES[0]);
+});
+
+test('[INSIGHTS-46.1] shows only No expenses yet when nothing is counted at all, whatever dates the URL names', async () => {
+  await startExpensesAt('/');
+
+  await openInsightsAt('?from=2026-10-01&to=2026-10-30');
+
+  await waitFor(() => expect(insightsLines()).toEqual(NO_EXPENSES));
+  expect(headings()).toEqual(['No expenses yet']);
+  expect(range()).toBeUndefined();
+  expect(chartMenu()).toBeUndefined();
+});
+
+test('[INSIGHTS-19.2] does not say the dates hold no expenses before Insights has read the expenses', async () => {
+  const first = await startExpensesAt('/');
+  await addExpense();
+  await first.unmount();
+  await settle();
+  const reads = holdReads();
+
+  await startExpensesAt('/insights?from=2026-10-01&to=2026-10-30');
+  await waitFor(() => expect(insightsBars()).toHaveLength(1));
+  await settle();
+
+  for (const text of NO_EXPENSES_IN_DATES)
+    expect(screen.queryByText(text)).toBeNull();
+  await reads.release();
+  await expectTotals(['$8.75']);
+  expect(range()).toEqual(['2026-10-01', '2026-10-30']);
+  for (const text of NO_EXPENSES_IN_DATES)
+    expect(screen.queryByText(text)).toBeNull();
 });
 
 test("[INSIGHTS-46.1] shows your share under the total of a group's custom range", async () => {

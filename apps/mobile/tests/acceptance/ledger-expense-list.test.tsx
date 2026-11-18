@@ -523,6 +523,15 @@ test("[LEDGER-35.4] takes this month from the phone's time zone at the start of 
   expect(listTotal()).toEqual(['$3.00']);
 });
 
+test('[LEDGER-35.4] shows 0 expenses, not a dash, on All Time when there is no expense', async () => {
+  await startExpenses();
+
+  await choosePeriod('Expenses', 'All Time');
+
+  expect(listTotal()).toEqual(['0 expenses']);
+  expect(readOut(listTotalButton())).toBe('View expense insights. 0 expenses.');
+});
+
 test('[LEDGER-35.4] shows how many cards there are in place of a total on All Time', async () => {
   await startExpenses();
   await addExpense({ title: 'Coffee run', date: '2026-10-01' });
@@ -1109,7 +1118,7 @@ test('[SHELL-13.1] shows only a back arrow named Back on the details', async () 
   );
 });
 
-test('[SHELL-25.1] puts the expense list in the scroll view the Expenses large title follows', async () => {
+test('[SHELL-25.1] [LEDGER-108.1] puts the period row, the total and the cards in the scroll view the Expenses large title follows', async () => {
   await startExpenses();
   await addExpense();
 

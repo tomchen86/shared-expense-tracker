@@ -605,7 +605,7 @@ test("[INSIGHTS-18.1] shows No expenses yet on a new group's Insights", async ()
   expect(chartMenu('Groups')).toBeUndefined();
 });
 
-test('[INSIGHTS-19.1] shows no No expenses yet before Insights has read the expenses', async () => {
+test('[INSIGHTS-19.2] shows no No expenses yet before Insights has read the expenses', async () => {
   const first = await startExpensesAt('/');
   await addExpense();
   await first.unmount();
