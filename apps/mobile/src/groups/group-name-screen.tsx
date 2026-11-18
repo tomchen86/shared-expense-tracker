@@ -24,6 +24,7 @@ import {
   type Group,
   type GroupMember,
 } from './index';
+import { nameSaveErrorMessage } from './name-save-error';
 import { useGroup } from './use-group';
 
 type Form = 'Rename Member' | 'Rename Group';
@@ -106,9 +107,7 @@ function NameEditor({
       else
         Alert.alert(
           `Unable to ${form}`,
-          isGroup
-            ? 'Your group could not be saved. Please try again.'
-            : 'The member could not be saved. Please try again.',
+          nameSaveErrorMessage(error, isGroup ? 'group' : 'member'),
         );
     }
   }
