@@ -193,6 +193,7 @@ const system = {
   shareSheet: 'shares' as 'shares' | 'cancels' | 'cannot open' | 'stays open',
   closeShareSheet: undefined as (() => void) | undefined,
   shared: [] as SharedFile[],
+  filePicker: 'opens' as 'opens' | 'cannot open' | 'cannot hand over the file',
   pick: undefined as string | undefined | typeof HELD,
   answerPicker: undefined as ((file: string | undefined) => void) | undefined,
   pickerOpened: 0,
@@ -233,6 +234,8 @@ export const phoneFiles = {
       });
   },
   async pickFile() {
+    if (system.filePicker === 'cannot open')
+      throw new Error('The file picker cannot open');
     system.pickerOpened += 1;
     const picked =
       system.pick === HELD
@@ -241,6 +244,8 @@ export const phoneFiles = {
           })
         : system.pick;
     if (picked === undefined) return undefined;
+    if (system.filePicker === 'cannot hand over the file')
+      throw new Error('The file picker cannot copy the file');
     // The picker hands the app a copy among the phone's temporary files.
     const copy = path.join(
       fs.mkdtempSync(path.join(runningPhone().temporary, 'picked-')),
@@ -299,7 +304,15 @@ export async function closeShareSheet() {
 /** The files the app has handed to the share sheet, in order. */
 export const sharedFiles = () => system.shared;
 
-/** How many times the app has opened the file picker. */
+/**
+ * What happens when the app opens the file picker: it opens, it cannot open, or it
+ * opens and cannot make the copy of the file the user picks.
+ */
+export function filePicker(behavior: typeof system.filePicker) {
+  system.filePicker = behavior;
+}
+
+/** How many times the file picker has opened for the app. */
 export const pickerOpened = () => system.pickerOpened;
 
 // Starting the app
@@ -867,6 +880,7 @@ export function resetPhones() {
   system.shareSheet = 'shares';
   system.closeShareSheet = undefined;
   system.shared = [];
+  system.filePicker = 'opens';
   system.pick = undefined;
   system.answerPicker = undefined;
   system.pickerOpened = 0;
