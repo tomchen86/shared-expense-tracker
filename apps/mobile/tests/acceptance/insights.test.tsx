@@ -910,7 +910,7 @@ test('[INSIGHTS-22.3] compares with the latest earlier month that has expenses',
 
 // Categories
 
-test("[INSIGHTS-23.3] lists a currency's categories under its heading, with a color dot, the amount and the percentage", async () => {
+test("[INSIGHTS-23.4] lists a currency's categories under its heading, with a color dot, the amount and the percentage", async () => {
   await insightsWith(
     ['2025-01-10', '6.00', 'Food & Dining'],
     ['2025-01-11', '2.00', 'Transportation'],
@@ -936,7 +936,7 @@ test("[INSIGHTS-23.3] lists a currency's categories under its heading, with a co
   );
 });
 
-test('[INSIGHTS-23.3] shows amounts and percentages in English with the region of a phone in French in Australia', async () => {
+test('[INSIGHTS-23.4] shows amounts and percentages in English with the region of a phone in French in Australia', async () => {
   setPhoneLanguage('fr-AU');
   await startExpensesAt('/');
   await spend('2025-01-10', '6.00', 'Food & Dining', 'Lunch', 'AUD');
@@ -950,7 +950,7 @@ test('[INSIGHTS-23.3] shows amounts and percentages in English with the region o
   ]);
 });
 
-test('[INSIGHTS-23.3] reads the heading as a heading and each row as one item, without its dot', async () => {
+test('[INSIGHTS-23.4] reads the heading as a heading and each row as one button, without its dot', async () => {
   await insightsWith(
     ['2025-01-10', '6.00', 'Food & Dining'],
     ['2025-01-11', '2.00', 'Transportation'],
@@ -965,7 +965,7 @@ test('[INSIGHTS-23.3] reads the heading as a heading and each row as one item, w
     for (const dot of colorDots(row)) expect(isUnread(dot)).toBe(true);
 });
 
-test('[INSIGHTS-23.3] shows each currency under its own heading by currency code', async () => {
+test('[INSIGHTS-23.4] shows each currency under its own heading by currency code', async () => {
   await startExpensesAt('/');
   await spend('2025-01-10', '6.00', 'Food & Dining');
   await spend('2025-01-11', '2000', 'Travel', 'Ramen', 'JPY');
@@ -995,7 +995,7 @@ const SEVEN: [string, string, string][] = [
   'Travel',
 ].map((category, index) => ['2025-01-10', `${7 - index}.00`, category]);
 
-test('[INSIGHTS-23.3] lists every category, without Others, under a donut', async () => {
+test('[INSIGHTS-23.4] lists every category, without Others, under a donut', async () => {
   await insightsWith(...SEVEN);
 
   await chooseChart('Donut');
@@ -1004,7 +1004,7 @@ test('[INSIGHTS-23.3] lists every category, without Others, under a donut', asyn
   expect(rowsRead().filter((row) => row.startsWith('Others'))).toEqual([]);
 });
 
-test('[INSIGHTS-23.3] rounds percentages to one decimal place', async () => {
+test('[INSIGHTS-23.4] rounds percentages to one decimal place', async () => {
   await insightsWith(
     ['2025-01-10', '1.00', 'Food & Dining'],
     ['2025-01-10', '1.00', 'Transportation'],
@@ -1018,7 +1018,7 @@ test('[INSIGHTS-23.3] rounds percentages to one decimal place', async () => {
   ]);
 });
 
-test('[INSIGHTS-23.3] shows a long name on one line, with no ellipsis, and reads it in full', async () => {
+test('[INSIGHTS-23.4] shows a long name on one line, with no ellipsis, and reads it in full', async () => {
   const name = 'a'.repeat(50);
   await startExpensesAt('/');
   await addCategory(name);

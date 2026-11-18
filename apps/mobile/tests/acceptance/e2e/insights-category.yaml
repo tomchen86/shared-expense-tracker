@@ -1,0 +1,66 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[INSIGHTS-47.1] [INSIGHTS-50.1] [INSIGHTS-53.1] [INSIGHTS-54.1] Changes the period with a swipe that starts on a category row, opens the category's expenses with a tap, and finds that swiping a card there shows no Delete"
+---
+# The names of this month and last month, by the simulator's clock.
+- evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
+- evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'
+- evalScript: '${output.lastMonth = output.months[(new Date().getMonth() + 11) % 12]}'
+- evalScript: '${output.thisYear = String(new Date().getFullYear())}'
+- evalScript: '${output.lastMonthsYear = String(new Date().getMonth() === 0 ? new Date().getFullYear() - 1 : new Date().getFullYear())}'
+# Food & Dining today and on the 15th of last month, and Transportation on that day too.
+- evalScript: '${output.lastMonth15 = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 15)}'
+- evalScript: "${output.lastMonthDate = output.lastMonth15.getFullYear() + '-' + ('0' + (output.lastMonth15.getMonth() + 1)).slice(-2) + '-15'}"
+# Maestro reads ${…} up to the last } in the value, so a seed with dates is built in one script.
+- evalScript: "${output.seedJson = JSON.stringify({ expenses: [{ title: 'Coffee run', amount: '8.75', category: 'Food & Dining' }, { title: 'Old lunch', amount: '6.00', category: 'Food & Dining', date: output.lastMonthDate }, { title: 'Old bus', amount: '2.00', category: 'Transportation', date: output.lastMonthDate }] })}"
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: ${output.seedJson}
+- tapOn: View expense insights\..*
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible: Food & Dining, .* percent
+# INSIGHTS-53.1: a swipe to the right that starts on a category row goes back a month, as one
+# on the rest of the content does, and opens nothing.
+- swipe:
+    from:
+      text: Food & Dining, .* percent
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
+- assertVisible: Total spent.*
+- assertVisible: Transportation, .* percent
+# INSIGHTS-47.1: a tap on the row opens that category's expenses in the month Insights is on.
+- tapOn: Food & Dining, .* percent
+- waitForAnimationToEnd
+- assertVisible: 1 expense
+- assertVisible: ${output.lastMonth} ${output.lastMonthsYear}
+- assertVisible: '\$6\.00'
+- assertVisible: Old lunch, .*
+- assertNotVisible: Old bus, .*
+- assertNotVisible: Total spent.*
+# INSIGHTS-54.1: the list is read-only: swiping a card to the left shows no Delete and opens
+# nothing.
+- swipe:
+    from:
+      text: Old lunch, .*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertNotVisible: Delete.*
+- assertVisible: 1 expense
+- assertVisible: Old lunch, .*
+# INSIGHTS-50.1: a tap on the card opens the expense's details, and Back returns to the list.
+- tapOn: Old lunch, .*
+- waitForAnimationToEnd
+- assertVisible: Expense
+- assertVisible: Edit
+- assertNotVisible: 1 expense
+- tapOn: Back
+- waitForAnimationToEnd
+- assertVisible: 1 expense
+- assertVisible: Old lunch, .*
+# INSIGHTS-47.1: Back returns to Insights, still on last month.
+- tapOn: Back
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
+- assertVisible: Food & Dining, .* percent
