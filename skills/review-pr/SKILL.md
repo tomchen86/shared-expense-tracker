@@ -57,3 +57,11 @@ git log --first-parent --merges --remerge-diff --format= <reviewed SHA>..HEAD
 ```
 
 Afterwards, remove the review worktree: `git worktree remove ../review-<N>`. When a PR is closed without merging, give the owner the second line for its spec branch.
+
+## Dependabot's PRs
+
+A PR that Dependabot opens differs in three ways:
+
+- Step 1: bring it up to date by commenting only `@dependabot rebase`, never with `gh pr update-branch`. A commit from anyone else on its branch stops Dependabot from updating the PR.
+- Step 2: its description is release notes, and Dependabot owns it. Add `--body "No issue: <reason>"` to the merge command instead.
+- A passing `check` has not run the actions that only `e2e.yml` uses. Say in the report that their first run comes after the merge.
