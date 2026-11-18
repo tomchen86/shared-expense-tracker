@@ -1811,7 +1811,7 @@ WHEN 使用者把支出移到垃圾桶並存好，the mobile app SHALL 在畫面
 
 ### Requirement: LEDGER-74.1 Undo 提示收起的時候
 
-The mobile app SHALL 讓 Undo 提示從那一筆存好時起顯示 Undo 時間後收起，那一筆支出留在垃圾桶裡；提示顯示時打開或關掉螢幕閱讀器，就從那時起依螢幕閱讀器現在的狀態，重新算這一筆完整的 Undo 時間。提示收起之前，那一筆在 Trash 被還原、永久刪除或清空，SHALL 立刻收起提示。
+The mobile app SHALL 讓 Undo 提示從那一筆存好時起顯示 Undo 時間後收起，那一筆支出留在垃圾桶裡；提示顯示時打開或關掉螢幕閱讀器，就從那時起依螢幕閱讀器現在的狀態，重新算這一筆完整的 Undo 時間。提示收起之前，那一筆在 Trash 被還原、永久刪除或清空，SHALL 立刻收起提示（套用的事件讓它離開垃圾桶時見 SYNC-44.1）。
 
 #### Scenario: 5 秒
 
