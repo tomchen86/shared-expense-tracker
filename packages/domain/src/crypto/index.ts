@@ -2,7 +2,7 @@ import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
 import { ed25519, x25519 } from '@noble/curves/ed25519.js';
 import { hkdf } from '@noble/hashes/hkdf.js';
 import { sha256 } from '@noble/hashes/sha2.js';
-import { concatBytes, utf8ToBytes } from '@noble/hashes/utils.js';
+import { abytes, concatBytes, utf8ToBytes } from '@noble/hashes/utils.js';
 
 // Only the mobile app imports this entry point (ADR-0015). Every key, nonce and
 // salt comes from the caller; none of these tools needs a runtime random source.
@@ -19,17 +19,11 @@ export type OpenResult =
   | { ok: true; plaintext: Uint8Array }
   | { ok: false; reason: 'undecryptable' | 'unsupported-version' };
 
-function requireLength(bytes: Uint8Array, length: number, name: string): void {
-  if (bytes.length !== length) {
-    throw new Error(`${name} must be ${length} bytes`);
-  }
-}
-
 function requireBoxSalt(salt: Uint8Array | undefined): void {
-  if (salt !== undefined) requireLength(salt, KEY_LENGTH, 'Box salt');
+  if (salt !== undefined) abytes(salt, KEY_LENGTH, 'Box salt');
 }
 
-/** Check the version before the rest of the envelope or the sender's key. */
+/** After input checks, check the version before the rest of the envelope or sender key. */
 function envelopeFailure(
   ciphertext: Uint8Array,
 ): Extract<OpenResult, { ok: false }> | undefined {
@@ -49,8 +43,10 @@ export function encrypt(input: {
   plaintext: Uint8Array;
   associatedData: Uint8Array;
 }): Uint8Array {
-  requireLength(input.key, KEY_LENGTH, 'Key');
-  requireLength(input.nonce, NONCE_LENGTH, 'Nonce');
+  abytes(input.key, KEY_LENGTH, 'Key');
+  abytes(input.nonce, NONCE_LENGTH, 'Nonce');
+  abytes(input.plaintext);
+  abytes(input.associatedData);
   const encrypted = xchacha20poly1305(
     input.key,
     input.nonce,
@@ -64,7 +60,9 @@ export function decrypt(input: {
   ciphertext: Uint8Array;
   associatedData: Uint8Array;
 }): OpenResult {
-  requireLength(input.key, KEY_LENGTH, 'Key');
+  abytes(input.key, KEY_LENGTH, 'Key');
+  abytes(input.ciphertext);
+  abytes(input.associatedData);
   const failure = envelopeFailure(input.ciphertext);
   if (failure) return failure;
   try {
@@ -81,7 +79,7 @@ export function decrypt(input: {
 
 /** The Ed25519 public key of a 32-byte signing secret key. */
 export function signingPublicKey(secretKey: Uint8Array): Uint8Array {
-  requireLength(secretKey, KEY_LENGTH, 'Signing secret key');
+  abytes(secretKey, KEY_LENGTH, 'Signing secret key');
   return ed25519.getPublicKey(secretKey);
 }
 
@@ -90,13 +88,14 @@ export function sign(input: {
   secretKey: Uint8Array;
   message: Uint8Array;
 }): Uint8Array {
-  requireLength(input.secretKey, KEY_LENGTH, 'Signing secret key');
+  abytes(input.secretKey, KEY_LENGTH, 'Signing secret key');
+  abytes(input.message);
   return ed25519.sign(input.message, input.secretKey);
 }
 
 /** The X25519 public key of a 32-byte box secret key. */
 export function boxPublicKey(secretKey: Uint8Array): Uint8Array {
-  requireLength(secretKey, KEY_LENGTH, 'Box secret key');
+  abytes(secretKey, KEY_LENGTH, 'Box secret key');
   return x25519.getPublicKey(secretKey);
 }
 
@@ -125,9 +124,11 @@ export function sealBox(input: {
   nonce: Uint8Array;
   plaintext: Uint8Array;
 }): Uint8Array {
-  requireLength(input.senderSecretKey, KEY_LENGTH, 'Box secret key');
-  requireLength(input.recipientPublicKey, KEY_LENGTH, 'Recipient public key');
-  requireLength(input.nonce, NONCE_LENGTH, 'Nonce');
+  abytes(input.senderSecretKey, KEY_LENGTH, 'Box secret key');
+  abytes(input.recipientPublicKey, KEY_LENGTH, 'Recipient public key');
+  abytes(input.nonce, NONCE_LENGTH, 'Nonce');
+  abytes(input.context);
+  abytes(input.plaintext);
   requireBoxSalt(input.salt);
   const key = boxKey(
     input.senderSecretKey,
@@ -160,7 +161,10 @@ export function openBox(input: {
   salt?: Uint8Array;
   box: Uint8Array;
 }): OpenResult {
-  requireLength(input.recipientSecretKey, KEY_LENGTH, 'Box secret key');
+  abytes(input.recipientSecretKey, KEY_LENGTH, 'Box secret key');
+  abytes(input.senderPublicKey);
+  abytes(input.context);
+  abytes(input.box);
   requireBoxSalt(input.salt);
   const failure = envelopeFailure(input.box);
   if (failure) return failure;
@@ -193,13 +197,14 @@ export function deriveKey(input: {
   purpose: Uint8Array | string;
   salt?: Uint8Array;
 }): Uint8Array {
-  return hkdf(
-    sha256,
-    typeof input.secret === 'string' ? utf8ToBytes(input.secret) : input.secret,
-    input.salt,
+  const secret =
+    typeof input.secret === 'string'
+      ? utf8ToBytes(input.secret)
+      : abytes(input.secret);
+  const purpose =
     typeof input.purpose === 'string'
       ? utf8ToBytes(input.purpose)
-      : input.purpose,
-    KEY_LENGTH,
-  );
+      : abytes(input.purpose);
+  if (input.salt !== undefined) abytes(input.salt);
+  return hkdf(sha256, secret, input.salt, purpose, KEY_LENGTH);
 }
