@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import {
   compareSyncStamps,
   syncRecordValues,
+  type SyncEvent,
   type SyncRecord,
   type SyncStamp,
 } from '@shared-expense/domain';
@@ -21,12 +23,19 @@ import { ensureLocalIdentity, type LocalIdentity } from '../shell/identity';
 import { appMigrations } from '../shell/migrations';
 import { initializeDatabase, type Database } from '../storage';
 import { openNodeDatabase } from '../storage/node';
-import { listUnsentSyncEvents, shareGroup } from '../sync';
+import {
+  applySyncEvents,
+  listRefusedSyncEvents,
+  listUnsentSyncEvents,
+  shareGroup,
+} from '../sync';
+import { latestStamp, readSyncRecord } from '../sync/records';
 import { moveExpenseToTrash } from './trash';
 import {
   ArchivedExpenseError,
   listExpenses,
   saveExpense,
+  subscribeToExpenses,
   type Expense,
   type GroupSplit,
 } from './expenses';
@@ -81,6 +90,155 @@ async function save(existing?: Expense) {
 
 const shareTrip = () =>
   shareGroup(database, { groupId: split.groupId, device: 'phone' });
+
+function received<Content extends { stamp: SyncStamp }>(content: Content) {
+  return {
+    id: randomUUID(),
+    device: content.stamp.device,
+    receivedAtMs: content.stamp.ms,
+    content,
+  };
+}
+
+test.each(['group', 'member', 'category'] as const)(
+  'merges %s units out of order, retaining the creation stamp and the winning unit stamp',
+  async (type) => {
+    await shareTrip();
+    const id = type === 'group' ? split.groupId : randomUUID();
+    const seeded = await readSyncRecord(database, split.groupId, type, id);
+    const stamp = {
+      ms: (await latestStamp(database))!.ms + 1,
+      counter: 0,
+      device: 'remote',
+    };
+    const nameAt = (name: string, counter: number) =>
+      received({
+        version: 1,
+        type,
+        id,
+        stamp: { ...stamp, counter },
+        units: { name: { value: name } },
+      });
+    await applySyncEvents(database, split.groupId, [
+      nameAt('Later', 1),
+      nameAt('Earlier', 0),
+    ]);
+
+    expect(
+      await readSyncRecord(database, split.groupId, type, id),
+    ).toMatchObject({
+      created: seeded?.created ?? stamp,
+      record: {
+        units: { name: { value: 'Later', stamp: { ...stamp, counter: 1 } } },
+      },
+    });
+  },
+);
+
+test("another group's partial records and tombstones keep their IDs even without visible rows", async () => {
+  await shareTrip();
+  await createGroup(database, 'Other', identity);
+  const [, other] = await listGroups(database);
+  await shareGroup(database, { groupId: other.id, device: 'phone' });
+  const stamp = {
+    ms: (await latestStamp(database))!.ms + 1,
+    counter: 0,
+    device: 'remote',
+  };
+  const partial: SyncEvent = {
+    version: 1,
+    type: 'expense',
+    id: 'partial',
+    stamp,
+    units: { title: { value: 'Lunch' } },
+  };
+  const tombstone: SyncEvent = {
+    version: 1,
+    type: 'category',
+    id: 'deleted',
+    stamp,
+    deleted: true,
+  };
+  await applySyncEvents(database, split.groupId, [
+    received(partial),
+    received(tombstone),
+  ]);
+  const records = () =>
+    database.all('SELECT * FROM sync_records ORDER BY groupId, type, id');
+  const before = await records();
+
+  const foreign: SyncEvent[] = [
+    partial,
+    tombstone,
+    {
+      version: 1,
+      type: 'member',
+      id: split.payerId,
+      stamp,
+      units: { removed: { value: true } },
+    },
+    {
+      version: 1,
+      type: 'category',
+      id: input.categoryId,
+      stamp,
+      deleted: true,
+    },
+  ];
+  await applySyncEvents(
+    database,
+    other.id,
+    foreign.map((event, index) =>
+      received({ ...event, stamp: { ...stamp, counter: index + 1 } }),
+    ),
+  );
+  expect(await records()).toEqual(before);
+  expect(await latestStamp(database)).toEqual(stamp);
+  expect(await listRefusedSyncEvents(database)).toEqual([]);
+});
+
+test('rolling back then retrying a received money change preserves its currency and allocation order and notifies once', async () => {
+  const dinner = await save();
+  await shareTrip();
+  const before = await latestStamp(database);
+  const stamp = { ms: before!.ms + 1000, counter: 0, device: 'remote' };
+  const money = {
+    amountMinor: 12,
+    currency: 'JPY',
+    payments: [
+      { participant: split.participants[2], amountMinor: 7 },
+      { participant: split.participants[0], amountMinor: 5 },
+    ],
+    shares: [{ participant: split.payerId, amountMinor: 12 }],
+  };
+  const edit = received({
+    version: 1,
+    type: 'expense',
+    id: dinner.id,
+    stamp,
+    units: { money: { value: money } },
+  });
+  const changed = jest.fn();
+  const unsubscribe = subscribeToExpenses(database, changed);
+  await expect(
+    applySyncEvents(database, split.groupId, [
+      { ...edit, id: randomUUID(), content: null },
+      edit,
+      { ...edit, id: randomUUID(), content: { version: 2 } },
+    ]),
+  ).rejects.toThrow();
+  expect(await listRefusedSyncEvents(database)).toEqual([]);
+  expect(await latestStamp(database)).toEqual(before);
+  expect(await stored()).toEqual(dinner);
+  expect(changed).not.toHaveBeenCalled();
+
+  await applySyncEvents(database, split.groupId, [edit]);
+  await applySyncEvents(database, split.groupId, [edit]);
+  expect(await stored()).toEqual({ ...dinner, ...money });
+  expect(await latestStamp(database)).toEqual(stamp);
+  expect(changed).toHaveBeenCalledTimes(1);
+  unsubscribe();
+});
 
 test('sharing seeds the stored units of just the group, including removed members, archived categories and trash', async () => {
   const dinner = await save();

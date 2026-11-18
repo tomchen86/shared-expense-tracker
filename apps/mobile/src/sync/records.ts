@@ -46,21 +46,38 @@ export async function saveLatestStamp(tx: SqlExecutor, stamp: SyncStamp) {
   );
 }
 
-/** A local edit always follows creation, so it keeps the original creation stamp. */
-export async function storeLocalRecord(
+export async function readSyncRecord(
+  tx: SqlExecutor,
+  groupId: string,
+  type: SyncRecordType,
+  id: string,
+) {
+  const [row] = await tx.all<{ created: string; record: string }>(
+    'SELECT created, record FROM sync_records WHERE groupId = ? AND type = ? AND id = ?',
+    [groupId, type, id],
+  );
+  if (row)
+    return {
+      created: JSON.parse(row.created) as SyncStamp,
+      record: JSON.parse(row.record) as SyncRecord,
+    };
+}
+
+export async function storeSyncRecord(
   tx: SqlExecutor,
   groupId: string,
   record: SyncRecord,
-  stamp: SyncStamp,
+  created: SyncStamp,
 ) {
   await tx.run(
     `INSERT INTO sync_records (groupId, type, id, created, record) VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT (groupId, type, id) DO UPDATE SET record = excluded.record`,
+     ON CONFLICT (groupId, type, id) DO UPDATE SET created = excluded.created, record = excluded.record
+     WHERE created <> excluded.created OR record <> excluded.record`,
     [
       groupId,
       record.type,
       record.id,
-      JSON.stringify(stamp),
+      JSON.stringify(created),
       JSON.stringify(record),
     ],
   );
@@ -87,16 +104,12 @@ export async function writeLocalChange<T extends SyncRecordType>(
   id: string,
   values: Partial<SyncUnits[T]> | (T extends 'category' ? 'delete' : never),
 ) {
-  const [row] = await tx.all<{ record: string }>(
-    'SELECT record FROM sync_records WHERE groupId = ? AND type = ? AND id = ?',
-    [group.groupId, type, id],
-  );
-  const previous = row ? (JSON.parse(row.record) as SyncRecord) : undefined;
+  const previous = await readSyncRecord(tx, group.groupId, type, id);
   let change;
   if (values === 'delete') {
     change = { deleted: true };
   } else {
-    const units = changedSyncUnits(values, previous?.units ?? {});
+    const units = changedSyncUnits(values, previous?.record.units ?? {});
     if (Object.keys(units).length === 0) return;
     change = { units };
   }
@@ -115,8 +128,11 @@ export async function writeLocalChange<T extends SyncRecordType>(
   if (new TextEncoder().encode(content).byteLength > MAX_SYNC_PLAINTEXT_BYTES)
     throw new SyncEventTooLargeError();
 
-  const { record } = mergeSyncEvent({ record: previous, event: verdict.event });
-  await storeLocalRecord(tx, group.groupId, record, stamp);
+  const { record } = mergeSyncEvent({
+    record: previous?.record,
+    event: verdict.event,
+  });
+  await storeSyncRecord(tx, group.groupId, record, previous?.created ?? stamp);
   await tx.run(
     'INSERT INTO sync_outbox (id, groupId, content) VALUES (?, ?, ?)',
     [await createUuid(tx), group.groupId, content],

@@ -2,7 +2,6 @@ import {
   nextSyncStamp,
   type SyncEvent,
   type SyncRecordType,
-  type SyncRefusal,
   type SyncUnits,
 } from '@shared-expense/domain';
 import { listCategories } from '../categories/repository';
@@ -13,8 +12,15 @@ import {
   latestStamp,
   saveLatestStamp,
   sharedGroup,
-  storeLocalRecord,
+  storeSyncRecord,
 } from './records';
+
+export {
+  applySyncEvents,
+  listRefusedSyncEvents,
+  type ReceivedSyncEvent,
+  type RefusedSyncEvent,
+} from './apply';
 
 /** An event this phone wrote and has not uploaded yet. */
 export interface UnsentSyncEvent {
@@ -23,26 +29,6 @@ export interface UnsentSyncEvent {
   /** The shared ledger the event belongs to. */
   groupId: string;
   content: SyncEvent;
-}
-
-/** An event as the API relays it, decrypted and parsed. */
-export interface ReceivedSyncEvent {
-  id: string;
-  /** The ID of the device that uploaded it. */
-  device: string;
-  /** When the API received it, in milliseconds since the Unix epoch. */
-  receivedAtMs: number;
-  content: unknown;
-}
-
-/** A received event that was judged not to apply. */
-export interface RefusedSyncEvent extends ReceivedSyncEvent {
-  groupId: string;
-  reason: SyncRefusal;
-}
-
-function notImplemented(name: string, ...inputs: unknown[]): never {
-  throw new Error(`Not implemented: ${name} (${inputs.length} inputs)`);
 }
 
 /** Makes a group a shared ledger on this phone, whose device ID is `device`. */
@@ -73,7 +59,7 @@ export async function shareGroup(
       const units = Object.fromEntries(
         Object.entries(values).map(([name, value]) => [name, { value, stamp }]),
       );
-      await storeLocalRecord(tx, groupId, { type, id, units }, stamp);
+      await storeSyncRecord(tx, groupId, { type, id, units }, stamp);
     }
 
     await seed('group', groupId, group);
@@ -112,24 +98,4 @@ export async function listUnsentSyncEvents(
     groupId,
     content: JSON.parse(content) as SyncEvent,
   }));
-}
-
-/**
- * Applies the events received for a shared ledger, in the order given. It throws, and
- * saves nothing of the call, when the group is not a shared ledger or an event is of a
- * format version it does not know.
- */
-export async function applySyncEvents(
-  database: Database,
-  groupId: string,
-  events: readonly ReceivedSyncEvent[],
-): Promise<void> {
-  return notImplemented('applySyncEvents', database, groupId, events);
-}
-
-/** The received events that were judged not to apply, in the order they were received. */
-export async function listRefusedSyncEvents(
-  database: SqlExecutor,
-): Promise<RefusedSyncEvent[]> {
-  return notImplemented('listRefusedSyncEvents', database);
 }

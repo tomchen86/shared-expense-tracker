@@ -38,6 +38,24 @@ export function isUncategorizedCategory(
   return category.isDefault && category.name === UNCATEGORIZED_NAME;
 }
 
+/** Keep the expense's saved label and color while the assigned category exists in its group. */
+export async function resolveExpenseCategory(
+  tx: SqlExecutor,
+  groupId: string,
+  assigned: Pick<Category, 'id' | 'name' | 'color'>,
+) {
+  const [known] = await tx.all(
+    'SELECT 1 FROM categories WHERE id = ? AND spaceId = ?',
+    [assigned.id, groupId],
+  );
+  if (known) return assigned;
+  const [uncategorized] = await tx.all<typeof assigned>(
+    'SELECT id, name, color FROM categories WHERE spaceId = ? AND isDefault = 1 AND name = ?',
+    [groupId, UNCATEGORIZED_NAME],
+  );
+  return uncategorized;
+}
+
 export async function ensureDefaultCategories(
   transaction: SqlExecutor,
   spaceId: string,

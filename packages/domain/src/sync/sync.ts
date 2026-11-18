@@ -265,9 +265,9 @@ export function overridesSyncMoney(
 }
 
 /** Every unit's value, or undefined while the record lacks a unit or once it is deleted. */
-export function syncRecordValues(
-  record: SyncRecord,
-): SyncUnits[SyncRecordType] | undefined {
+export function syncRecordValues<R extends SyncRecord>(
+  record: R,
+): SyncUnits[R['type']] | undefined {
   if (record.deleted) return undefined;
   const units: Record<string, { value: unknown } | undefined> = record.units;
   const values: Record<string, unknown> = {};
@@ -276,7 +276,7 @@ export function syncRecordValues(
     if (!unit) return undefined;
     values[name] = unit.value;
   }
-  return values as SyncUnits[SyncRecordType];
+  return values as SyncUnits[R['type']];
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

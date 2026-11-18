@@ -132,10 +132,14 @@ type ExpenseInput = Pick<
   'title' | 'amountMinor' | 'currency' | 'date' | 'note'
 > & { categoryId: string };
 
-const listeners = new WeakMap<Database, Set<() => void>>();
+type ExpenseListener = (leftTrash?: ReadonlySet<string>) => void;
+const listeners = new WeakMap<Database, Set<ExpenseListener>>();
 
 /** Mounted screens also refresh while another screen covers them. */
-export function subscribeToExpenses(database: Database, listener: () => void) {
+export function subscribeToExpenses(
+  database: Database,
+  listener: ExpenseListener,
+) {
   let subscribers = listeners.get(database);
   if (!subscribers) {
     subscribers = new Set();
@@ -147,8 +151,11 @@ export function subscribeToExpenses(database: Database, listener: () => void) {
   };
 }
 
-export function notifyExpensesChanged(database: Database) {
-  listeners.get(database)?.forEach((listener) => listener());
+export function notifyExpensesChanged(
+  database: Database,
+  leftTrash?: ReadonlySet<string>,
+) {
+  listeners.get(database)?.forEach((listener) => listener(leftTrash));
 }
 
 export interface GroupSplit {
@@ -158,6 +165,57 @@ export interface GroupSplit {
 }
 
 export class ArchivedExpenseError extends Error {}
+
+/** Write the expense and its ordered allocations, keeping an existing expense's rowid. */
+export async function writeExpenseRows(
+  transaction: SqlExecutor,
+  expense: Expense,
+  existing: boolean,
+) {
+  const { id, category, payments, shares } = expense;
+  const values = [
+    expense.title,
+    expense.amountMinor,
+    expense.currency,
+    expense.date,
+    category.id,
+    category.name,
+    category.color,
+    expense.note ?? null,
+    expense.spaceId,
+    expense.trashOrder ?? null,
+    id,
+  ];
+  if (existing) {
+    await transaction.run(
+      `UPDATE expenses SET title = ?, amountMinor = ?, currency = ?, date = ?,
+       categoryId = ?, categoryName = ?, categoryColor = ?, note = ?, spaceId = ?, trashOrder = ? WHERE id = ?`,
+      values,
+    );
+    await transaction.run('DELETE FROM expense_payments WHERE expenseId = ?', [
+      id,
+    ]);
+    await transaction.run('DELETE FROM expense_shares WHERE expenseId = ?', [
+      id,
+    ]);
+  } else {
+    await transaction.run(
+      `INSERT INTO expenses (title, amountMinor, currency, date, categoryId, categoryName, categoryColor,
+       note, spaceId, trashOrder, id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      values,
+    );
+  }
+  for (const [table, allocations] of [
+    ['expense_payments', payments],
+    ['expense_shares', shares],
+  ] as const) {
+    for (const [position, share] of allocations.entries())
+      await transaction.run(
+        `INSERT INTO ${table} (expenseId, participant, amountMinor, position) VALUES (?, ?, ?, ?)`,
+        [id, share.participant, share.amountMinor, position],
+      );
+  }
+}
 
 /** Save the expense and its ordered allocations together, or leave all of them unchanged. */
 export async function saveExpense(
@@ -241,43 +299,7 @@ export async function saveExpense(
       shares,
       trashOrder: existing?.trashOrder,
     };
-    const values = [
-      expense.title,
-      expense.amountMinor,
-      expense.date,
-      category.id,
-      category.name,
-      category.color,
-      expense.note ?? null,
-    ];
-    if (existing) {
-      await transaction.run(
-        'UPDATE expenses SET title = ?, amountMinor = ?, date = ?, categoryId = ?, categoryName = ?, categoryColor = ?, note = ?, spaceId = ? WHERE id = ?',
-        [...values, spaceId, id],
-      );
-      await transaction.run(
-        'DELETE FROM expense_payments WHERE expenseId = ?',
-        [id],
-      );
-      await transaction.run('DELETE FROM expense_shares WHERE expenseId = ?', [
-        id,
-      ]);
-    } else {
-      await transaction.run(
-        'INSERT INTO expenses (title, amountMinor, date, categoryId, categoryName, categoryColor, note, id, currency, spaceId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [...values, id, expense.currency, spaceId],
-      );
-    }
-    for (const [table, allocations] of [
-      ['expense_payments', payments],
-      ['expense_shares', shares],
-    ] as const) {
-      for (const [position, share] of allocations.entries())
-        await transaction.run(
-          `INSERT INTO ${table} (expenseId, participant, amountMinor, position) VALUES (?, ?, ?, ?)`,
-          [id, share.participant, share.amountMinor, position],
-        );
-    }
+    await writeExpenseRows(transaction, expense, !!existing);
     if (shared) {
       const units: Partial<SyncUnits['expense']> = expenseSyncValues(expense);
       // A displayed fallback category can differ from the synced category until it arrives.
