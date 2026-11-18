@@ -1,6 +1,11 @@
 import { DEFAULT_CATEGORIES } from '@shared-expense/domain';
 import { createUuid, type Database, type SqlExecutor } from '../storage';
 import { moveExpensesToCategory } from '../ledger/expenses';
+import {
+  sharedGroup,
+  writeLocalChange,
+  type SharedGroup,
+} from '../sync/records';
 
 const UNCATEGORIZED_NAME =
   DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1].name;
@@ -111,6 +116,13 @@ export async function createCategory(
         input.spaceId,
       ],
     );
+    const group = await sharedGroup(transaction, input.spaceId);
+    if (group)
+      await writeLocalChange(transaction, group, 'category', id, {
+        name: input.name,
+        color: input.color,
+        archived: false,
+      });
     return {
       id,
       name: input.name,
@@ -123,30 +135,61 @@ export async function createCategory(
   });
 }
 
-export async function setCategoryArchived(
-  database: SqlExecutor,
+async function sharedGroupForCategory(
+  transaction: SqlExecutor,
+  id: string,
+): Promise<SharedGroup | undefined> {
+  const [group] = await transaction.all<SharedGroup>(
+    `SELECT s.groupId, s.device FROM categories c
+     JOIN sync_groups s ON s.groupId = c.spaceId WHERE c.id = ?`,
+    [id],
+  );
+  return group;
+}
+
+export function setCategoryArchived(
+  database: Database,
   id: string,
   archived: boolean,
 ): Promise<void> {
-  const result = await database.run(
+  return database.transaction(async (transaction) => {
+    const group = await sharedGroupForCategory(transaction, id);
+    await writeCategoryArchived(transaction, id, archived, group);
+  });
+}
+
+async function writeCategoryArchived(
+  transaction: SqlExecutor,
+  id: string,
+  archived: boolean,
+  group: SharedGroup | undefined,
+) {
+  const result = await transaction.run(
     'UPDATE categories SET isArchived = ? WHERE id = ? AND NOT (isDefault = 1 AND name = ?)',
     [archived ? 1 : 0, id, UNCATEGORIZED_NAME],
   );
   if (result.changes !== 1)
     throw new Error('Category cannot be archived or restored');
+  if (group)
+    await writeLocalChange(transaction, group, 'category', id, { archived });
 }
 
 export async function deleteCategory(
-  database: SqlExecutor,
+  database: Database,
   id: string,
 ): Promise<void> {
-  // The expense foreign key also prevents deleting a category that became used
-  // after the confirmation opened.
-  const result = await database.run(
-    'DELETE FROM categories WHERE id = ? AND NOT (isDefault = 1 AND name = ?)',
-    [id, UNCATEGORIZED_NAME],
-  );
-  if (result.changes !== 1) throw new Error('Category cannot be deleted');
+  await database.transaction(async (transaction) => {
+    const group = await sharedGroupForCategory(transaction, id);
+    // The expense foreign key also prevents deleting a category that became used
+    // after the confirmation opened.
+    const result = await transaction.run(
+      'DELETE FROM categories WHERE id = ? AND NOT (isDefault = 1 AND name = ?)',
+      [id, UNCATEGORIZED_NAME],
+    );
+    if (result.changes !== 1) throw new Error('Category cannot be deleted');
+    if (group)
+      await writeLocalChange(transaction, group, 'category', id, 'delete');
+  });
 }
 
 export async function moveAndArchiveCategory(
@@ -172,20 +215,28 @@ export async function moveAndArchiveCategory(
       source.spaceId !== target.spaceId
     )
       throw new Error('Categories cannot be moved');
-    await moveExpensesToCategory(transaction, sourceId, target);
-    await setCategoryArchived(transaction, sourceId, true);
+    const group = await sharedGroup(transaction, source.spaceId);
+    await moveExpensesToCategory(transaction, sourceId, target, group);
+    await writeCategoryArchived(transaction, sourceId, true, group);
   });
 }
 
 export async function updateCategory(
-  database: SqlExecutor,
+  database: Database,
   input: { id: string; name: string; color: string },
 ): Promise<void> {
-  const result = await database.run(
-    'UPDATE categories SET name = ?, color = ? WHERE id = ? AND NOT (isDefault = 1 AND name = ?)',
-    [input.name, input.color, input.id, UNCATEGORIZED_NAME],
-  );
-  if (result.changes === 0) {
-    throw new Error('Category cannot be updated');
-  }
+  await database.transaction(async (transaction) => {
+    const { id, name, color } = input;
+    const result = await transaction.run(
+      'UPDATE categories SET name = ?, color = ? WHERE id = ? AND NOT (isDefault = 1 AND name = ?)',
+      [name, color, id, UNCATEGORIZED_NAME],
+    );
+    if (result.changes === 0) throw new Error('Category cannot be updated');
+    const group = await sharedGroupForCategory(transaction, id);
+    if (group)
+      await writeLocalChange(transaction, group, 'category', id, {
+        name,
+        color,
+      });
+  });
 }

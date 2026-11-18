@@ -12,7 +12,7 @@ import {
 import type { Expense } from '../ledger/expenses';
 import { createUuid, type SqlExecutor } from '../storage';
 
-interface SharedGroup {
+export interface SharedGroup {
   groupId: string;
   device: string;
 }
@@ -85,22 +85,31 @@ export async function writeLocalChange<T extends SyncRecordType>(
   group: SharedGroup,
   type: T,
   id: string,
-  values: Partial<SyncUnits[T]>,
+  values: Partial<SyncUnits[T]> | (T extends 'category' ? 'delete' : never),
 ) {
   const [row] = await tx.all<{ record: string }>(
     'SELECT record FROM sync_records WHERE groupId = ? AND type = ? AND id = ?',
     [group.groupId, type, id],
   );
   const previous = row ? (JSON.parse(row.record) as SyncRecord) : undefined;
-  const units = changedSyncUnits(values, previous?.units ?? {});
-  if (Object.keys(units).length === 0) return;
+  let change;
+  if (values === 'delete') {
+    change = { deleted: true };
+  } else {
+    const units = changedSyncUnits(values, previous?.units ?? {});
+    if (Object.keys(units).length === 0) return;
+    change = { units };
+  }
 
   const stamp = nextSyncStamp({
     seen: await latestStamp(tx),
     nowMs: Date.now(),
     device: group.device,
   });
-  const verdict = checkSyncEvent({ version: 1, stamp, type, id, units }, null);
+  const verdict = checkSyncEvent(
+    { version: 1, stamp, type, id, ...change },
+    null,
+  );
   if (verdict.status !== 'valid') throw new Error('Invalid local sync event');
   const content = JSON.stringify(verdict.event);
   if (new TextEncoder().encode(content).byteLength > MAX_SYNC_PLAINTEXT_BYTES)

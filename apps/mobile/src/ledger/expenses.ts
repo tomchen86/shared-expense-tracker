@@ -9,6 +9,7 @@ import {
   expenseSyncValues,
   sharedGroup,
   writeLocalChange,
+  type SharedGroup,
 } from '../sync/records';
 
 /** An expense as the phone stores it (LEDGER-27.2). */
@@ -58,11 +59,24 @@ export async function categoryExpenseCounts(
 export async function moveExpensesToCategory(
   transaction: SqlExecutor,
   sourceId: string,
-  target: Expense['category'],
+  target: Expense['category'] & { spaceId: string },
+  group: SharedGroup | undefined,
 ): Promise<void> {
+  const { id, name, color, spaceId } = target;
+  if (group) {
+    const expenses = await transaction.all<{ id: string }>(
+      'SELECT id FROM expenses WHERE categoryId = ? AND spaceId = ? ORDER BY rowid',
+      [sourceId, spaceId],
+    );
+    const category = { id, name, color };
+    for (const expense of expenses)
+      await writeLocalChange(transaction, group, 'expense', expense.id, {
+        category,
+      });
+  }
   await transaction.run(
-    'UPDATE expenses SET categoryId = ?, categoryName = ?, categoryColor = ? WHERE categoryId = ?',
-    [target.id, target.name, target.color, sourceId],
+    'UPDATE expenses SET categoryId = ?, categoryName = ?, categoryColor = ? WHERE categoryId = ? AND spaceId = ?',
+    [id, name, color, sourceId, spaceId],
   );
 }
 
