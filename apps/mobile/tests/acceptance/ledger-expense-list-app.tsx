@@ -210,7 +210,7 @@ function inSidewaysScrollView(view: HostView) {
  * Whether a button above a list's cards is one of the list's own controls: the period row, the
  * dates of a custom range, the total, a group's net balance, the way out of a period with no
  * expense, the sort button, a capsule of the capsule row, or the Clear Filters under a notice
- * (LEDGER-108.2 to LEDGER-116.3, LEDGER-122.1, LEDGER-133.1, LEDGER-138.1, GROUPS-68.6,
+ * (LEDGER-108.2 to LEDGER-116.3, LEDGER-122.2, LEDGER-133.1, LEDGER-138.1, GROUPS-68.6,
  * GROUPS-69.4).
  */
 export const isListControl = (button: HostView) =>

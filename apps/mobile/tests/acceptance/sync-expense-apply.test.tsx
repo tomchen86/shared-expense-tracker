@@ -19,6 +19,7 @@ import {
   listTotal,
 } from './ledger-expense-list-app';
 import { chooseSort } from './ledger-list-find-app';
+import { capsuleOf, setAmounts } from './ledger-list-filter-app';
 import {
   expectPeriod,
   periodName,
@@ -312,6 +313,19 @@ test('[LEDGER-117.1] leaves the expense list on its period when another phone ad
   await pressPreviousPeriod(expensesRoot());
   await expectPeriod(expensesRoot, 'September 2026');
   await expectCards(['Lunch']);
+});
+
+test('[LEDGER-142.1] keeps the filter of the expense list when another phone adds an expense that does not pass it', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  await setAmounts('Expenses', '20');
+  await expectCards(['Dinner']);
+
+  await receive(brisbane, await lunchCreated());
+
+  expect(capsuleOf(expensesRoot(), 'Amount')).toBe('20 or more');
+  await expectCards(['Dinner']);
 });
 
 test("[SYNC-29.1] shows it on the group's screen, open at the time, and in the group's total", async () => {

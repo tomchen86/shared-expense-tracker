@@ -275,6 +275,49 @@ test('[LEDGER-136.1] opens Filters at a press on the Ledger and the Amount capsu
   expect(amountField('Highest amount')).toBeDefined();
 });
 
+test("[LEDGER-136.1] opens Filters at a press on the Paid by capsule of a group's screen on Android", async () => {
+  await startWithGroups({ Brisbane: ['Casey'] });
+  await addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Taylor (You)',
+    sharers: ['Taylor (You)', 'Casey'],
+    title: 'Dinner',
+  });
+  await addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Casey',
+    sharers: ['Taylor (You)', 'Casey'],
+    title: 'Taxi',
+  });
+  await showGroup('Brisbane');
+  await setAmounts('Brisbane', '1');
+  expect(capsuleButtonNames(screenOf('Brisbane'))).toEqual([
+    'Category',
+    'Paid by',
+    'Amount, 1 or more',
+  ]);
+
+  await pressCapsule(screenOf('Brisbane'), 'Paid by');
+
+  await expectFilters();
+  expect(conditionRow('Paid by')).toBe('Paid by, Anyone');
+});
+
+test('[LEDGER-136.1] opens Filters at a press on the Currency capsule on Android', async () => {
+  await startExpenses();
+  await spend('Coffee run');
+  setRegionCurrency('JPY');
+  await addExpense({ title: 'Ramen', amount: '500' });
+  setRegionCurrency('USD');
+  await setAmounts('Expenses', '1');
+  expect(capsuleButtonNames(expensesRoot()).at(-1)).toBe('Currency');
+
+  await pressCapsule(expensesRoot(), 'Currency');
+
+  await expectFilters();
+  expect(conditionRow('Currency')).toBe('Currency, All');
+});
+
 test('[LEDGER-136.1] [LEDGER-133.1] turns Paid by Me off at a press on its capsule on Android, without opening Filters', async () => {
   await startWithThree();
   await turnPaidByMe(true);

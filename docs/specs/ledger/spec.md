@@ -713,7 +713,7 @@ The mobile app SHALL 讓日期欄位用手機地區的日期格式顯示日期�
 
 ### Requirement: LEDGER-31.5 支出清單依排序列出期間裡通過篩選的個人支出
 
-The mobile app SHALL 在支出清單上，依支出清單的排序（LEDGER-121.1）由上而下列出每筆不在垃圾桶裡、日期在支出清單的期間裡（LEDGER-107.2）、通過支出清單的篩選（LEDGER-129.1）的個人支出的卡片，還沒選過排序時是 LEDGER-28.1 的順序；搜尋中列出的是符合搜尋、通過篩選的個人支出，不管日期（LEDGER-125.2）；新增、修改、移到垃圾桶或還原支出之後回到支出清單，或重新啟動 app 之後，卡片都和存著的支出一致。修改之後日期不在期間裡的支出，卡片離開支出清單，期間不變；修改之後沒有通過篩選的支出，卡片也離開支出清單，篩選不變。
+The mobile app SHALL 在支出清單上，依支出清單的排序（LEDGER-121.1）由上而下列出每筆不在垃圾桶裡、日期在支出清單的期間裡（LEDGER-107.2）、通過支出清單的篩選（LEDGER-129.1）的個人支出的卡片，還沒選過排序時是 LEDGER-28.1 的順序；搜尋中列出的是符合搜尋、通過篩選的個人支出，不管日期（LEDGER-125.2）；新增、修改、移到垃圾桶或還原支出之後回到支出清單，或重新啟動 app 之後，卡片都和存著的支出一致。修改之後日期不在期間裡的支出，卡片離開支出清單，期間不變；修改之後沒有通過篩選的支出，卡片也離開支出清單，篩選不變；只有修改讓篩選裡的一個選擇不再是選項時（LEDGER-130.1），那個選擇照 LEDGER-141.1 丟掉，這筆支出不因為它離開支出清單。
 
 #### Scenario: 不同的日期
 
@@ -754,6 +754,11 @@ The mobile app SHALL 在支出清單上，依支出清單的排序（LEDGER-121.
 
 - **WHEN** 還有 Shopping 的「Hat」，篩選是 Category 的 Shopping 時，在 Edit Expense 把 Shoes 的分類改成 Food & Dining 後按 Save
 - **THEN** 表單關閉後支出清單只有 Hat 的卡片，膠囊列的 Category 仍是「Shopping」；清除篩選之後有 Shoes 的卡片
+
+#### Scenario: 修改之後選擇不再是選項
+
+- **WHEN** Shopping 的支出只有「Shoes」，另有 Food & Dining 的「Coffee run」，篩選是 Category 的 Shopping 時，在 Edit Expense 把 Shoes 的分類改成 Food & Dining 後按 Save
+- **THEN** 表單關閉後沒有膠囊列，Coffee run 和 Shoes 的卡片都在
 
 #### Scenario: 新增之後
 
@@ -1615,7 +1620,7 @@ IF 表單開著時，表單上的分類被刪除（CATEGORIES-34.1），THEN the
 
 ### Requirement: LEDGER-64.5 支出清單也列出期間裡通過篩選、和你有關的群組支出
 
-The mobile app SHALL 在支出清單上，和個人支出一起依支出清單的排序（LEDGER-121.1）列出每筆不在垃圾桶裡、日期在支出清單的期間裡（LEDGER-107.2）、通過支出清單的篩選（LEDGER-129.1）、和你有關的群組支出的卡片，封存的群組的也列出；搜尋中列出的是符合搜尋、通過篩選、和你有關的群組支出，不管日期（LEDGER-125.2）；和你無關的群組支出不列出，搜尋中也一樣。修改之後沒有通過篩選的群組支出，卡片離開支出清單，篩選不變。
+The mobile app SHALL 在支出清單上，和個人支出一起依支出清單的排序（LEDGER-121.1）列出每筆不在垃圾桶裡、日期在支出清單的期間裡（LEDGER-107.2）、通過支出清單的篩選（LEDGER-129.1）、和你有關的群組支出的卡片，封存的群組的也列出；搜尋中列出的是符合搜尋、通過篩選、和你有關的群組支出，不管日期（LEDGER-125.2）；和你無關的群組支出不列出，搜尋中也一樣。修改之後沒有通過篩選的群組支出，卡片離開支出清單，篩選不變；只有修改讓篩選裡的一個選擇不再是選項時，那個選擇照 LEDGER-141.1 丟掉。
 
 #### Scenario: 你分攤的
 
@@ -1671,6 +1676,11 @@ The mobile app SHALL 在支出清單上，和個人支出一起依支出清單�
 
 - **WHEN** Paid by Me 開著，Brisbane 有 Taylor 付款、Taylor 和 Casey 分攤的「Dinner」，在 Edit Expense 把付款人改成 Casey 後按 Save
 - **THEN** 支出清單沒有 Dinner 的卡片，Paid by Me 仍開著
+
+#### Scenario: 修改之後選擇不再是選項
+
+- **WHEN** 名字是「Taylor」，有個人支出「Coffee run」，Brisbane 只有 Taylor 付款、Taylor 和 Casey 分攤的「Dinner」，Ledger 選了 Brisbane，在 Edit Expense 把 Dinner 改成 Casey 付款、只有 Casey 分攤後按 Save
+- **THEN** 支出清單沒有膠囊列，卡片只有 Coffee run
 
 ### Requirement: LEDGER-65.4 群組支出的卡片
 
@@ -2706,7 +2716,7 @@ The mobile app SHALL 在支出清單的卡片上方顯示期間列，群組的�
 
 ### Requirement: LEDGER-109.2 在 Filters 的 Date 選期間
 
-The mobile app SHALL 在支出清單和群組的畫面的標題列放名稱是「Filters」的篩選動作（SHELL-72.2），這個畫面有篩選時它的名稱是「Filters, on」（LEDGER-132.1），找不到群組或畫面讀不出本機資料（SHELL-60.1）時沒有；按一下就開啟從畫面底部升起、蓋在這個畫面上的 Filters，標題是「Filters」，標題列只有確認「Done」（SHELL-47.2、SHELL-48.2），按 Done、把 Filters 往下滑或按 Android 的返回鍵就關閉。Filters 裡最上面的一列名稱是「Date, <值>」，它下面是每個條件的列（LEDGER-131.1）、「Save Current Filter…」和「Clear Filters」（LEDGER-143.1、LEDGER-139.1），有存起來的篩選時它們在 Date 上面（LEDGER-144.1）；Date 的值是這個畫面現在的期間：這個月是「This Month」，上個月是「Last Month」，最近三個月是「Last 3 Months」，今年是「This Year」，全部期間是「All Time」，自訂範圍是「Custom Range」，其他的月或年是期間的名稱（LEDGER-108.2）；按這一列就打開標題是「Date」的清單，依序列出這六個選項，只標出現在的期間那一個，現在的期間是其他的月或年時都不標出；選一個選項就關閉清單，立即把這個畫面的期間換成它，Filters 仍開著。期間是自訂範圍時，Date 下面再有名稱是「From」和「To」的兩列日期欄位，和期間列下面的是同一組日期（LEDGER-112.2）。Date 的清單和支出表單的清單一樣，iOS 上是從那一列彈出的系統選單，Android 上是 sheet（LEDGER-100.1、LEDGER-101.1）。
+The mobile app SHALL 在支出清單和群組的畫面的標題列放名稱是「Filters」的篩選動作（SHELL-72.2），這個畫面有篩選時它的名稱是「Filters, on」（LEDGER-132.1），找不到群組或畫面讀不出本機資料（SHELL-60.1）時沒有；按一下就開啟從畫面底部升起、蓋在這個畫面上的 Filters，標題是「Filters」，標題列只有確認「Done」（SHELL-47.2、SHELL-48.2），按 Done、把 Filters 往下滑或按 Android 的返回鍵就關閉。Filters 裡有一列名稱是「Date, <值>」：這個畫面沒有存起來的篩選時它是最上面的一列，有的時候最上面是 SAVED FILTERS 那一區（LEDGER-144.1），Date 在那一區的下面；Date 下面是每個條件的列（LEDGER-131.1）、「Save Current Filter…」和「Clear Filters」（LEDGER-143.1、LEDGER-139.1）。Date 的值是這個畫面現在的期間：這個月是「This Month」，上個月是「Last Month」，最近三個月是「Last 3 Months」，今年是「This Year」，全部期間是「All Time」，自訂範圍是「Custom Range」，其他的月或年是期間的名稱（LEDGER-108.2）；按這一列就打開標題是「Date」的清單，依序列出這六個選項，只標出現在的期間那一個，現在的期間是其他的月或年時都不標出；選一個選項就關閉清單，立即把這個畫面的期間換成它，Filters 仍開著。期間是自訂範圍時，Date 下面再有名稱是「From」和「To」的兩列日期欄位，和期間列下面的是同一組日期（LEDGER-112.2）。Date 的清單和支出表單的清單一樣，iOS 上是從那一列彈出的系統選單，Android 上是 sheet（LEDGER-100.1、LEDGER-101.1）。
 
 #### Scenario: 開啟
 
@@ -2977,7 +2987,7 @@ WHEN 使用者在 New Expense 存下一筆支出（LEDGER-21.2、LEDGER-54.1）�
 
 ### Requirement: LEDGER-118.1 清單只畫出看得到和附近的卡片
 
-WHILE 支出清單或群組的畫面的期間裡的支出比螢幕上和它上下附近放得下的多，the mobile app SHALL 只畫出螢幕上和附近的那些支出的卡片，其他的捲到附近時才畫出來。沒有畫出來的支出仍然在清單上：卡片由上而下的順序不變（LEDGER-31.5、LEDGER-64.5、GROUPS-61.6），可以一路捲到最後一張；清單上方的總額和張數（LEDGER-35.6、GROUPS-68.6）、你的淨額（GROUPS-69.4），以及期間裡有沒有支出（LEDGER-32.2、LEDGER-116.3），都照期間裡全部的支出算，不是只算畫出來的卡片。
+WHILE 支出清單或群組的畫面的期間裡的支出比螢幕上和它上下附近放得下的多，the mobile app SHALL 只畫出螢幕上和附近的那些支出的卡片，其他的捲到附近時才畫出來。沒有畫出來的支出仍然在清單上：卡片由上而下的順序不變（LEDGER-31.5、LEDGER-64.5、GROUPS-61.6），可以一路捲到最後一張；清單上方的總額和張數（LEDGER-35.6、GROUPS-68.6）、你的淨額（GROUPS-69.4），以及期間裡有沒有支出（LEDGER-32.2、LEDGER-116.3），都照它們各自該算的每一筆支出算，不是只算畫出來的卡片。
 
 #### Scenario: 一個月有 300 筆
 
@@ -3106,7 +3116,7 @@ The mobile app SHALL 讓支出清單和每個群組的畫面各有自己的排�
 - **WHEN** 手機上有在支出有最後修改時間之前依序新增的「A」和「B」，之後新增「C」，把排序換成 Recently Edited
 - **THEN** 卡片由上而下是 C、B、A
 
-### Requirement: LEDGER-122.1 清單上方那一行的排序鈕
+### Requirement: LEDGER-122.2 清單上方那一行的排序鈕
 
 WHILE 支出清單或群組的畫面有卡片，the mobile app SHALL 在第一張卡片上方的日期（LEDGER-102.1）的正上方顯示一行，它在清單上方的總額（LEDGER-35.6）、群組的畫面上你的淨額（GROUPS-69.4）的下面，有膠囊列時在膠囊列的下面（LEDGER-133.1），跟著卡片一起捲動。這一行的右邊是排序鈕，排序鈕的左邊是清單的筆數，只在 LEDGER-126.2 和 LEDGER-137.1 說的時候顯示，其他時候這一行只有排序鈕。排序鈕的圖示是上下兩個箭頭，iOS 上是 SF Symbol `arrow.up.arrow.down`，Android 上是 Material Symbols `swap_vert`，名稱是「Sort By, <這個畫面的排序>」；按一下就打開標題是「Sort By」的清單，依序列出「Newest First」、「Oldest First」、「Recently Edited」、「Highest Amount」和「Lowest Amount」，只標出這個畫面的排序；選一個就關閉清單，立即照它排列卡片。排序是 Newest First 時箭頭是次要文字的顏色，是其他四種時是強調色。這個清單和支出表單的清單一樣，iOS 上是從排序鈕彈出的系統選單（LEDGER-123.1），Android 上是 sheet，標題列有「Cancel」（LEDGER-101.1）。畫面沒有卡片時 SHALL 沒有這一行。排序不是篩選：Filters（LEDGER-109.2）裡沒有它。
 
@@ -3157,7 +3167,7 @@ WHILE 支出清單或群組的畫面有卡片，the mobile app SHALL 在第一�
 
 ### Requirement: LEDGER-123.1 (e2e) iOS 上排序鈕是系統選單
 
-WHERE iOS，the mobile app SHALL 讓排序鈕是一個系統選單：按一下就從排序鈕彈出選單，依序列出 LEDGER-122.1 的五種排序，只有這個畫面的排序打勾；選一個就關閉選單，照它排列卡片。
+WHERE iOS，the mobile app SHALL 讓排序鈕是一個系統選單：按一下就從排序鈕彈出選單，依序列出 LEDGER-122.2 的五種排序，只有這個畫面的排序打勾；選一個就關閉選單，照它排列卡片。
 
 #### Scenario: 選金額最低
 
@@ -3319,7 +3329,7 @@ The mobile app SHALL 在支出清單和群組的畫面的標題列提供搜尋�
 
 ### Requirement: LEDGER-126.2 搜尋中期間和總額讓位，那一行顯示筆數
 
-WHILE 支出清單或群組的畫面在搜尋中（LEDGER-125.2），the mobile app SHALL 不顯示期間列（LEDGER-108.2）、自訂範圍的 From 和 To（LEDGER-112.2）、清單上方的總額（LEDGER-35.6、GROUPS-68.6）、你的淨額（GROUPS-69.4）和期間裡沒有支出的提示（LEDGER-116.3），並在清單上方那一行（LEDGER-122.1）排序鈕的左邊顯示列出的支出的筆數「<筆數> items」，只有一筆時是「1 item」；筆數只寫數字，不加千分位，算的是符合搜尋、也通過篩選的每一筆（LEDGER-125.2），結果很多、清單只畫出螢幕上和附近的卡片時（LEDGER-118.1）也一樣。膠囊列不讓位：有篩選時它照常顯示在那一行的上面（LEDGER-133.1）。群組的畫面上的大標題、封存群組的提示和「Restore Group」照常顯示。搜尋結束之後，這些都照搜尋之前的期間顯示，那一行不再有筆數。
+WHILE 支出清單或群組的畫面在搜尋中（LEDGER-125.2），the mobile app SHALL 不顯示期間列（LEDGER-108.2）、自訂範圍的 From 和 To（LEDGER-112.2）、清單上方的總額（LEDGER-35.6、GROUPS-68.6）、你的淨額（GROUPS-69.4）和期間裡沒有支出的提示（LEDGER-116.3），並在清單上方那一行（LEDGER-122.2）排序鈕的左邊顯示列出的支出的筆數「<筆數> items」，只有一筆時是「1 item」；筆數只寫數字，不加千分位，算的是符合搜尋、也通過篩選的每一筆（LEDGER-125.2），結果很多、清單只畫出螢幕上和附近的卡片時（LEDGER-118.1）也一樣。膠囊列不讓位：有篩選時它照常顯示在那一行的上面（LEDGER-133.1）。群組的畫面上的大標題、封存群組的提示和「Restore Group」照常顯示。搜尋結束之後，這些都照搜尋之前的期間顯示，那一行不再有筆數。
 
 #### Scenario: 支出清單
 
@@ -3368,7 +3378,7 @@ WHILE 支出清單或群組的畫面在搜尋中（LEDGER-125.2），the mobile 
 
 ### Requirement: LEDGER-127.2 搜尋沒有結果時說明
 
-WHILE 支出清單或群組的畫面在搜尋中、這個畫面有可列的支出而沒有一筆列得出來（LEDGER-125.2），the mobile app SHALL 在卡片的位置顯示標題「No Results for “<搜尋的文字>”」，<搜尋的文字> 是搜尋欄位裡的文字去掉頭尾的空白，大小寫照使用者打的。沒有篩選時，標題下面是「Check the spelling or try a new search.」；有篩選時，標題下面是「Filters are on too. Check the spelling, or clear the filters to search every expense.」，再下面是名稱是「Clear Filters」的按鈕，按一下就拿掉這個畫面的篩選（LEDGER-139.1），搜尋不變。這時沒有卡片，也沒有清單上方那一行（LEDGER-122.1）；有篩選時膠囊列仍在。這個畫面沒有任何可列的支出時，搜尋中顯示的仍是「No expenses to display. Add a personal expense or get involved in a group expense.」（LEDGER-32.2）或「No expenses in this group yet.」（GROUPS-20.2），不是這個提示。
+WHILE 支出清單或群組的畫面在搜尋中、這個畫面有可列的支出而沒有一筆列得出來（LEDGER-125.2），the mobile app SHALL 在卡片的位置顯示標題「No Results for “<搜尋的文字>”」，<搜尋的文字> 是搜尋欄位裡的文字去掉頭尾的空白，大小寫照使用者打的。沒有篩選時，標題下面是「Check the spelling or try a new search.」；有篩選時，標題下面是「Filters are on too. Check the spelling, or clear the filters to search every expense.」，再下面是名稱是「Clear Filters」的按鈕，按一下就拿掉這個畫面的篩選（LEDGER-139.1），搜尋不變。這時沒有卡片，也沒有清單上方那一行（LEDGER-122.2）；有篩選時膠囊列仍在。這個畫面沒有任何可列的支出時，搜尋中顯示的仍是「No expenses to display. Add a personal expense or get involved in a group expense.」（LEDGER-32.2）或「No expenses in this group yet.」（GROUPS-20.2），不是這個提示。
 
 #### Scenario: 沒有結果
 
@@ -3431,7 +3441,7 @@ WHERE iOS 26 以上，WHEN 使用者按支出清單或群組的畫面標題列�
 
 ### Requirement: LEDGER-129.1 篩選的條件
 
-The mobile app SHALL 讓支出清單和每個群組的畫面各有自己的篩選，卡片只有通過篩選的支出（LEDGER-31.5、LEDGER-64.5、GROUPS-61.6）：一筆支出要符合每一個開著的條件才通過，同一個條件選了幾項時符合其中一項就算。條件是下面這些。Category：選了一個以上的分類名稱時開著，支出的分類現在的名稱和其中一個一模一樣就符合；分類封存了也照它的名稱比，不含「(Archived)」；支出清單上，不同帳本裡名稱一模一樣的分類是同一項。Ledger，只在支出清單：選了一個以上的帳本時開著，帳本是個人空間或一個群組，支出屬於其中一個就符合。Paid by，只在群組的畫面：選了一位以上的付款人時開著，支出的付款裡有其中一位就符合。Paid by Me，只在支出清單：是一個開關，開著時付款裡有你的 participant 的支出才符合，也就是個人支出和你付款的群組支出。Amount：Min 或 Max 有數字時開著（LEDGER-131.1），卡片金額的數字（LEDGER-121.1）不小於 Min 也不大於 Max 的支出才符合，只有一邊有數字時只限那一邊；只比數字，不看幣別，不換算；Min 大於 Max 時沒有支出符合。Currency：選了一個幣別時開著，支出的幣別是它才符合。Category、Ledger 和 Paid by 可以選好幾項，Currency 只能選一個。篩選和期間一起算：不在搜尋中時，卡片是日期在期間裡又通過篩選的支出；搜尋中見 LEDGER-125.2。排序不是篩選（LEDGER-122.1）。
+The mobile app SHALL 讓支出清單和每個群組的畫面各有自己的篩選，卡片只有通過篩選的支出（LEDGER-31.5、LEDGER-64.5、GROUPS-61.6）：一筆支出要符合每一個開著的條件才通過，同一個條件選了幾項時符合其中一項就算。條件是下面這些。Category：選了一個以上的分類名稱時開著，支出的分類現在的名稱和其中一個一模一樣就符合；分類封存了也照它的名稱比，不含「(Archived)」；支出清單上，不同帳本裡名稱一模一樣的分類是同一項。Ledger，只在支出清單：選了一個以上的帳本時開著，帳本是個人空間或一個群組，支出屬於其中一個就符合。Paid by，只在群組的畫面：選了一位以上的付款人時開著，支出的付款裡有其中一位就符合。Paid by Me，只在支出清單：是一個開關，開著時付款裡有你的 participant 的支出才符合，也就是個人支出和你付款的群組支出。Amount：Min 或 Max 有數字時開著（LEDGER-131.1），卡片金額的數字（LEDGER-121.1）不小於 Min 也不大於 Max 的支出才符合，只有一邊有數字時只限那一邊；只比數字，不看幣別，不換算；Min 大於 Max 時沒有支出符合。Currency：選了一個幣別時開著，支出的幣別是它才符合。Category、Ledger 和 Paid by 可以選好幾項，Currency 只能選一個。篩選和期間一起算：不在搜尋中時，卡片是日期在期間裡又通過篩選的支出；搜尋中見 LEDGER-125.2。排序不是篩選（LEDGER-122.2）。
 
 #### Scenario: 一個分類
 
@@ -3574,7 +3584,7 @@ The mobile app SHALL 讓 Category、Ledger、Paid by 和 Currency 的清單只�
 
 ### Requirement: LEDGER-131.1 在 Filters 設定條件
 
-The mobile app SHALL 在 Filters（LEDGER-109.2）的 Date 和自訂範圍的 From、To 下面，依序放每個條件的一列：名稱是「Category, <值>」的一列；支出清單是「Ledger, <值>」，群組的畫面是「Paid by, <值>」；支出清單再有名稱是「Paid by Me」的開關；標籤是「Amount」的一列，裡面由左而右是名稱「Lowest amount」、提示文字「Min」的數字欄位、「–」和名稱「Highest amount」、提示文字「Max」的數字欄位，鍵盤是有小數點的數字鍵盤；有 Currency 這個條件時（LEDGER-130.1）再有名稱是「Currency, <值>」的一列。沒有選擇時 <值> 依序是「Any」、「All」、「Anyone」和「All」；選了一項時是那一項的名稱；選了幾項時是「<項數> Categories」、「<項數> Ledgers」或「<項數> Payers」。按 Category、Ledger、Paid by 或 Currency 那一列就打開標題和它的標籤相同的清單，列出這個條件的選項（LEDGER-130.1），選了的標示為已選取：Category、Ledger 和 Paid by 的清單按一項就選它或取消它，清單不關閉；Currency 的清單按一項就選它並關閉清單。這些清單和支出表單的清單一樣，iOS 上是從那一列彈出的系統選單，Android 上是 sheet，可以選好幾項的標題列有「Done」，Currency 的有「Cancel」（LEDGER-100.1、LEDGER-101.1）。每改一次條件，包括金額欄位每改一次文字，這個畫面就立即照新的篩選顯示，Filters 仍開著。金額欄位的文字去掉頭尾空白、照 LEDGER-19.1 換過之後，只由數字和最多一個「.」組成而且至少有一個數字時，就是這一邊的數字；其他時候這一邊沒有數字。
+The mobile app SHALL 在 Filters（LEDGER-109.2）的 Date 和自訂範圍的 From、To 下面，依序放每個條件的一列：名稱是「Category, <值>」的一列；支出清單是「Ledger, <值>」，群組的畫面是「Paid by, <值>」；支出清單再有名稱是「Paid by Me」的開關；標籤是「Amount」的一列，裡面由左而右是名稱「Lowest amount」、提示文字「Min」的數字欄位、「–」和名稱「Highest amount」、提示文字「Max」的數字欄位，鍵盤是有小數點的數字鍵盤；有 Currency 這個條件時（LEDGER-130.1）再有名稱是「Currency, <值>」的一列。沒有選擇時 <值> 依序是「Any」、「All」、「Anyone」和「All」；選了一項時是那一項的名稱；選了幾項時是「<項數> Categories」、「<項數> Ledgers」或「<項數> Payers」。按 Category、Ledger、Paid by 或 Currency 那一列就打開標題和它的標籤相同的清單，列出這個條件的選項（LEDGER-130.1），選了的標示為已選取：Category、Ledger 和 Paid by 的清單按一項就選它或取消它，清單不關閉；Currency 的清單按一項就選它並關閉清單。這些清單和支出表單的清單一樣，iOS 上是從那一列彈出的系統選單，Android 上是 sheet，可以選好幾項的標題列有「Done」，Currency 的有「Cancel」（LEDGER-100.1、LEDGER-101.1）。每改一次條件，包括金額欄位每改一次文字，這個畫面就立即照新的篩選顯示，Filters 仍開著。金額欄位的文字去掉頭尾空白、照 LEDGER-19.1 換過之後，只由數字和最多一個「.」組成而且至少有一個數字時，就是這一邊的數字；其他時候這一邊沒有數字。記住的篩選和存起來的篩選（LEDGER-140.1、LEDGER-143.1）存的是這樣換過的文字，沒有數字的一邊是空的：Filters 每次打開時，金額欄位裡是存著的文字。
 
 #### Scenario: 支出清單的 Filters
 
@@ -3621,6 +3631,11 @@ The mobile app SHALL 在 Filters（LEDGER-109.2）的 Date 和自訂範圍的 Fr
 - **WHEN** Lowest amount 是「1.2.3」、「.」或「abc」
 - **THEN** 這一邊沒有數字；Highest amount 也沒有數字時，沒有篩選
 
+#### Scenario: 再打開 Filters
+
+- **WHEN** 在 Lowest amount 輸入「１２，５」，在 Highest amount 輸入「abc」，按「Done」，再打開 Filters
+- **THEN** Lowest amount 是「12.5」，Highest amount 是空的
+
 #### Scenario: 幣別
 
 - **WHEN** 有 JPY 和 USD 的支出，按「Currency, All」，按「JPY」，再按「Currency, JPY」，按「All」
@@ -3657,7 +3672,7 @@ WHILE 支出清單或群組的畫面有篩選，the mobile app SHALL 讓那個�
 
 ### Requirement: LEDGER-133.1 有篩選時顯示膠囊列
 
-WHILE 支出清單或群組的畫面有篩選，the mobile app SHALL 在卡片上方顯示膠囊列：它在清單上方的總額（LEDGER-35.6）的下面，群組的畫面上在你的淨額（GROUPS-69.4）的下面，清單上方那一行（LEDGER-122.1）的上面；搜尋中期間列、總額和你的淨額都不顯示（LEDGER-126.2），膠囊列仍在那一行的上面；它跟著卡片一起捲動。膠囊列是一列膠囊，每個條件一顆，由左而右依序是 Category；支出清單的 Ledger 和 Paid by Me，或群組的畫面的 Paid by；Amount；有 Currency 這個條件時的 Currency（LEDGER-130.1）。每一顆不論條件開著或關著都在這個位置；放不下時這一列可以左右捲動。條件關著時，膠囊是灰底、一般文字的顏色，上面的文字和它的名稱都是條件的名稱：「Category」、「Ledger」、「Paid by」、「Paid by Me」、「Amount」或「Currency」。條件開著時，膠囊是實心的強調色、白字，上面的文字是它的值：Category、Ledger 和 Currency 是 Filters 那一列的值（LEDGER-131.1）；Paid by 選了一位時是「Paid by <那一位的名稱>」，選了幾位時是「<人數> Payers」；Amount 兩邊都有數字時是「<Min> – <Max>」，只有 Min 時是「<Min> or more」，只有 Max 時是「<Max> or less」，數字是欄位裡的文字照 LEDGER-131.1 換過的樣子；Paid by Me 仍是「Paid by Me」。開著的膠囊的名稱是「<條件的名稱>, <Filters 那一列的值>」，Amount 的是「Amount, <膠囊上的文字>」；Paid by Me 的名稱不變，螢幕閱讀器把它讀成已選取。Paid by Me 以外的膠囊，文字後面有向下的箭頭。WHEN 使用者按 Paid by Me 的膠囊，the mobile app SHALL 把 Paid by Me 開著的關掉、關著的打開。按其他的膠囊就在原地改那個條件：iOS 見 LEDGER-134.1 和 LEDGER-135.1，Android 見 LEDGER-136.1。WHILE 這個畫面沒有篩選，the mobile app SHALL 不顯示膠囊列；只有膠囊的選單或小視窗開著時例外：使用者在裡面拿掉了最後一個條件，膠囊列仍留到選單或小視窗關閉，那時沒有篩選才消失（LEDGER-134.1、LEDGER-135.1）。
+WHILE 支出清單或群組的畫面有篩選，the mobile app SHALL 在卡片上方顯示膠囊列：它在清單上方的總額（LEDGER-35.6）的下面，群組的畫面上在你的淨額（GROUPS-69.4）的下面，清單上方那一行（LEDGER-122.2）的上面；搜尋中期間列、總額和你的淨額都不顯示（LEDGER-126.2），膠囊列仍在那一行的上面；它跟著卡片一起捲動。膠囊列是一列膠囊，每個條件一顆，由左而右依序是 Category；支出清單的 Ledger 和 Paid by Me，或群組的畫面的 Paid by；Amount；有 Currency 這個條件時的 Currency（LEDGER-130.1）。每一顆不論條件開著或關著都在這個位置；放不下時這一列可以左右捲動。條件關著時，膠囊是灰底、一般文字的顏色，上面的文字和它的名稱都是條件的名稱：「Category」、「Ledger」、「Paid by」、「Paid by Me」、「Amount」或「Currency」。條件開著時，膠囊是實心的強調色、白字，上面的文字是它的值：Category、Ledger 和 Currency 是 Filters 那一列的值（LEDGER-131.1）；Paid by 選了一位時是「Paid by <那一位的名稱>」，選了幾位時是「<人數> Payers」；Amount 兩邊都有數字時是「<Min> – <Max>」，只有 Min 時是「<Min> or more」，只有 Max 時是「<Max> or less」，數字是欄位裡的文字照 LEDGER-131.1 換過的樣子；Paid by Me 仍是「Paid by Me」。開著的膠囊的名稱是「<條件的名稱>, <Filters 那一列的值>」，Amount 的是「Amount, <膠囊上的文字>」；Paid by Me 的名稱不變，螢幕閱讀器把它讀成已選取。WHEN 使用者按 Paid by Me 的膠囊，the mobile app SHALL 把 Paid by Me 開著的關掉、關著的打開。按其他的膠囊就在原地改那個條件：iOS 見 LEDGER-134.1 和 LEDGER-135.1，Android 見 LEDGER-136.1。WHILE 這個畫面沒有篩選，the mobile app SHALL 不顯示膠囊列；只有膠囊的選單或小視窗開著時例外：使用者在裡面拿掉了最後一個條件，膠囊列仍留到選單或小視窗關閉，那時沒有篩選才消失（LEDGER-134.1、LEDGER-135.1）。
 
 #### Scenario: 沒有篩選
 
@@ -3808,7 +3823,7 @@ WHERE Android，the mobile app SHALL 讓膠囊列的每一顆膠囊是名稱照 
 
 ### Requirement: LEDGER-137.1 有篩選時那一行顯示筆數
 
-WHILE 支出清單或群組的畫面有篩選、不在搜尋中而且有卡片，the mobile app SHALL 在清單上方那一行（LEDGER-122.1）排序鈕的左邊顯示列出的支出的筆數，寫法和 LEDGER-126.2 一樣：「<筆數> items」，只有一筆時是「1 item」，只寫數字，不加千分位；算的是日期在期間裡又通過篩選的每一筆，清單只畫出螢幕上和附近的卡片時（LEDGER-118.1）也一樣。沒有篩選也不在搜尋中時，那一行沒有筆數。
+WHILE 支出清單或群組的畫面有篩選、不在搜尋中而且有卡片，the mobile app SHALL 在清單上方那一行（LEDGER-122.2）排序鈕的左邊顯示列出的支出的筆數，寫法和 LEDGER-126.2 一樣：「<筆數> items」，只有一筆時是「1 item」，只寫數字，不加千分位；算的是日期在期間裡又通過篩選的每一筆，清單只畫出螢幕上和附近的卡片時（LEDGER-118.1）也一樣。沒有篩選也不在搜尋中時，那一行沒有筆數。
 
 #### Scenario: 有篩選
 
@@ -3842,7 +3857,7 @@ WHILE 支出清單或群組的畫面有篩選、不在搜尋中而且有卡片�
 
 ### Requirement: LEDGER-138.1 篩選之後沒有支出時說明
 
-WHILE 支出清單或群組的畫面有篩選、不在搜尋中、沒有卡片，而這個畫面有可列的支出，the mobile app SHALL 在卡片的位置，也就是膠囊列的下面，顯示標題「No Matching Expenses」，標題下面是「Your expenses are still here. No expense matches the filters that are on.」，再下面是名稱是「Clear Filters」的按鈕，按一下就拿掉這個畫面的篩選（LEDGER-139.1）。這時沒有清單上方那一行（LEDGER-122.1），也沒有 LEDGER-116.3 的提示，期間是哪一個都一樣。這個畫面沒有任何可列的支出時，顯示的仍是「No expenses to display. Add a personal expense or get involved in a group expense.」（LEDGER-32.2）或「No expenses in this group yet.」（GROUPS-20.2），不是這個提示。搜尋中沒有結果時見 LEDGER-127.2。
+WHILE 支出清單或群組的畫面有篩選、不在搜尋中、沒有卡片，而這個畫面有可列的支出，the mobile app SHALL 在卡片的位置，也就是膠囊列的下面，顯示標題「No Matching Expenses」，標題下面是「Your expenses are still here. No expense matches the filters that are on.」，再下面是名稱是「Clear Filters」的按鈕，按一下就拿掉這個畫面的篩選（LEDGER-139.1）。這時沒有清單上方那一行（LEDGER-122.2），也沒有 LEDGER-116.3 的提示，期間是哪一個都一樣。在這個提示上左右滑動不換期間；在期間列和清單上方的總額上照樣可以（LEDGER-114.1）。這個畫面沒有任何可列的支出時，顯示的仍是「No expenses to display. Add a personal expense or get involved in a group expense.」（LEDGER-32.2）或「No expenses in this group yet.」（GROUPS-20.2），不是這個提示。搜尋中沒有結果時見 LEDGER-127.2。
 
 #### Scenario: 沒有符合的
 
@@ -3858,6 +3873,11 @@ WHILE 支出清單或群組的畫面有篩選、不在搜尋中、沒有卡片�
 
 - **WHEN** 今天是 `2026-10-30`，只有日期是 `2026-08-15` 的支出，期間是 October 2026，Paid by Me 開著
 - **THEN** 顯示的是「No Matching Expenses」和「Clear Filters」，沒有「No Expenses in October 2026」和「Show August 2026」；按「Clear Filters」之後才是那兩樣
+
+#### Scenario: 在提示上滑
+
+- **WHEN** 期間是這個月、顯示「No Matching Expenses」時，在這個標題上往右滑
+- **THEN** 期間仍是這個月，「Next period」仍是停用的
 
 #### Scenario: 全部期間
 
@@ -3939,7 +3959,7 @@ The mobile app SHALL 把支出清單的篩選和每個群組的畫面的篩選�
 
 ### Requirement: LEDGER-141.1 丟掉已經不是選項的選擇
 
-IF 支出清單或群組的畫面的篩選裡，或它的一個存起來的篩選裡，有 Category、Ledger、Paid by 或 Currency 的選擇不是這個畫面現在的選項（LEDGER-130.1），THEN the mobile app SHALL 在這個畫面讀完支出時把那個選擇丟掉，其他的選擇和條件不變；丟掉之後這個選項再出現，也不會自己回到篩選裡。一個存起來的篩選的條件都被丟掉時，the mobile app SHALL 把它刪掉。Category 的選擇是名稱，所以分類改了名、它的支出都搬到別的分類，或用它的支出都不再是可列的支出時，舊的名稱就被丟掉；Ledger 和 Paid by 的選擇是那個群組和那個人，改了名稱仍是同一個選擇，膠囊和清單顯示新的名稱。Paid by Me 和 Amount 沒有選項，不會被丟掉。
+IF 支出清單或群組的畫面的篩選裡，或它的一個存起來的篩選裡，有 Category、Ledger、Paid by 或 Currency 的選擇不是這個畫面現在的選項（LEDGER-130.1），THEN the mobile app SHALL 在這個畫面讀完支出時把那個選擇丟掉，其他的選擇和條件不變；丟掉之後這個選項再出現，也不會自己回到篩選裡。一個存起來的篩選的條件都被丟掉時，the mobile app SHALL 把它刪掉。Category 的選擇是名稱，所以分類改了名、它的支出都搬到別的分類，或用它的支出都不再是可列的支出時，舊的名稱就被丟掉；Ledger 和 Paid by 的選擇是那個群組和那個人，改了名稱仍是同一個選擇，膠囊和清單顯示新的名稱。選擇是因為修改一筆支出才不再是選項時也一樣丟掉，這條比「修改之後篩選不變」優先（LEDGER-31.5、LEDGER-64.5、GROUPS-61.6）。Paid by Me 和 Amount 沒有選項，不會被丟掉。
 
 #### Scenario: 分類改了名
 
@@ -3976,6 +3996,11 @@ IF 支出清單或群組的畫面的篩選裡，或它的一個存起來的篩�
 - **WHEN** Shopping 的支出只有「Shoes」，Category 選了 Shopping，把 Shoes 移到垃圾桶，再按 Undo 提示的「Undo」
 - **THEN** 移到垃圾桶之後沒有膠囊列，卡片是其他的支出；按 Undo 之後 Shoes 的卡片回來，仍沒有篩選
 
+#### Scenario: 修改最後一筆
+
+- **WHEN** Shopping 的支出只有「Shoes」，另有 Travel 的「Train」，Category 選了 Shopping 和 Travel，在 Edit Expense 把 Shoes 的分類改成 Food & Dining 後按 Save
+- **THEN** 膠囊列的 Category 是「Travel」，卡片只有 Train
+
 #### Scenario: 幣別剩一種
 
 - **WHEN** 有 JPY 的「Ramen」和 USD 的「Coffee run」，Currency 選了 JPY，把 Coffee run 移到垃圾桶
@@ -3993,7 +4018,7 @@ IF 支出清單或群組的畫面的篩選裡，或它的一個存起來的篩�
 
 ### Requirement: LEDGER-142.1 新增的支出被篩選擋住時拿掉篩選
 
-WHEN 使用者在 New Expense 存下一筆支出（LEDGER-21.2、LEDGER-54.1），而它是支出清單或群組的畫面可列的支出、卻沒有通過那個畫面的篩選，the mobile app SHALL 拿掉那個畫面的篩選（LEDGER-139.1），表單關閉後那個畫面就有它的卡片；它通過篩選時篩選不變。期間照 LEDGER-117.1 換，兩件事可以一起發生，會列出這筆支出的畫面各看各的篩選。只有新增會拿掉篩選：修改之後沒有通過篩選的支出離開清單（LEDGER-31.5、LEDGER-64.5、GROUPS-61.6），把支出從垃圾桶還原（LEDGER-75.4、LEDGER-79.4）和套用收到的事件（sync）也都不拿掉。搜尋不因為新增而結束：搜尋中新增的支出不符合搜尋的文字時，搜尋中沒有它的卡片，搜尋結束之後才有。
+WHEN 使用者在 New Expense 存下一筆支出（LEDGER-21.2、LEDGER-54.1），而它是支出清單或群組的畫面可列的支出、卻沒有通過那個畫面的篩選，the mobile app SHALL 拿掉那個畫面的篩選（LEDGER-139.1），表單關閉後那個畫面就有它的卡片；它通過篩選時篩選不變。期間照 LEDGER-117.1 換，兩件事可以一起發生。會列出這筆支出的畫面各看各的篩選，不論使用者是從哪個畫面新增的，也不論那個畫面開著沒有：群組的畫面沒開著時，拿掉的是它記住的篩選（LEDGER-140.1），下次打開它時沒有篩選。只有新增會拿掉篩選：修改之後沒有通過篩選的支出離開清單（LEDGER-31.5、LEDGER-64.5、GROUPS-61.6），把支出從垃圾桶還原（LEDGER-75.4、LEDGER-79.4）和套用收到的事件（sync）也都不拿掉。搜尋不因為新增而結束：搜尋中新增的支出不符合搜尋的文字時，搜尋中沒有它的卡片，搜尋結束之後才有。
 
 #### Scenario: 被分類擋住
 
@@ -4020,6 +4045,16 @@ WHEN 使用者在 New Expense 存下一筆支出（LEDGER-21.2、LEDGER-54.1）�
 - **WHEN** 名字是「Taylor」，Brisbane 的畫面的 Paid by 選了 Casey，支出清單的 Ledger 選了 Personal，在 Brisbane 的畫面按「Add expense」，新增 Taylor 付、Taylor 和 Casey 分攤的「Dinner」
 - **THEN** Brisbane 的畫面沒有篩選，有 Dinner 的卡片；回到 Expenses 分頁時，支出清單也沒有篩選，有 Dinner 的卡片
 
+#### Scenario: 沒開著的群組的畫面
+
+- **WHEN** 名字是「Taylor」，Brisbane 有 Casey 付的「Taxi」，Brisbane 的畫面的 Paid by 選了 Casey，返回 Groups 根畫面，在 Expenses 分頁新增 Brisbane 的 Taylor 付、Taylor 和 Casey 分攤的「Dinner」，再打開 Brisbane 的畫面
+- **THEN** Brisbane 的畫面沒有篩選，卡片由上而下是 Dinner、Taxi
+
+#### Scenario: 沒開著的畫面的篩選沒有擋住它
+
+- **WHEN** Brisbane 有 Casey 付的「Taxi」，Brisbane 的畫面的 Paid by 選了 Casey，返回 Groups 根畫面，在 Expenses 分頁新增 Brisbane 的 Casey 付、Taylor 和 Casey 分攤的「Hotel」，再打開 Brisbane 的畫面
+- **THEN** 膠囊列的 Paid by 仍是「Paid by Casey」，卡片由上而下是 Hotel、Taxi
+
 #### Scenario: 和你無關的群組支出
 
 - **WHEN** 支出清單的 Ledger 選了 Personal，在 Brisbane 新增 Casey 付款、只有 Blake 分攤的「Taxi」
@@ -4030,6 +4065,11 @@ WHEN 使用者在 New Expense 存下一筆支出（LEDGER-21.2、LEDGER-54.1）�
 - **WHEN** 垃圾桶裡有 Food & Dining 的「Lunch」，支出清單的 Category 選了 Shopping，在 Trash 把 Lunch 還原
 - **THEN** 支出清單的 Category 仍是 Shopping，沒有 Lunch 的卡片
 
+#### Scenario: 收到的事件不拿掉
+
+- **WHEN** 名字是「Taylor」，Brisbane 是共同帳本（sync），支出清單有你的份額是 33.34 USD 的「Dinner」，Min 是「20」，套用另一支手機新增、你的份額是 15.00 USD 的「Lunch」的事件
+- **THEN** 膠囊列的 Amount 仍是「20 or more」，卡片只有 Dinner
+
 #### Scenario: 搜尋中
 
 - **WHEN** 有 Food & Dining 的「Coffee run」，Category 選了 Food & Dining，搜尋「coffee」時新增 Shopping 的「Shoes」，再結束搜尋
@@ -4037,7 +4077,7 @@ WHEN 使用者在 New Expense 存下一筆支出（LEDGER-21.2、LEDGER-54.1）�
 
 ### Requirement: LEDGER-143.1 把目前的篩選取名存起來
 
-The mobile app SHALL 在 Filters 的條件下面、「Clear Filters」上面放名稱是「Save Current Filter…」的按鈕，這個畫面沒有篩選時停用；這個畫面的篩選和它的一個存起來的篩選條件一樣時，這個按鈕是停用的「Filter Saved」。WHEN 使用者按「Save Current Filter…」，the mobile app SHALL 請使用者取名稱：iOS 上是系統的提示框，標題「Save Filter」、內容「Name this filter to use it again later.」，有一個文字欄位，選項是「Cancel」和「Save」；Android 上是從底部升起、蓋在 Filters 上的 sheet，標題「Save Filter」，標題列有「Cancel」和「Save」，裡面是名稱是「Filter name」的欄位，欄位去掉頭尾空白後是空的時 Save 停用。欄位裡先帶著建議的名稱：膠囊列上開著的膠囊的文字（LEDGER-133.1），由左而右以「, 」隔開。WHEN 使用者按 Save 而名稱去掉頭尾空白後不是空的，the mobile app SHALL 把這個畫面現在的條件用去掉頭尾空白的名稱存成這個畫面的一個存起來的篩選，存在本機資料（LEDGER-140.1）；這個畫面已經有名稱一模一樣的，就取代它。存的只有條件：Category、Ledger 或 Paid by、Paid by Me、Amount 和 Currency；期間、排序和搜尋都不存。名稱是空的時不存，按 Cancel 也不存。支出清單和每個群組的畫面各有自己的存起來的篩選；存和刪都不寫成同步的事件（SYNC-26.1）。
+The mobile app SHALL 在 Filters 的條件下面、「Clear Filters」上面放名稱是「Save Current Filter…」的按鈕，這個畫面沒有篩選時停用；這個畫面的篩選和它的一個存起來的篩選條件一樣時，這個按鈕是停用的「Filter Saved」。條件一樣是指：Category、Ledger 或 Paid by 選的是同樣的幾項，不看選的先後；Paid by Me 一樣；Currency 一樣；Min 和 Max 各自都沒有數字，或是同一個數值，所以「10」和「10.0」一樣。WHEN 使用者按「Save Current Filter…」，the mobile app SHALL 請使用者取名稱：iOS 上是系統的提示框，標題「Save Filter」、內容「Name this filter to use it again later.」，有一個文字欄位，選項是「Cancel」和「Save」；Android 上是從底部升起、蓋在 Filters 上的 sheet，標題「Save Filter」，標題列有「Cancel」和「Save」，裡面是名稱是「Filter name」的欄位，欄位去掉頭尾空白後是空的時 Save 停用。欄位裡先帶著建議的名稱：膠囊列上開著的膠囊的文字（LEDGER-133.1），由左而右以「, 」隔開。WHEN 使用者按 Save 而名稱去掉頭尾空白後不是空的，the mobile app SHALL 把這個畫面現在的條件用去掉頭尾空白的名稱存成這個畫面的一個存起來的篩選，存在本機資料（LEDGER-140.1）；這個畫面已經有名稱一模一樣的，就取代它。存的只有條件：Category、Ledger 或 Paid by、Paid by Me、Amount 和 Currency；期間、排序和搜尋都不存。名稱是空的時不存，按 Cancel 也不存。支出清單和每個群組的畫面各有自己的存起來的篩選；存和刪都不寫成同步的事件（SYNC-26.1）。
 
 #### Scenario: 沒有篩選
 
@@ -4058,6 +4098,11 @@ The mobile app SHALL 在 Filters 的條件下面、「Clear Filters」上面放�
 
 - **WHEN** 接著把 Min 改成「20」
 - **THEN** 按鈕又是可以按的「Save Current Filter…」
+
+#### Scenario: 同一個數值
+
+- **WHEN** 存了 Min 是「10」的「Ten up」之後，把 Lowest amount 改成「10.0」
+- **THEN** 按鈕仍是停用的「Filter Saved」，「Apply saved filter Ten up」仍標示為已選取
 
 #### Scenario: 同名
 
@@ -4135,12 +4180,17 @@ WHILE 支出清單或群組的畫面有存起來的篩選，the mobile app SHALL
 
 ### Requirement: LEDGER-145.1 (manual) 手機上的膠囊列和金額的小視窗
 
-WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時可以用手指左右捲動，膠囊捲到畫面的左右邊緣才看不見；換期間時（LEDGER-115.1）膠囊列留在原位，不跟著期間滑走；深色外觀下關著的膠囊仍看得出是灰底，開著的仍是強調色配白字。WHERE iPhone，Amount 的小視窗（LEDGER-135.1）開著時，鍵盤 SHALL 不擋住它的兩個欄位。
+WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時可以用手指左右捲動，膠囊捲到畫面的左右邊緣才看不見；Paid by Me 以外的膠囊，文字後面有向下的箭頭；換期間時（LEDGER-115.1）膠囊列留在原位，不跟著期間滑走；深色外觀下關著的膠囊仍看得出是灰底，開著的仍是強調色配白字。WHERE iPhone，Amount 的小視窗（LEDGER-135.1）開著時，鍵盤 SHALL 不擋住它的兩個欄位，兩個欄位裡 SHALL 是現在的 Min 和 Max。
 
 #### Scenario: 左右捲動
 
 - **WHEN** 支出清單有 JPY 和 USD 的支出，Category 選了兩個分類，Ledger 選了兩個帳本，Min 是「10」、Max 是「5000」
 - **THEN** 膠囊列比畫面寬，用手指往左拖可以看到最後一顆 Currency；膠囊在畫面的邊緣才被切掉
+
+#### Scenario: 箭頭
+
+- **WHEN** 支出清單有篩選
+- **THEN** Category、Ledger、Amount 和 Currency 的膠囊，文字後面都有向下的箭頭；Paid by Me 的沒有
 
 #### Scenario: 換期間
 
@@ -4156,3 +4206,8 @@ WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時�
 
 - **WHEN** iPhone 上按 Amount 的膠囊
 - **THEN** 小視窗和它的兩個欄位都在鍵盤上方
+
+#### Scenario: 小視窗帶著現在的數字
+
+- **WHEN** iPhone 上 Min 是「5」、Max 是「10」時按「Amount, 5 – 10」的膠囊
+- **THEN** Lowest amount 裡是「5」，Highest amount 裡是「10」

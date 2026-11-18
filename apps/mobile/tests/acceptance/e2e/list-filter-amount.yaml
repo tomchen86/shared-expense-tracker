@@ -66,6 +66,17 @@ name: '[LEDGER-135.1] [LEDGER-133.1] [LEDGER-138.1] Opens the popover of the Amo
 - assertVisible: Your expenses are still here\. No expense matches the filters that are on\.
 - assertNotVisible: Large, .*
 - assertNotVisible: Sort By, .*
+# LEDGER-138.1: a sideways swipe on these words does not change the period. Next period stays
+# disabled, as it is on this month.
+- swipe:
+    from:
+      text: No Matching Expenses
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: No Matching Expenses
+- assertVisible:
+    text: Next period
+    enabled: false
 - tapOn: Clear Filters
 - waitForAnimationToEnd
 - assertNotVisible: No Matching Expenses

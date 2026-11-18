@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-123.1] [LEDGER-122.1] [LEDGER-124.1] Opens the system menu of the sort button, lists the five orders, and sorts the expense list and a group's screen each by the order chosen on it"
+name: "[LEDGER-123.1] [LEDGER-122.2] [LEDGER-124.1] Opens the system menu of the sort button, lists the five orders, and sorts the expense list and a group's screen each by the order chosen on it"
 ---
 # Four expenses of today, added in this order, so newest first is the reverse: your shares on
 # the expense list are 3.00, 9.00, 30.00 and 12.50, and Brisbane's whole amounts 60.00 and 25.00.

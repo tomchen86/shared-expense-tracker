@@ -217,6 +217,25 @@ test('[LEDGER-143.1] offers to save again once a condition differs from every sa
   expect(savedFilters()).toEqual([['Big shopping', false]]);
 });
 
+test('[LEDGER-143.1] [LEDGER-144.1] takes an amount written another way for the same condition while its value is the same', async () => {
+  await startWithShopping();
+  await setAmounts('Expenses', '10');
+  await openFilters('Expenses');
+  await saveAs('Ten up');
+  expect(savedFilters()).toEqual([['Ten up', true]]);
+
+  await typeAmount('Lowest amount', '10.0');
+
+  expect(filtersButton(SAVE_FILTER)).toBeUndefined();
+  expect(filtersButtonEnabled(FILTER_SAVED)).toBe(false);
+  expect(filtersButton(FILTER_SAVED)).toBeDefined();
+  expect(savedFilters()).toEqual([['Ten up', true]]);
+
+  await typeAmount('Lowest amount', '10.5');
+  expect(filtersButtonEnabled(SAVE_FILTER)).toBe(true);
+  expect(savedFilters()).toEqual([['Ten up', false]]);
+});
+
 test('[LEDGER-143.1] [LEDGER-144.1] replaces the saved filter of the same name, which then comes last', async () => {
   await startWithShopping();
   await saveBigShopping();
