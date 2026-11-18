@@ -1,0 +1,80 @@
+import { checkSyncEvent, nextSyncStamp } from './sync';
+
+const stamp = { ms: 1000, counter: 0, device: 'phone-a' };
+const event = {
+  version: 1,
+  stamp,
+  type: 'group',
+  id: 'trip',
+  units: { name: { value: 'Trip' } },
+};
+
+// Exercise the objects produced by JSON.parse, including an own __proto__ key.
+const parsed = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
+
+test.each(['__proto__', 'constructor', 'toString'])(
+  'does not accept the inherited object key %s as a record type or unit',
+  (key) => {
+    const contents = [
+      { ...event, type: key },
+      { ...event, units: { ...event.units, [key]: { value: 'unexpected' } } },
+    ];
+    for (const content of contents) {
+      expect(checkSyncEvent(parsed(content), null)).toEqual({
+        status: 'refused',
+        reason: 'structure',
+      });
+    }
+  },
+);
+
+test.each(['phone-a\n', 'phone-a\r\n', 'phone-a\x7f'])(
+  'rejects the device %p when receiving and stamping an event',
+  (device) => {
+    expect(
+      checkSyncEvent(parsed({ ...event, stamp: { ...stamp, device } }), null),
+    ).toEqual({ status: 'refused', reason: 'structure' });
+    expect(() => nextSyncStamp({ nowMs: 1000, device })).toThrow();
+  },
+);
+
+test('does not accept a newline after a complete category color', () => {
+  expect(
+    checkSyncEvent(
+      parsed({
+        ...event,
+        type: 'category',
+        units: { color: { value: '#aabbcc\n' } },
+      }),
+      null,
+    ),
+  ).toEqual({ status: 'refused', reason: 'structure' });
+});
+
+test('accepts object property names as identifiers and distinct participants', () => {
+  const allocations = [
+    { participant: '__proto__', amountMinor: 1 },
+    { participant: 'constructor', amountMinor: 2 },
+    { participant: 'toString', amountMinor: 3 },
+  ];
+  const content = parsed({
+    ...event,
+    type: 'expense',
+    id: '__proto__',
+    units: {
+      money: {
+        value: {
+          amountMinor: 6,
+          currency: 'JPY',
+          payments: allocations,
+          shares: allocations,
+        },
+      },
+    },
+  });
+
+  expect(checkSyncEvent(content, null)).toEqual({
+    status: 'valid',
+    event: content,
+  });
+});
