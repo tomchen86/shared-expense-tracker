@@ -30,7 +30,7 @@ On the API:
 - A refusal is a JSON body with a reason, under an HTTP status. The reasons, the statuses, the header names of the four fields, and the function that builds the bytes to sign are defined once, in `packages/domain`'s API entry, which the phone and the API both import (ADR-0007). That function takes the body's SHA-256 instead of the body, so the entry needs no hash of its own: each side hashes the body with what its runtime has.
 - Both limits count what the API accepted within the window that ends now, 60 seconds for a device's requests and an hour for an IP's new devices, and hold for requests that arrive together. An IPv6 address counts by its first 64 bits, since one network holds all the addresses behind them.
 - The entry file gives the app its time, the address a request came from, and the key of the keyed hash that stands for an IP (ADR-0015). On Workers the address is `CF-Connecting-IP` and the key is a secret of the Worker; on Node the address is the connection's. Tests set all three through the Node entry file. Without the key or the address the API registers no new device, rather than register without a limit.
-- A path is signed and verified as text, so it is limited to what no URL parser, HTTP client or proxy rewrites on the way: letters, digits and a few marks, with no empty or dot segments.
+- A path is signed and verified as text, so it is limited to what no URL parser, HTTP client or proxy rewrites on the way: letters, digits and a few marks, with no `//` and no dot segments.
 
 On the phone:
 

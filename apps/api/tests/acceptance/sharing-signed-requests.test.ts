@@ -372,9 +372,11 @@ describe('SHARING-34.1', () => {
       `${NO_ROUTE}//x`,
       `${NO_ROUTE}/a%20b`,
       `${NO_ROUTE}/a+b?x=1`,
-      `${NO_ROUTE}?x=it's`,
+      `${NO_ROUTE}?x=a+b`,
+      `${NO_ROUTE}?x=a,b`,
     ]) {
-      // Signed over exactly this path, so only its writing is wrong.
+      // Signed over exactly this path, which arrives as it is sent, so only its writing
+      // is wrong.
       const answer = await leavingTheDatabaseAsItWas(() =>
         send(signedBy(taylor, { path })),
       );

@@ -854,7 +854,7 @@ IF 請求的簽名，不是這支裝置註冊的公開金鑰對收到的請求�
 
 #### Scenario: 路徑的寫法不對
 
-- **WHEN** Taylor 的手機的請求打 `/no-such-route/it's`、`/no-such-route//x` 或 `/no-such-route/a%20b`，簽的就是這段路徑
+- **WHEN** Taylor 的手機的請求打 `/no-such-route/it's`、`/no-such-route//x`、`/no-such-route/a%20b` 或 `/no-such-route?x=a+b`，簽的就是這段路徑，API 收到的也是這一段
 - **THEN** 都被拒絕，原因是簽名
 
 #### Scenario: 別支裝置的簽名
