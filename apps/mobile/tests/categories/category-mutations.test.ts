@@ -1,4 +1,3 @@
-import { DEFAULT_CATEGORIES } from '@shared-expense/domain';
 import { ensureDefaultCategories, listCategories } from '../../src/categories';
 import { categoryMigrations } from '../../src/categories/migrations';
 import {
@@ -24,8 +23,8 @@ afterEach(async () => {
   await database.close();
 });
 
-async function prepare() {
-  return initializeDatabase(database, appMigrations, false, async (tx) => {
+async function prepare(migrations = appMigrations) {
+  return initializeDatabase(database, migrations, false, async (tx) => {
     const identity = await ensureLocalIdentity(tx);
     await ensureDefaultCategories(tx, identity.personalSpaceId);
     return identity;
@@ -33,19 +32,10 @@ async function prepare() {
 }
 
 test('upgrades an existing database without changing its categories, identity or expenses', async () => {
-  const identity = await initializeDatabase(
-    database,
+  const identity = await prepare(
     appMigrations.slice(0, appMigrations.indexOf(categoryMigrations[1])),
-    false,
-    ensureLocalIdentity,
   );
-  // Seed the schema as that version did, before reserved categories had a flag.
-  for (const [position, { name, color }] of DEFAULT_CATEGORIES.entries())
-    await database.run(
-      'INSERT INTO categories (id, name, color, position, isDefault, spaceId) VALUES (?, ?, ?, ?, 1, ?)',
-      [String(position), name, color, position, identity.personalSpaceId],
-    );
-  const before = await database.all<{ id: string; name: string }>(
+  const before = await database.all<{ id: string }>(
     'SELECT * FROM categories ORDER BY position',
   );
   // Seed the old schema directly: today's save and read code uses later migrations.
@@ -66,13 +56,7 @@ test('upgrades an existing database without changing its categories, identity or
 
   expect(
     await database.all('SELECT * FROM categories ORDER BY position'),
-  ).toEqual(
-    before.map((row) => ({
-      ...row,
-      isArchived: 0,
-      isUncategorized: Number(row.name === 'Uncategorized'),
-    })),
-  );
+  ).toEqual(before.map((row) => ({ ...row, isArchived: 0 })));
   expect(await ensureLocalIdentity(database)).toEqual(identity);
   expect(await database.all('SELECT * FROM expenses')).toEqual(
     expenses.map((expense) => ({ ...expense, trashOrder: null })),

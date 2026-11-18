@@ -251,7 +251,7 @@ test('adding group storage preserves existing identity, appearance, categories a
   expect(await database.all(identityColumns)).toEqual(identity);
   expect(
     await database.all(
-      'SELECT id, name, color, isDefault, position, createdByUserId, spaceId FROM categories',
+      'SELECT id, name, color, isDefault, position, createdByUserId, spaceId, isUncategorized FROM categories',
     ),
   ).toEqual(categories);
   expect(

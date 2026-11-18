@@ -1,7 +1,4 @@
-import {
-  categoryMigrations,
-  syncedCategoriesMigration,
-} from '../categories/migrations';
+import { categoryMigrations } from '../categories/migrations';
 import { groupArchiveMigration, groupMigrations } from '../groups/migrations';
 import {
   expenseAllocationOrderMigration,
@@ -35,5 +32,4 @@ export const appMigrations: readonly string[] = [
     ADD COLUMN chartType TEXT NOT NULL DEFAULT 'auto'
     CHECK (chartType IN ('auto', 'donut', 'bar'))`,
   syncMigration,
-  syncedCategoriesMigration,
 ];

@@ -173,10 +173,11 @@ test('keeps a deleted shared category as a stamped tombstone after reopening the
 });
 
 test('resets the unreleased shared-category database on development startup', async () => {
-  const previousMigrations = [
-    ...appMigrations.slice(0, appMigrations.indexOf(categoryMigrations[0])),
-    categoryMigrations[0].replace('spaceId TEXT NOT NULL', 'spaceId TEXT'),
-  ];
+  const previousMigrations = appMigrations.map((sql) =>
+    sql === categoryMigrations[0]
+      ? sql.replace('spaceId TEXT NOT NULL', 'spaceId TEXT')
+      : sql,
+  );
   await initializeDatabase(
     database,
     previousMigrations,
