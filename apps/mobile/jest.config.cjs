@@ -5,7 +5,12 @@ const shared = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs'],
   transformIgnorePatterns:
     require('jest-expo/jest-preset').transformIgnorePatterns.map((pattern) =>
-      pattern.replace('react-native|', '@noble/hashes|react-native|'),
+      // noble is ESM: the app's own hashes, and the ciphers and curves behind
+      // @shared-expense/domain/crypto.
+      pattern.replace(
+        'react-native|',
+        '@noble/(?:ciphers|curves|hashes)|react-native|',
+      ),
     ),
   moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
   // Fake timers keep the real Intl: tests set the phone's time zone by spying on

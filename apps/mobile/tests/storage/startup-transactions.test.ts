@@ -178,6 +178,7 @@ test('development reset clears views, triggers, quoted names, and foreign-key cy
   ).toEqual([
     { name: '_migrations' },
     { name: 'categories' },
+    { name: 'device_identity' },
     { name: 'expense_payments' },
     { name: 'expense_shares' },
     { name: 'expenses' },
