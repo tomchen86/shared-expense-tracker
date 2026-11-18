@@ -246,7 +246,7 @@ test('[GROUPS-27.2] keeps Members open when Back is pressed while a member is re
   expect(exitApp).not.toHaveBeenCalled();
 });
 
-test('[GROUPS-34.2] keeps the name in the field when Back or a tap outside closes the alert that asks to add a former member back', async () => {
+test('[GROUPS-34.3] keeps the name in the field when Back or a tap outside closes the alert that asks to add a former member back', async () => {
   await startInMembers(['Blake']);
   await removeMember('Blake');
   await waitFor(() => expect(membersShown()).not.toContain('Blake'));
@@ -361,7 +361,7 @@ test('[GROUPS-40.3] opens Rename Group rising from the bottom with Cancel on the
 // On Android the forms are in the Groups tab's stack, so the tab bar stays
 // reachable while one saves.
 
-test('[GROUPS-31.2] adds the member once it is saved, even when Settings was selected while it saved', async () => {
+test('[GROUPS-31.3] adds the member once it is saved, even when Settings was selected while it saved', async () => {
   await startInMembers();
   await openMemberField();
   await fireEvent.changeText(memberField()!, 'Blake');

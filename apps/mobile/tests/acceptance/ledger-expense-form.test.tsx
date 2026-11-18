@@ -1066,7 +1066,7 @@ test('[LEDGER-26.1] leaves the expense as it was when an edit fails partway thro
   ]);
 });
 
-test('[LEDGER-27.1] keeps every field of the expenses after the app restarts', async () => {
+test('[LEDGER-27.2] keeps every field of the expenses after the app restarts', async () => {
   const app = await startExpenses();
   const identity = await readIdentity();
   await addExpense({
@@ -1108,7 +1108,7 @@ test('[LEDGER-27.1] keeps every field of the expenses after the app restarts', a
   expect(noteField()).toHaveDisplayValue('With Sam', AS_TYPED);
 });
 
-test('[LEDGER-27.1] keeps the name and color the category had when the expense was saved', async () => {
+test('[LEDGER-27.2] keeps the name and color the category had when the expense was saved', async () => {
   await startExpenses();
   await addExpense({ category: 'Shopping' });
   const shopping = await categoryNamed('Shopping');
@@ -1122,7 +1122,7 @@ test('[LEDGER-27.1] keeps the name and color the category had when the expense w
   });
 });
 
-test("[LEDGER-27.1] stores the category's current name and color when the expense is saved again", async () => {
+test("[LEDGER-27.2] stores the category's current name and color when the expense is saved again", async () => {
   await startExpenses();
   await addExpense({ category: 'Shopping' });
   const shopping = await categoryNamed('Shopping');
