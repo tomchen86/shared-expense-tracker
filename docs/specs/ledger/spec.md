@@ -590,9 +590,9 @@ IF 支出存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable
 - **WHEN** 存下一筆支出的寫入裡，前面的成功、後面的失敗，不論是在第幾筆寫入失敗
 - **THEN** 存著的支出和按 Add 或 Save 之前一樣，沒有只存了一半的支出；恢復後再按一次，存下完整的一筆
 
-### Requirement: LEDGER-27.1 本機資料保存的支出
+### Requirement: LEDGER-27.2 本機資料保存的支出
 
-The mobile app SHALL 在本機資料保存每筆支出的 ID、標題、金額、幣別、日期、分類（分類的 ID，以及最後一次存檔時分類的名稱和顏色）、有的話還有備註、所屬的空間（個人空間或某個群組）、付款和分攤，重新啟動 app 後都還在。
+The mobile app SHALL 在本機資料保存每筆支出的 ID、標題、金額、幣別、日期、分類（分類的 ID，以及最後一次存檔時分類的名稱和顏色；共同帳本的支出存的是最後一次換分類時的名稱和顏色，見 SYNC-23.1）、有的話還有備註、所屬的空間（個人空間或某個群組）、付款和分攤，重新啟動 app 後都還在。
 
 #### Scenario: 重新啟動
 
@@ -608,6 +608,11 @@ The mobile app SHALL 在本機資料保存每筆支出的 ID、標題、金額�
 
 - **WHEN** 分類改名之後，再修改這筆支出的標題並按 Save
 - **THEN** 支出存的分類名稱和顏色是「Groceries」和 `#43A047`
+
+#### Scenario: 共同帳本的支出
+
+- **WHEN** Brisbane 是共同帳本（sync），存下 Food & Dining 的 Dinner 之後，把 Brisbane 的 Food & Dining 改名為「Meals」並改用 `#43A047`，再修改 Dinner 的標題並按 Save
+- **THEN** Dinner 存的分類名稱和顏色仍是「Food & Dining」和 `#D81B60`；把 Dinner 換到 Travel 再換回 Meals 之後，才是「Meals」和 `#43A047`
 
 ### Requirement: LEDGER-28.1 支出依日期從新到舊排列
 
@@ -1166,7 +1171,7 @@ WHILE「Split with others」開著，the mobile app SHALL 在開關下面放名�
 
 ### Requirement: LEDGER-48.2 選付款人
 
-WHEN 使用者按「Paid by」，the mobile app SHALL 打開 Who Paid? 清單，依 GROUPS-24.2 的順序列出選的群組的每位成員，你那一項是你的成員名稱加上「 (You)」，別人那一項是他現在的名稱，付款人標示為已選取；按一位成員就選他為付款人並回到表單，關閉清單就回到表單、付款人不變。
+WHEN 使用者按「Paid by」，the mobile app SHALL 打開 Who Paid? 清單，依 GROUPS-24.3 的順序列出選的群組的每位成員，你那一項是你的成員名稱加上「 (You)」，別人那一項是他現在的名稱，付款人標示為已選取；按一位成員就選他為付款人並回到表單，關閉清單就回到表單、付款人不變。
 
 #### Scenario: 列出成員
 
@@ -1190,7 +1195,7 @@ WHEN 使用者按「Paid by」，the mobile app SHALL 打開 Who Paid? 清單，
 
 ### Requirement: LEDGER-49.2 選分攤的人
 
-WHEN 使用者按「Split between」，the mobile app SHALL 打開 Split Between 清單，依 GROUPS-24.2 的順序列出選的群組的每位成員，名稱同 LEDGER-48.2，分攤的人標示為已選取；按一位還不是分攤的人的成員，就把他加在分攤的順序的最後，按一位分攤的人就把他拿掉，兩種情況清單都不關閉；關閉清單就回到表單。
+WHEN 使用者按「Split between」，the mobile app SHALL 打開 Split Between 清單，依 GROUPS-24.3 的順序列出選的群組的每位成員，名稱同 LEDGER-48.2，分攤的人標示為已選取；按一位還不是分攤的人的成員，就把他加在分攤的順序的最後，按一位分攤的人就把他拿掉，兩種情況清單都不關閉；關閉清單就回到表單。
 
 #### Scenario: 選兩位
 
@@ -1458,7 +1463,7 @@ WHILE 修改的群組支出的付款人或分攤的人裡有前成員，the mobi
 
 #### Scenario: 加回來
 
-- **WHEN** 把 Blake 加回 Brisbane（GROUPS-34.2）之後，打開 Dinner 的 Edit Expense
+- **WHEN** 把 Blake 加回 Brisbane（GROUPS-34.3）之後，打開 Dinner 的 Edit Expense
 - **THEN** 都可以操作，沒有這句話
 
 ### Requirement: LEDGER-61.1 修改封存群組的支出時擋下
@@ -1782,7 +1787,7 @@ The mobile app SHALL 在個人支出和群組支出的明細的標題列、「Ed
 
 ### Requirement: LEDGER-73.2 移到垃圾桶後顯示 Undo 提示
 
-WHEN 支出移到垃圾桶並存好，the mobile app SHALL 在畫面底部顯示 Undo 提示（SHELL-67.2），依序是「Moved to Trash」和一個顯示「Undo」、無障礙名稱是「Undo deletion of <標題>」的按鈕，並讓螢幕閱讀器念出「<標題> moved to Trash. Undo available.」；提示蓋在 app 的畫面上，切換到別的分頁也還在。提示收起之前又有支出移到垃圾桶，提示就換成那一筆的，從它存好時重新算 Undo 時間，較早的那一筆不再有 Undo。
+WHEN 使用者把支出移到垃圾桶並存好，the mobile app SHALL 在畫面底部顯示 Undo 提示（SHELL-67.2），依序是「Moved to Trash」和一個顯示「Undo」、無障礙名稱是「Undo deletion of <標題>」的按鈕，並讓螢幕閱讀器念出「<標題> moved to Trash. Undo available.」；提示蓋在 app 的畫面上，切換到別的分頁也還在。提示收起之前又有支出移到垃圾桶，提示就換成那一筆的，從它存好時重新算 Undo 時間，較早的那一筆不再有 Undo。
 
 #### Scenario: 移到垃圾桶
 

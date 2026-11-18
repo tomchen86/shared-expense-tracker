@@ -25,7 +25,9 @@ import {
   startWithGroups,
 } from './ledger-group-expense-app';
 import {
+  TRASH_FAILED,
   deleteByAction,
+  expectCards,
   expectTrash,
   openTrash,
   pressEmptyTrash,
@@ -221,6 +223,33 @@ test('[SYNC-21.1] stores neither the expense nor its event when a write of the s
   ]);
 });
 
+test('[SYNC-21.1] moves nothing to the trash and writes no event when a write fails, whichever it is', async () => {
+  await startShared();
+  await addDinner();
+  const dinner = await expenseTitled('Dinner');
+  const before = everything();
+
+  let writesThrough = 0;
+  for (; writesThrough < 20; writesThrough += 1) {
+    const shown = alertsShown().length;
+    failWritesAfter(writesThrough);
+    await deleteByAction('Dinner');
+    if (alertsShown().length === shown) break;
+    expect(alertsShown().at(-1)).toEqual(TRASH_FAILED);
+    expect(everything()).toEqual(before);
+  }
+  allowWrites();
+
+  expect(writesThrough).toBeGreaterThan(1);
+  await expectCards([]);
+  expect((await unsent()).map((event) => event.content)).toEqual([
+    await dinnerCreated(dinner.id),
+    expenseChanged(dinner.id, stamped(1), {
+      trashed: { value: true, base: stamped(0) },
+    }),
+  ]);
+});
+
 // Adding
 
 test('[SYNC-22.1] writes a first event with all six units and no base when an expense is added to a shared ledger', async () => {
@@ -328,6 +357,27 @@ test('[SYNC-23.1] writes only the title, with the stamp it replaces as its base,
   );
 
   expect(events).toEqual([
+    expenseChanged(dinner.id, stamped(1), {
+      title: { value: 'Supper', base: stamped(0) },
+    }),
+  ]);
+});
+
+test('[SYNC-23.1] writes no event, and takes no stamp, for a save that leaves every unit as it was', async () => {
+  await startShared();
+  await addDinner();
+  const dinner = await expenseTitled('Dinner');
+
+  // 100,01 reads as the amount the expense already has, and the form still lets it be saved.
+  const none = await eventsOf(() =>
+    editExpense(dinner.id, { amount: '100,01' }),
+  );
+  const next = await eventsOf(() =>
+    editExpense(dinner.id, { title: 'Supper' }),
+  );
+
+  expect(none).toEqual([]);
+  expect(next).toEqual([
     expenseChanged(dinner.id, stamped(1), {
       title: { value: 'Supper', base: stamped(0) },
     }),
@@ -455,7 +505,7 @@ test('[SYNC-23.1] writes the note, the date and the category when they change, a
   ]);
 });
 
-test('[SYNC-23.1] writes the category again when its name and color changed since the expense was last saved', async () => {
+test('[SYNC-23.1] [LEDGER-27.2] leaves the category out, and the stored name and color as they were, when the category was only renamed and recolored', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();
@@ -469,12 +519,40 @@ test('[SYNC-23.1] writes the category again when its name and color changed sinc
   expect(events).toEqual([
     expenseChanged(dinner.id, stamped(2), {
       title: { value: 'Supper', base: stamped(0) },
+    }),
+  ]);
+  expect((await expenseTitled('Supper')).category).toEqual({
+    id: dinner.category.id,
+    name: 'Food & Dining',
+    color: '#D81B60',
+  });
+});
+
+test('[SYNC-23.1] [LEDGER-27.2] writes the category, with its name and color at that save, once the expense is moved to it', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  const dinner = await expenseTitled('Dinner');
+  await editCategory('Food & Dining', 'Meals', '#43A047', brisbane);
+  const meals = { id: dinner.category.id, name: 'Meals', color: '#43A047' };
+
+  const events = await eventsOf(async () => {
+    await editExpense(dinner.id, { category: 'Travel' });
+    await editExpense(dinner.id, { category: 'Meals' });
+  });
+
+  expect(events).toEqual([
+    expenseChanged(dinner.id, stamped(2), {
       category: {
-        value: { id: dinner.category.id, name: 'Meals', color: '#43A047' },
+        value: await categoryOf('Brisbane', 'Travel'),
         base: stamped(0),
       },
     }),
+    expenseChanged(dinner.id, stamped(3), {
+      category: { value: meals, base: stamped(2) },
+    }),
   ]);
+  expect((await expenseTitled('Dinner')).category).toEqual(meals);
 });
 
 // The trash

@@ -49,7 +49,11 @@ export async function listUnsentSyncEvents(
   return notImplemented('listUnsentSyncEvents', database);
 }
 
-/** Applies the events received for a shared ledger, in the order given. */
+/**
+ * Applies the events received for a shared ledger, in the order given. It throws, and
+ * saves nothing of the call, when the group is not a shared ledger or an event is of a
+ * format version it does not know.
+ */
 export async function applySyncEvents(
   database: Database,
   groupId: string,

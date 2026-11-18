@@ -671,6 +671,38 @@ test('[SYNC-31.1] keeps one record of an event that arrives twice, and keeps it 
   ]);
 });
 
+// What cannot be applied at all
+
+test('[SYNC-43.1] applies none of the events handed over together when one is of a format version it does not know', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  const before = everything();
+
+  const error = await tryReceive(brisbane, await lunchCreated(), {
+    ...(await taxiCreated()),
+    version: 2,
+  });
+
+  expect(error).toBeInstanceOf(Error);
+  expect(everything()).toEqual(before);
+  await receive(brisbane, await lunchCreated());
+  await expectCards(['Lunch']);
+});
+
+test('[SYNC-43.1] applies nothing to a group that is not a shared ledger', async () => {
+  await startShared({ Brisbane: ['Casey', 'Blake'], Tokyo: ['Dana'] });
+  const brisbane = await groupId('Brisbane');
+  const tokyo = await groupId('Tokyo');
+  const before = everything();
+
+  const error = await tryReceive(tokyo, await lunchCreated());
+
+  expect(error).toBeInstanceOf(Error);
+  expect(everything()).toEqual(before);
+  await receive(brisbane, await lunchCreated());
+  await expectCards(['Lunch']);
+});
+
 // Other spaces
 
 test("[SYNC-32.1] leaves a personal expense and another group's expense as they are when a shared ledger's event names their IDs", async () => {

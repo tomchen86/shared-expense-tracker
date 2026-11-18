@@ -19,6 +19,7 @@ import {
   addBackAlert,
   alertsShown,
   expectMembers,
+  goBackFrom,
   memberField,
   openGroup,
   openMemberField,
@@ -120,8 +121,10 @@ test("[SYNC-36.1] shows a shared ledger's name, changed on another phone, on its
   await waitFor(() =>
     expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups', 'Brissie']),
   );
-  expect(cardNames()).toEqual(['Open Brissie']);
   expect((await groupNamed('Brissie')).id).toBe(brisbane);
+  // The Groups root shows its cards again once the group's screen is gone.
+  await goBackFrom('Brissie');
+  await waitFor(() => expect(cardNames()).toEqual(['Open Brissie']));
   await tapTab('Expenses');
   const shown = ['Dinner', '$33.34', 'Food & Dining', 'Brissie'];
   await waitFor(() =>

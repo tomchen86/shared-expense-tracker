@@ -2,7 +2,7 @@
 
 ## Purpose
 
-共同帳本的同步：每支手機把自己和別人的修改合併成同一個結果所用的規則，以及手機 app 怎麼把共同帳本的變更寫成事件、怎麼套用收到的事件。規則放在 `packages/domain`，是純函式：不讀時鐘，不用亂數，比較字串時不依語言設定，所以每支手機算出的結果都一樣（ADR-0016）。domain 只判定和合併交給它的事件；手機 app 把變更寫成待上傳的事件（SYNC-20.1 到 SYNC-27.1、SYNC-33.1 到 SYNC-35.1、SYNC-38.1），把收到的事件判定、合併之後寫進支出、分類、群組和成員的資料（SYNC-28.1 到 SYNC-32.1、SYNC-36.1、SYNC-37.1、SYNC-39.1 到 SYNC-42.1）。事件怎麼加密、上傳和下載，以及不認得格式版本的事件怎麼處理，都不在這裡。
+共同帳本的同步：每支手機把自己和別人的修改合併成同一個結果所用的規則，以及手機 app 怎麼把共同帳本的變更寫成事件、怎麼套用收到的事件。規則放在 `packages/domain`，是純函式：不讀時鐘，不用亂數，比較字串時不依語言設定，所以每支手機算出的結果都一樣（ADR-0016）。domain 只判定和合併交給它的事件；手機 app 把變更寫成待上傳的事件（SYNC-20.1 到 SYNC-27.1、SYNC-33.1 到 SYNC-35.1、SYNC-38.1），把收到的事件判定、合併之後寫進支出、分類、群組和成員的資料（SYNC-28.1 到 SYNC-32.1、SYNC-36.1、SYNC-37.1、SYNC-39.1 到 SYNC-43.1）。事件怎麼加密、上傳和下載，以及遇到不認得格式版本的事件之後怎麼辦，都不在這裡。
 
 紀錄是共同帳本裡同步的一筆資料，有支出、分類、群組和成員四種，用種類和 ID 辨認。每筆紀錄分成幾個單位（SYNC-5.1、SYNC-6.1），合併時一個單位整個一起換。事件是一次修改：改一筆紀錄的一個或幾個單位，或永久刪除這筆紀錄；一筆紀錄的第一個事件帶著它的每一個單位。事件有哪些欄位、各是什麼型別，定義在 `packages/domain` 的程式裡。每個事件帶著格式版本，這裡寫的是格式版本 1 的規則。把支出移到垃圾桶或還原（ledger），改的是「在不在垃圾桶裡」這個單位，不是永久刪除。
 
@@ -596,7 +596,7 @@ WHEN 事件的時間戳記和紀錄裡某個單位的時間戳記相同，the do
 
 ### Requirement: SYNC-20.1 群組變成共同帳本時，每筆紀錄都拿到時間戳記
 
-WHEN 群組變成共同帳本，the mobile app SHALL 在同一個 SQLite transaction 裡把它記成共同帳本、記下這支手機的裝置 ID，並替它的每筆紀錄記下每個單位現在的值和時間戳記，不寫任何事件：每筆紀錄各取一個新的時間戳記（SYNC-2.1，用校正後的時間和這支手機的裝置 ID），它的每個單位都用這一個；成員依 Members 的順序（GROUPS-24.2）一個比一個晚，前成員依被移出的先後一個比一個晚，分類依儲存的順序（CATEGORIES-7.5）一個比一個晚。其中任何一筆存不進去，就都不留下，群組仍不是共同帳本；群組已經是共同帳本時什麼都不改。
+WHEN 群組變成共同帳本，the mobile app SHALL 在同一個 SQLite transaction 裡把它記成共同帳本、記下這支手機的裝置 ID，並替它的每筆紀錄記下每個單位現在的值和時間戳記，不寫任何事件：每筆紀錄各取一個新的時間戳記（SYNC-2.1，用校正後的時間和這支手機的裝置 ID），它的每個單位都用這一個；成員依 Members 的順序（GROUPS-24.3）一個比一個晚，前成員依被移出的先後一個比一個晚，分類依儲存的順序（CATEGORIES-7.5）一個比一個晚。其中任何一筆存不進去，就都不留下，群組仍不是共同帳本；群組已經是共同帳本時什麼都不改。
 
 #### Scenario: 不寫事件
 
@@ -662,6 +662,11 @@ WHEN 使用者在共同帳本做了要寫成事件的變更（SYNC-22.1 到 SYNC
 - **WHEN** 在 Brisbane 新增 Dinner 時，不論哪一筆寫入失敗
 - **THEN** 跳出「Unable to Save Expense」的提示框（LEDGER-26.1），本機資料和按 Add 之前一樣，沒有支出也沒有事件；恢復後再按一次，存下 Dinner 和一個時間戳記是 `T+60000/0/phone-a` 的事件
 
+#### Scenario: 移到垃圾桶到一半失敗
+
+- **WHEN** 把 Dinner 移到垃圾桶時，不論哪一筆寫入失敗
+- **THEN** 跳出「Unable to Update Trash」的提示框（LEDGER-82.1），本機資料和之前一樣；恢復後再做一次，Dinner 移到垃圾桶，寫出一個事件
+
 #### Scenario: 加成員到一半失敗
 
 - **WHEN** 在 Brisbane 加入 Dana 時，不論哪一筆寫入失敗
@@ -693,7 +698,7 @@ WHEN 使用者在共同帳本新增支出（LEDGER-54.1），或把個人支出�
 
 ### Requirement: SYNC-23.1 修改支出只寫值不同的單位
 
-WHEN 使用者存下共同帳本支出的修改（LEDGER-56.1、LEDGER-60.1），the mobile app SHALL 寫一個事件，只帶存檔之後的值和存檔之前不同的單位，每個都帶著根據的版本，也就是存檔之前這個單位的時間戳記：金額、幣別、付款或分攤有任何不同，順序不同也算，就帶整組金額；分類的 ID、名稱或顏色有任何不同就帶分類，所以分類改了名稱或顏色之後再存檔，也帶分類（LEDGER-27.1）。
+WHEN 使用者存下共同帳本支出的修改（LEDGER-56.1、LEDGER-60.1），the mobile app SHALL 寫一個事件，只帶存檔之後的值和存檔之前存著的值不同的單位，每個都帶著根據的版本，也就是存檔之前這個單位的時間戳記：金額、幣別、付款或分攤有任何不同，順序不同也算，就帶整組金額；分類只在分類 ID 不同時才帶，帶著新分類的 ID 和這次存檔時的名稱和顏色，所以分類改了名稱或顏色而支出沒有換分類時不帶，支出存著的分類名稱和顏色也不變（LEDGER-27.2），顯示 Uncategorized 的支出（SYNC-41.1）沒有換分類時也不帶。沒有任何單位不同時不寫事件，也不取時間戳記。
 
 #### Scenario: 只改標題
 
@@ -718,12 +723,22 @@ WHEN 使用者存下共同帳本支出的修改（LEDGER-56.1、LEDGER-60.1）�
 #### Scenario: 備註、日期和分類
 
 - **WHEN** 把 Dinner 的備註改成「Window seat」、日期改成 `2026-10-29`、分類改成 Travel 後存檔，再把備註清空存檔
-- **THEN** 第一個事件帶備註、日期和分類三個單位，根據的版本都是 `T+60000/0/phone-a`；第二個事件 `T+60000/2/phone-a` 只帶備註，值是空值，根據的版本是 `T+60000/1/phone-a`
+- **THEN** 第一個事件帶備註、日期和分類三個單位，分類是 Brisbane 的 Travel 的 ID、「Travel」和 `#3949AB`，根據的版本都是 `T+60000/0/phone-a`；第二個事件 `T+60000/2/phone-a` 只帶備註，值是空值，根據的版本是 `T+60000/1/phone-a`
 
 #### Scenario: 分類改了名和顏色
 
 - **WHEN** 新增 Dinner 之後，把 Brisbane 的 Food & Dining 改名為「Meals」並改用 `#43A047`，再把 Dinner 的標題改成「Supper」
-- **THEN** 改 Dinner 的事件帶標題和分類兩個單位，分類是同一個 ID、「Meals」和 `#43A047`，根據的版本都是 `T+60000/0/phone-a`
+- **THEN** 改 Dinner 的事件只帶標題；Dinner 存的分類仍是同一個 ID、「Food & Dining」和 `#D81B60`
+
+#### Scenario: 什麼都沒變的存檔
+
+- **WHEN** 新增 Dinner 之後，在 Edit Expense 把金額「100.01」改寫成「100,01」按 Save，之後再把標題改成「Supper」
+- **THEN** 第一次沒有寫出事件；改標題的事件的時間戳記是 `T+60000/1/phone-a`
+
+#### Scenario: 顯示 Uncategorized 的支出
+
+- **WHEN** Squat rack 使用 Brisbane 的 Gym，別支手機永久刪除了 Gym，所以它顯示 Uncategorized；把它的標題改成「Bench」，之後再把分類改成 Shopping
+- **THEN** 第一個事件只帶標題；第二個事件只帶分類，是 Brisbane 的 Shopping，根據的版本是新增 Squat rack 的事件的時間戳記
 
 ### Requirement: SYNC-24.1 移到垃圾桶和還原寫成「在不在垃圾桶裡」的修改
 
@@ -1002,7 +1017,7 @@ WHEN 使用者存下共同帳本的新名稱（GROUPS-41.1），the mobile app S
 
 ### Requirement: SYNC-34.1 成員的變更寫成成員的事件
 
-WHEN 使用者在共同帳本加入新的成員（GROUPS-31.3）、把前成員加回來（GROUPS-34.2）、改成員的名稱（GROUPS-38.1）或把成員移出群組（GROUPS-26.1），the mobile app SHALL 為這位成員寫一個事件，紀錄的種類是成員，ID 是成員 ID：加入新的成員是帶著名稱和「沒有被移出群組」兩個單位、不帶根據的版本的事件；加回來只把「是否被移出群組」改成否；改名只改名稱；移出只把「是否被移出群組」改成是；後三種都帶著根據的版本。
+WHEN 使用者在共同帳本加入新的成員（GROUPS-31.3）、把前成員加回來（GROUPS-34.3）、改成員的名稱（GROUPS-38.1）或把成員移出群組（GROUPS-26.1），the mobile app SHALL 為這位成員寫一個事件，紀錄的種類是成員，ID 是成員 ID：加入新的成員是帶著名稱和「沒有被移出群組」兩個單位、不帶根據的版本的事件；加回來只把「是否被移出群組」改成否；改名只改名稱；移出只把「是否被移出群組」改成是；後三種都帶著根據的版本。
 
 #### Scenario: 加入 Dana
 
@@ -1074,7 +1089,7 @@ WHEN 套用共同帳本的群組或成員的事件，the mobile app SHALL 讓存
 
 ### Requirement: SYNC-37.1 成員依「是否被移出群組」的時間戳記排列
 
-The mobile app SHALL 讓共同帳本的成員依「是否被移出群組」這個單位的時間戳記由早到晚排列（SYNC-1.1），不依事件到達的先後，所以每支手機上的順序都一樣，兩支手機同時加入的成員都留下，同名也一樣；改名不改變位置，被移出再加回來的排在最後（GROUPS-24.2）；前成員裡最近被移出的，是這個時間戳記最晚的那一位（GROUPS-34.2）。
+The mobile app SHALL 讓共同帳本的成員依「是否被移出群組」這個單位的時間戳記由早到晚排列（SYNC-1.1），不依事件到達的先後，所以每支手機上的順序都一樣，兩支手機同時加入的成員都留下，同名也一樣；改名不改變位置，被移出再加回來的排在最後（GROUPS-24.3）；前成員裡最近被移出的，是這個時間戳記最晚的那一位（GROUPS-34.3）。
 
 #### Scenario: 比較早加入的後到
 
@@ -1098,7 +1113,7 @@ The mobile app SHALL 讓共同帳本的成員依「是否被移出群組」這�
 
 ### Requirement: SYNC-38.1 分類的變更寫成分類的事件
 
-WHEN 使用者在共同帳本新增分類（CATEGORIES-11.2、LEDGER-62.2）、改它的名稱或顏色、封存它（CATEGORIES-36.1、CATEGORIES-40.1）、還原它（CATEGORIES-38.2）或刪除它（CATEGORIES-34.1），the mobile app SHALL 為這個分類寫一個事件，紀錄的種類是分類，ID 是分類 ID：新增是帶著名稱、顏色和「沒有封存」三個單位、不帶根據的版本的事件；改名或改色只帶值不同的單位；封存和還原只改「是否封存」；這三種都帶著根據的版本；刪除是永久刪除這個分類的事件，並留下它的刪除紀錄。
+WHEN 使用者在共同帳本新增分類（CATEGORIES-11.2、LEDGER-62.2）、改它的名稱或顏色、封存它（CATEGORIES-36.1、CATEGORIES-40.1）、還原它（CATEGORIES-38.2）或刪除它（CATEGORIES-34.1），the mobile app SHALL 為這個分類寫一個事件，紀錄的種類是分類，ID 是分類 ID：新增是帶著名稱、顏色和「沒有封存」三個單位、不帶根據的版本的事件；改名或改色只帶值不同的單位，名稱和顏色都沒有不同時不寫事件，也不取時間戳記；封存和還原只改「是否封存」；這三種都帶著根據的版本；刪除是永久刪除這個分類的事件，並留下它的刪除紀錄，之後收到這個分類的任何事件它都不再出現（SYNC-13.1）。
 
 #### Scenario: 新增
 
@@ -1115,6 +1130,11 @@ WHEN 使用者在共同帳本新增分類（CATEGORIES-11.2、LEDGER-62.2）、�
 - **WHEN** 依序把 Shopping 改名為「 Groceries 」、只把它的顏色改成 `#00ACC1`、再改名為「Food shop」並改用 `#C62828`
 - **THEN** 三個事件依序只帶名稱「Groceries」、只帶顏色 `#00ACC1`、帶名稱「Food shop」和顏色 `#C62828`；第三個事件裡，名稱根據的版本是第一個事件的時間戳記，顏色根據的版本是第二個事件的
 
+#### Scenario: 什麼都沒改就存檔
+
+- **WHEN** 打開 Shopping 的 Edit Category，什麼都沒改就按 Save，之後再把它改名為「Groceries」
+- **THEN** 第一次沒有寫出事件；改名的事件的時間戳記是 `T+60000/0/phone-a`
+
 #### Scenario: 封存和還原
 
 - **WHEN** 有支出使用 Health 時封存它，再還原它
@@ -1124,6 +1144,11 @@ WHEN 使用者在共同帳本新增分類（CATEGORIES-11.2、LEDGER-62.2）、�
 
 - **WHEN** 沒有支出使用 Other 時，在 Brisbane 的 Group Categories 移除它，按 Delete
 - **THEN** 寫出一個永久刪除 Other 的事件 `T+60000/0/phone-a`
+
+#### Scenario: 刪除之後又收到它的事件
+
+- **WHEN** 套用別支手機新增 Hotels 的事件之後，這支手機刪除 Hotels，再套用一個帶著 Hotels 三個單位的事件和一個改它名稱的事件
+- **THEN** Brisbane 的 Group Categories 沒有 Hotels，本機資料也沒有這個分類
 
 #### Scenario: 搬走支出
 
@@ -1180,7 +1205,7 @@ WHEN 套用永久刪除共同帳本分類的事件，the mobile app SHALL 把這
 
 ### Requirement: SYNC-41.1 支出的分類是群組沒有的分類時顯示 Uncategorized
 
-WHILE 共同帳本的支出合併後的分類不是這個群組現有的分類，是被永久刪除的，或這個群組從來沒有的，the mobile app SHALL 讓這筆支出存著並顯示這個群組的 Uncategorized：它的 ID、「Uncategorized」和 `#757575`，垃圾桶裡的支出也一樣。
+WHILE 共同帳本的支出合併後的分類不是這個群組現有的分類，是被永久刪除的，或這個群組從來沒有的，the mobile app SHALL 讓這筆支出存著並顯示這個群組的 Uncategorized：它的 ID、「Uncategorized」和 `#757575`，垃圾桶裡的支出也一樣；合併後的分類成為這個群組現有的分類之後，支出就存著並顯示合併後的分類。
 
 #### Scenario: 分類被別支手機永久刪除
 
@@ -1196,6 +1221,11 @@ WHILE 共同帳本的支出合併後的分類不是這個群組現有的分類�
 
 - **WHEN** 接著套用把 Lunch 的分類改成一個這個群組沒有的 ID、名稱「Hotels」的事件
 - **THEN** Lunch 的分類仍是 Brisbane 的 Uncategorized
+
+#### Scenario: 分類比支出晚到
+
+- **WHEN** 手機還沒有分類 Hotels，套用分類是 Hotels（`#00ACC1`）的 Lunch 的第一個事件，之後才套用 Hotels 的第一個事件
+- **THEN** 先是 Lunch 存的分類是 Brisbane 的 Uncategorized；Hotels 到了之後，Lunch 存的分類是 Hotels 的 ID、「Hotels」和 `#00ACC1`，卡片上是「Hotels」
 
 ### Requirement: SYNC-42.1 分類依建立的時間戳記排列
 
@@ -1215,3 +1245,17 @@ The mobile app SHALL 讓共同帳本的分類依建立的時間戳記由早到�
 
 - **WHEN** 接著套用把 Zoo 改名為「Animals」並改色、把 Flights 封存、再把 Flights 還原的事件
 - **THEN** 九個預設分類之後依序是 Animals、Flights、Hotels
+
+### Requirement: SYNC-43.1 交來的事件不能套用時丟出錯誤
+
+IF 交給手機 app 套用的事件裡有不認得格式版本的事件（SYNC-3.1），或它們所屬的群組在這支手機上不是共同帳本，THEN the mobile app SHALL 丟出錯誤，這一次交來的事件一個都不套用，本機資料不變。
+
+#### Scenario: 不認得的格式版本
+
+- **WHEN** 一起套用 Lunch 的第一個事件和一個格式版本是 2 的事件
+- **THEN** 丟出錯誤，本機資料和之前一樣，沒有 Lunch；之後只套用 Lunch 的第一個事件，支出清單就有 Lunch
+
+#### Scenario: 不是共同帳本的群組
+
+- **WHEN** 對不是共同帳本的 Tokyo 套用 Lunch 的第一個事件
+- **THEN** 丟出錯誤，本機資料和之前一樣

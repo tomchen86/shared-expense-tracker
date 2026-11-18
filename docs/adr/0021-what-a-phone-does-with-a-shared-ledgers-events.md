@@ -25,6 +25,7 @@ Also considered:
 - A phone applies an event only to records of the group it arrived for. An event that names an expense, a category or a member belonging to another space on that phone, or a group event that names another group, changes nothing on that phone.
 - No event changes a group's Uncategorized on a phone: it keeps its name and color, is never archived and never deleted.
 - A record's creation stamp is the earliest stamp among the events merged into it. A record that existed when its group became a shared ledger has the stamp it got then (ADR-0016). Categories sort by it.
+- An edit writes an expense's category unit only when it moves the expense to another category, with that category's name and color at that save. An edit that leaves the category alone would otherwise write the unit again whenever the category had been renamed or recolored, and could put back the category that another phone had just changed, with nobody told. The screens show a category's current name and color, so nothing on screen depends on the stored ones (owner, 2026-11-18).
 - The app writes no event that permanently deletes an expense: Delete Permanently and Empty Trash act on personal expenses only. The format still allows such an event, and a phone that receives one applies it (ADR-0016).
 - Within one date, an expense sits where it arrived on each phone, as ADR-0016 already has for the trash: the expense list mixes in personal expenses that only this phone has.
 - A phone keeps each event it refused, with its envelope and the reason, so the app can tell its author (#149).
@@ -36,4 +37,5 @@ Also considered:
 - A snapshot carries each category's creation stamp besides its units' stamps (#139).
 - Expenses of one date can be in a different order on two phones.
 - A group's deleted expenses stay in the trash for good, on every phone. #186 moves them to a list in the group before the first public release. An expense tombstone can still arrive from a phone running other code, and lasts as long as the group.
-- A hostile member can still rename or archive every other category, as ADR-0015 accepts.
+- A hostile member can still rename or archive every other category, as ADR-0015 accepts. An event can also name a payer or a sharer who is no member of the group on a phone, and the screens then show that ID instead of a name; only a forged event does this.
+- A phone looks at what it holds when it applies an event. A forged record applied first therefore collides later, when the phone joins the group that owns the ID, and an event carries no mark of which category is the group's Uncategorized: both are for the snapshot to settle (#139).

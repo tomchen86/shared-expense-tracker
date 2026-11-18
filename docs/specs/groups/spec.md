@@ -408,9 +408,9 @@ WHEN 使用者在 Group actions 選「Members」，the mobile app SHALL 開啟�
 - **WHEN** 在 iOS 上把 Members 往下滑，或在 Android 上按返回鍵
 - **THEN** Members 關閉，顯示 Brisbane 的畫面
 
-### Requirement: GROUPS-24.2 未封存群組的 Members 列出成員
+### Requirement: GROUPS-24.3 未封存群組的 Members 列出成員
 
-The mobile app SHALL 在未封存群組的 Members 依加入的先後，由上而下列出群組的每位成員，被移出後再加回來的排在最後；每位成員那一列都是角色為 button 的按鈕，右邊有「›」：你那一列是你的成員名稱加上「 (You)」，無障礙名稱也是這樣；別人那一列是他的名稱，無障礙名稱是他的名稱；最後一列是角色為 button、名稱為「Add Member」的按鈕。
+The mobile app SHALL 在未封存群組的 Members 依加入的先後，由上而下列出群組的每位成員，被移出後再加回來的排在最後；每位成員那一列都是角色為 button 的按鈕，右邊有「›」：你那一列是你的成員名稱加上「 (You)」，無障礙名稱也是這樣；別人那一列是他的名稱，無障礙名稱是他的名稱；最後一列是角色為 button、名稱為「Add Member」的按鈕，共同帳本有 20 位以上的成員時沒有這一列（GROUPS-105.1）。
 
 #### Scenario: 只有你
 
@@ -613,9 +613,9 @@ IF 使用者在 Members 的名稱欄位按 Return 時，名稱和群組的某位
 - **WHEN** 移除 Blake 之後，把 Casey 改名為「Blake」，再在名稱欄位輸入「blake」，按 Return
 - **THEN** 名稱欄位下方顯示這句話，沒有問要不要加回來
 
-### Requirement: GROUPS-34.2 和前成員同名時問要不要加回來
+### Requirement: GROUPS-34.3 和前成員同名時問要不要加回來
 
-IF 使用者在 Members 的名稱欄位按 Return 時，名稱不和群組的任何成員同名，但和這個群組的前成員同名，THEN the mobile app SHALL 先不儲存，跳出標題「Add <前成員的名稱> Back?」、內容「<前成員的名稱> was removed from this group before. Adding them back reconnects their past payments and shares.」的提示框，選項是「Cancel」和「Add Back」，同名的前成員不只一位時問的是最近被移出的那一位：按 Add Back 時讓他回到群組，沿用他原本的成員 ID 和名稱，存好後把他列在成員的最後，名稱欄位清空並保有焦點；按 Cancel 時名稱欄位保留輸入，Android 上按返回鍵或點提示框外面也一樣。
+IF 使用者在 Members 的名稱欄位按 Return 時，名稱不和群組的任何成員同名，但和這個群組的前成員同名，THEN the mobile app SHALL 先不儲存，跳出標題「Add <前成員的名稱> Back?」、內容「<前成員的名稱> was removed from this group before. Adding them back reconnects their past payments and shares.」的提示框，選項是「Cancel」和「Add Back」，同名的前成員不只一位時問的是最近被移出的那一位：按 Add Back 時讓他回到群組，沿用他原本的成員 ID 和名稱，存好後把他列在成員的最後，名稱欄位清空並保有焦點，他是共同帳本的第 20 位成員時名稱欄位就收起（GROUPS-105.1）；按 Cancel 時名稱欄位保留輸入，Android 上按返回鍵或點提示框外面也一樣。
 
 #### Scenario: 加回來
 
@@ -1098,7 +1098,7 @@ WHILE 群組已封存，the mobile app SHALL 在它的 Members 依加入的先�
 #### Scenario: 還原之後
 
 - **WHEN** 還原 Brisbane 之後打開它的 Members
-- **THEN** 成員列又是按鈕，最後一列是「Add Member」（GROUPS-24.2）
+- **THEN** 成員列又是按鈕，最後一列是「Add Member」（GROUPS-24.3）
 
 ### Requirement: GROUPS-57.1 按 Restore 或 Restore Group 時還原群組
 
@@ -1207,7 +1207,7 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 
 #### Scenario: 前成員付款
 
-- **WHEN** 把付了 Dinner 的 Casey 移出 Brisbane（GROUPS-34.2）
+- **WHEN** 把付了 Dinner 的 Casey 移出 Brisbane（GROUPS-34.3）
 - **THEN** 卡片上仍是「Paid by Casey」
 
 #### Scenario: 和你無關的支出
@@ -1322,7 +1322,7 @@ WHEN 使用者把成員移出群組（GROUPS-26.1），the mobile app SHALL 不�
 
 #### Scenario: 加回來
 
-- **WHEN** 再把 Blake 加回 Brisbane（GROUPS-34.2）
+- **WHEN** 再把 Blake 加回 Brisbane（GROUPS-34.3）
 - **THEN** Dinner 的分攤仍記在 Blake 原本的成員 ID 下，他又是 Brisbane 的成員
 
 ### Requirement: GROUPS-67.1 (manual) 群組畫面最後一張卡片不被 + 按鈕擋住
@@ -1443,7 +1443,7 @@ WHEN 使用者按群組的畫面上你的淨額（GROUPS-69.2），the mobile ap
 
 ### Requirement: GROUPS-71.1 Balances 列出每個人的已付、份額和淨額
 
-The mobile app SHALL 在 Balances 依幣別代碼排序，為群組不在垃圾桶裡的支出用到的每個幣別各放一個區塊，用到兩個以上幣別時每個區塊的標題是幣別代碼，只有一個幣別時沒有標題，區塊裡由上而下先依 GROUPS-24.2 的順序列出群組的每位成員，再依被移出的先後列出這個幣別不在垃圾桶裡的支出的付款或分攤裡的前成員；每個人一列，依序是他的名稱（你的成員是你的成員名稱加上「 (You)」，前成員是他存著的名稱）、淨額大於 0 時的「Is Owed <淨額>」、小於 0 時的「Owes <淨額的絕對值>」或等於 0 時的「Settled up」，以及「Paid <已付> · Share <份額>」，所以每個幣別所有人的淨額加總是 0。
+The mobile app SHALL 在 Balances 依幣別代碼排序，為群組不在垃圾桶裡的支出用到的每個幣別各放一個區塊，用到兩個以上幣別時每個區塊的標題是幣別代碼，只有一個幣別時沒有標題，區塊裡由上而下先依 GROUPS-24.3 的順序列出群組的每位成員，再依被移出的先後列出這個幣別不在垃圾桶裡的支出的付款或分攤裡的前成員；每個人一列，依序是他的名稱（你的成員是你的成員名稱加上「 (You)」，前成員是他存著的名稱）、淨額大於 0 時的「Is Owed <淨額>」、小於 0 時的「Owes <淨額的絕對值>」或等於 0 時的「Settled up」，以及「Paid <已付> · Share <份額>」，所以每個幣別所有人的淨額加總是 0。
 
 #### Scenario: 一個人付了全部
 
@@ -1758,7 +1758,7 @@ WHILE 手機的字級是 iOS 的輔助使用字級，或 Android 的字型大小
 
 ### Requirement: GROUPS-105.1 共同帳本有 20 位成員時不能再加
 
-WHILE 未封存的共同帳本有 20 位以上的成員，the mobile app SHALL 在它的 Members 不顯示「Add Member」和名稱欄位，在成員的下面顯示「A shared group can have up to 20 members.」；加入第 20 位成員存好後，名稱欄位就收起。前成員不算；別支手機加入的成員讓人數超過 20 位時每一位都留下（SYNC-37.1）；成員少於 20 位時，SHALL 照常顯示「Add Member」，不顯示這句話。
+WHILE 未封存的共同帳本有 20 位以上的成員，the mobile app SHALL 在它的 Members 不顯示「Add Member」和名稱欄位，在成員的下面顯示「A shared group can have up to 20 members.」；第 20 位成員存好後，不管是新加入的還是加回來的前成員，名稱欄位就收起。前成員不算；別支手機加入的成員讓人數超過 20 位時每一位都留下（SYNC-37.1）；成員少於 20 位時，SHALL 照常顯示「Add Member」，不顯示這句話。
 
 #### Scenario: 20 位成員
 
@@ -1774,6 +1774,11 @@ WHILE 未封存的共同帳本有 20 位以上的成員，the mobile app SHALL �
 
 - **WHEN** 接著把一位成員移出 Brisbane
 - **THEN** Members 最後又是「Add Member」，沒有這句話
+
+#### Scenario: 加回來的是第 20 位
+
+- **WHEN** Brisbane 有 19 位成員和前成員 Member 19，在 Members 的名稱欄位輸入「member 19」按 Return，再按「Add Back」
+- **THEN** Member 19 排在成員的最後，名稱欄位收起，沒有「Add Member」，最後是這句話
 
 #### Scenario: 前成員不算
 

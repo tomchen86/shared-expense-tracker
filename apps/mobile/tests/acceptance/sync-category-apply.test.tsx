@@ -2,6 +2,7 @@ import { waitFor } from '@testing-library/react-native';
 import {
   addCategory,
   categoryOptions,
+  editExpense,
   openNewExpense,
   restart,
   storedExpenses,
@@ -28,6 +29,7 @@ import {
   created,
   deleted,
   eachTestGetsAPhone,
+  eventsOf,
   expenseTitled,
   groupId,
   members,
@@ -35,6 +37,7 @@ import {
   receive,
   removeGroupCategory,
   setClock,
+  stamped,
   startShared,
 } from './sync-app';
 
@@ -299,7 +302,7 @@ test("[SYNC-40.1] [SYNC-41.1] deletes a category another phone deleted, and show
   await waitFor(() => expect(categoryNames()).toEqual(DEFAULT_NAMES));
 });
 
-test('[SYNC-41.1] shows Uncategorized on an expense another phone added under a category the group no longer has, or never had', async () => {
+test('[SYNC-41.1] shows Uncategorized on an expense another phone added under a category this phone deleted, and under one the group never had', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   const other = await categoryOf('Brisbane', 'Other');
@@ -308,17 +311,78 @@ test('[SYNC-41.1] shows Uncategorized on an expense another phone added under a 
   await removeGroupCategory('Other', 'Delete');
   await closeGroupCategories();
 
+  await receive(brisbane, await lunchUnder(other));
+
+  expect((await expenseTitled('Lunch')).category).toEqual(uncategorized);
+  await expectCards(['Lunch']);
+  expect(linesIn(card('Lunch'))).toContain('Uncategorized');
+
   await receive(
     brisbane,
-    await lunchUnder(other),
     changed('expense', LUNCH, at(LATER + 2000), {
       category: { id: NEVER, name: 'Hotels', color: '#00ACC1' },
     }),
   );
 
   expect((await expenseTitled('Lunch')).category).toEqual(uncategorized);
-  await expectCards(['Lunch']);
   expect(linesIn(card('Lunch'))).toContain('Uncategorized');
+});
+
+test("[SYNC-41.1] shows the expense's own category once that category arrives after the expense", async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  const hotels = { id: HOTELS, name: 'Hotels', color: '#00ACC1' };
+  await receive(brisbane, await lunchUnder(hotels));
+  await expectCards(['Lunch']);
+  expect((await expenseTitled('Lunch')).category).toEqual(
+    await categoryOf('Brisbane', 'Uncategorized'),
+  );
+
+  await receive(
+    brisbane,
+    categoryCreated(HOTELS, 'Hotels', '#00ACC1', at(LATER + 2000)),
+  );
+
+  await waitFor(() => expect(linesIn(card('Lunch'))).toContain('Hotels'));
+  expect((await expenseTitled('Lunch')).category).toEqual(hotels);
+});
+
+test('[SYNC-23.1] [SYNC-41.1] writes no category for an edit of an expense that shows Uncategorized, until the expense is moved to a category', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addCategory('Gym', brisbane);
+  await spendOn('Gym', 'Squat rack');
+  const rack = await expenseTitled('Squat rack');
+  const gym = await categoryOf('Brisbane', 'Gym');
+  const deletedAt = LATER + 5000;
+  await receive(brisbane, deleted('category', gym.id, at(deletedAt)));
+
+  const events = await eventsOf(async () => {
+    await editExpense(rack.id, { title: 'Bench' });
+    await editExpense(rack.id, { category: 'Shopping' });
+  });
+
+  expect(events).toEqual([
+    {
+      version: 1,
+      stamp: stamped(1, deletedAt),
+      type: 'expense',
+      id: rack.id,
+      units: { title: { value: 'Bench', base: stamped(1) } },
+    },
+    {
+      version: 1,
+      stamp: stamped(2, deletedAt),
+      type: 'expense',
+      id: rack.id,
+      units: {
+        category: {
+          value: await categoryOf('Brisbane', 'Shopping'),
+          base: stamped(1),
+        },
+      },
+    },
+  ]);
 });
 
 test('[SYNC-40.1] keeps a category deleted whatever arrives afterwards', async () => {
@@ -342,6 +406,29 @@ test('[SYNC-40.1] keeps a category deleted whatever arrives afterwards', async (
       DEFAULT_NAMES.filter((name) => name !== 'Other'),
     ),
   );
+});
+
+test('[SYNC-38.1] keeps a category this phone deleted deleted when an event with all three of its units arrives', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await receive(brisbane, categoryCreated(HOTELS, 'Hotels', '#00ACC1'));
+  await openGroupCategories(brisbane);
+  await waitFor(() =>
+    expect(categoryNames()).toEqual([...DEFAULT_NAMES, 'Hotels']),
+  );
+  await removeGroupCategory('Hotels', 'Delete');
+  await waitFor(() => expect(categoryNames()).toEqual(DEFAULT_NAMES));
+
+  await receive(
+    brisbane,
+    categoryCreated(HOTELS, 'Hotels', '#00ACC1', at(LATER + 5000)),
+    changed('category', HOTELS, at(LATER + 6000), { name: 'Stays' }),
+  );
+
+  expect(categoryNames()).toEqual(DEFAULT_NAMES);
+  expect(
+    (await allCategories()).filter((category) => category.id === HOTELS),
+  ).toEqual([]);
 });
 
 // The order of categories
@@ -408,10 +495,15 @@ test('[SYNC-42.1] orders categories added in the same millisecond by device ID, 
 test("[SYNC-32.1] leaves a personal category and another group's category as they are when a shared ledger's event names their IDs", async () => {
   await startShared({ Brisbane: ['Casey', 'Blake'], Tokyo: [] });
   const brisbane = await groupId('Brisbane');
+  const tokyo = await groupId('Tokyo');
   const before = await allCategories();
-  const elsewhere = before.filter((category) => category.spaceId !== brisbane);
-  const [personal] = elsewhere;
-  const tokyos = elsewhere.at(-1)!;
+  const [personal] = before.filter(
+    (category) => category.spaceId !== brisbane && category.spaceId !== tokyo,
+  );
+  // Not Uncategorized, which no event changes in any group (SYNC-39.1).
+  const tokyos = before.find(
+    (category) => category.spaceId === tokyo && category.name === 'Shopping',
+  )!;
 
   await receive(
     brisbane,

@@ -25,6 +25,7 @@ import {
   openMemberField,
   openRenameGroup,
   openRenameMember,
+  pressAlertButton,
   pressOnBar,
   pressReturn,
   removeMember,
@@ -322,6 +323,7 @@ test("[SYNC-27.1] keeps a member's name when the new one would write too large a
     expect(alertsShown()).toEqual([['Unable to Rename Member', NAME_TOO_LONG]]),
   );
   expect(isOpen('Rename Member')).toBe(true);
+  expect(memberNameField().props.value).toHaveLength(70_000);
   expect(Object.keys(await members('Brisbane'))).toContain('Casey');
   expect(await unsent()).toEqual([]);
 });
@@ -368,6 +370,24 @@ test('[GROUPS-105.1] closes the name field once the 20th member is added, and of
 
   await expectMembers([YOU, ...names(18).slice(1), 'Tina', 'Add Member']);
   expect(linesIn(screenOf('Members'))).not.toContain(MEMBER_LIMIT_NOTE);
+});
+
+test('[GROUPS-105.1] closes the name field when the 20th member is a former member added back', async () => {
+  await startWithGroups({ Brisbane: names(19) });
+  await removeFromGroup('Brisbane', 'Member 19');
+  await share('Brisbane');
+  setClock(LATER);
+  await showMembers('Brisbane');
+  await expectMembers([YOU, ...names(18), 'Add Member']);
+  await openMemberField();
+  await fireEvent.changeText(memberField()!, 'member 19');
+
+  await pressReturn(memberField()!);
+  await pressAlertButton('Add Back');
+
+  await expectMembers([YOU, ...names(18), 'Member 19']);
+  await waitFor(() => expect(memberField()).toBeUndefined());
+  expect(linesIn(screenOf('Members')).at(-1)).toBe(MEMBER_LIMIT_NOTE);
 });
 
 test('[GROUPS-105.1] counts the members of a shared ledger, not its former members', async () => {

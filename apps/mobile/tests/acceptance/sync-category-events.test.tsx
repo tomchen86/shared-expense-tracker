@@ -182,6 +182,26 @@ test('[SYNC-38.1] writes only the name or the color that changed, each with the 
   ]);
 });
 
+test('[SYNC-38.1] writes no event, and takes no stamp, when Edit Category is saved with nothing changed', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  const shopping = await categoryOf('Brisbane', 'Shopping');
+
+  const none = await eventsOf(() =>
+    editCategory('Shopping', 'Shopping', undefined, brisbane),
+  );
+  const next = await eventsOf(() =>
+    editCategory('Shopping', 'Groceries', undefined, brisbane),
+  );
+
+  expect(none).toEqual([]);
+  expect(next).toEqual([
+    categoryChanged(shopping.id, stamped(0), {
+      name: { value: 'Groceries', base: SHARED_STAMP },
+    }),
+  ]);
+});
+
 test('[SYNC-38.1] writes that a category is archived when it is archived, and that it is not when it is restored', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
