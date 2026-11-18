@@ -106,7 +106,7 @@ const addDinner = () =>
 
 // The group
 
-test("[SYNC-36.1] shows a shared ledger's name, changed on another phone, on its screen that is open, on its card and on its expenses", async () => {
+test("[SYNC-36.2] shows a shared ledger's name, changed on another phone, on its screen that is open, on its card and on its expenses", async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();
@@ -134,7 +134,7 @@ test("[SYNC-36.1] shows a shared ledger's name, changed on another phone, on its
 
 // Members
 
-test('[SYNC-36.1] lists a member another phone added, with no user ID, in Members that is open and in the expense form', async () => {
+test('[SYNC-36.2] lists a member another phone added, with no user ID, in Members that is open and in the expense form', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await showMembers('Brisbane');
@@ -159,7 +159,7 @@ test('[SYNC-36.1] lists a member another phone added, with no user ID, in Member
   ]);
 });
 
-test('[SYNC-36.1] renames a member another phone renamed, and you too, still as you', async () => {
+test('[SYNC-36.2] renames a member another phone renamed, and you too, still as you', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   const ids = await members('Brisbane');
@@ -179,7 +179,7 @@ test('[SYNC-36.1] renames a member another phone renamed, and you too, still as 
   });
 });
 
-test('[SYNC-36.1] makes a member another phone removed a former member, with their payments and shares kept, and a member again once that phone adds them back', async () => {
+test('[SYNC-36.2] makes a member another phone removed a former member, with their payments and shares kept, and a member again once that phone adds them back', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   const ids = await members('Brisbane');
@@ -208,7 +208,23 @@ test('[SYNC-36.1] makes a member another phone removed a former member, with the
   await expectMembers([YOU, 'Casey', 'Blake', 'Add Member']);
 });
 
-test('[SYNC-36.1] lists nothing of a member until both of their units have arrived', async () => {
+test('[SYNC-36.2] keeps you a member on this phone when another phone removes your member, placed by that event', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  const ids = await members('Brisbane');
+  const you = (await groupNamed('Brisbane')).members[0];
+  await showMembers('Brisbane');
+
+  await receive(
+    brisbane,
+    changed('member', ids.Taylor, at(LATER + 1000), { removed: true }),
+  );
+
+  await expectMembers(['Casey', 'Blake', YOU, 'Add Member']);
+  expect((await groupNamed('Brisbane')).members.at(-1)).toEqual(you);
+});
+
+test('[SYNC-36.2] lists nothing of a member until both of their units have arrived', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await showMembers('Brisbane');
@@ -228,7 +244,7 @@ test('[SYNC-36.1] lists nothing of a member until both of their units have arriv
   await expectMembers([YOU, 'Casey', 'Blake', 'Dana D.', 'Add Member']);
 });
 
-test('[SYNC-36.1] still lists the members as merged after a restart', async () => {
+test('[SYNC-36.2] still lists the members as merged after a restart', async () => {
   const app = await startShared();
   const brisbane = await groupId('Brisbane');
   const ids = await members('Brisbane');
@@ -396,4 +412,24 @@ test('[GROUPS-105.1] keeps every member when another phone takes a shared ledger
   await removeMember('Member 2');
   await expectMembers([YOU, ...names(19).slice(2), 'Dana', 'Add Member']);
   expect(linesIn(screenOf('Members'))).not.toContain(MEMBER_LIMIT_NOTE);
+});
+
+test('[GROUPS-105.1] [GROUPS-29.2] closes a name field that holds a name when another phone adds the 20th member, and opens an empty one later', async () => {
+  await startShared({ Brisbane: names(18) });
+  const brisbane = await groupId('Brisbane');
+  await showMembers('Brisbane');
+  await openMemberField();
+  await fireEvent.changeText(memberField()!, 'Tina');
+
+  await receive(brisbane, memberCreated(DANA, 'Dana'));
+
+  await expectMembers([YOU, ...names(18), 'Dana']);
+  expect(memberField()).toBeUndefined();
+  expect(linesIn(screenOf('Members')).at(-1)).toBe(MEMBER_LIMIT_NOTE);
+
+  await removeMember('Member 1');
+  await expectMembers([YOU, ...names(18).slice(1), 'Dana', 'Add Member']);
+  await openMemberField();
+
+  expect(memberField()!.props.value ?? '').toBe('');
 });
