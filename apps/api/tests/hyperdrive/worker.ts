@@ -26,6 +26,9 @@ const steps = {
   },
   async commit(sql: Sql, table: string) {
     await sql.begin(async (transaction) => {
+      // The kind of lock each signed request takes on its device (src/sharing/devices.ts),
+      // under keys no request uses: Hyperdrive has to let it through to PostgreSQL.
+      await transaction`SELECT pg_advisory_xact_lock(${0}, ${0})`;
       await transaction`UPDATE ${transaction(table)} SET value = 'committed' WHERE id = 1`;
       await transaction`INSERT INTO ${transaction(table)} VALUES (2, 'committed too')`;
     });

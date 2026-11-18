@@ -20,19 +20,28 @@
       "localConnectionString": "postgres://postgres:postgres@127.0.0.1:55432/postgres",
     },
   ],
+  // The key of the keyed hash that stands for an IP in the database (ADR-0022). Without
+  // it the API registers no new device. `wrangler dev` takes it from the environment
+  // variable of this name, or from .dev.vars, and warns when neither has it.
+  "secrets": { "required": ["IP_HASH_KEY"] },
   // What the deploy workflow deploys (ADR-0019). Each environment is a Worker of its own,
   // named <name>-<environment>, with its own Hyperdrive configuration and database. An id
   // is not a secret: the connection string it stands for stays in Cloudflare.
+  // Each also has its own IP_HASH_KEY, which the owner sets on the Worker with
+  // `wrangler secret put IP_HASH_KEY --env <environment>`: a deploy fails, and says so,
+  // while its Worker has none.
   "env": {
     "staging": {
       "hyperdrive": [
         { "binding": "HYPERDRIVE", "id": "0ec424b6cf0245308fadb9383ec84fb9" },
       ],
+      "secrets": { "required": ["IP_HASH_KEY"] },
     },
     "production": {
       "hyperdrive": [
         { "binding": "HYPERDRIVE", "id": "10328b8378164f55ad154498415451b1" },
       ],
+      "secrets": { "required": ["IP_HASH_KEY"] },
     },
   },
 }

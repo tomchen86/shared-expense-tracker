@@ -133,7 +133,7 @@ async function check(base: string, interrupted: AbortSignal): Promise<boolean> {
       },
     ],
     [
-      'a transaction commits as a whole',
+      'a transaction that takes an advisory lock commits as a whole',
       async () => {
         await run('commit');
         await expectRows(
