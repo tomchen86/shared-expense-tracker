@@ -28,6 +28,9 @@ import type { Database } from '../../src/storage';
 // Everything a test compares with is worked out here with Node's own crypto, not with the
 // code the app uses.
 //
+// The app reaches the API with the runtime's global `fetch`, as the spec's Purpose says,
+// so that is what the API here takes the place of.
+//
 // The doubles keep their state on `globalThis`: starting the app again resets Jest's
 // modules, this one included, and the phone must outlive that.
 

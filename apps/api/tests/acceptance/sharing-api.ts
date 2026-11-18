@@ -130,9 +130,12 @@ export interface Answer {
  * Before each test in the calling scope: a new database with the real migrations, served
  * through the Node entry file (ADR-0007), with the API's time at T and requests coming
  * from HOME. With `ownClientIp: false` the server is left to find each request's address
- * itself.
+ * itself, and `ipHashKey` replaces the key of the keyed hash, or with `null` takes it away.
  */
-export function useSharingApi({ ownClientIp = true } = {}) {
+export function useSharingApi({
+  ownClientIp = true,
+  ipHashKey = HASH_KEY as string | null,
+} = {}) {
   beforeEach(async () => {
     world.now = T;
     world.ip = HOME;
@@ -141,7 +144,7 @@ export function useSharingApi({ ownClientIp = true } = {}) {
     world.server = await startServer({
       databaseUrl: world.database.url,
       now: () => world.now,
-      ipHashKey: HASH_KEY,
+      ...(ipHashKey === null ? {} : { ipHashKey }),
       ...(ownClientIp ? { clientIp: () => world.ip } : {}),
     });
   });
@@ -167,12 +170,15 @@ export function comeFrom(ip: string) {
   world.ip = ip;
 }
 
-/** Sends a request as it is, signed or not. */
+/** Sends a request as it is, signed or not. A `GET` cannot carry a body: `fetch` refuses to send one. */
 export async function send(
   request: Partial<SentRequest> & { path: string },
 ): Promise<Answer> {
   const method = request.method ?? 'GET';
   const body = request.body ?? new Uint8Array(0);
+  if (body.length > 0 && (method === 'GET' || method === 'HEAD')) {
+    throw new Error(`A test cannot send a ${method} with a body`);
+  }
   const response = await fetch(`${world.server!.url}${request.path}`, {
     method,
     headers: request.headers ?? {},

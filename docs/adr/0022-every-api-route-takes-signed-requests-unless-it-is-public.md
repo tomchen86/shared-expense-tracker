@@ -25,11 +25,12 @@ Also considered:
 
 On the API:
 
-- The checks run before routing, on every request, including one for a path that has no route. A route is public only when its own requirement says so, as `GET /health` is. A new route is checked unless someone decides otherwise.
-- The checks run in one order: the four fields, the device and its signature, the clock, the nonce, the request limit. The first one that fails gives the refusal its reason. A refused request changes nothing in the database: no nonce is kept and nothing is counted.
+- The checks run before routing, on every request, including one for a path that has no route. A route is public only when a requirement says so, as the sharing spec says of `GET /health`. A new route is checked unless someone decides otherwise.
+- The checks run in one order: the four fields, the device and its signature, the clock, the nonce, the request limit. The first one that fails gives the refusal its reason. A registration is also checked for its body, right after the fields, since the key that verifies it is in the body, and for the limit of its IP, last, so that a phone with a wrong clock is told its clock first and corrects it. A refused request changes nothing in the database: no nonce is kept and nothing is counted.
 - A refusal is a JSON body with a reason, under an HTTP status. The reasons, the statuses, the header names of the four fields, and the function that builds the bytes to sign are defined once, in `packages/domain`'s API entry, which the phone and the API both import (ADR-0007). That function takes the body's SHA-256 instead of the body, so the entry needs no hash of its own: each side hashes the body with what its runtime has.
 - Both limits count what the API accepted within the window that ends now, 60 seconds for a device's requests and an hour for an IP's new devices, and hold for requests that arrive together. An IPv6 address counts by its first 64 bits, since one network holds all the addresses behind them.
-- The entry file gives the app its time, the address a request came from, and the key of the keyed hash that stands for an IP (ADR-0015). On Workers the address is `CF-Connecting-IP` and the key is a secret of the Worker; on Node the address is the connection's. Tests set all three through the Node entry file.
+- The entry file gives the app its time, the address a request came from, and the key of the keyed hash that stands for an IP (ADR-0015). On Workers the address is `CF-Connecting-IP` and the key is a secret of the Worker; on Node the address is the connection's. Tests set all three through the Node entry file. Without the key or the address the API registers no new device, rather than register without a limit.
+- A path is signed and verified as text, so it is limited to what no URL parser, HTTP client or proxy rewrites on the way: letters, digits and a few marks, with no empty or dot segments.
 
 On the phone:
 

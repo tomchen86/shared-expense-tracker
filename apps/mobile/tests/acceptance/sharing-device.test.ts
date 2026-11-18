@@ -691,6 +691,52 @@ describe('SHARING-25.1', () => {
   });
 });
 
+describe('SHARING-25.1, a method or a path that cannot be signed', () => {
+  const WRONG: [string, Partial<ApiRequest>][] = [
+    ['a method in lower case', { method: 'get' }],
+    ['an empty method', { method: '' }],
+    ['a path without its leading slash', { path: 'example/items' }],
+    ['a path with a space', { path: '/a b' }],
+    ['a path with a quote', { path: "/a'b" }],
+    ['a path with an empty segment', { path: '/a//b' }],
+    ['a path with a dot segment', { path: '/a/../b' }],
+    ['a path with a percent sign before its query', { path: '/a%20b' }],
+    ['a path with an empty query', { path: '/a?' }],
+    ['a query with a space', { path: '/a?x=a b' }],
+  ];
+
+  test.each(WRONG)(
+    '[SHARING-25.1] a phone with no device identity fails to send %s, and makes no identity',
+    async (_, request) => {
+      const app = await startOn(newPhone());
+
+      await expect(send(app, request)).rejects.toThrow();
+
+      expect(fetchCalls()).toBe(0);
+      expect(await identityOf(app)).toEqual({ status: 'none' });
+      expect(secureStoreEntries()).toEqual([]);
+      expect(uuidsDrawn()).toEqual([]);
+    },
+  );
+
+  test.each(WRONG)(
+    '[SHARING-25.1] a registered phone fails to send %s, and makes no request',
+    async (_, request) => {
+      const { app, deviceId, publicKey } = await registeredPhone();
+      const calls = fetchCalls();
+
+      await expect(send(app, request)).rejects.toThrow();
+
+      expect(fetchCalls()).toBe(calls);
+      // What is written properly still goes out.
+      await send(app, { path: '/a.b/c-d_e~f?x=1&y=%E5%B8%B3' });
+      const sent = received().at(-1)!;
+      expect(sent.url).toBe(`${API}/a.b/c-d_e~f?x=1&y=%E5%B8%B3`);
+      await expectSignedBy(sent, { deviceId, publicKey });
+    },
+  );
+});
+
 describe('SHARING-26.1', () => {
   test.each([
     ['GET', '/example/a', 200, '{"items":[]}'],
@@ -922,6 +968,8 @@ describe('SHARING-28.1', () => {
         result = value;
         return value;
       });
+    // A test that fails before it reads `done` must not leave a rejection unhandled.
+    done.catch(() => undefined);
     return { done, told: () => result };
   }
 

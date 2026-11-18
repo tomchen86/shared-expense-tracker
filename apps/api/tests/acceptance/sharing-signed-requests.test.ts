@@ -254,16 +254,17 @@ describe('SHARING-33.1', () => {
   test('[SHARING-33.1] refuses an unregistered device whatever the method and path, except its registration', async () => {
     const casey = newPhone(CASEY);
 
-    for (const [method, path] of [
-      ['GET', '/devices'],
-      ['PUT', '/devices'],
-      ['DELETE', '/devices'],
-      ['POST', NO_ROUTE],
-    ]) {
-      expectRefused(
-        await send(signedBy(casey, { method, path, body: '{}' })),
-        SIGNATURE,
+    for (const [method, path, body] of [
+      ['GET', '/devices', undefined],
+      ['PUT', '/devices', '{}'],
+      ['DELETE', '/devices', undefined],
+      ['POST', NO_ROUTE, '{}'],
+    ] as const) {
+      const answer = await leavingTheDatabaseAsItWas(() =>
+        send(signedBy(casey, { method, path, body })),
       );
+
+      expectRefused(answer, SIGNATURE);
     }
   });
 });
@@ -361,6 +362,26 @@ describe('SHARING-34.1', () => {
       ),
       withField(request, 'signature', '0'.repeat(128)),
     ]);
+  });
+
+  test('[SHARING-34.1] refuses a request for a path that is not written as the bytes to sign allow', async () => {
+    const taylor = await registered(TAYLOR);
+
+    for (const path of [
+      `${NO_ROUTE}/it's`,
+      `${NO_ROUTE}//x`,
+      `${NO_ROUTE}/a%20b`,
+      `${NO_ROUTE}/a+b?x=1`,
+      `${NO_ROUTE}?x=it's`,
+    ]) {
+      // Signed over exactly this path, so only its writing is wrong.
+      const answer = await leavingTheDatabaseAsItWas(() =>
+        send(signedBy(taylor, { path })),
+      );
+
+      expectRefused(answer, SIGNATURE);
+    }
+    expectPassed(await send(signedBy(taylor, { path: `${NO_ROUTE}/its?x=1` })));
   });
 
   test("[SHARING-34.1] refuses a request that names one device and carries another's signature", async () => {
@@ -609,9 +630,11 @@ describe('SHARING-37.1', () => {
 
     await sendPassing(taylor, 60);
 
-    // Refused for the limit, those do not count either: a minute later 60 pass again.
+    // Refused for the limit, those do not count either. Had the five at T + 30,000
+    // counted, only 55 could pass once the 60 from T are a minute old.
+    setTime(T + 30_000);
     for (let index = 0; index < 5; index += 1) {
-      expectRefused(await send(signedBy(taylor)), tooManyRequests(60_000));
+      expectRefused(await send(signedBy(taylor)), tooManyRequests(30_000));
     }
     setTime(T + 60_000);
     await sendPassing(taylor, 60);

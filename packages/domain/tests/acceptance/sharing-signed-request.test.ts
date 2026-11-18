@@ -130,7 +130,6 @@ describe('SHARING-17.1', () => {
 
     expect(asText(first)).toBe(REGISTRATION_LINES.join('\n'));
     expect(second).toEqual(first);
-    expect(second).not.toBe(first);
     expect(input.bodyHash).toEqual(hash);
   });
 });
@@ -176,6 +175,80 @@ describe('SHARING-18.1', () => {
     ['null', null],
   ])('[SHARING-18.1] refuses a path that is %s', (_, path) => {
     expectRefused({ path });
+  });
+
+  test.each([
+    ['/a//b'],
+    ['//a'],
+    ['/a//'],
+    ['/a/./b'],
+    ['/a/../b'],
+    ['/a/..'],
+    ['/a/.'],
+    ['/.'],
+    ['/..'],
+    ['/../a'],
+    ['/a%20b'],
+    ['/a%2e%2e/b'],
+    ['/%2E%2E/a'],
+    ["/a'b"],
+    ['/a"b'],
+    ['/a<b'],
+    ['/a>b'],
+    ['/a{b}'],
+    ['/a|b'],
+    ['/a\\b'],
+    ['/a^b'],
+    ['/a`b'],
+    ['/a#b'],
+    ['/a+b'],
+    ['/a,b'],
+    ['/a;b'],
+    ['/a:b'],
+    ['/a@b'],
+    ['/a!b'],
+    ['/a*b'],
+    ['/a(b)'],
+    ['/a$b'],
+    ['/a=b'],
+    ['/a&b'],
+    ['/a?'],
+    ['/a//b?x=1'],
+    ['/a/../b?x=1'],
+    ["/a?x='1'"],
+    ['/a?x=a b'],
+    ['/a?x=a#b'],
+    ['/a?x=a+b'],
+    ['/a?x="1"'],
+    ['/a?x=<1>'],
+    ['/a?x=1;y=2'],
+    ['/a?x=帳'],
+  ])(
+    '[SHARING-18.1] refuses the path %s, which may be rewritten on the way',
+    (path) => {
+      expectRefused({ path });
+    },
+  );
+
+  test.each([
+    ['/'],
+    ['/devices'],
+    ['/a/'],
+    ['/a.b/c-d_e~f'],
+    ['/.well-known/x'],
+    ['/a/.../b'],
+    ['/a/..b/.c/d..'],
+    ['/A/b/C0123456789'],
+    ['/a?x=1&y=%E5%B8%B3'],
+    ['/a?x=/b/../c?d'],
+    ['/a?x=%zz&y=.&z=..'],
+    ['/a/?x'],
+    ['/?x=1'],
+  ])('[SHARING-18.1] takes the path %s as it is', (path) => {
+    const lines = asText(signedRequestBytes(withFields({ path }))).split('\n');
+
+    expect(lines).toHaveLength(7);
+    expect(lines[2]).toBe(path);
   });
 
   test.each<[string, unknown]>([

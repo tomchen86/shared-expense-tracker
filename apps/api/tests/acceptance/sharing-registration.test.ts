@@ -106,6 +106,28 @@ describe('with requests from the address a test gives', () => {
       expectPassed(await send(signedBy(casey)));
     });
 
+    test('[SHARING-38.1] answers every one of five registrations of one new device that arrive together, and stores one device', async () => {
+      comeFrom('198.51.100.30');
+      const casey = newPhone(CASEY);
+
+      const answers = await Promise.all(
+        Array.from({ length: 5 }, () => send(registrationBy(casey))),
+      );
+
+      for (const answer of answers) expectRegistered(answer, casey);
+      expectPassed(await send(signedBy(casey)));
+      // It is one new device for this IP: 29 more register, and one more does not.
+      const [another] = await registerNew(29);
+      expect(await timesPublicKeyStored(another)).toBeGreaterThan(0);
+      expect(await timesPublicKeyStored(casey)).toBe(
+        await timesPublicKeyStored(another),
+      );
+      expectRefused(
+        await send(registrationBy(newPhone())),
+        TOO_MANY_REGISTRATIONS,
+      );
+    });
+
     test('[SHARING-38.1] registers two devices, each verified with its own key', async () => {
       const taylor = await registered(TAYLOR);
       const casey = await registered(CASEY);
@@ -329,7 +351,9 @@ describe('with requests from the address a test gives', () => {
 
       await registerNew(30);
 
-      // Nor those it refused for the limit: an hour later 30 more register.
+      // Nor those it refused for the limit. Had the five at half past counted, only 25
+      // could register once the 30 from T are an hour old.
+      setTime(T + 1_800_000);
       for (let index = 0; index < 5; index += 1) {
         expectRefused(
           await send(registrationBy(newPhone())),
@@ -342,6 +366,33 @@ describe('with requests from the address a test gives', () => {
         await send(registrationBy(newPhone())),
         TOO_MANY_REGISTRATIONS,
       );
+    });
+
+    test('[SHARING-41.1] registers exactly 30 of 40 new devices whose registrations arrive together', async () => {
+      comeFrom(BUSY);
+      const phones = Array.from({ length: 40 }, () => newPhone());
+
+      const answers = await Promise.all(
+        phones.map((phone) => send(registrationBy(phone))),
+      );
+
+      const accepted = phones.filter(
+        (_, index) => answers[index].status === 200,
+      );
+      const refused = phones.filter(
+        (_, index) => answers[index].status !== 200,
+      );
+      expect(accepted).toHaveLength(30);
+      expect(refused).toHaveLength(10);
+      phones.forEach((phone, index) => {
+        if (answers[index].status === 200) {
+          expectRegistered(answers[index], phone);
+        } else {
+          expectRefused(answers[index], TOO_MANY_REGISTRATIONS);
+        }
+      });
+      for (const phone of accepted) expectPassed(await send(signedBy(phone)));
+      for (const phone of refused) await expectNotRegistered(phone);
     });
 
     test('[SHARING-41.1] counts IPv6 addresses with the same first 64 bits as one IP', async () => {
@@ -377,6 +428,115 @@ describe('with requests from the address a test gives', () => {
       expectRefused(writtenAsIpv6, TOO_MANY_REGISTRATIONS);
       expectRefused(writtenAsIpv4, TOO_MANY_REGISTRATIONS);
       expect(another.status).toBe(200);
+    });
+  });
+
+  describe('SHARING-31.1', () => {
+    const EARLY = T - 3_600_000;
+    const emptyRegistration = (phone: Phone, timestampMs = T) =>
+      signedBy(phone, {
+        method: 'POST',
+        path: DEVICES_PATH,
+        body: '{}',
+        timestampMs,
+      });
+
+    test('[SHARING-31.1] checks the fields of a registration before its body', async () => {
+      const casey = newPhone(CASEY);
+
+      const answer = await leavingTheDatabaseAsItWas(() =>
+        send(withField(emptyRegistration(casey), 'signature', undefined)),
+      );
+
+      expectRefused(answer, SIGNATURE);
+    });
+
+    test('[SHARING-31.1] checks the body of a registration before its signature and its time', async () => {
+      const casey = newPhone(CASEY);
+
+      for (const request of [
+        withField(
+          emptyRegistration(casey, EARLY),
+          'signature',
+          '0'.repeat(128),
+        ),
+        emptyRegistration(casey, EARLY),
+        withField(emptyRegistration(casey), 'signature', '0'.repeat(128)),
+      ]) {
+        const answer = await leavingTheDatabaseAsItWas(() => send(request));
+
+        expectRefused(answer, REQUEST);
+      }
+    });
+
+    test('[SHARING-31.1] checks whose device ID a registration names before its time', async () => {
+      await registered(TAYLOR);
+      const casey = newPhone(TAYLOR);
+
+      const answer = await leavingTheDatabaseAsItWas(() =>
+        send(registrationBy(casey, { timestampMs: EARLY })),
+      );
+
+      expectRefused(answer, SIGNATURE);
+    });
+
+    test("[SHARING-31.1] checks the time of a registration before its IP's limit, and the limit last", async () => {
+      comeFrom('198.51.100.40');
+      await registerNew(30);
+      const casey = newPhone(CASEY);
+
+      const early = await leavingTheDatabaseAsItWas(() =>
+        send(registrationBy(casey, { timestampMs: EARLY })),
+      );
+      const onTime = await leavingTheDatabaseAsItWas(() =>
+        send(registrationBy(casey)),
+      );
+
+      expectRefused(early, { error: 'clock', serverTimeMs: T });
+      expectRefused(onTime, TOO_MANY_REGISTRATIONS);
+    });
+  });
+
+  describe('SHARING-44.1', () => {
+    test.each([
+      ['an empty text', ''],
+      ['no IP address', 'unknown'],
+      ['a host name', 'localhost'],
+    ])(
+      '[SHARING-44.1] registers no new device when where the request came from is %s',
+      async (_, source) => {
+        const taylor = await registered(TAYLOR);
+        const casey = newPhone(CASEY);
+        comeFrom(source);
+
+        const answer = await leavingTheDatabaseAsItWas(() =>
+          send(registrationBy(casey)),
+        );
+
+        expect(answer.status).toBe(500);
+        await expectNotRegistered(casey);
+        // A device that has registered goes on as before.
+        expectPassed(await send(signedBy(taylor)));
+        expectRegistered(await send(registrationBy(taylor)), taylor);
+        // And so does Casey's, once the API knows where requests come from.
+        comeFrom(HOME);
+        await register(casey);
+      },
+    );
+
+    test('[SHARING-44.1] still gives a registration that fails another check that reason', async () => {
+      const casey = newPhone(CASEY);
+      comeFrom('unknown');
+
+      const badSignature = await send(
+        withField(registrationBy(casey), 'signature', '0'.repeat(128)),
+      );
+      const early = await send(
+        registrationBy(casey, { timestampMs: T - 3_600_000 }),
+      );
+
+      expectRefused(badSignature, SIGNATURE);
+      expectRefused(early, { error: 'clock', serverTimeMs: T });
     });
   });
 
@@ -459,6 +619,44 @@ describe('with requests from the address a test gives', () => {
       expect(await timesPublicKeyStored(casey)).toBe(0);
       expect(await timesStored(HOME)).toBe(0);
     });
+  });
+});
+
+describe.each([
+  ['no key', null],
+  ['an empty key', ''],
+])('with %s for the keyed hash of an IP', (_, ipHashKey) => {
+  useSharingApi({ ipHashKey });
+
+  test('[SHARING-44.1] registers no new device, and stores nothing', async () => {
+    const casey = newPhone(CASEY);
+
+    const answer = await leavingTheDatabaseAsItWas(() =>
+      send(registrationBy(casey)),
+    );
+    const again = await leavingTheDatabaseAsItWas(() =>
+      send(registrationBy(casey)),
+    );
+
+    expect(answer.status).toBe(500);
+    expect(again.status).toBe(500);
+    await expectNotRegistered(casey);
+    expect(await timesDeviceIdStored(CASEY)).toBe(0);
+    expect(await timesPublicKeyStored(casey)).toBe(0);
+  });
+
+  test('[SHARING-44.1] still refuses a registration that fails another check for that reason', async () => {
+    const casey = newPhone(CASEY);
+
+    const badSignature = await send(
+      withField(registrationBy(casey), 'signature', '0'.repeat(128)),
+    );
+    const noBody = await send(
+      signedBy(casey, { method: 'POST', path: DEVICES_PATH }),
+    );
+
+    expectRefused(badSignature, { error: 'signature' });
+    expectRefused(noBody, { error: 'request' });
   });
 });
 
