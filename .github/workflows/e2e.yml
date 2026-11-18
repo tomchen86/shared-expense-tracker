@@ -40,11 +40,11 @@ jobs:
     # A build takes up to 40 minutes; reusing one takes a few.
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           run_install: false
-      - uses: actions/setup-node@v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -57,7 +57,7 @@ jobs:
       # app built for them gets this merge's JavaScript instead of a new build (ADR-0017).
       - name: Restore the native build
         id: cache
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.BUILT }}
           key: ios-release-${{ steps.xcode.outputs.build }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json', 'patches/**', 'apps/mobile/package.json', 'apps/mobile/app.json', 'apps/mobile/assets/**', 'scripts/e2e-ios.sh') }}
@@ -68,7 +68,7 @@ jobs:
           cp "$BUILT/main.jsbundle" "$RUNNER_TEMP/built.jsbundle"
       - name: Save the native build
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.BUILT }}
           key: ${{ steps.cache.outputs.cache-primary-key }}
@@ -82,7 +82,7 @@ jobs:
       # An artifact keeps no executable bits, so the app travels as a tarball.
       - name: Pack the app
         run: tar -czf app.tgz -C "$(dirname "$BUILT")" "$APP"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: app
           path: app.tgz
@@ -99,7 +99,7 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install Maestro
         env:
           MAESTRO_VERSION: 2.12.0
@@ -109,7 +109,7 @@ jobs:
           echo "$MAESTRO_SHA256  $RUNNER_TEMP/maestro.zip" | shasum -a 256 -c -
           unzip -q "$RUNNER_TEMP/maestro.zip" -d "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/maestro/bin" >> "$GITHUB_PATH"
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: app
       - name: Run a quarter of the flows
@@ -123,7 +123,7 @@ jobs:
         run: if [ -d reports/e2e/output ]; then tar -czf reports/e2e/output.tgz -C reports/e2e output; fi
       - name: Reports
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-reports-${{ matrix.shard }}
           path: |
@@ -141,8 +141,8 @@ jobs:
       contents: read
       actions: read # e2e_flaky.py downloads earlier runs' e2e-junit
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: e2e-reports-*
           path: reports/e2e
@@ -151,7 +151,7 @@ jobs:
       # The reports without their screenshots, small enough for later runs to download.
       - name: Keep the JUnit reports
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-junit
           path: reports/e2e/*/junit/
