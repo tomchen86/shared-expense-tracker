@@ -1012,3 +1012,16 @@ test('[LEDGER-124.1] [BACKUP-13.1] lists the expenses in the order the export fi
   await expectSort(expensesRoot, 'Oldest First');
   expect(cardTitles()).toEqual(['A', 'B']);
 });
+
+test('[LEDGER-124.1] [BACKUP-18.1] lists the expenses newest first after importing a file exported before lists had an order, whatever order the phone was on', async () => {
+  const older = await fromBeforeChartTypes(await exportAfterChangingA());
+  await writeSamsData(phone);
+  await startOn(phone, { url: '/' });
+  await chooseSort(expensesRoot(), 'Highest Amount');
+  await tapTab('Settings');
+
+  await importFile(older);
+
+  await expectSort(expensesRoot, 'Newest First');
+  expect(cardTitles()).toEqual(['A2', 'C', 'B']);
+});

@@ -89,7 +89,7 @@ function expectOnlyTheFirstCards(titles: string[]) {
   expect(titles).toEqual(FROM_THE_TOP.slice(0, titles.length));
 }
 
-test('[LEDGER-118.1] draws only the first cards of a month of 300 expenses and of All Time, and counts them all', async () => {
+test('[LEDGER-118.2] draws only the first cards of a month of 300 expenses and of All Time, and counts them all', async () => {
   const phone = newPhone();
   await writeData(phone, { expenses: manyExpenses() });
   await startOn(phone, { url: '/' });
@@ -103,7 +103,7 @@ test('[LEDGER-118.1] draws only the first cards of a month of 300 expenses and o
   expect(listTotal()).toEqual(['300 expenses']);
 });
 
-test("[LEDGER-118.1] draws only the first cards of a group's 300 expenses, and counts them all in its total and your net balance", async () => {
+test("[LEDGER-118.2] draws only the first cards of a group's 300 expenses, and counts them all in its total and your net balance", async () => {
   const phone = newPhone();
   await writeData(phone, {
     name: 'Taylor',
@@ -119,7 +119,7 @@ test("[LEDGER-118.1] draws only the first cards of a group's 300 expenses, and c
   expect(balanceLines('Brisbane')).toEqual(["You're owed: $150.00"]);
 });
 
-test('[LEDGER-126.1] [LEDGER-118.1] counts every expense a search matches, over every date, while it draws only the first cards', async () => {
+test('[LEDGER-126.1] [LEDGER-118.2] counts every expense a search matches, over every date, while it draws only the first cards', async () => {
   const phone = newPhone();
   // Expense 300 is dated today and each one before it a day earlier, back to January.
   const day = (back: number) =>
@@ -136,4 +136,20 @@ test('[LEDGER-126.1] [LEDGER-118.1] counts every expense a search matches, over 
 
   expect(listCount(expensesRoot())).toBe('300 items');
   expectOnlyTheFirstCards(cardTitles());
+});
+
+test('[LEDGER-126.1] writes a count of a thousand without a thousands separator', async () => {
+  const phone = newPhone();
+  await writeData(phone, {
+    expenses: Array.from({ length: 1000 }, (_, index) => ({
+      title: `Expense ${index + 1}`,
+      amount: '1',
+      date: '2026-11-18',
+    })),
+  });
+  await startOn(phone, { url: '/' });
+
+  await typeSearch('Expenses', 'expense');
+
+  expect(listCount(expensesRoot())).toBe('1000 items');
 });
