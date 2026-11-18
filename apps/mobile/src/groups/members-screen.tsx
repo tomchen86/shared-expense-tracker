@@ -63,7 +63,12 @@ export function MembersScreen({
   const [duplicate, setDuplicate] = useState(false);
   const field = useRef<ComponentRef<typeof TextInput>>(null);
   usePreventRemove(busy, () => {});
-  if (adding && canAdd === false) setAdding(false);
+  // Another phone took the last place: the field closes, and is empty when it opens again.
+  if (adding && canAdd === false) {
+    setAdding(false);
+    setName('');
+    setDuplicate(false);
+  }
 
   function showDuplicate() {
     setDuplicate(true);
