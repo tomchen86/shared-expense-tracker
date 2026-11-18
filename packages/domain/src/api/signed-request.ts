@@ -55,11 +55,44 @@ export const REFUSAL_STATUS: Record<RefusalReason, number> = {
   'too-many-registrations': 429,
 };
 
-// Stubs: the signatures are the boundary the acceptance tests use, and the implementer
-// replaces the bodies.
+const LABEL = 'shared-expense/request/v1';
+const HASH_LENGTH = 32;
+const METHOD = /^[A-Z]+$/;
+// What no URL parser, HTTP client or proxy rewrites on the way (ADR-0022): before the
+// query, letters, digits and `-._~/`; in the query also `%?=&`.
+const BEFORE_QUERY = /^\/[A-Za-z0-9\-._~/]*$/;
+const QUERY = /^[A-Za-z0-9\-._~/%?=&]+$/;
+const DEVICE_ID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const NONCE = /^[0-9a-f]{32}$/;
+const PUBLIC_KEY = /^[0-9a-f]{64}$/;
+const HEX = '0123456789abcdef';
 
-function notImplemented(name: string, ...inputs: unknown[]): never {
-  throw new Error(`Not implemented: ${name} (${inputs.length} inputs)`);
+function isPath(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const mark = value.indexOf('?');
+  const beforeQuery = mark < 0 ? value : value.slice(0, mark);
+  return (
+    BEFORE_QUERY.test(beforeQuery) &&
+    !beforeQuery.includes('//') &&
+    beforeQuery
+      .split('/')
+      .every((segment) => segment !== '.' && segment !== '..') &&
+    (mark < 0 || QUERY.test(value.slice(mark + 1)))
+  );
+}
+
+/** A whole number of milliseconds from 0 to the largest integer a number holds exactly. */
+function isTime(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function hexOf(bytes: Uint8Array): string {
+  let text = '';
+  for (let index = 0; index < bytes.length; index += 1) {
+    text += HEX[bytes[index] >> 4] + HEX[bytes[index] & 15];
+  }
+  return text;
 }
 
 /**
@@ -79,24 +112,90 @@ export function signedRequestBytes(input: {
   /** 32 lowercase hexadecimal characters. */
   nonce: string;
 }): Uint8Array {
-  return notImplemented('signedRequestBytes', input);
+  const { method, path, bodyHash, deviceId, timestampMs, nonce } = input;
+  if (typeof method !== 'string' || !METHOD.test(method)) {
+    throw new Error('The method is not one or more capital letters');
+  }
+  if (!isPath(path)) {
+    throw new Error('The path is not written as a signed request allows');
+  }
+  if (!(bodyHash instanceof Uint8Array) || bodyHash.length !== HASH_LENGTH) {
+    throw new Error('The body hash is not 32 bytes');
+  }
+  if (typeof deviceId !== 'string' || !DEVICE_ID.test(deviceId)) {
+    throw new Error('The device ID is not a lowercase version-4 UUID');
+  }
+  if (!isTime(timestampMs)) {
+    throw new Error('The request time is not a whole number of milliseconds');
+  }
+  if (typeof nonce !== 'string' || !NONCE.test(nonce)) {
+    throw new Error('The nonce is not 32 lowercase hexadecimal characters');
+  }
+  // Every field above is ASCII with no line feed in it, so each is one line and each
+  // character one byte.
+  const text = [
+    LABEL,
+    method,
+    path,
+    hexOf(bodyHash),
+    deviceId,
+    String(timestampMs),
+    nonce,
+  ].join('\n');
+  const bytes = new Uint8Array(text.length);
+  for (let index = 0; index < text.length; index += 1) {
+    bytes[index] = text.charCodeAt(index);
+  }
+  return bytes;
+}
+
+/** Whether `value` is an object, as JSON has them, with exactly the keys `keys`. */
+function hasExactly<Key extends string>(
+  value: unknown,
+  keys: readonly Key[],
+): value is Record<Key, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const own = Object.keys(value);
+  return own.length === keys.length && keys.every((key) => own.includes(key));
 }
 
 /** Whether `value` is exactly a registration's body. */
 export function isRegisterDeviceRequest(
   value: unknown,
 ): value is RegisterDeviceRequest {
-  return notImplemented('isRegisterDeviceRequest', value);
+  return (
+    hasExactly(value, ['publicKey']) &&
+    typeof value.publicKey === 'string' &&
+    PUBLIC_KEY.test(value.publicKey)
+  );
 }
 
 /** Whether `value` is exactly what the API answers to a registration. */
 export function isRegisterDeviceResponse(
   value: unknown,
 ): value is RegisterDeviceResponse {
-  return notImplemented('isRegisterDeviceResponse', value);
+  return (
+    hasExactly(value, ['deviceId']) &&
+    typeof value.deviceId === 'string' &&
+    DEVICE_ID.test(value.deviceId)
+  );
 }
 
 /** Whether `value` is exactly the body of a refusal. */
 export function isRefusal(value: unknown): value is Refusal {
-  return notImplemented('isRefusal', value);
+  if (hasExactly(value, ['error', 'serverTimeMs'])) {
+    return value.error === 'clock' && isTime(value.serverTimeMs);
+  }
+  if (hasExactly(value, ['error', 'retryAfterMs'])) {
+    return value.error === 'too-many-requests' && isTime(value.retryAfterMs);
+  }
+  return (
+    hasExactly(value, ['error']) &&
+    (value.error === 'signature' ||
+      value.error === 'replayed' ||
+      value.error === 'request' ||
+      value.error === 'too-many-registrations')
+  );
 }
