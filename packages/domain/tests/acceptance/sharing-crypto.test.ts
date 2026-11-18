@@ -310,7 +310,7 @@ test('[SHARING-3.1] reports undecryptable when the associated data is not what w
   ).toEqual(UNDECRYPTABLE);
 });
 
-test('[SHARING-4.1] reports unsupported-version for every first byte other than 01', () => {
+test('[SHARING-4.2] reports unsupported-version for every first byte other than 01', () => {
   expect(shown(decrypt({ key, ciphertext: sealed, associatedData }))).toEqual(
     opened(plaintext),
   );
@@ -329,7 +329,7 @@ test('[SHARING-4.1] reports unsupported-version for every first byte other than 
   ).toEqual([]);
 });
 
-test('[SHARING-4.1] reports unsupported-version whatever the rest of the ciphertext, the key and the associated data are', () => {
+test('[SHARING-4.2] reports unsupported-version whatever the rest of the ciphertext, the key and the associated data are', () => {
   for (const only of ['00', '02', 'ff']) {
     expect(decrypt({ key, ciphertext: fromHex(only), associatedData })).toEqual(
       UNSUPPORTED_VERSION,
@@ -344,7 +344,7 @@ test('[SHARING-4.1] reports unsupported-version whatever the rest of the ciphert
   ).toEqual(UNSUPPORTED_VERSION);
 });
 
-test('[SHARING-4.1] reports unsupported-version for a box whose first byte is not 01', () => {
+test('[SHARING-4.2] reports unsupported-version for a box whose first byte is not 01', () => {
   expect(shown(openBox({ ...bobOpens, box }))).toEqual(opened(content));
   const newer = withVersion(box, 2);
   expect(openBox({ ...bobOpens, box: newer })).toEqual(UNSUPPORTED_VERSION);
@@ -930,3 +930,186 @@ test.each([0, 31, 33])(
     ).toThrow();
   },
 );
+
+// Inputs that are not bytes
+
+/**
+ * Stand-ins that are not a Uint8Array, by what they are: four of the same length, then
+ * the input left out and null.
+ */
+function notBytes(bytes: Uint8Array): [what: string, value: Uint8Array][] {
+  const standIns: [string, unknown][] = [
+    ['an array of numbers', Array.from(bytes)],
+    ['a Uint16Array', Uint16Array.from(bytes)],
+    ['text', 'x'.repeat(bytes.length)],
+    ['an object with a length', { length: bytes.length }],
+    ['undefined', undefined],
+    ['null', null],
+  ];
+  return standIns.map(([what, value]) => [what, value as Uint8Array]);
+}
+
+/**
+ * Which inputs of a tool, replaced one at a time by each stand-in, it did not refuse,
+ * with what it gave instead. A salt of undefined is a salt not given, so that is skipped.
+ */
+function notRefused<Input extends Record<string, Uint8Array>>(
+  call: (input: Input) => unknown,
+  input: Input,
+): string[] {
+  const accepted: string[] = [];
+  for (const [name, bytes] of Object.entries(input)) {
+    for (const [what, value] of notBytes(bytes)) {
+      if (name === 'salt' && value === undefined) continue;
+      let result: unknown;
+      try {
+        result = call({ ...input, [name]: value });
+      } catch {
+        continue;
+      }
+      const gave =
+        result instanceof Uint8Array
+          ? `${result.length} bytes`
+          : JSON.stringify(result);
+      accepted.push(`${name} as ${what}: ${gave}`);
+    }
+  }
+  return accepted;
+}
+
+test('[SHARING-16.1] refuses to encrypt when an input is not bytes, or is left out', () => {
+  const input = { key, nonce, plaintext, associatedData };
+  expect(() => encrypt(input)).not.toThrow();
+  expect(notRefused(encrypt, input)).toEqual([]);
+});
+
+test('[SHARING-16.1] refuses to decrypt when an input is not bytes or is left out, and does not report undecryptable', () => {
+  const input = { key, ciphertext: sealed, associatedData };
+  expect(shown(decrypt(input))).toEqual(opened(plaintext));
+  expect(notRefused(decrypt, input)).toEqual([]);
+
+  // Content encrypted with empty associated data does not open with none given.
+  const unbound = encrypt({ key, nonce, plaintext, associatedData: EMPTY });
+  expect(
+    shown(decrypt({ key, ciphertext: unbound, associatedData: EMPTY })),
+  ).toEqual(opened(plaintext));
+  expect(
+    notRefused(decrypt, { key, ciphertext: unbound, associatedData: EMPTY }),
+  ).toEqual([]);
+});
+
+test('[SHARING-16.1] refuses to sign or to give a public key when an input is not bytes, or is left out', () => {
+  const message = utf8('content');
+  expect(() => sign({ secretKey: alice.secretKey, message })).not.toThrow();
+  expect(() => signingPublicKey(alice.secretKey)).not.toThrow();
+  expect(() => boxPublicKey(alice.secretKey)).not.toThrow();
+  expect(notRefused(sign, { secretKey: alice.secretKey, message })).toEqual([]);
+  expect(
+    notRefused(({ secretKey }) => signingPublicKey(secretKey), {
+      secretKey: alice.secretKey,
+    }),
+  ).toEqual([]);
+  expect(
+    notRefused(({ secretKey }) => boxPublicKey(secretKey), {
+      secretKey: alice.secretKey,
+    }),
+  ).toEqual([]);
+});
+
+test('[SHARING-16.1] refuses to seal a box when an input is not bytes, or is left out', () => {
+  const input = { ...aliceSeals, salt };
+  expect(toHex(sealBox(input))).toBe(BOX.sealedWithSalt);
+  expect(notRefused(sealBox, input)).toEqual([]);
+});
+
+test('[SHARING-16.1] refuses to open a box when an input is not bytes or is left out, and does not report undecryptable', () => {
+  const input = { ...bobOpens, salt, box: boxWithSalt };
+  expect(shown(openBox(input))).toEqual(opened(content));
+  expect(notRefused(openBox, input)).toEqual([]);
+});
+
+test('[SHARING-8.1][SHARING-9.1][SHARING-12.1][SHARING-16.1] takes a salt of undefined as no salt', () => {
+  expect(toHex(sealBox({ ...aliceSeals, salt: undefined }))).toBe(BOX.sealed);
+  expect(shown(openBox({ ...bobOpens, salt: undefined, box }))).toEqual(
+    opened(content),
+  );
+  const [secret, purpose, derived] = DERIVED_FROM_TEXT[0];
+  expect(toHex(deriveKey({ secret, purpose, salt: undefined }))).toBe(derived);
+});
+
+test('[SHARING-16.1] refuses an input that is not bytes before it looks at the format version or for an empty input', () => {
+  const numbers = (bytes: Uint8Array) =>
+    Array.from(bytes) as unknown as Uint8Array;
+  expect(
+    decrypt({ key, ciphertext: withVersion(sealed, 2), associatedData }),
+  ).toEqual(UNSUPPORTED_VERSION);
+  expect(openBox({ ...bobOpens, box: withVersion(box, 2) })).toEqual(
+    UNSUPPORTED_VERSION,
+  );
+  expect(openBox({ ...bobOpens, box: EMPTY })).toEqual(UNDECRYPTABLE);
+
+  expect(() =>
+    decrypt({
+      key,
+      ciphertext: withVersion(sealed, 2),
+      associatedData: numbers(associatedData),
+    }),
+  ).toThrow();
+  expect(() =>
+    openBox({
+      ...bobOpens,
+      context: numbers(context),
+      box: withVersion(box, 2),
+    }),
+  ).toThrow();
+  expect(() =>
+    openBox({
+      ...bobOpens,
+      senderPublicKey: numbers(alice.publicKey),
+      box: EMPTY,
+    }),
+  ).toThrow();
+});
+
+test('[SHARING-16.1] refuses to derive a key from a secret or a purpose that is neither bytes nor text, or with a salt that is not bytes', () => {
+  const secret = bytesFrom(0, 32);
+  const purpose = utf8('example/signing');
+  expect(toHex(deriveKey({ secret, purpose }))).toBe(DERIVED.fromBytes);
+  expect(toHex(deriveKey({ secret, purpose: 'example/signing' }))).toBe(
+    DERIVED.fromBytes,
+  );
+
+  const neither: [string, unknown][] = [
+    ['an array of numbers', Array.from(secret)],
+    ['a Uint16Array', Uint16Array.from(secret)],
+    ['a number', 32],
+    ['an object with a length', { length: 32 }],
+    ['undefined', undefined],
+    ['null', null],
+  ];
+  const accepted: string[] = [];
+  const tryWith = (what: string, input: Parameters<typeof deriveKey>[0]) => {
+    try {
+      deriveKey(input);
+    } catch {
+      return;
+    }
+    accepted.push(what);
+  };
+  for (const [what, value] of neither) {
+    tryWith(`secret as ${what}`, { secret: value as Uint8Array, purpose });
+    tryWith(`purpose as ${what}`, { secret, purpose: value as Uint8Array });
+  }
+  for (const [what, value] of [
+    ['text', 'x'.repeat(32)],
+    ['an array of numbers', Array.from(salt)],
+    ['null', null],
+  ] as const) {
+    tryWith(`salt as ${what}`, {
+      secret,
+      purpose,
+      salt: value as unknown as Uint8Array,
+    });
+  }
+  expect(accepted).toEqual([]);
+});
