@@ -3,6 +3,10 @@ module.exports = {
   rootDir: __dirname,
   testEnvironment: 'node',
   testMatch: ['<rootDir>/{src,tests}/**/*.test.[jt]s'],
+  // noble is ESM; transform it under both plain and pnpm node_modules layouts.
+  transformIgnorePatterns: [
+    '/node_modules/(?!\\.pnpm/|@noble/(?:ciphers|curves|hashes)/)',
+  ],
   transform: {
     '^.+\\.[jt]s$': [
       require.resolve('babel-jest'),
