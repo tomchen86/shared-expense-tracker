@@ -1,4 +1,4 @@
-# ADR-0023: Invite links open the app through the API's own domain
+# ADR-0023: Invite links open the app through the API's own address
 
 - Date: 2026-11-18
 - Status: Accepted
@@ -11,7 +11,7 @@ What the platforms require, as of 2026-11-18:
 
 - iOS opens an `https` link in an app only when the link's domain serves `/.well-known/apple-app-site-association` naming the app, and the app's Associated Domains name the domain (Universal Links). Apple's table of capabilities gives Associated Domains to Apple Developer Program members and not to a free Personal Team, which is what the app is signed with today. Apple's servers fetch the file within about a day and phones take it from them when the app is installed, then about once a week, so a wrong file stays wrong for a while.
 - Android does the same with `/.well-known/assetlinks.json`, which names the app's package and the SHA-256 fingerprint of the certificate it is signed with, and an intent filter with `autoVerify` (App Links). Expo's template signs a Release build with a keystore that ships in a public package, so anyone can sign an app that matches its fingerprint.
-- Both files must come over HTTPS, with no redirect.
+- Both files must come over HTTPS, with no redirect, from the link's own hostname. Neither platform asks who registered that name, and each Worker's `workers.dev` hostname already answers that way.
 - A browser does not hand a link to the app when the user is already on the link's domain, when the address is typed or pasted, or when the browser is one that does not support it (Apple's TN3155). A chat app's own browser, such as LINE's, is where most invite links will be tapped. In those cases the link lands on the web page, which then needs a way of its own to pass the link on.
 - What follows `#` never reaches a server, so only script running on the page can read it.
 
@@ -19,6 +19,7 @@ ADR-0015 already accepts that whoever serves the page could read the secret, bec
 
 Also considered:
 
+- Buying a domain now and giving each environment a hostname under it: shorter links, for a yearly fee and a name chosen before the app has one. The app gets its name with the first public release (`docs/roadmap.md`).
 - A static site apart from the API for the page and the two files, such as Cloudflare Pages: one more thing to deploy and keep in step with each environment, for three small responses.
 - Passing the link on through a second hostname, as TN3155 suggests: a link to another hostname is a Universal Link again, and with the app missing it lands on the same page. It needs two hostnames and their files in every environment and does nothing for Android, where a chat app's browser decides for itself whether an `https` link leaves it, and where an `intent:` link, the other way to name the app, uses the `#` part for itself and so cannot carry the secret there.
 - Opening the app by script as soon as the page loads: without the app, Safari shows an error over the page the person needs to read.
@@ -26,7 +27,7 @@ Also considered:
 
 ## Decision
 
-- Each environment's API answers on a hostname of its own under a domain the project owns, and that hostname is the `<domain>` of its invite links. The names live in `apps/api/wrangler.jsonc` and the app's configuration, not here.
+- Until the first public release, an environment's invite links are on the hostname its Worker already has under `workers.dev` (ADR-0019): that hostname is the `<domain>` of its links. For that release the project moves to a domain of its own. The hostnames live in the app's configuration, not here.
 - The API itself serves the two verification files and the page, to anyone, without a signature. They never touch the database, so a sleeping database delays none of them.
 - What the files and the page say comes from each environment's configuration: the iOS apps, the Android apps with their certificate fingerprints, and where to download each. Production lists only certificates of builds that are given to people. The template keystore's fingerprint is listed only where local builds are checked.
 - The app's configuration claims the path `/i/` on every environment's hostname, so one build opens the links of each. The app takes an `https` invite link by its path, whatever its host: the system hands it only links of the domains it verified.
@@ -39,10 +40,12 @@ Also considered:
 - A tap on an invite link opens the app directly wherever the system hands links over: Messages, Mail, Notes, the camera's QR reader, and browsers that support it. In a chat app's own browser it takes a second tap, on `Open in App`. Whether such a browser lets a page open another app's scheme shows only on a phone, so the `sharing` spec has a hand check with LINE.
 - With the app missing, `Open in App` does nothing or shows the browser's error. The page cannot tell whether the app is installed, so it always shows both the button and the download links.
 - Nothing proves who owns a scheme. Any page or app can send the app a link on it, which is no more than an `https` link can do. Another app on the same phone can also claim the scheme and receive what `Open in App` sends, secret included. Such an app gets what a leaked link gives (ADR-0015): the group's name and its members' names, and the chance to apply. A member still has to approve.
-- The domain is in every link, in the app's entitlements, and in its manifest. Changing it later needs a new build and breaks the links already sent, which last seven days.
+- The hostname is in every link, in the app's entitlements, and in its manifest. Changing it needs a new build and breaks the links already sent, which last seven days. The move from `workers.dev` to the project's own domain is such a change, made while only testers have builds and links.
+- A `workers.dev` link is long, and so its QR code is dense.
+- Nothing has yet fetched the two files from a `workers.dev` hostname for this app. The hand check on a phone (SHARING-70.1) shows whether Apple's servers and Android accept it; if they do not, the project's own domain comes first.
 - The app is signed with a team in the Apple Developer Program from now on, which has a yearly fee.
 - An app ID or fingerprint has to be right before a build reaches people: Apple's servers and installed apps pick up a corrected file only after a day to a week.
 - On Android 11 and lower, an app opens its links directly only when every hostname it claims lists its certificate. So each environment also lists the certificates of the builds given to people, and a locally built app, whose certificate production does not list, opens no link directly there: hand checks of the links use Android 12 or later.
 - The page is the first HTML the API serves, and the API now answers people as well as phones. It stays one document with no build step. A second page is the time to decide where web pages live.
 - The download links come from configuration, so the internal test's links (#158) and later the stores' are a change of configuration, not of code.
-- The hostnames and the configuration are in `apps/api/wrangler.jsonc`, so the change that adds them runs `AGENTS.md`'s rule 9.
+- Each environment's configuration is in `apps/api/wrangler.jsonc`, so the change that adds it runs `AGENTS.md`'s rule 9. The Workers keep their addresses, so the deploy itself does not change.
