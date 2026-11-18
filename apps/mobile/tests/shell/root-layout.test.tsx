@@ -14,6 +14,9 @@ jest.mock('expo-router', () => ({
   DarkTheme: {},
   DefaultTheme: {},
   ThemeProvider: ({ children }: { children: unknown }) => children,
+  // The layout resets the navigation when the local data is replaced, which no test here does.
+  router: {},
+  useNavigationContainerRef: () => ({}),
   Stack: function Stack() {
     const { Text } = jest.requireActual('react-native');
     const { useLocalIdentity } =

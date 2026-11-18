@@ -7,22 +7,49 @@ interface MigrationRecord {
   checksum: string;
 }
 
+const checksumOf = (sql: string) => bytesToHex(sha256(utf8ToBytes(sql)));
+
+async function readRecords(executor: SqlExecutor): Promise<MigrationRecord[]> {
+  const tables = await executor.all(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '_migrations'",
+  );
+  return tables.length
+    ? executor.all<MigrationRecord>(
+        'SELECT position, checksum FROM _migrations ORDER BY position',
+      )
+    : [];
+}
+
+/**
+ * How the migrations a database has run compare with `migrations`: the same ones, only
+ * the first of them, all of them and more, or others, which includes none at all.
+ */
+export async function compareMigrations(
+  executor: SqlExecutor,
+  migrations: readonly string[],
+): Promise<'same' | 'older' | 'newer' | 'different'> {
+  const records = await readRecords(executor);
+  if (
+    records.length === 0 ||
+    records.some(
+      (record, index) =>
+        record.position !== index + 1 ||
+        (index < migrations.length &&
+          record.checksum !== checksumOf(migrations[index])),
+    )
+  )
+    return 'different';
+  if (records.length === migrations.length) return 'same';
+  return records.length < migrations.length ? 'older' : 'newer';
+}
+
 async function applyMigrations(
   transaction: SqlExecutor,
   migrations: readonly string[],
   development: boolean,
 ): Promise<void> {
-  const checksums = migrations.map((sql) =>
-    bytesToHex(sha256(utf8ToBytes(sql))),
-  );
-  const tables = await transaction.all(
-    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = '_migrations'",
-  );
-  let records = tables.length
-    ? await transaction.all<MigrationRecord>(
-        'SELECT position, checksum FROM _migrations ORDER BY position',
-      )
-    : [];
+  const checksums = migrations.map(checksumOf);
+  let records = await readRecords(transaction);
 
   if (
     records.some(
