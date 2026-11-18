@@ -30,11 +30,14 @@ import {
   deleted,
   eachTestGetsAPhone,
   eventsOf,
+  everything,
   expenseTitled,
   groupId,
   members,
   openGroupCategories,
   receive,
+  receiveEvents,
+  relayed,
   removeGroupCategory,
   setClock,
   stamped,
@@ -269,6 +272,24 @@ test('[SYNC-39.1] still lists the categories as merged after a restart', async (
       'Hotels',
     ]),
   );
+});
+
+test('[SYNC-28.1] leaves the local data as it is when the same category events arrive again', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  const other = await categoryOf('Brisbane', 'Other');
+  const events = [
+    relayed(categoryCreated(HOTELS, 'Hotels', '#00ACC1')),
+    relayed(changed('category', HOTELS, at(LATER + 1), { name: 'Stays' })),
+    relayed(changed('category', other.id, at(LATER + 2), { archived: true })),
+  ];
+  await receiveEvents(brisbane, ...events);
+  const before = everything();
+
+  await receiveEvents(brisbane, ...events);
+  await receiveEvents(brisbane, events[2], events[1], events[0]);
+
+  expect(everything()).toEqual(before);
 });
 
 // Deleted categories

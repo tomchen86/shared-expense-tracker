@@ -471,6 +471,25 @@ test('[SYNC-29.1] leaves an expense where it is in Trash when another phone dele
   await expectTrash(['Coffee run', 'Dinner']);
 });
 
+test('[SYNC-29.1] leaves an expense where it is in Trash when another phone changes its title', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  await addExpense();
+  const dinner = await expenseTitled('Dinner');
+  await deleteByAction('Dinner');
+  await deleteByAction('Coffee run');
+  await openTrash();
+  await expectTrash(['Coffee run', 'Dinner']);
+
+  await receive(
+    brisbane,
+    changed('expense', dinner.id, at(LATER + 1000), { title: 'Supper' }),
+  );
+
+  await expectTrash(['Coffee run', 'Supper']);
+});
+
 test('[SYNC-29.1] still shows the applied expenses after a restart', async () => {
   const app = await startShared();
   const brisbane = await groupId('Brisbane');
