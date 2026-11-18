@@ -1,8 +1,17 @@
-import { splitEvenly, type Share } from '@shared-expense/domain';
+import {
+  splitEvenly,
+  type Share,
+  type SyncUnits,
+} from '@shared-expense/domain';
 import { createUuid, type Database, type SqlExecutor } from '../storage';
 import type { LocalIdentity } from '../shell';
+import {
+  expenseSyncValues,
+  sharedGroup,
+  writeLocalChange,
+} from '../sync/records';
 
-/** An expense as the phone stores it (LEDGER-27.1). */
+/** An expense as the phone stores it (LEDGER-27.2). */
 export interface Expense {
   id: string;
   title: string;
@@ -10,7 +19,7 @@ export interface Expense {
   currency: string;
   /** YYYY-MM-DD */
   date: string;
-  /** The category, with its name and color as they were when the expense was last saved. */
+  /** A shared expense keeps the name and color from when it was assigned this category. */
   category: { id: string; name: string; color: string };
   /** Left out when the expense has no note. */
   note?: string;
@@ -57,9 +66,23 @@ export async function moveExpensesToCategory(
   );
 }
 
-/** Every stored expense, in the order of LEDGER-28.1. */
-export async function listExpenses(database: SqlExecutor): Promise<Expense[]> {
-  const rows = await database.all<ExpenseRow>(`
+/** Stored expenses in the order of LEDGER-28.1, optionally limited to one space. */
+export function listExpenses(
+  database: SqlExecutor,
+  spaceId?: string,
+): Promise<Expense[]> {
+  return spaceId === undefined
+    ? readExpenses(database, '', [])
+    : readExpenses(database, 'WHERE e.spaceId = ?', [spaceId]);
+}
+
+async function readExpenses(
+  database: SqlExecutor,
+  where: string,
+  parameters: readonly string[],
+): Promise<Expense[]> {
+  const rows = await database.all<ExpenseRow>(
+    `
     SELECT e.*,
       (SELECT json_group_array(json_object('participant', participant, 'amountMinor', amountMinor))
         FROM (SELECT participant, amountMinor FROM expense_payments
@@ -67,8 +90,10 @@ export async function listExpenses(database: SqlExecutor): Promise<Expense[]> {
       (SELECT json_group_array(json_object('participant', participant, 'amountMinor', amountMinor))
         FROM (SELECT participant, amountMinor FROM expense_shares
           WHERE expenseId = e.id ORDER BY position, rowid)) AS shares
-    FROM expenses AS e ORDER BY e.date DESC, e.rowid DESC
-  `);
+    FROM expenses AS e ${where} ORDER BY e.date DESC, e.rowid DESC
+  `,
+    parameters,
+  );
   return rows.map((row) => ({
     id: row.id,
     title: row.title,
@@ -125,11 +150,15 @@ export async function saveExpense(
   database: Database,
   identity: LocalIdentity,
   input: ExpenseInput,
-  existing?: Expense,
+  original?: Expense,
   split?: GroupSplit,
 ): Promise<void> {
   await database.transaction(async (transaction) => {
     const spaceId = split?.groupId ?? identity.personalSpaceId;
+    const [existing] = original
+      ? await readExpenses(transaction, 'WHERE e.id = ?', [original.id])
+      : [];
+    if (original && !existing) throw new Error('Expense not found');
     let amountMinor = input.amountMinor;
     let payments = [
       { participant: identity.personalParticipantId, amountMinor },
@@ -176,27 +205,42 @@ export async function saveExpense(
         shares = allocations;
       }
     }
-    const [category] = await transaction.all<Expense['category']>(
+    const [selected] = await transaction.all<Expense['category']>(
       'SELECT id, name, color FROM categories WHERE id = ? AND spaceId = ?',
       [input.categoryId, spaceId],
     );
-    if (!category) throw new Error('Category not found');
+    if (!selected) throw new Error('Category not found');
+    const shared = split && (await sharedGroup(transaction, spaceId));
+    const keepCategory = shared && existing?.category.id === selected.id;
+    const category = keepCategory ? existing.category : selected;
     const id = existing?.id ?? (await createUuid(transaction));
-    const values = [
-      input.title.trim(),
+    const expense: Expense = {
+      id,
+      spaceId,
+      title: input.title.trim(),
+      date: input.date,
+      note: input.note?.trim() || undefined,
+      category,
       amountMinor,
-      input.date,
+      currency: existing?.currency ?? input.currency,
+      payments,
+      shares,
+      trashOrder: existing?.trashOrder,
+    };
+    const values = [
+      expense.title,
+      expense.amountMinor,
+      expense.date,
       category.id,
       category.name,
       category.color,
-      input.note?.trim() || null,
+      expense.note ?? null,
     ];
     if (existing) {
-      const result = await transaction.run(
+      await transaction.run(
         'UPDATE expenses SET title = ?, amountMinor = ?, date = ?, categoryId = ?, categoryName = ?, categoryColor = ?, note = ?, spaceId = ? WHERE id = ?',
         [...values, spaceId, id],
       );
-      if (result.changes !== 1) throw new Error('Expense not found');
       await transaction.run(
         'DELETE FROM expense_payments WHERE expenseId = ?',
         [id],
@@ -207,7 +251,7 @@ export async function saveExpense(
     } else {
       await transaction.run(
         'INSERT INTO expenses (title, amountMinor, date, categoryId, categoryName, categoryColor, note, id, currency, spaceId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [...values, id, input.currency, spaceId],
+        [...values, id, expense.currency, spaceId],
       );
     }
     for (const [table, allocations] of [
@@ -219,6 +263,12 @@ export async function saveExpense(
           `INSERT INTO ${table} (expenseId, participant, amountMinor, position) VALUES (?, ?, ?, ?)`,
           [id, share.participant, share.amountMinor, position],
         );
+    }
+    if (shared) {
+      const units: Partial<SyncUnits['expense']> = expenseSyncValues(expense);
+      // A displayed fallback category can differ from the synced category until it arrives.
+      if (keepCategory) delete units.category;
+      await writeLocalChange(transaction, shared, 'expense', id, units);
     }
   });
   notifyExpensesChanged(database);

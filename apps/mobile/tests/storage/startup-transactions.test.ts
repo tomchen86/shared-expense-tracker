@@ -184,6 +184,11 @@ test('development reset clears views, triggers, quoted names, and foreign-key cy
     { name: 'group_members' },
     { name: 'groups' },
     { name: 'local_identity' },
+    { name: 'sync_clock' },
+    { name: 'sync_groups' },
+    { name: 'sync_outbox' },
+    { name: 'sync_records' },
+    { name: 'sync_refusals' },
   ]);
   expect(await database.all('PRAGMA foreign_keys')).toEqual([
     { foreign_keys: 1 },

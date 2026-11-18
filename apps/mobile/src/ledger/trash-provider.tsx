@@ -101,9 +101,13 @@ export function TrashProvider({ children }: { children: ReactNode }) {
   }
 
   function clearNotice(id?: string) {
-    setNotice((current) =>
-      id === undefined || current?.expense.id === id ? undefined : current,
-    );
+    setNotice((current) => {
+      const cleared =
+        id === undefined
+          ? current?.expense.spaceId === personalSpaceId
+          : current?.expense.id === id;
+      return cleared ? undefined : current;
+    });
   }
 
   const actions: TrashActions = {

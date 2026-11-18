@@ -41,6 +41,14 @@ export interface SyncUnits {
 
 export type SyncRecordType = keyof SyncUnits;
 
+type ChangedUnits<V> = {
+  [U in keyof V]?: {
+    value: V[U];
+    /** The stamp this unit replaced. Left out when it had none. */
+    base?: SyncStamp;
+  };
+};
+
 /** An event that changes units of one record. A record's first event holds them all. */
 export type SyncChange = {
   [T in SyncRecordType]: {
@@ -48,13 +56,7 @@ export type SyncChange = {
     stamp: SyncStamp;
     type: T;
     id: string;
-    units: {
-      [U in keyof SyncUnits[T]]?: {
-        value: SyncUnits[T][U];
-        /** The stamp this unit had on the phone that made the change. Left out when it had none. */
-        base?: SyncStamp;
-      };
-    };
+    units: ChangedUnits<SyncUnits[T]>;
   };
 }[SyncRecordType];
 
@@ -68,6 +70,9 @@ export interface SyncDeletion {
 }
 
 export type SyncEvent = SyncChange | SyncDeletion;
+
+/** The encrypted event limit, less the version byte, nonce and authentication tag (ADR-0021). */
+export const MAX_SYNC_PLAINTEXT_BYTES = 65_536 - 41;
 
 /** One record as merged so far. */
 export type SyncRecord = {
@@ -103,6 +108,26 @@ export interface SyncMoneyChange {
   id: string;
   stamp: SyncStamp;
   money: SyncMoney;
+}
+
+/** The supplied units that differ from their stored values, with the bases for a local edit. */
+export function changedSyncUnits<V extends object>(
+  values: V,
+  stored: SyncRecord['units'],
+): ChangedUnits<V> {
+  const current: Record<
+    string,
+    { value: unknown; stamp: SyncStamp } | undefined
+  > = stored;
+  const changes: ChangedUnits<V> = {};
+  for (const name of Object.keys(values) as (keyof V & string)[]) {
+    const unit = current[name];
+    const value = values[name];
+    if (!unit) changes[name] = { value };
+    else if (compareUnitValues(name, value, unit.value) !== 0)
+      changes[name] = { value, base: unit.stamp };
+  }
+  return changes;
 }
 
 /** Negative when `a` is earlier than `b`, positive when it is later, 0 when they are the same stamp. */

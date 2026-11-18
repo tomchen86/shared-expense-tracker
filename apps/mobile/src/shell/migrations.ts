@@ -5,6 +5,7 @@ import {
   expenseMigrations,
   expenseTrashMigration,
 } from '../ledger/migrations';
+import { syncMigration } from '../sync/migrations';
 
 /** Every capability's SQL migrations, in the order they run (ADR-0006). */
 export const appMigrations: readonly string[] = [
@@ -30,4 +31,5 @@ export const appMigrations: readonly string[] = [
   `ALTER TABLE local_identity
     ADD COLUMN chartType TEXT NOT NULL DEFAULT 'auto'
     CHECK (chartType IN ('auto', 'donut', 'bar'))`,
+  syncMigration,
 ];

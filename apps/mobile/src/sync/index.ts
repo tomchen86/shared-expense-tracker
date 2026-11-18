@@ -1,9 +1,20 @@
-import type { SyncEvent, SyncRefusal } from '@shared-expense/domain';
+import {
+  nextSyncStamp,
+  type SyncEvent,
+  type SyncRecordType,
+  type SyncRefusal,
+  type SyncUnits,
+} from '@shared-expense/domain';
+import { listCategories } from '../categories/repository';
+import { listExpenses } from '../ledger/expenses';
 import type { Database, SqlExecutor } from '../storage';
-
-// What the phone does with a shared ledger's sync events (docs/specs/sync/spec.md).
-// Stubs: the signatures are the boundary the acceptance tests use, and the implementer
-// replaces the bodies.
+import {
+  expenseSyncValues,
+  latestStamp,
+  saveLatestStamp,
+  sharedGroup,
+  storeLocalRecord,
+} from './records';
 
 /** An event this phone wrote and has not uploaded yet. */
 export interface UnsentSyncEvent {
@@ -37,16 +48,70 @@ function notImplemented(name: string, ...inputs: unknown[]): never {
 /** Makes a group a shared ledger on this phone, whose device ID is `device`. */
 export async function shareGroup(
   database: Database,
-  input: { groupId: string; device: string },
+  { groupId, device }: { groupId: string; device: string },
 ): Promise<void> {
-  return notImplemented('shareGroup', database, input);
+  await database.transaction(async (tx) => {
+    if (await sharedGroup(tx, groupId)) return;
+    const [group] = await tx.all<{ name: string }>(
+      'SELECT name FROM groups WHERE id = ?',
+      [groupId],
+    );
+    if (!group) throw new Error('Group not found');
+    await tx.run('INSERT INTO sync_groups (groupId, device) VALUES (?, ?)', [
+      groupId,
+      device,
+    ]);
+
+    let seen = await latestStamp(tx);
+    async function seed<T extends SyncRecordType>(
+      type: T,
+      id: string,
+      values: SyncUnits[T],
+    ) {
+      const stamp = nextSyncStamp({ seen, nowMs: Date.now(), device });
+      seen = stamp;
+      const units = Object.fromEntries(
+        Object.entries(values).map(([name, value]) => [name, { value, stamp }]),
+      );
+      await storeLocalRecord(tx, groupId, { type, id, units }, stamp);
+    }
+
+    await seed('group', groupId, group);
+    const members = await tx.all<{ id: string; name: string; removed: number }>(
+      'SELECT id, name, removed FROM group_members WHERE groupId = ? ORDER BY position',
+      [groupId],
+    );
+    for (const member of members)
+      await seed('member', member.id, {
+        name: member.name,
+        removed: member.removed === 1,
+      });
+    for (const category of await listCategories(tx, groupId))
+      await seed('category', category.id, {
+        name: category.name,
+        color: category.color,
+        archived: category.isArchived,
+      });
+    for (const expense of await listExpenses(tx, groupId))
+      await seed('expense', expense.id, expenseSyncValues(expense));
+    await saveLatestStamp(tx, seen!); // The group itself always has a stamp.
+  });
 }
 
 /** The events this phone has not uploaded yet, in the order it wrote them. */
 export async function listUnsentSyncEvents(
   database: SqlExecutor,
 ): Promise<UnsentSyncEvent[]> {
-  return notImplemented('listUnsentSyncEvents', database);
+  const rows = await database.all<{
+    id: string;
+    groupId: string;
+    content: string;
+  }>('SELECT id, groupId, content FROM sync_outbox ORDER BY position');
+  return rows.map(({ id, groupId, content }) => ({
+    id,
+    groupId,
+    content: JSON.parse(content) as SyncEvent,
+  }));
 }
 
 /**
