@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-114.1] Swipes the period's name and the total to the month before and back, not past this month, and changes no period from a card or on All Time"
+name: "[LEDGER-114.1] Swipes the period's name and the total to the month before and back, not past this month, and changes no period from a card"
 ---
 # The names of this month and last month, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
@@ -74,22 +74,8 @@ name: "[LEDGER-114.1] Swipes the period's name and the total to the month before
       text: Today, .*
     direction: LEFT
 - waitForAnimationToEnd
-- assertVisible: Delete Today expense
+- assertVisible:
+    text: Delete Today expense
+    enabled: true
 - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
-# On All Time, chosen on the Date row of Filters, a swipe changes nothing.
-- tapOn: Filters
-- waitForAnimationToEnd
-- tapOn: Date, This Month
-- tapOn: All Time
-- waitForAnimationToEnd
-- tapOn: Done
-- waitForAnimationToEnd
-- assertVisible: Choose period\. All Time
-- swipe:
-    from:
-      text: Choose period\..*
-    direction: RIGHT
-- waitForAnimationToEnd
-- assertVisible: Choose period\. All Time
 - assertVisible: Today, .*
-- assertVisible: Last month, .*

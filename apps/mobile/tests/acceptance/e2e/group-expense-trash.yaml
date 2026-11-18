@@ -26,7 +26,10 @@ name: "[LEDGER-70.2] [LEDGER-88.1] [GROUPS-80.1] [LEDGER-75.3] Swipes a group ex
 - assertNotVisible: Delete Dinner expense
 - assertVisible: .*Dinner.*\$100\.01.*
 # The same drag to the right only closes an open card; from a closed card, it is iOS's back
-# gesture. It starts well left of the middle, since the gesture needs half the screen's width.
+# gesture. It starts well left of the middle, since the gesture needs half the screen's width,
+# and at the height of the card: under the large title, the period row, the total and your net
+# balance (GROUPS-68.4, GROUPS-69.3), the first card of an iPhone 17 lies across 51% of the
+# screen's height.
 - swipe:
     from:
       text: .*Dinner.*\$100\.01.*
@@ -34,15 +37,15 @@ name: "[LEDGER-70.2] [LEDGER-88.1] [GROUPS-80.1] [LEDGER-75.3] Swipes a group ex
 - waitForAnimationToEnd
 - assertVisible: Delete Dinner expense
 - swipe:
-    start: 20%, 38%
-    end: 90%, 38%
+    start: 20%, 51%
+    end: 90%, 51%
     duration: 300
 - waitForAnimationToEnd
 - assertNotVisible: Delete Dinner expense
 - assertVisible: Group actions
 - swipe:
-    start: 20%, 38%
-    end: 90%, 38%
+    start: 20%, 51%
+    end: 90%, 51%
     duration: 300
 - waitForAnimationToEnd
 - assertNotVisible: Group actions
