@@ -2655,7 +2655,7 @@ The mobile app SHALL 在支出清單和群組的畫面的標題列放名稱是�
 
 ### Requirement: LEDGER-110.1 (e2e) iOS 上期間的名稱是系統選單
 
-WHERE iOS，the mobile app SHALL 讓期間列上期間的名稱是一個系統選單，名稱後面有向下的箭頭：按一下就從名稱彈出選單，依序列出 LEDGER-109.1 的六個選項，標出現在的期間那一個；選一個選項就關閉選單，把這個畫面的期間換成它，和在 Filters 的 Date 選是同一個設定。
+WHERE iOS，the mobile app SHALL 讓期間列上期間的名稱是一個系統選單，名稱後面有向下的箭頭：按一下就從名稱彈出選單，依序列出 LEDGER-109.1 的六個選項，標出現在的期間那一個；選一個選項就關閉選單，把這個畫面的期間換成它，和在 Filters 的 Date 選是同一個設定。用箭頭或滑動換了期間之後，選單仍在名稱顯示的位置：按名稱照樣打開選單，螢幕閱讀器也在那裡找到它。
 
 #### Scenario: 選上個月
 
@@ -2671,6 +2671,11 @@ WHERE iOS，the mobile app SHALL 讓期間列上期間的名稱是一個系統�
 
 - **WHEN** 接著按期間的名稱，選「Custom Range」
 - **THEN** 期間的名稱是「Custom Range」，它下面出現 From 和 To 兩個日期
+
+#### Scenario: 換了期間之後
+
+- **WHEN** iOS 上期間是這個月時按「Previous period」，等上個月滑進來，再按期間的名稱，選「This Month」
+- **THEN** 選單從名稱的位置彈出；選了之後期間的名稱是這個月
 
 ### Requirement: LEDGER-111.1 Android 上按期間的名稱打開 Filters
 

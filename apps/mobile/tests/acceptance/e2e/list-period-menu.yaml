@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-110.1] [LEDGER-109.1] Chooses Last Month, All Time and Custom Range in the system menu on the period's name, and finds each on the Date row of Filters"
+name: "[LEDGER-110.1] [LEDGER-109.1] Chooses Last Month, All Time and Custom Range in the system menu on the period's name, also after an arrow slid a month in, and finds each on the Date row of Filters"
 ---
 # The names of this month and last month, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
@@ -69,3 +69,14 @@ name: "[LEDGER-110.1] [LEDGER-109.1] Chooses Last Month, All Time and Custom Ran
 - tapOn: Done
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+# LEDGER-110.1: once an arrow has slid another month in, the menu is still where the name
+# shows: a press on the name opens it.
+- tapOn: Previous period
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
+- tapOn: Choose period\..*
+- assertVisible: Last 3 Months
+- tapOn: This Month
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible: Today, .*
