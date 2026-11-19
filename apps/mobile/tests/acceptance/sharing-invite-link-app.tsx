@@ -36,6 +36,15 @@ export const OTHER_SPELLINGS = [
   'shared-expense-tracker://i/abc?x=1#def',
 ];
 export const LONG_LINK = `https://links.example.test/i/3q2-7wEjRWeJq83vEjRWeA#${'a'.repeat(2000)}`;
+/**
+ * Links on the app's scheme that are not invite links: after `://` comes one more
+ * slash, so none starts with `shared-expense-tracker://i/`, whatever its path says.
+ */
+export const NOT_INVITE_LINKS = [
+  'shared-expense-tracker:///i/3q2-7wEjRWeJq83vEjRWeA#AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8',
+  'shared-expense-tracker:///i/invite',
+  'shared-expense-tracker:///i/invite?link=hello',
+];
 
 type LinkListener = (event: { url: string }) => void;
 

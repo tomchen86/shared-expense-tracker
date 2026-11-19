@@ -45,6 +45,7 @@ import {
 import {
   APP_SCHEME_LINK,
   LONG_LINK,
+  NOT_INVITE_LINKS,
   OTHER_SPELLINGS,
   SECOND_LINK,
   TITLE,
@@ -411,3 +412,25 @@ test('[SHARING-74.1] selects Groups, without Invite Link, when shared-expense-tr
   await waitFor(() => expect(selectedTab()).toBe('Groups'));
   expect(isOpen(TITLE)).toBe(false);
 });
+
+test.each(NOT_INVITE_LINKS)(
+  '[SHARING-74.1] does not open Invite Link again for %s, which is not an invite link, after an invite link opened it',
+  async (link) => {
+    await receiveOnSettings(APP_SCHEME_LINK);
+    await pressOnBar(TITLE, 'Close');
+    await expectClosed(TITLE);
+
+    await receiveLink(link);
+
+    expect(inviteLinksOpen()).toBe(0);
+  },
+);
+
+test.each(NOT_INVITE_LINKS)(
+  '[SHARING-74.1] does not open Invite Link when %s, which is not an invite link, starts the app',
+  async (link) => {
+    await startAppFromLink(link);
+
+    expect(inviteLinksOpen()).toBe(0);
+  },
+);
