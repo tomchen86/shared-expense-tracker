@@ -9,7 +9,7 @@ import {
 import { AccessibilityInfo, Alert } from 'react-native';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { BottomNotice } from '../ui/bottom-notice';
-import type { Expense } from './expenses';
+import { subscribeToExpenses, type Expense } from './expenses';
 import {
   deleteTrashedExpenses,
   moveExpenseToTrash,
@@ -40,6 +40,17 @@ export function TrashProvider({ children }: { children: ReactNode }) {
   const [screenReader, setScreenReader] = useState(false);
   const pending = useRef(new Set<string>());
   const mounted = useRef(false);
+
+  useEffect(
+    () =>
+      subscribeToExpenses(database, (leftTrash) => {
+        if (leftTrash?.size)
+          setNotice((current) =>
+            current && leftTrash.has(current.expense.id) ? undefined : current,
+          );
+      }),
+    [database],
+  );
 
   useEffect(() => {
     mounted.current = true;
@@ -101,9 +112,13 @@ export function TrashProvider({ children }: { children: ReactNode }) {
   }
 
   function clearNotice(id?: string) {
-    setNotice((current) =>
-      id === undefined || current?.expense.id === id ? undefined : current,
-    );
+    setNotice((current) => {
+      const cleared =
+        id === undefined
+          ? current?.expense.spaceId === personalSpaceId
+          : current?.expense.id === id;
+      return cleared ? undefined : current;
+    });
   }
 
   const actions: TrashActions = {

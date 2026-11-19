@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useSyncedFocusEffect } from '../sync/use-synced-focus-effect';
 import { useLocalDatabase } from '../shell';
 import { listGroups, type Group } from './index';
 
@@ -8,7 +8,9 @@ export function useGroups({ throwOnError = true } = {}) {
   const database = useLocalDatabase();
   const [groups, setGroups] = useState<Group[]>();
   const [error, setError] = useState<unknown>();
-  useFocusEffect(
+  useSyncedFocusEffect(
+    database,
+    undefined,
     useCallback(() => {
       let active = true;
       void listGroups(database).then(

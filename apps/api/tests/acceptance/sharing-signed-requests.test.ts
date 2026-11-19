@@ -82,6 +82,31 @@ describe('SHARING-31.1', () => {
     expectRefused(beside, SIGNATURE);
   });
 
+  test('[SHARING-31.1] answers the two verification files and the download page without a signature, and no other method or path beside them', async () => {
+    const association = await send({
+      path: '/.well-known/apple-app-site-association',
+    });
+    const assetLinks = await send({ path: '/.well-known/assetlinks.json' });
+    const page = await send({ path: '/i/a' });
+    const head = await send({ method: 'HEAD', path: '/i/a' });
+    const posted = await send({ method: 'POST', path: '/i/a' });
+    const deeper = await send({ path: '/i/a/b' });
+    const beside = await send({ path: '/.well-known/other' });
+    const postedFile = await send({
+      method: 'POST',
+      path: '/.well-known/assetlinks.json',
+    });
+
+    expect(association.status).toBe(200);
+    expect(assetLinks.status).toBe(200);
+    expect(page.status).toBe(200);
+    expect(head.status).toBe(200);
+    expectRefused(posted, SIGNATURE);
+    expectRefused(deeper, SIGNATURE);
+    expectRefused(beside, SIGNATURE);
+    expectRefused(postedFile, SIGNATURE);
+  });
+
   test('[SHARING-31.1] gives the reason of the first check a request fails: signature before clock', async () => {
     const taylor = await registered(TAYLOR);
     const early = signedBy(taylor, { timestampMs: T - 3_600_000 });

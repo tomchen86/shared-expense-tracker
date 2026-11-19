@@ -2,7 +2,7 @@
 
 ## Purpose
 
-共同帳本靠金鑰認手機，內容加密之後才離開手機（ADR-0015、ADR-0022）。這裡有三塊：`packages/domain` 的加密工具（SHARING-1.1 到 16.1）；手機 app 的裝置身分，和它怎麼替送給 API 的每個請求簽名（SHARING-19.1 到 30.1、43.1、45.1、46.1）；API 怎麼替手機註冊、檢查簽名和限制請求（SHARING-31.1 到 42.1、44.1、47.1）。手機 app 和 API 用 `packages/domain` 的同一個函式組出要簽的 bytes（SHARING-17.1、18.1）。這裡沒有畫面：哪個畫面什麼時候送請求、授權失效時畫面上顯示什麼，都不在這裡。
+共同帳本靠金鑰認手機，內容加密之後才離開手機（ADR-0015、ADR-0022）。這裡有四塊：`packages/domain` 的加密工具（SHARING-1.1 到 16.1）；手機 app 的裝置身分，和它怎麼替送給 API 的每個請求簽名（SHARING-19.1 到 30.1、43.1、45.1、46.1）；API 怎麼替手機註冊、檢查簽名和限制請求（SHARING-31.1 到 42.1、44.1、47.1）；和邀請連結的基礎（SHARING-60.1 到 76.1）。手機 app 和 API 用 `packages/domain` 的同一個函式組出要簽的 bytes（SHARING-17.1、18.1）。裝置身分和簽名沒有畫面：哪個畫面什麼時候送請求、授權失效時畫面上顯示什麼，都不在這裡。
 
 加密工具：用鑰匙加密和解密內容、用私鑰簽名、把內容裝成只有另一支手機打得開的 box，以及從密鑰材料導出金鑰。工具放在 `packages/domain` 自己的入口，給手機 app 用；它不存任何東西、不連網路，也不自己產生鑰匙、私鑰、nonce 或 salt（SHARING-14.1）。演算法是 XChaCha20-Poly1305（draft-irtf-cfrg-xchacha-03）、Ed25519（RFC 8032）、X25519（RFC 7748）和 HKDF-SHA-256（RFC 5869）。bytes 是一個 `Uint8Array`，以十六進位寫出：`0x01` 是一個 byte，沒有 `0x` 的一串是依序的 bytes，`…` 是省略的部分。鑰匙是 32 bytes 的對稱金鑰。nonce 是呼叫者給的 24 bytes，每次加密或裝 box 都要是新的隨機值。附加資料是一段不加密、但解密時要給出一模一樣的 bytes，可以是空的。密文是 SHARING-1.1 的格式，它的第一個 byte 是格式版本。簽名私鑰是 32 bytes 的 Ed25519 私鑰，box 私鑰是 32 bytes 的 X25519 私鑰，各有一把 32 bytes 的公開金鑰（SHARING-5.1、7.1）。共享密鑰是 X25519 用一把 box 私鑰和另一把 box 公開金鑰算出的 32 bytes。box 是交出方裝給收受方的密文（SHARING-8.1）：情境是裝 box 時給的一段 bytes，可以是空的；salt 是裝 box 時可以再給的 32 bytes；打開時兩者都要和裝的時候一樣。密鑰材料是導出金鑰的來源，用途是用來區分金鑰的一段 bytes，兩者都可以是字串（SHARING-12.1）。解密密文或打開 box 有兩種失敗：解不開（SHARING-3.1、10.1、11.1）和不認得格式版本（SHARING-4.2），兩種都不回傳任何內容。`packages/domain` 拒絕，是丟出錯誤，不產出任何結果。不是 bytes 的輸入一律先被拒絕（SHARING-16.1），只有導出金鑰的密鑰材料和用途也可以是字串；其他的規則說的都是這樣的輸入。沒給一個輸入，是指沒有它，或它是 `undefined`；只有 salt 可以不給。SHARING-15.1 列出的輸入（鑰匙、私鑰、nonce、box 的 salt 和裝 box 時收受方的公開金鑰）長度不對時也一律先被拒絕；要解密的 bytes、要打開的 box 和交出方的公開金鑰不管多長，都照其他的規則回報。
 
@@ -10,9 +10,11 @@
 
 簽名的請求是帶著四個欄位的 HTTP 請求：裝置 ID、請求時間、請求的 nonce 和簽名。請求時間是簽名當下的時間，從 1970-01-01T00:00:00Z 起的毫秒數；請求的 nonce 是 16 bytes 的隨機值，寫成 32 個小寫十六進位字元，和加密用的 nonce 無關；簽名是簽名私鑰對要簽的 bytes（SHARING-17.1）的簽名（SHARING-6.1），寫成 128 個小寫十六進位字元。方法是 HTTP 的方法，例如 `GET` 和 `POST`。路徑是請求的網址裡，從主機後面的 `/` 起到結尾的部分，有查詢時連 `?` 和查詢在內；它只能用送出和收到時都不會被改寫的寫法（SHARING-18.1），所以手機簽的和 API 收到的是同一段文字。請求的內容是 HTTP 的 body，沒有時是 0 bytes；內容雜湊是內容那些 bytes 的 SHA-256。四個欄位怎麼放進請求、註冊的內容，和 API 每種回應的格式，都定義在 `packages/domain` 的程式裡，手機 app 和 API 用同一份。
 
-API 的時間是 API 處理請求時自己的時鐘，從 1970-01-01T00:00:00Z 起的毫秒數。請求通過檢查，是它是簽名的請求，而且沒有被 SHARING-32.1 到 37.1 任何一條拒絕，註冊的請求還要沒有被 SHARING-39.1 到 41.1 和 47.1 拒絕，也不是 SHARING-44.1 說的、API 不註冊的那一種；通過檢查的請求才交給路由。API 拒絕一個請求，是回應一個帶著原因的拒絕，不做這個請求要做的事，資料庫和收到它之前一模一樣；原因是簽名、時鐘、重送、請求太多、內容不對或註冊太多。公開的路由是不必簽名的路由：`GET /health`，以及在自己的 requirement 裡寫明不必簽名的路由。IP 是請求來自的 IPv4 或 IPv6 位址：API 在 Cloudflare Workers 上時是 Cloudflare 放在 `CF-Connecting-IP` 的位址，在 Node 上時是連線的來源位址，都不是請求自己帶的其他標頭。IP 雜湊的金鑰是 API 所在的環境給它的一段保密的文字，用來算 IP 加了金鑰的雜湊（SHARING-42.1、44.1）。
+API 的時間是 API 處理請求時自己的時鐘，從 1970-01-01T00:00:00Z 起的毫秒數。請求通過檢查，是它是簽名的請求，而且沒有被 SHARING-32.1 到 37.1 任何一條拒絕，註冊的請求還要沒有被 SHARING-39.1 到 41.1 和 47.1 拒絕，也不是 SHARING-44.1 說的、API 不註冊的那一種；通過檢查的請求才交給路由。API 拒絕一個請求，是回應一個帶著原因的拒絕，不做這個請求要做的事，資料庫和收到它之前一模一樣；原因是簽名、時鐘、重送、請求太多、內容不對或註冊太多。公開的路由是不必簽名的路由：`GET /health`，以及在自己的 requirement 裡寫明不必簽名的路由（SHARING-60.1 到 62.1、76.1）。IP 是請求來自的 IPv4 或 IPv6 位址：API 在 Cloudflare Workers 上時是 Cloudflare 放在 `CF-Connecting-IP` 的位址，在 Node 上時是連線的來源位址，都不是請求自己帶的其他標頭。IP 雜湊的金鑰是 API 所在的環境給它的一段保密的文字，用來算 IP 加了金鑰的雜湊（SHARING-42.1、44.1）。
 
-下面的情境裡，T 是 `2026-11-18T06:32:00Z`，也就是 1794983520000；除非另外說明，手機的時鐘和 API 的時間都是 T，API 的網址是 `https://api.example.test`。Taylor 的手機的裝置 ID 是 `0f8fad5b-d9cb-469f-a165-70867728950e`，Casey 的手機是 `7c9e6679-7425-40de-944b-e07fc1f90ae7`，各有自己的簽名私鑰；API 的情境裡，除非另外說明，請求都來自 `203.0.113.7`，Taylor 的手機已經註冊。`/no-such-route` 是一個沒有路由的路徑。
+SHARING-17.1 到 47.1 的情境裡，T 是 `2026-11-18T06:32:00Z`，也就是 1794983520000；除非另外說明，手機的時鐘和 API 的時間都是 T，API 的網址是 `https://api.example.test`。Taylor 的手機的裝置 ID 是 `0f8fad5b-d9cb-469f-a165-70867728950e`，Casey 的手機是 `7c9e6679-7425-40de-944b-e07fc1f90ae7`，各有自己的簽名私鑰；API 的情境裡，除非另外說明，請求都來自 `203.0.113.7`，Taylor 的手機已經註冊。`/no-such-route` 是一個沒有路由的路徑。
+
+邀請連結的基礎（ADR-0023）：點邀請連結時，裝了 app 的手機直接打開 app，沒裝的人看到下載頁（SHARING-60.1 到 76.1）。邀請連結是 `https://<主機>/i/<代號>#<字串>`（ADR-0015）：主機是 API 在這個環境的網域，代號是路徑裡 `/i/` 後面的那一段，`#` 後面的部分只留在開連結的那支手機上，瀏覽器不會把它送給任何伺服器。API 給三樣東西：iOS 和 Android 用來確認這個網域的連結歸 app 開的兩個驗證檔（SHARING-60.1、61.1），和下載頁（SHARING-62.1 到 68.1）；誰都可以拿，請求不必簽名，也不必帶裝置身分，用 `HEAD` 問也一樣（SHARING-76.1）。它們的內容出自這個環境的 App 設定：開邀請連結的 iOS App，各寫成 `<Team ID>.<bundle ID>`；開邀請連結的 Android App，各有 package 名稱和簽它的憑證的 SHA-256 指紋；以及 iPhone 和 Android 各一個下載連結。每一項都可以沒有。下載頁是 API 對邀請連結的路徑回的網頁；頁面上的文字是它顯示給人看的字，不算 `<head>`、`<script>` 和 `<style>` 裡的。對手機 app 來說，邀請連結是系統交給它的這兩種連結：scheme 是 `https`、路徑以 `/i/` 開頭的連結，不管主機是什麼，因為系統只把驗證過的網域的連結交給 app；和以 `shared-expense-tracker://i/` 開頭的連結，也就是下載頁的「Open in App」帶的那一種（SHARING-66.1）。系統交連結給 app 有兩個時機：app 沒在執行時用它啟動 app，和 app 執行中時交給它。這裡還沒有建立邀請、看群組或申請加入，所以代號和 `#` 後面的部分是什麼、有沒有這個邀請，都不影響這裡的任何一條。SHARING-60.1 到 76.1 的情境裡，API 的網址是 `https://links.example.test`，「完整的連結」是 `https://links.example.test/i/3q2-7wEjRWeJq83vEjRWeA#AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8`，它的代號和 `#` 後面的部分只是長度和字元像真的例子。
 
 ## Requirements
 
@@ -795,6 +797,11 @@ The API SHALL 只把通過檢查的簽名的請求交給路由，公開的路由
 - **WHEN** 沒簽名的請求打 `GET /health`、`HEAD /health`、`POST /health` 和 `GET /health/more`
 - **THEN** API 照常回答 `GET /health`（200）；另外三個不是公開的路由，被拒絕，原因是簽名
 
+#### Scenario: 驗證檔和下載頁
+
+- **WHEN** 沒簽名的請求打 `GET /.well-known/apple-app-site-association`、`GET /.well-known/assetlinks.json`、`GET /i/a` 和 `HEAD /i/a`，以及 `POST /i/a`、`GET /i/a/b`、`GET /.well-known/other` 和 `POST /.well-known/assetlinks.json`
+- **THEN** 前四個是公開的路由（SHARING-60.1 到 62.1、76.1），API 照常回答（200）；後四個不是，被拒絕，原因是簽名
+
 #### Scenario: 第一個沒通過的檢查決定原因
 
 - **WHEN** Taylor 的手機送三個請求：一個簽名被改掉一個 bit，請求時間也早了一小時；一個簽名對，請求時間早了一小時；一個簽名和請求時間都對，nonce 是它之前通過檢查的請求用過的，而且它在這一分鐘已經有 60 個請求通過檢查
@@ -1149,3 +1156,385 @@ IF 註冊的請求內容裡的公開金鑰是 Ed25519 的低階點，THEN the AP
 - **WHEN** 註冊的請求內容裡的公開金鑰是 `0300000000000000000000000000000000000000000000000000000000000000`，簽名是 `01` 接著 63 個 `00`
 - **THEN** 它不是低階點，內容是對的；被拒絕的原因是簽名
 
+### Requirement: SHARING-60.1 `apple-app-site-association` 列出開邀請連結的 iOS App
+
+WHEN 有人請求 `GET /.well-known/apple-app-site-association`，the API SHALL 不必簽名就直接回 200，不轉址，`Content-Type` 是 `application/json`，內容是 JSON `{"applinks":{"details":[{"appIDs":[…],"components":[{"/":"/i/*"}]}]}}`，`appIDs` 依序是這個環境設定的 iOS App；一個 iOS App 都沒有設定時，`details` 是空的陣列。
+
+#### Scenario: 一個 iOS App
+
+- **WHEN** 這個環境設定的 iOS App 是 `ABCDE12345.com.tomchen.sharedexpensetracker`，請求 `GET /.well-known/apple-app-site-association`，沒有簽名
+- **THEN** 回 200，`Content-Type` 是 `application/json`，內容是 `{"applinks":{"details":[{"appIDs":["ABCDE12345.com.tomchen.sharedexpensetracker"],"components":[{"/":"/i/*"}]}]}}`，沒有其他欄位
+
+#### Scenario: 兩個 iOS App
+
+- **WHEN** 設定的 iOS App 依序是 `ABCDE12345.com.tomchen.sharedexpensetracker` 和 `FGHIJ67890.com.example.other`
+- **THEN** `details` 只有一項，它的 `appIDs` 依序是這兩個
+
+#### Scenario: 沒有設定 iOS App
+
+- **WHEN** 這個環境沒有設定 iOS App
+- **THEN** 回 200，內容是 `{"applinks":{"details":[]}}`
+
+### Requirement: SHARING-61.1 `assetlinks.json` 列出開邀請連結的 Android App
+
+WHEN 有人請求 `GET /.well-known/assetlinks.json`，the API SHALL 不必簽名就直接回 200，不轉址，`Content-Type` 是 `application/json`，內容是一個 JSON 陣列，依序為這個環境設定的每個 Android App 放一項：`relation` 是 `["delegate_permission/common.handle_all_urls"]`，`target` 的 `namespace` 是 `android_app`、`package_name` 是它的 package 名稱、`sha256_cert_fingerprints` 依序是它的憑證指紋，照設定的寫法；一個 Android App 都沒有設定時是空的陣列。
+
+#### Scenario: 一個 Android App，兩個指紋
+
+- **WHEN** 這個環境設定的 Android App 是 `com.tomchen.sharedexpensetracker`，指紋依序是 `14:6D:E9:83:C5:73:06:50:D8:EE:B9:95:2F:34:FC:64:16:A0:83:42:E6:1D:BE:A8:8A:04:96:B2:3F:CF:44:E5` 和 `FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C`，請求 `GET /.well-known/assetlinks.json`，沒有簽名
+- **THEN** 回 200，`Content-Type` 是 `application/json`，內容是只有一項的陣列：`relation` 是 `["delegate_permission/common.handle_all_urls"]`，`target` 是 `namespace` 為 `android_app`、`package_name` 為 `com.tomchen.sharedexpensetracker`、`sha256_cert_fingerprints` 依序為這兩個指紋，沒有其他欄位
+
+#### Scenario: 兩個 Android App
+
+- **WHEN** 設定的 Android App 依序是 `com.tomchen.sharedexpensetracker`（指紋是上面的第一個）和 `com.example.other`（指紋是上面的第二個）
+- **THEN** 陣列依序有這兩項，各有自己的 package 名稱和指紋
+
+#### Scenario: 沒有設定 Android App
+
+- **WHEN** 這個環境沒有設定 Android App
+- **THEN** 回 200，內容是 `[]`
+
+### Requirement: SHARING-62.1 邀請連結的路徑回下載頁，每個代號都一樣
+
+WHEN 有人請求 `GET /i/<代號>`，代號是一段不是空的、不含 `/` 的路徑，the API SHALL 不必簽名就直接回 200，不轉址，`Content-Type` 是 `text/html; charset=utf-8`，內容是下載頁，不設任何 cookie；不管代號是什麼、有沒有這個邀請、請求帶什麼查詢和標頭，回的內容和 `Content-Security-Policy` 都一模一樣。
+
+#### Scenario: 完整的連結的路徑
+
+- **WHEN** 請求 `GET /i/3q2-7wEjRWeJq83vEjRWeA`，沒有簽名
+- **THEN** 回 200，`Content-Type` 是 `text/html; charset=utf-8`，沒有 `Set-Cookie`，內容是下載頁
+
+#### Scenario: 各種代號
+
+- **WHEN** 代號是 `a`、2,000 個 `a`、`abc.png` 或 `%3Cscript%3Ealert(1)%3C%2Fscript%3E`
+- **THEN** 回的內容和 `Content-Security-Policy` 都和上一個 scenario 的一模一樣；內容裡沒有 `3q2-7wEjRWeJq83vEjRWeA`，也沒有 `alert(1)`
+
+#### Scenario: 帶著查詢
+
+- **WHEN** 請求 `GET /i/3q2-7wEjRWeJq83vEjRWeA?openExternalBrowser=1` 或 `GET /i/3q2-7wEjRWeJq83vEjRWeA?fbclid=IwAR0abc&utm_source=line`
+- **THEN** 回的內容和 `Content-Security-Policy` 一模一樣
+
+#### Scenario: 不看是什麼裝置
+
+- **WHEN** 請求的 `User-Agent` 是 iPhone 的 Safari、Android 的 Chrome 或 LINE 的內建瀏覽器，或沒有 `User-Agent`；`Accept-Language` 是 `zh-TW`，或沒有
+- **THEN** 回的內容和 `Content-Security-Policy` 一模一樣
+
+### Requirement: SHARING-63.1 `/i/` 後面不是剛好一段代號時不回下載頁
+
+IF 請求的路徑是 `/i` 或 `/i/`，或 `/i/` 後面的部分含有 `/`，THEN the API SHALL 不回下載頁，回應的狀態是 4xx。
+
+#### Scenario: 沒有代號，或多了一段
+
+- **WHEN** 請求 `GET /i`、`GET /i/`、`GET /i/a/b`、`GET /i/a/` 或 `GET /i//a`
+- **THEN** 回應的狀態是 4xx，內容不是下載頁
+
+### Requirement: SHARING-64.1 下載頁的文字
+
+The API SHALL 讓下載頁標成英文（`<html lang="en">`）、以裝置的寬度排版（`<meta name="viewport" content="width=device-width, initial-scale=1">`），`<title>` 是「Shared Expense Tracker」；頁面上的文字由上而下是 `<h1>` 的「Shared Expense Tracker」、「You've been invited to join a group.」和一個連結（`<a>`）「Open in App」，再來是下載的說明和下載連結（SHARING-65.1），沒有其他文字。
+
+#### Scenario: 兩個下載連結都有設定
+
+- **WHEN** 這個環境兩個下載連結都有設定，瀏覽器顯示下載頁
+- **THEN** 頁面上的文字依序是「Shared Expense Tracker」、「You've been invited to join a group.」、「Open in App」、「Don't have the app? Install it, then tap your invite link again.」、「Download for iPhone」和「Download for Android」，沒有其他文字；第一個是唯一的 `<h1>`，`<title>` 是「Shared Expense Tracker」
+
+#### Scenario: 語言和寬度
+
+- **WHEN** 讀下載頁的 HTML
+- **THEN** `<html>` 的 `lang` 是 `en`，有 `<meta name="viewport" content="width=device-width, initial-scale=1">`
+
+### Requirement: SHARING-65.1 下載連結只列這個環境有的
+
+The API SHALL 在下載頁的「Open in App」下面顯示下載的說明：這個環境至少設定了一個下載連結時，是「Don't have the app? Install it, then tap your invite link again.」，後面依序是有設定的平台的連結（`<a>`），iPhone 的是「Download for iPhone」、Android 的是「Download for Android」，各自連到設定的網址；兩個都沒有設定時，是「Don't have the app? It isn't available to download yet.」，沒有下載連結。
+
+#### Scenario: 兩個都有
+
+- **WHEN** iPhone 的下載連結是 `https://testflight.apple.com/join/AbCd1234`，Android 的是 `https://play.google.com/apps/internaltest/4701234567890123456`
+- **THEN** 「Open in App」下面依序是「Don't have the app? Install it, then tap your invite link again.」、連到 `https://testflight.apple.com/join/AbCd1234` 的「Download for iPhone」，和連到 `https://play.google.com/apps/internaltest/4701234567890123456` 的「Download for Android」
+
+#### Scenario: 只有 iPhone 的
+
+- **WHEN** 只設定了 iPhone 的下載連結
+- **THEN** 說明後面只有「Download for iPhone」，頁面上沒有「Download for Android」
+
+#### Scenario: 只有 Android 的
+
+- **WHEN** 只設定了 Android 的下載連結
+- **THEN** 說明後面只有「Download for Android」，頁面上沒有「Download for iPhone」
+
+#### Scenario: 兩個都沒有
+
+- **WHEN** 兩個下載連結都沒有設定
+- **THEN** 「Open in App」下面只有「Don't have the app? It isn't available to download yet.」，頁面上唯一的連結是「Open in App」
+
+### Requirement: SHARING-66.1 「Open in App」帶著整條邀請連結
+
+WHEN 瀏覽器顯示下載頁，the API SHALL 讓頁面行內的 script 把「Open in App」連到 `shared-expense-tracker://` 接上這一頁網址的路徑去掉開頭的 `/`，再接上網址的 `#` 和它後面的部分，照網址上的寫法，不帶查詢；網址沒有 `#`，或 `#` 後面是空的時，不接 `#`；頁面自己不跳轉，使用者按了「Open in App」才打開。
+
+#### Scenario: 完整的連結
+
+- **WHEN** 瀏覽器以 `https://links.example.test/i/3q2-7wEjRWeJq83vEjRWeA#AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8` 顯示下載頁
+- **THEN** 「Open in App」連到 `shared-expense-tracker://i/3q2-7wEjRWeJq83vEjRWeA#AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8`
+
+#### Scenario: 帶著查詢
+
+- **WHEN** 瀏覽器以 `https://links.example.test/i/3q2-7wEjRWeJq83vEjRWeA?openExternalBrowser=1#AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8` 顯示下載頁
+- **THEN** 「Open in App」連到的和上一個 scenario 一樣，沒有查詢
+
+#### Scenario: 沒有 `#` 後面的部分
+
+- **WHEN** 瀏覽器以 `https://links.example.test/i/3q2-7wEjRWeJq83vEjRWeA`，或後面只多一個 `#` 的同一個網址顯示下載頁
+- **THEN** 「Open in App」連到 `shared-expense-tracker://i/3q2-7wEjRWeJq83vEjRWeA`
+
+#### Scenario: `#` 後面有其他符號
+
+- **WHEN** 瀏覽器以 `https://links.example.test/i/abc#k-1_2.3~4%2F5=6&7+8?9` 顯示下載頁
+- **THEN** 「Open in App」連到 `shared-expense-tracker://i/abc#k-1_2.3~4%2F5=6&7+8?9`
+
+#### Scenario: 不自己跳轉
+
+- **WHEN** 瀏覽器以完整的連結顯示下載頁，使用者什麼都沒按
+- **THEN** 這一頁的網址沒有變，頁面沒有打開或跳到任何地方
+
+### Requirement: SHARING-67.1 下載頁不載入別處的東西，也不把 `#` 後面的部分送出去
+
+The API SHALL 讓下載頁只用寫在頁面裡的 script 和 style，不載入別處的 script、style、圖片、字型或頁框，它的 script 只讀這一頁的網址來設定「Open in App」的連結，不發出任何請求，也不寫 cookie，而且回應的 `Content-Security-Policy` 只放行這些行內的 script 和 style：`default-src 'none'`、`base-uri 'none'`、`form-action 'none'`、`frame-ancestors 'none'`，以及只列出頁面裡每一段行內 script 的 `'sha256-…'` 的 `script-src`，頁面有行內 style 時還有只列出每一段行內 style 的 `'sha256-…'` 的 `style-src`，沒有其他 directive。
+
+#### Scenario: 頁面裡的東西
+
+- **WHEN** 兩個下載連結都有設定，讀下載頁的 HTML
+- **THEN** 沒有帶 `src` 或 `srcset` 的元素，沒有 `<link>`、`<iframe>`、`<frame>`、`<object>`、`<embed>`、`<form>`、`<base>` 和 `<meta http-equiv="refresh">`，沒有 `style` 屬性和 `on` 開頭的屬性；有至少一段行內的 `<script>`；連結只有「Open in App」和兩個下載連結
+
+#### Scenario: Content-Security-Policy
+
+- **WHEN** 讀下載頁回應的 `Content-Security-Policy`
+- **THEN** 它有 `default-src 'none'`、`base-uri 'none'`、`form-action 'none'` 和 `frame-ancestors 'none'`；`script-src` 只列 `'sha256-…'`，頁面裡每一段 `<script>` 的 SHA-256 都在裡面；有 `<style>` 時 `style-src` 也一樣；沒有其他 directive，也沒有 `'unsafe-inline'`、`'unsafe-eval'`、主機或 `*`
+
+#### Scenario: 在瀏覽器裡
+
+- **WHEN** 瀏覽器以完整的連結顯示下載頁
+- **THEN** 頁面的 script 沒有用 `fetch`、`XMLHttpRequest`、`navigator.sendBeacon`、`WebSocket`、`EventSource` 或 `window.open`，沒有建立圖片、`<link>`、頁框或其他帶 `src` 的元素，`document.cookie` 是空的；`#` 後面的部分只出現在「Open in App」的連結裡
+
+### Requirement: SHARING-68.1 連結預覽只有 App 的名稱和說明
+
+WHEN 通訊軟體為了顯示預覽而請求邀請連結，the API SHALL 回同一個下載頁（SHARING-62.1），它的 `og:title` 是「Shared Expense Tracker」，`og:description` 和 `<meta name="description">` 都是「Keep personal and shared expenses in one place, with your partner or friends.」，沒有其他 `og:` 或 `twitter:` 的 meta，也沒有圖片。
+
+#### Scenario: 預覽用的資料
+
+- **WHEN** 讀下載頁的 HTML
+- **THEN** `<title>` 和 `og:title` 是「Shared Expense Tracker」，`og:description` 和 `<meta name="description">` 是「Keep personal and shared expenses in one place, with your partner or friends.」；`og:` 的 meta 只有這兩個，沒有 `twitter:` 的 meta，沒有 `og:image` 和 `og:url`
+
+#### Scenario: 抓預覽的程式
+
+- **WHEN** 請求 `GET /i/3q2-7wEjRWeJq83vEjRWeA` 的 `User-Agent` 是 `facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)`、`WhatsApp/2.23.20.0`、`TelegramBot (like TwitterBot)` 或 `Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)`
+- **THEN** 回的內容和瀏覽器拿到的一模一樣，裡面沒有請求的代號，也沒有群組或成員的任何資訊
+
+### Requirement: SHARING-69.1 連不上資料庫時照樣回驗證檔和下載頁
+
+IF API 連不上資料庫，THEN the API SHALL 照樣回兩個驗證檔和下載頁，內容和連得上時一樣。
+
+#### Scenario: 資料庫連不上
+
+- **WHEN** API 的資料庫連不上，請求 `GET /.well-known/apple-app-site-association`、`GET /.well-known/assetlinks.json` 和 `GET /i/3q2-7wEjRWeJq83vEjRWeA`
+- **THEN** 三個都回 200，內容和資料庫連得上時一樣
+
+### Requirement: SHARING-70.1 (manual) 裝了 app 的手機點邀請連結時直接打開 app
+
+WHEN 使用者在裝了 app 的手機上點一條邀請連結，或用相機掃它的 QR code，而連結的主機是這個 build 的設定裡列的網域（iOS 的 Associated Domains、Android 的 intent filter），the mobile app SHALL 直接被系統打開，不先顯示瀏覽器的頁面，並打開 Invite Link（SHARING-71.1），上面的連結和點的那一條一個字都不差，包含 `#` 後面的部分。
+
+#### Scenario: iPhone，app 沒在執行
+
+- **WHEN** 結束 app 之後，在「備忘錄」或「訊息」裡點完整的連結，主機換成這個環境的
+- **THEN** app 打開，沒有出現 Safari；Invite Link 上的連結和點的那一條一模一樣
+
+#### Scenario: iPhone，app 在背景
+
+- **WHEN** app 停在 Settings 分頁、退到背景之後，點同一條連結
+- **THEN** app 回到前景，Invite Link 蓋在 Settings 上，連結一模一樣
+
+#### Scenario: iPhone 的相機
+
+- **WHEN** 用相機掃同一條連結的 QR code，再點相機跳出的連結
+- **THEN** app 打開，Invite Link 上的連結一模一樣
+
+#### Scenario: Android
+
+- **WHEN** 在「訊息」裡點同一條連結，或執行 `adb shell am start -a android.intent.action.VIEW -c android.intent.category.BROWSABLE -d '<連結>'`
+- **THEN** app 打開，沒有出現瀏覽器，也沒有問要用哪個 app 開；Invite Link 上的連結一模一樣；`adb shell pm get-app-links com.tomchen.sharedexpensetracker` 列出這個主機是 `verified`
+
+#### Scenario: 不是邀請連結的路徑
+
+- **WHEN** 點 `https://<這個環境的主機>/health`
+- **THEN** 在瀏覽器打開，不打開 app
+
+### Requirement: SHARING-71.1 收到邀請連結時打開 Invite Link，照原樣顯示整條連結
+
+WHEN 系統把一條邀請連結交給 app，不管是用它啟動 app 還是在 app 執行中交來，the mobile app SHALL 在本機資料開好之後打開從畫面底部升起、蓋在當時的畫面上的 Invite Link，標題是「Invite Link」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.2），內容只有這條連結的文字，和系統交來的一個字都不差，一行放不下時換行，不截斷；用邀請連結啟動 app 時，它蓋在 Expenses 的根畫面上；本機資料還在開啟時只有載入指示（SHELL-1.2），打不開時只有錯誤（SHELL-4.1），都不打開 Invite Link。
+
+#### Scenario: app 執行中收到完整的連結
+
+- **WHEN** app 停在 Settings 的根畫面時，系統交來完整的連結
+- **THEN** Invite Link 從底部升起，蓋在 Settings 上，標題是「Invite Link」，標題列只有「Close」；內容只有 `https://links.example.test/i/3q2-7wEjRWeJq83vEjRWeA#AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8`
+
+#### Scenario: app 自己的 scheme
+
+- **WHEN** app 執行中，系統交來 `shared-expense-tracker://i/3q2-7wEjRWeJq83vEjRWeA#AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8`
+- **THEN** Invite Link 的內容只有這條 `shared-expense-tracker://` 開頭的連結，一個字都不差
+
+#### Scenario: 用連結啟動 app
+
+- **WHEN** app 沒在執行，系統用完整的連結，或用上一個 scenario 的連結啟動 app
+- **THEN** 本機資料開好之後，Invite Link 蓋在 Expenses 的根畫面上，分頁列選中 Expenses，內容只有啟動 app 的那條連結
+
+#### Scenario: 連結的其他寫法
+
+- **WHEN** 系統交來 `https://links.example.test/i/3q2-7wEjRWeJq83vEjRWeA?openExternalBrowser=1#AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8`、`https://links.example.test/i/3q2-7wEjRWeJq83vEjRWeA`、結尾多一個 `#` 的同一條、`https://links.example.test/i/a%2Fb%20c?x=%26&y=1+2#k%2D1+2=3&4?5`、`https://other.example.org/i/abc#def`、`https://links.example.test/i/#def`、`https://links.example.test/i/a/b#c` 或 `shared-expense-tracker://i/abc?x=1#def`
+- **THEN** 每一條都打開 Invite Link，內容就是那一條，沒有少掉查詢或 `#` 後面的部分，`%` 開頭的寫法和 `+` 也沒有被換掉
+
+#### Scenario: 很長的連結
+
+- **WHEN** 系統交來的連結，`#` 後面是 2,000 個 `a`
+- **THEN** Invite Link 顯示整條連結，沒有限制行數，也沒有截斷
+
+#### Scenario: 蓋在推入的畫面或開著的表單上
+
+- **WHEN** app 停在從 Settings 推入的 Archived Groups，或開著 New Group 的表單時，系統交來完整的連結
+- **THEN** Invite Link 蓋在那個畫面或表單上
+
+#### Scenario: 用連結啟動 app，本機資料還在開啟
+
+- **WHEN** 系統用完整的連結啟動 app，本機資料還沒開好
+- **THEN** 畫面上只有載入指示，沒有 Invite Link；開好之後，Invite Link 蓋在 Expenses 的根畫面上，內容是這條連結
+
+#### Scenario: 開啟期間交來的連結
+
+- **WHEN** app 以 `/settings` 啟動，本機資料還沒開好時，系統先交來完整的連結，再交來 `https://links.example.test/i/ASNFZ4mrze_-3LqYdlQyEA#ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8`
+- **THEN** 畫面上仍然只有載入指示；開好之後只打開一個 Invite Link，蓋在 Settings 的根畫面上，內容是後交來的那一條
+
+#### Scenario: 本機資料打不開
+
+- **WHEN** 系統用完整的連結啟動 app，而本機資料打不開；之後系統又交來另一條邀請連結
+- **THEN** 一直只顯示「Unable to Load Local Data」和「Your data was not changed.」，沒有 Invite Link；結束 app 之後，本機資料打得開時再用同一條連結啟動，就打開 Invite Link
+
+### Requirement: SHARING-72.1 關閉 Invite Link 回到它蓋住的畫面
+
+WHEN 使用者在 Invite Link 按「Close」、在 iOS 上把它往下滑，或在 Android 上按返回鍵，the mobile app SHALL 關閉 Invite Link，回到它蓋住的畫面，那個畫面和收到連結之前一樣；用邀請連結啟動 app 的，回到 Expenses 的根畫面。
+
+#### Scenario: 按 Close
+
+- **WHEN** app 停在 Settings 的根畫面時收到完整的連結，再按 Invite Link 的「Close」
+- **THEN** Invite Link 關閉，回到 Settings 的根畫面，分頁列仍選中 Settings
+
+#### Scenario: 往下滑
+
+- **WHEN** iOS 上把 Invite Link 往下滑
+- **THEN** Invite Link 關閉，回到它蓋住的畫面
+
+#### Scenario: Android 的返回鍵
+
+- **WHEN** Android 上 app 停在 Settings 的根畫面時收到完整的連結，再按返回鍵
+- **THEN** Invite Link 關閉，回到 Settings 的根畫面，app 沒有離開
+
+#### Scenario: 用連結啟動 app 之後關閉
+
+- **WHEN** 系統用完整的連結啟動 app，再按「Close」
+- **THEN** 回到 Expenses 的根畫面，分頁列選中 Expenses；之後點 Groups 分頁會切到 Groups
+
+#### Scenario: Android 上用連結啟動 app 之後按返回鍵
+
+- **WHEN** Android 上系統用完整的連結啟動 app，再按兩次返回鍵
+- **THEN** 第一次關閉 Invite Link、回到 Expenses 的根畫面，第二次離開 app（SHELL-15.1）
+
+#### Scenario: 表單上輸入到一半的字
+
+- **WHEN** 在 New Group 的表單輸入「Bris」之後收到完整的連結，再按 Invite Link 的「Close」
+- **THEN** 回到 New Group 的表單，名稱欄位仍是「Bris」
+
+#### Scenario: 推入的畫面
+
+- **WHEN** app 停在從 Settings 推入的 Archived Groups 時收到完整的連結，再按「Close」
+- **THEN** 回到 Archived Groups，Settings 分頁的堆疊仍是「Settings」根畫面和「Archived Groups」
+
+### Requirement: SHARING-73.1 Invite Link 開著時又收到邀請連結
+
+IF Invite Link 開著時系統又交來一條邀請連結，THEN the mobile app SHALL 仍然只開著一個 Invite Link，顯示新交來的這一條，關閉一次就回到原來蓋住的畫面。
+
+#### Scenario: 另一條連結
+
+- **WHEN** app 停在 Settings 的根畫面時收到完整的連結，Invite Link 開著時又收到 `https://links.example.test/i/ASNFZ4mrze_-3LqYdlQyEA#ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8`
+- **THEN** 只有一個 Invite Link，內容只有第二條連結；按一次「Close」就回到 Settings 的根畫面
+
+#### Scenario: 同一條連結再來一次
+
+- **WHEN** Invite Link 開著時又收到同一條完整的連結
+- **THEN** 只有一個 Invite Link，內容仍是這條連結；按一次「Close」就回到原來的畫面
+
+#### Scenario: 關閉之後再收到
+
+- **WHEN** 關閉 Invite Link 之後，又收到第二條連結
+- **THEN** Invite Link 再打開，內容只有第二條連結
+
+### Requirement: SHARING-74.1 不是邀請連結的連結不打開 Invite Link
+
+IF 系統交來的連結是 `shared-expense-tracker://` 開頭、卻不是 `shared-expense-tracker://i/` 開頭，THEN the mobile app SHALL 不打開 Invite Link，照連結的路徑打開畫面；沒有哪一個路徑會打開 Invite Link。
+
+#### Scenario: 路徑以 i 開頭的畫面
+
+- **WHEN** app 執行中，系統交來 `shared-expense-tracker://insights`
+- **THEN** 在 Expenses 分頁推入「Insights」，沒有打開 Invite Link
+
+#### Scenario: 其他畫面
+
+- **WHEN** app 執行中，系統交來 `shared-expense-tracker://settings/manage-categories`
+- **THEN** 在 Settings 分頁推入「Manage Categories」，沒有打開 Invite Link
+
+#### Scenario: 用這種連結啟動 app
+
+- **WHEN** 系統用 `shared-expense-tracker://groups` 啟動 app
+- **THEN** 分頁列選中 Groups，沒有打開 Invite Link
+
+#### Scenario: `://` 後面多一個斜線
+
+- **WHEN** 邀請連結打開過 Invite Link、使用者把它關閉之後，系統交來 `shared-expense-tracker:///i/3q2-7wEjRWeJq83vEjRWeA#AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8`、`shared-expense-tracker:///i/invite` 或 `shared-expense-tracker:///i/invite?link=hello`
+- **THEN** 沒有打開 Invite Link
+
+#### Scenario: 用多一個斜線的連結啟動 app
+
+- **WHEN** 系統用上面三條連結的任何一條啟動 app
+- **THEN** 沒有打開 Invite Link
+
+### Requirement: SHARING-75.1 (manual) 在不會自動打開 app 的瀏覽器裡，「Open in App」打開 app
+
+WHEN 使用者在裝了 app 的手機上，從不會自動打開 app 的瀏覽器看到下載頁，例如 LINE 聊天裡的內建瀏覽器，再按「Open in App」，the mobile app SHALL 被打開並打開 Invite Link（SHARING-71.1），上面是 `shared-expense-tracker://` 開頭、帶著同一個代號和 `#` 後面的部分的連結。
+
+#### Scenario: LINE（iPhone）
+
+- **WHEN** 在 iPhone 的 LINE 聊天裡點完整的連結，主機換成這個環境的；LINE 的內建瀏覽器顯示下載頁之後，按「Open in App」
+- **THEN** app 打開，Invite Link 上是 `shared-expense-tracker://i/3q2-7wEjRWeJq83vEjRWeA#AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8`
+
+#### Scenario: LINE（Android）
+
+- **WHEN** 在 Android 的 LINE 聊天裡做同樣的事
+- **THEN** app 打開，Invite Link 上是同一條 `shared-expense-tracker://` 開頭的連結
+
+#### Scenario: Safari 的網址列
+
+- **WHEN** 把同一條連結貼進 iPhone 的 Safari 網址列，Safari 顯示下載頁之後，按「Open in App」
+- **THEN** app 打開，Invite Link 上是同一條 `shared-expense-tracker://` 開頭的連結
+
+#### Scenario: 沒裝 app
+
+- **WHEN** 在沒裝 app 的手機上點同一條連結
+- **THEN** 瀏覽器顯示下載頁；按下載連結會到這個環境設定的網址
+
+### Requirement: SHARING-76.1 `HEAD` 得到和 `GET` 一樣的回應，沒有內容
+
+WHEN 有人用 `HEAD` 請求 `/.well-known/apple-app-site-association`、`/.well-known/assetlinks.json` 或 `/i/<代號>`，the API SHALL 不必簽名就回和 `GET` 同一個路徑時一樣的狀態、`Content-Type` 和 `Content-Security-Policy`，沒有內容。
+
+#### Scenario: 兩個驗證檔和下載頁
+
+- **WHEN** 請求 `HEAD /.well-known/apple-app-site-association`、`HEAD /.well-known/assetlinks.json` 和 `HEAD /i/3q2-7wEjRWeJq83vEjRWeA`，沒有簽名
+- **THEN** 三個都回 200，`Content-Type` 和 `GET` 時一樣，下載頁的 `Content-Security-Policy` 也和 `GET` 時一樣，都沒有內容
+
+#### Scenario: 不是邀請連結的路徑
+
+- **WHEN** 請求 `HEAD /i/a/b`
+- **THEN** 回應的狀態是 4xx（SHARING-63.1）

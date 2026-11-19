@@ -3,6 +3,7 @@ import { app } from './app';
 import { connect } from './database/connect';
 import { runMigrations } from './database/migrate';
 import { migrations } from './migrations';
+import type { AppLinks } from './sharing/app-links';
 
 // The PostgreSQL in compose.yaml.
 const LOCAL_DATABASE_URL =
@@ -31,16 +32,19 @@ export interface NodeServerOptions {
    * Stub: not used yet.
    */
   ipHashKey?: string;
+  /** What this environment's verification files and download page say (ADR-0023). */
+  appLinks?: AppLinks;
 }
 
 /** Serves the API on Node, with one client and its connections for every request. */
 export function startServer(options: NodeServerOptions): Promise<NodeServer> {
   const sql = connect(options.databaseUrl);
+  const appLinks = options.appLinks ?? {};
   const hostname = '127.0.0.1';
   return new Promise((resolve, reject) => {
     const server = serve(
       {
-        fetch: (request) => app.fetch(request, { sql }),
+        fetch: (request) => app.fetch(request, { sql, appLinks }),
         hostname,
         port: options.port ?? 0,
       },

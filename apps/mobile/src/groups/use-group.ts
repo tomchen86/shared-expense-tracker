@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useSyncedFocusEffect } from '../sync/use-synced-focus-effect';
 import { useLocalDatabase } from '../shell';
 import {
   listFormerMembers,
@@ -22,7 +22,10 @@ const latest = new WeakMap<Database, Map<string, GroupDetails | null>>();
  * `startFromLatest`, it starts from the details another screen holds, until its own read.
  * A form that starts editing from the group should read it fresh instead.
  */
-export function useGroup(id: string, { startFromLatest = false } = {}) {
+export function useGroup(
+  id: string,
+  { startFromLatest = false, watchSync = true } = {},
+) {
   const database = useLocalDatabase();
   const [group, setGroup] = useState<GroupDetails | null | undefined>(() =>
     startFromLatest ? latest.get(database)?.get(id) : undefined,
@@ -33,7 +36,9 @@ export function useGroup(id: string, { startFromLatest = false } = {}) {
   }, [database, id, group]);
   const [error, setError] = useState<unknown>();
   const pending = useRef<Promise<GroupDetails | null>>(undefined);
-  useFocusEffect(
+  useSyncedFocusEffect(
+    watchSync ? database : undefined,
+    id,
     useCallback(() => {
       let active = true;
       const read = Promise.all([

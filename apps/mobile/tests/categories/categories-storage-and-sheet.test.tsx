@@ -26,12 +26,14 @@ import { LocalDataGate } from '../../src/shell';
 import { ensureLocalIdentity } from '../../src/shell/identity';
 import { appMigrations } from '../../src/shell/migrations';
 import { categoryMigrations } from '../../src/categories/migrations';
+import { deleteCategory } from '../../src/categories/repository';
 import {
   initializeDatabase,
   type Database,
   type SqlValue,
 } from '../../src/storage';
 import { openNodeDatabase } from '../../src/storage/node';
+import { listUnsentSyncEvents, shareGroup } from '../../src/sync';
 
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -138,6 +140,36 @@ test('rejects updating the reserved Uncategorized row or a missing category id',
   ).rejects.toThrow('Category cannot be updated');
 
   expect(await listCategories(database)).toEqual(categories);
+});
+
+test('keeps a deleted shared category as a stamped tombstone after reopening the database', async () => {
+  const identity = await initializeDatabase(
+    database,
+    appMigrations,
+    false,
+    ensureLocalIdentity,
+  );
+  await createGroup(database, 'Brisbane', identity);
+  const [{ id: groupId }] = await listGroups(database);
+  await shareGroup(database, { groupId, device: 'phone-a' });
+  const [category] = await listCategories(database, groupId);
+  await deleteCategory(database, category.id);
+
+  await database.close();
+  database = openNodeDatabase(file, { readOnly: true });
+  const [{ content }] = await listUnsentSyncEvents(database);
+  const [row] = await database.all<{ record: string }>(
+    "SELECT record FROM sync_records WHERE groupId = ? AND type = 'category' AND id = ?",
+    [groupId, category.id],
+  );
+  expect(JSON.parse(row.record)).toEqual({
+    type: 'category',
+    id: category.id,
+    deleted: content.stamp,
+    units: {},
+  });
+  const remaining = await listCategories(database, groupId);
+  expect(remaining.map(({ id }) => id)).not.toContain(category.id);
 });
 
 test('resets the unreleased shared-category database on development startup', async () => {

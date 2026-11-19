@@ -21,7 +21,14 @@ import {
   watchAlerts,
 } from './ledger-expense-app';
 import { openDetails } from './ledger-expense-list-app';
-import { expenseHeaderButtons } from './ledger-trash-app';
+import {
+  IN_TRASH,
+  deleteByAction,
+  expenseHeaderButtons,
+  expenseLines,
+  openTrash,
+  openTrashed,
+} from './ledger-trash-app';
 import { allowWrites, settle } from './shell-appearance-app';
 import {
   nativeViews,
@@ -321,4 +328,18 @@ test("[LEDGER-67.2] disables the header's Edit and Expense actions on an archive
   const [, actions] = expenseHeaderButtons('Expenses');
   expect(nameOf(actions)).toBe('Expense actions');
   expect(actions).toBeDisabled();
+});
+
+test('[LEDGER-78.4] puts no Expense actions on the read-only details of a group expense in the trash on Android', async () => {
+  await startWithGroups(BRISBANE);
+  await addDinner();
+  await tapTab('Expenses');
+  await settle();
+  await deleteByAction('Dinner');
+  await openTrash();
+
+  await openTrashed('Dinner');
+
+  expect(expenseLines('Settings')).toContain(IN_TRASH);
+  expect(expenseHeaderButtons('Settings').map(nameOf)).toEqual([]);
 });

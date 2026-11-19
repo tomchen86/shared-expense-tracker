@@ -16,6 +16,8 @@
     "postgres": "^3.4.9"
   },
   "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "jsdom": "^26.1.0",
     "tsx": "^4.23.15",
     "wrangler": "^4.158.0"
   }

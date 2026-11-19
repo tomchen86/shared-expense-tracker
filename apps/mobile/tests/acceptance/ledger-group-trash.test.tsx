@@ -52,6 +52,7 @@ import {
   pressEmptyTrash,
   pressUndo,
   restoreFromTrash,
+  trashButtonNames,
   trashCard,
   trashLines,
   trashRow,
@@ -400,7 +401,7 @@ test("[LEDGER-77.3] marks the group as archived on a group expense's card on Tra
   expect(linesIn(trashCard('Dinner'))).toContain('Brisbane · Archived');
 });
 
-test("[LEDGER-78.3] shows a group expense's read-only details with what its details show, and only Expense actions", async () => {
+test("[LEDGER-78.4] [LEDGER-80.2] shows a group expense's read-only details with what its details show, and neither Edit nor Expense actions", async () => {
   await startWithGroups(BRISBANE);
   await addTaylorsDinner();
   await deleteFromList('Dinner');
@@ -438,16 +439,11 @@ test("[LEDGER-78.3] shows a group expense's read-only details with what its deta
   await waitFor(() =>
     expect(shownInOrder(expenseLines('Settings'), expected)).toEqual(expected),
   );
-  expect(expenseBarItems('Settings')).toEqual([
-    {
-      menu: 'Expense actions',
-      icon: 'ellipsis.circle',
-      items: [{ title: 'Delete Permanently', destructive: true }],
-    },
-  ]);
+  expect(expenseBarItems('Settings')).toEqual([]);
+  expect(hasExpenseActions('Settings')).toBe(false);
 });
 
-test("[LEDGER-78.3] shows Status but not Shared history on the read-only details of an archived group's expense", async () => {
+test("[LEDGER-78.4] shows Status but not Shared history on the read-only details of an archived group's expense", async () => {
   await startWithGroups(BRISBANE);
   await addTaylorsDinner();
   await deleteFromList('Dinner');
@@ -498,24 +494,7 @@ test("[LEDGER-79.3] restores an archived group's expense from Trash without aski
   expect(actionLabels(shown)).not.toContain('Delete expense');
 });
 
-test('[LEDGER-80.1] deletes a group expense in the trash for good, with its payments and shares', async () => {
-  await startWithGroups(BRISBANE);
-  await addDinner();
-  await deleteFromList('Dinner');
-  await openTrash();
-  await openTrashed('Dinner');
-
-  await chooseExpenseAction('Settings', 'Delete Permanently');
-  await pressAlertButton('Delete');
-
-  await waitFor(() => expect(trashLines()).toContain(NO_DELETED));
-  expect(await storedExpenses()).toEqual([]);
-  const stored = localData(file);
-  expect(stored.expense_payments).toEqual([]);
-  expect(stored.expense_shares).toEqual([]);
-});
-
-test('[LEDGER-81.1] empties group expenses from the trash too', async () => {
+test('[LEDGER-81.2] deletes only the personal expenses when the trash is emptied, and offers no Empty Trash once only group expenses are left', async () => {
   await startWithGroups(BRISBANE);
   await addExpense();
   await addDinner();
@@ -527,11 +506,25 @@ test('[LEDGER-81.1] empties group expenses from the trash too', async () => {
   await pressEmptyTrash();
   await pressAlertButton('Empty Trash');
 
-  await waitFor(() => expect(trashLines()).toContain(NO_DELETED));
-  expect(await storedExpenses()).toEqual([]);
+  await expectTrash(['Dinner']);
+  expect(trashButtonNames()).not.toContain('Empty Trash');
+  expect((await storedExpenses()).map((expense) => expense.title)).toEqual([
+    'Dinner',
+  ]);
   const stored = localData(file);
-  expect(stored.expense_payments).toEqual([]);
-  expect(stored.expense_shares).toEqual([]);
+  expect(stored.expense_payments).toHaveLength(1);
+  expect(stored.expense_shares).toHaveLength(3);
+});
+
+test('[LEDGER-81.2] shows no Empty Trash while the trash holds only group expenses', async () => {
+  await startWithGroups(BRISBANE);
+  await addDinner();
+  await deleteFromList('Dinner');
+
+  await openTrash();
+
+  await expectTrash(['Dinner']);
+  expect(trashButtonNames()).not.toContain('Empty Trash');
 });
 
 // Edit Expense at the URL of an expense in the trash, or of no expense
