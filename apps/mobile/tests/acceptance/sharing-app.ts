@@ -617,7 +617,11 @@ async function fetchFromTheApi(
   }
   const answer = answerOf(received);
   if (told?.kind === 'lose-answer') throw noNetwork();
-  return responseOf(answer.status, answer.body);
+  // The answer to a HEAD carries no body.
+  return responseOf(
+    answer.status,
+    request.method === 'HEAD' ? '' : answer.body,
+  );
 }
 
 /** Every request the API has received, in order. */

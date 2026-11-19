@@ -737,6 +737,63 @@ describe('SHARING-25.1, a method or a path that cannot be signed', () => {
   );
 });
 
+describe('SHARING-45.1', () => {
+  const WITH_CONTENT: [string, Partial<ApiRequest>][] = [
+    ['a GET with 3 bytes', { method: 'GET', body: fromHex('00ff10') }],
+    ['a GET with text', { method: 'GET', body: '{}' }],
+    ['a HEAD with 1 byte', { method: 'HEAD', body: fromHex('00') }],
+    ['a HEAD with text', { method: 'HEAD', body: 'x' }],
+  ];
+
+  test.each(WITH_CONTENT)(
+    '[SHARING-45.1] a phone with no device identity fails to send %s, and makes no identity',
+    async (_, request) => {
+      const app = await startOn(newPhone());
+
+      await expect(send(app, request)).rejects.toThrow();
+
+      expect(fetchCalls()).toBe(0);
+      expect(await identityOf(app)).toEqual({ status: 'none' });
+      expect(secureStoreEntries()).toEqual([]);
+      expect(uuidsDrawn()).toEqual([]);
+    },
+  );
+
+  test.each(WITH_CONTENT)(
+    '[SHARING-45.1] a registered phone fails to send %s, and makes no request',
+    async (_, request) => {
+      const { app } = await registeredPhone();
+      const calls = fetchCalls();
+
+      await expect(send(app, request)).rejects.toThrow();
+
+      expect(fetchCalls()).toBe(calls);
+    },
+  );
+
+  test.each<[string, string, Partial<ApiRequest>, string]>([
+    ['a GET', '0 bytes', { method: 'GET', body: new Uint8Array(0) }, '{}'],
+    ['a GET', 'empty text', { method: 'GET', body: '' }, '{}'],
+    ['a HEAD', '0 bytes', { method: 'HEAD', body: new Uint8Array(0) }, ''],
+    ['a HEAD', 'empty text', { method: 'HEAD', body: '' }, ''],
+    ['a HEAD', 'nothing', { method: 'HEAD' }, ''],
+  ])(
+    '[SHARING-45.1] sends %s whose content is %s, as one with no content',
+    async (_, __, request, answer) => {
+      const { app, deviceId, publicKey } = await registeredPhone();
+
+      const result = await send(app, request);
+
+      expect(readable(result)).toEqual(answered(200, answer));
+      const sent = received().at(-1)!;
+      expect(sent.method).toBe(request.method);
+      expect(sent.body).toHaveLength(0);
+      await expectSignedBy(sent, { deviceId, publicKey });
+      expect(textOf(bytesToSign(sent)).split('\n')[3]).toBe(EMPTY_HASH);
+    },
+  );
+});
+
 describe('SHARING-26.1', () => {
   test.each([
     ['GET', '/example/a', 200, '{"items":[]}'],
