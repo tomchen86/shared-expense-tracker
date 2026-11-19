@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import {
+  FlatList,
   Pressable,
   StyleSheet,
   Text,
@@ -259,9 +260,9 @@ function Filters({
 const RANGE_SHIFT = 300;
 
 /**
- * What a PeriodList draws above its cards and for each of them. The list itself takes them from
- * here and not as props, so that it only works out again which cards to draw when its expenses
- * change, not each time its screen renders.
+ * What a PeriodList draws above its cards and for each of them. Its lists take them from here and
+ * not as props, so that they only work out again which cards to draw when the expenses change,
+ * not each time the screen renders.
  */
 const ListParts = createContext<{
   header: ReactNode;
@@ -482,7 +483,9 @@ function PeriodListBody({
               </Pressable>
             </Animated.View>
             {summary && (
-              <Animated.View style={shiftStyle}>{summary}</Animated.View>
+              <Animated.View style={[styles.summary, shiftStyle]}>
+                {summary}
+              </Animated.View>
             )}
             {periods.empty && (
               <Animated.View style={pageStyle}>
@@ -493,6 +496,19 @@ function PeriodListBody({
         </GestureDetector>
       )}
       {message}
+      {/*
+        The cards are a list of their own inside the screen's list, which scrolls them and tells
+        them where the screen is. So one view around them all slides them with the period: a view
+        that moves on each card is not let go when its card leaves the screen, and scrolling
+        through 2,000 expenses and back cost 260 MB more.
+      */}
+      <Animated.View style={pageStyle}>
+        <FlatList
+          data={shown}
+          keyExtractor={expenseId}
+          renderItem={renderRow}
+        />
+      </Animated.View>
     </>
   );
 
@@ -500,24 +516,23 @@ function PeriodListBody({
     <ListParts.Provider
       value={{
         header,
-        // What belongs to the period shown slides away with it.
         row: (expense, index) => (
-          <Animated.View style={pageStyle}>
+          <>
             <DateHeading expense={expense} previous={shown[index - 1]} />
             {card(expense)}
-          </Animated.View>
+          </>
         ),
       }}
     >
+      {/* Everything is the list's header: the list is here to scroll, and for the cards' list. */}
       <SwipeFlatList
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
         scrollEventThrottle={scrollEventThrottle}
         onScroll={scrolled}
-        data={shown}
-        keyExtractor={expenseId}
-        ListHeaderComponent={ListHeader}
+        data={NO_EXPENSES}
         renderItem={renderRow}
+        ListHeaderComponent={ListHeader}
       />
     </ListParts.Provider>
   );
@@ -594,6 +609,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   shrinks: { flexShrink: 1 },
+  // Apart from the total above it, as the cards are.
+  summary: { marginTop: 18 },
   amount: { fontSize: 34, fontWeight: '700' },
   count: { fontSize: 20, fontWeight: '600' },
   pressed: { opacity: 0.4 },
