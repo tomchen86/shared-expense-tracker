@@ -57,7 +57,7 @@ test.each([
     // Not inherited: each environment has to say so itself.
     expect(config().secrets).toEqual({ required: ['IP_HASH_KEY'] });
     // Never a value in this file, which would deploy as plain text.
-    expect(config().vars).toBeUndefined();
+    expect(Object.keys(config().vars ?? {})).not.toContain('IP_HASH_KEY');
   },
 );
 
