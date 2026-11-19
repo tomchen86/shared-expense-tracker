@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Host, DatePicker } from '@expo/ui/swift-ui';
 import {
+  accessibilityLabel,
   datePickerStyle,
   disabled as disabledModifier,
   dynamicTypeSize,
@@ -20,6 +21,7 @@ export function DateField({
   value,
   maximumDate,
   disabled = false,
+  bare = false,
   onChange,
   onOpen,
 }: DateFieldProps) {
@@ -27,36 +29,42 @@ export function DateField({
   const { fontScale } = useWindowDimensions();
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const locale = useDisplayLocale();
+  const picker = (
+    <View
+      // The compact picker reports neither opening nor closing. The host is as big as the
+      // date, so a press that ends on it is a press on the date.
+      onTouchEnd={() => {
+        if (!disabled) onOpen?.();
+      }}
+    >
+      <Host ignoreSafeArea="all" matchContents>
+        <DatePicker
+          selection={new Date(`${value}T12:00:00`)}
+          range={{ end: new Date(`${maximumDate}T23:59:59.999`) }}
+          displayedComponents={['date']}
+          onDateChange={(date) => onChange(toLocalDate(date, timeZone))}
+          modifiers={[
+            datePickerStyle('compact'),
+            disabledModifier(disabled),
+            environment('timeZone', timeZone),
+            // Expo UI matches Foundation identifiers, such as en_AU.
+            environment('locale', locale.replaceAll('-', '_')),
+            // The compact picker never narrows its date. At the largest size Oct 30, 2026 is
+            // 326 pt wide, and a 375 pt iPhone leaves the row 303 pt; capped here, the widest
+            // dates measured 259 pt (299 pt at the next size up).
+            dynamicTypeSize({ max: 'accessibility3' }),
+            // With no label drawn beside it, the picker carries the name itself.
+            ...(bare ? [accessibilityLabel(label)] : []),
+          ]}
+        />
+      </Host>
+    </View>
+  );
+  if (bare) return picker;
   return (
     <View style={[styles.row, fontScale >= 1.5 && styles.stacked]}>
       <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
-      <View
-        // The compact picker reports neither opening nor closing. The host is as big as the
-        // date, so a press that ends on it is a press on the date.
-        onTouchEnd={() => {
-          if (!disabled) onOpen?.();
-        }}
-      >
-        <Host ignoreSafeArea="all" matchContents>
-          <DatePicker
-            selection={new Date(`${value}T12:00:00`)}
-            range={{ end: new Date(`${maximumDate}T23:59:59.999`) }}
-            displayedComponents={['date']}
-            onDateChange={(date) => onChange(toLocalDate(date, timeZone))}
-            modifiers={[
-              datePickerStyle('compact'),
-              disabledModifier(disabled),
-              environment('timeZone', timeZone),
-              // Expo UI matches Foundation identifiers, such as en_AU.
-              environment('locale', locale.replaceAll('-', '_')),
-              // The compact picker never narrows its date. At the largest size Oct 30, 2026 is
-              // 326 pt wide, and a 375 pt iPhone leaves the row 303 pt; capped here, the widest
-              // dates measured 259 pt (299 pt at the next size up).
-              dynamicTypeSize({ max: 'accessibility3' }),
-            ]}
-          />
-        </Host>
-      </View>
+      {picker}
     </View>
   );
 }

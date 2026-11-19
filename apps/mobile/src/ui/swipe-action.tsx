@@ -4,17 +4,21 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
 } from 'react';
 import {
   Animated,
+  FlatList,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
+  type FlatListProps,
   type ScrollViewProps,
 } from 'react-native';
 import {
@@ -46,14 +50,18 @@ const SwipeList = createContext<{
 } | null>(null);
 
 /**
- * The scroll view for SwipeAction rows: a row keeps a drag from it, and it closes them as it scrolls.
- * With backSwipe, on a pushed screen, iOS's full-screen back gesture gets the drags to the right
- * that a closed row has no use for.
+ * What the SwipeAction rows of one list share: a row keeps a drag from the list, and the list
+ * closes them as it scrolls. With backSwipe, on a pushed screen, iOS's full-screen back gesture
+ * gets the drags to the right that a closed row has no use for. The list itself goes inside, as
+ * a SwipeFlatList, with whatever else needs the list's scroll gesture around it.
  */
-export function SwipeScrollView({
+export function SwipeListScope({
   backSwipe = false,
-  ...props
-}: ScrollViewProps & { backSwipe?: boolean }) {
+  children,
+}: {
+  backSwipe?: boolean;
+  children: ReactNode;
+}) {
   const [openRows] = useState(() => new Set<() => void>());
   // ponytail: one touch per list, so a second finger on another row can pick the wrong direction;
   // make it per row, which mounts slower, if that shows.
@@ -77,15 +85,71 @@ export function SwipeScrollView({
           touch,
         }}
       >
-        <GestureDetector gesture={scrollGesture}>
-          <ScrollView {...props} />
-        </GestureDetector>
+        {children}
       </SwipeList.Provider>
     </GestureHandlerRootView>
   );
 }
 
-/** Closes the rows of the surrounding SwipeScrollView that show their action. */
+/** The scroll view for SwipeAction rows: a SwipeListScope around a scroll view. */
+export function SwipeScrollView({
+  backSwipe,
+  ...props
+}: ScrollViewProps & { backSwipe?: boolean }) {
+  return (
+    <SwipeListScope backSwipe={backSwipe}>
+      <ListGesture>
+        <ScrollView {...props} />
+      </ListGesture>
+    </SwipeListScope>
+  );
+}
+
+/**
+ * A list of SwipeAction rows that draws only the rows on and near the screen (LEDGER-118.1).
+ * Goes inside a SwipeListScope.
+ */
+export function SwipeFlatList<Item>(props: FlatListProps<Item>) {
+  return (
+    <ListGesture>
+      <FlatList {...props} />
+    </ListGesture>
+  );
+}
+
+function ListGesture({ children }: { children: ReactNode }) {
+  return (
+    <GestureDetector gesture={useListScrollGesture()}>
+      {children}
+    </GestureDetector>
+  );
+}
+
+/**
+ * The scroll gesture of the surrounding SwipeListScope, for a sideways drag in the list that has
+ * to be decided before the list scrolls.
+ */
+export function useListScrollGesture() {
+  return useContext(SwipeList)!.scrollGesture;
+}
+
+/**
+ * Props for a view inside which a sideways drag presses nothing: the view takes the touch once
+ * it moves sideways, so a button under it does not count a drag that ends on it as a press.
+ */
+export function useSidewaysDragIsNoPress() {
+  return useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          Math.abs(gesture.dx) > 10 &&
+          Math.abs(gesture.dx) > Math.abs(gesture.dy),
+      }).panHandlers,
+    [],
+  );
+}
+
+/** Closes the rows of the surrounding SwipeListScope that show their action. */
 export function useCloseSwipeRows() {
   const { openRows } = useContext(SwipeList)!;
   return () => openRows.forEach((close) => close());
