@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { ActionSheetIOS } from 'react-native';
-import { fireEvent, waitFor, within } from '@testing-library/react-native';
+import { fireEvent, waitFor } from '@testing-library/react-native';
 import {
   addExpense,
   editExpense,
@@ -21,6 +21,7 @@ import {
   EMPTY_LIST,
   allowReads,
   cardTitles,
+  drawnTexts,
   expectOneFadingLine,
   expensesRoot,
   linesIn,
@@ -361,9 +362,9 @@ test('[LEDGER-108.1] shows Previous period, the month on one line and a disabled
   expect(arrows(root)).toEqual(['Previous period', 'Next period']);
   expect(enabledArrows(root)).toEqual(['Previous period']);
   // On iOS the system menu over the name is what a screen reader finds, not this text.
-  const name = within(root).getByText('October 2026', {
-    includeHiddenElements: true,
-  });
+  const drawn = drawnTexts(root, 'October 2026');
+  expect(drawn).toHaveLength(1);
+  const [name] = drawn;
   expectOneFadingLine(name);
   expect(inTreeOrder(previousPeriod(root)!, name, nextPeriod(root)!)).toBe(
     true,
