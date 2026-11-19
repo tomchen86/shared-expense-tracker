@@ -1,0 +1,39 @@
+diff --git a/dist/wait-for.js b/dist/wait-for.js
+index ef9d5708c5aa25e7d99de819b54ca8225794e16c..5feee37c0de5925d5265dd4081be92f3dd6514a0 100644
+--- a/dist/wait-for.js
++++ b/dist/wait-for.js
+@@ -31,6 +31,8 @@ function waitForInternal(expectation, {
+     let finished = false;
+     let promiseStatus = 'idle';
+     let overallTimeoutTimer = null;
++    // The act that is moving the fake clock, while it runs.
++    let advancing = null;
+     const cleanupQueueCallback = () => finalizeWaitFor({
+       rejectOnAbort: true
+     });
+@@ -63,7 +65,11 @@ function waitForInternal(expectation, {
+         // third party code that's setting up recursive timers so rapidly that
+         // the user's timer's don't get a chance to resolve. So we'll advance
+         // by an interval instead. (We have a test for this case).
+-        await (0, _act.act)(() => fakeTimersType === 'modern' ? jest.advanceTimersByTimeAsync(interval) : jest.advanceTimersByTime(interval));
++        advancing = (async () => {
++          await (0, _act.act)(() => fakeTimersType === 'modern' ? jest.advanceTimersByTimeAsync(interval) : jest.advanceTimersByTime(interval));
++        })();
++        await advancing;
++        advancing = null;
+ 
+         // It's really important that checkExpectation is run *before* we flush
+         // in-flight promises. To be honest, I'm not sure why, and I can't quite
+@@ -140,8 +146,11 @@ function waitForInternal(expectation, {
+           const promiseResult = result;
+           promiseStatus = 'pending';
+           // eslint-disable-next-line promise/catch-or-return, promise/prefer-await-to-then
+-          promiseResult.then(resolvedValue => {
++          promiseResult.then(async resolvedValue => {
+             promiseStatus = 'resolved';
++            // An expectation that passes while the clock is being moved waits for that act:
++            // finishing inside it would leave the act open, and the act environment off.
++            await advancing;
+             onDone({
+               type: 'result',
+               result: resolvedValue
