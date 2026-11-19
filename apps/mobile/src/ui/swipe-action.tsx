@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type Ref,
 } from 'react';
 import {
   Animated,
@@ -109,10 +110,16 @@ export function SwipeScrollView({
  * A list of SwipeAction rows that draws only the rows on and near the screen (LEDGER-118.1).
  * Goes inside a SwipeListScope.
  */
-export function SwipeFlatList<Item>(props: FlatListProps<Item>) {
+export function SwipeFlatList<Item>({
+  listRef,
+  ...props
+}: FlatListProps<Item> & {
+  /** The list itself, to scroll it from code. */
+  listRef?: Ref<FlatList<Item>>;
+}) {
   return (
     <ListGesture>
-      <FlatList {...props} />
+      <FlatList ref={listRef} {...props} />
     </ListGesture>
   );
 }

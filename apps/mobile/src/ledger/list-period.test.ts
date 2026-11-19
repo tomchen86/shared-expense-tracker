@@ -1,9 +1,11 @@
 import {
+  afterComingBack,
   datesOf,
   earlierPeriod,
   emptyPeriodName,
   hasNext,
   insightsParams,
+  onPeriod,
   optionOf,
   periodName,
   periodOf,
@@ -129,4 +131,33 @@ test('offers the month, or from a year the year, of the latest expense before th
     year('2024'),
   );
   expect(earlierPeriod(month('2024-01'), '2024-01-01', dates)).toBeUndefined();
+});
+
+test('a list put on this month or this year follows the calendar on coming back, and no other does', () => {
+  const later = '2027-02-03';
+  expect(
+    afterComingBack(onPeriod(month('2026-01'), DAY), later).period,
+  ).toEqual(month('2027-02'));
+  expect(afterComingBack(onPeriod(year('2026'), DAY), later).period).toEqual(
+    year('2027'),
+  );
+  expect(
+    afterComingBack(onPeriod(month('2025-12'), DAY), later).period,
+  ).toEqual(month('2025-12'));
+  expect(afterComingBack(onPeriod(year('2025'), DAY), later).period).toEqual(
+    year('2025'),
+  );
+  // A month that stopped being this month while the app stayed in front still follows.
+  const october = onPeriod(month('2026-10'), '2026-10-31');
+  expect(afterComingBack(october, '2026-11-01').period).toEqual(
+    month('2026-11'),
+  );
+  expect(
+    afterComingBack(afterComingBack(october, '2026-11-01'), '2026-12-01')
+      .period,
+  ).toEqual(month('2026-12'));
+  const range = { from: '2026-01-01', to: DAY };
+  expect(
+    afterComingBack(onPeriod({ kind: 'custom' }, DAY, range), later),
+  ).toEqual(onPeriod({ kind: 'custom' }, DAY, range));
 });

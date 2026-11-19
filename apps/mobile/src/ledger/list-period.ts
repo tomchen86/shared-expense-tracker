@@ -18,8 +18,17 @@ export type Dates = { from: string; to: string };
  */
 export interface ListPeriod {
   period: Period;
+  /**
+   * Whether the period was this month or this year on the day the list was put on it. Such a
+   * list follows the calendar when the user comes back to the app (LEDGER-146.1); one the user
+   * moved to another month or year stays there.
+   */
+  wasCurrent: boolean;
   range?: Dates;
 }
+
+/** The dates a list shows, whatever else the list keeps. */
+type ShownDates = Pick<ListPeriod, 'period' | 'range'>;
 
 /** The periods a list offers by name, in the order of the Date list (LEDGER-109.1). */
 export const PERIOD_OPTIONS = [
@@ -110,9 +119,39 @@ export function optionOf(period: Period, day: string): string | undefined {
     ?.id;
 }
 
+/** The month or the year `day` is in, whichever `period` is. */
+const currentOf = (
+  period: Extract<Period, { key: string }>,
+  day: string,
+): Period => ({ kind: period.kind, key: day.slice(0, period.key.length) });
+
+/** A list put on `period` on the day `day`, with the custom range it had. */
+export function onPeriod(
+  period: Period,
+  day: string,
+  range?: Dates,
+): ListPeriod {
+  return {
+    period,
+    wasCurrent: 'key' in period && samePeriod(period, currentOf(period, day)),
+    range,
+  };
+}
+
+/**
+ * The list as the user finds it on coming back to the app on the day `day` (LEDGER-146.1): one
+ * that was put on what was then this month or this year is on this month or this year now.
+ */
+export function afterComingBack(list: ListPeriod, day: string): ListPeriod {
+  const { period } = list;
+  return list.wasCurrent && 'key' in period
+    ? { ...list, period: currentOf(period, day) }
+    : { ...list };
+}
+
 /** The first and last day of the list's period; undefined for all dates. */
 export function datesOf(
-  { period, range }: ListPeriod,
+  { period, range }: ShownDates,
   day: string,
 ): Dates | undefined {
   switch (period.kind) {
@@ -158,7 +197,7 @@ export function periodName(
 
 /** What a period with no expense is called (LEDGER-116.1): a custom range by its two days. */
 export function emptyPeriodName(
-  list: ListPeriod,
+  list: ShownDates,
   day: string,
   locale: string,
 ): string {
@@ -192,7 +231,7 @@ export function hasNext(
  * month for all dates.
  */
 export function insightsParams(
-  list: ListPeriod,
+  list: ShownDates,
   day: string,
 ): { period: string } | Dates {
   const { period } = list;

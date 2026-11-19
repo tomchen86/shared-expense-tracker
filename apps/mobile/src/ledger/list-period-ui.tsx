@@ -2,13 +2,16 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from 'react';
 import {
+  AppState,
   FlatList,
   Pressable,
   StyleSheet,
@@ -17,6 +20,7 @@ import {
   type FlatListProps,
   type ListRenderItemInfo,
 } from 'react-native';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   FadeIn,
@@ -46,6 +50,7 @@ import { usePeriodSwipe } from '../ui/use-period-swipe';
 import { DateHeading } from './dated-cards';
 import {
   PERIOD_OPTIONS,
+  afterComingBack,
   datesOf,
   earlierPeriod,
   emptyPeriodName,
@@ -53,13 +58,13 @@ import {
   hasNext,
   insightsParams,
   monthOf,
+  onPeriod,
   optionOf,
   periodName,
   periodOf,
   stepped,
   today,
   type Dates,
-  type ListPeriod,
   type Period,
 } from './list-period';
 import type { ExpenseView } from './use-expenses';
@@ -77,14 +82,30 @@ export function useListPeriod(
 ) {
   const locale = useDisplayLocale();
   const day = today();
-  const [list, setList] = useState<ListPeriod>(() => ({
-    period: inGroup ? { kind: 'all' } : monthOf(day),
-  }));
+  const [list, setList] = useState(() =>
+    onPeriod(inGroup ? { kind: 'all' } : monthOf(day), day),
+  );
+  // A list left on this month or this year is on the new one when the user comes back to the
+  // app after the calendar has moved on (LEDGER-146.1). Not while the app stays in front.
+  useEffect(() => {
+    let away = false;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'background') away = true;
+      else if (state === 'active' && away) {
+        away = false;
+        setList((current) => afterComingBack(current, today()));
+      }
+    });
+    return () => subscription.remove();
+  }, []);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const { period } = list;
   const dates = datesOf(list, day);
   const from = dates?.from;
   const to = dates?.to;
+
+  const setPeriod = (next: Period) =>
+    setList((current) => onPeriod(next, today(), current.range));
 
   // An expense the user just added or put back stays in sight: one dated outside the period
   // moves the list to its month (LEDGER-117.1). The last one decides.
@@ -99,8 +120,7 @@ export function useListPeriod(
     );
     const last = placed.findLast((id) => outside.some((one) => one.id === id));
     const moved = outside.find((expense) => expense.id === last);
-    if (moved)
-      setList((current) => ({ ...current, period: monthOf(moved.date) }));
+    if (moved) setPeriod(monthOf(moved.date));
   }
 
   const shown = useMemo(
@@ -110,20 +130,21 @@ export function useListPeriod(
         : expenses?.filter(({ date }) => date >= from && date <= to),
     [expenses, from, to],
   );
-  const setPeriod = (next: Period) =>
-    setList((current) => ({ ...current, period: next }));
-  const choose = (id: string) =>
-    setList((current) => {
-      const next = periodOf(id, day);
-      return {
-        period: next,
-        // The dates it had the last time, or on its first time this month up to today.
-        range:
-          next.kind === 'custom'
-            ? (current.range ?? firstRange(day))
-            : current.range,
-      };
-    });
+  const choose = (id: string) => {
+    const on = today();
+    const next = periodOf(id, on);
+    setList((current) =>
+      // A custom range has the dates of its last time, or on its first time this month up to
+      // today.
+      onPeriod(
+        next,
+        on,
+        next.kind === 'custom'
+          ? (current.range ?? firstRange(on))
+          : current.range,
+      ),
+    );
+  };
   const allName = inGroup ? 'Group Total' : 'All Time';
   const name = periodName(period, day, allName);
   /** The period holds none of the list's expenses, and the list has some (LEDGER-116.1). */
@@ -144,6 +165,8 @@ export function useListPeriod(
   return {
     /** The expenses dated in the period, in the order they came; undefined until they are read. */
     shown,
+    /** Changes when the period does, or the dates of the custom range it is. */
+    key: JSON.stringify([period, range]),
     /** The name on the period row. */
     name,
     /** Today, the latest day a custom range can reach. */
@@ -260,6 +283,18 @@ function Filters({
 const RANGE_SHIFT = 300;
 
 /**
+ * Keeps `into` at the height of the screen's title bar, which changes as a large title closes,
+ * without the list rendering again each time it does.
+ */
+function TitleBarHeight({ into }: { into: RefObject<number> }) {
+  const height = useHeaderHeight();
+  useLayoutEffect(() => {
+    into.current = height;
+  });
+  return null;
+}
+
+/**
  * What a PeriodList draws above its cards and for each of them. Its lists take them from here and
  * not as props, so that they only work out again which cards to draw when the expenses change,
  * not each time the screen renders.
@@ -340,10 +375,35 @@ function PeriodListBody({
   useLayoutEffect(() => {
     latestOnScroll.current = onScroll;
   });
-  const scrolled = useCallback<NonNullable<typeof onScroll>>(
-    (event) => latestOnScroll.current?.(event),
-    [],
-  );
+  // Where the list is, and where it rests: under a see-through title bar that is a negative
+  // offset, which the list reports as it opens.
+  const position = useRef<{ y: number; rest: number }>(undefined);
+  const scrolled = useCallback<NonNullable<typeof onScroll>>((event) => {
+    const { y } = event.nativeEvent.contentOffset;
+    position.current = { y, rest: position.current?.rest ?? Math.min(y, 0) };
+    latestOnScroll.current?.(event);
+  }, []);
+
+  // A period that changes while its row is out of sight brings the list back to its top
+  // (LEDGER-147.1). Not while any of the row shows: the arrows would move from under the finger.
+  const list = useRef<FlatList<ExpenseView>>(null);
+  const titleBarHeight = useRef(0);
+  const rowTop = useRef<number>(undefined);
+  const rowHeight = useRef(0);
+  const shownKey = useRef(periods.key);
+  useLayoutEffect(() => {
+    if (shownKey.current === periods.key) return;
+    shownKey.current = periods.key;
+    const at = position.current;
+    if (at === undefined || rowTop.current === undefined) return;
+    // How far down the content the title bar reaches: no further than where the list rests,
+    // which is not at all where the bar stands above the list.
+    const covered = Math.min(-at.rest, titleBarHeight.current);
+    if (at.y + covered < rowTop.current + rowHeight.current) return;
+    // Animated: iOS then opens a large title that had closed, as when a finger scrolls there. A
+    // jump to the same offset opens it too, and leaves the content the title's height too low.
+    list.current?.scrollToOffset({ offset: at.rest, animated: true });
+  }, [periods.key]);
   const { steps } = periods;
   const shown = periods.shown ?? NO_EXPENSES;
   // One sideways swipe for the top of the list and all that slides with it (LEDGER-114.1): to the
@@ -411,95 +471,108 @@ function PeriodListBody({
     <>
       {top}
       {total && (
-        <GestureDetector gesture={swipe.pan}>
-          <View
-            collapsable={false}
-            style={styles.overview}
-            {...(steps ? {} : dragIsNoPress)}
-          >
-            {/* As wide as the list, so the arrows stay under the finger from month to month. */}
-            <GlassSurface style={styles.capsule}>
-              {steps &&
-                arrow(
-                  'Previous period',
-                  { ios: 'chevron.left', android: 'chevron_left' },
-                  'previous',
-                  true,
-                )}
-              {/* Clipped, so the name slides under the arrows and not over them. */}
-              <View style={styles.period}>
-                <PeriodName
-                  name={periods.name}
-                  options={PERIOD_OPTIONS}
-                  selected={periods.option}
-                  slideStyle={swipe.nameStyle}
-                  onSelect={periods.choose}
-                  onOpenFilters={periods.openFilters}
-                />
-              </View>
-              {steps &&
-                arrow(
-                  'Next period',
-                  { ios: 'chevron.right', android: 'chevron_right' },
-                  'next',
-                  steps.next !== undefined,
-                )}
-            </GlassSurface>
-            {periods.range && (
-              <Animated.View
-                entering={FadeIn.duration(RANGE_SHIFT)}
-                exiting={FadeOut.duration(120)}
+        // Measured out here: inside, a view is laid out against the gesture detector's own.
+        <View
+          onLayout={(event) => {
+            rowTop.current = event.nativeEvent.layout.y;
+          }}
+        >
+          <GestureDetector gesture={swipe.pan}>
+            <View
+              collapsable={false}
+              style={styles.overview}
+              {...(steps ? {} : dragIsNoPress)}
+            >
+              {/* As wide as the list, so the arrows stay under the finger from month to month. */}
+              <View
                 onLayout={(event) => {
-                  rangeHeight.current =
-                    event.nativeEvent.layout.height + styles.overview.gap;
+                  rowHeight.current = event.nativeEvent.layout.height;
                 }}
               >
-                <DateRange
-                  from={periods.range.from}
-                  to={periods.range.to}
-                  maximumDate={periods.day}
-                  onChange={periods.setRange}
-                />
-              </Animated.View>
-            )}
-            <Animated.View style={pageStyle}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={total.accessibilityLabel}
-                accessibilityHint="Opens Insights"
-                onPress={total.onPress}
-                style={({ pressed }) => [
-                  styles.total,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <FadeText
-                  containerStyle={styles.shrinks}
-                  minFontSize={20}
-                  style={[
-                    total.plain ? styles.count : styles.amount,
-                    { color: colors.text },
+                <GlassSurface style={styles.capsule}>
+                  {steps &&
+                    arrow(
+                      'Previous period',
+                      { ios: 'chevron.left', android: 'chevron_left' },
+                      'previous',
+                      true,
+                    )}
+                  {/* Clipped, so the name slides under the arrows and not over them. */}
+                  <View style={styles.period}>
+                    <PeriodName
+                      name={periods.name}
+                      options={PERIOD_OPTIONS}
+                      selected={periods.option}
+                      slideStyle={swipe.nameStyle}
+                      onSelect={periods.choose}
+                      onOpenFilters={periods.openFilters}
+                    />
+                  </View>
+                  {steps &&
+                    arrow(
+                      'Next period',
+                      { ios: 'chevron.right', android: 'chevron_right' },
+                      'next',
+                      steps.next !== undefined,
+                    )}
+                </GlassSurface>
+              </View>
+              {periods.range && (
+                <Animated.View
+                  entering={FadeIn.duration(RANGE_SHIFT)}
+                  exiting={FadeOut.duration(120)}
+                  onLayout={(event) => {
+                    rangeHeight.current =
+                      event.nativeEvent.layout.height + styles.overview.gap;
+                  }}
+                >
+                  <DateRange
+                    from={periods.range.from}
+                    to={periods.range.to}
+                    maximumDate={periods.day}
+                    onChange={periods.setRange}
+                  />
+                </Animated.View>
+              )}
+              <Animated.View style={pageStyle}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={total.accessibilityLabel}
+                  accessibilityHint="Opens Insights"
+                  onPress={total.onPress}
+                  style={({ pressed }) => [
+                    styles.total,
+                    pressed && styles.pressed,
                   ]}
                 >
-                  {total.value}
-                </FadeText>
-                <Text accessible={false} style={{ color: colors.textMuted }}>
-                  ›
-                </Text>
-              </Pressable>
-            </Animated.View>
-            {summary && (
-              <Animated.View style={[styles.summary, shiftStyle]}>
-                {summary}
+                  <FadeText
+                    containerStyle={styles.shrinks}
+                    minFontSize={20}
+                    style={[
+                      total.plain ? styles.count : styles.amount,
+                      { color: colors.text },
+                    ]}
+                  >
+                    {total.value}
+                  </FadeText>
+                  <Text accessible={false} style={{ color: colors.textMuted }}>
+                    ›
+                  </Text>
+                </Pressable>
               </Animated.View>
-            )}
-            {periods.empty && (
-              <Animated.View style={pageStyle}>
-                <EmptyPeriod {...periods.empty} />
-              </Animated.View>
-            )}
-          </View>
-        </GestureDetector>
+              {summary && (
+                <Animated.View style={[styles.summary, shiftStyle]}>
+                  {summary}
+                </Animated.View>
+              )}
+              {periods.empty && (
+                <Animated.View style={pageStyle}>
+                  <EmptyPeriod {...periods.empty} />
+                </Animated.View>
+              )}
+            </View>
+          </GestureDetector>
+        </View>
       )}
       {message}
       {/*
@@ -531,8 +604,13 @@ function PeriodListBody({
       }}
     >
       {/* Everything is the list's header: the list is here to scroll, and for the cards' list. */}
+      <TitleBarHeight into={titleBarHeight} />
       <SwipeFlatList
+        listRef={list}
         contentInsetAdjustmentBehavior="automatic"
+        // Where the list rests under a see-through title bar is above its content, and iOS
+        // scrolls there from code only with this.
+        scrollToOverflowEnabled
         contentContainerStyle={styles.content}
         ListHeaderComponentStyle={styles.header}
         scrollEventThrottle={scrollEventThrottle}
