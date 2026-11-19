@@ -40,6 +40,8 @@ export type Refusal =
   | { error: 'too-many-requests'; retryAfterMs: number }
   /** The body is not what the route takes. */
   | { error: 'request' }
+  /** The body is larger than the API takes. */
+  | { error: 'too-large' }
   /** The IP has registered too many new devices. */
   | { error: 'too-many-registrations' };
 
@@ -52,6 +54,7 @@ export const REFUSAL_STATUS: Record<RefusalReason, number> = {
   replayed: 401,
   'too-many-requests': 429,
   request: 400,
+  'too-large': 413,
   'too-many-registrations': 429,
 };
 

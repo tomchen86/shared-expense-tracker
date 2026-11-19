@@ -7,6 +7,7 @@ import {
   sign,
   type KeyObject,
 } from 'node:crypto';
+import { request as httpRequest } from 'node:http';
 import {
   DEVICES_PATH,
   REFUSAL_STATUS,
@@ -190,6 +191,81 @@ export async function send(
   } catch {
     return { status: response.status, body: text };
   }
+}
+
+/** The most bytes a request's body may have (SHARING-48.1): 1 MiB. */
+export const BODY_LIMIT = 1_048_576;
+
+// How long a test waits for an answer before it takes the API to be waiting for more of
+// the body, and the size of the pieces a body is written in.
+const NO_ANSWER_AFTER_MS = 3_000;
+const PIECE = 65_536;
+
+/** How much of a request's body reaches the API, and how. */
+export interface Sending {
+  /** The content length the request declares. Without one the body is sent in chunks. */
+  declaredLength?: number;
+  /** The bytes of the body that are sent, in pieces of 64 KiB; none unless given. */
+  sent?: Uint8Array;
+  /** Whether the request ends after them. One that does not end leaves the API to wait for more. */
+  ended?: boolean;
+}
+
+/**
+ * Sends the headers of a request and only as much of a body as `sending` says, whatever
+ * body `request` has. Resolves with the API's answer as soon as there is one, and with
+ * 'no answer' when the API is still waiting after three seconds.
+ */
+export function sendPartly(
+  request: Partial<SentRequest> & { path: string },
+  { declaredLength, sent = new Uint8Array(0), ended = false }: Sending,
+): Promise<Answer | 'no answer'> {
+  const { hostname, port } = new URL(world.server!.url);
+  return new Promise((resolve, reject) => {
+    const outgoing = httpRequest({
+      hostname,
+      port,
+      method: request.method ?? 'GET',
+      path: request.path,
+      headers: {
+        ...request.headers,
+        ...(declaredLength === undefined
+          ? { 'Transfer-Encoding': 'chunked' }
+          : { 'Content-Length': String(declaredLength) }),
+      },
+      // A connection of its own, which ends with this request.
+      agent: false,
+    });
+    const finish = (result: Answer | 'no answer') => {
+      clearTimeout(timer);
+      resolve(result);
+      outgoing.destroy();
+    };
+    const timer = setTimeout(() => finish('no answer'), NO_ANSWER_AFTER_MS);
+    outgoing.on('response', (response) => {
+      const chunks: Buffer[] = [];
+      response.on('data', (chunk: Buffer) => chunks.push(chunk));
+      response.on('end', () => {
+        const text = Buffer.concat(chunks).toString();
+        const status = response.statusCode ?? 0;
+        try {
+          finish({ status, body: JSON.parse(text) });
+        } catch {
+          finish({ status, body: text });
+        }
+      });
+    });
+    // Nothing once there is an answer; before that, the test fails with the error.
+    outgoing.on('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    outgoing.flushHeaders();
+    for (let start = 0; start < sent.length; start += PIECE) {
+      outgoing.write(sent.subarray(start, start + PIECE));
+    }
+    if (ended) outgoing.end();
+  });
 }
 
 /** A request `phone` signed: a `GET` of a path with no route, at the API's time, unless `input` says otherwise. */
