@@ -2587,7 +2587,7 @@ The mobile app SHALL 讓支出清單和群組的畫面各自一次只顯示一�
 
 ### Requirement: LEDGER-108.1 期間列
 
-The mobile app SHALL 在支出清單的卡片上方顯示期間列，群組的畫面有不在垃圾桶裡的支出時也顯示（GROUPS-68.4）：中間是期間的名稱，某個月是「<英文月份> <年份>」（同 INSIGHTS-4.1），某一年是年份，最近三個月是「<第一個月英文月份的前三個字母> – <這個月英文月份的前三個字母> <今年的年份>」，第一個月在去年時它後面也有年份，自訂範圍是「Custom Range」，全部期間在支出清單是「All Time」、在群組的畫面是「Group Total」；名稱只佔一行，放不下時尾端漸層消失（SHELL-68.1），螢幕閱讀器把它讀成「Choose period. <期間的名稱>」。WHILE 期間是某個月或某一年，the mobile app SHALL 在名稱左邊放名稱是「Previous period」的按鈕、右邊放名稱是「Next period」的按鈕，按一下就把期間換成前一個或後一個月或年，那個月或那一年沒有支出也一樣；期間是這個月或今年時「Next period」停用，按了沒有反應。期間是最近三個月、自訂範圍或全部期間時，SHALL 沒有這兩個按鈕。期間列和清單上方的總額在捲動的內容裡，跟著卡片一起捲動，不固定在畫面上。
+The mobile app SHALL 在支出清單的卡片上方顯示期間列，群組的畫面有不在垃圾桶裡的支出時也顯示（GROUPS-68.4）：中間是期間的名稱，某個月是「<英文月份> <年份>」（同 INSIGHTS-4.1），某一年是年份，最近三個月是「<第一個月英文月份的前三個字母> – <這個月英文月份的前三個字母> <今年的年份>」，第一個月在去年時它後面也有年份，自訂範圍是「Custom Range」，全部期間在支出清單是「All Time」、在群組的畫面是「Group Total」；名稱只佔一行，放不下時尾端漸層消失（SHELL-68.1），螢幕閱讀器把它讀成「Choose period. <期間的名稱>」。WHILE 期間是某個月或某一年，the mobile app SHALL 在名稱左邊放名稱是「Previous period」的按鈕、右邊放名稱是「Next period」的按鈕，按一下就把期間換成前一個或後一個月或年，那個月或那一年沒有支出也一樣；期間是這個月或今年，或是比它們晚的月或年時，「Next period」停用，按了沒有反應。期間是最近三個月、自訂範圍或全部期間時，SHALL 沒有這兩個按鈕。期間列和清單上方的總額在捲動的內容裡，跟著卡片一起捲動，不固定在畫面上。
 
 #### Scenario: 這個月
 
@@ -2613,6 +2613,11 @@ The mobile app SHALL 在支出清單的卡片上方顯示期間列，群組的�
 
 - **WHEN** 今天是 `2026-10-30`，把期間換成今年，再按「Previous period」
 - **THEN** 換成今年時期間列是「2026」，「Next period」停用；按完是「2025」，「Next period」可以按
+
+#### Scenario: 比這個月晚的月份
+
+- **WHEN** 今天是 `2026-10-30`，垃圾桶裡有一筆日期是 `2026-12-05` 的支出，是別支手機記的，或是手機的日期改回來之前記的；把它還原，支出清單換成 December 2026（LEDGER-117.1），再按三次「Previous period」
+- **THEN** 期間列是「December 2026」時「Next period」停用；按完依序是「November 2026」、「October 2026」和「September 2026」，到「September 2026」時「Next period」才可以按
 
 #### Scenario: 最近三個月
 
@@ -2656,7 +2661,7 @@ The mobile app SHALL 在支出清單和群組的畫面的標題列放名稱是�
 #### Scenario: 自訂範圍
 
 - **WHEN** 在 Filters 的 Date 選「Custom Range」
-- **THEN** 「Date, Custom Range」下面是「From」和「To」；在這裡把 From 選成 `2026-09-10` 之後按「Done」，期間列下面的 From 也是「Sep 10, 2026」
+- **THEN** 「Date, Custom Range」下面是「From」和「To」；在這裡把 From 選成 `2026-09-10`、To 選成 `2026-10-20` 之後按「Done」，期間列下面的 From 和 To 也是「Sep 10, 2026」和「Oct 20, 2026」
 
 #### Scenario: 往下滑或按返回鍵
 
@@ -2771,7 +2776,7 @@ WHERE iPhone 或 Android 手機，WHEN 期間換成自訂範圍或從自訂範�
 
 ### Requirement: LEDGER-114.1 (e2e) 在期間列或總額上左右滑動換期間
 
-WHILE 支出清單或群組的畫面的期間是某個月或某一年，WHEN 使用者在期間列、清單上方的總額或 LEDGER-116.1 的提示上往右滑，the mobile app SHALL 把期間換成前一個月或年；WHEN 使用者往左滑，the mobile app SHALL 換成後一個月或年，期間是這個月或今年時往左滑沒有作用；往上或往下滑時期間不變。在群組的畫面上這樣往右滑只換期間，不返回上一頁。期間是最近三個月、自訂範圍或全部期間時，左右滑動不換期間，期間列、總額和提示也不留住這個拖曳：WHERE iOS 26 以上，在群組的畫面上從它們幾乎水平地往右拖曳就返回上一頁，和從收起的卡片一樣（GROUPS-80.1）。左右滑動不算按一下：不管期間能不能換，在清單上方的總額上左右滑動都不打開 Insights（LEDGER-35.4、GROUPS-68.4），在期間的名稱上左右滑動都不打開選單或 Filters（LEDGER-110.1、LEDGER-111.1）。在卡片上左右滑動不換期間（LEDGER-70.2）。
+WHILE 支出清單或群組的畫面的期間是某個月或某一年，WHEN 使用者在期間列、清單上方的總額、群組的畫面上你的淨額（GROUPS-69.3）或 LEDGER-116.1 的提示上往右滑，the mobile app SHALL 把期間換成前一個月或年；WHEN 使用者往左滑，the mobile app SHALL 換成後一個月或年，「Next period」停用時（LEDGER-108.1）往左滑沒有作用；往上或往下滑時期間不變。在群組的畫面上這樣往右滑只換期間，不返回上一頁。期間是最近三個月、自訂範圍或全部期間時，左右滑動不換期間，期間列、總額、你的淨額和提示也不留住這個拖曳：WHERE iOS 26 以上，在群組的畫面上從它們幾乎水平地往右拖曳就返回上一頁，和從收起的卡片一樣（GROUPS-80.1）。左右滑動不算按一下：不管期間能不能換，在它們上面左右滑動都不算按了裡面的按鈕，在清單上方的總額上不打開 Insights（LEDGER-35.4、GROUPS-68.4），在期間的名稱上不打開選單或 Filters（LEDGER-110.1、LEDGER-111.1），在你的淨額上不打開 Balances（GROUPS-70.1）。在卡片上左右滑動不換期間（LEDGER-70.2）。
 
 #### Scenario: 往右滑再往左滑
 
@@ -2818,10 +2823,15 @@ WHILE 支出清單或群組的畫面的期間是某個月或某一年，WHEN 使
 - **WHEN** Brisbane 有今天和上個月 15 日的支出，Brisbane 的畫面的期間是這個月時在期間的名稱上往右滑，在總額上往左滑，再在總額上往右滑
 - **THEN** 期間依序是上個月、這個月和上個月，每次都仍在 Brisbane 的畫面，沒有返回 Groups 根畫面，也沒有打開 Insights
 
+#### Scenario: 在你的淨額上滑
+
+- **WHEN** Brisbane 有今天和上個月 15 日的支出，Brisbane 的畫面的期間是上個月時，在你的淨額上往左滑
+- **THEN** 期間是這個月，仍在 Brisbane 的畫面，沒有打開 Balances
+
 #### Scenario: 群組的畫面是 Group Total
 
-- **WHEN** iOS 26 以上，打開 Brisbane 的畫面，期間是「Group Total」時在總額上往左滑，再從期間的名稱水平往右拖曳
-- **THEN** 往左滑之後仍在 Brisbane 的畫面，期間仍是「Group Total」，沒有打開 Insights；往右拖曳之後回到 Groups 根畫面
+- **WHEN** iOS 26 以上，打開 Brisbane 的畫面，期間是「Group Total」時在總額上往左滑，在你的淨額上往左滑，再從期間的名稱水平往右拖曳
+- **THEN** 兩次往左滑之後都仍在 Brisbane 的畫面，期間仍是「Group Total」，沒有打開 Insights，也沒有打開 Balances；往右拖曳之後回到 Groups 根畫面
 
 ### Requirement: LEDGER-115.1 (manual) 換期間時畫面跟著手指走
 

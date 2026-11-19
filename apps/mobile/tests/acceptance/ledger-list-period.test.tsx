@@ -431,6 +431,43 @@ test('[LEDGER-108.1] names a year by its number and steps between years, not pas
   ]);
 });
 
+test('[LEDGER-108.1] keeps Next period disabled on the months after this one', async () => {
+  // An expense dated after today is in the Trash: it was added while the phone's date was
+  // December 5, as one from a phone whose date is ahead would be.
+  const app = await startExpenses('Asia/Taipei', '2026-12-05T04:00:00Z');
+  await spend('Flights', '2026-12-05');
+  await deleteByAction('Flights');
+  await restart(app);
+  await expectPeriod(expensesRoot, 'October 2026');
+
+  // Putting it back moves the list to its month (LEDGER-117.1).
+  await restoreFromTrash('Flights');
+  await tapTab('Expenses');
+
+  await expectPeriod(expensesRoot, 'December 2026');
+  expect(cardTitles()).toEqual(['Flights']);
+  expect(enabledArrows(expensesRoot())).toEqual(['Previous period']);
+  // The disabled button takes no press.
+  await pressNextPeriod(expensesRoot());
+  await settle();
+  expect(periodName(expensesRoot())).toBe('December 2026');
+
+  await pressPreviousPeriod(expensesRoot());
+  await expectPeriod(expensesRoot, 'November 2026');
+  expect(enabledArrows(expensesRoot())).toEqual(['Previous period']);
+
+  await pressPreviousPeriod(expensesRoot());
+  await expectPeriod(expensesRoot, 'October 2026');
+  expect(enabledArrows(expensesRoot())).toEqual(['Previous period']);
+
+  await pressPreviousPeriod(expensesRoot());
+  await expectPeriod(expensesRoot, 'September 2026');
+  expect(enabledArrows(expensesRoot())).toEqual([
+    'Previous period',
+    'Next period',
+  ]);
+});
+
 test.each([
   ['in October', '2026-10-30T04:00:00Z', 'Aug – Oct 2026'],
   ['in January', '2026-01-15T04:00:00Z', 'Nov 2025 – Jan 2026'],
@@ -546,11 +583,16 @@ test('[LEDGER-109.1] shows From and To under Date for a custom range, the same d
   });
 
   await chooseRangeDate(filtersRoot(), 'From', '2026-09-10');
+  await chooseRangeDate(filtersRoot(), 'To', '2026-10-20');
+  expect(rangeDates(filtersRoot())).toMatchObject({
+    from: '2026-09-10',
+    to: '2026-10-20',
+  });
   await closeFilters();
 
   expect(rangeDates(expensesRoot())).toMatchObject({
     from: '2026-09-10',
-    to: '2026-10-30',
+    to: '2026-10-20',
   });
 });
 
