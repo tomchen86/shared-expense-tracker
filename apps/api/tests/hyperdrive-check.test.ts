@@ -100,8 +100,10 @@ describe('interrupted', () => {
       await transaction`LOCK TABLE pg_class IN SHARE ROW EXCLUSIVE MODE`;
       // Only a client's session is the check's. Autovacuum waits here as well when it
       // analyzes pg_database from this database, which it does the more often, the more
-      // databases the tests make and drop.
-      const waiting = () => transaction`
+      // databases the tests make and drop. Asked outside this transaction: inside one,
+      // pg_stat_activity stays as it was when first read, without the sessions that
+      // connect later, and the check's connects after autovacuum started to wait.
+      const waiting = () => database.sql`
         SELECT 1 FROM pg_locks JOIN pg_stat_activity USING (pid)
         WHERE relation = 'pg_class'::regclass AND NOT granted
           AND backend_type = 'client backend'
