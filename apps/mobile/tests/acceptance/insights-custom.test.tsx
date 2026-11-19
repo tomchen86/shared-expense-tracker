@@ -5,8 +5,10 @@ import { ActionSheetIOS } from 'react-native';
 import { screen, waitFor } from '@testing-library/react-native';
 import {
   addExpense,
+  editExpense,
   resetPhone,
   setRegionCurrency,
+  storedExpenses,
   watchAlerts,
 } from './ledger-expense-app';
 import {
@@ -154,6 +156,14 @@ const range = (on = 'Expenses') => {
 };
 
 const groupId = async (name: string) => (await storedGroup(file, name)).id;
+
+const expenseId = async (title: string) => {
+  const found = (await storedExpenses()).find(
+    (expense) => expense.title === title,
+  );
+  if (found === undefined) throw new Error(`No expense titled ${title}`);
+  return found.id;
+};
 
 // The period a URL names
 
@@ -310,6 +320,19 @@ test('[INSIGHTS-28.2] offers Month, Year and Custom, and shows From and To in pl
   expect(selectedPeriod()).toBeUndefined();
 });
 
+test('[INSIGHTS-28.2] shows From and To in place of the name of the only month on Custom', async () => {
+  await insightsAt('', ['2025-01-20', '8.75']);
+  expect(insightsLines()).toContain('January 2025');
+
+  await selectAggregation('Custom');
+
+  expect(range()).toEqual(['2025-01-01', '2025-01-31']);
+  expect(insightsLines()).not.toContain('January 2025');
+  expect(previousButton()).toBeNull();
+  expect(nextButton()).toBeNull();
+  expect(totals()).toEqual(['$8.75']);
+});
+
 test('[INSIGHTS-46.1] starts Custom on the first and last day of the month that was selected, with no comparison', async () => {
   await insightsAt('', ...THREE_MONTHS);
   expect(selectedPeriod()).toBe('March 2025');
@@ -410,6 +433,26 @@ test('[INSIGHTS-46.1] shows only No expenses yet when nothing is counted at all,
   expect(headings()).toEqual(['No expenses yet']);
   expect(range()).toBeUndefined();
   expect(chartMenu()).toBeUndefined();
+});
+
+test('[INSIGHTS-46.1] keeps Custom and its dates when the only expense in them is moved to another date, and says the dates hold no expenses', async () => {
+  await startExpensesAt('/');
+  await spend('2024-11-10', '1.00');
+  await addExpense({ date: '2025-03-10', amount: '3.00' });
+  await openInsightsAt('?from=2025-03-01&to=2025-03-31');
+  expect(currentAggregation()).toBe('Custom');
+  expect(totals()).toEqual(['$3.00']);
+
+  await editExpense(await expenseId('Coffee run'), { date: '2024-11-15' });
+  await tapTab('Expenses');
+
+  await waitFor(() => expect(headings()).toContain(NO_EXPENSES_IN_DATES[0]));
+  expect(insightsLines()).toEqual(expect.arrayContaining(NO_EXPENSES_IN_DATES));
+  expect(currentAggregation()).toBe('Custom');
+  expect(range()).toEqual(['2025-03-01', '2025-03-31']);
+  expect(totalCards()).toEqual([]);
+  // Not the latest month that holds expenses, as on Month (INSIGHTS-40.1).
+  expect(selectedPeriod()).toBeUndefined();
 });
 
 test('[INSIGHTS-19.2] does not say the dates hold no expenses before Insights has read the expenses', async () => {
