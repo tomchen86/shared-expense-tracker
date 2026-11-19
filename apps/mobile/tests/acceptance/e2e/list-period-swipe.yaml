@@ -1,6 +1,10 @@
 appId: com.tomchen.sharedexpensetracker
 name: "[LEDGER-114.1] Swipes the period's name and the total to the month before and back, not past this month, and changes no period from a card"
+tags:
+  - android
 ---
+# Also runs on the small Android screen of scripts/e2e-android.sh (ADR-0014), where the period's
+# name is a button that opens Filters (LEDGER-111.1): a swipe that starts on it must not press it.
 # The names of this month and last month, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
 - evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'

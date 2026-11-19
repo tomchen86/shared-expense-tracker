@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-114.1] Goes back with a drag to the right from a group's period row on Group Total, and on a month swipes the period's name and the total to the month before and back without leaving the group's screen"
+name: "[LEDGER-114.1] Opens no Insights with a swipe to the left on a group's total on Group Total, goes back with a drag to the right from its period row, and on a month swipes the period's name and the total to the month before and back without leaving the group's screen"
 ---
 # The names of this month and last month, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
@@ -19,13 +19,23 @@ name: "[LEDGER-114.1] Goes back with a drag to the right from a group's period r
 - tapOn: Groups
 - tapOn: Open Brisbane
 - waitForAnimationToEnd
-# A group's screen opens on Group Total, which no swipe changes, so the period row keeps no
-# drag: one to the right from the period's name is iOS's back gesture, as from a closed card
-# (GROUPS-80.1). It starts on the name, left of the middle, since the gesture needs half the
-# screen's width: under the large title, the period's name of an iPhone 17 lies across 23% of
-# the screen's height.
+# A group's screen opens on Group Total, which no swipe changes. A swipe on the total is no
+# press either: to the left, the screen stays as it is, and the group's Insights, whose total
+# reads Total spent, does not open.
 - assertVisible: Choose period\. Group Total
 - assertVisible: Group actions
+- swipe:
+    from:
+      text: 'Group Total: .*'
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. Group Total
+- assertVisible: Group actions
+- assertNotVisible: Total spent.*
+# The period row keeps no drag on Group Total: one to the right from the period's name is
+# iOS's back gesture, as from a closed card (GROUPS-80.1). It starts on the name, left of the
+# middle, since the gesture needs half the screen's width: under the large title, the period's
+# name of an iPhone 17 lies across 23% of the screen's height.
 - swipe:
     start: 40%, 23%
     end: 95%, 23%

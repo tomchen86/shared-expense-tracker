@@ -66,6 +66,7 @@ import {
   archiveGroup,
   choosePayer,
   chooseSharers,
+  deleteFromGroup,
   groupAddButton,
   groupCardTitles,
   groupLines,
@@ -960,7 +961,9 @@ test('[LEDGER-117.1] leaves the expense list where it is when the new group expe
   expect(cardTitles()).toEqual(['Coffee run']);
 });
 
-test('[LEDGER-117.1] [LEDGER-75.4] leaves the period when Undo puts back an expense dated outside it', async () => {
+// An expense put back from the trash outside the period
+
+test('[LEDGER-117.1] [LEDGER-75.4] moves the expense list back to the month of an expense that Undo puts back', async () => {
   await startExpenses();
   await spend('Lunch', '2026-09-12');
   await expectPeriod(expensesRoot, 'September 2026');
@@ -970,14 +973,12 @@ test('[LEDGER-117.1] [LEDGER-75.4] leaves the period when Undo puts back an expe
 
   await pressUndo('Lunch');
 
-  expect(periodName(expensesRoot())).toBe('October 2026');
-  expect(cardTitles()).toEqual([]);
-  await pressPreviousPeriod(expensesRoot());
   await expectPeriod(expensesRoot, 'September 2026');
   expect(cardTitles()).toEqual(['Lunch']);
+  expect(listTotal()).toEqual(['$8.75']);
 });
 
-test('[LEDGER-117.1] [LEDGER-79.4] leaves the period when Restore puts back an expense dated outside it', async () => {
+test('[LEDGER-117.1] [LEDGER-79.4] moves the expense list, while Trash is on screen, to the month of an expense that Restore puts back', async () => {
   await startExpenses();
   await spend('Lunch', '2026-09-12');
   await expectPeriod(expensesRoot, 'September 2026');
@@ -988,11 +989,95 @@ test('[LEDGER-117.1] [LEDGER-79.4] leaves the period when Restore puts back an e
   await restoreFromTrash('Lunch');
   await tapTab('Expenses');
 
-  expect(periodName(expensesRoot())).toBe('October 2026');
-  expect(cardTitles()).toEqual([]);
-  await pressPreviousPeriod(expensesRoot());
   await expectPeriod(expensesRoot, 'September 2026');
   expect(cardTitles()).toEqual(['Lunch']);
+});
+
+test('[LEDGER-117.1] leaves a year and All Time, which hold the expense that Restore puts back', async () => {
+  await startExpenses();
+  await spend('Lunch', '2026-09-12');
+  await deleteByAction('Lunch');
+  await choosePeriod('Expenses', 'This Year');
+  await expectPeriod(expensesRoot, '2026');
+
+  await restoreFromTrash('Lunch');
+  await tapTab('Expenses');
+
+  await waitFor(() => expect(cardTitles()).toEqual(['Lunch']));
+  expect(periodName(expensesRoot())).toBe('2026');
+
+  await deleteByAction('Lunch');
+  await choosePeriod('Expenses', 'All Time');
+  await restoreFromTrash('Lunch');
+  await tapTab('Expenses');
+
+  await waitFor(() => expect(cardTitles()).toEqual(['Lunch']));
+  expect(periodName(expensesRoot())).toBe('All Time');
+});
+
+test("[LEDGER-117.1] [LEDGER-79.4] moves an open group's screen and the expense list to the month of a group expense that Restore puts back", async () => {
+  await startWithGroups(BRISBANE);
+  await brisbaneSpends('Dinner', '2026-08-15');
+  await brisbaneSpends('Lunch', '2026-10-29');
+  await showGroup('Brisbane');
+  await waitFor(() =>
+    expect(groupCardTitles('Brisbane')).toEqual(['Lunch', 'Dinner']),
+  );
+  await deleteFromGroup('Brisbane', 'Dinner');
+  await choosePeriod('Brisbane', 'This Month');
+  await expectPeriod(brisbane, 'October 2026');
+  await tapTab('Expenses');
+  await expectPeriod(expensesRoot, 'October 2026');
+
+  await restoreFromTrash('Dinner');
+
+  // Brisbane's screen stayed open on the Groups tab.
+  await tapTab('Groups');
+  await expectPeriod(brisbane, 'August 2026');
+  expect(groupCardTitles('Brisbane')).toEqual(['Dinner']);
+  await tapTab('Expenses');
+  await expectPeriod(expensesRoot, 'August 2026');
+  expect(cardTitles()).toEqual(['Dinner']);
+});
+
+test("[LEDGER-117.1] [LEDGER-75.4] leaves a group's screen on Group Total, which holds the expense that Undo puts back, and moves the expense list to its month", async () => {
+  await startWithGroups(BRISBANE);
+  await brisbaneSpends('Dinner', '2026-09-12');
+  await brisbaneSpends('Lunch', '2026-10-29');
+  await showGroup('Brisbane');
+  await waitFor(() =>
+    expect(groupCardTitles('Brisbane')).toEqual(['Lunch', 'Dinner']),
+  );
+  await tapTab('Expenses');
+  await expectPeriod(expensesRoot, 'October 2026');
+  await tapTab('Groups');
+
+  await deleteFromGroup('Brisbane', 'Dinner');
+  await pressUndo('Dinner');
+
+  await waitFor(() =>
+    expect(groupCardTitles('Brisbane')).toEqual(['Lunch', 'Dinner']),
+  );
+  expect(periodName(brisbane())).toBe('Group Total');
+  await tapTab('Expenses');
+  await expectPeriod(expensesRoot, 'September 2026');
+  expect(cardTitles()).toEqual(['Dinner']);
+});
+
+test('[LEDGER-117.1] leaves the expense list where it is when the group expense that Restore puts back has nothing to do with you', async () => {
+  await startWithGroups(BRISBANE);
+  await spend('Coffee run', '2026-10-01');
+  await brisbaneSpends('Taxi', '2026-08-15', '25.00', ['Blake']);
+  await showGroup('Brisbane');
+  await waitFor(() => expect(groupCardTitles('Brisbane')).toEqual(['Taxi']));
+  await deleteFromGroup('Brisbane', 'Taxi');
+
+  await restoreFromTrash('Taxi');
+
+  await tapTab('Expenses');
+  await settle();
+  expect(periodName(expensesRoot())).toBe('October 2026');
+  expect(cardTitles()).toEqual(['Coffee run']);
 });
 
 // A group's screen

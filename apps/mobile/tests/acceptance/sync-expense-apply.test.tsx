@@ -309,6 +309,36 @@ test('[LEDGER-117.1] leaves the expense list on its period when another phone ad
   await expectCards(['Lunch']);
 });
 
+test('[LEDGER-117.1] leaves the expense list on its period when another phone restores an expense dated outside it', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  await receive(
+    brisbane,
+    created(
+      'expense',
+      LUNCH,
+      at(LATER),
+      await lunchUnits({ date: '2026-09-15' }),
+    ),
+    changed('expense', LUNCH, at(LATER + 1000), { trashed: true }),
+  );
+  await openTrash();
+  await expectTrash(['Lunch']);
+  await tapTab('Expenses');
+
+  await receive(
+    brisbane,
+    changed('expense', LUNCH, at(LATER + 2000), { trashed: false }),
+  );
+
+  await expectCards(['Dinner']);
+  expect(periodName(expensesRoot())).toBe('October 2026');
+  await pressPreviousPeriod(expensesRoot());
+  await expectPeriod(expensesRoot, 'September 2026');
+  await expectCards(['Lunch']);
+});
+
 test("[SYNC-29.1] shows it on the group's screen, open at the time, and in the group's total", async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
