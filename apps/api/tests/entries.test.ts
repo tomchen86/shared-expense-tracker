@@ -48,6 +48,26 @@ async function expectSignedRequestsPass(url: string) {
   });
 }
 
+/**
+ * The two verification files and the download page answer a request that is not signed,
+ * and the checks still refuse one beside them.
+ */
+async function expectInviteLinkRoutesPublic(url: string) {
+  for (const route of [
+    '/.well-known/apple-app-site-association',
+    '/.well-known/assetlinks.json',
+    '/i/a',
+  ]) {
+    const response = await fetch(`${url}${route}`);
+    expect([route, response.status]).toEqual([route, 200]);
+  }
+  const posted = await fetch(`${url}/i/a`, { method: 'POST' });
+  expect([posted.status, await posted.json()]).toEqual([
+    401,
+    { error: 'signature' },
+  ]);
+}
+
 // The eight low-order points of Ed25519, in each way 32 bytes write one.
 const LOW_ORDER_PUBLIC_KEYS = [
   '0000000000000000000000000000000000000000000000000000000000000000',
@@ -141,6 +161,7 @@ test(
     try {
       await expectSignedRequestsPass(withKey.url);
       await expectLowOrderKeysRefused(withKey.url);
+      await expectInviteLinkRoutesPublic(withKey.url);
     } finally {
       await withKey.stop();
     }
@@ -244,6 +265,7 @@ test(
       try {
         await expectSignedRequestsPass(workers.url);
         await expectLowOrderKeysRefused(workers.url);
+        await expectInviteLinkRoutesPublic(workers.url);
       } finally {
         await workers.stop();
       }
