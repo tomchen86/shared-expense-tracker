@@ -1,4 +1,4 @@
-import { isHealthResponse } from '@shared-expense/domain/api';
+import { REFUSAL_STATUS, isHealthResponse } from '@shared-expense/domain/api';
 import {
   CASEY,
   NO_ROUTE,
@@ -70,11 +70,14 @@ describe('SHARING-31.1', () => {
 
   test('[SHARING-31.1] answers GET /health without a signature, and no other method or path beside it', async () => {
     const health = await send({ path: '/health' });
+    const head = await send({ method: 'HEAD', path: '/health' });
     const posted = await send({ method: 'POST', path: '/health' });
     const beside = await send({ path: '/health/more' });
 
     expect(health.status).toBe(200);
     expect(isHealthResponse(health.body)).toBe(true);
+    // The answer to a HEAD has no body to carry the reason, only the refusal's status.
+    expect(head.status).toBe(REFUSAL_STATUS.signature);
     expectRefused(posted, SIGNATURE);
     expectRefused(beside, SIGNATURE);
   });

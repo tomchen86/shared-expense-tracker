@@ -255,6 +255,107 @@ describe('with requests from the address a test gives', () => {
     });
   });
 
+  describe('SHARING-40.1, together', () => {
+    test('[SHARING-40.1] registers one of two key pairs that register one new device ID together', async () => {
+      // Eight device IDs at once, each claimed by two key pairs.
+      const pairs = Array.from({ length: 8 }, () => {
+        const first = newPhone();
+        return [first, newPhone(first.deviceId)] as const;
+      });
+
+      const answers = await Promise.all(
+        pairs.map((pair) =>
+          Promise.all(pair.map((phone) => send(registrationBy(phone)))),
+        ),
+      );
+
+      for (const [index, pair] of pairs.entries()) {
+        const won = answers[index][0].status === 200 ? 0 : 1;
+        const lost = 1 - won;
+        expectRegistered(answers[index][won], pair[won]);
+        expectRefused(answers[index][lost], SIGNATURE);
+        expectPassed(await send(signedBy(pair[won])));
+        expectRefused(await send(signedBy(pair[lost])), SIGNATURE);
+        expect(await timesPublicKeyStored(pair[lost])).toBe(0);
+      }
+    });
+  });
+
+  describe('SHARING-47.1', () => {
+    const LOW_ORDER = [
+      '0000000000000000000000000000000000000000000000000000000000000000',
+      '0100000000000000000000000000000000000000000000000000000000000000',
+      '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05',
+      'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+      'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+      'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+      'eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+    ];
+    /** `key` with the highest bit of its last byte set. */
+    const withTopBit = (key: string) =>
+      key.slice(0, 62) +
+      (parseInt(key.slice(62), 16) | 0x80).toString(16).padStart(2, '0');
+    /**
+     * R is the identity element and S is 0: where a runtime lets a low-order public key
+     * verify at all, this is a signature of anything under the identity element.
+     */
+    const FORGED = `01${'00'.repeat(63)}`;
+
+    test('[SHARING-47.1] the fourteen writings are the seven listed and those with the highest bit set', () => {
+      const all = [...LOW_ORDER, ...LOW_ORDER.map(withTopBit)];
+
+      expect(new Set(all).size).toBe(14);
+      expect(LOW_ORDER.map(withTopBit).map((key) => key.slice(62))).toEqual([
+        '80',
+        '80',
+        '85',
+        'fa',
+        'ff',
+        'ff',
+        'ff',
+      ]);
+      expect(all.every((key) => /^[0-9a-f]{64}$/.test(key))).toBe(true);
+    });
+
+    test.each([...LOW_ORDER, ...LOW_ORDER.map(withTopBit)])(
+      '[SHARING-47.1] refuses to register the low-order public key %s',
+      async (publicKey) => {
+        const casey = newPhone(CASEY);
+
+        for (const request of [
+          withField(registrationBy(casey, { publicKey }), 'signature', FORGED),
+          registrationBy(casey, { publicKey }),
+        ]) {
+          const answer = await leavingTheDatabaseAsItWas(() => send(request));
+
+          expectRefused(answer, REQUEST);
+        }
+        // Nothing passes under that device ID afterwards, forged or signed by Casey.
+        expectRefused(
+          await send(withField(signedBy(casey), 'signature', FORGED)),
+          SIGNATURE,
+        );
+        await expectNotRegistered(casey);
+        expect(await timesDeviceIdStored(CASEY)).toBe(0);
+      },
+    );
+
+    test('[SHARING-47.1] takes a public key that is no low-order point as one, and refuses it for its signature', async () => {
+      const casey = newPhone(CASEY);
+      const publicKey = `03${'00'.repeat(31)}`;
+
+      const answer = await leavingTheDatabaseAsItWas(() =>
+        send(
+          withField(registrationBy(casey, { publicKey }), 'signature', FORGED),
+        ),
+      );
+
+      expectRefused(answer, SIGNATURE);
+      // And Casey's own key registers as before.
+      await register(casey);
+    });
+  });
+
   describe('SHARING-41.1', () => {
     const BUSY = '198.51.100.20';
 
