@@ -9,6 +9,7 @@ import {
   inTreeOrder,
   resetPhone,
   restart,
+  setPhoneClock,
   startExpenses,
   watchAlerts,
 } from './ledger-expense-app';
@@ -44,6 +45,7 @@ import {
   chooseRangeDate,
   emptyPeriodTitle,
   expectPeriod,
+  leaveAndComeBack,
   nextPeriod,
   periodName,
   previousPeriod,
@@ -503,6 +505,28 @@ test('[LEDGER-125.1] [LEDGER-117.2] [LEDGER-79.5] keeps the search when Restore 
 
   await expectPeriod(expensesRoot, 'September 2026');
   expect(cardTitles()).toEqual(['Lunch']);
+});
+
+test('[LEDGER-146.2] [LEDGER-125.1] keeps the search when the app comes back in a later month, and shows that month once the search ends', async () => {
+  await startExpenses();
+  await spend('Coffee run', '2026-10-01');
+  await spend('Lunch', '2026-10-02');
+  await search('coffee');
+
+  // The user leaves the app and comes back to it on 2026-11-02, at noon in Taipei.
+  await leaveAndComeBack(() =>
+    setPhoneClock('Asia/Taipei', '2026-11-02T04:00:00Z'),
+  );
+
+  expect(periodName(expensesRoot())).toBeUndefined();
+  expect(listTotal()).toEqual([]);
+  expect(cardTitles()).toEqual(['Coffee run']);
+  expect(listCount(expensesRoot())).toBe('1 item');
+
+  await endSearch('Expenses');
+
+  await expectPeriod(expensesRoot, 'November 2026');
+  expect(cardTitles()).toEqual([]);
 });
 
 test('[LEDGER-125.1] keeps searching after the details of a card are opened and closed', async () => {

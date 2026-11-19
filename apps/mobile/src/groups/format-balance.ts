@@ -9,12 +9,11 @@ export function formatBalance(net: bigint, currency: string, locale: string) {
   return `${label} ${formatCurrency(net < 0n ? -net : net, currency, locale)}`;
 }
 
-/** The total of each currency, on one line. */
-export function groupTotalLine(amounts: GroupAmounts, locale: string) {
-  const totals = amounts.map(({ currency, total }) =>
-    formatCurrency(total, currency, locale),
-  );
-  return `Group Total: ${totals.join(', ')}`;
+/** The total of each currency, on one line; empty when there is none. */
+export function groupTotals(amounts: GroupAmounts, locale: string) {
+  return amounts
+    .map(({ currency, total }) => formatCurrency(total, currency, locale))
+    .join(', ');
 }
 
 /** Your net balance: a line for what you owe and one for what you are owed, or Settled up. */

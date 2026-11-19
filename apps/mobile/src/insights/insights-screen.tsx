@@ -18,7 +18,9 @@ import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   buildInsights,
+  buildRangeInsights,
   formatCurrency,
+  isLocalDate,
   type InsightCategory,
   type InsightChartPreference,
   type InsightContext,
@@ -29,6 +31,7 @@ import { listCategories } from '../categories';
 import { listGroups } from '../groups';
 import { listExpenses } from '../ledger';
 import { subscribeToExpenses } from '../ledger/expenses';
+import { datesOf, today, type Dates } from '../ledger/list-period';
 import {
   useChartType,
   useLocalDatabase,
@@ -36,6 +39,7 @@ import {
   useSaveChartType,
 } from '../shell';
 import { CategoryChart } from '../ui/category-chart';
+import { DateRange } from '../ui/date-range';
 import { FadeText } from '../ui/fade-text';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions, type HeaderChoice } from '../ui/header-actions';
@@ -43,14 +47,49 @@ import { PeriodPicker } from '../ui/period-picker';
 import { SegmentedControl } from '../ui/segmented-control';
 import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
-import { usePeriodSwipe } from './use-period-swipe';
+import { usePeriodSwipe } from '../ui/use-period-swipe';
 
-type Mode = 'month' | 'year';
+/** Insights looks at one month, one year, or with `custom` the days from From to To (INSIGHTS-46.1). */
+type Mode = 'month' | 'year' | 'custom';
 
 const AGGREGATIONS = [
   { label: 'Month', value: 'month' },
   { label: 'Year', value: 'year' },
+  { label: 'Custom', value: 'custom' },
 ] as const;
+
+/** The first and last day of a month (YYYY-MM) or a year (YYYY), the last no later than `day`. */
+function rangeOf(key: string, day: string): Dates {
+  const { from, to } = datesOf(
+    { period: { kind: key.length === 4 ? 'year' : 'month', key } },
+    day,
+  )!;
+  return { from, to: to < day ? to : day };
+}
+
+/**
+ * What a URL's search params open Insights on (INSIGHTS-45.1): its dates when both are valid,
+ * none later than `day`, or else its month or year when that is valid, or else nothing of its
+ * own.
+ */
+function startOf(
+  { period, from, to }: { period?: unknown; from?: unknown; to?: unknown },
+  day: string,
+): { mode: Mode; key?: string; range?: Dates } {
+  const earlier = (date: string) => (date < day ? date : day);
+  if (
+    typeof from === 'string' &&
+    typeof to === 'string' &&
+    isLocalDate(from) &&
+    isLocalDate(to)
+  )
+    return { mode: 'custom', range: { from: earlier(from), to: earlier(to) } };
+  if (typeof period === 'string' && isLocalDate(`${period}-01`))
+    return { mode: 'month', key: period };
+  if (typeof period === 'string' && /^\d{4}$/.test(period))
+    return { mode: 'year', key: period };
+  return { mode: 'month' };
+}
 
 interface InsightsInput {
   expenses: InsightExpense[];
@@ -207,7 +246,12 @@ function TotalCard({
 
 /** The personal Insights, or with `group` the Insights of the `groupId` search param. */
 export function InsightsScreen({ group = false }: { group?: boolean }) {
-  const { groupId } = useLocalSearchParams<{ groupId?: string }>();
+  const { groupId, ...params } = useLocalSearchParams<{
+    groupId?: string;
+    period?: string;
+    from?: string;
+    to?: string;
+  }>();
   const colors = useThemeColors();
   const locale = useDisplayLocale();
   const input = useInsightsInput(group, groupId);
@@ -217,20 +261,43 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
     useState<InsightChartPreference>();
   const saving = useRef(false);
   const chartType = chosenChartType ?? savedChartType;
-  const [mode, setMode] = useState<Mode>('month');
-  const [key, setKey] = useState<string>();
+  const day = today();
+  // What the URL names, as the screen opens (INSIGHTS-45.1).
+  const [start] = useState(() => startOf(params, day));
+  const [mode, setMode] = useState(start.mode);
+  const [key, setKey] = useState(start.key);
+  // The custom range as it was chosen; From can be the later day.
+  const [range, setRange] = useState(
+    start.range ?? rangeOf(day.slice(0, 7), day),
+  );
+  const [first, last] = [range.from, range.to].sort();
 
   const insights = useMemo(
     () => input && buildInsights({ ...input, chartPreference: chartType }),
     [input, chartType],
   );
-  const periods = insights
-    ? mode === 'month'
-      ? insights.months
-      : insights.years
-    : [];
-  // A period left without expenses gives way to the latest one of its year,
-  // else the latest one (INSIGHTS-40.1); none is chosen yet on opening (INSIGHTS-21.1).
+  // The currencies of the custom range; undefined when the domain refuses it (INSIGHTS-44.1).
+  const custom = useMemo(
+    () =>
+      input && mode === 'custom'
+        ? buildRangeInsights({
+            ...input,
+            chartPreference: chartType,
+            from: first,
+            to: last,
+          })
+        : undefined,
+    [input, mode, chartType, first, last],
+  );
+  const periods =
+    insights && mode !== 'custom'
+      ? mode === 'month'
+        ? insights.months
+        : insights.years
+      : [];
+  // A period left without expenses, or one the URL names that has none, gives way to the latest
+  // one of its year, else the latest one (INSIGHTS-40.1, INSIGHTS-45.1); with no period named,
+  // none is chosen yet on opening (INSIGHTS-21.2).
   const selected =
     periods.find((period) => period.key === key) ??
     periods
@@ -330,6 +397,64 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
     </Pressable>
   );
 
+  /** The totals and the categories of the currencies of one period. */
+  const page = (currencies: InsightCurrency[]) => (
+    <>
+      <TotalCard
+        currencies={currencies}
+        money={money}
+        comparisonOf={comparisonOf}
+      />
+      {currencies.map((currency) => (
+        <View key={currency.currency} style={styles.currency}>
+          <Text
+            accessibilityRole="header"
+            style={[styles.heading, { color: colors.textMuted }]}
+          >
+            {`${currency.currency} categories`}
+          </Text>
+          <GroupedSection style={styles.categories}>
+            <CategoryChart {...currency.chart} />
+            {currency.categories.map((category, row) => {
+              const amount = money(category.amountMinor, currency.currency);
+              return (
+                <View
+                  key={row}
+                  accessible
+                  accessibilityLabel={`${category.name}, ${amount}, ${decimal.format(category.percent)} percent`}
+                  style={styles.row}
+                >
+                  <View
+                    style={[styles.dot, { backgroundColor: category.color }]}
+                  />
+                  <View style={styles.rowText}>
+                    <FadeText style={[styles.rowName, { color: colors.text }]}>
+                      {category.name}
+                    </FadeText>
+                    <Text
+                      style={[styles.rowAmount, { color: colors.textMuted }]}
+                    >
+                      {`${amount} · ${percentage.format(category.percent / 100)}`}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </GroupedSection>
+        </View>
+      ))}
+    </>
+  );
+
+  const tooLarge = message(
+    'Totals Too Large',
+    'These totals are too large to show.',
+  );
+  // Whether the totals of a period show, which the chart menu is for.
+  const charted =
+    mode === 'custom'
+      ? !!insights?.months.length && !!custom?.length
+      : selected !== undefined;
   let body: ReactNode = null;
   if (input === null)
     body = (
@@ -337,14 +462,13 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
         Group not found.
       </Text>
     );
-  else if (input && !insights)
-    body = message('Totals Too Large', 'These totals are too large to show.');
-  else if (insights && !selected)
+  else if (input && !insights) body = tooLarge;
+  else if (insights?.months.length === 0)
     body = message(
       'No expenses yet',
       'Add an expense to see spending insights.',
     );
-  else if (selected)
+  else if (insights && (selected || mode === 'custom'))
     body = (
       <>
         <SegmentedControl
@@ -353,93 +477,68 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
           value={mode}
           onChange={(chosen) => {
             if (chosen === mode) return;
-            // The year of the month, or the latest month of the year (INSIGHTS-29.1).
             setMode(chosen);
-            setKey(selected.key.slice(0, 4));
+            // Custom starts on the dates of the period that was showing (INSIGHTS-46.1). Back
+            // from it, the month or year its dates end in; otherwise the year of the month, or
+            // the latest month of the year (INSIGHTS-29.1).
+            if (chosen === 'custom') setRange(rangeOf(selected!.key, day));
+            else if (mode === 'custom')
+              setKey(last.slice(0, chosen === 'month' ? 7 : 4));
+            else setKey(selected!.key.slice(0, 4));
           }}
         />
-        <GestureDetector gesture={swipe.pan}>
-          <View collapsable={false}>
+        {mode === 'custom' ? (
+          <>
             <View style={styles.periods}>
-              {periods.length > 1 &&
-                step('Previous period', previous?.key, -1, {
-                  ios: 'chevron.left',
-                  android: 'chevron_left',
-                })}
-              <View style={styles.period}>
-                <Animated.View style={swipe.nameStyle}>
-                  <PeriodPicker
-                    kind={mode}
-                    periods={periods}
-                    selectedKey={selected.key}
-                    onSelect={setKey}
-                  />
+              <DateRange
+                from={range.from}
+                to={range.to}
+                maximumDate={day}
+                onChange={setRange}
+              />
+            </View>
+            {custom === undefined
+              ? tooLarge
+              : custom.length === 0
+                ? message(
+                    'No Expenses in These Dates',
+                    'Choose other dates to see spending insights.',
+                  )
+                : page(custom)}
+          </>
+        ) : (
+          selected && (
+            <GestureDetector gesture={swipe.pan}>
+              <View collapsable={false}>
+                <View style={styles.periods}>
+                  {periods.length > 1 &&
+                    step('Previous period', previous?.key, -1, {
+                      ios: 'chevron.left',
+                      android: 'chevron_left',
+                    })}
+                  <View style={styles.period}>
+                    <Animated.View style={swipe.nameStyle}>
+                      <PeriodPicker
+                        kind={mode}
+                        periods={periods}
+                        selectedKey={selected.key}
+                        onSelect={setKey}
+                      />
+                    </Animated.View>
+                  </View>
+                  {periods.length > 1 &&
+                    step('Next period', next?.key, 1, {
+                      ios: 'chevron.right',
+                      android: 'chevron_right',
+                    })}
+                </View>
+                <Animated.View style={swipe.pageStyle}>
+                  {page(selected.currencies)}
                 </Animated.View>
               </View>
-              {periods.length > 1 &&
-                step('Next period', next?.key, 1, {
-                  ios: 'chevron.right',
-                  android: 'chevron_right',
-                })}
-            </View>
-            <Animated.View style={swipe.pageStyle}>
-              <TotalCard
-                currencies={selected.currencies}
-                money={money}
-                comparisonOf={comparisonOf}
-              />
-              {selected.currencies.map((currency) => (
-                <View key={currency.currency} style={styles.currency}>
-                  <Text
-                    accessibilityRole="header"
-                    style={[styles.heading, { color: colors.textMuted }]}
-                  >
-                    {`${currency.currency} categories`}
-                  </Text>
-                  <GroupedSection style={styles.categories}>
-                    <CategoryChart {...currency.chart} />
-                    {currency.categories.map((category, row) => {
-                      const amount = money(
-                        category.amountMinor,
-                        currency.currency,
-                      );
-                      return (
-                        <View
-                          key={row}
-                          accessible
-                          accessibilityLabel={`${category.name}, ${amount}, ${decimal.format(category.percent)} percent`}
-                          style={styles.row}
-                        >
-                          <View
-                            style={[
-                              styles.dot,
-                              { backgroundColor: category.color },
-                            ]}
-                          />
-                          <View style={styles.rowText}>
-                            <FadeText
-                              style={[styles.rowName, { color: colors.text }]}
-                            >
-                              {category.name}
-                            </FadeText>
-                            <Text
-                              style={[
-                                styles.rowAmount,
-                                { color: colors.textMuted },
-                              ]}
-                            >
-                              {`${amount} · ${percentage.format(category.percent / 100)}`}
-                            </Text>
-                          </View>
-                        </View>
-                      );
-                    })}
-                  </GroupedSection>
-                </View>
-              ))}
-            </Animated.View>
-          </View>
-        </GestureDetector>
+            </GestureDetector>
+          )
+        )}
       </>
     );
 
@@ -450,16 +549,18 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
     >
       <HeaderActions
         choices={
-          selected && {
-            label: 'Chart visualization',
-            title: 'Visualization',
-            icon: { ios: 'chart.bar.xaxis', android: 'bar_chart' },
-            options: [
-              chartOption('auto', 'Auto'),
-              chartOption('donut', 'Donut'),
-              chartOption('bar', 'Bar'),
-            ],
-          }
+          charted
+            ? {
+                label: 'Chart visualization',
+                title: 'Visualization',
+                icon: { ios: 'chart.bar.xaxis', android: 'bar_chart' },
+                options: [
+                  chartOption('auto', 'Auto'),
+                  chartOption('donut', 'Donut'),
+                  chartOption('bar', 'Bar'),
+                ],
+              }
+            : undefined
         }
       />
       <GestureHandlerRootView style={{ flex: 1 }}>

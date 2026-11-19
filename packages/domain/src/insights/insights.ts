@@ -309,14 +309,21 @@ function buildPeriods(
   });
 }
 
-/** Month and year periods with their per-currency totals, oldest first, or undefined when a total is rejected. */
-export function buildInsights(input: {
+interface InsightsInput {
   expenses: readonly InsightExpense[];
   categories: readonly InsightCategory[];
   context: InsightContext;
   chartPreference: InsightChartPreference;
-}): Insights | undefined {
-  const { expenses, categories, context, chartPreference } = input;
+}
+
+/**
+ * Adds each counted expense to the periods that `periodsOf` names for its date. False when a
+ * total is rejected.
+ */
+function collect(
+  { expenses, categories, context }: InsightsInput,
+  periodsOf: (date: string) => [PeriodTotals, string][],
+): boolean {
   const participantIds = new Set<string>();
   if (context.kind === 'personal') {
     participantIds.add(context.personalParticipantId);
@@ -332,8 +339,6 @@ export function buildInsights(input: {
     if (!firstByName.has(key)) firstByName.set(key, category);
   }
 
-  const months: PeriodTotals = new Map();
-  const years: PeriodTotals = new Map();
   for (const expense of expenses) {
     if (!isLocalDate(expense.date)) continue;
     const amountMinor = countedAmount(expense, context, participantIds);
@@ -351,32 +356,35 @@ export function buildInsights(input: {
       : expense.categoryId === undefined
         ? `name:${categoryNameKey(expense.categoryName)}`
         : `id:${expense.categoryId}`;
-    if (
-      !addExpense(
-        months,
-        expense.date.slice(0, 7),
-        expense,
-        amountMinor,
-        yourShareMinor,
-        category,
-        categoryKey,
-      ) ||
-      !addExpense(
-        years,
-        expense.date.slice(0, 4),
-        expense,
-        amountMinor,
-        yourShareMinor,
-        category,
-        categoryKey,
+    for (const [periods, key] of periodsOf(expense.date))
+      if (
+        !addExpense(
+          periods,
+          key,
+          expense,
+          amountMinor,
+          yourShareMinor,
+          category,
+          categoryKey,
+        )
       )
-    )
-      return undefined;
+        return false;
   }
+  return true;
+}
 
+/** Month and year periods with their per-currency totals, oldest first, or undefined when a total is rejected. */
+export function buildInsights(input: InsightsInput): Insights | undefined {
+  const months: PeriodTotals = new Map();
+  const years: PeriodTotals = new Map();
+  const counted = collect(input, (date) => [
+    [months, date.slice(0, 7)],
+    [years, date.slice(0, 4)],
+  ]);
+  if (!counted) return undefined;
   return {
-    months: buildPeriods(months, chartPreference),
-    years: buildPeriods(years, chartPreference),
+    months: buildPeriods(months, input.chartPreference),
+    years: buildPeriods(years, input.chartPreference),
   };
 }
 
@@ -384,17 +392,20 @@ export function buildInsights(input: {
  * The counted expenses dated from `from` to `to`, both days included, as one period's
  * currencies with no comparison, or undefined when a total is rejected (INSIGHTS-44.1).
  */
-export function buildRangeInsights(input: {
-  expenses: readonly InsightExpense[];
-  categories: readonly InsightCategory[];
-  context: InsightContext;
-  chartPreference: InsightChartPreference;
-  /** YYYY-MM-DD */
-  from: string;
-  /** YYYY-MM-DD */
-  to: string;
-}): InsightCurrency[] | undefined {
-  // The spec author's stub, so that the acceptance tests build: it counts nothing yet.
-  void input;
-  return [];
+export function buildRangeInsights(
+  input: InsightsInput & {
+    /** YYYY-MM-DD */
+    from: string;
+    /** YYYY-MM-DD */
+    to: string;
+  },
+): InsightCurrency[] | undefined {
+  const { from, to } = input;
+  const range: PeriodTotals = new Map();
+  const counted = collect(input, (date) =>
+    from <= date && date <= to ? [[range, 'range']] : [],
+  );
+  if (!counted) return undefined;
+  // One period, so with no period before it to compare with.
+  return buildPeriods(range, input.chartPreference)[0]?.currencies ?? [];
 }

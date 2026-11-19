@@ -40,6 +40,12 @@ The `deploy` workflow deploys the API to staging after each merge to `main` that
 it, and to production when the owner starts it. Each deploy runs the migrations before it
 uploads the Worker (ADR-0019).
 
+The API registers a phone only when it has the key of the keyed hash that stands for an IP
+(ADR-0022). Locally, start `pnpm --filter api dev` or `dev:workers` with
+`IP_HASH_KEY=<any text>`. Each deployed Worker has it as a secret, which the owner sets
+once with `wrangler secret put IP_HASH_KEY --env <environment>`; a deploy fails while its
+Worker has none.
+
 Domain source is typechecked using only ES2022 types. Its tests are checked separately
 with Jest and Node types, so test tooling cannot enable Node APIs in domain code.
 

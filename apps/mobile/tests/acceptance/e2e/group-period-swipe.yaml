@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-114.1] Opens no Insights with a swipe to the left on a group's total on Group Total, goes back with a drag to the right from its period row, and on a month swipes the period's name and the total to the month before and back without leaving the group's screen"
+name: "[LEDGER-114.1] Opens no Insights and no Balances with a swipe to the left on a group's total and on your net on Group Total, goes back with a drag to the right from its period row, and on a month swipes the period's name, the total and your net to the month before and back without leaving the group's screen"
 ---
 # The names of this month and last month, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
@@ -32,6 +32,15 @@ name: "[LEDGER-114.1] Opens no Insights with a swipe to the left on a group's to
 - assertVisible: Choose period\. Group Total
 - assertVisible: Group actions
 - assertNotVisible: Total spent.*
+# Nor is a swipe on your net, under the total, a press: Balances, a sheet titled Balances, does
+# not open. You paid for both expenses and share them with Casey, so you are owed half.
+- swipe:
+    from:
+      text: "You're owed: .*"
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. Group Total
+- assertNotVisible: Balances
 # The period row keeps no drag on Group Total: one to the right from the period's name is
 # iOS's back gesture, as from a closed card (GROUPS-80.1). It starts on the name, left of the
 # middle, since the gesture needs half the screen's width: under the large title, the period's
@@ -78,3 +87,14 @@ name: "[LEDGER-114.1] Opens no Insights with a swipe to the left on a group's to
 - assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
 - assertVisible: Last month, .*
 - assertVisible: Group actions
+# Your net is part of what a swipe moves the period from: left on it comes forward a month, and
+# Balances does not open.
+- swipe:
+    from:
+      text: "You're owed: .*"
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible: Today, .*
+- assertVisible: Group actions
+- assertNotVisible: Balances

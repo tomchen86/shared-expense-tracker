@@ -1,82 +1,94 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { formatCurrency, toLocalDate } from '@shared-expense/domain';
+import { formatCurrency } from '@shared-expense/domain';
 import { AddButton } from '../ui/add-button';
-import { SwipeScrollView } from '../ui/swipe-action';
+import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
-import { DatedCards } from './dated-cards';
 import { ExpenseCard } from './expense-card';
-import { ThisMonthButton } from './this-month-button';
+import { PeriodList, useListPeriod } from './list-period-ui';
 import { useTrashActions } from './trash-provider';
-import { useExpenses } from './use-expenses';
+import { useReadExpenses } from './use-expenses';
 
 export function ExpensesScreen() {
   const colors = useThemeColors();
   const locale = useDisplayLocale();
-  const expenses = useExpenses()?.filter((expense) => expense.involved);
+  const read = useReadExpenses();
+  const expenses = useMemo(
+    () => read.expenses?.filter((expense) => expense.involved),
+    [read.expenses],
+  );
   const { move } = useTrashActions();
+  const periods = useListPeriod(false, expenses, read.placed);
+  // The total is that of the cards under it: of every expense of the period, drawn or not
+  // (LEDGER-35.4, LEDGER-118.1).
+  const cards = periods.shown ?? [];
   const totals = new Map<string, bigint>();
-  const thisMonth = toLocalDate(
-    new Date(),
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-  ).slice(0, 7);
-  for (const expense of expenses ?? []) {
-    if (expense.date.slice(0, 7) !== thisMonth) continue;
+  for (const expense of cards) {
     totals.set(
       expense.currency,
       (totals.get(expense.currency) ?? 0n) + BigInt(expense.yourShare),
     );
   }
-  const shown = [...totals.keys()]
+  const amounts = [...totals.keys()]
     .sort()
-    .map((currency) => formatCurrency(totals.get(currency)!, currency, locale));
+    .map((currency) => formatCurrency(totals.get(currency)!, currency, locale))
+    .join(', ');
+  // A total of every expense ever means little: all dates show how many there are.
+  const count = `${new Intl.NumberFormat(locale).format(cards.length)} ${cards.length === 1 ? 'item' : 'items'}`;
+  const allTime = periods.option === 'all';
+  const spent = amounts
+    ? `Spent in ${periods.name} ${amounts}`
+    : `Nothing spent in ${periods.name}`;
   return (
     <SafeAreaView
       edges={['left', 'right']}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <SwipeScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.content}
-      >
-        {expenses && (
-          <>
-            <ThisMonthButton
-              totals={shown}
-              onPress={() => router.navigate('/insights')}
-            />
-            {expenses.length === 0 && (
-              <Text style={[styles.empty, { color: colors.textMuted }]}>
-                No expenses to display. Add a personal expense or get involved
-                in a group expense.
-              </Text>
-            )}
-            <DatedCards
-              expenses={expenses}
-              card={(expense) => (
-                <ExpenseCard
-                  expense={expense}
-                  amountMinor={expense.yourShare}
-                  onPress={() => router.navigate(`/expenses/${expense.id}`)}
-                  onDelete={
-                    expense.group?.archived
-                      ? undefined
-                      : () => void move(expense)
-                  }
-                />
-              )}
-            />
-          </>
+      <HeaderActions
+        filter={{ label: 'Filters', onPress: periods.openFilters }}
+      />
+      <PeriodList
+        periods={periods}
+        total={
+          expenses && {
+            value: allTime ? count : amounts || '—',
+            plain: allTime,
+            accessibilityLabel: `View expense insights. ${allTime ? count : spent}.`,
+            onPress: () =>
+              router.navigate({
+                pathname: '/insights',
+                params: periods.insights,
+              }),
+          }
+        }
+        message={
+          expenses?.length === 0 && (
+            <Text style={[styles.empty, { color: colors.textMuted }]}>
+              No expenses to display. Add a personal expense or get involved in
+              a group expense.
+            </Text>
+          )
+        }
+        card={(expense) => (
+          <ExpenseCard
+            expense={expense}
+            amountMinor={expense.yourShare}
+            onPress={() => router.navigate(`/expenses/${expense.id}`)}
+            onDelete={
+              expense.group?.archived ? undefined : () => void move(expense)
+            }
+          />
         )}
-      </SwipeScrollView>
+      />
       <AddButton onPress={() => router.navigate('/expenses/new')} />
+      {periods.filters}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 112 },
   empty: { textAlign: 'center', marginTop: 48, fontSize: 16, lineHeight: 24 },
 });

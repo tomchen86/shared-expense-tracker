@@ -98,6 +98,15 @@ function isInvisible(view: HostView) {
   return false;
 }
 
+/**
+ * The texts inside `root` that draw exactly `text` where it can be seen, also under a view a
+ * screen reader skips. A copy kept only to measure the text is not one of them.
+ */
+export const drawnTexts = (root: HostView, text: string) =>
+  within(root)
+    .queryAllByText(text, { includeHiddenElements: true })
+    .filter((view) => !isInvisible(view));
+
 /** Whether two views sit side by side: the nearest view around both lays its children out in a row. */
 export function inOneRow(one: HostView, other: HostView) {
   const around = new Set<HostView>();
