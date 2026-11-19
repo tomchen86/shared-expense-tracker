@@ -150,7 +150,8 @@ describe('a registration', () => {
 
   test.each([
     ['32 bytes of 0xff', 'ff'.repeat(32)],
-    ['32 bytes of 0x00', '00'.repeat(32)],
+    // No point of the curve has 2 as its y.
+    ['32 bytes that write no point of the curve', `02${'00'.repeat(31)}`],
   ])(
     'that carries %s, which no key pair signs for, is refused for its signature',
     async (_, publicKey) => {

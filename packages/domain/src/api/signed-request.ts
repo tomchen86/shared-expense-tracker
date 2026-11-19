@@ -67,6 +67,19 @@ const DEVICE_ID =
 const NONCE = /^[0-9a-f]{32}$/;
 const PUBLIC_KEY = /^[0-9a-f]{64}$/;
 const HEX = '0123456789abcdef';
+// The eight low-order points of Ed25519's curve, in every way 32 bytes write one
+// (SHARING-47.1): these seven, of which the last two write y as p and p + 1, each with the
+// highest bit of its last byte, the sign of x, either way. No key pair has one as its
+// public key, and a signature exists that verifies under it without a private key.
+const LOW_ORDER_PUBLIC_KEYS: readonly string[] = [
+  '0000000000000000000000000000000000000000000000000000000000000000',
+  '0100000000000000000000000000000000000000000000000000000000000000',
+  '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05',
+  'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+  'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+  'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+  'eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+];
 
 function isPath(value: unknown): value is string {
   if (typeof value !== 'string') return false;
@@ -161,14 +174,32 @@ function hasExactly<Key extends string>(
   return own.length === keys.length && keys.every((key) => own.includes(key));
 }
 
-/** Whether `value` is exactly a registration's body. */
+/**
+ * Whether 64 lowercase hexadecimal characters write a low-order point. Decided here, by
+ * comparing, and not by a runtime's Ed25519: runtimes differ in what they verify under
+ * such a key.
+ */
+function isLowOrderPublicKey(publicKey: string): boolean {
+  // The highest bit of the last byte is the fourth bit of the next-to-last character.
+  const withoutSign =
+    publicKey.slice(0, 62) +
+    HEX[HEX.indexOf(publicKey[62]) & 7] +
+    publicKey[63];
+  return LOW_ORDER_PUBLIC_KEYS.includes(withoutSign);
+}
+
+/**
+ * Whether `value` is exactly a registration's body: one Ed25519 public key, which is no
+ * low-order point (SHARING-39.1, 47.1).
+ */
 export function isRegisterDeviceRequest(
   value: unknown,
 ): value is RegisterDeviceRequest {
   return (
     hasExactly(value, ['publicKey']) &&
     typeof value.publicKey === 'string' &&
-    PUBLIC_KEY.test(value.publicKey)
+    PUBLIC_KEY.test(value.publicKey) &&
+    !isLowOrderPublicKey(value.publicKey)
   );
 }
 

@@ -4,7 +4,12 @@ import path from 'node:path';
 import { isHealthResponse } from '@shared-expense/domain/api';
 import { runMigrations } from '../src/database/migrate';
 import { migrations } from '../src/migrations';
-import { newPhone, registrationBy, signedBy } from './acceptance/sharing-api';
+import {
+  newPhone,
+  registrationBy,
+  signedBy,
+  withField,
+} from './acceptance/sharing-api';
 import { runCommand, startServerCommand } from './support/command';
 import { useTestDatabase } from './support/database';
 import { sendTo } from './support/signed';
@@ -43,6 +48,71 @@ async function expectSignedRequestsPass(url: string) {
   });
 }
 
+// The eight low-order points of Ed25519, in each way 32 bytes write one.
+const LOW_ORDER_PUBLIC_KEYS = [
+  '0000000000000000000000000000000000000000000000000000000000000000',
+  '0100000000000000000000000000000000000000000000000000000000000000',
+  '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05',
+  'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+  'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+  'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+  'eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+].flatMap((key) => [
+  key,
+  key.slice(0, 62) + (parseInt(key.slice(62), 16) | 0x80).toString(16),
+]);
+
+/**
+ * A registration that carries a low-order public key is refused for its body, and no
+ * request passes under its device ID. Left to the runtime's Ed25519, the answer differs:
+ * under the key that writes the identity element, workerd's Web Crypto verifies this
+ * signature for every message, and Node's verifies it for none.
+ */
+async function expectLowOrderKeysRefused(url: string) {
+  // R is the identity element and S is 0.
+  const forged = `01${'00'.repeat(63)}`;
+  for (const publicKey of LOW_ORDER_PUBLIC_KEYS) {
+    const phone = newPhone();
+    const at = () => ({ timestampMs: Date.now() });
+
+    const registration = await sendTo(
+      url,
+      withField(
+        registrationBy(phone, { ...at(), publicKey }),
+        'signature',
+        forged,
+      ),
+    );
+    const request = await sendTo(
+      url,
+      withField(signedBy(phone, at()), 'signature', forged),
+    );
+
+    expect([publicKey, registration]).toEqual([
+      publicKey,
+      { status: 400, body: { error: 'request' } },
+    ]);
+    expect([publicKey, request]).toEqual([
+      publicKey,
+      { status: 401, body: { error: 'signature' } },
+    ]);
+  }
+
+  // A key that is no low-order point is a body the API takes: its signature decides.
+  const other = await sendTo(
+    url,
+    withField(
+      registrationBy(newPhone(), {
+        timestampMs: Date.now(),
+        publicKey: `03${'00'.repeat(31)}`,
+      }),
+      'signature',
+      forged,
+    ),
+  );
+  expect(other).toEqual({ status: 401, body: { error: 'signature' } });
+}
+
 test(
   'the Node entry file serves GET /health',
   async () => {
@@ -70,6 +140,7 @@ test(
     });
     try {
       await expectSignedRequestsPass(withKey.url);
+      await expectLowOrderKeysRefused(withKey.url);
     } finally {
       await withKey.stop();
     }
@@ -172,6 +243,7 @@ test(
       );
       try {
         await expectSignedRequestsPass(workers.url);
+        await expectLowOrderKeysRefused(workers.url);
       } finally {
         await workers.stop();
       }

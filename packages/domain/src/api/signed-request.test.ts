@@ -13,7 +13,9 @@ const PUBLIC_KEY = 'ab'.repeat(32);
 describe('isRegisterDeviceRequest', () => {
   test('accepts exactly one Ed25519 public key in lowercase hexadecimal', () => {
     expect(isRegisterDeviceRequest({ publicKey: PUBLIC_KEY })).toBe(true);
-    expect(isRegisterDeviceRequest({ publicKey: '0'.repeat(64) })).toBe(true);
+    expect(isRegisterDeviceRequest({ publicKey: `03${'00'.repeat(31)}` })).toBe(
+      true,
+    );
   });
 
   test.each<[string, unknown]>([
@@ -46,6 +48,143 @@ describe('isRegisterDeviceRequest', () => {
     expect(
       isRegisterDeviceRequest(Object.create({ publicKey: PUBLIC_KEY })),
     ).toBe(false);
+  });
+});
+
+describe('a low-order public key', () => {
+  // Ed25519's curve, −x² + y² = 1 + d x² y² over the integers modulo p, with numbers only:
+  // the points whose order divides 8 are worked out here, not copied from a list.
+  const P = 2n ** 255n - 19n;
+  /** The order of the subgroup that key pairs live in. */
+  const L = 2n ** 252n + 27742317777372353535851937790883648493n;
+  type Point = readonly [x: bigint, y: bigint];
+  const IDENTITY: Point = [0n, 1n];
+
+  const mod = (value: bigint) => ((value % P) + P) % P;
+  function power(base: bigint, exponent: bigint): bigint {
+    let result = 1n;
+    for (let b = mod(base), e = exponent; e > 0n; b = mod(b * b), e >>= 1n) {
+      if (e & 1n) result = mod(result * b);
+    }
+    return result;
+  }
+  const inverse = (value: bigint) => power(value, P - 2n);
+  const D = mod(-121665n * inverse(121666n));
+
+  function add([x1, y1]: Point, [x2, y2]: Point): Point {
+    const t = mod(D * x1 * x2 * y1 * y2);
+    return [
+      mod((x1 * y2 + x2 * y1) * inverse(1n + t)),
+      mod((y1 * y2 + x1 * x2) * inverse(1n - t)),
+    ];
+  }
+  function times(count: bigint, point: Point): Point {
+    let result = IDENTITY;
+    for (let q = point, k = count; k > 0n; q = add(q, q), k >>= 1n) {
+      if (k & 1n) result = add(result, q);
+    }
+    return result;
+  }
+  /** A point with this y, when the curve has one: x² is (y² − 1) / (d y² + 1). */
+  function pointWithY(y: bigint): Point | undefined {
+    const square = mod((y * y - 1n) * inverse(D * y * y + 1n));
+    let x = power(square, (P + 3n) / 8n);
+    if (mod(x * x) !== square) x = mod(x * power(2n, (P - 1n) / 4n));
+    return mod(x * x) === square ? [x, y] : undefined;
+  }
+  const same = (a: Point, b: Point) => a[0] === b[0] && a[1] === b[1];
+
+  /** The points whose order divides 8: the multiples of one whose order is 8. */
+  function lowOrderPoints(): Point[] {
+    for (let y = 2n; ; y += 1n) {
+      const point = pointWithY(y);
+      if (!point) continue;
+      // Multiplying by the order of the large subgroup leaves the low-order part.
+      const start = times(L, point);
+      const multiples = [start];
+      while (!same(multiples.at(-1)!, IDENTITY)) {
+        multiples.push(add(multiples.at(-1)!, start));
+      }
+      if (multiples.length === 8) return multiples;
+    }
+  }
+
+  /** 32 bytes, least significant first, in hexadecimal. */
+  function hexOf(value: bigint): string {
+    let text = '';
+    for (let index = 0, rest = value; index < 32; index += 1, rest >>= 8n) {
+      text += (rest & 255n).toString(16).padStart(2, '0');
+    }
+    return text;
+  }
+  /**
+   * Every 32 bytes that write the point: y, also as y + p while that fits in 255 bits,
+   * with the sign of x in the highest bit, either way when x is 0.
+   */
+  function writingsOf([x, y]: Point): string[] {
+    const writings: string[] = [];
+    for (let written = y; written < 2n ** 255n; written += P) {
+      for (const sign of x === 0n ? [0n, 1n] : [x & 1n]) {
+        writings.push(hexOf(written | (sign << 255n)));
+      }
+    }
+    return writings;
+  }
+
+  const points = lowOrderPoints();
+  const writings = points.flatMap(writingsOf);
+
+  test('is one of fourteen writings of the eight points whose order divides 8', () => {
+    expect(points).toHaveLength(8);
+    for (const point of points) {
+      expect(same(times(8n, point), IDENTITY)).toBe(true);
+    }
+    expect(new Set(writings).size).toBe(14);
+    expect(writings).toHaveLength(14);
+    expect(writings).toContain(`01${'00'.repeat(31)}`);
+    expect(writings).toContain(`ee${'ff'.repeat(31)}`);
+  });
+
+  test('is no registration, in any of the fourteen writings', () => {
+    for (const publicKey of writings) {
+      expect([publicKey, isRegisterDeviceRequest({ publicKey })]).toEqual([
+        publicKey,
+        false,
+      ]);
+    }
+  });
+
+  test('is not a key one bit away from one of them, unless that is another of them', () => {
+    for (const writing of writings) {
+      for (const at of [0, 30, 62]) {
+        const digit = (parseInt(writing[at], 16) ^ 1).toString(16);
+        const publicKey = writing.slice(0, at) + digit + writing.slice(at + 1);
+        if (writings.includes(publicKey)) continue;
+
+        expect([publicKey, isRegisterDeviceRequest({ publicKey })]).toEqual([
+          publicKey,
+          true,
+        ]);
+      }
+    }
+  });
+
+  test('is not the base point, nor a point of the large subgroup with a low-order one added', () => {
+    const base = pointWithY(mod(4n * inverse(5n)))!;
+    const ordinary = times(L - 7n, base);
+    const keys = [
+      `58${'66'.repeat(31)}`,
+      ...writingsOf(base),
+      // Only the eight points themselves are refused, not every point with a low-order part.
+      ...points.flatMap((point) => writingsOf(add(ordinary, point))),
+    ];
+
+    for (const publicKey of keys) {
+      expect([publicKey, isRegisterDeviceRequest({ publicKey })]).toEqual([
+        publicKey,
+        true,
+      ]);
+    }
   });
 });
 
