@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[INSIGHTS-30.2] [INSIGHTS-33.2] [INSIGHTS-36.2] [INSIGHTS-37.1] Moves between periods on Insights by swiping the period name, in the Period sheet, in the year menu, and with Month, Year and Custom'
+name: '[INSIGHTS-30.2] [INSIGHTS-33.2] [INSIGHTS-36.2] [INSIGHTS-37.1] [INSIGHTS-46.1] Moves between periods on Insights by swiping the period name, in the Period sheet, in the year menu, and with Month, Year and Custom, where a swipe changes nothing'
 ---
 # The names of this month, last month and the years around them, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
@@ -107,12 +107,23 @@ name: '[INSIGHTS-30.2] [INSIGHTS-33.2] [INSIGHTS-36.2] [INSIGHTS-37.1] Moves bet
 - tapOn: Month
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
-# INSIGHTS-30.2: Custom shows dates in place of the period name and its arrows, and Month
-# brings back the month the dates end in.
+# INSIGHTS-30.2: Custom shows From and To in place of the period name and its arrows.
+# INSIGHTS-46.1: a swipe on the content changes nothing there. Month brings back the month
+# the dates end in.
 - tapOn: Custom
 - waitForAnimationToEnd
 - assertNotVisible: Choose period\..*
 - assertNotVisible: Previous period
+- assertVisible: From
+- assertVisible: To
+- assertVisible: Total spent.*
+- swipe:
+    from:
+      text: Total spent.*
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertNotVisible: Choose period\..*
+- assertVisible: From
 - assertVisible: Total spent.*
 - tapOn: Month
 - waitForAnimationToEnd

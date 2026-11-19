@@ -61,6 +61,7 @@ import {
   deleteByAction,
   moveCategoryExpenses,
   pressUndo,
+  restoreFromTrash,
 } from './ledger-trash-app';
 import { allowWrites, settle } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
@@ -434,6 +435,22 @@ test('[LEDGER-102.1] [LEDGER-121.1] shows a date over each run of cards of one d
   ]);
 });
 
+test('[LEDGER-75.5] [LEDGER-121.1] puts an expense back where the order of the list has it when Undo is pressed', async () => {
+  await startExpenses();
+  await spend('E', '2026-10-01');
+  await spend('F', '2026-10-01');
+  await spend('D', '2026-10-01');
+  await chooseSort(expensesRoot(), 'Oldest First');
+  expect(cardTitles()).toEqual(['E', 'F', 'D']);
+
+  await deleteByAction('F');
+  expect(cardTitles()).toEqual(['E', 'D']);
+  await pressUndo('F');
+  await settle();
+
+  expect(cardTitles()).toEqual(['E', 'F', 'D']);
+});
+
 // The time an expense was last changed
 
 test('[LEDGER-120.1] [LEDGER-121.1] lists what was added or changed last first, whatever its date', async () => {
@@ -496,6 +513,43 @@ test('[LEDGER-120.1] counts moving an expense to the Trash and back as a change'
   await settle();
 
   expect(cardTitles()).toEqual(['A', 'C', 'B']);
+});
+
+test('[LEDGER-79.5] [LEDGER-120.1] lists an expense restored from Trash first in Recently Edited', async () => {
+  await startExpenses();
+  afterMinutes(1);
+  await spend('A');
+  afterMinutes(2);
+  await spend('B');
+  await chooseSort(expensesRoot(), 'Recently Edited');
+  afterMinutes(3);
+  await deleteByAction('A');
+  // Added after A moved to the Trash, so only the restore puts A above it.
+  afterMinutes(4);
+  await spend('C');
+  expect(cardTitles()).toEqual(['C', 'B']);
+
+  afterMinutes(5);
+  await restoreFromTrash('A');
+  await tapTab('Expenses');
+  await settle();
+
+  expect(cardTitles()).toEqual(['A', 'C', 'B']);
+});
+
+test('[LEDGER-120.1] records the time a group expense is added on this phone', async () => {
+  await startWithGroups(BRISBANE);
+  afterMinutes(1);
+  await spend('A');
+  afterMinutes(2);
+  await brisbaneSpends('Dinner');
+  afterMinutes(3);
+  await spend('B');
+
+  await chooseSort(expensesRoot(), 'Recently Edited');
+
+  // With no time of its own, Dinner would come last.
+  expect(cardTitles()).toEqual(['B', 'Dinner', 'A']);
 });
 
 test('[LEDGER-120.1] counts moving the expenses of a category to another as a change of each, and renaming a category as none', async () => {

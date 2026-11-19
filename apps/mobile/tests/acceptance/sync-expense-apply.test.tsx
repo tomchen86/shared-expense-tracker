@@ -280,7 +280,7 @@ test('[SYNC-28.1] applies none of the events handed over together when a write f
 
 // Expenses on screen
 
-test("[SYNC-29.1] shows an expense another phone added on the expense list, first among its day's, without a restart", async () => {
+test("[SYNC-29.2] shows an expense another phone added on the expense list, first among its day's, without a restart", async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();
@@ -293,7 +293,7 @@ test("[SYNC-29.1] shows an expense another phone added on the expense list, firs
   expect(listTotal()).toEqual(['$48.34']);
 });
 
-test('[LEDGER-117.1] leaves the expense list on its period when another phone adds an expense dated outside it', async () => {
+test('[LEDGER-117.2] leaves the expense list on its period when another phone adds an expense dated outside it', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();
@@ -328,7 +328,7 @@ test('[LEDGER-142.1] keeps the filter of the expense list when another phone add
   await expectCards(['Dinner']);
 });
 
-test("[SYNC-29.1] shows it on the group's screen, open at the time, and in the group's total", async () => {
+test("[SYNC-29.2] shows it on the group's screen, open at the time, and in the group's total", async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();
@@ -346,7 +346,7 @@ test("[SYNC-29.1] shows it on the group's screen, open at the time, and in the g
   expect(groupTotals('Brisbane')).toEqual(['Group Total: $155.01']);
 });
 
-test('[SYNC-29.1] leaves an expense you have no part in off the expense list', async () => {
+test('[SYNC-29.2] leaves an expense you have no part in off the expense list', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
 
@@ -358,7 +358,7 @@ test('[SYNC-29.1] leaves an expense you have no part in off the expense list', a
   expect(cardTitles()).toEqual([]);
 });
 
-test('[SYNC-29.1] counts it in Balances and in Insights', async () => {
+test('[SYNC-29.2] counts it in Balances and in Insights', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();
@@ -384,7 +384,7 @@ test('[SYNC-29.1] counts it in Balances and in Insights', async () => {
   );
 });
 
-test("[SYNC-29.1] shows another phone's changes on details that are open", async () => {
+test("[SYNC-29.2] shows another phone's changes on details that are open", async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   const ids = await members('Brisbane');
@@ -431,7 +431,7 @@ test("[SYNC-29.1] shows another phone's changes on details that are open", async
   expect(detailLines()).not.toContain('Casey');
 });
 
-test('[SYNC-29.1] keeps an expense where it is in its day when a change to it arrives', async () => {
+test('[SYNC-29.2] keeps an expense where it is in its day when a change to it arrives', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await receive(brisbane, await lunchCreated());
@@ -446,7 +446,7 @@ test('[SYNC-29.1] keeps an expense where it is in its day when a change to it ar
   await expectCards(['Dinner', 'Late lunch']);
 });
 
-test('[SYNC-29.1] shows nothing of an expense until all six of its units have arrived', async () => {
+test('[SYNC-29.2] shows nothing of an expense until all six of its units have arrived', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await showGroup('Brisbane');
@@ -462,7 +462,7 @@ test('[SYNC-29.1] shows nothing of an expense until all six of its units have ar
   await waitFor(() => expect(groupCardTitles('Brisbane')).toEqual(['Brunch']));
 });
 
-test('[SYNC-29.1] moves an expense another phone deleted to the top of Trash with no Undo notice, and back to its place when that phone restores it', async () => {
+test('[SYNC-29.2] moves an expense another phone deleted to the top of Trash with no Undo notice, and back to its place when that phone restores it', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addExpense();
@@ -499,7 +499,7 @@ test('[SYNC-29.1] moves an expense another phone deleted to the top of Trash wit
   await expectCards(['Taxi', 'Dinner']);
 });
 
-test('[SYNC-29.1] leaves an expense where it is in Trash when another phone deletes it too', async () => {
+test('[SYNC-29.2] leaves an expense where it is in Trash when another phone deletes it too', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();
@@ -518,7 +518,7 @@ test('[SYNC-29.1] leaves an expense where it is in Trash when another phone dele
   await expectTrash(['Coffee run', 'Dinner']);
 });
 
-test('[SYNC-29.1] leaves an expense where it is in Trash when another phone changes its title', async () => {
+test('[SYNC-29.2] leaves an expense where it is in Trash when another phone changes its title', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();
@@ -537,7 +537,7 @@ test('[SYNC-29.1] leaves an expense where it is in Trash when another phone chan
   await expectTrash(['Coffee run', 'Supper']);
 });
 
-test('[SYNC-29.1] still shows the applied expenses after a restart', async () => {
+test('[SYNC-29.2] still shows the applied expenses after a restart', async () => {
   const app = await startShared();
   const brisbane = await groupId('Brisbane');
   await receive(
@@ -887,7 +887,7 @@ const addTaxi = () =>
     amount: '25.00',
   });
 
-test('[LEDGER-120.1] takes the moment an applied event was stamped as the time the expense it adds or changes was last changed', async () => {
+test('[LEDGER-120.1] [SYNC-29.2] takes the moment an applied event was stamped as the time the expense it adds or changes was last changed, and lists it by that time in Recently Edited', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();

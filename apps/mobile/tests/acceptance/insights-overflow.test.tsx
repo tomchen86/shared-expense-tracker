@@ -93,6 +93,23 @@ test('[INSIGHTS-20.1] shows only Totals Too Large and its hint when the domain p
   expect(within(insightsScreen()).queryAllByRole('button')).toEqual([]);
 });
 
+test('[INSIGHTS-46.1] [INSIGHTS-20.1] shows only Totals Too Large, without From and To, when the domain package refuses the months and years, whatever dates the URL names', async () => {
+  await startExpensesAt('/');
+  await addExpense({ amount: '8.75', date: '2025-01-20' });
+  jest.mocked(buildInsights).mockReturnValue(undefined);
+
+  await tapTab('Expenses');
+  await push('/insights?from=2025-01-01&to=2025-01-31');
+  await expectInsights();
+
+  await waitFor(() => expect(insightsLines()).toEqual(TOO_LARGE));
+  expect(jest.mocked(buildInsights)).toHaveBeenCalled();
+  expect(headings()).toEqual(['Totals Too Large']);
+  expect(chartMenu()).toBeUndefined();
+  expect(rangeDates(insightsScreen())).toBeUndefined();
+  expect(within(insightsScreen()).queryAllByRole('button')).toEqual([]);
+});
+
 test('[INSIGHTS-46.1] shows Totals Too Large under From and To when the domain package refuses the range, and the totals again for dates it does not refuse', async () => {
   await startExpensesAt('/');
   await addExpense({ amount: '8.75', date: '2025-01-20' });

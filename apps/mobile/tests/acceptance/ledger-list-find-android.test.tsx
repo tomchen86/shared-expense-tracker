@@ -157,7 +157,7 @@ test('[LEDGER-122.2] draws the sort button as a swap_vert icon on Android, in th
   );
 });
 
-test("[LEDGER-122.2] [LEDGER-124.1] sorts a group's screen from its own Sort By sheet on Android", async () => {
+test("[LEDGER-122.2] sorts a group's screen from its own Sort By sheet on Android", async () => {
   await startWithGroups({ Brisbane: ['Casey'] });
   for (const [title, amount] of [
     ['Dinner', '60.00'],

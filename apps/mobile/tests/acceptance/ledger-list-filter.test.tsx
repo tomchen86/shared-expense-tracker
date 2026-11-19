@@ -1949,7 +1949,7 @@ test('[LEDGER-142.1] takes off every condition, also those the new expense passe
   expect(cardTitles()).toEqual(['Tea', 'Dinner']);
 });
 
-test('[LEDGER-142.1] [LEDGER-117.1] moves the list to the month of the new expense and takes the filter off, when both would hide it', async () => {
+test('[LEDGER-142.1] [LEDGER-117.2] moves the list to the month of the new expense and takes the filter off, when both would hide it', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await choose('Expenses', 'Category', 'Shopping');

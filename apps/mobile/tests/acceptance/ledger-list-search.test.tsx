@@ -88,7 +88,7 @@ import type { Database } from '../../src/storage';
 // types into the system search field of a list's navigation bar by reporting the text as that
 // field does, and ends a search as the field reports its cancel button (ledger-list-find-app).
 // Adding an expense dated outside the period a list shows moves that list to the expense's month
-// (LEDGER-117.1), so a test chooses the period it is about after it has added its expenses.
+// (LEDGER-117.2), so a test chooses the period it is about after it has added its expenses.
 
 let mockOpen: () => Promise<Database>;
 
@@ -433,6 +433,28 @@ test('[LEDGER-125.2] stops searching when the text is cleared', async () => {
 
   expect(cardTitles()).toEqual(['Lunch', 'Coffee run']);
   expect(periodName(expensesRoot())).toBe('October 2026');
+});
+
+test('[LEDGER-125.2] [LEDGER-117.2] keeps the search when an expense is added during it: lists the new expense if it matches, and otherwise once the search ends, in its month', async () => {
+  await startExpenses();
+  await spend('Coffee run');
+  await search('coffee');
+
+  await spend('Coffee beans', '2025-12-20');
+
+  expect(cardTitles()).toEqual(['Coffee run', 'Coffee beans']);
+  expect(listCount(expensesRoot())).toBe('2 items');
+
+  await spend('Lunch', '2026-09-12');
+
+  expect(periodName(expensesRoot())).toBeUndefined();
+  expect(cardTitles()).toEqual(['Coffee run', 'Coffee beans']);
+  expect(listCount(expensesRoot())).toBe('2 items');
+
+  await endSearch('Expenses');
+
+  await expectPeriod(expensesRoot, 'September 2026');
+  expect(cardTitles()).toEqual(['Lunch']);
 });
 
 test('[LEDGER-125.2] keeps searching after the details of a card are opened and closed', async () => {
