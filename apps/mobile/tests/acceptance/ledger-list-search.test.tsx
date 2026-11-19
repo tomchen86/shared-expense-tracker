@@ -78,7 +78,11 @@ import {
   openArchivedGroup,
   openArchivedGroups,
 } from './group-archive-app';
-import { deleteByAction } from './ledger-trash-app';
+import {
+  deleteByAction,
+  pressUndo,
+  restoreFromTrash,
+} from './ledger-trash-app';
 import { allowWrites, settle } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
 import type { Database } from '../../src/storage';
@@ -450,6 +454,50 @@ test('[LEDGER-125.1] [LEDGER-117.2] keeps the search when an expense is added du
   expect(periodName(expensesRoot())).toBeUndefined();
   expect(cardTitles()).toEqual(['Coffee run', 'Coffee beans']);
   expect(listCount(expensesRoot())).toBe('2 items');
+
+  await endSearch('Expenses');
+
+  await expectPeriod(expensesRoot, 'September 2026');
+  expect(cardTitles()).toEqual(['Lunch']);
+});
+
+test('[LEDGER-125.1] [LEDGER-117.2] [LEDGER-75.5] keeps the search when Undo puts back an expense that matches, lists it, and shows its month once the search ends', async () => {
+  await startExpenses();
+  await spend('Coffee run');
+  await spend('Coffee beans', '2025-12-20');
+  await choosePeriod('Expenses', 'This Month');
+  await search('coffee');
+  await deleteByAction('Coffee beans');
+  expect(cardTitles()).toEqual(['Coffee run']);
+  expect(listCount(expensesRoot())).toBe('1 item');
+
+  await pressUndo('Coffee beans');
+
+  expect(periodName(expensesRoot())).toBeUndefined();
+  expect(cardTitles()).toEqual(['Coffee run', 'Coffee beans']);
+  expect(listCount(expensesRoot())).toBe('2 items');
+
+  await endSearch('Expenses');
+
+  await expectPeriod(expensesRoot, 'December 2025');
+  expect(cardTitles()).toEqual(['Coffee beans']);
+});
+
+test('[LEDGER-125.1] [LEDGER-117.2] [LEDGER-79.5] keeps the search when Restore puts back an expense that does not match, and lists it once the search ends, in its month', async () => {
+  await startExpenses();
+  await spend('Coffee run');
+  await spend('Lunch', '2026-09-12');
+  await deleteByAction('Lunch');
+  await choosePeriod('Expenses', 'This Month');
+  await search('coffee');
+
+  await restoreFromTrash('Lunch');
+  await tapTab('Expenses');
+  await settle();
+
+  expect(periodName(expensesRoot())).toBeUndefined();
+  expect(cardTitles()).toEqual(['Coffee run']);
+  expect(listCount(expensesRoot())).toBe('1 item');
 
   await endSearch('Expenses');
 

@@ -24,6 +24,7 @@ import {
   expensesRoot,
   inContentOf,
   linesIn,
+  listTotal,
   listTotalButton,
   phoneDatabaseWithReads,
   scrollViewTheTitleFollows,
@@ -188,6 +189,18 @@ const dateHeading = (date: string) =>
     )[0];
 
 // The line above the cards
+
+test('[LEDGER-122.1] [LEDGER-35.5] shows no count beside the sort button on All Time, whose total is a number of items', async () => {
+  await startExpenses();
+  await spend('Coffee run');
+  await spend('Lunch');
+
+  await choosePeriod('Expenses', 'All Time');
+
+  expect(listTotal()).toEqual(['2 items']);
+  expect(listCount(expensesRoot())).toBeUndefined();
+  expect(sortName(expensesRoot())).toBe('Sort By, Newest First');
+});
 
 test('[LEDGER-122.1] shows only the sort button on the line above the cards, under the total and over the first date, read as Sort By, Newest First', async () => {
   await startExpenses();
