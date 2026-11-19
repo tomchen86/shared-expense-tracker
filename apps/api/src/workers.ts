@@ -1,6 +1,7 @@
 import type { ExecutionContext } from 'hono';
 import { app } from './app';
-import { connect } from './database/connect';
+import { connect, type Sql } from './database/connect';
+import type { AppLinks } from './sharing/app-links';
 
 /** The bindings in wrangler.jsonc. */
 interface WorkersEnv {
@@ -10,17 +11,21 @@ interface WorkersEnv {
    * database (ADR-0022). Each environment has its own.
    */
   IP_HASH_KEY?: string;
+  APP_LINKS?: AppLinks;
 }
 
 export default {
-  // A new client per request and never a global one: a Worker keeps no connection between
-  // requests; Hyperdrive does, and it cleans up the client when the request ends.
   fetch(request: Request, env: WorkersEnv, context: ExecutionContext) {
-    const sql = connect(env.HYPERDRIVE.connectionString);
+    // Public links need only configuration. Routes that use Hyperdrive share
+    // one client for this request, which Hyperdrive cleans up when it ends.
+    let sql: Sql | undefined;
     return app.fetch(
       request,
       {
-        sql,
+        appLinks: env.APP_LINKS ?? {},
+        get sql() {
+          return (sql ??= connect(env.HYPERDRIVE.connectionString));
+        },
         now: Date.now,
         // Cloudflare puts the address of whoever connected to it here, in place of
         // anything the request itself claimed (SHARING-41.1).
