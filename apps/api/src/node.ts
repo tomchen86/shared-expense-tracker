@@ -14,20 +14,41 @@ export interface NodeServer {
   close(): Promise<void>;
 }
 
-/** Serves the API on Node, with one client and its connections for every request. */
-export function startServer(options: {
+export interface NodeServerOptions {
   databaseUrl: string;
   port?: number;
+  /** The API's time, in milliseconds since the Unix epoch: the system clock unless given. */
+  now?: () => number;
+  /** The address a request came from: the connection's remote address unless given. */
+  clientIp?: (request: Request) => string;
+  /**
+   * The key of the keyed hash that stands for an IP in the database (SHARING-42.1).
+   * Without one the API registers no new device (SHARING-44.1).
+   */
+  ipHashKey?: string;
   /** What this environment's verification files and download page say (ADR-0023). */
   appLinks?: AppLinks;
-}): Promise<NodeServer> {
+}
+
+/** Serves the API on Node, with one client and its connections for every request. */
+export function startServer(options: NodeServerOptions): Promise<NodeServer> {
   const sql = connect(options.databaseUrl);
   const appLinks = options.appLinks ?? {};
   const hostname = '127.0.0.1';
   return new Promise((resolve, reject) => {
     const server = serve(
       {
-        fetch: (request) => app.fetch(request, { sql, appLinks }),
+        fetch: (request, { incoming }) =>
+          app.fetch(request, {
+            sql,
+            now: options.now ?? Date.now,
+            // Never an address the request itself claims in a header (SHARING-41.1).
+            clientIp: options.clientIp
+              ? options.clientIp(request)
+              : incoming.socket.remoteAddress,
+            ipHashKey: options.ipHashKey,
+            appLinks,
+          }),
         hostname,
         port: options.port ?? 0,
       },
@@ -57,7 +78,11 @@ async function main(): Promise<void> {
     return;
   }
   const port = Number(process.env.PORT ?? 3000);
-  const server = await startServer({ databaseUrl, port });
+  const server = await startServer({
+    databaseUrl,
+    port,
+    ipHashKey: process.env.IP_HASH_KEY,
+  });
   console.log(`API listening on ${server.url}`);
 }
 

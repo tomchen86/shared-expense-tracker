@@ -6,6 +6,11 @@ import type { AppLinks } from './sharing/app-links';
 /** The bindings in wrangler.jsonc. */
 interface WorkersEnv {
   HYPERDRIVE: { connectionString: string };
+  /**
+   * A secret of the Worker: the key of the keyed hash that stands for an IP in the
+   * database (ADR-0022). Each environment has its own.
+   */
+  IP_HASH_KEY?: string;
   APP_LINKS?: AppLinks;
 }
 
@@ -21,6 +26,11 @@ export default {
         get sql() {
           return (sql ??= connect(env.HYPERDRIVE.connectionString));
         },
+        now: Date.now,
+        // Cloudflare puts the address of whoever connected to it here, in place of
+        // anything the request itself claimed (SHARING-41.1).
+        clientIp: request.headers.get('CF-Connecting-IP') ?? undefined,
+        ipHashKey: env.IP_HASH_KEY,
       },
       context,
     );

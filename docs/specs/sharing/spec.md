@@ -2,7 +2,17 @@
 
 ## Purpose
 
-共同帳本的加密工具（ADR-0015）：用鑰匙加密和解密內容、用私鑰簽名、把內容裝成只有另一支手機打得開的 box，以及從密鑰材料導出金鑰。工具放在 `packages/domain` 自己的入口，給手機 app 用；它不存任何東西、不連網路，也不自己產生鑰匙、私鑰、nonce 或 salt（SHARING-14.1）。演算法是 XChaCha20-Poly1305（draft-irtf-cfrg-xchacha-03）、Ed25519（RFC 8032）、X25519（RFC 7748）和 HKDF-SHA-256（RFC 5869）。bytes 是一個 `Uint8Array`，以十六進位寫出：`0x01` 是一個 byte，沒有 `0x` 的一串是依序的 bytes，`…` 是省略的部分。鑰匙是 32 bytes 的對稱金鑰。nonce 是呼叫者給的 24 bytes，每次加密或裝 box 都要是新的隨機值。附加資料是一段不加密、但解密時要給出一模一樣的 bytes，可以是空的。密文是 SHARING-1.1 的格式，它的第一個 byte 是格式版本。簽名私鑰是 32 bytes 的 Ed25519 私鑰，box 私鑰是 32 bytes 的 X25519 私鑰，各有一把 32 bytes 的公開金鑰（SHARING-5.1、7.1）。共享密鑰是 X25519 用一把 box 私鑰和另一把 box 公開金鑰算出的 32 bytes。box 是交出方裝給收受方的密文（SHARING-8.1）：情境是裝 box 時給的一段 bytes，可以是空的；salt 是裝 box 時可以再給的 32 bytes；打開時兩者都要和裝的時候一樣。密鑰材料是導出金鑰的來源，用途是用來區分金鑰的一段 bytes，兩者都可以是字串（SHARING-12.1）。解密密文或打開 box 有兩種失敗：解不開（SHARING-3.1、10.1、11.1）和不認得格式版本（SHARING-4.2），兩種都不回傳任何內容。拒絕是丟出錯誤，不產出任何結果。不是 bytes 的輸入一律先被拒絕（SHARING-16.1），只有導出金鑰的密鑰材料和用途也可以是字串；其他的規則說的都是這樣的輸入。沒給一個輸入，是指沒有它，或它是 `undefined`；只有 salt 可以不給。SHARING-15.1 列出的輸入（鑰匙、私鑰、nonce、box 的 salt 和裝 box 時收受方的公開金鑰）長度不對時也一律先被拒絕；要解密的 bytes、要打開的 box 和交出方的公開金鑰不管多長，都照其他的規則回報。
+共同帳本靠金鑰認手機，內容加密之後才離開手機（ADR-0015、ADR-0022）。這裡有四塊：`packages/domain` 的加密工具（SHARING-1.1 到 16.1）；手機 app 的裝置身分，和它怎麼替送給 API 的每個請求簽名（SHARING-19.1 到 30.1、43.1、45.1、46.1）；API 怎麼替手機註冊、檢查簽名和限制請求（SHARING-31.1 到 42.1、44.1、47.1）；和邀請連結的基礎（SHARING-60.1 到 76.1）。手機 app 和 API 用 `packages/domain` 的同一個函式組出要簽的 bytes（SHARING-17.1、18.1）。裝置身分和簽名沒有畫面：哪個畫面什麼時候送請求、授權失效時畫面上顯示什麼，都不在這裡。
+
+加密工具：用鑰匙加密和解密內容、用私鑰簽名、把內容裝成只有另一支手機打得開的 box，以及從密鑰材料導出金鑰。工具放在 `packages/domain` 自己的入口，給手機 app 用；它不存任何東西、不連網路，也不自己產生鑰匙、私鑰、nonce 或 salt（SHARING-14.1）。演算法是 XChaCha20-Poly1305（draft-irtf-cfrg-xchacha-03）、Ed25519（RFC 8032）、X25519（RFC 7748）和 HKDF-SHA-256（RFC 5869）。bytes 是一個 `Uint8Array`，以十六進位寫出：`0x01` 是一個 byte，沒有 `0x` 的一串是依序的 bytes，`…` 是省略的部分。鑰匙是 32 bytes 的對稱金鑰。nonce 是呼叫者給的 24 bytes，每次加密或裝 box 都要是新的隨機值。附加資料是一段不加密、但解密時要給出一模一樣的 bytes，可以是空的。密文是 SHARING-1.1 的格式，它的第一個 byte 是格式版本。簽名私鑰是 32 bytes 的 Ed25519 私鑰，box 私鑰是 32 bytes 的 X25519 私鑰，各有一把 32 bytes 的公開金鑰（SHARING-5.1、7.1）。共享密鑰是 X25519 用一把 box 私鑰和另一把 box 公開金鑰算出的 32 bytes。box 是交出方裝給收受方的密文（SHARING-8.1）：情境是裝 box 時給的一段 bytes，可以是空的；salt 是裝 box 時可以再給的 32 bytes；打開時兩者都要和裝的時候一樣。密鑰材料是導出金鑰的來源，用途是用來區分金鑰的一段 bytes，兩者都可以是字串（SHARING-12.1）。解密密文或打開 box 有兩種失敗：解不開（SHARING-3.1、10.1、11.1）和不認得格式版本（SHARING-4.2），兩種都不回傳任何內容。`packages/domain` 拒絕，是丟出錯誤，不產出任何結果。不是 bytes 的輸入一律先被拒絕（SHARING-16.1），只有導出金鑰的密鑰材料和用途也可以是字串；其他的規則說的都是這樣的輸入。沒給一個輸入，是指沒有它，或它是 `undefined`；只有 salt 可以不給。SHARING-15.1 列出的輸入（鑰匙、私鑰、nonce、box 的 salt 和裝 box 時收受方的公開金鑰）長度不對時也一律先被拒絕；要解密的 bytes、要打開的 box 和交出方的公開金鑰不管多長，都照其他的規則回報。
+
+裝置身分是一支手機給 API 認的身分：一個裝置 ID 和一個 seed。裝置 ID 是小寫的第 4 版 UUID，存在本機資料（shell）；seed 是 32 bytes 的隨機值，只存在 `expo-secure-store`（下面叫 secure store），本機資料和 API 都沒有它。簽名私鑰從 seed 導出（SHARING-21.1），它的公開金鑰就是這支手機的公開金鑰。一支手機是這三種之一：沒有裝置身分，是本機資料沒有裝置 ID；有裝置身分，是本機資料有裝置 ID，secure store 裡也有它的 seed；授權失效，是本機資料有裝置 ID，secure store 裡卻沒有它的 seed（SHARING-29.1）。送請求是手機 app 的其他功能要連 API 時做的事：交出 API 的網址、方法、路徑和可以沒有的內容，得到 API 的回應，或得知沒有得到回應、沒有送出（SHARING-22.1 到 30.1）；內容是 bytes，交來的是文字時用它的 UTF-8 編碼。送請求失敗，是呼叫的一方得到錯誤，不是上面任何一種結果（SHARING-24.1、25.1、30.1、45.1）。手機 app 用執行環境全域的 `fetch` 連 API。註冊是手機把裝置 ID 和公開金鑰交給 API（SHARING-22.1、38.1）。手機的時鐘是手機自己的時間；時間差是 API 的時間減掉手機的時鐘，由 API 告訴手機（SHARING-27.1），還沒得知時是 0；校正後的時間是手機的時鐘加上時間差。重新啟動 app 是結束 app 再打開，本機資料和 secure store 裡的東西都還在。
+
+簽名的請求是帶著四個欄位的 HTTP 請求：裝置 ID、請求時間、請求的 nonce 和簽名。請求時間是簽名當下的時間，從 1970-01-01T00:00:00Z 起的毫秒數；請求的 nonce 是 16 bytes 的隨機值，寫成 32 個小寫十六進位字元，和加密用的 nonce 無關；簽名是簽名私鑰對要簽的 bytes（SHARING-17.1）的簽名（SHARING-6.1），寫成 128 個小寫十六進位字元。方法是 HTTP 的方法，例如 `GET` 和 `POST`。路徑是請求的網址裡，從主機後面的 `/` 起到結尾的部分，有查詢時連 `?` 和查詢在內；它只能用送出和收到時都不會被改寫的寫法（SHARING-18.1），所以手機簽的和 API 收到的是同一段文字。請求的內容是 HTTP 的 body，沒有時是 0 bytes；內容雜湊是內容那些 bytes 的 SHA-256。四個欄位怎麼放進請求、註冊的內容，和 API 每種回應的格式，都定義在 `packages/domain` 的程式裡，手機 app 和 API 用同一份。
+
+API 的時間是 API 處理請求時自己的時鐘，從 1970-01-01T00:00:00Z 起的毫秒數。請求通過檢查，是它是簽名的請求，而且沒有被 SHARING-32.1 到 37.1 任何一條拒絕，註冊的請求還要沒有被 SHARING-39.1 到 41.1 和 47.1 拒絕，也不是 SHARING-44.1 說的、API 不註冊的那一種；通過檢查的請求才交給路由。API 拒絕一個請求，是回應一個帶著原因的拒絕，不做這個請求要做的事，資料庫和收到它之前一模一樣；原因是簽名、時鐘、重送、請求太多、內容不對或註冊太多。公開的路由是不必簽名的路由：`GET /health`，以及在自己的 requirement 裡寫明不必簽名的路由（SHARING-60.1 到 62.1、76.1）。IP 是請求來自的 IPv4 或 IPv6 位址：API 在 Cloudflare Workers 上時是 Cloudflare 放在 `CF-Connecting-IP` 的位址，在 Node 上時是連線的來源位址，都不是請求自己帶的其他標頭。IP 雜湊的金鑰是 API 所在的環境給它的一段保密的文字，用來算 IP 加了金鑰的雜湊（SHARING-42.1、44.1）。
+
+SHARING-17.1 到 47.1 的情境裡，T 是 `2026-11-18T06:32:00Z`，也就是 1794983520000；除非另外說明，手機的時鐘和 API 的時間都是 T，API 的網址是 `https://api.example.test`。Taylor 的手機的裝置 ID 是 `0f8fad5b-d9cb-469f-a165-70867728950e`，Casey 的手機是 `7c9e6679-7425-40de-944b-e07fc1f90ae7`，各有自己的簽名私鑰；API 的情境裡，除非另外說明，請求都來自 `203.0.113.7`，Taylor 的手機已經註冊。`/no-such-route` 是一個沒有路由的路徑。
 
 邀請連結的基礎（ADR-0023）：點邀請連結時，裝了 app 的手機直接打開 app，沒裝的人看到下載頁（SHARING-60.1 到 76.1）。邀請連結是 `https://<主機>/i/<代號>#<字串>`（ADR-0015）：主機是 API 在這個環境的網域，代號是路徑裡 `/i/` 後面的那一段，`#` 後面的部分只留在開連結的那支手機上，瀏覽器不會把它送給任何伺服器。API 給三樣東西：iOS 和 Android 用來確認這個網域的連結歸 app 開的兩個驗證檔（SHARING-60.1、61.1），和下載頁（SHARING-62.1 到 68.1）；誰都可以拿，請求不必簽名，也不必帶裝置身分，用 `HEAD` 問也一樣（SHARING-76.1）。它們的內容出自這個環境的 App 設定：開邀請連結的 iOS App，各寫成 `<Team ID>.<bundle ID>`；開邀請連結的 Android App，各有 package 名稱和簽它的憑證的 SHA-256 指紋；以及 iPhone 和 Android 各一個下載連結。每一項都可以沒有。下載頁是 API 對邀請連結的路徑回的網頁；頁面上的文字是它顯示給人看的字，不算 `<head>`、`<script>` 和 `<style>` 裡的。對手機 app 來說，邀請連結是系統交給它的這兩種連結：scheme 是 `https`、路徑以 `/i/` 開頭的連結，不管主機是什麼，因為系統只把驗證過的網域的連結交給 app；和以 `shared-expense-tracker://i/` 開頭的連結，也就是下載頁的「Open in App」帶的那一種（SHARING-66.1）。系統交連結給 app 有兩個時機：app 沒在執行時用它啟動 app，和 app 執行中時交給它。這裡還沒有建立邀請、看群組或申請加入，所以代號和 `#` 後面的部分是什麼、有沒有這個邀請，都不影響這裡的任何一條。SHARING-60.1 到 76.1 的情境裡，API 的網址是 `https://links.example.test`，「完整的連結」是 `https://links.example.test/i/3q2-7wEjRWeJq83vEjRWeA#AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8`，它的代號和 `#` 後面的部分只是長度和字元像真的例子。
 
@@ -401,6 +411,750 @@ IF 交給工具的鑰匙、私鑰、公開金鑰、nonce、內容、附加資料
 
 - **WHEN** 密鑰材料或用途是數字陣列、`Uint16Array`、數字、只有 `length` 的物件、`null`，或沒給；或 salt 是字串、數字陣列或 `null`
 - **THEN** 都被拒絕，沒給的用途不會被當成空的用途；密鑰材料和用途是字串或 bytes 時照 SHARING-12.1
+
+### Requirement: SHARING-17.1 要簽的 bytes 是七行 ASCII 文字
+
+WHEN 替一個請求組出要簽的 bytes，the domain package SHALL 回傳七行文字的 ASCII bytes，行和行之間是一個 `0x0a`，最後一行之後沒有：依序是 `shared-expense/request/v1`、方法、路徑、內容雜湊的 64 個小寫十六進位字元、裝置 ID、請求時間的十進位寫法（沒有正負號、小數點和多餘的 0），和請求的 nonce；交給它的內容雜湊不會被改動。
+
+#### Scenario: 註冊的請求
+
+- **WHEN** 方法是 `POST`，路徑是 `/devices`，內容雜湊是 `6909fde5637134de28fc345ef65c422aeb3133035e2dcf77fd56b044348bf87b`，裝置 ID 是 `0f8fad5b-d9cb-469f-a165-70867728950e`，請求時間是 1794983520000，請求的 nonce 是 `000102030405060708090a0b0c0d0e0f`
+- **THEN** 得到 188 bytes，是這七行的 ASCII，中間各隔一個 `0x0a`：`shared-expense/request/v1`、`POST`、`/devices`、`6909fde5637134de28fc345ef65c422aeb3133035e2dcf77fd56b044348bf87b`、`0f8fad5b-d9cb-469f-a165-70867728950e`、`1794983520000`、`000102030405060708090a0b0c0d0e0f`
+
+#### Scenario: 沒有內容、有查詢的請求
+
+- **WHEN** 方法是 `GET`，路徑是 `/example/items?after=41&limit=100`，內容雜湊是 0 bytes 的 SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`，裝置 ID 和請求時間同上，請求的 nonce 是 `a0a1a2a3a4a5a6a7a8a9aaabacadaeaf`
+- **THEN** 第二行是 `GET`，第三行是 `/example/items?after=41&limit=100` 整段，第四行是 `e3b0c442…7852b855` 那 64 個字元，最後一行是這個 nonce
+
+#### Scenario: 請求時間最小和最大
+
+- **WHEN** 請求時間是 0，或 9007199254740991
+- **THEN** 第六行是 `0`，或 `9007199254740991`
+
+#### Scenario: 每個欄位都算在裡面
+
+- **WHEN** 把第一個 scenario 的方法換成 `PUT`、路徑換成 `/devices?x=1`、內容雜湊改掉一個 bit、裝置 ID 換成 `7c9e6679-7425-40de-944b-e07fc1f90ae7`、請求時間換成 1794983520001，或 nonce 換成 `000102030405060708090a0b0c0d0e10`，一次換一個
+- **THEN** 每次得到的 bytes 都和第一個 scenario 的不同
+
+#### Scenario: 輸入是一大塊 bytes 裡的一段
+
+- **WHEN** 第一個 scenario 的內容雜湊是一塊較大的 bytes 中間的一段
+- **THEN** 得到的 bytes 和第一個 scenario 的一樣
+
+### Requirement: SHARING-18.1 寫法不對的欄位組不出要簽的 bytes
+
+IF 方法不是一個以上的大寫英文字母，路徑的寫法不對，內容雜湊不是 32 bytes，裝置 ID 不是小寫的第 4 版 UUID，請求時間不是 0 到 9,007,199,254,740,991 之間的整數，或請求的 nonce 不是 32 個小寫十六進位字元，THEN the domain package SHALL 拒絕，所以每一行裡都沒有換行，兩個不同的請求組不出同樣的 bytes。路徑的寫法是：`/` 開頭的文字；第一個 `?` 之前只有英文字母、數字和 `-`、`.`、`_`、`~`、`/`，沒有連續的兩個 `/`，用 `/` 隔開的每一段都不是 `.` 或 `..`；有 `?` 時，它後面至少有一個字元，而且只有英文字母、數字和 `-`、`.`、`_`、`~`、`/`、`%`、`?`、`=`、`&`。別的寫法在送出或收到時可能被改寫，例如空白、引號和 `..`。
+
+#### Scenario: 方法
+
+- **WHEN** 方法是 `get`、`Get`、空的文字、後面多一個空白的 `GET `、`G-T`、中間有換行的 `GET` 和 `POST`，或不是文字
+- **THEN** 都被拒絕
+
+#### Scenario: 路徑
+
+- **WHEN** 路徑是空的文字、`devices`、`/a b`、中間有換行或 tab 的 `/a` 和 `b`、`/帳本`，或不是文字
+- **THEN** 都被拒絕
+
+#### Scenario: 會被改寫的路徑
+
+- **WHEN** 路徑是 `/a//b`、`//a`、`/a/./b`、`/a/../b`、`/a/..`、`/.`、`/a%20b`、`/a%2e%2e/b`、`/a'b`、`/a"b`、`/a<b`、`/a{b}`、`/a|b`、`/a\b`、`/a#b`、`/a+b`、`/a?`，或查詢是 `?x='1'`、`?x=a b`、`?x=a#b`、`?x=a+b`
+- **THEN** 都被拒絕
+
+#### Scenario: 可以用的路徑
+
+- **WHEN** 路徑是 `/`、`/devices`、`/a/`、`/a.b/c-d_e~f`、`/.well-known/x`、`/a/.../b`、`/a?x=1&y=%E5%B8%B3`、`/a?x=/b/../c?d`
+- **THEN** 都組得出要簽的 bytes，第三行就是這段路徑
+
+#### Scenario: 內容雜湊
+
+- **WHEN** 內容雜湊是 0、31 或 33 bytes，是 64 個十六進位字元的文字，是 32 個數字的陣列，或沒給
+- **THEN** 都被拒絕
+
+#### Scenario: 裝置 ID
+
+- **WHEN** 裝置 ID 是大寫的 `0F8FAD5B-D9CB-469F-A165-70867728950E`、第 1 版的 `0f8fad5b-d9cb-169f-a165-70867728950e`、變體不對的 `0f8fad5b-d9cb-469f-c165-70867728950e`、沒有連字號的 `0f8fad5bd9cb469fa16570867728950e`、後面多一個換行的 UUID、`phone-a`、空的文字，或不是文字
+- **THEN** 都被拒絕
+
+#### Scenario: 請求時間
+
+- **WHEN** 請求時間是 -1、1.5、9007199254740992、不是數字的值（NaN）、無限大，或文字 `1794983520000`
+- **THEN** 都被拒絕
+
+#### Scenario: 請求的 nonce
+
+- **WHEN** 請求的 nonce 是 31 或 33 個十六進位字元、大寫的 `000102030405060708090A0B0C0D0E0F`、最後一個字元是 `g`、後面多一個換行，或是 16 bytes 而不是文字
+- **THEN** 都被拒絕
+
+### Requirement: SHARING-19.1 送請求之前沒有裝置身分，也不連網路
+
+The mobile app SHALL 在第一次送請求之前沒有裝置身分，也不發出任何網路請求：本機資料沒有裝置 ID，secure store 裡沒有 app 寫的項目。讀裝置身分和時間差不會產生裝置身分。
+
+#### Scenario: 在新手機上記帳
+
+- **WHEN** 在一支新手機上打開 app，新增一筆個人支出，再重新啟動 app
+- **THEN** app 沒有發出任何網路請求，secure store 是空的，這支手機沒有裝置身分
+
+#### Scenario: 讀裝置身分
+
+- **WHEN** 在沒有裝置身分的手機上讀裝置身分和時間差
+- **THEN** 得知沒有裝置身分，時間差是 0；沒有發出網路請求，secure store 仍是空的
+
+### Requirement: SHARING-20.1 第一次送請求時產生裝置身分
+
+WHEN 沒有裝置身分的手機要送請求，the mobile app SHALL 先產生裝置身分：裝置 ID 是 `expo-crypto` 的 `randomUUID` 給的，seed 是 `expo-crypto` 的 `getRandomValues` 或 `getRandomBytesAsync` 給的 32 bytes，不用 `expo-crypto` 的 `getRandomBytes` 和 `Math.random`，在沒有 Web Crypto 和 `Buffer` 的執行環境（例如 Hermes）也照樣產生；seed 存進 secure store 的一個項目，項目的名稱裡有裝置 ID，設定成第一次解鎖之後讀得到、只留在這支手機（`AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`），讀它不必經過使用者驗證；裝置 ID 存進本機資料。seed 和簽名私鑰都不寫進本機資料。已經有裝置身分的手機不再產生，幾個請求同時要送時也只產生一個。
+
+#### Scenario: 新手機第一次送請求
+
+- **WHEN** 沒有裝置身分的手機送一個請求
+- **THEN** 這支手機有裝置身分，裝置 ID 是 `randomUUID` 給的那一個；secure store 裡剛好有一個項目，名稱裡有這個裝置 ID，是用 `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY` 存的，沒有要求使用者驗證；過程中沒有用到 `getRandomBytes` 和 `Math.random`，執行環境沒有 Web Crypto 和 `Buffer`
+
+#### Scenario: seed 不在本機資料裡
+
+- **WHEN** 手機產生了裝置身分，也送過請求
+- **THEN** 在本機資料的檔案裡找不到 seed 和簽名私鑰，不論是原始的 bytes、十六進位還是 Base64
+
+#### Scenario: 已經有裝置身分
+
+- **WHEN** 有裝置身分的手機再送兩個請求，重新啟動 app 之後又送一個
+- **THEN** 每個請求的裝置 ID 都是原本的那一個，secure store 裡仍只有那一個項目
+
+#### Scenario: 同時送兩個請求
+
+- **WHEN** 沒有裝置身分的手機同時送兩個請求
+- **THEN** 兩個請求的裝置 ID 相同，secure store 裡只有一個項目
+
+### Requirement: SHARING-21.1 簽名私鑰從 seed 導出
+
+The mobile app SHALL 用從 seed 導出的金鑰當簽名私鑰：密鑰材料是 seed，用途是 `shared-expense/device/signing/v1`，不給 salt（SHARING-12.1）；註冊時交給 API 的，是這把私鑰的公開金鑰（SHARING-5.1）。
+
+#### Scenario: 已知的 seed
+
+- **WHEN** `expo-crypto` 給的 seed 是 `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f`，手機第一次送請求
+- **THEN** 註冊的請求帶的公開金鑰是 `6fd0e31e547724487390b224a27934039e75568c032ed392a162b0537e9217f8`，也就是簽名私鑰 `bdbb0a00ab23997ad90a4549a3b99cef1eb93f42150a20916a56f85bd31dcf81` 的公開金鑰
+
+#### Scenario: 別的 seed
+
+- **WHEN** `expo-crypto` 給的 seed 是別的 32 bytes
+- **THEN** 註冊的請求帶的公開金鑰，是照同樣的方法從那個 seed 算出來的，和上面的不同
+
+### Requirement: SHARING-22.1 送請求之前先註冊
+
+WHEN 手機要送請求，而 API 還沒回答過這個裝置身分註冊好了，the mobile app SHALL 先送註冊的請求：對 `/devices` 的 `POST`，內容帶著這支手機的公開金鑰，和其他請求一樣簽名（SHARING-25.1）；API 回答註冊好了，才送原本的請求，並把註冊好了記在本機資料，之後不再註冊，重新啟動 app 之後也一樣。
+
+#### Scenario: 第一次送請求
+
+- **WHEN** 沒有裝置身分的手機送對 `/example/items` 的 `GET`
+- **THEN** API 依序收到兩個請求：對 `/devices` 的 `POST`，內容帶著這支手機的公開金鑰；然後是對 `/example/items` 的 `GET`。兩個的裝置 ID 相同
+
+#### Scenario: 之後的請求
+
+- **WHEN** 註冊好了的手機再送一個請求
+- **THEN** API 只收到這個請求，沒有再收到註冊的請求
+
+#### Scenario: 重新啟動之後
+
+- **WHEN** 註冊好了的手機重新啟動 app，再送一個請求
+- **THEN** API 只收到這個請求
+
+### Requirement: SHARING-23.1 註冊沒成功時留著同一個裝置身分
+
+IF 註冊的請求沒有得到回應，或 API 的回應不是註冊好了，THEN the mobile app SHALL 不送原本的請求，告訴呼叫的一方沒有得到回應，或沒註冊成和 API 的回應，並留著同一個裝置身分：下一次要送請求時，用同一個裝置 ID 和公開金鑰再註冊，不產生第二個裝置身分。註冊的請求和其他請求一樣，自己不再送（SHARING-26.1）。
+
+#### Scenario: 沒有網路
+
+- **WHEN** 沒有裝置身分的手機在沒有網路時送一個請求，網路恢復之後再送一次
+- **THEN** 第一次得知沒有得到回應，這支手機已經有裝置身分；第二次 API 收到註冊的請求和原本的請求，裝置 ID 和公開金鑰是第一次產生的那一組，secure store 裡只有一個項目
+
+#### Scenario: API 存下了，回應卻沒送到
+
+- **WHEN** 註冊的請求到了 API，回應在路上丟了，之後手機再送一次請求
+- **THEN** 第一次得知沒有得到回應，原本的請求沒有送出；第二次手機用同一個裝置 ID 和公開金鑰再註冊，API 回答註冊好了，原本的請求才送出
+
+#### Scenario: API 拒絕註冊
+
+- **WHEN** API 因為註冊太多拒絕註冊的請求
+- **THEN** 原本的請求沒有送出，呼叫的一方得知沒註冊成，也拿到 API 的回應；這支手機的裝置身分不變，下一次送請求時用它再註冊
+
+#### Scenario: 回應不是註冊好了
+
+- **WHEN** API 對註冊的請求回應 500、404，或回應 200 而內容不是註冊好了
+- **THEN** 原本的請求沒有送出，呼叫的一方得知沒註冊成，也拿到這個回應；下一次送請求時手機再註冊
+
+#### Scenario: 重新啟動之後再試
+
+- **WHEN** 註冊沒有得到回應，重新啟動 app，再送一個請求
+- **THEN** 註冊的請求用的是同一個裝置 ID 和公開金鑰
+
+### Requirement: SHARING-24.1 裝置身分沒存好，就當成沒有
+
+IF 產生裝置身分時 seed 存不進 secure store，或裝置 ID 存不進本機資料，THEN the mobile app SHALL 讓這次送請求失敗，不發出任何網路請求，本機資料沒有裝置 ID：這支手機仍是沒有裝置身分，不是授權失效，下一次要送請求時重新產生。secure store 裡名稱沒有本機資料的裝置 ID 的項目，app 一律不用。
+
+#### Scenario: seed 存不進去
+
+- **WHEN** secure store 寫不進去時，沒有裝置身分的手機送一個請求
+- **THEN** 送請求失敗，沒有發出網路請求，這支手機沒有裝置身分；secure store 恢復之後再送，就產生裝置身分、註冊並送出
+
+#### Scenario: 裝置 ID 存不進去
+
+- **WHEN** 本機資料寫不進去時，沒有裝置身分的手機送一個請求
+- **THEN** 送請求失敗，沒有發出網路請求，這支手機沒有裝置身分，不是授權失效；本機資料恢復之後再送，就產生裝置身分、註冊並送出，secure store 裡名稱有這個裝置 ID 的項目只有一個
+
+#### Scenario: 之前安裝留下的項目
+
+- **WHEN** secure store 裡有之前安裝留下的項目，是別的裝置 ID 和它的 seed，本機資料沒有裝置 ID
+- **THEN** 這支手機沒有裝置身分；第一次送請求時產生新的裝置 ID 和 seed，註冊的公開金鑰不是從留下的那個 seed 算出來的，留下的項目沒有被改
+
+### Requirement: SHARING-25.1 每個請求都簽名
+
+WHEN 手機 app 把一個請求送給 API，註冊的請求和再送一次的請求也算，the mobile app SHALL 讓它是簽名的請求，送到呼叫的一方給的 API 網址加上路徑：要簽的 bytes 照 SHARING-17.1，用這個請求的方法、路徑、送出的內容的雜湊、這支手機的裝置 ID、簽名當下校正後的時間，和一個新的請求 nonce；nonce 是 `expo-crypto` 的 `getRandomValues` 或 `getRandomBytesAsync` 給的 16 bytes，每送一次換一個；簽名是簽名私鑰對這些 bytes 的簽名（SHARING-6.1）。在沒有 Web Crypto 和 `Buffer` 的執行環境（例如 Hermes）也一樣。呼叫的一方給的方法或路徑寫法不對（SHARING-18.1）時，送請求失敗，不產生裝置身分，也不發出任何網路請求。
+
+#### Scenario: 沒有內容的 GET
+
+- **WHEN** 執行環境沒有 Web Crypto 和 `Buffer`，有裝置身分的手機在 T 送對 `/example/items?after=41&limit=100` 的 `GET`，沒有內容
+- **THEN** API 在 `https://api.example.test/example/items?after=41&limit=100` 收到 `GET`，沒有內容；它帶著這支手機的裝置 ID、請求時間 1794983520000、一個 `expo-crypto` 給的 nonce，和用 Web Crypto 的 `Ed25519`、這支手機的公開金鑰驗得過的簽名，簽的是這個方法、路徑、0 bytes 的內容雜湊和這三個欄位
+
+#### Scenario: 有內容的 POST
+
+- **WHEN** 手機送對 `/example/items` 的 `POST`，內容是 `00ff10`、1,000 bytes 或 262,144 bytes
+- **THEN** API 收到的內容和交來的一樣，簽的內容雜湊是這些 bytes 的 SHA-256
+
+#### Scenario: 內容是文字
+
+- **WHEN** 手機送的內容是文字 `{"note":"晚餐 🍜 é"}`
+- **THEN** API 收到的內容是它的 UTF-8 編碼，簽的內容雜湊是這些 bytes 的 SHA-256
+
+#### Scenario: 每次的 nonce 都不同
+
+- **WHEN** 手機連續送五個一模一樣的請求
+- **THEN** 五個請求的 nonce 都不同，註冊的請求用的也不同，每一個都是 `expo-crypto` 給的
+
+#### Scenario: 簽名當下的時間
+
+- **WHEN** 手機在 T 送一個請求，在 T+90,000 再送一個
+- **THEN** 兩個請求的請求時間分別是 1794983520000 和 1794983610000
+
+#### Scenario: 方法或路徑的寫法不對
+
+- **WHEN** 沒有裝置身分的手機，或註冊好了的手機，送方法是 `get` 的請求，或路徑是 `example/items`、`/a b`、`/a'b`、`/a//b`、`/a/../b` 或 `/a?` 的請求
+- **THEN** 送請求失敗，沒有發出網路請求；沒有裝置身分的手機仍然沒有裝置身分
+
+### Requirement: SHARING-26.1 請求的結果原樣交給呼叫的一方
+
+WHEN 手機 app 送出的請求有了結果，the mobile app SHALL 把結果原樣交給呼叫的一方，自己不再送：API 回應了，就交出回應的狀態碼和內容，不論狀態碼是什麼、是不是拒絕；沒有得到回應，就告訴呼叫的一方沒有得到回應。只有 SHARING-27.1 和 28.1 的情況會再送一次。
+
+#### Scenario: API 回應了
+
+- **WHEN** API 對一個請求回應狀態碼 200 和內容 `{"items":[]}`，對另一個回應 404 和 `not found`，對第三個回應 500 和空的內容
+- **THEN** 呼叫的一方分別拿到這三個狀態碼和內容，每個請求 API 都只收到一次
+
+#### Scenario: 內容不是文字
+
+- **WHEN** API 回應的內容是 `00ff80fe0a0d` 這 6 bytes
+- **THEN** 呼叫的一方拿到一模一樣的 6 bytes
+
+#### Scenario: API 因為簽名或重送拒絕
+
+- **WHEN** API 因為簽名，或因為重送，拒絕一個請求
+- **THEN** 呼叫的一方拿到這個拒絕的狀態碼和內容，API 只收到這個請求一次
+
+#### Scenario: 沒有得到回應
+
+- **WHEN** 註冊好了的手機在沒有網路時送一個請求
+- **THEN** 呼叫的一方得知沒有得到回應，手機只試了一次
+
+### Requirement: SHARING-27.1 時鐘不準時照 API 的時間校正，再送一次
+
+IF API 因為時鐘拒絕手機送的請求，而回應帶著 API 的時間，THEN the mobile app SHALL 把時間差改成 API 的時間減掉手機這時的時鐘，存在本機資料，再用校正後的時間和新的請求 nonce 重新簽名，把這個請求再送一次。之後的請求都用校正後的時間簽名，重新啟動 app 之後也一樣。同一個請求只因為時鐘再送一次：再送的那一次又因為時鐘被拒絕時，照樣改時間差，然後把這個回應交給呼叫的一方。註冊的請求也照這一條。回應帶的 API 的時間不是 0 到 9,007,199,254,740,991 之間的整數時，不改時間差，也不再送。
+
+#### Scenario: 手機慢一小時
+
+- **WHEN** 手機的時鐘是 T，API 的時間是 T+3,600,000，註冊好了的手機送一個請求
+- **THEN** API 先收到請求時間是 T 的請求並因為時鐘拒絕，再收到請求時間是 T+3,600,000、nonce 不同的同一個請求；呼叫的一方拿到第二次的回應，時間差是 3,600,000
+
+#### Scenario: 手機快一小時
+
+- **WHEN** 手機的時鐘是 T，API 的時間是 T-3,600,000，註冊好了的手機送一個請求
+- **THEN** 第二次的請求時間是 T-3,600,000，時間差是 -3,600,000
+
+#### Scenario: 之後的請求
+
+- **WHEN** 時間差是 3,600,000，手機的時鐘走到 T+60,000 時再送一個請求
+- **THEN** API 只收到一次，請求時間是 T+3,660,000
+
+#### Scenario: 第一個請求就不準
+
+- **WHEN** 沒有裝置身分的手機比 API 慢一小時，送一個請求
+- **THEN** API 依序收到：被拒絕的註冊、請求時間校正過的註冊、請求時間校正過的原本的請求；呼叫的一方拿到原本的請求的回應
+
+#### Scenario: 再送還是被拒絕
+
+- **WHEN** API 第一次回應的時間是 T+3,600,000，再送的那一次又因為時鐘被拒絕，這次回應的時間是 T+7,200,000
+- **THEN** API 只收到這個請求兩次，呼叫的一方拿到第二個拒絕，時間差是 7,200,000
+
+#### Scenario: 時鐘後來調準了
+
+- **WHEN** 時間差是 3,600,000 的手機把時鐘調成和 API 一樣，再送一個請求
+- **THEN** 第一次的請求時間比 API 的時間晚一小時，被拒絕；再送的那一次通過，時間差變成 0
+
+#### Scenario: 回應沒有帶對的時間
+
+- **WHEN** API 因為時鐘拒絕，回應裡 API 的時間不見了、是文字 `soon`、是 -1 或是 1.5
+- **THEN** 手機沒有再送，時間差不變，呼叫的一方拿到這個回應
+
+#### Scenario: 重新啟動之後
+
+- **WHEN** 時間差是 3,600,000 的手機重新啟動 app，在手機的時鐘是 T 時送一個請求
+- **THEN** 讀到的時間差仍是 3,600,000，請求時間是 T+3,600,000
+
+### Requirement: SHARING-28.1 請求太多時等 API 說的時間，再送一次
+
+IF API 因為請求太多拒絕手機送的請求，而回應說要等的毫秒數是 0 到 60,000 之間的整數，THEN the mobile app SHALL 等這麼久，再用當下校正後的時間和新的請求 nonce 重新簽名，把這個請求再送一次；等的時候不送這個請求。同一個請求只這樣等一次：再送的那一次又因為請求太多被拒絕時，把這個回應交給呼叫的一方。註冊的請求也照這一條。回應說的不是這樣的整數時，不等也不再送。
+
+#### Scenario: 等 30 秒
+
+- **WHEN** API 在 T 因為請求太多拒絕一個請求，說要等 30,000 毫秒
+- **THEN** 到 T+29,999 為止 API 沒有再收到這個請求；在 T+30,000 收到，請求時間是 T+30,000，nonce 不同；呼叫的一方拿到這一次的回應
+
+#### Scenario: 等 0 毫秒
+
+- **WHEN** API 說要等 0 毫秒
+- **THEN** 手機馬上再送一次
+
+#### Scenario: 再送還是被拒絕
+
+- **WHEN** 再送的那一次又因為請求太多被拒絕，說要等 10,000 毫秒
+- **THEN** 手機不再等，API 只收到這個請求兩次，呼叫的一方拿到第二個拒絕
+
+#### Scenario: 註冊的請求
+
+- **WHEN** 沒有裝置身分的手機送請求，註冊的請求因為請求太多被拒絕，說要等 5,000 毫秒
+- **THEN** 手機等 5,000 毫秒再註冊，API 回答註冊好了，原本的請求才送出
+
+#### Scenario: 要等的時間不對
+
+- **WHEN** API 因為請求太多拒絕，回應裡要等的毫秒數不見了、是 60,001、-1、1.5 或文字 `30000`
+- **THEN** 手機不等也不再送，呼叫的一方拿到這個回應
+
+### Requirement: SHARING-29.1 讀不到 seed 時是授權失效
+
+IF 本機資料有裝置 ID，而 secure store 裡沒有它的 seed（例如把備份還原到另一支手機），或那個項目的內容不是 seed，THEN the mobile app SHALL 把這支手機當成授權失效：讀裝置身分得知授權失效和這個裝置 ID；要送請求時不送，告訴呼叫的一方授權失效，不發出任何網路請求，不產生新的裝置身分，本機資料和 secure store 都不變；app 照常打開，個人的帳照常記。
+
+#### Scenario: 備份還原到另一支手機
+
+- **WHEN** 註冊好了的手機的本機資料被複製到另一支手機，那支手機的 secure store 是空的
+- **THEN** 在那支手機上讀裝置身分，得知授權失效，裝置 ID 是原本的那一個
+
+#### Scenario: 要送請求
+
+- **WHEN** 授權失效的手機送一個請求
+- **THEN** 呼叫的一方得知授權失效；沒有發出網路請求，沒有向 `expo-crypto` 要裝置 ID 或 seed，secure store 仍是空的，本機資料不變
+
+#### Scenario: 打開 app 記個人的帳
+
+- **WHEN** 在授權失效的手機上打開 app，新增個人支出 Coffee run 8.75
+- **THEN** app 開在 Expenses 分頁，支出清單有 Coffee run，它存進了本機資料；app 沒有發出任何網路請求，這支手機仍是授權失效
+
+#### Scenario: secure store 裡只有別的裝置 ID 的項目
+
+- **WHEN** 本機資料的裝置 ID 在 secure store 裡沒有項目，secure store 裡只有別的裝置 ID 的項目
+- **THEN** 這支手機是授權失效，那個項目沒有被用，也沒有被改
+
+#### Scenario: 項目的內容不是 seed
+
+- **WHEN** secure store 裡這個裝置 ID 的項目，內容被換成空的文字，或文字 `not a seed`
+- **THEN** 這支手機是授權失效，送請求時不發出網路請求
+
+### Requirement: SHARING-30.1 secure store 一時讀不了，不算授權失效
+
+IF 讀 secure store 時它回報錯誤，不是回報沒有這個項目（例如手機重開機之後還沒解鎖過），THEN the mobile app SHALL 不把這支手機當成授權失效：這次讀裝置身分或送請求失敗，不發出任何網路請求，不產生新的裝置身分，本機資料和 secure store 都不變；之後讀得到了，就用同一個裝置身分照常送請求。
+
+#### Scenario: 還沒解鎖過
+
+- **WHEN** 註冊好了的手機讀 secure store 時得到錯誤，這時讀裝置身分，也送一個請求
+- **THEN** 兩件事都失敗，不是得知授權失效；沒有發出網路請求，沒有向 `expo-crypto` 要裝置 ID 或 seed，本機資料和 secure store 都不變
+
+#### Scenario: 之後讀得到了
+
+- **WHEN** secure store 恢復之後，手機再送一個請求
+- **THEN** API 只收到這個請求，裝置 ID 是原本的那一個，簽名用原本的公開金鑰驗得過
+
+### Requirement: SHARING-31.1 除了公開的路由，請求通過檢查才交給路由
+
+The API SHALL 只把通過檢查的簽名的請求交給路由，公開的路由除外：檢查依序是欄位（SHARING-32.1）、裝置和簽名（SHARING-33.1、34.1）、時鐘（SHARING-35.1）、重送（SHARING-36.1）和請求太多（SHARING-37.1），第一個沒通過的決定拒絕的原因。註冊的請求多三項：欄位之後先檢查內容（SHARING-39.1、47.1）；裝置和簽名那一項，是用內容裡的公開金鑰驗簽名，而且裝置 ID 沒有用別把公開金鑰註冊過（SHARING-38.1、40.1）；請求太多之後，最後才檢查註冊太多（SHARING-41.1）。路徑沒有路由的請求也要通過檢查，通過了才回答找不到。
+
+#### Scenario: 沒簽名的請求
+
+- **WHEN** 沒帶四個欄位的請求打 `POST /devices`、`GET /no-such-route` 或 `GET /`
+- **THEN** 都被拒絕，原因是簽名；`GET /no-such-route` 得到的不是找不到
+
+#### Scenario: 通過檢查、沒有路由
+
+- **WHEN** Taylor 的手機送簽名的 `GET /no-such-route`
+- **THEN** API 回答找不到（404），不是拒絕
+
+#### Scenario: 公開的路由
+
+- **WHEN** 沒簽名的請求打 `GET /health`、`HEAD /health`、`POST /health` 和 `GET /health/more`
+- **THEN** API 照常回答 `GET /health`（200）；另外三個不是公開的路由，被拒絕，原因是簽名
+
+#### Scenario: 驗證檔和下載頁
+
+- **WHEN** 沒簽名的請求打 `GET /.well-known/apple-app-site-association`、`GET /.well-known/assetlinks.json`、`GET /i/a` 和 `HEAD /i/a`，以及 `POST /i/a`、`GET /i/a/b`、`GET /.well-known/other` 和 `POST /.well-known/assetlinks.json`
+- **THEN** 前四個是公開的路由（SHARING-60.1 到 62.1、76.1），API 照常回答（200）；後四個不是，被拒絕，原因是簽名
+
+#### Scenario: 第一個沒通過的檢查決定原因
+
+- **WHEN** Taylor 的手機送三個請求：一個簽名被改掉一個 bit，請求時間也早了一小時；一個簽名對，請求時間早了一小時；一個簽名和請求時間都對，nonce 是它之前通過檢查的請求用過的，而且它在這一分鐘已經有 60 個請求通過檢查
+- **THEN** 拒絕的原因分別是簽名、時鐘和重送
+
+#### Scenario: 註冊的請求的順序
+
+- **WHEN** Casey 的手機還沒註冊，送四個註冊的請求：一個內容是 `{}`，又少了簽名這個欄位；一個內容是 `{}`，簽名是 128 個 `0`，請求時間也早了一小時；一個帶 Taylor 的裝置 ID，內容是 Casey 的公開金鑰，用 Casey 的簽名私鑰簽，請求時間早了一小時；一個內容和簽名都對，請求時間早了一小時，而且它來自的 IP 已經註冊了 30 支新的裝置
+- **THEN** 拒絕的原因分別是簽名、內容不對、簽名和時鐘；最後那一個把請求時間改對再送，原因才是註冊太多
+
+### Requirement: SHARING-32.1 簽名的欄位不齊或寫法不對
+
+IF 請求少了裝置 ID、請求時間、請求的 nonce 或簽名其中一個欄位，或其中一個的寫法不對，THEN the API SHALL 拒絕，原因是簽名。裝置 ID 和請求的 nonce 的寫法照 SHARING-18.1；請求時間是 0 到 9,007,199,254,740,991 之間的整數的十進位寫法，沒有正負號、小數點、空白和多餘的 0；簽名是 128 個小寫十六進位字元。
+
+#### Scenario: 少一個欄位
+
+- **WHEN** Taylor 的手機簽好的 `GET /no-such-route`，送出時少了裝置 ID、請求時間、nonce 或簽名，一次少一個
+- **THEN** 都被拒絕，原因是簽名
+
+#### Scenario: 寫法不對
+
+- **WHEN** 同一個簽好的請求，送出時把裝置 ID 寫成大寫；把請求時間寫成 `01794983520000`、`1794983520000.0`、`+1794983520000`、`1.79498352e12` 或中間有空白的 `17949835 20000`；把 nonce 寫成大寫；或把簽名寫成大寫、少一個字元，或 Base64
+- **THEN** 都被拒絕，原因是簽名；照原樣送出的那一個通過檢查
+
+### Requirement: SHARING-33.1 沒註冊過的裝置
+
+IF 簽名的請求不是註冊的請求，而它的裝置 ID 沒有註冊過，THEN the API SHALL 拒絕，原因是簽名。
+
+#### Scenario: 還沒註冊
+
+- **WHEN** Casey 的手機還沒註冊，用自己的簽名私鑰簽了 `GET /no-such-route` 送出
+- **THEN** 被拒絕，原因是簽名；Casey 的手機註冊之後再送一個這樣的請求，就通過檢查
+
+### Requirement: SHARING-34.1 簽名對不上收到的請求
+
+IF 請求的簽名，不是這支裝置註冊的公開金鑰對收到的請求的簽名，THEN the API SHALL 拒絕，原因是簽名：要簽的 bytes 照 SHARING-17.1，用收到的方法、路徑、收到的內容的雜湊，和請求帶的裝置 ID、請求時間和 nonce；簽名用 Web Crypto 的 `Ed25519` 驗。收到的方法或路徑寫法不對、組不出要簽的 bytes（SHARING-18.1）的請求，也因為簽名被拒絕。註冊的請求用它內容裡的公開金鑰驗（SHARING-38.1、40.1）。
+
+#### Scenario: 沒被改過
+
+- **WHEN** Taylor 的手機送簽名的 `POST /no-such-route?after=41`，內容是 `{"note":"晚餐"}` 的 UTF-8 編碼
+- **THEN** 通過檢查
+
+#### Scenario: 方法、路徑或查詢被改過
+
+- **WHEN** 同樣簽好的請求，送出時方法換成 `PUT`，路徑換成 `/no-such-route2`，查詢換成 `?after=42`、拿掉，或多加 `&limit=1`
+- **THEN** 都被拒絕，原因是簽名
+
+#### Scenario: 內容被改過
+
+- **WHEN** 同樣簽好的請求，送出時內容改掉一個 byte、後面多一個 byte、少最後一個 byte，或沒有內容
+- **THEN** 都被拒絕，原因是簽名
+
+#### Scenario: 欄位被改過
+
+- **WHEN** 同樣簽好的請求，送出時請求時間加 1，nonce 換成另一個，或簽名改掉一個 bit
+- **THEN** 都被拒絕，原因是簽名
+
+#### Scenario: 路徑的寫法不對
+
+- **WHEN** Taylor 的手機的請求打 `/no-such-route/it's`、`/no-such-route//x`、`/no-such-route/a%20b` 或 `/no-such-route?x=a+b`，簽的就是這段路徑，API 收到的也是這一段
+- **THEN** 都被拒絕，原因是簽名
+
+#### Scenario: 別支裝置的簽名
+
+- **WHEN** Casey 的手機也註冊了。一個請求帶 Taylor 的裝置 ID，卻是 Casey 的簽名私鑰簽的；另一個是 Taylor 簽好的請求，送出時裝置 ID 換成 Casey 的
+- **THEN** 都被拒絕，原因是簽名
+
+### Requirement: SHARING-35.1 請求時間離 API 的時間超過 5 分鐘
+
+IF 簽名對得上的請求，請求時間比 API 的時間早或晚超過 300,000 毫秒，THEN the API SHALL 拒絕，原因是時鐘，並在回應裡帶著 API 的時間。
+
+#### Scenario: 剛好 5 分鐘
+
+- **WHEN** API 的時間是 T，Taylor 的手機送請求時間是 T-300,000 的請求，和請求時間是 T+300,000 的請求
+- **THEN** 都通過檢查
+
+#### Scenario: 超過 5 分鐘
+
+- **WHEN** API 的時間是 T，Taylor 的手機送請求時間是 T-300,001、T+300,001、T-3,600,000 和 0 的請求
+- **THEN** 都被拒絕，原因是時鐘，回應帶的 API 的時間是 1794983520000
+
+### Requirement: SHARING-36.1 重送的請求
+
+IF 這支裝置之前有一個通過檢查的請求用過同一個請求 nonce，而那個請求的請求時間離 API 的時間還在 300,000 毫秒以內，THEN the API SHALL 拒絕，原因是重送。所以原樣再送一次的請求一定被拒絕：不是因為重送，就是因為時鐘。同時送到的幾份一樣的請求，只有一份通過檢查。
+
+#### Scenario: 原樣再送
+
+- **WHEN** Taylor 的手機的一個請求通過檢查之後，同一個請求原樣再送一次
+- **THEN** 第二次被拒絕，原因是重送
+
+#### Scenario: 同一個 nonce 的別的請求
+
+- **WHEN** Taylor 的手機用通過檢查的請求用過的 nonce，重新簽一個路徑和請求時間都不同的請求
+- **THEN** 被拒絕，原因是重送
+
+#### Scenario: 別支裝置用同一個 nonce
+
+- **WHEN** Casey 的手機註冊之後，用 Taylor 的手機用過的 nonce 簽一個請求
+- **THEN** 通過檢查
+
+#### Scenario: 同時送到
+
+- **WHEN** 同一個簽好的請求同時送到五份
+- **THEN** 只有一份通過檢查，其他四份被拒絕，原因是重送
+
+#### Scenario: 5 分鐘之後原樣再送
+
+- **WHEN** 請求時間是 T 的請求在 T 通過檢查，API 的時間到了 T+300,001 時原樣再送一次
+- **THEN** 被拒絕，原因是時鐘
+
+#### Scenario: 被拒絕的請求沒有用掉 nonce
+
+- **WHEN** API 的時間是 T 時，請求時間是 T+600,000 的請求因為時鐘被拒絕；API 的時間到了 T+480,000 時，同一個請求原樣再送一次
+- **THEN** 第二次通過檢查
+
+### Requirement: SHARING-37.1 一支裝置一分鐘最多 60 個請求
+
+IF 一支裝置已經有 60 個請求，在 API 的時間過去不到 60,000 毫秒內通過檢查，THEN the API SHALL 拒絕它的下一個請求，原因是請求太多，並在回應裡帶著要等的毫秒數：那 60 個裡最早的一個，離滿 60,000 毫秒還有多久。被 API 拒絕的請求都不算在 60 個裡；註冊的請求和路徑沒有路由的請求，通過檢查的都算。同時送到的請求也一樣，通過檢查的不超過 60 個。
+
+#### Scenario: 第 61 個
+
+- **WHEN** Taylor 的手機從 T 起每 500 毫秒送一個請求，共 60 個，最後一個在 T+29,500，都通過檢查；在 T+30,000 再送一個
+- **THEN** 這一個被拒絕，原因是請求太多，要等 30,000 毫秒
+
+#### Scenario: 等完之後
+
+- **WHEN** 接著在 T+59,999 送一個，在 T+60,000 送兩個
+- **THEN** T+59,999 的被拒絕，要等 1 毫秒；T+60,000 的第一個通過檢查，第二個被拒絕，要等 500 毫秒
+
+#### Scenario: 兩支裝置各算各的
+
+- **WHEN** Taylor 的手機在 T 已經有 60 個請求通過檢查，Casey 的手機在 T 送一個請求
+- **THEN** Casey 的請求通過檢查
+
+#### Scenario: 被拒絕的不算
+
+- **WHEN** 在 T 有 100 個帶 Taylor 的裝置 ID、簽名不對的請求被拒絕，之後 Taylor 的手機在 T 送 60 個請求
+- **THEN** 60 個都通過檢查
+
+#### Scenario: 註冊的請求和沒有路由的請求也算
+
+- **WHEN** Casey 的手機在 T 註冊，再註冊 29 次，又送 30 個 `GET /no-such-route`，都通過檢查；在 T 再送一個
+- **THEN** 這一個被拒絕，原因是請求太多
+
+#### Scenario: 同時送到
+
+- **WHEN** Taylor 的手機的 80 個請求同時送到
+- **THEN** 剛好 60 個通過檢查，20 個被拒絕，原因是請求太多
+
+### Requirement: SHARING-38.1 註冊存下裝置 ID 和公開金鑰
+
+WHEN 對 `/devices` 的 `POST` 是簽名的請求，內容是一把 Ed25519 公開金鑰，簽名用這把公開金鑰驗得過（SHARING-34.1），也通過其餘的檢查，the API SHALL 存下這個裝置 ID 和這把公開金鑰，回答註冊好了；之後這支裝置的請求都用這把公開金鑰驗。這個裝置 ID 已經用同一把公開金鑰註冊過時，只回答註冊好了，不多存一支裝置；同一支裝置、同一把公開金鑰的幾個註冊同時送到時也一樣，每一個都回答註冊好了，只存一支，只算一支新的裝置（SHARING-41.1）。
+
+#### Scenario: 新的裝置
+
+- **WHEN** Casey 的手機還沒註冊，送註冊的請求，內容是它的公開金鑰，用它的簽名私鑰簽
+- **THEN** API 回答註冊好了（200）；之後 Casey 的手機簽的 `GET /no-such-route` 通過檢查
+
+#### Scenario: 沒有對應的私鑰
+
+- **WHEN** 註冊的請求的內容是 Casey 的公開金鑰，簽名卻是 Taylor 的簽名私鑰簽的，或簽名是 128 個 `0`
+- **THEN** 被拒絕，原因是簽名，Casey 的裝置 ID 沒有註冊
+
+#### Scenario: 同一支裝置再註冊
+
+- **WHEN** Casey 的手機註冊好之後，用同一個裝置 ID 和公開金鑰再送一次註冊的請求
+- **THEN** API 回答註冊好了，資料庫裡 Casey 的裝置仍只有一支
+
+#### Scenario: 同一支裝置的註冊同時送到
+
+- **WHEN** Casey 的手機還沒註冊，它的五個註冊的請求同時送到，nonce 各不相同
+- **THEN** 五個都得到註冊好了的回答，資料庫裡 Casey 的公開金鑰只存了一次；這個 IP 接著還能註冊 29 支新的裝置，再多一支才被拒絕
+
+### Requirement: SHARING-39.1 註冊的內容不對
+
+IF 註冊的請求四個欄位的寫法都對，而它的內容不是剛好一把 Ed25519 公開金鑰，THEN the API SHALL 拒絕，原因是內容不對。
+
+#### Scenario: 內容不對
+
+- **WHEN** Casey 的手機送的註冊的請求，內容是空的、不是 JSON 的文字 `hello`、一個陣列、少了公開金鑰的 `{}`，或公開金鑰是 31 或 33 bytes、大寫的十六進位，或 Base64，簽名都是 Casey 的簽名私鑰對送出的請求簽的
+- **THEN** 都被拒絕，原因是內容不對，Casey 的裝置 ID 沒有註冊
+
+#### Scenario: 多帶了別的東西
+
+- **WHEN** 註冊的請求的內容除了 Casey 的公開金鑰，還多帶一個名字「Casey」
+- **THEN** 被拒絕，原因是內容不對
+
+### Requirement: SHARING-40.1 裝置 ID 已經屬於別把公開金鑰
+
+IF 註冊的請求的裝置 ID 已經用另一把公開金鑰註冊過，THEN the API SHALL 拒絕，原因是簽名，原本註冊的公開金鑰不變。
+
+#### Scenario: 別把私鑰來註冊同一個裝置 ID
+
+- **WHEN** 註冊的請求帶 Taylor 的裝置 ID，內容是 Casey 的公開金鑰，用 Casey 的簽名私鑰簽
+- **THEN** 被拒絕，原因是簽名；Taylor 的手機原本的簽名私鑰簽的請求照常通過檢查，Casey 的簽名私鑰簽的、帶 Taylor 的裝置 ID 的請求仍被拒絕
+
+#### Scenario: 原本的私鑰要換公開金鑰
+
+- **WHEN** 註冊的請求帶 Taylor 的裝置 ID，內容是 Casey 的公開金鑰，用 Taylor 的簽名私鑰簽
+- **THEN** 被拒絕，原因是簽名，Taylor 註冊的公開金鑰不變
+
+#### Scenario: 兩把公開金鑰同時註冊同一個裝置 ID
+
+- **WHEN** 兩支手機用同一個還沒註冊的裝置 ID，各用自己的公開金鑰和簽名私鑰，同時送註冊的請求
+- **THEN** 只有一支註冊好了；另一支被拒絕，原因是簽名，它的公開金鑰沒有存下，之後只有註冊好的那一支簽的請求通過檢查
+
+### Requirement: SHARING-41.1 同一個 IP 一小時最多註冊 30 支新的裝置
+
+IF 同一個 IP 已經有 30 支新的裝置，在 API 的時間過去不到 3,600,000 毫秒內註冊，THEN the API SHALL 拒絕這個 IP 再註冊新的裝置，原因是註冊太多。已經註冊過的裝置再註冊（SHARING-38.1）不算新的，也不會因此被拒絕；被拒絕的註冊不算。同時送到的註冊也一樣，3,600,000 毫秒內註冊好的新裝置不超過 30 支。IPv6 位址前 64 bits 相同的算同一個 IP；寫成 IPv6 的 IPv4 位址（`::ffff:203.0.113.7`）算那個 IPv4 位址。
+
+#### Scenario: 第 31 支
+
+- **WHEN** `198.51.100.20` 在 T 註冊了 30 支新的裝置，在 T+1,000 再註冊一支
+- **THEN** 前 30 支都註冊好了；第 31 支被拒絕，原因是註冊太多，它的裝置 ID 沒有註冊
+
+#### Scenario: 別的 IP
+
+- **WHEN** 同一個時候，`198.51.100.21` 註冊一支新的裝置
+- **THEN** 註冊好了
+
+#### Scenario: 一小時之後
+
+- **WHEN** `198.51.100.20` 在 T+3,599,999 註冊一支新的裝置，在 T+3,600,000 再註冊一次
+- **THEN** T+3,599,999 的被拒絕；T+3,600,000 的註冊好了
+
+#### Scenario: 已經註冊過的裝置
+
+- **WHEN** `198.51.100.20` 已經註冊了 30 支，其中一支在 T+1,000 用同一把公開金鑰再註冊一次
+- **THEN** API 回答註冊好了
+
+#### Scenario: 被拒絕的註冊不算
+
+- **WHEN** `198.51.100.20` 在 T 送了 40 個簽名不對的註冊的請求，之後在 T 註冊 30 支新的裝置
+- **THEN** 30 支都註冊好了
+
+#### Scenario: 同時送到
+
+- **WHEN** `198.51.100.20` 的 40 支新裝置的註冊同時送到
+- **THEN** 剛好 30 支註冊好了；另外 10 個被拒絕，原因是註冊太多，那 10 個裝置 ID 都沒有註冊
+
+#### Scenario: IPv6
+
+- **WHEN** `2001:db8:1:2::1` 註冊了 30 支新的裝置，接著 `2001:0db8:0001:0002:ffff:ffff:ffff:ffff` 和 `2001:db8:1:3::1` 各註冊一支
+- **THEN** 前一個和 `2001:db8:1:2::1` 的前 64 bits 相同，被拒絕；後一個註冊好了
+
+#### Scenario: 寫成 IPv6 的 IPv4 位址
+
+- **WHEN** `198.51.100.20` 註冊了 30 支新的裝置，接著 `::ffff:198.51.100.20` 和 `::ffff:198.51.100.21` 各註冊一支
+- **THEN** 前一個被拒絕，後一個註冊好了
+
+#### Scenario: 請求自己說的位址不算
+
+- **WHEN** API 在 Node 上，沒有另外指定 IP 的來源，30 支新的裝置從同一台機器註冊，第 31 支的請求帶著 `X-Forwarded-For: 198.51.100.99` 和 `CF-Connecting-IP: 198.51.100.99`
+- **THEN** 第 31 支被拒絕，原因是註冊太多
+
+### Requirement: SHARING-42.1 關於一支手機，API 只存裝置 ID 和公開金鑰，不存 IP
+
+The API SHALL 關於一支手機只存它的裝置 ID 和公開金鑰，以及檢查要用的東西：它通過檢查的請求的 nonce 和時間，和它註冊時 IP 加了金鑰的雜湊；IP 本身、IP 不加金鑰的雜湊，和請求的其他標頭都不存。
+
+#### Scenario: 註冊之後的資料庫
+
+- **WHEN** Casey 的手機從 `203.0.113.7` 註冊，又送了一個 `GET /no-such-route`，兩個請求都帶著 `User-Agent: CaseysPhone/1.0`
+- **THEN** 資料庫裡有 Casey 的裝置 ID 和公開金鑰；找不到 `203.0.113.7`，找不到它的 SHA-256、SHA-1 和 MD5，不論是原始的 bytes、十六進位還是 Base64，也找不到 `CaseysPhone`
+
+#### Scenario: IPv6
+
+- **WHEN** Casey 的手機從 `2001:db8:1:2::1` 註冊
+- **THEN** 資料庫裡找不到 `2001:db8:1:2::1`、`2001:db8:1:2`，和它們的 SHA-256，不論是原始的 bytes、十六進位還是 Base64
+
+### Requirement: SHARING-43.1 (manual) Android 的備份和裝置轉移不帶走 seed
+
+WHEN Android 的自動備份或裝置轉移把 app 的資料搬到另一次安裝，the mobile app SHALL 讓本機資料照常被帶過去，secure store 的項目不被帶過去，所以還原之後的手機是授權失效（SHARING-29.1）。
+
+#### Scenario: 還原到另一支手機
+
+- **WHEN** 有裝置身分、也記了支出的 Android 手機做了備份，在另一支 Android 手機安裝 app 並還原這份備份
+- **THEN** 另一支手機上支出和群組都在，這支手機是授權失效
+
+#### Scenario: 移除再安裝
+
+- **WHEN** 同一支 Android 手機移除 app，再安裝並從備份還原
+- **THEN** 支出和群組都在，這支手機是授權失效
+
+### Requirement: SHARING-44.1 沒有 IP 雜湊的金鑰或得不到 IP 時，不註冊新的裝置
+
+IF API 沒有 IP 雜湊的金鑰，或金鑰是空的，或得不到註冊的請求來自的 IP，THEN the API SHALL 不註冊新的裝置：對通過其餘檢查的、新的裝置的註冊，回答 API 自己出了錯（狀態碼 500），資料庫不變。已經註冊的裝置不受影響，它們的請求和再註冊都照常。
+
+#### Scenario: 沒有金鑰
+
+- **WHEN** API 沒有拿到 IP 雜湊的金鑰，或拿到的是空的文字，Casey 的手機送註冊的請求
+- **THEN** API 回答 500，Casey 的裝置 ID 沒有註冊，資料庫不變
+
+#### Scenario: 得不到 IP
+
+- **WHEN** API 得到的請求來源是空的文字，或不是 IP 位址的 `unknown`，Casey 的手機送註冊的請求
+- **THEN** API 回答 500，Casey 的裝置 ID 沒有註冊，資料庫不變
+
+#### Scenario: 已經註冊的裝置
+
+- **WHEN** Taylor 的手機註冊好之後，API 得到的請求來源變成 `unknown`，Taylor 的手機送一個請求，又用同一把公開金鑰再註冊一次
+- **THEN** 請求通過檢查，再註冊也得到註冊好了的回答
+
+### Requirement: SHARING-45.1 GET 和 HEAD 帶了內容就不送
+
+IF 呼叫的一方要送的請求，方法是 `GET` 或 `HEAD`，卻帶了不是空的內容，THEN the mobile app SHALL 讓送請求失敗，不產生裝置身分，也不發出任何網路請求。`fetch` 不送帶內容的 `GET` 和 `HEAD`；照樣去送的話，呼叫的一方只會得知沒有得到回應，以為是網路的問題。內容是 0 bytes 或空的文字時，算是沒有內容，照常送出。
+
+#### Scenario: 帶了內容
+
+- **WHEN** 沒有裝置身分的手機，或註冊好了的手機，送帶著 `00ff10` 這 3 bytes 或文字 `{}` 的 `GET`，或帶著 1 byte 或文字 `x` 的 `HEAD`
+- **THEN** 送請求失敗，沒有發出網路請求；沒有裝置身分的手機仍然沒有裝置身分
+
+#### Scenario: 內容是空的
+
+- **WHEN** 註冊好了的手機送 `GET` 或 `HEAD`，交來的內容是 0 bytes，或空的文字
+- **THEN** 請求照常送出，沒有內容，簽的內容雜湊是 0 bytes 的 SHA-256
+
+### Requirement: SHARING-46.1 匯入匯出檔時，裝置身分的紀錄換成檔案裡的
+
+WHEN 使用者匯入匯出檔（BACKUP-13.1），the mobile app SHALL 把這支手機的裝置 ID、註冊好了的記號和時間差，和其他本機資料一樣換成匯出檔裡的，匯出檔裡沒有就都沒有；secure store 裡的項目不動，過程中不發出任何網路請求。匯出檔帶著匯出那支手機的這三項（BACKUP-3.1），不帶 seed 和簽名私鑰。所以匯入之後：匯出檔的裝置 ID 在這支手機的 secure store 裡有 seed，這支手機就有裝置身分；沒有，就是授權失效（SHARING-29.1）；匯出檔沒有裝置 ID，就是沒有裝置身分，下一次送請求時產生新的（SHARING-20.1）。這支手機原本的 seed 留在 secure store 裡，不再使用（SHARING-24.1）。
+
+#### Scenario: 匯出檔的內容
+
+- **WHEN** 註冊好了的手機點「Export Data」
+- **THEN** 匯出檔裡有它的裝置 ID；在匯出檔的 bytes 裡找不到它的 seed 和簽名私鑰，不論是原始的 bytes、十六進位還是 Base64
+
+#### Scenario: 匯入別支手機的匯出檔
+
+- **WHEN** Taylor 的手機和 Casey 的手機都註冊好了，各有自己的 secure store，在 Casey 的手機上匯入 Taylor 的手機的匯出檔
+- **THEN** Casey 的手機是授權失效，裝置 ID 是 Taylor 的手機的；Casey 的手機的 secure store 裡仍只有它原本的那個項目，沒有被改；匯入時沒有發出網路請求，之後送請求得知授權失效，也不發出網路請求
+
+#### Scenario: 匯入沒有裝置身分的匯出檔
+
+- **WHEN** 註冊好了的手機，匯入一支沒有裝置身分的手機的匯出檔，之後送一個請求
+- **THEN** 匯入之後這支手機沒有裝置身分；送請求時產生新的裝置 ID 和 seed 並註冊，公開金鑰和原本的不同，secure store 裡原本的項目還在、沒有被改
+
+#### Scenario: 匯入自己之前的匯出檔
+
+- **WHEN** 註冊好了、時間差是 3,600,000 的手機匯出之後，時間差被校正成 0，再匯入自己剛才的匯出檔
+- **THEN** 這支手機有裝置身分，裝置 ID 不變；時間差回到 3,600,000；API 的時間仍比手機快一小時的話，下一個請求直接送出並通過，沒有先註冊
+
+### Requirement: SHARING-47.1 低階的 Ed25519 公開金鑰不能註冊
+
+IF 註冊的請求內容裡的公開金鑰是 Ed25519 的低階點，THEN the API SHALL 拒絕，原因是內容不對，不論 API 所在的執行環境驗簽名時接不接受這種公開金鑰。低階點沒有對應的私鑰，卻有不必私鑰就驗得過的簽名，所以拿它註冊的裝置 ID，誰都能冒用。低階點有八個；連同它們不標準的寫法，就是下面列的七個寫法，和把這七個最後一個 byte 最高的 bit 設成 1 的另外七個。
+
+#### Scenario: 十四個寫法
+
+- **WHEN** Casey 的手機送註冊的請求，內容裡的公開金鑰是 `0000000000000000000000000000000000000000000000000000000000000000`、`0100000000000000000000000000000000000000000000000000000000000000`、`26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05`、`c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a`、`ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f`、`edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f` 或 `eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f`，或這七個把最後一個 byte 最高的 bit 設成 1 的寫法（最後一個 byte 分別是 `80`、`80`、`85`、`fa`、`ff`、`ff`、`ff`）；簽名是 `01` 接著 63 個 `00`，或是 Casey 的簽名私鑰簽的
+- **THEN** 都被拒絕，原因是內容不對，Casey 的裝置 ID 沒有註冊；之後帶著 `01` 接著 63 個 `00` 這個簽名、用這個裝置 ID 的請求，因為簽名被拒絕
+
+#### Scenario: 不是低階點的公開金鑰
+
+- **WHEN** 註冊的請求內容裡的公開金鑰是 `0300000000000000000000000000000000000000000000000000000000000000`，簽名是 `01` 接著 63 個 `00`
+- **THEN** 它不是低階點，內容是對的；被拒絕的原因是簽名
 
 ### Requirement: SHARING-60.1 `apple-app-site-association` 列出開邀請連結的 iOS App
 
