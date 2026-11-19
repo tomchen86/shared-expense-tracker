@@ -534,6 +534,7 @@ function PeriodListBody({
       <SwipeFlatList
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
+        ListHeaderComponentStyle={styles.header}
         scrollEventThrottle={scrollEventThrottle}
         onScroll={scrolled}
         data={NO_EXPENSES}
@@ -585,7 +586,11 @@ function EmptyPeriod({
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 112 },
+  content: { paddingHorizontal: 20, paddingBottom: 112 },
+  // The space above the content is the header's, so that what `top` measures of itself, as a
+  // group's large title does to tell when it has scrolled away, counts from where the content
+  // begins and not from 20 points below it.
+  header: { paddingTop: 20 },
   overview: { marginBottom: 24, gap: 6 },
   capsule: {
     flexDirection: 'row',
