@@ -806,23 +806,26 @@ export function localDataOf(phone: Phone): Record<string, string[]> {
 }
 
 /**
- * Whether any file of the phone's local data holds `bytes`: as they are, in hexadecimal,
- * or in Base64 with or without padding.
+ * Whether the file at `file` holds `bytes`: as they are, in hexadecimal, or in Base64
+ * with or without padding.
  */
-export function localDataHolds(phone: Phone, bytes: Uint8Array): boolean {
+export function fileHolds(file: string, bytes: Uint8Array): boolean {
   const buffer = Buffer.from(bytes);
-  const writings = [
+  const content = fs.readFileSync(file);
+  return [
     buffer,
     Buffer.from(buffer.toString('hex')),
     Buffer.from(buffer.toString('hex').toUpperCase()),
     Buffer.from(buffer.toString('base64')),
     Buffer.from(buffer.toString('base64url')),
-  ];
-  return fs.readdirSync(phone.directory).some((file) => {
-    const content = fs.readFileSync(path.join(phone.directory, file));
-    return writings.some((writing) => content.includes(writing));
-  });
+  ].some((writing) => content.includes(writing));
 }
+
+/** Whether any file of the phone's local data holds `bytes`, in any of those writings. */
+export const localDataHolds = (phone: Phone, bytes: Uint8Array): boolean =>
+  fs
+    .readdirSync(phone.directory)
+    .some((file) => fileHolds(path.join(phone.directory, file), bytes));
 
 /**
  * Lets the app's code run until `work` settles, without moving the phone's clock: the

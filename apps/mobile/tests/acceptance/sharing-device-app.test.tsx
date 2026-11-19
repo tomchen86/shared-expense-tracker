@@ -1,11 +1,17 @@
 import * as fs from 'node:fs';
 import { Alert } from 'react-native';
-import { readDeviceIdentity, sendApiRequest } from '../../src/sharing';
+import {
+  readClockOffsetMs,
+  readDeviceIdentity,
+  sendApiRequest,
+} from '../../src/sharing';
 import { openNodeDatabase } from '../../src/storage/node';
 import {
   close,
   dataIn,
+  exportFrom,
   goOffline,
+  importFile,
   newPhone,
   removePhones,
   resetPhones,
@@ -18,12 +24,23 @@ import { cardTitles } from './ledger-expense-list-app';
 import {
   API,
   T,
+  apiIsAhead,
   emptySecureStore,
+  fetchCalls,
+  fileHolds,
+  fromHex,
+  isRegistration,
   mistakes,
+  publicKeyIn,
+  received,
+  registeredKeyOf,
   removeWorld,
   resetWorld,
   secureStoreEntries,
+  seedBehind,
   settled,
+  signingKeyOf,
+  utf8,
 } from './sharing-app';
 import {
   fakePhoneAppearance,
@@ -169,4 +186,152 @@ test('[SHARING-29.1] a phone that lost its authorization opens as usual and reco
   expect(requests()).toBe(0);
   expect(secureStoreEntries()).toEqual([]);
   expect(await identityOn(phone)).toEqual(lost);
+});
+
+// Importing and exporting (SHARING-46.1). A phone here gets its device identity as a
+// feature of the app would give it one, by sending a request while the app is closed, and
+// exports and imports through the Settings screen. Every phone in a test shares the one
+// secure store, so "another phone" starts by emptying it.
+
+const HOUR = 3_600_000;
+
+/** Sends one request from `phone`, whose app is closed, as a feature of the app would. */
+async function sendFrom(phone: Phone) {
+  const database = openNodeDatabase(phone.database);
+  try {
+    return await settled(
+      sendApiRequest(database, {
+        apiUrl: API,
+        method: 'GET',
+        path: '/example/items',
+      }),
+    );
+  } finally {
+    await database.close();
+  }
+}
+
+/** A phone the app has set up, which has then registered its device identity. */
+async function registeredPhone() {
+  const phone = newPhone();
+  await writeData(phone, {});
+  expect((await sendFrom(phone)).outcome).toBe('answered');
+  const identity = await identityOn(phone);
+  if (identity.status !== 'ready')
+    throw new Error('The phone did not register');
+  return { phone, deviceId: identity.deviceId };
+}
+
+async function clockOffsetOn(phone: Phone) {
+  const database = openNodeDatabase(phone.database, { readOnly: true });
+  try {
+    return await settled(readClockOffsetMs(database));
+  } finally {
+    await database.close();
+  }
+}
+
+/** Imports `file` on `phone` through Settings, then closes the app. */
+async function importOn(phone: Phone, file: string) {
+  const app = await startOn(phone);
+  await importFile(file);
+  await close(app);
+}
+
+test('[SHARING-46.1] the export file of a registered phone carries its device ID, and neither its seed nor its signing key', async () => {
+  const { phone, deviceId } = await registeredPhone();
+  const seed = seedBehind(registeredKeyOf(deviceId)!)!;
+
+  const { file } = await exportFrom(phone);
+
+  expect(seed).toHaveLength(32);
+  expect(
+    fileHolds(file, utf8(deviceId)) ||
+      fileHolds(file, fromHex(deviceId.replaceAll('-', ''))),
+  ).toBe(true);
+  expect(fileHolds(file, seed)).toBe(false);
+  expect(fileHolds(file, signingKeyOf(seed))).toBe(false);
+});
+
+test("[SHARING-46.1] a phone that imports another phone's export file has lost its authorization, and its own seed stays where it was", async () => {
+  const taylor = await registeredPhone();
+  const { file } = await exportFrom(taylor.phone);
+  // Casey's phone: a secure store of its own, and its own device identity.
+  emptySecureStore();
+  const casey = await registeredPhone();
+  const own = secureStoreEntries();
+  const calls = fetchCalls();
+
+  await importOn(casey.phone, file);
+
+  expect(casey.deviceId).not.toBe(taylor.deviceId);
+  expect(own).toHaveLength(1);
+  expect(await identityOn(casey.phone)).toEqual({
+    status: 'lost',
+    deviceId: taylor.deviceId,
+  });
+  expect(secureStoreEntries()).toEqual(own);
+  expect(fetchCalls()).toBe(calls);
+  expect(await sendFrom(casey.phone)).toEqual({
+    outcome: 'authorization-lost',
+  });
+  expect(fetchCalls()).toBe(calls);
+  expect(secureStoreEntries()).toEqual(own);
+});
+
+test('[SHARING-46.1] a phone that imports a file exported with no device identity has none, and makes a new one for its next request', async () => {
+  const without = newPhone();
+  await writeData(without, {});
+  const { file } = await exportFrom(without);
+  const { phone, deviceId } = await registeredPhone();
+  const own = secureStoreEntries();
+  const calls = fetchCalls();
+
+  await importOn(phone, file);
+
+  expect(await identityOn(phone)).toEqual({ status: 'none' });
+  expect(secureStoreEntries()).toEqual(own);
+  expect(fetchCalls()).toBe(calls);
+
+  const before = received().length;
+  const result = await sendFrom(phone);
+
+  expect(result.outcome).toBe('answered');
+  const identity = await identityOn(phone);
+  expect(identity.status).toBe('ready');
+  expect(identity).not.toEqual({ status: 'ready', deviceId });
+  const [registration, request, ...others] = received().slice(before);
+  expect(others).toEqual([]);
+  expect(isRegistration(registration)).toBe(true);
+  expect(isRegistration(request)).toBe(false);
+  expect(publicKeyIn(registration)).toBeDefined();
+  expect(publicKeyIn(registration)).not.toBe(registeredKeyOf(deviceId));
+  expect(secureStoreEntries()).toHaveLength(2);
+  expect(secureStoreEntries()).toContainEqual(own[0]);
+});
+
+test('[SHARING-46.1] a phone that imports its own earlier export file keeps its identity, with the clock offset and the registration as they were exported', async () => {
+  apiIsAhead(HOUR);
+  const { phone, deviceId } = await registeredPhone();
+  expect(await clockOffsetOn(phone)).toBe(HOUR);
+  const { file } = await exportFrom(phone);
+  // Afterwards the API's time and the phone's agree again, and the phone corrects itself.
+  apiIsAhead(0);
+  expect((await sendFrom(phone)).outcome).toBe('answered');
+  expect(await clockOffsetOn(phone)).toBe(0);
+
+  await importOn(phone, file);
+
+  expect(await identityOn(phone)).toEqual({ status: 'ready', deviceId });
+  expect(await clockOffsetOn(phone)).toBe(HOUR);
+  // With the API an hour ahead again, the exported offset is right: the next request
+  // goes out once, with no registration before it.
+  apiIsAhead(HOUR);
+  const before = received().length;
+  expect((await sendFrom(phone)).outcome).toBe('answered');
+  expect(
+    received()
+      .slice(before)
+      .map((request) => request.path),
+  ).toEqual(['/example/items']);
 });
