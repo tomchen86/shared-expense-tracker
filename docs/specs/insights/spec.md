@@ -737,7 +737,7 @@ WHEN 使用者在期間名稱或下面的內容上往右滑，the mobile app SHA
 
 ### Requirement: INSIGHTS-34.1 只有一個期間時
 
-WHILE 現在的模式只有一個期間，the mobile app SHALL 只用文字顯示期間名稱：沒有「Previous period」和「Next period」，期間名稱不是按鈕，後面沒有箭頭，點它或在它上面滑動都沒有作用。
+WHILE 現在是月份或年份模式，而這個模式只有一個期間，the mobile app SHALL 只用文字顯示期間名稱：沒有「Previous period」和「Next period」，期間名稱不是按鈕，後面沒有箭頭，點它或在它上面滑動都沒有作用。自訂模式沒有期間名稱（INSIGHTS-28.2）。
 
 #### Scenario: 只有一個月份
 
@@ -836,7 +836,7 @@ WHERE Android，WHEN 使用者按期間名稱，the mobile app SHALL 跳出對�
 
 ### Requirement: INSIGHTS-40.1 選中的期間沒有支出了
 
-IF 選中的期間因為支出改變而不再是期間，THEN the mobile app SHALL 改選同一年最新的同一種期間，同一年沒有時改選最新的期間；一個期間都沒有時，顯示 INSIGHTS-18.1 的提示。
+IF 月份或年份模式選中的期間因為支出改變而不再是期間，THEN the mobile app SHALL 改選同一年最新的同一種期間，同一年沒有時改選最新的期間；一個期間都沒有時，顯示 INSIGHTS-18.1 的提示。自訂模式不改選，From 和 To 不變（INSIGHTS-46.1）。
 
 #### Scenario: 同一年還有月份
 
@@ -995,7 +995,7 @@ WHEN 個人或群組的 Insights 的網址（INSIGHTS-13.1、INSIGHTS-14.1）帶
 
 ### Requirement: INSIGHTS-46.1 自訂模式
 
-WHEN 使用者在月份或年份模式選「Custom」，the mobile app SHALL 換成自訂模式，From 是選中的期間的第一天，To 是它的最後一天，晚於今天時是今天。WHILE Insights 在自訂模式，the mobile app SHALL 在「Period aggregation」下面顯示一列：名稱是「From」和「To」的兩個日期欄位，中間是「–」，用手機地區的日期格式顯示日期（LEDGER-30.2），都最晚只能選今天；總額卡、每個幣別的類別和圖，都是 From 到 To 的範圍照 INSIGHTS-44.1 算出的，From 晚於 To 時是 To 到 From，總額卡沒有比較；選了日期就立即照新的範圍顯示，在內容上滑動不換期間。有計入的支出、但範圍裡沒有時，SHALL 在 From 和 To 下面只顯示標題「No Expenses in These Dates」和「Choose other dates to see spending insights.」，標題列沒有「Chart visualization」選單；完全沒有計入的支出時照 INSIGHTS-18.1，沒有「Period aggregation」，也沒有 From 和 To；domain 拒絕計算這個範圍時，SHALL 在 From 和 To 下面只顯示標題「Totals Too Large」和「These totals are too large to show.」，標題列也沒有那個選單。WHEN 使用者在自訂模式選「Month」或「Year」，the mobile app SHALL 換成那個模式，選中範圍的最後一天所在的月份或年份，它不是期間時照 INSIGHTS-45.1 改選。
+WHEN 使用者在月份或年份模式選「Custom」，the mobile app SHALL 換成自訂模式，From 是選中的期間的第一天，To 是它的最後一天，晚於今天時是今天。WHILE Insights 在自訂模式，the mobile app SHALL 在「Period aggregation」下面顯示一列：名稱是「From」和「To」的兩個日期欄位，中間是「–」，用手機地區的日期格式顯示日期（LEDGER-30.2），都最晚只能選今天；總額卡、每個幣別的類別和圖，都是 From 到 To 的範圍照 INSIGHTS-44.1 算出的，From 晚於 To 時是 To 到 From，總額卡沒有比較；選了日期就立即照新的範圍顯示，在內容上滑動不換期間。支出因為修改、移到垃圾桶或套用收到的事件而改變時，自訂模式不照 INSIGHTS-40.1 改選：仍在自訂模式，From 和 To 不變，照改變之後的支出顯示。有計入的支出、但範圍裡沒有時，SHALL 在 From 和 To 下面只顯示標題「No Expenses in These Dates」和「Choose other dates to see spending insights.」，標題列沒有「Chart visualization」選單；完全沒有計入的支出時照 INSIGHTS-18.1，沒有「Period aggregation」，也沒有 From 和 To；domain 拒絕計算這個範圍（INSIGHTS-44.1）時，SHALL 在 From 和 To 下面只顯示標題「Totals Too Large」和「These totals are too large to show.」，標題列也沒有那個選單；domain 拒絕計算月份和年份的期間（INSIGHTS-12.1）時，自訂模式也照 INSIGHTS-20.1 只顯示那兩行，沒有「Period aggregation」，也沒有 From 和 To，範圍裡的總額沒有超過上限也一樣。WHEN 使用者在自訂模式選「Month」或「Year」，the mobile app SHALL 換成那個模式，選中範圍的最後一天所在的月份或年份，它不是期間時照 INSIGHTS-45.1 改選。
 
 #### Scenario: 從月份換成自訂
 
@@ -1031,6 +1031,16 @@ WHEN 使用者在月份或年份模式選「Custom」，the mobile app SHALL 換
 
 - **WHEN** 第一次啟動 app 後以 `/insights?from=2026-10-01&to=2026-10-30` 打開個人的 Insights
 - **THEN** 只顯示「No expenses yet」和「Add an expense to see spending insights.」，沒有「Period aggregation」、From 和 To
+
+#### Scenario: 範圍裡的支出改到範圍外
+
+- **WHEN** 有 `2024-11-10` 的支出和 `2025-03-10` 的「Coffee run」，From 是 `2025-03-01`、To 是 `2025-03-31` 時，在 Edit Expense 把 Coffee run 的日期改成 `2024-11-15` 後按 Save
+- **THEN** 回到 Insights 時仍標出 Custom，From 和 To 仍是「Mar 1, 2025」和「Mar 31, 2025」，下面只有「No Expenses in These Dates」和「Choose other dates to see spending insights.」，沒有換成 November 2024
+
+#### Scenario: 月份和年份的總額超過上限
+
+- **WHEN** 2026 年的 USD 支出加起來超過 9,007,199,254,740,991，`2025-01-20` 還有一筆 8.75 USD 的支出，以 `/insights?from=2025-01-01&to=2025-01-31` 打開個人的 Insights
+- **THEN** 只顯示「Totals Too Large」和「These totals are too large to show.」，沒有「Period aggregation」、From 和 To
 
 #### Scenario: 群組的 Insights
 

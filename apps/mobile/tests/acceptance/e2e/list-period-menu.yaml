@@ -80,3 +80,16 @@ name: "[LEDGER-110.1] [LEDGER-109.1] Chooses Last Month, All Time and Custom Ran
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
 - assertVisible: Today, .*
+# LEDGER-110.1: and once a swipe has slid one in.
+- swipe:
+    from:
+      text: Choose period\..*
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
+- tapOn: Choose period\..*
+- assertVisible: Last 3 Months
+- tapOn: This Month
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible: Today, .*

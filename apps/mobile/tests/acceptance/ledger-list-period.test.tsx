@@ -705,6 +705,63 @@ test("[LEDGER-112.2] shows the dates of a group's custom range between its perio
   expect(shownInOrder(groupLines('Brisbane'), expected)).toEqual(expected);
 });
 
+test("[LEDGER-112.2] starts a group's custom range on this month again once its screen has been opened again", async () => {
+  await startWithGroups(BRISBANE);
+  await brisbaneSpends('Dinner', '2026-10-29');
+  await showGroup('Brisbane');
+  await choosePeriod('Brisbane', 'Custom Range');
+  await chooseRangeDate(brisbane(), 'From', '2026-09-10');
+  expect(rangeDates(brisbane())).toMatchObject({
+    from: '2026-09-10',
+    to: '2026-10-30',
+  });
+
+  await goBackFrom('Brisbane');
+  await openGroup('Brisbane');
+  await choosePeriod('Brisbane', 'Custom Range');
+
+  expect(rangeDates(brisbane())).toMatchObject({
+    from: '2026-10-01',
+    to: '2026-10-30',
+  });
+});
+
+test('[LEDGER-112.2] starts a custom range on this month again after a restart', async () => {
+  const app = await startExpenses();
+  await choosePeriod('Expenses', 'Custom Range');
+  await chooseRangeDate(expensesRoot(), 'From', '2026-09-10');
+  expect(rangeDates(expensesRoot())).toMatchObject({
+    from: '2026-09-10',
+    to: '2026-10-30',
+  });
+
+  await restart(app);
+  await choosePeriod('Expenses', 'Custom Range');
+
+  expect(rangeDates(expensesRoot())).toMatchObject({
+    from: '2026-10-01',
+    to: '2026-10-30',
+  });
+});
+
+test('[LEDGER-112.2] shows no dates on the screen of a group with no expenses, whose custom range Filters shows', async () => {
+  await startWithGroups(BRISBANE);
+  await showGroup('Brisbane');
+  await waitFor(() => expect(groupLines('Brisbane')).toContain(NO_EXPENSES));
+
+  await openFilters('Brisbane');
+  await chooseDateOption('Custom Range');
+  expect(rangeDates(filtersRoot())).toMatchObject({
+    from: '2026-10-01',
+    to: '2026-10-30',
+  });
+  await closeFilters();
+
+  expect(rangeDates(brisbane())).toBeUndefined();
+  expect(groupLines('Brisbane')).not.toContain('Custom Range');
+  expect(groupLines('Brisbane')).toContain(NO_EXPENSES);
+});
+
 // A period with no expense
 
 test('[LEDGER-116.2] says the month holds no expenses, under a dash for the total, and offers the latest earlier month that holds some', async () => {
