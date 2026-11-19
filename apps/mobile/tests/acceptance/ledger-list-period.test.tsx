@@ -13,6 +13,7 @@ import {
   press,
   resetPhone,
   restart,
+  setPhoneClock,
   startExpenses,
   storedExpenses,
   watchAlerts,
@@ -46,6 +47,7 @@ import {
   filtersOpen,
   filtersRoot,
   hasFilters,
+  leaveAndComeBack,
   nextPeriod,
   openFilters,
   periodName,
@@ -1124,6 +1126,141 @@ test('[LEDGER-117.1] leaves the expense list where it is when the group expense 
 });
 
 // A group's screen
+
+// Coming back to the app
+
+/** The user leaves the app and comes back to it on `day`, at noon in Taipei. */
+const comeBackOn = (day: string) =>
+  leaveAndComeBack(() => setPhoneClock('Asia/Taipei', `${day}T04:00:00Z`));
+
+test('[LEDGER-146.1] moves the expense list to this month when the app comes back in a later month than the one it opened on', async () => {
+  await startExpenses();
+  await spend('Coffee run', '2026-10-30');
+  await expectPeriod(expensesRoot, 'October 2026');
+
+  await comeBackOn('2026-11-02');
+
+  await expectPeriod(expensesRoot, 'November 2026');
+  expect(enabledArrows(expensesRoot())).toEqual(['Previous period']);
+  expect(cardTitles()).toEqual([]);
+  expect(emptyPeriodTitle(expensesRoot())).toBe('No Expenses in November 2026');
+  await openFilters('Expenses');
+  expect(dateRow()).toBe('Date, This Month');
+});
+
+test('[LEDGER-146.1] leaves the expense list on its month when the app comes back in the same month', async () => {
+  await startExpenses();
+  await spend('Coffee run', '2026-10-30');
+
+  await comeBackOn('2026-10-31');
+
+  expect(periodName(expensesRoot())).toBe('October 2026');
+  expect(cardTitles()).toEqual(['Coffee run']);
+});
+
+test('[LEDGER-146.1] leaves a month the user stepped to, the next day and in a later month', async () => {
+  await startExpenses();
+  await pressPreviousPeriod(expensesRoot());
+  await expectPeriod(expensesRoot, 'September 2026');
+
+  // The month before this one, which the user chose.
+  await comeBackOn('2026-10-31');
+  expect(periodName(expensesRoot())).toBe('September 2026');
+
+  await comeBackOn('2026-11-02');
+  expect(periodName(expensesRoot())).toBe('September 2026');
+});
+
+test('[LEDGER-146.1] follows the calendar again once the user has stepped back to this month', async () => {
+  await startExpenses();
+  await pressPreviousPeriod(expensesRoot());
+  await expectPeriod(expensesRoot, 'September 2026');
+  await pressNextPeriod(expensesRoot());
+  await expectPeriod(expensesRoot, 'October 2026');
+
+  await comeBackOn('2026-11-02');
+
+  await expectPeriod(expensesRoot, 'November 2026');
+});
+
+test('[LEDGER-146.1] moves a list on this year to the new year when the app comes back after New Year', async () => {
+  await startExpenses('Asia/Taipei', '2026-12-31T04:00:00Z');
+  await choosePeriod('Expenses', 'This Year');
+  await expectPeriod(expensesRoot, '2026');
+
+  await comeBackOn('2027-01-02');
+
+  await expectPeriod(expensesRoot, '2027');
+  expect(enabledArrows(expensesRoot())).toEqual(['Previous period']);
+});
+
+test("[LEDGER-146.1] moves a group's screen on this month and the expense list behind it, and leaves a group's screen on Group Total", async () => {
+  await startWithGroups({ ...BRISBANE, Osaka: [] });
+  await brisbaneSpends('Dinner', '2026-10-29');
+  await addGroupExpense({
+    group: 'Osaka',
+    payer: 'Taylor (You)',
+    sharers: ['Taylor (You)'],
+    title: 'Ramen',
+    date: '2026-10-29',
+    amount: '9.00',
+  });
+  await showGroup('Brisbane');
+  await choosePeriod('Brisbane', 'This Month');
+  expect(periodName(brisbane())).toBe('October 2026');
+
+  await comeBackOn('2026-11-02');
+
+  await expectPeriod(brisbane, 'November 2026');
+  await goBackFrom('Brisbane');
+  await openGroup('Osaka');
+  expect(periodName(screenOf('Osaka'))).toBe('Group Total');
+  await tapTab('Expenses');
+  expect(periodName(expensesRoot())).toBe('November 2026');
+});
+
+test('[LEDGER-146.1] shows the last three months up to the new today when the app comes back', async () => {
+  await startExpenses();
+  await choosePeriod('Expenses', 'Last 3 Months');
+  await expectPeriod(expensesRoot, 'Aug – Oct 2026');
+
+  await comeBackOn('2026-11-02');
+
+  await expectPeriod(expensesRoot, 'Sep – Nov 2026');
+});
+
+test('[LEDGER-146.1] keeps a custom range and its dates when the app comes back in a later month', async () => {
+  await startExpenses();
+  await choosePeriod('Expenses', 'Custom Range');
+  expect(rangeDates(expensesRoot())).toMatchObject({
+    from: '2026-10-01',
+    to: '2026-10-30',
+  });
+
+  await comeBackOn('2026-11-02');
+
+  expect(periodName(expensesRoot())).toBe('Custom Range');
+  expect(rangeDates(expensesRoot())).toMatchObject({
+    from: '2026-10-01',
+    to: '2026-10-30',
+  });
+});
+
+test('[LEDGER-146.1] leaves the period at midnight while the app stays in front, and moves it when the app next comes back', async () => {
+  await startExpenses('Asia/Taipei', '2026-10-31T04:00:00Z');
+  await expectPeriod(expensesRoot, 'October 2026');
+
+  // Midnight passes with the app in front.
+  setPhoneClock('Asia/Taipei', '2026-11-01T04:00:00Z');
+  await openFilters('Expenses');
+  expect(dateRow()).toBe('Date, Last Month');
+  await closeFilters();
+  expect(periodName(expensesRoot())).toBe('October 2026');
+
+  await leaveAndComeBack();
+
+  await expectPeriod(expensesRoot, 'November 2026');
+});
 
 test("[GROUPS-61.4] lists only the group's expenses dated in the period", async () => {
   await startWithGroups(BRISBANE);

@@ -3007,3 +3007,71 @@ WHERE iPhone 或 Android 手機，WHILE 一個畫面可列的支出有 2,000 筆
 
 - **WHEN** 一個群組有 2,000 筆支出，打開它的畫面
 - **THEN** 1 秒內顯示最新的那幾張卡片；捲到最下面時和支出清單一樣
+
+### Requirement: LEDGER-146.1 回到 app 時，開在這個月或今年的清單跟著日曆換
+
+WHEN app 從背景回到前景，而支出清單或群組的畫面的期間是某個月，這個月份在期間換成它的那一刻是當時的這個月，今天卻已經在另一個月，the mobile app SHALL 把那個畫面的期間換成今天所在的月份，期間列、總額和卡片都照新的期間顯示，不在眼前的畫面也一樣；期間是某一年，它在期間換成它的那一刻是當時的今年、今天卻已經在另一年時，SHALL 一樣換成今天所在的年份。「期間換成它的那一刻」包括 app 啟動時支出清單開在這個月（LEDGER-107.1）。期間是使用者換到的其他月份或年份時，SHALL 不變；自訂範圍的 From 和 To 也不變（LEDGER-112.1）；期間是最近三個月時，回到前景之後 SHALL 照新的今天顯示（LEDGER-107.1）。app 留在前景時跨過午夜，畫面上的期間 SHALL 不變，到下一次從背景回到前景才換。
+
+#### Scenario: 隔了一個月回來
+
+- **WHEN** 今天是 `2026-10-30`，開啟 app，支出清單是 October 2026；把 app 留在背景，`2026-11-02` 回到 app
+- **THEN** 支出清單的期間是 November 2026，「Next period」停用，10 月的卡片不在清單上；Filters 裡是「Date, This Month」
+
+#### Scenario: 同一個月裡回來
+
+- **WHEN** 今天是 `2026-10-30`，支出清單是 October 2026；把 app 留在背景，`2026-10-31` 回到 app
+- **THEN** 期間仍是 October 2026
+
+#### Scenario: 看著別的月份
+
+- **WHEN** 今天是 `2026-10-30`，按「Previous period」把支出清單換成 September 2026；把 app 留在背景，`2026-10-31` 回到 app，再留在背景，`2026-11-02` 回到 app
+- **THEN** 兩次回來，期間都仍是 September 2026
+
+#### Scenario: 換回這個月之後
+
+- **WHEN** 今天是 `2026-10-30`，按「Previous period」再按「Next period」，支出清單又是 October 2026；把 app 留在背景，`2026-11-02` 回到 app
+- **THEN** 期間是 November 2026
+
+#### Scenario: 今年
+
+- **WHEN** 今天是 `2026-12-31`，把支出清單的期間換成今年；把 app 留在背景，`2027-01-02` 回到 app
+- **THEN** 期間是 2027，「Next period」停用
+
+#### Scenario: 群組的畫面
+
+- **WHEN** 今天是 `2026-10-30`，在 Brisbane 的畫面把期間換成這個月；把 app 留在背景，`2026-11-02` 回到 app
+- **THEN** Brisbane 的畫面的期間是 November 2026；Expenses 分頁的支出清單也是 November 2026；另一個期間是「Group Total」的群組畫面仍是「Group Total」
+
+#### Scenario: 最近三個月
+
+- **WHEN** 今天是 `2026-10-30`，支出清單的期間是最近三個月；把 app 留在背景，`2026-11-02` 回到 app
+- **THEN** 期間列是「Sep – Nov 2026」
+
+#### Scenario: 自訂範圍
+
+- **WHEN** 今天是 `2026-10-30`，支出清單的期間是自訂範圍，From 是 `2026-10-01`、To 是 `2026-10-30`；把 app 留在背景，`2026-11-02` 回到 app
+- **THEN** 期間仍是「Custom Range」，From 和 To 仍是「Oct 1, 2026」和「Oct 30, 2026」
+
+#### Scenario: 使用中跨過午夜
+
+- **WHEN** 今天是 `2026-10-31`，支出清單是 October 2026；app 一直留在前景，手機的日期變成 `2026-11-01`，打開 Filters 再關掉；之後把 app 留在背景再回來
+- **THEN** 留在前景時期間仍是 October 2026，Filters 裡是「Date, Last Month」；從背景回來之後期間是 November 2026
+
+### Requirement: LEDGER-147.1 (e2e) 期間換了而看不到期間列時，清單回到最上面
+
+WHEN 支出清單或群組的畫面的期間換了，或它的自訂範圍的 From 或 To 換了，而那個畫面的期間列已經整個被捲出畫面，the mobile app SHALL 把那個畫面的清單捲回最上面，和剛打開這個畫面時一樣：看得到期間列、清單上方的總額和最上面的卡片。IF 期間換的時候期間列還在畫面上，THEN the mobile app SHALL 不捲動清單：按「Previous period」或「Next period」、在期間列或總額上左右滑動（LEDGER-114.1）、用期間的選單（LEDGER-110.1）或按「Show …」（LEDGER-116.1）換期間時，期間列留在原來的位置，在同一個位置連按兩次「Previous period」，兩次都按得到。
+
+#### Scenario: 稍微捲過之後連按箭頭
+
+- **WHEN** 這個月、上個月和再前一個月各有比畫面長的支出；在支出清單往下捲一小段，期間列還在畫面上，在同一個位置連按兩次「Previous period」
+- **THEN** 兩次都按到，期間是再前一個月
+
+#### Scenario: 捲下去之後在 Filters 換期間
+
+- **WHEN** 接著往下捲到看不到期間列，按「Filters」，在 Date 選「Last Month」，再按「Done」
+- **THEN** 清單回到最上面，看得到期間列「<上個月>」和清單上方的總額
+
+#### Scenario: 群組的畫面
+
+- **WHEN** Brisbane 這個月和上個月各有比畫面長的支出；打開 Brisbane 的畫面，往下捲到看不到期間列，按「Filters」，在 Date 選「This Month」，再按「Done」
+- **THEN** 清單回到最上面，看得到期間列「<這個月>」和總額
