@@ -980,6 +980,34 @@ test('[INSIGHTS-52.1] shows a zero amount and 0 expenses, and nothing else, once
   expect(rows()).toEqual([['Transportation', '$2.00 · 100.0%']]);
 });
 
+test("[INSIGHTS-47.1] [INSIGHTS-52.1] keeps the month on a category's expenses once the month holds no expense, and goes back to Insights on the latest month that holds one", async () => {
+  await insightsAt(
+    '',
+    ['2026-09-15', '2.00', 'Bus', 'Transportation'],
+    ['2026-10-29', '8.75', 'Coffee run'],
+  );
+  await expectPeriod('October 2026');
+  await openCategory(FOOD);
+  await openCardDetails(FOOD, 'Coffee run');
+
+  await chooseExpenseAction('Expenses', 'Delete');
+
+  // The category's expenses keep the month they were opened on (INSIGHTS-52.1) ...
+  await waitFor(() =>
+    expect(categoryLines(FOOD)).toEqual([
+      'October 2026',
+      '$0.00',
+      '0 expenses',
+    ]),
+  );
+
+  await goBackFromCategory(FOOD);
+
+  // ... and Insights, under them, is on the month INSIGHTS-40.1 selects.
+  await expectPeriod('September 2026');
+  expect(rows()).toEqual([['Transportation', '$2.00 · 100.0%']]);
+});
+
 // Reading fails
 
 test("[SHELL-60.1] shows only the read error on a category's expenses that cannot read the local data, under the category's name", async () => {

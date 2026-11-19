@@ -1064,7 +1064,7 @@ WHEN 使用者在月份或年份模式選「Custom」，the mobile app SHALL 換
 
 ### Requirement: INSIGHTS-47.1 按類別那一列打開類別的支出
 
-WHEN 使用者在個人、群組或封存群組的 Insights 按一個類別那一列，the mobile app SHALL 在 Insights 所在的分頁、Insights 的上面推入這個類別的支出，標題是那一列的類別名稱，分頁列仍選中同一個分頁；連按兩次也只推入一個。返回或按 Android 的返回鍵就回到 Insights，它的模式、選中的期間、From 和 To 都和按之前一樣。
+WHEN 使用者在個人、群組或封存群組的 Insights 按一個類別那一列，the mobile app SHALL 在 Insights 所在的分頁、Insights 的上面推入這個類別的支出，標題是那一列的類別名稱，分頁列仍選中同一個分頁；連按兩次也只推入一個。返回或按 Android 的返回鍵就回到 Insights，它的模式、選中的期間、From 和 To 都和按之前一樣；這之間支出改變了時，Insights 照改變之後的支出顯示：月份或年份模式選中的期間不再是期間時照 INSIGHTS-40.1 改選，自訂模式的 From 和 To 不變（INSIGHTS-46.1）。
 
 #### Scenario: 個人的 Insights
 
@@ -1095,6 +1095,11 @@ WHEN 使用者在個人、群組或封存群組的 Insights 按一個類別那�
 
 - **WHEN** From 是 `2025-01-01`、To 是 `2025-01-31` 時按 Food & Dining 那一列，再返回
 - **THEN** 仍標出 Custom，From 和 To 仍是這兩個日期
+
+#### Scenario: 選中的月份在這之間沒有支出了
+
+- **WHEN** 有 `2026-09-15` Transportation 的「Bus」和 `2026-10-29` Food & Dining 的「Coffee run」，選中 October 2026 時按 Food & Dining 那一列，從 Coffee run 的明細把它移到垃圾桶，再返回
+- **THEN** 返回之前，類別的支出最上面仍是「October 2026」、「$0.00」和「0 expenses」（INSIGHTS-52.1）；回到 Insights 時選中的期間是「September 2026」，只有 Transportation 那一列
 
 ### Requirement: INSIGHTS-48.1 類別的支出最上面的期間、金額和筆數
 
