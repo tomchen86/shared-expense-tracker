@@ -66,6 +66,13 @@ let directory: string;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // What a test has these two return would stay for the tests after it: clearAllMocks keeps
+  // it, and restoreAllMocks puts back only what jest.spyOn replaced.
+  const domain = jest.requireActual<typeof import('@shared-expense/domain')>(
+    '@shared-expense/domain',
+  );
+  jest.mocked(buildInsights).mockImplementation(domain.buildInsights);
+  jest.mocked(buildRangeInsights).mockImplementation(domain.buildRangeInsights);
   directory = fs.mkdtempSync(path.join(os.tmpdir(), 'insights-overflow-'));
   const file = path.join(directory, 'app.db');
   mockOpen = async () => phoneDatabaseWithReads(file);
