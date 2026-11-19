@@ -358,7 +358,9 @@ function PeriodListBody({
     onSelect: (key) =>
       key === 'previous' ? steps?.previous() : steps?.next?.(),
   });
-  // Whatever the period, a sideways drag is no press on the total or the name.
+  // Whatever the period, a sideways drag is no press on the total or the name. The swipe sees to
+  // that where there is one; where there is none, the top of the list takes the drag itself. Not
+  // both: on Android, taking the drag here can cancel the swipe that has just begun.
   const dragIsNoPress = useSidewaysDragIsNoPress();
 
   // The dates of a custom range take their place at once. What is under them starts where it
@@ -410,7 +412,11 @@ function PeriodListBody({
       {top}
       {total && (
         <GestureDetector gesture={swipe.pan}>
-          <View collapsable={false} style={styles.overview} {...dragIsNoPress}>
+          <View
+            collapsable={false}
+            style={styles.overview}
+            {...(steps ? {} : dragIsNoPress)}
+          >
             {/* As wide as the list, so the arrows stay under the finger from month to month. */}
             <GlassSurface style={styles.capsule}>
               {steps &&
