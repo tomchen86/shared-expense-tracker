@@ -28,6 +28,7 @@ import {
 } from './group-details-app';
 import {
   APP_SCHEME_LINK,
+  NOT_INVITE_LINKS,
   OTHER_SPELLINGS,
   SECOND_LINK,
   TITLE,
@@ -215,3 +216,12 @@ test('[SHARING-74.1] selects Groups, without Invite Link, when shared-expense-tr
   await waitFor(() => expect(selectedTab()).toBe('Groups'));
   expect(inviteLinksOpen()).toBe(0);
 });
+
+test.each(NOT_INVITE_LINKS)(
+  '[SHARING-74.1] does not open Invite Link when %s, which is not an invite link, starts the app on Android',
+  async (link) => {
+    await startAppFromLink(link);
+
+    expect(inviteLinksOpen()).toBe(0);
+  },
+);

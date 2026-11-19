@@ -720,7 +720,7 @@ IF Invite Link 開著時系統又交來一條邀請連結，THEN the mobile app 
 
 ### Requirement: SHARING-74.1 不是邀請連結的連結不打開 Invite Link
 
-IF 系統交來的連結是 `shared-expense-tracker://` 開頭、卻不是 `shared-expense-tracker://i/` 開頭，THEN the mobile app SHALL 不打開 Invite Link，照連結的路徑打開畫面。
+IF 系統交來的連結是 `shared-expense-tracker://` 開頭、卻不是 `shared-expense-tracker://i/` 開頭，THEN the mobile app SHALL 不打開 Invite Link，照連結的路徑打開畫面；沒有哪一個路徑會打開 Invite Link。
 
 #### Scenario: 路徑以 i 開頭的畫面
 
@@ -736,6 +736,16 @@ IF 系統交來的連結是 `shared-expense-tracker://` 開頭、卻不是 `shar
 
 - **WHEN** 系統用 `shared-expense-tracker://groups` 啟動 app
 - **THEN** 分頁列選中 Groups，沒有打開 Invite Link
+
+#### Scenario: `://` 後面多一個斜線
+
+- **WHEN** 邀請連結打開過 Invite Link、使用者把它關閉之後，系統交來 `shared-expense-tracker:///i/3q2-7wEjRWeJq83vEjRWeA#AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8`、`shared-expense-tracker:///i/invite` 或 `shared-expense-tracker:///i/invite?link=hello`
+- **THEN** 沒有打開 Invite Link
+
+#### Scenario: 用多一個斜線的連結啟動 app
+
+- **WHEN** 系統用上面三條連結的任何一條啟動 app
+- **THEN** 沒有打開 Invite Link
 
 ### Requirement: SHARING-75.1 (manual) 在不會自動打開 app 的瀏覽器裡，「Open in App」打開 app
 
