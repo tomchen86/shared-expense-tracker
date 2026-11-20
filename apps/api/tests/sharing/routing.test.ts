@@ -1,8 +1,12 @@
 import { DEVICES_PATH } from '@shared-expense/domain/api';
+import { Hono } from 'hono';
+import type { AppEnv } from '../../src/app';
 import { runMigrations } from '../../src/database/migrate';
 import { migrations } from '../../src/migrations';
 import { startServer, type NodeServer } from '../../src/node';
+import { signedRequests } from '../../src/sharing/signed-requests';
 import {
+  BODY_LIMIT,
   newPhone,
   registrationBy,
   signedBy,
@@ -60,12 +64,12 @@ describe('the public route', () => {
 
     const get = await sendRaw(server.url, {
       method: 'GET',
-      target: '/health',
+      path: '/health',
       headers: {},
     });
     const head = await sendRaw(server.url, {
       method: 'HEAD',
-      target: '/health',
+      path: '/health',
       headers: {},
     });
     const signedHead = await sendTo(
@@ -94,6 +98,66 @@ describe('the method a signature covers', () => {
     expect(head.status).toBe(404);
     expect(getSentAsHead.status).toBe(401);
     expect((await sendTo(server.url, asGet)).status).toBe(404);
+  });
+});
+
+describe('the body covered by a signature', () => {
+  test.each(['GET', 'HEAD'])(
+    'counts a chunked %s body on Node',
+    async (method) => {
+      const request = signed(newPhone(), {
+        method,
+        body: new Uint8Array(BODY_LIMIT + 1),
+      });
+      const answer = await sendRaw(server.url, request, { sent: request.body });
+
+      expect(answer).toEqual({
+        status: 413,
+        body: method === 'HEAD' ? '' : { error: 'too-large' },
+      });
+    },
+  );
+
+  test('checks a timestamp outside the safe integer range before reading even a small body', async () => {
+    const request = signed(newPhone(), {
+      method: 'POST',
+      timestampText: '9007199254740992',
+    });
+    const answer = await sendRaw(server.url, request, { declaredLength: 1 });
+
+    expect(answer).toEqual(SIGNATURE);
+  });
+
+  test('is still readable by the route after verification', async () => {
+    const phone = await registered();
+    const content = { note: '晚餐' };
+    const request = signed(phone, {
+      method: 'POST',
+      path: '/echo',
+      body: JSON.stringify(content),
+    });
+    const routes = new Hono<AppEnv>()
+      .use(signedRequests)
+      .post('/echo', async (c) => c.json(await c.req.json()));
+
+    const answer = await routes.request(
+      request.path,
+      {
+        method: request.method,
+        headers: request.headers,
+        body: request.body,
+      },
+      {
+        sql: database.sql,
+        now: () => NOW,
+        ipHashKey: undefined,
+        clientIp: undefined,
+        appLinks: {},
+      },
+    );
+
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual(content);
   });
 });
 
@@ -206,7 +270,7 @@ describe('the path a signature covers', () => {
     // request for the path that was signed.
     const resolved = await sendRaw(server.url, {
       method: 'GET',
-      target: '/x/../no-such-route',
+      path: '/x/../no-such-route',
       headers: request.headers,
     });
 
@@ -224,7 +288,7 @@ describe('the path a signature covers', () => {
 
     const answer = await sendRaw(server.url, {
       method: 'GET',
-      target,
+      path: target,
       headers: request.headers,
     });
 
@@ -242,7 +306,7 @@ describe('a field sent twice', () => {
 
       const answer = await sendRaw(server.url, {
         method: 'GET',
-        target: request.path,
+        path: request.path,
         headers: {
           ...request.headers,
           [name]: [request.headers[name], request.headers[name]],

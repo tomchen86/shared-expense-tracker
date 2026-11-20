@@ -5,6 +5,7 @@ import { isHealthResponse } from '@shared-expense/domain/api';
 import { runMigrations } from '../src/database/migrate';
 import { migrations } from '../src/migrations';
 import {
+  BODY_LIMIT,
   newPhone,
   registrationBy,
   signedBy,
@@ -12,7 +13,7 @@ import {
 } from './acceptance/sharing-api';
 import { runCommand, startServerCommand } from './support/command';
 import { useTestDatabase } from './support/database';
-import { sendTo } from './support/signed';
+import { sendRaw, sendTo } from './support/signed';
 
 const COMMAND_TIMEOUT_MS = 120_000;
 
@@ -46,6 +47,28 @@ async function expectSignedRequestsPass(url: string) {
     status: 401,
     body: { error: 'replayed' },
   });
+}
+
+async function expectOversizedBodyRefused(
+  url: string,
+  runtime: 'Node' | 'wrangler dev',
+) {
+  const request = signedBy(newPhone(), {
+    method: 'POST',
+    body: new Uint8Array(BODY_LIMIT + 1),
+    timestampMs: Date.now(),
+  });
+  const tooLarge = { status: 413, body: { error: 'too-large' } };
+
+  // Wrangler delivers the declared-length response to the client only after the upload ends.
+  const declared = await sendRaw(url, request, {
+    declaredLength: request.body.length,
+    ...(runtime === 'wrangler dev' ? { sent: request.body, ended: true } : {}),
+  });
+  expect(declared).toEqual(tooLarge);
+
+  const chunked = await sendRaw(url, request, { sent: request.body });
+  expect(chunked).toEqual(tooLarge);
 }
 
 /**
@@ -160,6 +183,7 @@ test(
     });
     try {
       await expectSignedRequestsPass(withKey.url);
+      await expectOversizedBodyRefused(withKey.url, 'Node');
       await expectLowOrderKeysRefused(withKey.url);
       await expectInviteLinkRoutesPublic(withKey.url);
     } finally {
@@ -264,6 +288,7 @@ test(
       );
       try {
         await expectSignedRequestsPass(workers.url);
+        await expectOversizedBodyRefused(workers.url, 'wrangler dev');
         await expectLowOrderKeysRefused(workers.url);
         await expectInviteLinkRoutesPublic(workers.url);
       } finally {

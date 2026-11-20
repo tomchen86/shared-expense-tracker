@@ -103,6 +103,14 @@ function isTime(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
 
+export function isDeviceId(value: unknown): value is string {
+  return typeof value === 'string' && DEVICE_ID.test(value);
+}
+
+export function isRequestNonce(value: unknown): value is string {
+  return typeof value === 'string' && NONCE.test(value);
+}
+
 function hexOf(bytes: Uint8Array): string {
   let text = '';
   for (let index = 0; index < bytes.length; index += 1) {
@@ -138,13 +146,13 @@ export function signedRequestBytes(input: {
   if (!(bodyHash instanceof Uint8Array) || bodyHash.length !== HASH_LENGTH) {
     throw new Error('The body hash is not 32 bytes');
   }
-  if (typeof deviceId !== 'string' || !DEVICE_ID.test(deviceId)) {
+  if (!isDeviceId(deviceId)) {
     throw new Error('The device ID is not a lowercase version-4 UUID');
   }
   if (!isTime(timestampMs)) {
     throw new Error('The request time is not a whole number of milliseconds');
   }
-  if (typeof nonce !== 'string' || !NONCE.test(nonce)) {
+  if (!isRequestNonce(nonce)) {
     throw new Error('The nonce is not 32 lowercase hexadecimal characters');
   }
   // Every field above is ASCII with no line feed in it, so each is one line and each
@@ -210,11 +218,7 @@ export function isRegisterDeviceRequest(
 export function isRegisterDeviceResponse(
   value: unknown,
 ): value is RegisterDeviceResponse {
-  return (
-    hasExactly(value, ['deviceId']) &&
-    typeof value.deviceId === 'string' &&
-    DEVICE_ID.test(value.deviceId)
-  );
+  return hasExactly(value, ['deviceId']) && isDeviceId(value.deviceId);
 }
 
 /** Whether `value` is exactly the body of a refusal. */
@@ -230,6 +234,7 @@ export function isRefusal(value: unknown): value is Refusal {
     (value.error === 'signature' ||
       value.error === 'replayed' ||
       value.error === 'request' ||
+      value.error === 'too-large' ||
       value.error === 'too-many-registrations')
   );
 }

@@ -1,5 +1,5 @@
 import { request as httpRequest } from 'node:http';
-import type { SentRequest } from '../acceptance/sharing-api';
+import type { Sending, SentRequest } from '../acceptance/sharing-api';
 
 export interface SignedAnswer {
   status: number;
@@ -30,39 +30,57 @@ export async function sendTo(
 
 /**
  * Sends a request with its target and headers exactly as given, which `fetch` would tidy
- * first: `target` goes on the request line as it is, and a header given several values is
- * sent once for each.
+ * first: `path` goes on the request line as it is, and a header given several values is
+ * sent once for each. An unfinished request gets five seconds to receive its response.
  */
 export function sendRaw(
   url: string,
   request: {
     method: string;
-    target: string;
+    path: string;
     headers: Record<string, string | string[]>;
   },
+  sending?: Sending,
 ): Promise<SignedAnswer> {
   const { hostname, port } = new URL(url);
+  const { declaredLength, sent, ended } = sending ?? { ended: true };
+  const headers = { ...request.headers };
+  if (declaredLength !== undefined) {
+    headers['Content-Length'] = String(declaredLength);
+  } else if (sending) {
+    headers['Transfer-Encoding'] = 'chunked';
+  }
   return new Promise((resolve, reject) => {
     const outgoing = httpRequest(
       {
         hostname,
         port,
         method: request.method,
-        path: request.target,
-        headers: request.headers,
+        path: request.path,
+        headers,
+        agent: false,
+        signal: ended ? undefined : AbortSignal.timeout(5_000),
       },
       (response) => {
         const chunks: Buffer[] = [];
         response.on('data', (chunk: Buffer) => chunks.push(chunk));
-        response.on('end', () =>
+        response.on('end', () => {
           resolve(
             parsed(response.statusCode ?? 0, Buffer.concat(chunks).toString()),
-          ),
-        );
+          );
+          outgoing.destroy();
+        });
         response.on('error', reject);
       },
     );
     outgoing.on('error', reject);
-    outgoing.end();
+    if (sent) {
+      const piece = 65_536;
+      for (let start = 0; start < sent.length; start += piece) {
+        outgoing.write(sent.subarray(start, start + piece));
+      }
+    }
+    if (ended) outgoing.end();
+    else outgoing.flushHeaders();
   });
 }

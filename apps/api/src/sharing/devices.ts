@@ -44,7 +44,7 @@ export interface VerifiedRequest {
 
 /**
  * Runs the checks that depend on what the API accepted before, in the order of
- * SHARING-31.1: replay, the device's limit, and for a new device its IP's limit. When
+ * SHARING-31.2: replay, the device's limit, and for a new device its IP's limit. When
  * the request passes, records it, and registers its device when that is new.
  *
  * Requests of one device take turns on a lock, and so do the new devices of one IP, so
