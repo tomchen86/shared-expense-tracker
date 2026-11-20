@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { Pressable, View } from 'react-native';
 import {
   FilterChip,
   Icon,
@@ -16,11 +17,7 @@ import {
 import arrowDropDown from './arrow_drop_down.xml';
 import { capsuleName, type CapsuleProps } from './capsule';
 import type { AmountCapsuleProps, CapsuleMenuProps } from './filter-capsules';
-import {
-  MaterialHost,
-  MaterialLabel,
-  useTextWithCaretAtEnd,
-} from './material.android';
+import { MaterialHost, useTextWithCaretAtEnd } from './material.android';
 import { MaterialMenu } from './material-menu.android';
 
 export function CapsuleButton({
@@ -34,29 +31,31 @@ export function CapsuleButton({
   const checked = selected ?? Boolean(value);
   const name = capsuleName({ label, value });
   return (
-    <MaterialHost matchContents>
-      <FilterChip
-        selected={checked}
-        modifiers={[semantics({ contentDescription: name })]}
-        onClick={onPress}
-      >
-        <FilterChip.Label>
-          <MaterialLabel
-            accessibilityLabel={name}
-            accessibilityState={{ checked }}
-            color={checked ? 'onSecondaryContainer' : 'onSurface'}
-          >
-            {text || value || label}
-          </MaterialLabel>
-        </FilterChip.Label>
-        {selected === undefined && (
-          <FilterChip.TrailingIcon>
-            <Icon source={arrowDropDown} size={18} />
-          </FilterChip.TrailingIcon>
-        )}
-      </FilterChip>
-      {children}
-    </MaterialHost>
+    // The scroll view clips this native accessibility target to the visible part of the chip.
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityLabel={name}
+      accessibilityState={{ checked }}
+      onPress={onPress}
+    >
+      <View importantForAccessibility="no-hide-descendants">
+        <MaterialHost matchContents>
+          <FilterChip selected={checked} onClick={onPress}>
+            <FilterChip.Label>
+              <Text style={{ typography: 'labelLarge' }} maxLines={1}>
+                {text || value || label}
+              </Text>
+            </FilterChip.Label>
+            {selected === undefined && (
+              <FilterChip.TrailingIcon>
+                <Icon source={arrowDropDown} size={18} />
+              </FilterChip.TrailingIcon>
+            )}
+          </FilterChip>
+          {children}
+        </MaterialHost>
+      </View>
+    </Pressable>
   );
 }
 

@@ -35,7 +35,7 @@ export function MaterialMenu({
     <View style={styles.anchor}>
       {children(() => setOpen(true))}
       {open && (
-        <MaterialHost style={StyleSheet.absoluteFill} pointerEvents="none">
+        <MaterialHost style={StyleSheet.absoluteFill}>
           <Box modifiers={[fillMaxSize()]}>
             <DropdownMenuPopup expanded onDismissRequest={close}>
               <DropdownMenuGroup>
@@ -63,7 +63,9 @@ export function MaterialMenu({
                         <MaterialLabel
                           menu
                           color={checked ? 'onTertiaryContainer' : 'onSurface'}
+                          accessibilityRole={multiple ? 'checkbox' : 'radio'}
                           accessibilityState={{ checked }}
+                          onPress={choose}
                         >
                           {name}
                         </MaterialLabel>

@@ -2,6 +2,7 @@ import { Button, View } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import {
   AlertDialog,
+  Text,
   TextButton,
   TextField,
   type TextFieldProps,
@@ -47,14 +48,23 @@ test('focuses the suggested name at its end on each opening and preserves a move
     components(TextButton).map((button) => button.view?.props.enabled),
   ).toEqual([true, false]);
   expect(screen.getByText('Save')).toBeDisabled();
+  await fireEvent.press(screen.getByText('Save'));
+  expect(save).not.toHaveBeenCalled();
   await fireEvent(components(AlertDialog)[0].view!, 'dismissRequest');
   expect(save).not.toHaveBeenCalled();
   await open();
   expect(field().value?.value).toBe(suggestion);
   expect(field().selection?.value).toEqual(end);
+  field().value!.set('Min');
   await fireEvent(components(TextField)[0].view!, 'valueChange', {
-    nativeEvent: { text: 'Mine' },
+    nativeEvent: { text: 'Min' },
   });
-  await fireEvent(screen.getByText('Save'), 'buttonPressed');
+  // The last edit may reach Compose just before the press reaches JS.
+  field().value!.set('Mine');
+  const saveLabel = components(Text).find(
+    (text) => text.props.children === 'Save',
+  );
+  await fireEvent(saveLabel!.view!, 'buttonPressed');
   expect(save).toHaveBeenCalledWith('Mine');
+  expect(screen.queryByText('Save Filter')).toBeNull();
 });

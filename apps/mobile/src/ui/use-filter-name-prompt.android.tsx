@@ -41,8 +41,11 @@ function FilterNameDialog({
   onSave: (name: string) => void;
 }) {
   const field = useTextWithCaretAtEnd(suggestion);
-  const [name, setName] = useState(suggestion);
-  const canSave = !!name.trim();
+  const [canSave, setCanSave] = useState(!!suggestion.trim());
+  function save() {
+    const name = field.value.get();
+    if (name.trim()) onSave(name);
+  }
   return (
     <MaterialHost style={StyleSheet.absoluteFill} pointerEvents="none">
       <AlertDialog onDismissRequest={onClose}>
@@ -54,7 +57,7 @@ function FilterNameDialog({
             {...field}
             autoFocus
             singleLine
-            onValueChange={setName}
+            onValueChange={(text) => setCanSave(!!text.trim())}
             modifiers={[
               fillMaxWidth(),
               semantics({ contentDescription: 'Filter name' }),
@@ -73,15 +76,21 @@ function FilterNameDialog({
         <AlertDialog.ConfirmButton>
           <TextButton
             enabled={canSave}
-            onClick={() => onSave(name)}
+            onClick={save}
             modifiers={[semantics({ contentDescription: 'Save' })]}
           >
-            <MaterialLabel
-              accessibilityState={{ disabled: !canSave }}
-              color={canSave ? 'primary' : 'onSurface'}
-            >
-              Save
-            </MaterialLabel>
+            {canSave ? (
+              <Text style={{ typography: 'labelLarge' }}>Save</Text>
+            ) : (
+              // Expose the disabled state on the named text, as well as on the button.
+              <MaterialLabel
+                accessibilityRole="button"
+                accessibilityState={{ disabled: true }}
+                color="onSurface"
+              >
+                Save
+              </MaterialLabel>
+            )}
           </TextButton>
         </AlertDialog.ConfirmButton>
       </AlertDialog>

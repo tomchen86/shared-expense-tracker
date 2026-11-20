@@ -45,20 +45,21 @@ export function MaterialHost(props: HostProps) {
 }
 
 /**
- * Compose publishes a Material surface's checked/enabled state and its text as separate
- * accessibility nodes. The visible Android text carries that state too. It doesn't take
- * focus or handle presses, so the Material surface owns the whole touch target.
+ * The visible text carries the Material surface's checked or enabled state. In a menu
+ * popup RNHostView receives the taps on that text, so the label also selects the item.
  */
 export function MaterialLabel({
   children,
-  accessibilityLabel,
+  accessibilityRole,
   accessibilityState,
   color,
   menu,
-}: Pick<TextProps, 'accessibilityLabel' | 'accessibilityState'> & {
+  onPress,
+}: Pick<TextProps, 'accessibilityRole' | 'accessibilityState'> & {
   children: string;
   color: keyof MaterialColors;
   menu?: boolean;
+  onPress?: () => void;
 }) {
   const palette = useMaterialColors();
   return (
@@ -66,8 +67,10 @@ export function MaterialLabel({
       <Text
         accessible={false}
         importantForAccessibility="yes"
-        accessibilityLabel={accessibilityLabel}
+        accessibilityRole={accessibilityRole}
         accessibilityState={accessibilityState}
+        onPress={onPress}
+        disabled={accessibilityState?.disabled}
         numberOfLines={menu ? undefined : 1}
         style={[
           menu ? styles.bodyLarge : styles.labelLarge,

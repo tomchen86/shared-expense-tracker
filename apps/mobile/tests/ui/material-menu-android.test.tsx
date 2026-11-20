@@ -25,7 +25,7 @@ test('keeps a multiple-choice menu open while the named option is checked and un
   await render(<Menu multiple />);
   await open();
   expect(option().props.accessibilityState.checked).toBe(false);
-  await fireEvent(option(), 'itemPressed');
+  await fireEvent.press(option());
   expect(option().props.accessibilityState.checked).toBe(true);
   await fireEvent(option(), 'itemPressed');
   expect(option().props.accessibilityState.checked).toBe(false);
@@ -36,7 +36,7 @@ test('keeps a multiple-choice menu open while the named option is checked and un
 test('closes a single-choice menu and shows the checked option when reopened', async () => {
   await render(<Menu multiple={false} />);
   await open();
-  await fireEvent(option(), 'itemPressed');
+  await fireEvent.press(option());
   expect(screen.queryByText('Shopping')).toBeNull();
   await open();
   expect(option().props.accessibilityState.checked).toBe(true);

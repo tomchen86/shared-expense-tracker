@@ -1,5 +1,5 @@
 import { memo, useCallback, useRef, useState } from 'react';
-import { BackHandler } from 'react-native';
+import { BackHandler, Keyboard } from 'react-native';
 import { Stack, useFocusEffect } from 'expo-router';
 import type { SearchBarCommands } from 'react-native-screens';
 import type { HeaderSearchProps } from './header-search';
@@ -13,12 +13,19 @@ export const HeaderSearch = memo(function HeaderSearch({
   useFocusEffect(
     useCallback(() => {
       if (!open) return;
-      // The IME consumes Back while open. The next Back clears the query and iconifies in one command.
+      // A focused SearchAutoComplete consumes Back before React Native, even with the IME hidden.
+      const hide = Keyboard.addListener('keyboardDidHide', () => {
+        field.current?.blur();
+      });
       const back = BackHandler.addEventListener('hardwareBackPress', () => {
-        field.current?.cancelSearch();
+        if (!field.current) return false;
+        field.current.cancelSearch();
         return true;
       });
-      return () => back.remove();
+      return () => {
+        hide.remove();
+        back.remove();
+      };
     }, [open]),
   );
   return (
