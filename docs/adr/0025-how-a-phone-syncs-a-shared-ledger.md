@@ -35,7 +35,7 @@ Encryption:
 One sync of one shared ledger:
 
 - It downloads until the API says no events follow, then uploads. A ledger has one sync at a time; a change saved while one runs is followed by one more.
-- A sync starts when the app starts, when it comes back from the background, and after a change to that ledger has been saved. Nothing else starts one, and nothing repeats one: a sync that cannot go on ends, and the next start carries on from the local data.
+- A sync starts when the app starts, when it comes back from the background, and after the phone has saved an unsent event of that ledger, whatever wrote it. Nothing else starts one, and nothing repeats one: a sync that cannot go on ends, and the next start carries on from the local data.
 - A page is what `packages/domain` accepts as a page (ADR-0024) and starts right after the cursor. Anything else is not applied, and the sync ends without uploading.
 - Applying a page and moving the cursor are one transaction (ADR-0016), so a phone stopped in between has done neither.
 - An event the phone has the key for and still cannot decrypt, or whose plaintext is not JSON, is judged as empty content: refused for its structure, recorded, and passed.
