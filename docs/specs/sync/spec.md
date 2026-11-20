@@ -1467,8 +1467,8 @@ WHEN 上傳的請求裡有這個群組已經有的事件 ID，the API SHALL 不�
 
 #### Scenario: 同時送到
 
-- **WHEN** 上傳事件 A 的五個請求同時送到
-- **THEN** 五個都回答序號 1；Brisbane 只有一個 A，下一個事件的序號是 2
+- **WHEN** Taylor 和 Casey 的手機都是 Brisbane 的成員手機，各把請求送到自己的一個 API，兩個 API 連同一個真的 PostgreSQL；連續 20 輪，每一輪兩支手機同時上傳同一個新的事件 ID，內容各不相同
+- **THEN** 每一輪的兩個請求都得到同一個序號，第 n 輪是 n；Brisbane 每一輪只多一個事件，它的內容和上傳的裝置 ID 出自同一支手機
 
 #### Scenario: 別的群組的事件 ID
 
