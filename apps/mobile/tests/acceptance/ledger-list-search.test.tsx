@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { ActionSheetIOS } from 'react-native';
+import { ActionSheetIOS, Platform } from 'react-native';
 import { within } from '@testing-library/react-native';
 import {
   addExpense,
@@ -197,6 +197,15 @@ test('[SHELL-73.1] [LEDGER-125.1] puts the system search field in the bar of the
   expect(field).toBeDefined();
   expect(field?.props.placeholder).toBe('Search');
   expect(field?.props.placement).toBe('integratedButton');
+});
+
+test('[SHELL-73.1] leaves the place of the search field to the system before iOS 26', async () => {
+  jest.spyOn(Platform, 'Version', 'get').mockReturnValue('18.5');
+  await startExpenses();
+
+  const field = searchField('Expenses');
+  expect(field?.props.placeholder).toBe('Search');
+  expect(field?.props.placement).toBe('automatic');
 });
 
 test('[SHELL-73.1] puts no search field in the bars of Settings and of the details of an expense', async () => {
