@@ -297,7 +297,7 @@ describe('SHARING-33.1', () => {
   });
 });
 
-describe('SHARING-34.1', () => {
+describe('SHARING-34.2', () => {
   const BODY = '{"note":"晚餐"}';
   const signedPost = (phone: Phone) =>
     signedBy(phone, {
@@ -319,7 +319,7 @@ describe('SHARING-34.1', () => {
     expectPassed(await send(request));
   }
 
-  test('[SHARING-34.1] passes a request that arrives as it was signed, with a query and a body', async () => {
+  test('[SHARING-34.2] passes a request that arrives as it was signed, with a query and a body', async () => {
     const taylor = await registered(TAYLOR);
 
     expectPassed(await send(signedPost(taylor)));
@@ -335,7 +335,7 @@ describe('SHARING-34.1', () => {
     );
   });
 
-  test('[SHARING-34.1] refuses a request whose method, path or query was changed', async () => {
+  test('[SHARING-34.2] refuses a request whose method, path or query was changed', async () => {
     const taylor = await registered(TAYLOR);
     const request = signedPost(taylor);
 
@@ -349,7 +349,7 @@ describe('SHARING-34.1', () => {
     ]);
   });
 
-  test('[SHARING-34.1] refuses a request whose body was changed', async () => {
+  test('[SHARING-34.2] refuses a request whose body was changed', async () => {
     const taylor = await registered(TAYLOR);
     const request = signedPost(taylor);
     const body = Buffer.from(request.body);
@@ -364,7 +364,7 @@ describe('SHARING-34.1', () => {
     ]);
   });
 
-  test('[SHARING-34.1] refuses a request that was signed without a body and arrives with one', async () => {
+  test('[SHARING-34.2] refuses a request that was signed without a body and arrives with one', async () => {
     const taylor = await registered(TAYLOR);
     const request = signedBy(taylor, { method: 'POST' });
 
@@ -373,7 +373,7 @@ describe('SHARING-34.1', () => {
     ]);
   });
 
-  test('[SHARING-34.1] refuses a request whose request time, nonce or signature was changed', async () => {
+  test('[SHARING-34.2] refuses a request whose request time, nonce or signature was changed', async () => {
     const taylor = await registered(TAYLOR);
     const request = signedPost(taylor);
     const signature = fieldOf(request, 'signature');
@@ -392,7 +392,7 @@ describe('SHARING-34.1', () => {
     ]);
   });
 
-  test('[SHARING-34.1] refuses a request for a path that is not written as the bytes to sign allow', async () => {
+  test('[SHARING-34.2] refuses a request for a path that is not written as the bytes to sign allow', async () => {
     const taylor = await registered(TAYLOR);
 
     for (const path of [
@@ -414,7 +414,7 @@ describe('SHARING-34.1', () => {
     expectPassed(await send(signedBy(taylor, { path: `${NO_ROUTE}/its?x=1` })));
   });
 
-  test("[SHARING-34.1] refuses a request that names one device and carries another's signature", async () => {
+  test("[SHARING-34.2] refuses a request that names one device and carries another's signature", async () => {
     const taylor = await registered(TAYLOR);
     const casey = await registered(CASEY);
     const request = signedPost(taylor);
