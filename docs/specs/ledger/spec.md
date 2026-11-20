@@ -2809,12 +2809,12 @@ WHERE iOS，the mobile app SHALL 讓期間列上期間的名稱是一個系統�
 
 ### Requirement: LEDGER-111.2 (e2e) Android 上期間的名稱是 Material 的選單
 
-WHERE Android，the mobile app SHALL 讓期間列上期間的名稱是一個 Material 3 的下拉選單，名稱後面有向下的箭頭：按一下就從名稱下面彈出選單，不開啟 Filters；選單依序列出 LEDGER-109.2 的六個選項，照 LEDGER-109.2 標出現在的期間，那一項有勾號、底色和其他項不同，螢幕閱讀器把它讀成已選取；現在的期間是其他的月或年時都不標出。選一個選項就關閉選單，把這個畫面的期間換成它，和在 Filters 的 Date 選是同一個設定。按選單外面或按返回鍵就關閉選單，期間不變，那一下不觸發底下的東西。用箭頭或滑動換了期間之後，按名稱照樣打開選單。
+WHERE Android，the mobile app SHALL 讓期間列上期間的名稱是一個 Material 3 的下拉選單，名稱後面有向下的箭頭：按一下就從名稱下面彈出選單，不開啟 Filters；選單依序列出 LEDGER-109.2 的六個選項，照 LEDGER-109.2 標出現在的期間，那一項有勾號、底色和其他項不同，螢幕閱讀器把它讀成已勾選，和 Settings 的選單一樣；現在的期間是其他的月或年時都不標出。選一個選項就關閉選單，把這個畫面的期間換成它，和在 Filters 的 Date 選是同一個設定。按選單外面或按返回鍵就關閉選單，期間不變，那一下不觸發底下的東西。用箭頭或滑動換了期間之後，按名稱照樣打開選單。
 
 #### Scenario: 選上個月
 
 - **WHEN** Android 上有今天和上個月 15 日的支出，在支出清單按期間的名稱，選「Last Month」
-- **THEN** 選單從名稱下面彈出，依序列出「This Month」、「Last Month」、「Last 3 Months」、「This Year」、「All Time」和「Custom Range」，只有 This Month 標示為已選取，沒有開啟 Filters；選了之後選單關閉，期間的名稱是上個月，卡片只有上個月那一筆；打開 Filters 時是「Date, Last Month」
+- **THEN** 選單從名稱下面彈出，依序列出「This Month」、「Last Month」、「Last 3 Months」、「This Year」、「All Time」和「Custom Range」，只有 This Month 標示為已勾選，沒有開啟 Filters；選了之後選單關閉，期間的名稱是上個月，卡片只有上個月那一筆；打開 Filters 時是「Date, Last Month」
 
 #### Scenario: 按返回鍵
 
@@ -3419,12 +3419,12 @@ WHERE iOS，the mobile app SHALL 讓排序鈕是一個系統選單：按一下�
 
 ### Requirement: LEDGER-149.1 (e2e) Android 上排序鈕是 Material 的選單
 
-WHERE Android，the mobile app SHALL 讓排序鈕是一個 Material 3 的下拉選單：按一下就從排序鈕彈出選單，依序列出 LEDGER-122.3 的五種排序，只有這個畫面的排序有勾號、底色和其他項不同，螢幕閱讀器把它讀成已選取；選一個就關閉選單，照它排列卡片。按選單外面或按返回鍵就關閉選單，排序不變，那一下不觸發底下的東西。
+WHERE Android，the mobile app SHALL 讓排序鈕是一個 Material 3 的下拉選單：按一下就從排序鈕彈出選單，依序列出 LEDGER-122.3 的五種排序，只有這個畫面的排序有勾號、底色和其他項不同，螢幕閱讀器把它讀成已勾選，和 Settings 的選單一樣；選一個就關閉選單，照它排列卡片。按選單外面或按返回鍵就關閉選單，排序不變，那一下不觸發底下的東西。
 
 #### Scenario: 選金額最低
 
 - **WHEN** Android 上有依序新增、日期都是今天的 3.00 USD 的「Small」和 9.00 USD 的「Large」，在支出清單按「Sort By, Newest First」，選「Lowest Amount」
-- **THEN** 選單從排序鈕彈出，列出「Newest First」、「Oldest First」、「Recently Edited」、「Highest Amount」和「Lowest Amount」，只有 Newest First 標示為已選取，沒有「Cancel」；選之前 Large 的卡片在 Small 的上面，選了之後選單關閉，Small 的卡片在 Large 的上面，排序鈕的名稱是「Sort By, Lowest Amount」
+- **THEN** 選單從排序鈕彈出，列出「Newest First」、「Oldest First」、「Recently Edited」、「Highest Amount」和「Lowest Amount」，只有 Newest First 標示為已勾選，沒有「Cancel」；選之前 Large 的卡片在 Small 的上面，選了之後選單關閉，Small 的卡片在 Large 的上面，排序鈕的名稱是「Sort By, Lowest Amount」
 
 #### Scenario: 按返回鍵
 
@@ -3998,7 +3998,7 @@ WHILE 支出清單或群組的畫面有篩選，the mobile app SHALL 讓那個�
 
 ### Requirement: LEDGER-133.2 有篩選時顯示膠囊列
 
-WHILE 支出清單或群組的畫面有篩選，the mobile app SHALL 在卡片上方顯示膠囊列：它在清單上方的總額（LEDGER-35.6）的下面，群組的畫面上在你的淨額（GROUPS-69.4）的下面，清單上方那一行（LEDGER-122.3）的上面；搜尋中期間列、總額和你的淨額都不顯示（LEDGER-126.2），膠囊列仍在那一行的上面；它跟著卡片一起捲動。膠囊列是一列膠囊，每個條件一顆，由左而右依序是 Category；支出清單的 Ledger 和 Paid by Me，或群組的畫面的 Paid by；Amount；有 Currency 這個條件時的 Currency（LEDGER-130.1）。每一顆不論條件開著或關著都在這個位置；放不下時這一列可以左右捲動。條件關著時，膠囊上面的文字和它的名稱都是條件的名稱：「Category」、「Ledger」、「Paid by」、「Paid by Me」、「Amount」或「Currency」。條件開著時，膠囊上面的文字是它的值：Category、Ledger 和 Currency 是 Filters 那一列的值（LEDGER-131.1）；Paid by 選了一位時是「Paid by <那一位的名稱>」，選了幾位時是「<人數> Payers」；Amount 兩邊都有數字時是「<Min> – <Max>」，只有 Min 時是「<Min> or more」，只有 Max 時是「<Max> or less」，數字是欄位裡的文字照 LEDGER-131.1 換過的樣子；Paid by Me 仍是「Paid by Me」。iOS 上關著的膠囊是灰底、一般文字的顏色，開著的是實心的強調色、白字。Android 上膠囊是 Material 3 的篩選膠囊（filter chip），樣子和 Android 內建的 Contacts 的篩選膠囊一樣：關著的是透明底、有外框、一般文字的顏色，開著的沒有外框，底色是強調色的淺色調（深色外觀下是深色調），文字的顏色和那個底色相配；顏色照 LEDGER-145.2 用 app 的配色。開著的膠囊的名稱是「<條件的名稱>, <Filters 那一列的值>」，Amount 的是「Amount, <膠囊上的文字>」；Paid by Me 的名稱不變，螢幕閱讀器把它讀成已選取。WHEN 使用者按 Paid by Me 的膠囊，the mobile app SHALL 把 Paid by Me 開著的關掉、關著的打開。按其他的膠囊就在原地改那個條件：iOS 見 LEDGER-134.1 和 LEDGER-135.1，Android 見 LEDGER-136.2 和 LEDGER-150.1。WHILE 這個畫面沒有篩選，the mobile app SHALL 不顯示膠囊列；只有 Amount 的小視窗開著時例外，小視窗在 iOS 上是 popover，在 Android 上是 sheet：使用者在裡面把欄位清空而沒有其他條件時，膠囊列仍留到小視窗關閉，那時沒有篩選才消失（LEDGER-135.1、LEDGER-150.1）。在膠囊的選單裡取消最後一個條件時不等選單關閉：膠囊列立即消失，選單跟著關閉（LEDGER-134.1、LEDGER-136.2）。
+WHILE 支出清單或群組的畫面有篩選，the mobile app SHALL 在卡片上方顯示膠囊列：它在清單上方的總額（LEDGER-35.6）的下面，群組的畫面上在你的淨額（GROUPS-69.4）的下面，清單上方那一行（LEDGER-122.3）的上面；搜尋中期間列、總額和你的淨額都不顯示（LEDGER-126.2），膠囊列仍在那一行的上面；它跟著卡片一起捲動。膠囊列是一列膠囊，每個條件一顆，由左而右依序是 Category；支出清單的 Ledger 和 Paid by Me，或群組的畫面的 Paid by；Amount；有 Currency 這個條件時的 Currency（LEDGER-130.1）。每一顆不論條件開著或關著都在這個位置；放不下時這一列可以左右捲動。條件關著時，膠囊上面的文字和它的名稱都是條件的名稱：「Category」、「Ledger」、「Paid by」、「Paid by Me」、「Amount」或「Currency」。條件開著時，膠囊上面的文字是它的值：Category、Ledger 和 Currency 是 Filters 那一列的值（LEDGER-131.1）；Paid by 選了一位時是「Paid by <那一位的名稱>」，選了幾位時是「<人數> Payers」；Amount 兩邊都有數字時是「<Min> – <Max>」，只有 Min 時是「<Min> or more」，只有 Max 時是「<Max> or less」，數字是欄位裡的文字照 LEDGER-131.1 換過的樣子；Paid by Me 仍是「Paid by Me」。iOS 上關著的膠囊是灰底、一般文字的顏色，開著的是實心的強調色、白字。Android 上膠囊是 Material 3 的篩選膠囊（filter chip），樣子和 Android 內建的 Contacts 的篩選膠囊一樣：關著的是透明底、有外框、一般文字的顏色，開著的沒有外框，底色是強調色的淺色調（深色外觀下是深色調），文字的顏色和那個底色相配；顏色照 LEDGER-145.2 用 app 的配色。開著的膠囊的名稱是「<條件的名稱>, <Filters 那一列的值>」，Amount 的是「Amount, <膠囊上的文字>」；Paid by Me 的名稱不變，開著時螢幕閱讀器把它讀成已選取，Android 上讀成已勾選（Material 的篩選膠囊是勾選框）。WHEN 使用者按 Paid by Me 的膠囊，the mobile app SHALL 把 Paid by Me 開著的關掉、關著的打開。按其他的膠囊就在原地改那個條件：iOS 見 LEDGER-134.1 和 LEDGER-135.1，Android 見 LEDGER-136.2 和 LEDGER-150.1。WHILE 這個畫面沒有篩選，the mobile app SHALL 不顯示膠囊列；只有 Amount 的小視窗開著時例外，小視窗在 iOS 上是 popover，在 Android 上是 sheet：使用者在裡面把欄位清空而沒有其他條件時，膠囊列仍留到小視窗關閉，那時沒有篩選才消失（LEDGER-135.1、LEDGER-150.1）。在膠囊的選單裡取消最後一個條件時不等選單關閉：膠囊列立即消失，選單跟著關閉（LEDGER-134.1、LEDGER-136.2）。
 
 #### Scenario: 沒有篩選
 
@@ -4008,7 +4008,7 @@ WHILE 支出清單或群組的畫面有篩選，the mobile app SHALL 在卡片�
 #### Scenario: 支出清單
 
 - **WHEN** 有個人支出和 Brisbane 的支出，都是 USD，在 Filters 打開「Paid by Me」，再按「Done」
-- **THEN** 總額下面、排序鈕那一行上面是膠囊列，由左而右是「Category」、「Ledger」、「Paid by Me」和「Amount」；只有 Paid by Me 是開著的顏色（iOS 上是強調色、白字），螢幕閱讀器把它讀成已選取，其他三顆是關著的顏色（iOS 上是灰底）
+- **THEN** 總額下面、排序鈕那一行上面是膠囊列，由左而右是「Category」、「Ledger」、「Paid by Me」和「Amount」；只有 Paid by Me 是開著的顏色（iOS 上是強調色、白字），螢幕閱讀器把它讀成已選取（Android 上是已勾選），其他三顆是關著的顏色（iOS 上是灰底）
 
 #### Scenario: 分類的值
 
@@ -4130,12 +4130,12 @@ WHERE iOS，WHEN 使用者按 Amount 的膠囊，the mobile app SHALL 從膠囊�
 
 ### Requirement: LEDGER-136.2 (e2e) Android 上分類、帳本、付款人和幣別的膠囊是 Material 的選單
 
-WHERE Android，the mobile app SHALL 讓 Category、Ledger、Paid by 和 Currency 的膠囊各是一個 Material 3 的下拉選單：按一下就從膠囊下面彈出選單，不開啟 Filters；選單列出這個條件的選項（LEDGER-130.1），選了的有勾號、底色和其他項不同，螢幕閱讀器把它讀成已選取。Category、Ledger 和 Paid by 的選單按一項就選它或取消它，選單不關閉；Currency 的選單按一項就選它並關閉。按選單外面或按返回鍵就關閉選單，那一下不觸發底下的東西。每按一項，卡片、清單上方的總額、筆數和膠囊都立即跟著改。在選單裡取消了這個畫面最後一個條件時，膠囊列立即消失，選單跟著關閉（LEDGER-133.2）。Paid by Me 的膠囊照 LEDGER-133.2，按了就開或關。
+WHERE Android，the mobile app SHALL 讓 Category、Ledger、Paid by 和 Currency 的膠囊各是一個 Material 3 的下拉選單：按一下就從膠囊下面彈出選單，不開啟 Filters；選單列出這個條件的選項（LEDGER-130.1），選了的有勾號、底色和其他項不同，螢幕閱讀器把它讀成已勾選，和 Settings 的選單一樣。Category、Ledger 和 Paid by 的選單按一項就選它或取消它，選單不關閉；Currency 的選單按一項就選它並關閉。按選單外面或按返回鍵就關閉選單，那一下不觸發底下的東西。每按一項，卡片、清單上方的總額、筆數和膠囊都立即跟著改。在選單裡取消了這個畫面最後一個條件時，膠囊列立即消失，選單跟著關閉（LEDGER-133.2）。Paid by Me 的膠囊照 LEDGER-133.2，按了就開或關。
 
 #### Scenario: 分類
 
 - **WHEN** Android 上有今天的 Food & Dining 的「Coffee」、Shopping 的「Shoes」和 Travel 的「Train」，以及 Brisbane 的「Dinner」和「Taxi」，Taylor 都有分攤，在 Filters 把 Lowest amount 改成「1」並按「Done」，按「Category」的膠囊，依序按「Shopping」和「Travel」，再按選單外面
-- **THEN** 選單從膠囊下面彈出，列出「Food & Dining」、「Shopping」和「Travel」，沒有開啟 Filters；兩次按完選單都還開著，按過的那一項標示為已選取；關閉之後卡片是 Train 和 Shoes，那一行是「2 items」，膠囊的名稱是「Category, 2 Categories」
+- **THEN** 選單從膠囊下面彈出，列出「Food & Dining」、「Shopping」和「Travel」，沒有開啟 Filters；兩次按完選單都還開著，按過的那一項標示為已勾選；關閉之後卡片是 Train 和 Shoes，那一行是「2 items」，膠囊的名稱是「Category, 2 Categories」
 
 #### Scenario: 帳本
 

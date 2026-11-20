@@ -33,9 +33,10 @@ tags:
     commands:
       # A menu from the name, not Filters, with the current period marked.
       - assertNotVisible: Done
+      # Android reports a marked Material menu item as checked, not selected.
       - assertVisible:
           text: This Month
-          selected: true
+          checked: true
 - assertVisible: This Month
 - assertVisible: Last Month
 - assertVisible: Last 3 Months

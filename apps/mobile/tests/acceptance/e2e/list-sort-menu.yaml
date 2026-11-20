@@ -40,9 +40,10 @@ tags:
       # A menu from the button, without the title bar and Cancel of a sheet, with the current
       # order marked.
       - assertNotVisible: Cancel
+      # Android reports a marked Material menu item as checked, not selected.
       - assertVisible:
           text: Newest First
-          selected: true
+          checked: true
 - assertVisible: Newest First
 - assertVisible: Oldest First
 - assertVisible: Recently Edited

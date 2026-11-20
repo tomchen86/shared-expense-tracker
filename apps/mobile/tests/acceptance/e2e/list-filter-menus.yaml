@@ -29,19 +29,42 @@ tags:
 - assertVisible: Amount, 1 or more
 - assertVisible: 5 items
 # LEDGER-133.2: the Paid by Me capsule turns the condition on and off where it is. Taxi, which
-# Casey paid, goes while it is on.
+# Casey paid, goes while it is on. A screen reader reads it as selected on iOS and as checked on
+# Android, where a Material filter chip is a checkbox.
 - tapOn: Paid by Me
 - waitForAnimationToEnd
-- assertVisible:
-    text: Paid by Me
-    selected: true
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible:
+          text: Paid by Me
+          selected: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          text: Paid by Me
+          checked: true
 - assertVisible: 4 items
 - assertNotVisible: Taxi, .*
 - tapOn: Paid by Me
 - waitForAnimationToEnd
-- assertVisible:
-    text: Paid by Me
-    selected: false
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible:
+          text: Paid by Me
+          selected: false
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          text: Paid by Me
+          checked: false
 - assertVisible: 5 items
 # LEDGER-134.1 and LEDGER-136.2: the Category capsule is a menu of the categories the expenses
 # use. It stays open while categories are chosen.
@@ -56,16 +79,39 @@ tags:
 - assertVisible: Food & Dining
 - assertVisible: Shopping
 - assertVisible: Travel
+# A chosen item is read as selected on iOS and as checked on Android, as Material menu items are.
 - tapOn: Shopping
 - waitForAnimationToEnd
-- assertVisible:
-    text: Shopping
-    selected: true
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible:
+          text: Shopping
+          selected: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          text: Shopping
+          checked: true
 - tapOn: Travel
 - waitForAnimationToEnd
-- assertVisible:
-    text: Travel
-    selected: true
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible:
+          text: Travel
+          selected: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          text: Travel
+          checked: true
 - assertVisible: Food & Dining
 # A press outside the menu, on the list's margin, closes it.
 - runFlow: common/press-outside.yaml
