@@ -156,7 +156,11 @@ export function useSharingApi({
   });
 }
 
-const sql = (): Sql => world.database!.sql;
+/** The test's own database, for what a test cannot do or see through the API. */
+export const sql = (): Sql => world.database!.sql;
+
+/** Where the API is served, for a request `send` cannot send or an answer it cannot show. */
+export const serverUrl = () => world.server!.url;
 
 /** The API's time. */
 export const now = () => world.now;
