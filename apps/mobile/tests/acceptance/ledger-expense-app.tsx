@@ -128,7 +128,8 @@ const hostTimeZone = realResolvedOptions.call(
 
 /**
  * Puts the phone in `timeZone` at the instant `now`. renderRouter fakes the clock
- * when the app starts, so this comes after startApp.
+ * when the app starts and keeps the time it starts at, so a call before startApp
+ * needs jest.useFakeTimers() first, and one after it needs nothing.
  */
 export function setPhoneClock(timeZone: string, now: string) {
   phone.timeZone = timeZone;
@@ -206,10 +207,20 @@ const TEST_ROUTES = {
   './(tabs)/(expenses)/identity-probe.tsx': IdentityProbe,
 };
 
-/** Starts the app on the Expenses tab, in Taipei on 2026-10-30. */
-export async function startExpenses() {
+/**
+ * Starts the app on the Expenses tab, in Taipei on 2026-10-30 unless given another time zone
+ * and instant. The clock is set before the app starts as well as after: what the app reads as
+ * it starts, such as the month the expense list opens on (LEDGER-107.1), is then the test's
+ * today, and renderRouter keeps the time it starts at.
+ */
+export async function startExpenses(
+  timeZone = 'Asia/Taipei',
+  now = '2026-10-30T04:00:00Z',
+) {
+  jest.useFakeTimers();
+  setPhoneClock(timeZone, now);
   const app = await startApp('/', TEST_ROUTES);
-  setPhoneClock('Asia/Taipei', '2026-10-30T04:00:00Z');
+  setPhoneClock(timeZone, now);
   await settle();
   return app;
 }

@@ -1,0 +1,85 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[LEDGER-114.1] Swipes the period's name and the total to the month before and back, not past this month, and changes no period from a card"
+tags:
+  - android
+---
+# Also runs on the small Android screen of scripts/e2e-android.sh (ADR-0014), where the period's
+# name is a button that opens Filters (LEDGER-111.1): a swipe that starts on it must not press it.
+# The names of this month and last month, by the simulator's clock.
+- evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
+- evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'
+- evalScript: '${output.lastMonth = output.months[(new Date().getMonth() + 11) % 12]}'
+- evalScript: '${output.thisYear = String(new Date().getFullYear())}'
+- evalScript: '${output.lastMonthsYear = String(new Date().getMonth() === 0 ? new Date().getFullYear() - 1 : new Date().getFullYear())}'
+# Expenses today and on the 15th of last month.
+- evalScript: '${output.lastMonth15 = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 15)}'
+- evalScript: "${output.lastMonthDate = output.lastMonth15.getFullYear() + '-' + ('0' + (output.lastMonth15.getMonth() + 1)).slice(-2) + '-15'}"
+# Maestro reads ${…} up to the last } in the value, so a seed with dates is built in one script.
+- evalScript: "${output.seedJson = JSON.stringify({ expenses: [{ title: 'Today', amount: '3.00' }, { title: 'Last month', amount: '2.00', date: output.lastMonthDate }] })}"
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: ${output.seedJson}
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible:
+    text: Next period
+    enabled: false
+# Right on the period's name goes back a month, left comes forward again, and left on this
+# month does nothing.
+- swipe:
+    from:
+      text: Choose period\..*
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
+- assertVisible: Last month, .*
+- assertNotVisible: Today, .*
+- assertVisible:
+    text: Next period
+    enabled: true
+- swipe:
+    from:
+      text: Choose period\..*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible: Today, .*
+- swipe:
+    from:
+      text: Choose period\..*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible:
+    text: Next period
+    enabled: false
+# A swipe on the total changes the period too, and an upward one does not.
+- swipe:
+    from:
+      text: View expense insights\..*
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
+- swipe:
+    from:
+      text: View expense insights\..*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- swipe:
+    from:
+      text: View expense insights\..*
+    direction: UP
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+# A swipe to the left on a card shows its Delete, and the period stays.
+- swipe:
+    from:
+      text: Today, .*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible:
+    text: Delete Today expense
+    enabled: true
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible: Today, .*

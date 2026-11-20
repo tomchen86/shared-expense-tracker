@@ -1,0 +1,143 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[LEDGER-114.1] Swipes the words of a month that holds no expense and a year's name, changes no period with a swipe on Last 3 Months, Custom Range or All Time, and opens no Insights with one on the total of All Time"
+---
+# The names of this month, the two months before it and the years around them, by the
+# simulator's clock.
+- evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
+- evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'
+- evalScript: '${output.lastMonth = output.months[(new Date().getMonth() + 11) % 12]}'
+- evalScript: '${output.thisYear = String(new Date().getFullYear())}'
+- evalScript: '${output.lastYear = String(new Date().getFullYear() - 1)}'
+- evalScript: '${output.lastMonthsYear = String(new Date().getMonth() === 0 ? new Date().getFullYear() - 1 : new Date().getFullYear())}'
+- evalScript: '${output.twoBack = new Date(new Date().getFullYear(), new Date().getMonth() - 2, 1)}'
+- evalScript: "${output.twoBackName = output.months[output.twoBack.getMonth()] + ' ' + output.twoBack.getFullYear()}"
+# The last three months: Aug – Oct 2026, or Nov 2025 – Jan 2026 when they began last year.
+- evalScript: "${output.lastThree = output.months[output.twoBack.getMonth()].slice(0, 3) + (String(output.twoBack.getFullYear()) === output.thisYear ? '' : ' ' + output.twoBack.getFullYear()) + ' – ' + output.thisMonth.slice(0, 3) + ' ' + output.thisYear}"
+# Expenses today and on the 15th of last month.
+- evalScript: '${output.lastMonth15 = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 15)}'
+- evalScript: "${output.lastMonthDate = output.lastMonth15.getFullYear() + '-' + ('0' + (output.lastMonth15.getMonth() + 1)).slice(-2) + '-15'}"
+# Maestro reads ${…} up to the last } in the value, so a seed with dates is built in one script.
+- evalScript: "${output.seedJson = JSON.stringify({ expenses: [{ title: 'Today', amount: '3.00' }, { title: 'Last month', amount: '2.00', date: output.lastMonthDate }] })}"
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: ${output.seedJson}
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+# Two months back holds no expense. The words that say so take the swipe as the total does:
+# left on them comes forward to last month.
+- swipe:
+    from:
+      text: Choose period\..*
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
+- swipe:
+    from:
+      text: View expense insights\..*
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.twoBackName}
+- assertVisible: No Expenses in ${output.twoBackName}
+- assertNotVisible: Last month, .*
+- swipe:
+    from:
+      text: No Expenses in .*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
+- assertVisible: Last month, .*
+# This Year, from the Date row of Filters: right on a year's name goes back a year, and left on
+# the total comes forward again.
+- tapOn: Filters
+- waitForAnimationToEnd
+- tapOn: Date, .*
+- tapOn: This Year
+- waitForAnimationToEnd
+- tapOn: Done
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisYear}
+- swipe:
+    from:
+      text: Choose period\..*
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastYear}
+- assertVisible:
+    text: Next period
+    enabled: true
+- swipe:
+    from:
+      text: View expense insights\..*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisYear}
+- assertVisible: Today, .*
+# Last 3 Months, Custom Range and All Time have no period before or after them: a swipe on the
+# period's name changes nothing.
+- tapOn: Filters
+- waitForAnimationToEnd
+- tapOn: Date, .*
+- tapOn: Last 3 Months
+- waitForAnimationToEnd
+- tapOn: Done
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastThree}
+- swipe:
+    from:
+      text: Choose period\..*
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastThree}
+- assertVisible: Today, .*
+- assertVisible: Last month, .*
+- tapOn: Filters
+- waitForAnimationToEnd
+- tapOn: Date, .*
+- tapOn: Custom Range
+- waitForAnimationToEnd
+- tapOn: Done
+- waitForAnimationToEnd
+- assertVisible: Choose period\. Custom Range
+- swipe:
+    from:
+      text: Choose period\..*
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. Custom Range
+- assertVisible: Today, .*
+- assertNotVisible: Last month, .*
+- tapOn: Filters
+- waitForAnimationToEnd
+- tapOn: Date, .*
+- tapOn: All Time
+- waitForAnimationToEnd
+- tapOn: Done
+- waitForAnimationToEnd
+- assertVisible: Choose period\. All Time
+- swipe:
+    from:
+      text: Choose period\..*
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. All Time
+- assertVisible: Today, .*
+- assertVisible: Last month, .*
+# Nor is a swipe on the total a press, though no period can change: to the right and to the
+# left, the list stays on All Time with its cards, and Insights, whose total reads Total spent,
+# does not open.
+- swipe:
+    from:
+      text: View expense insights\..*
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. All Time
+- assertNotVisible: Total spent.*
+- swipe:
+    from:
+      text: View expense insights\..*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. All Time
+- assertNotVisible: Total spent.*
+- assertVisible: Today, .*
+- assertVisible: Last month, .*

@@ -13,28 +13,37 @@ export function DatedCards({
   expenses: ExpenseView[];
   card: (expense: ExpenseView) => ReactNode;
 }) {
+  return expenses.map((expense, index) => (
+    <Fragment key={expense.id}>
+      <DateHeading expense={expense} previous={expenses[index - 1]} />
+      {card(expense)}
+    </Fragment>
+  ));
+}
+
+/** The date above a card, when the card before it, `previous`, is of another day or there is none. */
+export function DateHeading({
+  expense,
+  previous,
+}: {
+  expense: ExpenseView;
+  previous: ExpenseView | undefined;
+}) {
   const colors = useThemeColors();
   const locale = useDisplayLocale();
-  return expenses.map((expense, index) => {
-    const previousDate = expenses[index - 1]?.date;
-    return (
-      <Fragment key={expense.id}>
-        {expense.date !== previousDate && (
-          <Text
-            accessibilityRole="header"
-            style={[
-              styles.date,
-              previousDate !== undefined && styles.notFirst,
-              { color: colors.textMuted },
-            ]}
-          >
-            {formatExpenseDate(expense.date, locale)}
-          </Text>
-        )}
-        {card(expense)}
-      </Fragment>
-    );
-  });
+  if (expense.date === previous?.date) return null;
+  return (
+    <Text
+      accessibilityRole="header"
+      style={[
+        styles.date,
+        previous !== undefined && styles.notFirst,
+        { color: colors.textMuted },
+      ]}
+    >
+      {formatExpenseDate(expense.date, locale)}
+    </Text>
+  );
 }
 
 const styles = StyleSheet.create({
