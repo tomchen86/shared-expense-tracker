@@ -110,6 +110,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
           backSwipe
           groupId={id}
           periods={periods}
+          searchExpenses={group ? expenses : undefined}
           scrollEventThrottle={16}
           onScroll={titleScroll.onScroll}
           top={

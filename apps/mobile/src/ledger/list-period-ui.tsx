@@ -39,6 +39,7 @@ import { DateRange } from '../ui/date-range';
 import { FadeText } from '../ui/fade-text';
 import { GlassSurface } from '../ui/glass-surface';
 import { GroupedSection } from '../ui/grouped-section';
+import { HeaderSearch } from '../ui/header-search';
 import { MenuField } from '../ui/menu-field';
 import { PeriodName } from '../ui/period-name';
 import { Sheet } from '../ui/sheet';
@@ -77,6 +78,7 @@ import {
   type Dates,
   type Period,
 } from './list-period';
+import { formatItemCount, matchingExpenses } from './list-search';
 import type { ExpenseView } from './use-expenses';
 
 /**
@@ -336,6 +338,8 @@ interface PeriodListProps extends Pick<
   'onScroll' | 'scrollEventThrottle'
 > {
   periods: ListPeriodState;
+  /** Every expense this screen can search, across all dates. Omit when search is unavailable. */
+  searchExpenses?: ExpenseView[];
   groupId?: string;
   /** On a pushed screen: iOS's back gesture gets the drags to the right that nothing here uses. */
   backSwipe?: boolean;
@@ -359,9 +363,8 @@ interface PeriodListProps extends Pick<
 }
 
 /**
- * A list of expense cards that shows one period at a time: the period row, the dates of a custom
- * range, the total, and the cards of the period under the date of each day, of which only those
- * on and near the screen are drawn (LEDGER-118.2). Everything scrolls together.
+ * A list of expense cards for the period or the current search. The header and the dated cards
+ * scroll together. Only cards on and near the screen are drawn (LEDGER-118.2).
  */
 export function PeriodList({ backSwipe, ...props }: PeriodListProps) {
   return (
@@ -373,6 +376,7 @@ export function PeriodList({ backSwipe, ...props }: PeriodListProps) {
 
 function PeriodListBody({
   periods,
+  searchExpenses,
   groupId,
   top,
   total,
@@ -383,6 +387,18 @@ function PeriodListBody({
   scrollEventThrottle,
 }: Omit<PeriodListProps, 'backSwipe'>) {
   const colors = useThemeColors();
+  const locale = useDisplayLocale();
+  const [searchText, setSearchText] = useState('');
+  const query = searchText.trim();
+  const matches = useMemo(
+    () =>
+      query && searchExpenses
+        ? matchingExpenses(searchExpenses, query)
+        : undefined,
+    [searchExpenses, query],
+  );
+  const searching = matches !== undefined;
+  const activeText = searching ? searchText : '';
   const latestOnScroll = useRef(onScroll);
   useLayoutEffect(() => {
     latestOnScroll.current = onScroll;
@@ -396,26 +412,32 @@ function PeriodListBody({
     latestOnScroll.current?.(event);
   }, []);
 
-  // A period that changes while its row is out of sight brings the list back to its top
-  // (LEDGER-147.2). Not while any of the row shows: the arrows would move from under the finger.
   const list = useRef<FlatList<ExpenseView>>(null);
   const titleBarHeight = useRef(0);
   const rowTop = useRef<number>(undefined);
   const rowHeight = useRef(0);
-  const shownKey = useRef(periods.key);
+  const previous = useRef({ period: periods.key, text: activeText });
   useLayoutEffect(() => {
-    if (shownKey.current === periods.key) return;
-    shownKey.current = periods.key;
+    const last = previous.current;
+    previous.current = { period: periods.key, text: activeText };
     const at = position.current;
-    if (at === undefined || rowTop.current === undefined) return;
-    // How far down the content the title bar reaches: no further than where the list rests,
-    // which is not at all where the bar stands above the list.
-    const covered = Math.min(-at.rest, titleBarHeight.current);
-    if (at.y + covered < rowTop.current + rowHeight.current) return;
+    if (at === undefined) return;
+    // Editing or ending a search always returns to the top (LEDGER-148.1). A period change
+    // alone does so only outside search, with its row entirely out of sight (LEDGER-147.2).
+    if (last.text === activeText) {
+      if (
+        activeText ||
+        last.period === periods.key ||
+        rowTop.current === undefined
+      )
+        return;
+      const covered = Math.min(-at.rest, titleBarHeight.current);
+      if (at.y + covered < rowTop.current + rowHeight.current) return;
+    }
     // Animated: iOS then opens a large title that had closed, as when a finger scrolls there. A
     // jump to the same offset opens it too, and leaves the content the title's height too low.
     list.current?.scrollToOffset({ offset: at.rest, animated: true });
-  }, [periods.key]);
+  }, [activeText, periods.key]);
   const { steps } = periods;
   const { order: savedOrder, save } = useListOrder(groupId);
   const [order, showOrder] = useOptimistic(savedOrder);
@@ -434,10 +456,10 @@ function PeriodListBody({
       }
     });
   };
+  const cards = matches ?? periods.shown ?? NO_EXPENSES;
   const shown = useMemo(
-    () =>
-      orderedCards(periods.shown ?? NO_EXPENSES, order, groupId !== undefined),
-    [periods.shown, order, groupId],
+    () => orderedCards(cards, order, groupId !== undefined),
+    [cards, order, groupId],
   );
   // One sideways swipe for the top of the list and all that slides with it (LEDGER-114.1): to the
   // right for the period before, to the left for the one after. A period with neither keeps no
@@ -503,7 +525,7 @@ function PeriodListBody({
   const header = (
     <>
       {top}
-      {total && (
+      {!searching && total && (
         // Measured out here: inside, a view is laid out against the gesture detector's own.
         <View
           onLayout={(event) => {
@@ -608,15 +630,38 @@ function PeriodListBody({
         </View>
       )}
       {message}
+      {matches?.length === 0 && (searchExpenses?.length ?? 0) > 0 && (
+        <View style={styles.empty}>
+          <SymbolView
+            name={{ ios: 'magnifyingglass', android: 'search' }}
+            size={44}
+            tintColor={colors.textMuted}
+          />
+          <Text
+            accessibilityRole="header"
+            style={[styles.emptyTitle, { color: colors.text }]}
+          >
+            {`No Results for “${query}”`}
+          </Text>
+          <Text style={[styles.emptyHint, { color: colors.textMuted }]}>
+            Check the spelling or try a new search.
+          </Text>
+        </View>
+      )}
       {/*
         The cards are a list of their own inside the screen's list, which scrolls them and tells
         them where the screen is. So one view around them all slides them with the period: a view
         that moves on each card is not let go when its card leaves the screen, and scrolling
         through 2,000 expenses and back cost 260 MB more.
       */}
-      <Animated.View style={pageStyle}>
+      <Animated.View style={searching ? undefined : pageStyle}>
         {shown.length > 0 && (
           <View style={styles.listLine}>
+            {searching && (
+              <Text style={[styles.matchCount, { color: colors.text }]}>
+                {formatItemCount(shown.length, locale)}
+              </Text>
+            )}
             <MenuField
               label="Sort By"
               title="Sort By"
@@ -665,11 +710,15 @@ function PeriodListBody({
         ),
       }}
     >
+      {searchExpenses && (
+        <HeaderSearch placeholder="Search" onChangeText={setSearchText} />
+      )}
       {/* Everything is the list's header: the list is here to scroll, and for the cards' list. */}
       <TitleBarHeight into={titleBarHeight} />
       <SwipeFlatList
         listRef={list}
         contentInsetAdjustmentBehavior="automatic"
+        keyboardShouldPersistTaps="handled"
         // Where the list rests under a see-through title bar is above its content, and iOS
         // scrolls there from code only with this.
         scrollToOverflowEnabled
@@ -737,6 +786,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
+  matchCount: { fontSize: 15, flexShrink: 1 },
   sortButton: {
     width: 48,
     height: 48,
@@ -785,5 +835,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   emptyTitle: { fontSize: 22, fontWeight: '700', textAlign: 'center' },
+  emptyHint: { fontSize: 16, lineHeight: 22, textAlign: 'center' },
   show: { minHeight: 44, justifyContent: 'center', marginTop: 4 },
 });
