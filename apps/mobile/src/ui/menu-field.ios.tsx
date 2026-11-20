@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   StyleSheet,
   Text as NativeText,
@@ -26,6 +27,9 @@ import {
   frame,
   menuActionDismissBehavior,
   menuIndicator,
+  menuOrder,
+  onAppear,
+  onDisappear,
   pickerStyle,
   tag,
 } from '@expo/ui/swift-ui/modifiers';
@@ -43,6 +47,7 @@ export function MenuField({
   label,
   value,
   title,
+  showMenuTitle,
   trigger,
   disabled = false,
   dot,
@@ -96,7 +101,8 @@ export function MenuField({
       <MenuOverlay
         accessibilityLabel={`${label}, ${value}`}
         label={label}
-        title={trigger ? title : undefined}
+        title={trigger || showMenuTitle ? title : undefined}
+        fixedOrder={showMenuTitle}
         disabled={disabled}
         options={options}
         selected={selected}
@@ -124,6 +130,8 @@ export function MenuOverlay({
   empty,
   action,
   onSelect,
+  onPresented,
+  fixedOrder,
 }: Pick<
   MenuFieldProps,
   | 'label'
@@ -134,7 +142,31 @@ export function MenuOverlay({
   | 'empty'
   | 'action'
   | 'onSelect'
-> & { accessibilityLabel: string; title?: string }) {
+> & {
+  accessibilityLabel: string;
+  title?: string;
+  onPresented?: (open: boolean) => void;
+  fixedOrder?: boolean;
+}) {
+  const [presentedOptions, setPresentedOptions] = useState<MenuFieldOption[]>();
+  function presented(open: boolean) {
+    // A deselected option that no expense uses stays in this menu until it closes.
+    setPresentedOptions((snapshot) =>
+      open ? (snapshot ?? options) : undefined,
+    );
+    onPresented?.(open);
+  }
+  const toggles = (presentedOptions ?? options).map((option) => (
+    <Toggle
+      key={option.id}
+      label={option.name}
+      isOn={selected.includes(option.id)}
+      onIsOnChange={() => {
+        if (onPresented && !presentedOptions) presented(true);
+        onSelect(option.id);
+      }}
+    />
+  ));
   const picker = (
     <Picker<string>
       label={title ? '' : label}
@@ -154,6 +186,7 @@ export function MenuOverlay({
           buttonStyle('plain'),
           menuIndicator('hidden'),
           menuActionDismissBehavior(multiple ? 'disabled' : 'automatic'),
+          ...(fixedOrder ? [menuOrder('fixed')] : []),
           disabledModifier(disabled),
           accessibilityLabel(name),
         ]}
@@ -170,14 +203,21 @@ export function MenuOverlay({
         }
       >
         {multiple ? (
-          options.map((option) => (
-            <Toggle
-              key={option.id}
-              label={option.name}
-              isOn={selected.includes(option.id)}
-              onIsOnChange={() => onSelect(option.id)}
-            />
-          ))
+          onPresented ? (
+            <Section
+              title={title}
+              modifiers={[
+                onAppear(() => presented(true)),
+                onDisappear(() => presented(false)),
+              ]}
+            >
+              {toggles}
+            </Section>
+          ) : title ? (
+            <Section title={title}>{toggles}</Section>
+          ) : (
+            toggles
+          )
         ) : options.length === 0 && empty ? (
           <Button label={empty} modifiers={[disabledModifier(true)]} />
         ) : title ? (

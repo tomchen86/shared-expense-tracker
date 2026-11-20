@@ -19,8 +19,8 @@ export interface HeaderActionsProps {
   edit?: HeaderAction;
   /** A + button, whose accessible name is the action's label. */
   add?: HeaderAction;
-  /** A filter button (SHELL-72.1), whose accessible name is the action's label; left of the menu. */
-  filter?: HeaderAction;
+  /** A filter button (SHELL-72.2), whose accessible name is the action's label; left of the menu. */
+  filter?: HeaderAction & { active?: boolean };
   /** The other actions, at most three, in a menu whose accessible name is `label`. */
   menu?: {
     label: string;

@@ -22,9 +22,9 @@ export function ExpensesScreen() {
     [read.expenses],
   );
   const { move } = useTrashActions();
-  const periods = useListPeriod(false, expenses, read.placed);
-  // The total is that of the cards under it: of every expense of the period, drawn or not
-  // (LEDGER-35.5, LEDGER-118.2).
+  const periods = useListPeriod(undefined, expenses, read);
+  // The total includes every matching card in the period, including those outside the viewport
+  // (LEDGER-35.6, LEDGER-118.2).
   const cards = periods.shown ?? [];
   const totals = new Map<string, bigint>();
   for (const expense of cards) {
@@ -37,9 +37,9 @@ export function ExpensesScreen() {
     .sort()
     .map((currency) => formatCurrency(totals.get(currency)!, currency, locale))
     .join(', ');
-  // A total of every expense ever means little: all dates show how many there are.
+  // All Time shows a count until a filter narrows it to a set of amounts.
   const count = formatItemCount(cards.length, locale);
-  const allTime = periods.option === 'all';
+  const allTime = periods.option === 'all' && !periods.filter.active;
   const spent = amounts
     ? `Spent in ${periods.name} ${amounts}`
     : `Nothing spent in ${periods.name}`;
@@ -48,9 +48,7 @@ export function ExpensesScreen() {
       edges={['left', 'right']}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <HeaderActions
-        filter={{ label: 'Filters', onPress: periods.openFilters }}
-      />
+      <HeaderActions filter={periods.filterAction} />
       <PeriodList
         periods={periods}
         searchExpenses={expenses}

@@ -1,6 +1,6 @@
 import type { ExpenseView } from './use-expenses';
 
-/** Across every date, in the order the expenses came (LEDGER-125.1). */
+/** Across every date, in the order the expenses came (LEDGER-125.2). */
 export function matchingExpenses(expenses: ExpenseView[], query: string) {
   const text = query.toLowerCase();
   return expenses.filter(({ title, note, category, group }) =>

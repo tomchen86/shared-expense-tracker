@@ -97,7 +97,7 @@ export function HeaderActions({
               <ActionButton
                 {...filter}
                 icon="filter_list"
-                color={colors.text}
+                color={filter.active ? colors.accent : colors.text}
               />
             )}
             {menu && (

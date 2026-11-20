@@ -11,6 +11,7 @@ import {
   writeLocalChange,
   type SharedGroup,
 } from '../sync/records';
+import { revealPlacedExpense } from './list-filter-storage';
 
 /** An expense as the phone stores it (LEDGER-27.2). */
 export interface Expense {
@@ -114,6 +115,15 @@ export async function listExpenses(
       ? await readExpenseRows(database, '', [])
       : await readExpenseRows(database, 'WHERE e.spaceId = ?', [spaceId]);
   return rows.map(expenseOf);
+}
+
+/** One expense with its stored category and allocations. */
+export async function readExpense(
+  database: SqlExecutor,
+  id: string,
+): Promise<Expense | undefined> {
+  const [row] = await readExpenseRows(database, 'WHERE e.id = ?', [id]);
+  return row && expenseOf(row);
 }
 
 /** The same expenses with the local sort keys their cards use. */
@@ -277,11 +287,9 @@ export async function saveExpense(
 ): Promise<void> {
   const id = await database.transaction(async (transaction) => {
     const spaceId = split?.groupId ?? identity.personalSpaceId;
-    const [existing] = original
-      ? (
-          await readExpenseRows(transaction, 'WHERE e.id = ?', [original.id])
-        ).map(expenseOf)
-      : [];
+    const existing = original
+      ? await readExpense(transaction, original.id)
+      : undefined;
     if (original && !existing) throw new Error('Expense not found');
     let amountMinor = input.amountMinor;
     let payments = [
@@ -358,6 +366,7 @@ export async function saveExpense(
       if (keepCategory) delete units.category;
       await writeLocalChange(transaction, shared, 'expense', id, units);
     }
+    if (!existing) await revealPlacedExpense(transaction, expense);
     return id;
   });
   notifyExpensesChanged(database, undefined, original ? undefined : id);
