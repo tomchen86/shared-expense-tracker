@@ -10,9 +10,12 @@ import {
   type RelayedEvent,
   type UploadedEvent,
 } from '@shared-expense/domain/api';
+import { startServer, type NodeServer } from '../../src/node';
 import { addMemberDevice } from '../support/group-members';
+import { sendTo } from '../support/signed';
 import {
   databaseContents,
+  databaseUrl,
   fieldOf,
   now,
   send,
@@ -42,7 +45,8 @@ export const GROUP_FULL = { error: 'group-full' } as const;
 export const wrongEpoch = (epoch: number) =>
   ({ error: 'epoch', epoch }) as const;
 
-/** The most bytes an event's content may have, and the most a group's events may add up to. */
+/** The fewest and the most bytes an event's content may have, and the most a group's events may add up to. */
+export const SMALLEST = 41;
 export const LARGEST = 65_536;
 export const GROUP_LIMIT = 10_485_760;
 
@@ -50,8 +54,15 @@ export const GROUP_LIMIT = 10_485_760;
 // of an accepted request from what the request did.
 const sentNonces: string[] = [];
 
+// The servers a test started beside the world's own.
+const ownServers: NodeServer[] = [];
+
 /** Before each test in the calling scope: the world of the sharing tests, with nothing sent yet. */
 export function useSyncApi() {
+  // Declared before the world's hooks, which drop the database: these servers close first.
+  afterEach(async () => {
+    for (const server of ownServers.splice(0)) await server.close();
+  });
   useSharingApi();
   beforeEach(() => {
     sentNonces.length = 0;
@@ -64,6 +75,31 @@ export function aMinuteLater() {
 }
 
 // Requests
+
+/**
+ * Serves the API a second time on the test's database, with connections of its own to
+ * it, as every request has on Workers (ADR-0007): requests sent to different servers
+ * never wait for one another's connection. Its time is the world's unless `clock` gives
+ * another. It closes when the test ends.
+ */
+export async function ownServer(
+  clock: () => number = now,
+): Promise<NodeServer> {
+  const server = await startServer({ databaseUrl: databaseUrl(), now: clock });
+  ownServers.push(server);
+  return server;
+}
+
+/** Sends a request `phone` signs to `server`. */
+export function callOn(
+  server: NodeServer,
+  phone: Phone,
+  input: RequestInput,
+): Promise<Answer> {
+  const request = signedBy(phone, input);
+  sentNonces.push(fieldOf(request, 'nonce'));
+  return sendTo(server.url, request);
+}
 
 /** Sends a request `phone` signs, with `headers` beside the four fields. */
 export function call(
@@ -100,6 +136,16 @@ export const upload = (
   events: UploadedEvent[],
   epoch = 1,
 ) => uploadBody(phone, groupId, JSON.stringify({ epoch, events }));
+
+/** The request that uploads `events` under key epoch 1, for `callOn`. */
+export const uploadOf = (
+  groupId: string,
+  events: UploadedEvent[],
+): RequestInput => ({
+  method: 'POST',
+  path: eventsPath(groupId),
+  body: JSON.stringify({ epoch: 1, events }),
+});
 
 /** Downloads the page after `cursor`, which is written into the query as it is given. */
 export const download = (

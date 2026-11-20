@@ -159,6 +159,9 @@ export function useSharingApi({
 /** The test's own database, for what a test cannot do or see through the API. */
 export const sql = (): Sql => world.database!.sql;
 
+/** Where the test's database is, for a test that serves the API on it a second time. */
+export const databaseUrl = () => world.database!.url;
+
 /** Where the API is served, for a request `send` cannot send or an answer it cannot show. */
 export const serverUrl = () => world.server!.url;
 

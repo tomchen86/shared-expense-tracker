@@ -20,6 +20,9 @@ const EVENT_B = '6f2a9d1c-3b4e-4c7a-9e8f-1a2b3c4d5e6f';
 const T = 1794983520000;
 const LARGEST_INTEGER = 9007199254740991;
 
+/** A content of that many bytes, in lowercase hexadecimal. */
+const content = (bytes: number) => 'ab'.repeat(bytes);
+
 /** Values that are no object with keys: what any of the functions must turn down. */
 const NOT_OBJECTS: unknown[] = [
   undefined,
@@ -68,29 +71,32 @@ const NOT_COUNTS: unknown[] = [
   true,
 ];
 
-/** What is no content: 1 to 65,536 bytes in lowercase hexadecimal. */
+/**
+ * What is no content, which is 41 to 65,536 bytes in lowercase hexadecimal. Each is wrong
+ * in one way only: those that are written wrongly are long enough.
+ */
 const NOT_CONTENTS: unknown[] = [
   '',
-  'a',
-  'abc',
-  'AB',
-  'aB',
-  'zz',
-  '0x00',
-  ' 00',
-  '00 ',
-  '00\n',
-  'AAEC',
-  'AAE=',
-  '00'.repeat(65_537),
+  '00',
+  content(40),
+  content(65_537),
+  'a'.repeat(101),
+  'AB'.repeat(50),
+  'aB'.repeat(50),
+  'zz'.repeat(50),
+  `0x${content(50)}`,
+  ` ${'0'.repeat(99)}`,
+  `${'0'.repeat(99)} `,
+  `${'0'.repeat(99)}\n`,
+  'AAEC'.repeat(25),
+  `${'AAEC'.repeat(24)}AAE=`,
   0,
   null,
   undefined,
   [0],
-  new Uint8Array([0]),
+  new Uint8Array(50),
 ];
 
-const content = (bytes: number) => 'ab'.repeat(bytes);
 /**
  * One row for each value, with how it is written as the name of its test: `test.each`
  * would hand a value that is a list over as several, and print a line feed as one.
@@ -103,47 +109,64 @@ const named = (values: unknown[]): [string, unknown][] =>
     value,
   ]);
 
+// Each of these gives a right value with `fields` in place of its own, a field that is
+// `undefined` included: it stays in the value as it is.
+
+/** An event to upload. */
+const one = (fields: Record<string, unknown> = {}) => ({
+  id: EVENT_A,
+  content: content(200),
+  ...fields,
+});
+
+/** The body of an upload. */
+const upload = (fields: Record<string, unknown> = {}) => ({
+  epoch: 1,
+  events: [one()],
+  ...fields,
+});
+
 describe('SYNC-53.1', () => {
-  const upload = (events: unknown, epoch: unknown = 1) => ({ epoch, events });
-  const one = (id: unknown = EVENT_A, written: unknown = content(200)) => ({
-    id,
-    content: written,
-  });
   /** `count` events with IDs of their own. */
   const many = (count: number) =>
     Array.from({ length: count }, (_, index) =>
-      one(`${EVENT_A.slice(0, -4)}${index.toString(16).padStart(4, '0')}`),
+      one({
+        id: `${EVENT_A.slice(0, -4)}${index.toString(16).padStart(4, '0')}`,
+      }),
     );
 
   test('[SYNC-53.1] takes an upload of one event, of several, and of 100', () => {
-    expect(isUploadEventsRequest(upload([one()]))).toBe(true);
-    expect(isUploadEventsRequest(upload([one(EVENT_A), one(EVENT_B)]))).toBe(
-      true,
-    );
-    expect(isUploadEventsRequest(upload(many(100)))).toBe(true);
+    expect(isUploadEventsRequest(upload())).toBe(true);
+    expect(
+      isUploadEventsRequest(upload({ events: [one(), one({ id: EVENT_B })] })),
+    ).toBe(true);
+    expect(isUploadEventsRequest(upload({ events: many(100) }))).toBe(true);
   });
 
-  test('[SYNC-53.1] takes contents of 1 byte and of 65,536 bytes, of any hexadecimal digits', () => {
-    expect(isUploadEventsRequest(upload([one(EVENT_A, '00')]))).toBe(true);
-    expect(isUploadEventsRequest(upload([one(EVENT_A, 'ff')]))).toBe(true);
-    expect(
-      isUploadEventsRequest(upload([one(EVENT_A, '0123456789abcdef')])),
-    ).toBe(true);
-    expect(isUploadEventsRequest(upload([one(EVENT_A, content(65_536))]))).toBe(
-      true,
-    );
+  test('[SYNC-53.1] takes contents of 41 bytes and of 65,536 bytes, of any hexadecimal digits', () => {
+    for (const written of [
+      content(41),
+      '00'.repeat(41),
+      'ff'.repeat(41),
+      '0123456789abcdef'.repeat(6),
+      content(65_536),
+    ]) {
+      expect(
+        isUploadEventsRequest(upload({ events: [one({ content: written })] })),
+      ).toBe(true);
+    }
   });
 
   test('[SYNC-53.1] takes every key epoch from 1 to the largest integer', () => {
     for (const epoch of [1, 2, 1000, LARGEST_INTEGER]) {
-      expect(isUploadEventsRequest(upload([one()], epoch))).toBe(true);
+      expect(isUploadEventsRequest(upload({ epoch }))).toBe(true);
     }
   });
 
   test('[SYNC-53.1] takes the keys in any order', () => {
     expect(
       isUploadEventsRequest({
-        events: [{ content: content(3), id: EVENT_A }],
+        events: [{ content: content(41), id: EVENT_A }],
         epoch: 1,
       }),
     ).toBe(true);
@@ -152,7 +175,12 @@ describe('SYNC-53.1', () => {
   test('[SYNC-53.1] takes events with the same content under different IDs', () => {
     expect(
       isUploadEventsRequest(
-        upload([one(EVENT_A, content(5)), one(EVENT_B, content(5))]),
+        upload({
+          events: [
+            one({ content: content(50) }),
+            one({ id: EVENT_B, content: content(50) }),
+          ],
+        }),
       ),
     ).toBe(true);
   });
@@ -168,30 +196,31 @@ describe('SYNC-53.1', () => {
     expect(isUploadEventsRequest({})).toBe(false);
     expect(isUploadEventsRequest({ epoch: 1 })).toBe(false);
     expect(isUploadEventsRequest({ events: [one()] })).toBe(false);
-    expect(
-      isUploadEventsRequest({ epoch: 1, events: [one()], name: 'Brisbane' }),
-    ).toBe(false);
-    expect(
-      isUploadEventsRequest({ epoch: 1, events: [one()], groupId: BRISBANE }),
-    ).toBe(false);
-    expect(
-      isUploadEventsRequest({ epoch: 1, events: [one()], extra: undefined }),
-    ).toBe(false);
+    expect(isUploadEventsRequest(upload({ name: 'Brisbane' }))).toBe(false);
+    expect(isUploadEventsRequest(upload({ groupId: BRISBANE }))).toBe(false);
+    expect(isUploadEventsRequest(upload({ extra: undefined }))).toBe(false);
   });
 
   test.each(named(NOT_COUNTS))(
     '[SYNC-53.1] turns down an upload whose key epoch is %s',
     (_, epoch) => {
-      expect(isUploadEventsRequest(upload([one()], epoch))).toBe(false);
+      expect(isUploadEventsRequest(upload({ epoch }))).toBe(false);
     },
   );
 
   test('[SYNC-53.1] turns down an upload with no events, with 101, or with events that are no list', () => {
-    expect(isUploadEventsRequest(upload([]))).toBe(false);
-    expect(isUploadEventsRequest(upload(many(101)))).toBe(false);
-    expect(isUploadEventsRequest(upload(many(1000)))).toBe(false);
-    for (const events of [one(), { 0: one(), length: 1 }, 'events', 1, null]) {
-      expect(isUploadEventsRequest(upload(events))).toBe(false);
+    expect(isUploadEventsRequest(upload({ events: [] }))).toBe(false);
+    expect(isUploadEventsRequest(upload({ events: many(101) }))).toBe(false);
+    expect(isUploadEventsRequest(upload({ events: many(1000) }))).toBe(false);
+    for (const events of [
+      one(),
+      { 0: one(), length: 1 },
+      'events',
+      1,
+      null,
+      undefined,
+    ]) {
+      expect(isUploadEventsRequest(upload({ events }))).toBe(false);
     }
   });
 
@@ -200,51 +229,72 @@ describe('SYNC-53.1', () => {
       ...NOT_OBJECTS,
       {},
       { id: EVENT_B },
-      { content: content(3) },
-      { ...one(EVENT_B), deviceId: TAYLOR },
-      { ...one(EVENT_B), sequence: 1 },
-      { ...one(EVENT_B), epoch: 1 },
+      { content: content(50) },
+      one({ id: EVENT_B, deviceId: TAYLOR }),
+      one({ id: EVENT_B, sequence: 1 }),
+      one({ id: EVENT_B, epoch: 1 }),
     ]) {
-      expect(isUploadEventsRequest(upload([wrong]))).toBe(false);
-      expect(isUploadEventsRequest(upload([one(), wrong]))).toBe(false);
-      expect(isUploadEventsRequest(upload([wrong, one()]))).toBe(false);
+      expect(isUploadEventsRequest(upload({ events: [wrong] }))).toBe(false);
+      expect(isUploadEventsRequest(upload({ events: [one(), wrong] }))).toBe(
+        false,
+      );
+      expect(isUploadEventsRequest(upload({ events: [wrong, one()] }))).toBe(
+        false,
+      );
     }
   });
 
   test.each(named(NOT_IDS))(
     '[SYNC-53.1] turns down an upload with the event ID %s',
     (_, id) => {
-      expect(isUploadEventsRequest(upload([one(id)]))).toBe(false);
-      expect(isUploadEventsRequest(upload([one(EVENT_B), one(id)]))).toBe(
+      expect(isUploadEventsRequest(upload({ events: [one({ id })] }))).toBe(
         false,
       );
+      expect(
+        isUploadEventsRequest(
+          upload({ events: [one({ id: EVENT_B }), one({ id })] }),
+        ),
+      ).toBe(false);
     },
   );
 
   test('[SYNC-53.1] turns down an upload with a content that is none', () => {
     for (const written of NOT_CONTENTS) {
-      expect(isUploadEventsRequest(upload([one(EVENT_A, written)]))).toBe(
-        false,
-      );
       expect(
-        isUploadEventsRequest(upload([one(EVENT_B), one(EVENT_A, written)])),
+        isUploadEventsRequest(upload({ events: [one({ content: written })] })),
+      ).toBe(false);
+      expect(
+        isUploadEventsRequest(
+          upload({
+            events: [one({ id: EVENT_B }), one({ content: written })],
+          }),
+        ),
       ).toBe(false);
     }
   });
 
   test('[SYNC-53.1] turns down an upload that carries one event ID twice', () => {
-    expect(isUploadEventsRequest(upload([one(), one()]))).toBe(false);
+    expect(isUploadEventsRequest(upload({ events: [one(), one()] }))).toBe(
+      false,
+    );
     expect(
       isUploadEventsRequest(
-        upload([one(EVENT_A, content(3)), one(EVENT_A, content(4))]),
+        upload({
+          events: [
+            one({ content: content(50) }),
+            one({ content: content(60) }),
+          ],
+        }),
       ),
     ).toBe(false);
     expect(
-      isUploadEventsRequest(upload([one(EVENT_A), one(EVENT_B), one(EVENT_A)])),
+      isUploadEventsRequest(
+        upload({ events: [one(), one({ id: EVENT_B }), one()] }),
+      ),
     ).toBe(false);
-    expect(isUploadEventsRequest(upload([...many(99), many(99)[98]]))).toBe(
-      false,
-    );
+    expect(
+      isUploadEventsRequest(upload({ events: [...many(99), many(99)[98]] })),
+    ).toBe(false);
   });
 });
 
@@ -269,21 +319,28 @@ describe('SYNC-62.1', () => {
   });
 
   describe('what the API answers to an upload', () => {
-    const stored = (id: unknown = EVENT_A, sequence: unknown = 1) => ({
-      id,
-      sequence,
+    /** One event's number in the answer. */
+    const stored = (fields: Record<string, unknown> = {}) => ({
+      id: EVENT_A,
+      sequence: 1,
+      ...fields,
     });
 
-    test('[SYNC-62.1] is one ID and one sequence number for each event, whatever the numbers', () => {
+    test('[SYNC-62.1] is one ID and one sequence number for each event, however many and whatever the numbers', () => {
       expect(isUploadEventsResponse({ events: [stored()] })).toBe(true);
       expect(isUploadEventsResponse({ events: [] })).toBe(true);
       expect(
         isUploadEventsResponse({
-          events: [stored(EVENT_A, 7), stored(EVENT_B, 2)],
+          events: [
+            stored({ sequence: 7 }),
+            stored({ id: EVENT_B, sequence: 2 }),
+          ],
         }),
       ).toBe(true);
       expect(
-        isUploadEventsResponse({ events: [stored(EVENT_A, LARGEST_INTEGER)] }),
+        isUploadEventsResponse({
+          events: [stored({ sequence: LARGEST_INTEGER })],
+        }),
       ).toBe(true);
     });
 
@@ -297,11 +354,9 @@ describe('SYNC-62.1', () => {
         { events: [stored(), null] },
         { events: [{ id: EVENT_A }] },
         { events: [{ sequence: 1 }] },
-        { events: [{ ...stored(), content: content(3) }] },
-        ...NOT_IDS.map((id) => ({ events: [stored(id)] })),
-        ...NOT_COUNTS.map((sequence) => ({
-          events: [stored(EVENT_A, sequence)],
-        })),
+        { events: [stored({ content: content(50) })] },
+        ...NOT_IDS.map((id) => ({ events: [stored({ id })] })),
+        ...NOT_COUNTS.map((sequence) => ({ events: [stored({ sequence })] })),
       ]) {
         expect(isUploadEventsResponse(value)).toBe(false);
       }
@@ -373,7 +428,7 @@ describe('SYNC-62.1', () => {
         { epoch: LARGEST_INTEGER },
         { receivedAtMs: 0 },
         { receivedAtMs: LARGEST_INTEGER },
-        { content: '00' },
+        { content: content(41) },
         { content: content(65_536) },
         { deviceId: EVENT_B },
       ]) {
@@ -416,9 +471,16 @@ describe('SYNC-62.1', () => {
         ...NOT_COUNTS.map((sequence) => relayed({ sequence })),
         ...NOT_COUNTS.map((epoch) => relayed({ epoch })),
         ...NOT_CONTENTS.map((written) => relayed({ content: written })),
-        ...[-1, 1.5, NaN, Infinity, LARGEST_INTEGER + 1, '0', null].map(
-          (receivedAtMs) => relayed({ receivedAtMs }),
-        ),
+        ...[
+          -1,
+          1.5,
+          NaN,
+          Infinity,
+          LARGEST_INTEGER + 1,
+          '0',
+          null,
+          undefined,
+        ].map((receivedAtMs) => relayed({ receivedAtMs })),
       ];
       for (const each of wrong) {
         expect(isEventsPageResponse(page([each]))).toBe(false);

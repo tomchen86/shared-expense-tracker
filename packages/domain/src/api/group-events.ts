@@ -5,6 +5,12 @@
 //
 // Every request here is a signed request, so the API can also refuse it with a `Refusal`.
 
+/**
+ * The fewest bytes an event's content may have: what encryption adds to any plaintext, the
+ * format version byte, the nonce and the tag (SHARING-1.1), so nothing shorter is an
+ * encrypted event.
+ */
+export const EVENT_CONTENT_MINIMUM = 41;
 /** The most bytes an event's content may have (ADR-0021). */
 export const EVENT_CONTENT_LIMIT = 65_536;
 /** The most events one upload may carry. */
@@ -25,7 +31,7 @@ export interface CreateGroupResponse {
 export interface UploadedEvent {
   /** The event's own ID, the same every time it is uploaded: a lowercase version-4 UUID. */
   id: string;
-  /** The content, which the API never reads: 1 to 65,536 bytes, in lowercase hexadecimal. */
+  /** The content, which the API never reads: 41 to 65,536 bytes, in lowercase hexadecimal. */
   content: string;
 }
 

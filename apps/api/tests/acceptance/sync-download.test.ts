@@ -13,6 +13,7 @@ import {
   EMPTY_PAGE,
   LARGEST,
   REQUEST,
+  SMALLEST,
   TOKYO,
   addMember,
   answerHeaders,
@@ -78,7 +79,7 @@ describe('SYNC-57.1', () => {
   });
 
   test('[SYNC-57.1] returns at most 100 events, and says whether more follow', async () => {
-    const sent = events(250, 20);
+    const sent = events(250, 50);
     const taylor = await taylorWithEvents(sent);
     const all = relayedFrom(1, sent, { by: taylor, at: T });
 
@@ -110,11 +111,11 @@ describe('SYNC-57.1', () => {
 
   test('[SYNC-57.1] counts the bytes of the contents from the cursor on, whatever came before it', async () => {
     const sent = [
-      event(1),
+      event(SMALLEST),
       ...events(3, LARGEST),
-      event(LARGEST - 1),
-      event(1),
-      event(1),
+      event(LARGEST - SMALLEST),
+      event(SMALLEST),
+      event(SMALLEST),
     ];
     const taylor = await taylorWithEvents(sent);
     const all = relayedFrom(1, sent, { by: taylor, at: T });
@@ -123,7 +124,7 @@ describe('SYNC-57.1', () => {
     const afterOne = await download(taylor, BRISBANE, 1);
     const afterFive = await download(taylor, BRISBANE, 5);
 
-    // 1 + 3 × 65,536 + 65,535 bytes are exactly 262,144, so the sixth event does not fit.
+    // 41 + 3 × 65,536 + 65,495 bytes are exactly 262,144, so the sixth event does not fit.
     expectPage(fromTheStart, { events: all.slice(0, 5), more: true });
     // Without the first, the sixth fits and the seventh does not.
     expectPage(afterOne, { events: all.slice(1, 6), more: true });

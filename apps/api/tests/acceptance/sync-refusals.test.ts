@@ -3,10 +3,12 @@ import {
   CASEY,
   T,
   TAYLOR,
+  expectPassed,
   expectRefused,
   newPhone,
   registered,
   send,
+  setTime,
   signedBy,
   timesStored,
   type Phone,
@@ -29,6 +31,7 @@ import {
   expectUploaded,
   leavingGroupsAsTheyWere,
   relayedFrom,
+  rowsHolding,
   upload,
   uploadBody,
   useSyncApi,
@@ -229,5 +232,54 @@ describe('SYNC-61.1', () => {
       expect(await timesStored(refused)).toBe(0);
     }
     expectPage(await download(taylor, BRISBANE, 1), EMPTY_PAGE);
+  });
+});
+
+describe('SYNC-63.1', () => {
+  test('[SYNC-63.1] takes a HEAD for no download: it answers "not found" and records no progress', async () => {
+    const [taylor] = await taylorWithBrisbaneAndCasey();
+    const stored = events(3);
+    expectUploaded(await upload(taylor, BRISBANE, stored), stored, [1, 2, 3]);
+    setTime(T + 1_000);
+    expect((await download(taylor, BRISBANE, 1)).status).toBe(200);
+
+    setTime(T + 2_000);
+    const answer = await leavingGroupsAsTheyWere(() =>
+      call(taylor, { method: 'HEAD', path: `${eventsPath(BRISBANE)}?after=2` }),
+    );
+
+    // The answer to a HEAD has no body, only the status.
+    expect(answer.status).toBe(404);
+    expect(await rowsHolding(BRISBANE, TAYLOR, 1, T + 1_000)).toBe(1);
+    expect(await rowsHolding(BRISBANE, TAYLOR, 2, T + 2_000)).toBe(0);
+  });
+
+  test('[SYNC-63.1] answers "not found" to every other method on the two paths, and does nothing', async () => {
+    const [taylor] = await taylorWithBrisbaneAndCasey();
+    const stored = events(2);
+    expectUploaded(await upload(taylor, BRISBANE, stored), stored, [1, 2]);
+    const anUpload = JSON.stringify({ epoch: 1, events: events(1) });
+
+    for (const [method, path, body] of [
+      ['GET', `/groups/${BRISBANE}`, undefined],
+      ['POST', `/groups/${BRISBANE}`, anUpload],
+      ['DELETE', `/groups/${BRISBANE}`, undefined],
+      ['PATCH', `/groups/${BRISBANE}`, '{}'],
+      ['PUT', eventsPath(BRISBANE), anUpload],
+      ['DELETE', eventsPath(BRISBANE), undefined],
+      ['DELETE', `${eventsPath(BRISBANE)}?after=0`, undefined],
+      ['PATCH', eventsPath(BRISBANE), anUpload],
+    ] as const) {
+      const answer = await leavingGroupsAsTheyWere(() =>
+        call(taylor, { method, path, body }),
+      );
+
+      expectPassed(answer);
+    }
+    // The group and its events are as they were.
+    expectPage(await download(taylor, BRISBANE, 0), {
+      events: relayedFrom(1, stored, { by: taylor, at: T }),
+      more: false,
+    });
   });
 });

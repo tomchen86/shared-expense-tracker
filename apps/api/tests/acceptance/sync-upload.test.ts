@@ -5,6 +5,7 @@ import type {
   UploadEventsResponse,
   UploadedEvent,
 } from '@shared-expense/domain/api';
+import type { NodeServer } from '../../src/node';
 import {
   CASEY,
   T,
@@ -21,23 +22,28 @@ import {
   GROUP_LIMIT,
   LARGEST,
   REQUEST,
+  SMALLEST,
   TOKYO,
   aMinuteLater,
   addMember,
+  callOn,
   createGroup,
   download,
   event,
   events,
+  eventsPath,
   everyEvent,
   expectCreated,
   expectGroupRefused,
   expectPage,
   expectUploaded,
   leavingGroupsAsTheyWere,
+  ownServer,
   relayed,
   relayedFrom,
   upload,
   uploadBody,
+  uploadOf,
   useSyncApi,
   wrongEpoch,
 } from './sync-api';
@@ -111,9 +117,13 @@ describe('SYNC-50.1', () => {
   test('[SYNC-50.1] stores contents of any bytes and relays them as they were', async () => {
     const taylor = await taylorWithBrisbane();
     const sent = [
-      event(Uint8Array.of(0)),
+      event(new Uint8Array(SMALLEST)),
       event(Uint8Array.from({ length: 256 }, (_, byte) => byte)),
-      event(new Uint8Array(Buffer.from('{"not":"ciphertext"} 晚餐 🍜'))),
+      event(
+        new Uint8Array(
+          Buffer.from('{"not":"ciphertext","note":"晚餐 🍜 at the corner"}'),
+        ),
+      ),
       event(new Uint8Array(1_000)),
       event(LARGEST),
     ];
@@ -124,6 +134,31 @@ describe('SYNC-50.1', () => {
     expect(await everyEvent(taylor, BRISBANE)).toEqual(
       relayedFrom(1, sent, { by: taylor, at: T }),
     );
+  });
+
+  test("[SYNC-50.1] gives the events of one upload one receive time, though the API's time moves on while it stores them", async () => {
+    const taylor = await taylorWithBrisbane();
+    // A server whose time is a millisecond later every time it is read.
+    let reads = 0;
+    const ticking = await ownServer(() => T + 1_000 + (reads += 1));
+    const first = events(5);
+    const second = events(5);
+
+    const answers = [
+      await callOn(ticking, taylor, uploadOf(BRISBANE, first)),
+      await callOn(ticking, taylor, uploadOf(BRISBANE, second)),
+    ];
+
+    expectUploaded(answers[0], first, [1, 2, 3, 4, 5]);
+    expectUploaded(answers[1], second, [6, 7, 8, 9, 10]);
+    const times = (await everyEvent(taylor, BRISBANE)).map(
+      ({ receivedAtMs }) => receivedAtMs,
+    );
+    expect(new Set(times.slice(0, 5)).size).toBe(1);
+    expect(new Set(times.slice(5)).size).toBe(1);
+    expect(times[0]).toBeGreaterThan(T + 1_000);
+    expect(times[5]).toBeGreaterThan(times[0]);
+    expect(times[5]).toBeLessThanOrEqual(T + 1_000 + reads);
   });
 
   test('[SYNC-50.1] numbers each group by itself', async () => {
@@ -288,27 +323,45 @@ describe('SYNC-51.1', () => {
 });
 
 describe('SYNC-52.1', () => {
-  test('[SYNC-52.1] numbers the events of uploads that arrive together with no number twice and none left out, and a phone that follows its cursor meanwhile misses none', async () => {
-    const taylor = await taylorWithBrisbane();
-    const casey = await registered(CASEY);
-    const reader = await registered();
-    await addMember(BRISBANE, casey);
-    await addMember(BRISBANE, reader);
+  test('[SYNC-52.1] numbers the events of uploads that arrive together with no number twice and none left out, and phones that follow their cursors meanwhile miss none', async () => {
     const ROUNDS = 3;
     const UPLOADS_EACH = 15;
     const EVENTS_EACH = 3;
+    const READS_EACH = 50;
+    const taylor = await taylorWithBrisbane();
+    const casey = await registered(CASEY);
+    await addMember(BRISBANE, casey);
+    // Every phone sends to a server of its own, each with its own connections to the one
+    // database, so that no request waits behind another's for a connection.
+    const uploaders = [
+      { phone: taylor, server: await ownServer() },
+      { phone: casey, server: await ownServer() },
+    ];
+    const readers: {
+      phone: Phone;
+      server: NodeServer;
+      seen: RelayedEvent[];
+    }[] = [];
+    for (let index = 0; index < 2; index += 1) {
+      const phone = await registered();
+      await addMember(BRISBANE, phone);
+      readers.push({ phone, server: await ownServer(), seen: [] });
+    }
     const uploads: { by: Phone; sent: UploadedEvent[]; answer: Answer }[] = [];
-    const seen: RelayedEvent[] = [];
 
-    /** The reader downloads the page after the last event it has, which must begin right there and have no gap. */
-    async function readOn(): Promise<EventsPageResponse> {
-      const answer = await download(reader, BRISBANE, seen.length);
+    /** A reader downloads the page after the last event it has, which must begin right there and have no gap. */
+    async function readOn(
+      reader: (typeof readers)[number],
+    ): Promise<EventsPageResponse> {
+      const answer = await callOn(reader.server, reader.phone, {
+        path: `${eventsPath(BRISBANE)}?after=${reader.seen.length}`,
+      });
       expect(answer.status).toBe(200);
       const page = answer.body as EventsPageResponse;
       expect(page.events.map(({ sequence }) => sequence)).toEqual(
-        page.events.map((_, index) => seen.length + index + 1),
+        page.events.map((_, index) => reader.seen.length + index + 1),
       );
-      seen.push(...page.events);
+      reader.seen.push(...page.events);
       return page;
     }
 
@@ -318,22 +371,34 @@ describe('SYNC-52.1', () => {
       let uploading = true;
       const stored = Promise.all(
         Array.from({ length: UPLOADS_EACH * 2 }, async (_, index) => {
-          const by = index % 2 === 0 ? taylor : casey;
+          const { phone, server } = uploaders[index % 2];
           const sent = events(EVENTS_EACH, 50);
-          uploads.push({ by, sent, answer: await upload(by, BRISBANE, sent) });
+          const answer = await callOn(server, phone, uploadOf(BRISBANE, sent));
+          uploads.push({ by: phone, sent, answer });
         }),
       ).finally(() => {
         uploading = false;
       });
-      for (let reads = 0; uploading && reads < 40; reads += 1) await readOn();
-      await stored;
+      try {
+        await Promise.all(
+          readers.map(async (reader) => {
+            for (let reads = 0; uploading && reads < READS_EACH; reads += 1) {
+              await readOn(reader);
+            }
+          }),
+        );
+      } finally {
+        // Nothing is still on its way when the test ends, whether it passed or not.
+        await stored.catch(() => {});
+      }
     }
     aMinuteLater();
-    while ((await readOn()).more);
+    for (const reader of readers) while ((await readOn(reader)).more);
 
     // Every upload was stored, its events next to each other in its own order.
     const total = ROUNDS * UPLOADS_EACH * 2 * EVENTS_EACH;
     const numbered = new Map<number, { id: string; deviceId: string }>();
+    expect(uploads).toHaveLength(ROUNDS * UPLOADS_EACH * 2);
     for (const { by, sent, answer } of uploads) {
       expect(answer.status).toBe(200);
       const stored = (answer.body as UploadEventsResponse).events;
@@ -349,16 +414,18 @@ describe('SYNC-52.1', () => {
     expect([...numbered.keys()].sort((a, b) => a - b)).toEqual(
       Array.from({ length: total }, (_, index) => index + 1),
     );
-    // The reader got every event once, under the number its upload was answered with.
-    expect(
-      seen.map(({ sequence, id, deviceId }) => [sequence, id, deviceId]),
-    ).toEqual(
-      Array.from({ length: total }, (_, index) => [
-        index + 1,
-        numbered.get(index + 1)!.id,
-        numbered.get(index + 1)!.deviceId,
-      ]),
-    );
+    // Each reader got every event once, under the number its upload was answered with.
+    for (const { seen } of readers) {
+      expect(
+        seen.map(({ sequence, id, deviceId }) => [sequence, id, deviceId]),
+      ).toEqual(
+        Array.from({ length: total }, (_, index) => [
+          index + 1,
+          numbered.get(index + 1)!.id,
+          numbered.get(index + 1)!.deviceId,
+        ]),
+      );
+    }
   }, 60_000);
 });
 
@@ -439,16 +506,36 @@ describe('SYNC-54.1', () => {
       () => body({ epoch: 1, events: [{ id: randomUUID(), content: '' }] }),
     ],
     [
+      'has content of 40 bytes',
+      () => body({ epoch: 1, events: [event(SMALLEST - 1)] }),
+    ],
+    [
+      'has content of one byte',
+      () => body({ epoch: 1, events: [{ id: randomUUID(), content: '00' }] }),
+    ],
+    [
       'has content in capitals',
-      () => body({ epoch: 1, events: [{ id: randomUUID(), content: 'AB12' }] }),
+      () =>
+        body({
+          epoch: 1,
+          events: [{ id: randomUUID(), content: 'AB12'.repeat(50) }],
+        }),
     ],
     [
       'has content of an odd number of characters',
-      () => body({ epoch: 1, events: [{ id: randomUUID(), content: 'ab1' }] }),
+      () =>
+        body({
+          epoch: 1,
+          events: [{ id: randomUUID(), content: 'a'.repeat(201) }],
+        }),
     ],
     [
       'has content that is not hexadecimal',
-      () => body({ epoch: 1, events: [{ id: randomUUID(), content: 'zz' }] }),
+      () =>
+        body({
+          epoch: 1,
+          events: [{ id: randomUUID(), content: 'zz'.repeat(100) }],
+        }),
     ],
     [
       'has content in Base64',
@@ -456,7 +543,7 @@ describe('SYNC-54.1', () => {
         body({
           epoch: 1,
           events: [
-            { id: randomUUID(), content: randomBytes(30).toString('base64') },
+            { id: randomUUID(), content: randomBytes(150).toString('base64') },
           ],
         }),
     ],
@@ -492,12 +579,25 @@ describe('SYNC-54.1', () => {
     expectUploaded(justRight, largest, [1]);
   });
 
+  test('[SYNC-54.1] refuses an event of 40 bytes, and takes one of 41', async () => {
+    const taylor = await taylorWithBrisbane();
+    const smallest = [event(SMALLEST)];
+
+    const tooSmall = await leavingGroupsAsTheyWere(() =>
+      upload(taylor, BRISBANE, [event(SMALLEST - 1)]),
+    );
+    const justRight = await upload(taylor, BRISBANE, smallest);
+
+    expectRefused(tooSmall, REQUEST);
+    expectUploaded(justRight, smallest, [1]);
+  });
+
   test('[SYNC-54.1] refuses an upload of 101 events, and takes one of 100', async () => {
     const taylor = await taylorWithBrisbane();
-    const hundred = events(100, 20);
+    const hundred = events(100, 50);
 
     const tooMany = await leavingGroupsAsTheyWere(() =>
-      upload(taylor, BRISBANE, events(101, 20)),
+      upload(taylor, BRISBANE, events(101, 50)),
     );
     const justRight = await upload(taylor, BRISBANE, hundred);
 
@@ -642,42 +742,42 @@ describe('SYNC-56.1', () => {
     const twoMore = await leavingGroupsAsTheyWere(() =>
       upload(taylor, BRISBANE, events(2, LARGEST)),
     );
-    // One byte short of the limit, then two bytes more, then one byte: exactly the limit.
-    const almost = events(1, LARGEST - 1);
+    // 41 bytes short of the limit, then two events of 41 bytes, then one: exactly the limit.
+    const almost = events(1, LARGEST - SMALLEST);
     const upToAlmost = await upload(taylor, BRISBANE, almost);
-    const twoBytes = await leavingGroupsAsTheyWere(() =>
-      upload(taylor, BRISBANE, events(2, 1)),
+    const twoSmallest = await leavingGroupsAsTheyWere(() =>
+      upload(taylor, BRISBANE, events(2, SMALLEST)),
     );
-    const last = events(1, 1);
+    const last = events(1, SMALLEST);
     const upToTheLimit = await upload(taylor, BRISBANE, last);
 
     expectGroupRefused(twoMore, GROUP_FULL);
     expectUploaded(upToAlmost, almost, [160]);
-    expectGroupRefused(twoBytes, GROUP_FULL);
+    expectGroupRefused(twoSmallest, GROUP_FULL);
     expectUploaded(upToTheLimit, last, [161]);
 
-    // The group is full: one more byte is refused, from any member device.
+    // The group is full: the smallest event is refused, from any member device.
     const casey = await registered(CASEY);
     await addMember(BRISBANE, casey);
-    const oneByte = await leavingGroupsAsTheyWere(() =>
-      upload(taylor, BRISBANE, events(1, 1)),
+    const oneMore = await leavingGroupsAsTheyWere(() =>
+      upload(taylor, BRISBANE, events(1, SMALLEST)),
     );
     const fromCasey = await leavingGroupsAsTheyWere(() =>
-      upload(casey, BRISBANE, events(1, 1)),
+      upload(casey, BRISBANE, events(1, SMALLEST)),
     );
     // An event the group has is no new event, whatever content it comes with.
     const again = await leavingGroupsAsTheyWere(() =>
       upload(taylor, BRISBANE, [event(LARGEST, almost[0].id), last[0]]),
     );
     const againWithOneNew = await leavingGroupsAsTheyWere(() =>
-      upload(taylor, BRISBANE, [last[0], ...events(1, 1)]),
+      upload(taylor, BRISBANE, [last[0], ...events(1, SMALLEST)]),
     );
     // Another key epoch is refused for that, full or not (SYNC-60.1).
     const underEpoch2 = await leavingGroupsAsTheyWere(() =>
-      upload(taylor, BRISBANE, events(1, 1), 2),
+      upload(taylor, BRISBANE, events(1, SMALLEST), 2),
     );
 
-    expectGroupRefused(oneByte, GROUP_FULL);
+    expectGroupRefused(oneMore, GROUP_FULL);
     expectGroupRefused(fromCasey, GROUP_FULL);
     expectUploaded(again, [almost[0], last[0]], [160, 161]);
     expectGroupRefused(againWithOneNew, GROUP_FULL);
