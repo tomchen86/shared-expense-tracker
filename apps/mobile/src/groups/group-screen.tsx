@@ -8,22 +8,16 @@ import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
-import { ExpenseCard } from '../ledger/expense-card';
+import { ExpenseCard, paidBy } from '../ledger/expense-card';
 import { PeriodList, useListPeriod } from '../ledger/list-period-ui';
 import { useTrashActions } from '../ledger/trash-provider';
-import { useReadExpenses, type ExpenseView } from '../ledger/use-expenses';
+import { useReadExpenses } from '../ledger/use-expenses';
 import { useSyncNotices } from '../sync/use-sync-notices';
 import { groupTotals, yourBalanceLines } from './format-balance';
 import { GroupLargeTitle, useLargeTitleScroll } from './group-large-title';
 import { GroupSummary } from './group-summary';
 import { useGroup } from './use-group';
 import { useGroupArchive } from './use-group-archive';
-
-function paidBy(expense: ExpenseView, userId: string) {
-  const { participant } = expense.payments[0];
-  const payer = expense.members.find((member) => member.id === participant);
-  return `Paid by ${payer?.userId === userId ? 'You' : (payer?.name ?? participant)}`;
-}
 
 export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const { id } = useLocalSearchParams<{ id: string }>();

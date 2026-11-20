@@ -93,19 +93,24 @@ const MONTH_NAMES = [
 
 type CategoryDetails = Pick<InsightCategory, 'name' | 'color'>;
 
-interface CategoryTotal {
+interface CategoryTotal<E extends InsightExpense> {
   amountMinor: number;
   category: InsightCategory | undefined;
-  source: InsightExpense;
+  source: E;
+  /** Only the selected period's drill-down needs to retain the contributing expenses. */
+  expenses?: E[];
 }
 
-interface CurrencyTotal {
+interface CurrencyTotal<E extends InsightExpense = InsightExpense> {
   totalMinor: number;
   yourShareMinor?: number;
-  categories: Map<string, CategoryTotal>;
+  categories: Map<string, CategoryTotal<E>>;
 }
 
-type PeriodTotals = Map<string, Map<string, CurrencyTotal>>;
+type PeriodTotals<E extends InsightExpense = InsightExpense> = Map<
+  string,
+  Map<string, CurrencyTotal<E>>
+>;
 
 // String comparison uses UTF-16 code units, which order emoji before some BMP
 // characters. Iterate code points instead, without locale-dependent collation.
@@ -172,19 +177,20 @@ function yourShareOf(expense: InsightExpense, context: InsightContext) {
     .reduce((sum, share) => sum + share.amountMinor, 0);
 }
 
-function addExpense(
-  periods: PeriodTotals,
+function addExpense<E extends InsightExpense>(
+  periods: PeriodTotals<E>,
   key: string,
-  expense: InsightExpense,
+  expense: E,
   amountMinor: number,
   yourShareMinor: number | undefined,
   category: InsightCategory | undefined,
   categoryKey: string,
+  keepExpenses: boolean,
 ): boolean {
-  const currencies = periods.get(key) ?? new Map<string, CurrencyTotal>();
+  const currencies = periods.get(key) ?? new Map<string, CurrencyTotal<E>>();
   const currency = currencies.get(expense.currency) ?? {
     totalMinor: 0,
-    categories: new Map<string, CategoryTotal>(),
+    categories: new Map<string, CategoryTotal<E>>(),
   };
   if (amountMinor > Number.MAX_SAFE_INTEGER - currency.totalMinor) return false;
 
@@ -192,6 +198,7 @@ function addExpense(
   if (existing) {
     // Positive category subtotals cannot exceed the checked currency total.
     existing.amountMinor += amountMinor;
+    existing.expenses?.push(expense);
     if (!category && preferSource(expense, existing.source)) {
       existing.source = expense;
     }
@@ -200,6 +207,7 @@ function addExpense(
       amountMinor,
       category,
       source: expense,
+      expenses: keepExpenses ? [expense] : undefined,
     });
   }
   currency.totalMinor += amountMinor;
@@ -243,6 +251,26 @@ function buildChart(
   };
 }
 
+function orderedCategories<E extends InsightExpense>(
+  currency: CurrencyTotal<E>,
+) {
+  return Array.from(currency.categories, ([key, total]) => {
+    const { name, color } = total.category ?? fallbackDetails(total.source);
+    return {
+      key,
+      name,
+      color,
+      amountMinor: total.amountMinor,
+      expenses: total.expenses,
+    };
+  }).sort(
+    (left, right) =>
+      right.amountMinor - left.amountMinor ||
+      compareCodePoints(left.name.toLowerCase(), right.name.toLowerCase()) ||
+      compareDetails(left, right),
+  );
+}
+
 function buildPeriods(
   periods: PeriodTotals,
   preference: InsightChartPreference,
@@ -253,30 +281,16 @@ function buildPeriods(
     const currencies = [...totals.keys()]
       .sort()
       .map((currency): InsightCurrency => {
-        const {
-          totalMinor,
-          yourShareMinor,
-          categories: categoryTotals,
-        } = totals.get(currency)!;
-        const categories = [...categoryTotals.values()]
-          .map(({ amountMinor, category, source }) => {
-            const { name, color } = category ?? fallbackDetails(source);
-            return {
-              name,
-              color,
-              amountMinor,
-              percent: (amountMinor / totalMinor) * 100,
-            };
-          })
-          .sort(
-            (left, right) =>
-              right.amountMinor - left.amountMinor ||
-              compareCodePoints(
-                left.name.toLowerCase(),
-                right.name.toLowerCase(),
-              ) ||
-              compareDetails(left, right),
-          );
+        const total = totals.get(currency)!;
+        const { totalMinor, yourShareMinor } = total;
+        const categories = orderedCategories(total).map(
+          ({ name, color, amountMinor }) => ({
+            name,
+            color,
+            amountMinor,
+            percent: (amountMinor / totalMinor) * 100,
+          }),
+        );
         const previousTotalMinor = previous?.get(currency)?.totalMinor ?? 0;
         const deltaMinor = totalMinor - previousTotalMinor;
         return {
@@ -309,8 +323,8 @@ function buildPeriods(
   });
 }
 
-interface InsightsInput {
-  expenses: readonly InsightExpense[];
+interface InsightsInput<E extends InsightExpense = InsightExpense> {
+  expenses: readonly E[];
   categories: readonly InsightCategory[];
   context: InsightContext;
   chartPreference: InsightChartPreference;
@@ -320,9 +334,10 @@ interface InsightsInput {
  * Adds each counted expense to the periods that `periodsOf` names for its date. False when a
  * total is rejected.
  */
-function collect(
-  { expenses, categories, context }: InsightsInput,
-  periodsOf: (date: string) => [PeriodTotals, string][],
+function collect<E extends InsightExpense>(
+  { expenses, categories, context }: Omit<InsightsInput<E>, 'chartPreference'>,
+  periodsOf: (date: string) => [PeriodTotals<E>, string][],
+  keepExpenses = false,
 ): boolean {
   const participantIds = new Set<string>();
   if (context.kind === 'personal') {
@@ -366,6 +381,7 @@ function collect(
           yourShareMinor,
           category,
           categoryKey,
+          keepExpenses,
         )
       )
         return false;
@@ -408,4 +424,60 @@ export function buildRangeInsights(
   if (!counted) return undefined;
   // One period, so with no period before it to compare with.
   return buildPeriods(range, input.chartPreference)[0]?.currencies ?? [];
+}
+
+export interface InsightCategoryExpenses<E extends InsightExpense> {
+  /** The same for the same category however the expenses change (INSIGHTS-55.1). */
+  key: string;
+  /** The given expenses counted into the category, in the order given. */
+  expenses: E[];
+}
+
+export interface InsightCurrencyExpenses<E extends InsightExpense> {
+  currency: string;
+  /** In the order of the currency's categories (INSIGHTS-8.1). */
+  categories: InsightCategoryExpenses<E>[];
+}
+
+/**
+ * The expenses each category of a month, a year or a range counts, by currency, or undefined
+ * when a total is rejected (INSIGHTS-55.1).
+ */
+export function buildCategoryExpenses<E extends InsightExpense>(
+  input: Omit<InsightsInput<E>, 'chartPreference'> &
+    (
+      | {
+          /** YYYY-MM for a month, YYYY for a year, as InsightPeriod's key. */
+          period: string;
+        }
+      | {
+          /** YYYY-MM-DD */
+          from: string;
+          /** YYYY-MM-DD */
+          to: string;
+        }
+    ),
+): InsightCurrencyExpenses<E>[] | undefined {
+  const selected: PeriodTotals<E> = new Map();
+  const counted = collect(
+    input,
+    (date) => {
+      const included =
+        'period' in input
+          ? date.slice(0, 7) === input.period ||
+            date.slice(0, 4) === input.period
+          : input.from <= date && date <= input.to;
+      return included ? [[selected, 'selected']] : [];
+    },
+    true,
+  );
+  if (!counted) return undefined;
+  const totals = selected.get('selected');
+  if (!totals) return [];
+  return [...totals.keys()].sort().map((currency) => ({
+    currency,
+    categories: orderedCategories(totals.get(currency)!).map(
+      ({ key, expenses }) => ({ key, expenses: expenses! }),
+    ),
+  }));
 }
