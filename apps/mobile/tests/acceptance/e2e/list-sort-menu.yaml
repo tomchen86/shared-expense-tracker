@@ -110,11 +110,17 @@ tags:
 - tapOn: Expenses
 - waitForAnimationToEnd
 - assertVisible: Sort By, Lowest Amount
-# LEDGER-149.1: on Android the back button closes the menu and leaves the order as it was.
+# LEDGER-149.1: on Android a press outside the menu, and the back button, close it and leave the
+# order as it was.
 - runFlow:
     when:
       platform: Android
     commands:
+      - tapOn: Sort By, Lowest Amount
+      - assertVisible: Recently Edited
+      - runFlow: common/press-outside.yaml
+      - assertNotVisible: Recently Edited
+      - assertVisible: Sort By, Lowest Amount
       - tapOn: Sort By, Lowest Amount
       - assertVisible: Recently Edited
       - pressKey: back

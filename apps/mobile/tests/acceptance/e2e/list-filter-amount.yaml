@@ -43,7 +43,7 @@ tags:
 - assertVisible: Lowest amount
 - assertVisible: Highest amount
 # A press outside it closes it and the keyboard.
-- runFlow: common/close-amount.yaml
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertNotVisible: Highest amount
 - assertVisible: Amount, 5 or more
@@ -62,7 +62,7 @@ tags:
 - waitForAnimationToEnd
 - tapOn: Highest amount
 - inputText: '10'
-- runFlow: common/close-amount.yaml
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Amount, 5 – 10
 - assertVisible: 1 item
@@ -73,7 +73,7 @@ tags:
 - waitForAnimationToEnd
 - eraseText: 1
 - inputText: '100'
-- runFlow: common/close-amount.yaml
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Amount, 100 – 10
 - assertVisible: No Matching Expenses
@@ -132,7 +132,7 @@ tags:
 - waitForAnimationToEnd
 - eraseText: 1
 - assertVisible: Lowest amount
-- runFlow: common/close-amount.yaml
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertNotVisible: Lowest amount
 - assertNotVisible: Amount.*
@@ -153,7 +153,7 @@ tags:
 - waitForAnimationToEnd
 - eraseText: 1
 - inputText: '30'
-- runFlow: common/close-amount.yaml
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Amount, 30 or more
 - assertVisible: 1 item

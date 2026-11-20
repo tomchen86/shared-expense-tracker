@@ -28,6 +28,21 @@ tags:
 - assertVisible: Paid by Me
 - assertVisible: Amount, 1 or more
 - assertVisible: 5 items
+# LEDGER-133.2: the Paid by Me capsule turns the condition on and off where it is. Taxi, which
+# Casey paid, goes while it is on.
+- tapOn: Paid by Me
+- waitForAnimationToEnd
+- assertVisible:
+    text: Paid by Me
+    selected: true
+- assertVisible: 4 items
+- assertNotVisible: Taxi, .*
+- tapOn: Paid by Me
+- waitForAnimationToEnd
+- assertVisible:
+    text: Paid by Me
+    selected: false
+- assertVisible: 5 items
 # LEDGER-134.1 and LEDGER-136.2: the Category capsule is a menu of the categories the expenses
 # use. It stays open while categories are chosen.
 - tapOn: Category
@@ -53,8 +68,7 @@ tags:
     selected: true
 - assertVisible: Food & Dining
 # A press outside the menu, on the list's margin, closes it.
-- tapOn:
-    point: 3%,50%
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Category, 2 Categories
 - assertVisible: 2 items
@@ -67,8 +81,7 @@ tags:
 - waitForAnimationToEnd
 - tapOn: Travel
 - waitForAnimationToEnd
-- tapOn:
-    point: 3%,50%
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Category, Shopping
 - assertVisible: 1 item
@@ -78,8 +91,7 @@ tags:
 - waitForAnimationToEnd
 - tapOn: Shopping
 - waitForAnimationToEnd
-- tapOn:
-    point: 3%,50%
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Category
 - assertVisible: 5 items
@@ -91,8 +103,21 @@ tags:
 - tapOn: Brisbane
 - waitForAnimationToEnd
 - assertVisible: Personal
-- tapOn:
-    point: 3%,50%
+# On Android the back button closes the menu and leaves the list where it is.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: 3%,50%
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - pressKey: back
+      - waitForAnimationToEnd
+      - assertNotVisible: Personal
+      - assertVisible: Filters.*
 - waitForAnimationToEnd
 - assertVisible: Ledger, Brisbane
 - assertVisible: 2 items
@@ -123,8 +148,7 @@ tags:
 - assertVisible: Casey
 - tapOn: Casey
 - waitForAnimationToEnd
-- tapOn:
-    point: 3%,50%
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Paid by, Casey
 - assertVisible: 1 item
@@ -135,7 +159,7 @@ tags:
 - tapOn: Amount, 1 or more
 - waitForAnimationToEnd
 - eraseText: 1
-- runFlow: common/close-amount.yaml
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Paid by, Casey
 - assertVisible: Amount
@@ -149,8 +173,7 @@ tags:
 - tapOn: Casey
 - waitForAnimationToEnd
 - assertVisible: You
-- tapOn:
-    point: 3%,50%
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Paid by, You
 - assertVisible: Dinner, .*

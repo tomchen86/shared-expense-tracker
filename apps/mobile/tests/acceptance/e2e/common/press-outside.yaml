@@ -1,0 +1,22 @@
+# Presses outside an open menu of the list, or the small window of the Amount capsule, which
+# closes it. On iOS the press is on the list's margin. On Android it is where the search icon of
+# the title bar is, at the right of the bar on the expense list and on a group's screen: the press
+# must close the menu or the sheet without reaching the icon (LEDGER-111.2, LEDGER-136.2,
+# LEDGER-149.1, LEDGER-150.1), so the search field stays folded and Filters stays in the bar.
+# Not a flow of its own: Maestro runs only the files at the top of a folder.
+appId: com.tomchen.sharedexpensetracker
+---
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: 3%,50%
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          point: 93%,8%
+      - waitForAnimationToEnd
+      - assertVisible: Filters.*

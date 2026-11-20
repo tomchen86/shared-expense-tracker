@@ -4615,7 +4615,7 @@ WHILE 支出清單或群組的畫面有存起來的篩選，the mobile app SHALL
 
 ### Requirement: LEDGER-145.2 (manual) 手機上的膠囊列、選單、金額的小視窗和取名
 
-WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時可以用手指左右捲動，膠囊捲到畫面的左右邊緣才看不見；Paid by Me 以外的膠囊，文字後面有向下的箭頭；換期間時（LEDGER-115.1）膠囊列留在原位，不跟著期間滑走；深色外觀下關著和開著的膠囊仍看得出不同。清單捲到期間列剛好看不到、膠囊列還看得到時，在膠囊列上改篩選，清單 SHALL 留在原來的位置（LEDGER-147.4）。WHERE iPhone，Amount 的小視窗（LEDGER-135.1）開著時，鍵盤 SHALL 不擋住它的兩個欄位，兩個欄位裡 SHALL 是現在的 Min 和 Max；Amount 的小視窗開著時按底下的一張卡片，SHALL 只關閉小視窗，不打開那張卡片（LEDGER-135.1）。WHERE Android 手機，Amount 的 sheet（LEDGER-150.1）SHALL 整個在鍵盤上方，兩個欄位裡是現在的 Min 和 Max；取名的對話框（LEDGER-143.2）一打開，鍵盤 SHALL 已經打開，游標在 Filter name 裡建議的名稱後面，打的字接在名稱後面；期間的名稱、排序鈕和膠囊的選單（LEDGER-111.2、LEDGER-149.1、LEDGER-136.2）、膠囊、Amount 的 sheet 和取名的對話框，在淺色和深色外觀下、在系統最大的字級下，SHALL 和 Android 內建的 app 裡同一種元件的樣子一樣：選單和 Settings 的 App notifications 上「Most recent」的選單一樣，膠囊和 Contacts 的篩選膠囊一樣，對話框和 Settings 改裝置名稱的對話框一樣，形狀、圓角、選了的那一項的勾號和不同的底色都相同，文字和它們一樣跟著字級放大。它們的顏色不照內建 app，SHALL 用 app 在 Android 上的配色：強調色、背景、文字和分隔線的顏色和畫面的其他部分一樣（SHELL-34.1），整個畫面是同一套顏色。它們是淺色還是深色 SHALL 跟著 app 的外觀選項（SHELL-29.1），不是手機的外觀：外觀選項是 Dark 而手機是淺色時，它們都是深色的；外觀選項是 Light 而手機是深色時，都是淺色的。
+WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時可以用手指左右捲動，膠囊捲到畫面的左右邊緣才看不見；Paid by Me 以外的膠囊，文字後面有向下的箭頭；換期間時（LEDGER-115.1）膠囊列留在原位，不跟著期間滑走；深色外觀下關著和開著的膠囊仍看得出不同。清單捲到期間列剛好看不到、膠囊列還看得到時，在膠囊列上改篩選，清單 SHALL 留在原來的位置（LEDGER-147.4）。WHERE iPhone，Amount 的小視窗（LEDGER-135.1）開著時，鍵盤 SHALL 不擋住它的兩個欄位，兩個欄位裡 SHALL 是現在的 Min 和 Max；Amount 的小視窗開著時按底下的一張卡片，SHALL 只關閉小視窗，不打開那張卡片（LEDGER-135.1）。WHERE Android 手機，Amount 的 sheet（LEDGER-150.1）SHALL 整個在鍵盤上方，兩個欄位裡是現在的 Min 和 Max，把它往下滑就關閉；Currency 的膠囊的選單（LEDGER-136.2）SHALL 在按一項之後就關閉；取名的對話框（LEDGER-143.2）一打開，鍵盤 SHALL 已經打開，游標在 Filter name 裡建議的名稱後面，打的字接在名稱後面；期間的名稱、排序鈕和膠囊的選單（LEDGER-111.2、LEDGER-149.1、LEDGER-136.2）、膠囊、Amount 的 sheet 和取名的對話框，在淺色和深色外觀下、在系統最大的字級下，SHALL 和 Android 內建的 app 裡同一種元件的樣子一樣：選單和 Settings 的 App notifications 上「Most recent」的選單一樣，膠囊和 Contacts 的篩選膠囊一樣，Amount 的 sheet 和 Contacts 按「All contacts」升起的 sheet 一樣，對話框和 Settings 改裝置名稱的對話框一樣，形狀、圓角、選了的那一項的勾號和不同的底色都相同，文字和它們一樣跟著字級放大。它們的顏色不照內建 app，SHALL 用 app 在 Android 上的配色：強調色、背景、文字和分隔線的顏色和畫面的其他部分一樣（SHELL-34.1），整個畫面是同一套顏色。它們是淺色還是深色 SHALL 跟著 app 的外觀選項（SHELL-29.1），不是手機的外觀：外觀選項是 Dark 而手機是淺色時，它們都是深色的；外觀選項是 Light 而手機是深色時，都是淺色的。
 
 #### Scenario: 左右捲動
 
@@ -4657,6 +4657,11 @@ WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時�
 - **WHEN** iPhone 上 Min 是「1」，按 Amount 的膠囊，小視窗開著時按底下的一張卡片
 - **THEN** 小視窗關閉，鍵盤收起，沒有打開那張卡片的明細
 
+#### Scenario: Android 上的 Currency 和往下滑
+
+- **WHEN** Android 手機上支出清單有 JPY 和 USD 的支出，Min 是「1」，按「Currency」的膠囊，按「JPY」；再按「Amount, 1 or more」的膠囊，把 sheet 往下滑
+- **THEN** 按了 JPY 之後選單關閉，膠囊的名稱是「Currency, JPY」；往下滑之後 sheet 關閉，鍵盤收起，膠囊仍是「Amount, 1 or more」
+
 #### Scenario: Android 上取名
 
 - **WHEN** Android 手機上 Min 是「1」，在 Filters 按「Save Current Filter…」，不按欄位就打字
@@ -4664,7 +4669,7 @@ WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時�
 
 #### Scenario: Android 上和內建的 app 比
 
-- **WHEN** Android 手機上依序在淺色外觀、深色外觀和系統最大的字級下，打開期間的名稱、排序鈕和 Category 的膠囊的選單、有開著和關著的膠囊的膠囊列、Amount 的 sheet 和取名的對話框，並打開 Settings 的 App notifications 上「Most recent」的選單、Contacts 的篩選膠囊和 Settings 改裝置名稱的對話框
+- **WHEN** Android 手機上依序在淺色外觀、深色外觀和系統最大的字級下，打開期間的名稱、排序鈕和 Category 的膠囊的選單、有開著和關著的膠囊的膠囊列、Amount 的 sheet 和取名的對話框，並打開 Settings 的 App notifications 上「Most recent」的選單、Contacts 的篩選膠囊、Contacts 按「All contacts」升起的 sheet 和 Settings 改裝置名稱的對話框
 - **THEN** 選單、膠囊、sheet 和對話框和內建 app 的同一種元件形狀、圓角和選了的樣子都相同，文字和它們一樣跟著字級放大；顏色是 app 的強調色、背景和文字的顏色，和期間列、卡片看起來是同一套
 
 #### Scenario: Android 上 app 的外觀和手機不同

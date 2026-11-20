@@ -107,11 +107,17 @@ tags:
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
 - assertVisible: Today, .*
-# LEDGER-111.2: on Android the back button closes the menu and leaves the period as it was.
+# LEDGER-111.2: on Android a press outside the menu, and the back button, close it and leave the
+# period as it was.
 - runFlow:
     when:
       platform: Android
     commands:
+      - tapOn: Choose period\..*
+      - assertVisible: Last 3 Months
+      - runFlow: common/press-outside.yaml
+      - assertNotVisible: Last 3 Months
+      - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
       - tapOn: Choose period\..*
       - assertVisible: Last 3 Months
       - pressKey: back

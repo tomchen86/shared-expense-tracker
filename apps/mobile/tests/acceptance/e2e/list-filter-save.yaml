@@ -1,0 +1,80 @@
+appId: com.tomchen.sharedexpensetracker
+name: '[LEDGER-143.2] Names the filter that is on in the system prompt on iOS and in a Material dialog over Filters on Android, saves nothing at Cancel, and on Android nothing with an empty name, at a press outside or at the back button, then saves it under the name typed'
+tags:
+  - android
+---
+# Also runs on the small Android screen of scripts/e2e-android.sh (ADR-0014), where the name is
+# asked in a dialog over Filters (LEDGER-143.2) instead of a sheet with Cancel and Save in its
+# title bar. One expense of today, which a lowest amount of 1 leaves in the list.
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: '{"name":"Taylor","expenses":[{"title":"Coffee","amount":"4.00"}]}'
+# A lowest amount turns a filter on; Filters opens again without the keyboard, so Save Current
+# Filter… is not under it.
+- tapOn: Filters
+- waitForAnimationToEnd
+- tapOn: Lowest amount
+- inputText: '1'
+- runFlow: common/done-after-typing.yaml
+- waitForAnimationToEnd
+- assertVisible: Amount, 1 or more
+- tapOn: Filters.*
+- waitForAnimationToEnd
+- tapOn: Save Current Filter…
+- waitForAnimationToEnd
+- assertVisible: Save Filter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      # A dialog: the field Filter name, with the suggested name and the caret, and Cancel and
+      # Save under it.
+      - assertVisible:
+          text: Cancel
+          below: Filter name
+      - assertVisible:
+          text: Save
+          below: Filter name
+      - assertVisible:
+          text: 1 or more
+          focused: true
+      # Save is disabled while the name is empty.
+      - eraseText
+      - assertVisible:
+          text: Save
+          enabled: false
+      # A press outside the dialog closes it, and Filters stays open.
+      - tapOn:
+          point: 50%,8%
+      - waitForAnimationToEnd
+      - assertNotVisible: Save Filter
+      - assertVisible: Done
+      # So does the back button, once the keyboard it opened is closed.
+      - tapOn: Save Current Filter…
+      - waitForAnimationToEnd
+      - assertVisible: Save Filter
+      - pressKey: back
+      - waitForAnimationToEnd
+      - assertVisible: Save Filter
+      - pressKey: back
+      - waitForAnimationToEnd
+      - assertNotVisible: Save Filter
+      - assertVisible: Done
+      - tapOn: Save Current Filter…
+      - waitForAnimationToEnd
+# Cancel saves nothing.
+- tapOn: Cancel
+- waitForAnimationToEnd
+- assertNotVisible: Save Filter
+- assertNotVisible: Apply saved filter .*
+# Save saves the filter under the name typed, and Filters lists it.
+- tapOn: Save Current Filter…
+- waitForAnimationToEnd
+- eraseText
+- inputText: Mine
+- tapOn: Save
+- waitForAnimationToEnd
+- assertNotVisible: Save Filter
+- assertVisible: Apply saved filter Mine.*
+- assertVisible: Filter Saved

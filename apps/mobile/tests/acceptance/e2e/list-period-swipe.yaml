@@ -32,6 +32,8 @@ tags:
     direction: RIGHT
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
+# The swipe pressed nothing: the name's menu is not open.
+- assertNotVisible: Last 3 Months
 - assertVisible: Last month, .*
 - assertNotVisible: Today, .*
 - assertVisible:

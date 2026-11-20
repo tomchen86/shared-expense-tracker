@@ -71,6 +71,7 @@ tags:
 - tapOn: Open Brisbane.*
 - waitForAnimationToEnd
 - assertVisible: 'Group Total: .*'
+- assertVisible: Settled up.*
 - tapOn: Search
 - waitForAnimationToEnd
 - inputText: taxi
@@ -78,7 +79,7 @@ tags:
 - assertVisible: Taxi, .*
 - assertNotVisible: Dinner, .*
 - assertNotVisible: 'Group Total: .*'
-- assertNotVisible: You're owed.*
+- assertNotVisible: Settled up.*
 # SHELL-73.2: the keyboard's search key closes the keyboard and keeps the search.
 - pressKey: Enter
 - waitForAnimationToEnd
