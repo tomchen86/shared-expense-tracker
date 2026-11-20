@@ -128,31 +128,31 @@ name: "[LEDGER-134.1] [LEDGER-133.1] [LEDGER-131.1] Shows the capsule row once a
 - waitForAnimationToEnd
 - assertVisible: Paid by, Casey
 - assertVisible: Amount
-# LEDGER-134.1: taking the last condition off in the menu keeps the menu and the row, so another
-# payer can be chosen at once.
+# LEDGER-134.1: another payer is chosen before the first is taken off, and the menu stays open
+# through both presses.
 - tapOn: Paid by, Casey
 - waitForAnimationToEnd
+- tapOn: You
+- waitForAnimationToEnd
+- assertVisible: Casey
 - tapOn: Casey
 - waitForAnimationToEnd
 - assertVisible: You
-- tapOn: You
-- waitForAnimationToEnd
 - tapOn:
     point: 3%,50%
 - waitForAnimationToEnd
 - assertVisible: Paid by, You
 - assertVisible: Dinner, .*
 - assertNotVisible: Taxi, .*
-# A menu that closes with no condition on takes the row with it.
+# Taking the last condition off in the menu takes the capsule row away at once, and the menu
+# with it: nothing is pressed to close it.
 - tapOn: Paid by, You
 - waitForAnimationToEnd
 - tapOn: You
 - waitForAnimationToEnd
-- tapOn:
-    point: 3%,50%
-- waitForAnimationToEnd
 - assertNotVisible: Paid by.*
 - assertNotVisible: Category
+- assertNotVisible: Casey
 - assertVisible: Filters
 - assertVisible: Dinner, .*
 - assertVisible: Taxi, .*
