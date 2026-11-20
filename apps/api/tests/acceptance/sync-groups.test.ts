@@ -137,6 +137,10 @@ describe('SYNC-46.1', () => {
   });
 
   test('[SYNC-46.1] creates one group when five requests of one phone for it arrive together', async () => {
+    // Requests of one phone pass the checks one after another, so these five hardly meet
+    // in the route, and no test can make them without knowing the tables. This shows that
+    // each is answered and one group comes of them; that two that do meet still make one
+    // group is for the review to read in the code.
     const taylor = await registered(TAYLOR);
 
     const answers = await Promise.all(

@@ -264,20 +264,50 @@ describe('SYNC-51.1', () => {
     ]);
   });
 
-  test('[SYNC-51.1] stores one event when five uploads of it arrive together', async () => {
+  test('[SYNC-51.1] stores an event once when two member devices upload it together, round after round', async () => {
+    const ROUNDS = 20;
     const taylor = await taylorWithBrisbane();
-    const sent = events(1);
+    const casey = await registered(CASEY);
+    await addMember(BRISBANE, casey);
+    // Requests of one phone pass the checks one after another, so they hardly meet in the
+    // route. Two phones, each on a server with connections of its own, do.
+    const uploaders = [
+      { phone: taylor, server: await ownServer() },
+      { phone: casey, server: await ownServer() },
+    ];
+    const rounds: UploadedEvent[][] = [];
 
-    const answers = await Promise.all(
-      Array.from({ length: 5 }, () => upload(taylor, BRISBANE, sent)),
-    );
+    for (let round = 1; round <= ROUNDS; round += 1) {
+      // One new event ID, with each phone's own content.
+      const id = randomUUID();
+      const sent = uploaders.map(() => event(200, id));
+      rounds.push(sent);
 
-    for (const answer of answers) expectUploaded(answer, sent, [1]);
-    const next = events(1);
-    expectUploaded(await upload(taylor, BRISBANE, next), next, [2]);
-    expect(await everyEvent(taylor, BRISBANE)).toEqual(
-      relayedFrom(1, [...sent, ...next], { by: taylor, at: T }),
-    );
+      const answers = await Promise.all(
+        uploaders.map(({ phone, server }, index) =>
+          callOn(server, phone, uploadOf(BRISBANE, [sent[index]])),
+        ),
+      );
+
+      // Both are answered with the one number the event got.
+      expectUploaded(answers[0], [sent[0]], [round]);
+      expectUploaded(answers[1], [sent[1]], [round]);
+    }
+
+    // One event a round: each is one phone's upload, its content with its device ID.
+    const stored = await everyEvent(taylor, BRISBANE);
+    expect(stored).toHaveLength(ROUNDS);
+    stored.forEach((each, index) => {
+      expect(
+        uploaders.map(({ phone }, uploader) =>
+          relayed(rounds[index][uploader], {
+            sequence: index + 1,
+            by: phone,
+            at: T,
+          }),
+        ),
+      ).toContainEqual(each);
+    });
   });
 
   test('[SYNC-51.1] takes an event ID another group has as a new event', async () => {
