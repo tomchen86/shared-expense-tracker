@@ -8,6 +8,13 @@ import { useDisplayLocale } from '../ui/use-display-locale';
 import { formatExpenseDate } from './format-date';
 import type { ExpenseView } from './use-expenses';
 
+/** The trailing label on an expense card viewed in its group's ledger. */
+export function paidBy(expense: ExpenseView, userId: string) {
+  const { participant } = expense.payments[0];
+  const payer = expense.members.find((member) => member.id === participant);
+  return `Paid by ${payer?.userId === userId ? 'You' : (payer?.name ?? participant)}`;
+}
+
 export function ExpenseCard({
   expense,
   amountMinor = expense.amountMinor,

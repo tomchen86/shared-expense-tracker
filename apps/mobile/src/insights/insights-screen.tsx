@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Alert,
   Pressable,
@@ -7,8 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { useIsFocused } from 'expo-router/react-navigation';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import {
   GestureDetector,
@@ -17,27 +16,17 @@ import {
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
+  buildCategoryExpenses,
   buildInsights,
   buildRangeInsights,
+  currencyDecimals,
   formatCurrency,
   isLocalDate,
-  type InsightCategory,
   type InsightChartPreference,
-  type InsightContext,
   type InsightCurrency,
-  type InsightExpense,
 } from '@shared-expense/domain';
-import { listCategories } from '../categories';
-import { listGroups } from '../groups';
-import { listExpenses } from '../ledger';
-import { subscribeToExpenses } from '../ledger/expenses';
 import { datesOf, today, type Dates } from '../ledger/list-period';
-import {
-  useChartType,
-  useLocalDatabase,
-  useLocalIdentity,
-  useSaveChartType,
-} from '../shell';
+import { useChartType, useSaveChartType } from '../shell';
 import { CategoryChart } from '../ui/category-chart';
 import { DateRange } from '../ui/date-range';
 import { FadeText } from '../ui/fade-text';
@@ -45,9 +34,15 @@ import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions, type HeaderChoice } from '../ui/header-actions';
 import { PeriodPicker } from '../ui/period-picker';
 import { SegmentedControl } from '../ui/segmented-control';
+import { useSidewaysDragIsNoPress } from '../ui/swipe-action';
 import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
 import { usePeriodSwipe } from '../ui/use-period-swipe';
+import {
+  CategoryExpensesScreen,
+  type CategoryPeriod,
+} from './category-expenses-screen';
+import { useInsightsInput } from './use-insights-input';
 
 /** Insights looks at one month, one year, or with `custom` the days from From to To (INSIGHTS-46.1). */
 type Mode = 'month' | 'year' | 'custom';
@@ -68,15 +63,15 @@ function rangeOf(key: string, day: string): Dates {
 }
 
 /**
- * What a URL's search params open Insights on (INSIGHTS-45.1): its dates when both are valid,
- * none later than `day`, or else its month or year when that is valid, or else nothing of its
- * own.
+ * Valid dates take precedence over a month or year. The overview caps its initial dates at
+ * today. A category keeps the dates it was opened with even if the phone's day changes.
  */
 function startOf(
   { period, from, to }: { period?: unknown; from?: unknown; to?: unknown },
-  day: string,
+  day?: string,
 ): { mode: Mode; key?: string; range?: Dates } {
-  const earlier = (date: string) => (date < day ? date : day);
+  const earlier = (date: string) =>
+    day !== undefined && date > day ? day : date;
   if (
     typeof from === 'string' &&
     typeof to === 'string' &&
@@ -91,109 +86,8 @@ function startOf(
   return { mode: 'month' };
 }
 
-interface InsightsInput {
-  expenses: InsightExpense[];
-  categories: InsightCategory[];
-  context: InsightContext;
-}
-
-/**
- * What buildInsights needs, read again on focus and after expense changes;
- * undefined until read, null when the group is not found.
- */
-function useInsightsInput(group: boolean, groupId: string | undefined) {
-  const database = useLocalDatabase();
-  const { userId, personalSpaceId, personalParticipantId } = useLocalIdentity();
-  const focused = useIsFocused();
-  const [input, setInput] = useState<InsightsInput | null>();
-  const [error, setError] = useState<unknown>();
-
-  useEffect(() => {
-    let active = true;
-    let version = 0;
-    function refresh() {
-      const request = ++version;
-      void Promise.all([
-        listExpenses(database),
-        listCategories(database),
-        listGroups(database),
-      ]).then(
-        ([rows, categories, groups]) => {
-          if (!active || request !== version) return;
-          if (group && !groups.some(({ id }) => id === groupId)) {
-            setInput(null);
-            return;
-          }
-          // Your space first, then each group in the order they were created
-          // (INSIGHTS-17.1); archived ones too.
-          const spaces = group
-            ? [groupId]
-            : [personalSpaceId, ...groups.map(({ id }) => id)];
-          setInput({
-            expenses: rows
-              .filter(({ trashOrder }) => trashOrder === undefined)
-              .map((expense) => ({
-                amountMinor: expense.amountMinor,
-                currency: expense.currency,
-                date: expense.date,
-                spaceId: expense.spaceId,
-                shares: expense.shares,
-                categoryId: expense.category.id,
-                categoryName: expense.category.name,
-                categorySnapshot: {
-                  name: expense.category.name,
-                  color: expense.category.color,
-                },
-              })),
-            categories: spaces.flatMap((space) =>
-              categories.filter(({ spaceId }) => spaceId === space),
-            ),
-            context:
-              group && groupId
-                ? {
-                    kind: 'group',
-                    groupId,
-                    ownMemberId: groups
-                      .find(({ id }) => id === groupId)
-                      ?.members.find((member) => member.userId === userId)?.id,
-                  }
-                : {
-                    kind: 'personal',
-                    userId,
-                    personalSpaceId,
-                    personalParticipantId,
-                    participants: groups.flatMap(({ members }) =>
-                      members.map((member) => ({
-                        id: member.id,
-                        userId: member.userId ?? undefined,
-                      })),
-                    ),
-                  },
-          });
-        },
-        (failure: unknown) => {
-          if (active && request === version) setError(failure);
-        },
-      );
-    }
-    const unsubscribe = subscribeToExpenses(database, refresh);
-    refresh();
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [
-    database,
-    group,
-    groupId,
-    userId,
-    personalSpaceId,
-    personalParticipantId,
-    focused,
-  ]);
-
-  if (error) throw error;
-  return input;
+function orderedDates(range: Dates) {
+  return range.from <= range.to ? range : { from: range.to, to: range.from };
 }
 
 /** One TOTAL SPENT, then for each currency its total, your share on a group's Insights, and the comparison. */
@@ -246,12 +140,52 @@ function TotalCard({
 
 /** The personal Insights, or with `group` the Insights of the `groupId` search param. */
 export function InsightsScreen({ group = false }: { group?: boolean }) {
-  const { groupId, ...params } = useLocalSearchParams<{
+  const params = useLocalSearchParams<{
     groupId?: string;
     period?: string;
     from?: string;
     to?: string;
+    categoryKey?: string;
+    categoryName?: string;
+    currency?: string;
   }>();
+  const { categoryKey, categoryName, currency, groupId } = params;
+  if (
+    typeof categoryKey === 'string' &&
+    typeof categoryName === 'string' &&
+    typeof currency === 'string' &&
+    currencyDecimals(currency) !== undefined
+  ) {
+    const { key, range } = startOf(params);
+    const period = range
+      ? orderedDates(range)
+      : key
+        ? { period: key }
+        : undefined;
+    if (period)
+      return (
+        <CategoryExpensesScreen
+          group={group}
+          groupId={groupId}
+          categoryKey={categoryKey}
+          title={categoryName}
+          currency={currency}
+          period={period}
+        />
+      );
+  }
+  return <InsightsOverview group={group} groupId={groupId} params={params} />;
+}
+
+function InsightsOverview({
+  group,
+  groupId,
+  params,
+}: {
+  group: boolean;
+  groupId?: string;
+  params: { period?: string; from?: string; to?: string };
+}) {
   const colors = useThemeColors();
   const locale = useDisplayLocale();
   const input = useInsightsInput(group, groupId);
@@ -270,7 +204,7 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
   const [range, setRange] = useState(
     start.range ?? rangeOf(day.slice(0, 7), day),
   );
-  const [first, last] = [range.from, range.to].sort();
+  const { from: first, to: last } = orderedDates(range);
 
   const insights = useMemo(
     () => input && buildInsights({ ...input, chartPreference: chartType }),
@@ -316,6 +250,8 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
     enabled: periods.length > 1,
     onSelect: setKey,
   });
+
+  const dragIsNoPress = useSidewaysDragIsNoPress();
 
   async function chooseChartType(chosen: InsightChartPreference) {
     if (saving.current || chosen === chartType) return;
@@ -397,8 +333,38 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
     </Pressable>
   );
 
+  /** Resolve the pressed position against the very data that drew the rows. Only its key travels. */
+  function openCategory(
+    currency: string,
+    row: number,
+    categoryName: string,
+    period: CategoryPeriod,
+  ) {
+    if (!input) return;
+    const currencies = buildCategoryExpenses({ ...input, ...period });
+    const category = currencies?.find((item) => item.currency === currency)
+      ?.categories[row];
+    if (!category) return;
+    router.push(
+      {
+        pathname: './insights',
+        // Local search params decode once more than the URL parser. Preserve literal percent escapes.
+        params: {
+          groupId,
+          ...period,
+          currency,
+          categoryKey: encodeURIComponent(category.key),
+          categoryName: encodeURIComponent(categoryName),
+        },
+      },
+      {
+        dangerouslySingular: (_, params) => JSON.stringify(params),
+      },
+    );
+  }
+
   /** The totals and the categories of the currencies of one period. */
-  const page = (currencies: InsightCurrency[]) => (
+  const page = (currencies: InsightCurrency[], period: CategoryPeriod) => (
     <>
       <TotalCard
         currencies={currencies}
@@ -406,7 +372,11 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
         comparisonOf={comparisonOf}
       />
       {currencies.map((currency) => (
-        <View key={currency.currency} style={styles.currency}>
+        <View
+          key={currency.currency}
+          style={styles.currency}
+          {...(periods.length > 1 ? {} : dragIsNoPress)}
+        >
           <Text
             accessibilityRole="header"
             style={[styles.heading, { color: colors.textMuted }]}
@@ -418,13 +388,21 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
             {currency.categories.map((category, row) => {
               const amount = money(category.amountMinor, currency.currency);
               return (
-                <View
+                <Pressable
                   key={row}
-                  accessible
+                  accessibilityRole="button"
+                  accessibilityHint="Shows these expenses"
+                  onPress={() =>
+                    openCategory(currency.currency, row, category.name, period)
+                  }
                   accessibilityLabel={`${category.name}, ${amount}, ${decimal.format(category.percent)} percent`}
-                  style={styles.row}
+                  style={({ pressed }) => [
+                    styles.row,
+                    pressed && { backgroundColor: colors.pressedSurface },
+                  ]}
                 >
                   <View
+                    accessible={false}
                     style={[styles.dot, { backgroundColor: category.color }]}
                   />
                   <View style={styles.rowText}>
@@ -437,7 +415,10 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
                       {`${amount} · ${percentage.format(category.percent / 100)}`}
                     </Text>
                   </View>
-                </View>
+                  <Text accessible={false} style={{ color: colors.textMuted }}>
+                    ›
+                  </Text>
+                </Pressable>
               );
             })}
           </GroupedSection>
@@ -504,7 +485,7 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
                     'No Expenses in These Dates',
                     'Choose other dates to see spending insights.',
                   )
-                : page(custom)}
+                : page(custom, { from: first, to: last })}
           </>
         ) : (
           selected && (
@@ -533,7 +514,7 @@ export function InsightsScreen({ group = false }: { group?: boolean }) {
                     })}
                 </View>
                 <Animated.View style={swipe.pageStyle}>
-                  {page(selected.currencies)}
+                  {page(selected.currencies, { period: selected.key })}
                 </Animated.View>
               </View>
             </GestureDetector>
