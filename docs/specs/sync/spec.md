@@ -742,7 +742,7 @@ WHEN 使用者存下共同帳本支出的修改（LEDGER-56.1、LEDGER-60.1）�
 
 ### Requirement: SYNC-24.1 移到垃圾桶和還原寫成「在不在垃圾桶裡」的修改
 
-WHEN 使用者把共同帳本的支出移到垃圾桶（LEDGER-71.3），或按 Undo 或 Restore 把它從垃圾桶還原（LEDGER-75.4、LEDGER-79.4），the mobile app SHALL 寫一個只改「在不在垃圾桶裡」的事件，帶著根據的版本：移到垃圾桶是「是」，還原是「否」。
+WHEN 使用者把共同帳本的支出移到垃圾桶（LEDGER-71.3），或按 Undo 或 Restore 把它從垃圾桶還原（LEDGER-75.5、LEDGER-79.5），the mobile app SHALL 寫一個只改「在不在垃圾桶裡」的事件，帶著根據的版本：移到垃圾桶是「是」，還原是「否」。
 
 #### Scenario: 刪除再 Undo
 
@@ -875,9 +875,9 @@ WHEN 手機 app 套用共同帳本收到的事件，the mobile app SHALL 依交�
 - **WHEN** 一起套用 Lunch 和 Taxi 的第一個事件時，不論哪一筆寫入失敗
 - **THEN** 本機資料和之前一樣，兩筆都沒有；恢復後再套用，兩筆都有
 
-### Requirement: SYNC-29.1 套用的支出顯示在每個畫面
+### Requirement: SYNC-29.2 套用的支出顯示在每個畫面
 
-WHEN 套用的事件讓共同帳本的一筆支出的六個單位到齊，或改了已經到齊的支出，the mobile app SHALL 讓存著的這筆支出是合併的結果，並讓開著的畫面不必重新啟動就照新的資料顯示：支出清單和清單上方的總額、群組的畫面和群組的金額、明細、Trash、Balances 和 Insights。剛到齊的支出算是這時新增的（LEDGER-28.1），之後的修改不改變它在同一天裡的位置；「在不在垃圾桶裡」從否變成是，算是這時移到垃圾桶（LEDGER-77.3），沒有 Undo 提示，從是變成否就回到原來的位置；單位還沒到齊的支出不出現在任何畫面。
+WHEN 套用的事件讓共同帳本的一筆支出的六個單位到齊，或改了已經到齊的支出，the mobile app SHALL 讓存著的這筆支出是合併的結果，並讓開著的畫面不必重新啟動就照新的資料顯示：支出清單和清單上方的總額、群組的畫面和群組的金額、明細、Trash、Balances 和 Insights。剛到齊的支出算是這時新增的（LEDGER-28.1），之後的修改不改變它是什麼時候新增的；它的卡片在每個畫面上都在那個畫面的排序（LEDGER-121.1）該在的位置：排序是 Newest First 時，修改不改變它在同一天裡的位置；是 Recently Edited 時，照套用的事件記下的最後修改時間（LEDGER-120.1）排。「在不在垃圾桶裡」從否變成是，算是這時移到垃圾桶（LEDGER-77.3），沒有 Undo 提示，從是變成否就回到每個畫面的排序裡該在的位置；單位還沒到齊的支出不出現在任何畫面。
 
 #### Scenario: 支出清單
 
@@ -892,7 +892,7 @@ WHEN 套用的事件讓共同帳本的一筆支出的六個單位到齊，或改
 #### Scenario: 和你無關的支出
 
 - **WHEN** 套用 Taxi 的第一個事件
-- **THEN** Brisbane 的畫面有 Taxi 的卡片，支出清單沒有（LEDGER-64.3）
+- **THEN** Brisbane 的畫面有 Taxi 的卡片，支出清單沒有（LEDGER-64.4）
 
 #### Scenario: Balances 和 Insights
 
@@ -908,6 +908,11 @@ WHEN 套用的事件讓共同帳本的一筆支出的六個單位到齊，或改
 
 - **WHEN** 套用 Lunch 的第一個事件之後新增 Dinner，再套用把 Lunch 的標題改成「Late lunch」的事件
 - **THEN** 卡片由上而下仍是 Dinner、Late lunch
+
+#### Scenario: 換了排序
+
+- **WHEN** 有依序新增的 Dinner 和 Taxi，Brisbane 的畫面的排序是 Recently Edited，套用時間戳記比兩筆的新增都晚、把 Dinner 的標題改成「Supper」的事件
+- **THEN** 卡片由上而下是 Supper、Taxi
 
 #### Scenario: 單位還沒到齊
 
@@ -1046,7 +1051,7 @@ WHEN 使用者在共同帳本加入新的成員（GROUPS-31.3）、把前成員�
 
 ### Requirement: SYNC-35.1 封存留在這支手機上
 
-The mobile app SHALL 把共同帳本的封存留在這支手機上：封存或還原共同帳本（GROUPS-48.1、GROUPS-57.1）不寫事件；共同帳本封存時照常套用收到的事件，它仍是封存的，照封存群組的樣子顯示合併的結果（GROUPS-55.2、LEDGER-67.2），從垃圾桶還原它的支出（LEDGER-79.4）也照常寫事件。
+The mobile app SHALL 把共同帳本的封存留在這支手機上：封存或還原共同帳本（GROUPS-48.1、GROUPS-57.1）不寫事件；共同帳本封存時照常套用收到的事件，它仍是封存的，照封存群組的樣子顯示合併的結果（GROUPS-55.2、LEDGER-67.2），從垃圾桶還原它的支出（LEDGER-79.5）也照常寫事件。
 
 #### Scenario: 封存和還原
 

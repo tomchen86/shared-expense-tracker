@@ -8,9 +8,15 @@ import {
   type GroupMember,
 } from '../groups';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
-import { listExpenses, subscribeToExpenses, type Expense } from './expenses';
+import {
+  listExpensesForCards,
+  subscribeToExpenses,
+  type Expense,
+} from './expenses';
 
 export interface ExpenseView extends Expense {
+  addedOrder: number;
+  changedAt: number | null;
   categoryLabel: string;
   group?: Group;
   members: GroupMember[];
@@ -30,7 +36,7 @@ export function useExpenses(
 /**
  * The expenses as useExpenses returns them and, with each read, `placed`: the IDs of the expenses
  * the user added in New Expense or put back from the trash on this phone since the read before
- * (LEDGER-117.1). Every read brings a new array.
+ * (LEDGER-117.2). Every read brings a new array.
  */
 export function useReadExpenses(trashed = false, { throwOnError = true } = {}) {
   const database = useLocalDatabase();
@@ -50,7 +56,7 @@ export function useReadExpenses(trashed = false, { throwOnError = true } = {}) {
       const request = ++version;
       const isCurrent = () => active && request === version;
       void Promise.all([
-        listExpenses(database),
+        listExpensesForCards(database),
         listCategories(database),
         listGroups(database).then(async (groups) =>
           Promise.all(

@@ -1,16 +1,19 @@
 import {
   createContext,
+  startTransition,
   useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
+  useOptimistic,
   useRef,
   useState,
   type ReactNode,
   type RefObject,
 } from 'react';
 import {
+  Alert,
   AppState,
   FlatList,
   Pressable,
@@ -30,11 +33,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import { useListOrder } from '../shell';
 import { DateField } from '../ui/date-field';
 import { DateRange } from '../ui/date-range';
 import { FadeText } from '../ui/fade-text';
 import { GlassSurface } from '../ui/glass-surface';
 import { GroupedSection } from '../ui/grouped-section';
+import { HeaderSearch } from '../ui/header-search';
 import { MenuField } from '../ui/menu-field';
 import { PeriodName } from '../ui/period-name';
 import { Sheet } from '../ui/sheet';
@@ -48,6 +53,12 @@ import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
 import { usePeriodSwipe } from '../ui/use-period-swipe';
 import { DateHeading } from './dated-cards';
+import {
+  ORDER_NAMES,
+  ORDER_OPTIONS,
+  orderedCards,
+  type ListOrder,
+} from './list-order';
 import {
   PERIOD_OPTIONS,
   afterComingBack,
@@ -67,10 +78,11 @@ import {
   type Dates,
   type Period,
 } from './list-period';
+import { formatItemCount, matchingExpenses } from './list-search';
 import type { ExpenseView } from './use-expenses';
 
 /**
- * The period of one list (LEDGER-107.1) and what it leaves of `expenses`, which are all that the
+ * The period of one list (LEDGER-107.2) and what it leaves of `expenses`, which are all that the
  * list can show, latest first, or undefined until they are read. `inGroup` is a group's screen,
  * which opens on all dates and calls them Group Total; the expense list opens on this month.
  * `placed` are the IDs useReadExpenses brought with these expenses.
@@ -86,7 +98,7 @@ export function useListPeriod(
     onPeriod(inGroup ? { kind: 'all' } : monthOf(day), day),
   );
   // A list left on this month or this year is on the new one when the user comes back to the
-  // app after the calendar has moved on (LEDGER-146.1). Not while the app stays in front.
+  // app after the calendar has moved on (LEDGER-146.2). Not while the app stays in front.
   useEffect(() => {
     let away = false;
     const subscription = AppState.addEventListener('change', (state) => {
@@ -108,7 +120,7 @@ export function useListPeriod(
     setList((current) => onPeriod(next, today(), current.range));
 
   // An expense the user just added or put back stays in sight: one dated outside the period
-  // moves the list to its month (LEDGER-117.1). The last one decides.
+  // moves the list to its month (LEDGER-117.2). The last one decides.
   const [seen, setSeen] = useState(placed);
   if (expenses && placed !== seen) {
     setSeen(placed);
@@ -147,7 +159,7 @@ export function useListPeriod(
   };
   const allName = inGroup ? 'Group Total' : 'All Time';
   const name = periodName(period, day, allName);
-  /** The period holds none of the list's expenses, and the list has some (LEDGER-116.1). */
+  /** The period holds none of the list's expenses, and the list has some (LEDGER-116.2). */
   const empty =
     dates !== undefined && shown?.length === 0 && expenses!.length > 0;
   const earlier = empty
@@ -326,6 +338,9 @@ interface PeriodListProps extends Pick<
   'onScroll' | 'scrollEventThrottle'
 > {
   periods: ListPeriodState;
+  /** Every expense this screen can search, across all dates. Omit when search is unavailable. */
+  searchExpenses?: ExpenseView[];
+  groupId?: string;
   /** On a pushed screen: iOS's back gesture gets the drags to the right that nothing here uses. */
   backSwipe?: boolean;
   /** What stands above the period row. */
@@ -348,9 +363,8 @@ interface PeriodListProps extends Pick<
 }
 
 /**
- * A list of expense cards that shows one period at a time: the period row, the dates of a custom
- * range, the total, and the cards of the period under the date of each day, of which only those
- * on and near the screen are drawn (LEDGER-118.1). Everything scrolls together.
+ * A list of expense cards for the period or the current search. The header and the dated cards
+ * scroll together. Only cards on and near the screen are drawn (LEDGER-118.2).
  */
 export function PeriodList({ backSwipe, ...props }: PeriodListProps) {
   return (
@@ -362,6 +376,8 @@ export function PeriodList({ backSwipe, ...props }: PeriodListProps) {
 
 function PeriodListBody({
   periods,
+  searchExpenses,
+  groupId,
   top,
   total,
   summary,
@@ -371,6 +387,18 @@ function PeriodListBody({
   scrollEventThrottle,
 }: Omit<PeriodListProps, 'backSwipe'>) {
   const colors = useThemeColors();
+  const locale = useDisplayLocale();
+  const [searchText, setSearchText] = useState('');
+  const query = searchText.trim();
+  const matches = useMemo(
+    () =>
+      query && searchExpenses
+        ? matchingExpenses(searchExpenses, query)
+        : undefined,
+    [searchExpenses, query],
+  );
+  const searching = matches !== undefined;
+  const activeText = searching ? searchText : '';
   const latestOnScroll = useRef(onScroll);
   useLayoutEffect(() => {
     latestOnScroll.current = onScroll;
@@ -384,28 +412,55 @@ function PeriodListBody({
     latestOnScroll.current?.(event);
   }, []);
 
-  // A period that changes while its row is out of sight brings the list back to its top
-  // (LEDGER-147.1). Not while any of the row shows: the arrows would move from under the finger.
   const list = useRef<FlatList<ExpenseView>>(null);
   const titleBarHeight = useRef(0);
   const rowTop = useRef<number>(undefined);
   const rowHeight = useRef(0);
-  const shownKey = useRef(periods.key);
+  const previous = useRef({ period: periods.key, text: activeText });
   useLayoutEffect(() => {
-    if (shownKey.current === periods.key) return;
-    shownKey.current = periods.key;
+    const last = previous.current;
+    previous.current = { period: periods.key, text: activeText };
     const at = position.current;
-    if (at === undefined || rowTop.current === undefined) return;
-    // How far down the content the title bar reaches: no further than where the list rests,
-    // which is not at all where the bar stands above the list.
-    const covered = Math.min(-at.rest, titleBarHeight.current);
-    if (at.y + covered < rowTop.current + rowHeight.current) return;
+    if (at === undefined) return;
+    // Editing or ending a search always returns to the top (LEDGER-148.1). A period change
+    // alone does so only outside search, with its row entirely out of sight (LEDGER-147.2).
+    if (last.text === activeText) {
+      if (
+        activeText ||
+        last.period === periods.key ||
+        rowTop.current === undefined
+      )
+        return;
+      const covered = Math.min(-at.rest, titleBarHeight.current);
+      if (at.y + covered < rowTop.current + rowHeight.current) return;
+    }
     // Animated: iOS then opens a large title that had closed, as when a finger scrolls there. A
     // jump to the same offset opens it too, and leaves the content the title's height too low.
     list.current?.scrollToOffset({ offset: at.rest, animated: true });
-  }, [periods.key]);
+  }, [activeText, periods.key]);
   const { steps } = periods;
-  const shown = periods.shown ?? NO_EXPENSES;
+  const { order: savedOrder, save } = useListOrder(groupId);
+  const [order, showOrder] = useOptimistic(savedOrder);
+  const chooseOrder = (id: string) => {
+    if (id === order) return;
+    const next = id as ListOrder;
+    startTransition(async () => {
+      showOrder(next);
+      try {
+        await save(next);
+      } catch {
+        Alert.alert(
+          'Unable to Save Settings',
+          'Your settings could not be saved. Please try again.',
+        );
+      }
+    });
+  };
+  const cards = matches ?? periods.shown ?? NO_EXPENSES;
+  const shown = useMemo(
+    () => orderedCards(cards, order, groupId !== undefined),
+    [cards, order, groupId],
+  );
   // One sideways swipe for the top of the list and all that slides with it (LEDGER-114.1): to the
   // right for the period before, to the left for the one after. A period with neither keeps no
   // drag, so that iOS's back gesture gets one to the right on a pushed screen.
@@ -470,7 +525,7 @@ function PeriodListBody({
   const header = (
     <>
       {top}
-      {total && (
+      {!searching && total && (
         // Measured out here: inside, a view is laid out against the gesture detector's own.
         <View
           onLayout={(event) => {
@@ -575,13 +630,65 @@ function PeriodListBody({
         </View>
       )}
       {message}
+      {matches?.length === 0 && (searchExpenses?.length ?? 0) > 0 && (
+        <View style={styles.empty}>
+          <SymbolView
+            name={{ ios: 'magnifyingglass', android: 'search' }}
+            size={44}
+            tintColor={colors.textMuted}
+          />
+          <Text
+            accessibilityRole="header"
+            style={[styles.emptyTitle, { color: colors.text }]}
+          >
+            {`No Results for “${query}”`}
+          </Text>
+          <Text style={[styles.emptyHint, { color: colors.textMuted }]}>
+            Check the spelling or try a new search.
+          </Text>
+        </View>
+      )}
       {/*
         The cards are a list of their own inside the screen's list, which scrolls them and tells
         them where the screen is. So one view around them all slides them with the period: a view
         that moves on each card is not let go when its card leaves the screen, and scrolling
         through 2,000 expenses and back cost 260 MB more.
       */}
-      <Animated.View style={pageStyle}>
+      <Animated.View style={searching ? undefined : pageStyle}>
+        {shown.length > 0 && (
+          <View style={styles.listLine}>
+            {searching && (
+              <Text style={[styles.matchCount, { color: colors.text }]}>
+                {formatItemCount(shown.length, locale)}
+              </Text>
+            )}
+            <MenuField
+              label="Sort By"
+              title="Sort By"
+              value={ORDER_NAMES[order]}
+              options={ORDER_OPTIONS}
+              selected={[order]}
+              onSelect={chooseOrder}
+              trigger={
+                <View
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                  pointerEvents="none"
+                  style={styles.sortButton}
+                >
+                  <SymbolView
+                    name={{ ios: 'arrow.up.arrow.down', android: 'swap_vert' }}
+                    size={18}
+                    weight="medium"
+                    tintColor={
+                      order === 'newest' ? colors.textMuted : colors.accent
+                    }
+                  />
+                </View>
+              }
+            />
+          </View>
+        )}
         <FlatList
           data={shown}
           keyExtractor={expenseId}
@@ -603,11 +710,15 @@ function PeriodListBody({
         ),
       }}
     >
+      {searchExpenses && (
+        <HeaderSearch placeholder="Search" onChangeText={setSearchText} />
+      )}
       {/* Everything is the list's header: the list is here to scroll, and for the cards' list. */}
       <TitleBarHeight into={titleBarHeight} />
       <SwipeFlatList
         listRef={list}
         contentInsetAdjustmentBehavior="automatic"
+        keyboardShouldPersistTaps="handled"
         // Where the list rests under a see-through title bar is above its content, and iOS
         // scrolls there from code only with this.
         scrollToOverflowEnabled
@@ -623,7 +734,7 @@ function PeriodListBody({
   );
 }
 
-/** In place of the cards when the period holds no expense (LEDGER-116.1). */
+/** In place of the cards when the period holds no expense (LEDGER-116.2). */
 function EmptyPeriod({
   name,
   earlier,
@@ -670,6 +781,18 @@ const styles = StyleSheet.create({
   // begins and not from 20 points below it.
   header: { paddingTop: 20 },
   overview: { marginBottom: 24, gap: 6 },
+  listLine: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  matchCount: { fontSize: 15, flexShrink: 1 },
+  sortButton: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   capsule: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -712,5 +835,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   emptyTitle: { fontSize: 22, fontWeight: '700', textAlign: 'center' },
+  emptyHint: { fontSize: 16, lineHeight: 22, textAlign: 'center' },
   show: { minHeight: 44, justifyContent: 'center', marginTop: 4 },
 });

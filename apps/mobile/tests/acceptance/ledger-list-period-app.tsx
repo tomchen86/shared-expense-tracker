@@ -15,7 +15,7 @@ import type { DateFieldProps } from '../../src/ui/date-field';
 import type { MenuFieldProps } from '../../src/ui/menu-field';
 
 // The period tests read and change the period of a list that shows one period at a time
-// (LEDGER-107.1): the expense list, or a group's screen. Each helper takes the list's native
+// (LEDGER-107.2): the expense list, or a group's screen. Each helper takes the list's native
 // screen. They read the period row, the total under it and the words of a period with no expense
 // from what the list shows and from the names a screen reader reads, and press the arrows as
 // buttons. The name on the period row is a system menu on iOS (LEDGER-110.1), which only an E2E
@@ -58,7 +58,7 @@ const ownButtons = (root: HostView) =>
 const MONTH =
   '(January|February|March|April|May|June|July|August|September|October|November|December)';
 const SHORT = '[A-Z][a-z]{2}';
-/** A line that is the name of a period (LEDGER-108.1). */
+/** A line that is the name of a period (LEDGER-108.2). */
 const PERIOD_NAME = new RegExp(
   `^(${MONTH} \\d{4}|\\d{4}|${SHORT}( \\d{4})? – ${SHORT} \\d{4}|Custom Range|All Time|Group Total)$`,
 );
@@ -119,7 +119,7 @@ export const pressNextPeriod = (root: HostView) =>
 
 // The total under the period row
 
-/** The buttons of the list in `root` that open Insights: its total (LEDGER-35.4, GROUPS-68.4). */
+/** The buttons of the list in `root` that open Insights: its total (LEDGER-35.5, GROUPS-68.5). */
 export const totalButtons = (root: HostView) =>
   ownButtons(root).filter(
     (button) => button.props.accessibilityHint === 'Opens Insights',
@@ -144,7 +144,7 @@ export async function pressTotal(root: HostView) {
 
 // A period with no expense
 
-/** The No Expenses in <period> heading of the list in `root`, if it shows one (LEDGER-116.1). */
+/** The No Expenses in <period> heading of the list in `root`, if it shows one (LEDGER-116.2). */
 export const emptyPeriodTitle = (root: HostView) =>
   within(root)
     .queryAllByRole('header')
@@ -437,7 +437,7 @@ function appStateListeners() {
 }
 
 /**
- * The user leaves the app and comes back to it (LEDGER-146.1): the app goes to the background,
+ * The user leaves the app and comes back to it (LEDGER-146.2): the app goes to the background,
  * `away` happens, such as the phone's clock moving on, and the app is active again. The app
  * hears of both as React Native tells it, through AppState's change event.
  */

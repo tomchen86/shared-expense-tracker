@@ -228,7 +228,7 @@ const addFullCoffeeRun = () =>
 
 // The expense list
 
-test('[LEDGER-31.3] leaves an expense in the trash off the list, also after the app restarts', async () => {
+test('[LEDGER-31.4] leaves an expense in the trash off the list, also after the app restarts', async () => {
   const app = await startWithTwo();
 
   await deleteByAction('Lunch');
@@ -601,7 +601,7 @@ test('[LEDGER-74.1] keeps the notice when another expense is restored from Trash
 
 // Undo
 
-test('[LEDGER-75.4] puts the expense back on the list and in its total when Undo is pressed', async () => {
+test('[LEDGER-75.5] puts the expense back on the list and in its total when Undo is pressed', async () => {
   await startWithTwo();
   await deleteByAction('Lunch');
 
@@ -615,7 +615,7 @@ test('[LEDGER-75.4] puts the expense back on the list and in its total when Undo
   await waitFor(() => expect(trashLines()).toEqual([NO_DELETED]));
 });
 
-test('[LEDGER-75.4] puts an expense back in its place among expenses of the same date', async () => {
+test('[LEDGER-75.5] puts an expense back in its place among expenses of the same date', async () => {
   await startExpenses();
   await addExpense({ title: 'E', date: '2025-01-01' });
   await addExpense({ title: 'F', date: '2025-01-01' });
@@ -627,7 +627,7 @@ test('[LEDGER-75.4] puts an expense back in its place among expenses of the same
   await expectCards(['D', 'F', 'E']);
 });
 
-test('[LEDGER-75.4] puts back an expense deleted on its details without opening them again', async () => {
+test('[LEDGER-75.5] puts back an expense deleted on its details without opening them again', async () => {
   await startWithTwo();
   await openDetails('Lunch');
   await chooseExpenseAction('Expenses', 'Delete');
@@ -641,7 +641,7 @@ test('[LEDGER-75.4] puts back an expense deleted on its details without opening 
   expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses']);
 });
 
-test('[LEDGER-75.4] keeps an expense put back with Undo after the app restarts', async () => {
+test('[LEDGER-75.5] keeps an expense put back with Undo after the app restarts', async () => {
   const app = await startWithTwo();
   await deleteByAction('Lunch');
   await pressUndo('Lunch');
@@ -977,7 +977,7 @@ test('[LEDGER-78.4] shows only Expense not found. at the Trash URL of an ID that
 
 // Restore
 
-test('[LEDGER-79.4] restores an expense from its read-only details without asking, back to its place', async () => {
+test('[LEDGER-79.5] restores an expense from its read-only details without asking, back to its place', async () => {
   await startExpenses();
   await addExpense({ title: 'E', date: '2025-01-01' });
   await addExpense({ title: 'F', date: '2025-01-01' });
@@ -997,7 +997,7 @@ test('[LEDGER-79.4] restores an expense from its read-only details without askin
   await expectCards(['D', 'F', 'E']);
 });
 
-test('[LEDGER-79.4] restores the expense as it was before it moved to the trash', async () => {
+test('[LEDGER-79.5] restores the expense as it was before it moved to the trash', async () => {
   await startExpenses();
   await addFullCoffeeRun();
   await deleteByAction('Coffee run');
@@ -1006,7 +1006,7 @@ test('[LEDGER-79.4] restores the expense as it was before it moved to the trash'
   await tapTab('Expenses');
 
   await expectCards(['Coffee run']);
-  // Adding it, dated December 2024, moved the list to that month (LEDGER-117.1).
+  // Adding it, dated December 2024, moved the list to that month (LEDGER-117.2).
   expect(listTotal()).toEqual(['$8.75']);
   await openDetails('Coffee run');
   expect(shownInOrder(detailLines(), DETAILS_OF_COFFEE_RUN)).toEqual(
@@ -1014,7 +1014,7 @@ test('[LEDGER-79.4] restores the expense as it was before it moved to the trash'
   );
 });
 
-test('[LEDGER-79.4] keeps the read-only details open until the restore is saved', async () => {
+test('[LEDGER-79.5] keeps the read-only details open until the restore is saved', async () => {
   await startExpenses();
   await addExpense();
   await deleteByAction('Coffee run');
@@ -1032,7 +1032,7 @@ test('[LEDGER-79.4] keeps the read-only details open until the restore is saved'
   );
 });
 
-test('[LEDGER-79.4] restores once and goes back once when Restore is pressed again before it is saved', async () => {
+test('[LEDGER-79.5] restores once and goes back once when Restore is pressed again before it is saved', async () => {
   await startExpenses();
   await addExpense();
   await deleteByAction('Coffee run');

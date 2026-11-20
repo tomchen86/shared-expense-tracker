@@ -35,7 +35,8 @@ import {
   restoreFromTrash,
 } from './ledger-trash-app';
 import { showGroup } from './group-balances-app';
-import { alertsShown, pressAlertButton } from './group-details-app';
+import { alertsShown, pressAlertButton, screenOf } from './group-details-app';
+import { chooseSort, sortName } from './ledger-list-find-app';
 import { allowWrites, failWritesAfter } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
 import {
@@ -827,4 +828,16 @@ test('[SYNC-27.1] saves a small change to an expense that has held a long note s
     }),
   ]);
   expect((await expenseTitled('Supper')).note).toHaveLength(70_000);
+});
+
+test("[LEDGER-124.1] writes no event when the order of a shared ledger's screen is changed", async () => {
+  await startShared();
+  await addDinner();
+  const before = await unsent();
+  await showGroup('Brisbane');
+
+  await chooseSort(screenOf('Brisbane'), 'Oldest First');
+
+  expect(sortName(screenOf('Brisbane'))).toBe('Sort By, Oldest First');
+  expect(await unsent()).toEqual(before);
 });

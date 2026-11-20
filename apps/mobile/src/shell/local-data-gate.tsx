@@ -11,6 +11,11 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import type { InsightChartPreference } from '@shared-expense/domain';
 import { ensureDefaultCategories } from '../categories/repository';
 import {
+  readListOrders,
+  saveListOrder,
+  type ListOrder,
+} from '../ledger/list-order';
+import {
   initializeDatabase,
   type Database,
   type SqlExecutor,
@@ -37,6 +42,7 @@ interface LocalData {
   identity: LocalIdentity;
   appearance: AppearanceOption;
   chartType: InsightChartPreference;
+  listOrders: Map<string, ListOrder>;
 }
 
 /** What the app keeps in memory of the local data, read in the transaction that opens or replaces it. */
@@ -45,6 +51,7 @@ async function readLocalData(transaction: SqlExecutor) {
     identity: await ensureLocalIdentity(transaction),
     appearance: await readLocalAppearance(transaction),
     chartType: await readLocalChartType(transaction),
+    listOrders: await readListOrders(transaction),
   };
 }
 
@@ -59,6 +66,7 @@ interface LocalDataContextValue extends LocalData {
   saveName: (name: string) => Promise<void>;
   saveAppearance: (appearance: AppearanceOption) => Promise<void>;
   saveChartType: (chartType: InsightChartPreference) => Promise<void>;
+  changeListOrder: (spaceId: string, order: ListOrder) => Promise<void>;
 }
 
 const LocalDataContext = createContext<LocalDataContextValue | null>(null);
@@ -114,7 +122,7 @@ export function LocalDataGate({
           return data;
         },
       );
-      const { appearance, chartType } = initialized;
+      const { appearance } = initialized;
       const identity = seed
         ? await seed(database, initialized.identity)
         : initialized.identity;
@@ -123,7 +131,7 @@ export function LocalDataGate({
       applyAppearanceOption(appearance);
       setStartup({
         status: 'ready',
-        data: { database, identity, appearance, chartType },
+        data: { ...initialized, database, identity },
         starts: 0,
       });
     }
@@ -193,6 +201,23 @@ export function LocalDataGate({
           : current,
       );
     }
+    async function changeListOrder(spaceId: string, order: ListOrder) {
+      await saveListOrder(database, spaceId, order);
+      setStartup((current) =>
+        current.status === 'ready' && current.data.database === database
+          ? {
+              ...current,
+              data: {
+                ...current.data,
+                listOrders: new Map(current.data.listOrders).set(
+                  spaceId,
+                  order,
+                ),
+              },
+            }
+          : current,
+      );
+    }
     return (
       <ReduceTransparencyProvider controller={transparency}>
         <LocalDataContext.Provider
@@ -202,6 +227,7 @@ export function LocalDataGate({
             saveName,
             saveAppearance,
             saveChartType,
+            changeListOrder,
           }}
         >
           {/* Everything inside keeps no state from the data that was replaced. */}
@@ -258,6 +284,14 @@ export function useSaveAppearanceOption(): LocalDataContextValue['saveAppearance
 }
 export function useChartType(): InsightChartPreference {
   return useLocalData().chartType;
+}
+export function useListOrder(groupId?: string) {
+  const { listOrders, identity, changeListOrder } = useLocalData();
+  const spaceId = groupId ?? identity.personalSpaceId;
+  return {
+    order: listOrders.get(spaceId) ?? 'newest',
+    save: (order: ListOrder) => changeListOrder(spaceId, order),
+  };
 }
 export function useSaveChartType(): LocalDataContextValue['saveChartType'] {
   return useLocalData().saveChartType;
