@@ -35,6 +35,7 @@ import { latestStamp, readSyncRecord } from '../../src/sync/records';
 import { moveExpenseToTrash } from '../../src/ledger/trash';
 import {
   listExpenses,
+  listExpensesForCards,
   saveExpense,
   subscribeToExpenses,
   type Expense,
@@ -412,6 +413,70 @@ test('restores each waiting expense’s saved category even when another default
     isDefault: false,
     isArchived: true,
     createdByUserId: undefined,
+  });
+});
+
+test('stamps remote category changes only when the stored expense changes', async () => {
+  const dinner = await save();
+  await shareTrip();
+  const { groupId } = split;
+  const start = (await latestStamp(database))!.ms;
+  const stamp = (after: number) => ({
+    ms: start + after,
+    counter: 0,
+    device: 'remote',
+  });
+  const assign = (categoryId: string, after: number) =>
+    received({
+      version: 1,
+      type: 'expense',
+      id: dinner.id,
+      stamp: stamp(after),
+      units: {
+        category: {
+          value: { id: categoryId, name: 'Meals', color: '#123456' },
+        },
+      },
+    });
+  const card = async () => (await listExpensesForCards(database))[0];
+
+  await applySyncEvents(database, groupId, [assign('missing', 1)]);
+  expect(await card()).toMatchObject({
+    category: { name: 'Uncategorized' },
+    changedAt: start + 1,
+  });
+  await applySyncEvents(database, groupId, [assign('meals', 2)]);
+  expect((await card()).changedAt).toBe(start + 1);
+
+  await applySyncEvents(database, groupId, [
+    received({
+      version: 1,
+      type: 'category',
+      id: 'meals',
+      stamp: stamp(3),
+      units: {
+        name: { value: 'Meals' },
+        color: { value: '#123456' },
+        archived: { value: false },
+      },
+    }),
+  ]);
+  expect(await card()).toMatchObject({
+    category: { id: 'meals' },
+    changedAt: start + 3,
+  });
+  await applySyncEvents(database, groupId, [
+    received({
+      version: 1,
+      type: 'category',
+      id: 'meals',
+      stamp: stamp(4),
+      deleted: true,
+    }),
+  ]);
+  expect(await card()).toMatchObject({
+    category: { name: 'Uncategorized' },
+    changedAt: start + 4,
   });
 });
 

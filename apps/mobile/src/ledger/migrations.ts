@@ -41,3 +41,15 @@ export const expenseAllocationOrderMigration = `
     WHERE earlier.expenseId = expense_shares.expenseId AND earlier.rowid < expense_shares.rowid
   );
 `;
+
+/** An expense has no change time until the phone writes it (LEDGER-120.1). */
+export const expenseListOrderMigration = `
+  CREATE TABLE expense_changes (
+    expenseId TEXT PRIMARY KEY NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
+    changedAt INTEGER NOT NULL CHECK (typeof(changedAt) = 'integer')
+  );
+  CREATE TABLE expense_list_orders (
+    spaceId TEXT PRIMARY KEY NOT NULL,
+    sortOrder TEXT NOT NULL CHECK (sortOrder IN ('newest', 'oldest', 'edited', 'highest', 'lowest'))
+  );
+`;

@@ -23,7 +23,7 @@ export function ExpensesScreen() {
   const { move } = useTrashActions();
   const periods = useListPeriod(false, expenses, read.placed);
   // The total is that of the cards under it: of every expense of the period, drawn or not
-  // (LEDGER-35.4, LEDGER-118.1).
+  // (LEDGER-35.5, LEDGER-118.2).
   const cards = periods.shown ?? [];
   const totals = new Map<string, bigint>();
   for (const expense of cards) {

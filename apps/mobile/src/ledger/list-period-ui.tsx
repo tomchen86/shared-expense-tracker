@@ -1,16 +1,19 @@
 import {
   createContext,
+  startTransition,
   useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
+  useOptimistic,
   useRef,
   useState,
   type ReactNode,
   type RefObject,
 } from 'react';
 import {
+  Alert,
   AppState,
   FlatList,
   Pressable,
@@ -30,6 +33,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import { useListOrder } from '../shell';
 import { DateField } from '../ui/date-field';
 import { DateRange } from '../ui/date-range';
 import { FadeText } from '../ui/fade-text';
@@ -48,6 +52,12 @@ import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
 import { usePeriodSwipe } from '../ui/use-period-swipe';
 import { DateHeading } from './dated-cards';
+import {
+  ORDER_NAMES,
+  ORDER_OPTIONS,
+  orderedCards,
+  type ListOrder,
+} from './list-order';
 import {
   PERIOD_OPTIONS,
   afterComingBack,
@@ -70,7 +80,7 @@ import {
 import type { ExpenseView } from './use-expenses';
 
 /**
- * The period of one list (LEDGER-107.1) and what it leaves of `expenses`, which are all that the
+ * The period of one list (LEDGER-107.2) and what it leaves of `expenses`, which are all that the
  * list can show, latest first, or undefined until they are read. `inGroup` is a group's screen,
  * which opens on all dates and calls them Group Total; the expense list opens on this month.
  * `placed` are the IDs useReadExpenses brought with these expenses.
@@ -86,7 +96,7 @@ export function useListPeriod(
     onPeriod(inGroup ? { kind: 'all' } : monthOf(day), day),
   );
   // A list left on this month or this year is on the new one when the user comes back to the
-  // app after the calendar has moved on (LEDGER-146.1). Not while the app stays in front.
+  // app after the calendar has moved on (LEDGER-146.2). Not while the app stays in front.
   useEffect(() => {
     let away = false;
     const subscription = AppState.addEventListener('change', (state) => {
@@ -108,7 +118,7 @@ export function useListPeriod(
     setList((current) => onPeriod(next, today(), current.range));
 
   // An expense the user just added or put back stays in sight: one dated outside the period
-  // moves the list to its month (LEDGER-117.1). The last one decides.
+  // moves the list to its month (LEDGER-117.2). The last one decides.
   const [seen, setSeen] = useState(placed);
   if (expenses && placed !== seen) {
     setSeen(placed);
@@ -147,7 +157,7 @@ export function useListPeriod(
   };
   const allName = inGroup ? 'Group Total' : 'All Time';
   const name = periodName(period, day, allName);
-  /** The period holds none of the list's expenses, and the list has some (LEDGER-116.1). */
+  /** The period holds none of the list's expenses, and the list has some (LEDGER-116.2). */
   const empty =
     dates !== undefined && shown?.length === 0 && expenses!.length > 0;
   const earlier = empty
@@ -326,6 +336,7 @@ interface PeriodListProps extends Pick<
   'onScroll' | 'scrollEventThrottle'
 > {
   periods: ListPeriodState;
+  groupId?: string;
   /** On a pushed screen: iOS's back gesture gets the drags to the right that nothing here uses. */
   backSwipe?: boolean;
   /** What stands above the period row. */
@@ -350,7 +361,7 @@ interface PeriodListProps extends Pick<
 /**
  * A list of expense cards that shows one period at a time: the period row, the dates of a custom
  * range, the total, and the cards of the period under the date of each day, of which only those
- * on and near the screen are drawn (LEDGER-118.1). Everything scrolls together.
+ * on and near the screen are drawn (LEDGER-118.2). Everything scrolls together.
  */
 export function PeriodList({ backSwipe, ...props }: PeriodListProps) {
   return (
@@ -362,6 +373,7 @@ export function PeriodList({ backSwipe, ...props }: PeriodListProps) {
 
 function PeriodListBody({
   periods,
+  groupId,
   top,
   total,
   summary,
@@ -385,7 +397,7 @@ function PeriodListBody({
   }, []);
 
   // A period that changes while its row is out of sight brings the list back to its top
-  // (LEDGER-147.1). Not while any of the row shows: the arrows would move from under the finger.
+  // (LEDGER-147.2). Not while any of the row shows: the arrows would move from under the finger.
   const list = useRef<FlatList<ExpenseView>>(null);
   const titleBarHeight = useRef(0);
   const rowTop = useRef<number>(undefined);
@@ -405,7 +417,28 @@ function PeriodListBody({
     list.current?.scrollToOffset({ offset: at.rest, animated: true });
   }, [periods.key]);
   const { steps } = periods;
-  const shown = periods.shown ?? NO_EXPENSES;
+  const { order: savedOrder, save } = useListOrder(groupId);
+  const [order, showOrder] = useOptimistic(savedOrder);
+  const chooseOrder = (id: string) => {
+    if (id === order) return;
+    const next = id as ListOrder;
+    startTransition(async () => {
+      showOrder(next);
+      try {
+        await save(next);
+      } catch {
+        Alert.alert(
+          'Unable to Save Settings',
+          'Your settings could not be saved. Please try again.',
+        );
+      }
+    });
+  };
+  const shown = useMemo(
+    () =>
+      orderedCards(periods.shown ?? NO_EXPENSES, order, groupId !== undefined),
+    [periods.shown, order, groupId],
+  );
   // One sideways swipe for the top of the list and all that slides with it (LEDGER-114.1): to the
   // right for the period before, to the left for the one after. A period with neither keeps no
   // drag, so that iOS's back gesture gets one to the right on a pushed screen.
@@ -582,6 +615,35 @@ function PeriodListBody({
         through 2,000 expenses and back cost 260 MB more.
       */}
       <Animated.View style={pageStyle}>
+        {shown.length > 0 && (
+          <View style={styles.listLine}>
+            <MenuField
+              label="Sort By"
+              title="Sort By"
+              value={ORDER_NAMES[order]}
+              options={ORDER_OPTIONS}
+              selected={[order]}
+              onSelect={chooseOrder}
+              trigger={
+                <View
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                  pointerEvents="none"
+                  style={styles.sortButton}
+                >
+                  <SymbolView
+                    name={{ ios: 'arrow.up.arrow.down', android: 'swap_vert' }}
+                    size={18}
+                    weight="medium"
+                    tintColor={
+                      order === 'newest' ? colors.textMuted : colors.accent
+                    }
+                  />
+                </View>
+              }
+            />
+          </View>
+        )}
         <FlatList
           data={shown}
           keyExtractor={expenseId}
@@ -623,7 +685,7 @@ function PeriodListBody({
   );
 }
 
-/** In place of the cards when the period holds no expense (LEDGER-116.1). */
+/** In place of the cards when the period holds no expense (LEDGER-116.2). */
 function EmptyPeriod({
   name,
   earlier,
@@ -670,6 +732,17 @@ const styles = StyleSheet.create({
   // begins and not from 20 points below it.
   header: { paddingTop: 20 },
   overview: { marginBottom: 24, gap: 6 },
+  listLine: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  sortButton: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   capsule: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -107,7 +107,7 @@ export function SwipeScrollView({
 }
 
 /**
- * A list of SwipeAction rows that draws only the rows on and near the screen (LEDGER-118.1).
+ * A list of SwipeAction rows that draws only the rows on and near the screen (LEDGER-118.2).
  * Goes inside a SwipeListScope.
  */
 export function SwipeFlatList<Item>({

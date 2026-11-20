@@ -15,6 +15,7 @@ import { useThemeColors } from './theme';
 export function MenuField({
   label,
   value,
+  trigger,
   title,
   disabled = false,
   dot,
@@ -40,15 +41,21 @@ export function MenuField({
         accessibilityState={{ disabled }}
         disabled={disabled}
         onPress={() => setOpen(true)}
-        style={[styles.row, fontScale > 1.3 && styles.stacked]}
+        style={
+          trigger ? undefined : [styles.row, fontScale > 1.3 && styles.stacked]
+        }
       >
-        <Text style={[styles.text, { color: colors.text }]}>{label}</Text>
-        <View style={styles.value}>
-          {dot && <View style={[styles.dot, { backgroundColor: dot }]} />}
-          <Text style={[styles.valueText, { color: colors.textMuted }]}>
-            {value}
-          </Text>
-        </View>
+        {trigger ?? (
+          <>
+            <Text style={[styles.text, { color: colors.text }]}>{label}</Text>
+            <View style={styles.value}>
+              {dot && <View style={[styles.dot, { backgroundColor: dot }]} />}
+              <Text style={[styles.valueText, { color: colors.textMuted }]}>
+                {value}
+              </Text>
+            </View>
+          </>
+        )}
       </Pressable>
       <Sheet
         visible={open}

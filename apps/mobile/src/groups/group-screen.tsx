@@ -54,8 +54,8 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
     [read.expenses, id],
   );
   const periods = useListPeriod(true, expenses, read.placed);
-  // Your balance is that of every expense (GROUPS-69.3); the total is that of the period's
-  // cards, drawn or not (GROUPS-68.4, LEDGER-118.1).
+  // Your balance is that of every expense (GROUPS-69.4); the total is that of the period's
+  // cards, drawn or not (GROUPS-68.5, LEDGER-118.2).
   const amounts = group && expenses ? groupAmounts(expenses, group) : [];
   const total =
     group && periods.shown
@@ -108,6 +108,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
       {group !== undefined && (
         <PeriodList
           backSwipe
+          groupId={id}
           periods={periods}
           scrollEventThrottle={16}
           onScroll={titleScroll.onScroll}

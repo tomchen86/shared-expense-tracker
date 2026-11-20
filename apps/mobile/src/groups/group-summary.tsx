@@ -3,7 +3,7 @@ import { FadeText } from '../ui/fade-text';
 import { GroupedSection } from '../ui/grouped-section';
 import { useThemeColors } from '../ui/theme';
 
-/** Your balance in a group, which opens Balances (GROUPS-69.3). */
+/** Your balance in a group, which opens Balances (GROUPS-69.4). */
 export function GroupSummary({
   balances,
   onOpenBalances,

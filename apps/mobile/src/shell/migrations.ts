@@ -2,6 +2,7 @@ import { categoryMigrations } from '../categories/migrations';
 import { groupArchiveMigration, groupMigrations } from '../groups/migrations';
 import {
   expenseAllocationOrderMigration,
+  expenseListOrderMigration,
   expenseMigrations,
   expenseTrashMigration,
 } from '../ledger/migrations';
@@ -34,4 +35,5 @@ export const appMigrations: readonly string[] = [
     CHECK (chartType IN ('auto', 'donut', 'bar'))`,
   syncMigration,
   ...sharingMigrations,
+  expenseListOrderMigration,
 ];
