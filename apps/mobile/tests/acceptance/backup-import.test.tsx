@@ -12,6 +12,7 @@ import {
   allowWrites,
   answerPicker,
   appState,
+  asHeldIn,
   chooseFile,
   close,
   copyOf,
@@ -46,7 +47,6 @@ import {
   temporaryFiles,
   withADifferentMigration,
   withAnExportTimeThatIsNoTime,
-  withFields,
   withoutAnExportTime,
   writeData,
   writeSamsData,
@@ -735,10 +735,17 @@ test('[BACKUP-18.1] upgrades a file from before Insights had a chart type and im
   await pressAlertButton('Replace');
   await waitFor(() => expect(selectedTab()).toBe('Expenses'));
 
-  // Everything as Taylor's phone had it, except the chart type that version did not have.
-  expect(dataIn(phone.database)).toEqual(
-    withFields(data, 'local_identity', { chartType: 'auto' }),
-  );
+  // Everything that version held is as Taylor's phone had it. What later versions added is as
+  // an upgrade leaves it: the chart type is auto, and no expense has a time of its last change
+  // (LEDGER-120.1), which a test below reads from a list in the order Recently Edited.
+  const imported = dataIn(phone.database);
+  expect(asHeldIn(older, imported)).toEqual(asHeldIn(older, data));
+  expect(imported._migrations).toEqual(data._migrations);
+  expect(
+    rowsOf<{ chartType: string }>(imported, 'local_identity').map(
+      (row) => row.chartType,
+    ),
+  ).toEqual(['auto']);
   expect((await appState()).chartType).toBe('auto');
 });
 
