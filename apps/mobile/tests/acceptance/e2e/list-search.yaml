@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-128.1] [LEDGER-125.2] [LEDGER-126.2] [LEDGER-127.2] Types into the system search field of the expense list and of a group's screen, sees the matches of every date with their count, then No Results, and closes the search back to this month"
+name: "[LEDGER-128.1] [LEDGER-125.2] [LEDGER-126.2] [LEDGER-127.2] [SHELL-73.1] Types into the system search field of the expense list and of a group's screen, sees the matches of every date with their count, then No Results, closes the search back to this month, and keeps a search when the keyboard's search key closes the keyboard"
 ---
 # The names of this month and its year, and the 15th of last month, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
@@ -57,3 +57,14 @@ name: "[LEDGER-128.1] [LEDGER-125.2] [LEDGER-126.2] [LEDGER-127.2] Types into th
 - assertNotVisible: Dinner, .*
 - assertNotVisible: 'Group Total: .*'
 - assertNotVisible: You're owed.*
+# SHELL-73.1: the keyboard's search key closes the keyboard and keeps the search. Nothing reports
+# the keyboard itself on every simulator, but iOS types only into a field that has the focus: a
+# letter typed after the key changes nothing, where it would leave no match in a field still
+# taking input.
+- pressKey: Enter
+- waitForAnimationToEnd
+- inputText: x
+- waitForAnimationToEnd
+- assertVisible: 1 item
+- assertVisible: Taxi, .*
+- assertNotVisible: No Results for .*

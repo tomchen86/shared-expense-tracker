@@ -1,0 +1,107 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[LEDGER-147.2] Leaves a list where it is when Previous period is pressed twice in one place with the period row on screen, and brings a list back to its top when its period changes in Filters with the period row scrolled away, on the expense list and on a group's screen"
+tags:
+  - android
+---
+# Also runs on the small Android screen of scripts/e2e-android.sh (ADR-0014), where the + button
+# sits at the middle of the width, about three quarters of the way down: a drag that starts on it
+# does not move the list, so there the two long drags start near the left edge, and go slowly.
+# The names of this month and the two months before it, by the simulator's clock.
+- evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
+- evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'
+- evalScript: '${output.thisYear = String(new Date().getFullYear())}'
+- evalScript: '${output.lastMonth = output.months[(new Date().getMonth() + 11) % 12]}'
+- evalScript: '${output.lastMonthsYear = String(new Date().getMonth() === 0 ? new Date().getFullYear() - 1 : new Date().getFullYear())}'
+- evalScript: '${output.twoBack = new Date(new Date().getFullYear(), new Date().getMonth() - 2, 1)}'
+- evalScript: "${output.twoBackName = output.months[output.twoBack.getMonth()] + ' ' + output.twoBack.getFullYear()}"
+# The 15th of last month and of the month before it.
+- evalScript: '${output.lastMonth15 = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 15)}'
+- evalScript: "${output.lastMonthDate = output.lastMonth15.getFullYear() + '-' + ('0' + (output.lastMonth15.getMonth() + 1)).slice(-2) + '-15'}"
+- evalScript: "${output.twoBackDate = output.twoBack.getFullYear() + '-' + ('0' + (output.twoBack.getMonth() + 1)).slice(-2) + '-15'}"
+# Twelve personal expenses today, twelve on each of those two days, and twelve of Brisbane's
+# today and on the 15th of last month: every period this flow shows holds more cards than the
+# screen has room for. Maestro reads ${…} up to the last } in the value, so the seed is built in
+# one script.
+- evalScript: "${output.seedJson = (function () { var dates = [undefined, output.lastMonthDate, output.twoBackDate]; var expenses = []; for (var month = 0; month < 3; month++) { for (var card = 1; card <= 12; card++) { expenses.push({ title: 'Month ' + month + ' card ' + card, amount: '1.00', date: dates[month] }); if (month < 2) { expenses.push({ title: 'Brisbane ' + month + ' card ' + card, amount: '1.00', date: dates[month], group: 'Brisbane' }); } } } return JSON.stringify({ name: 'Taylor', groups: [{ name: 'Brisbane', members: ['Casey'] }], expenses: expenses }); })()}"
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: ${output.seedJson}
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+# A short way down the list, the large title is gone and the period row is still on screen. A
+# list that went back to its top here would move the arrow from under the finger: two presses in
+# the same place, long enough apart for a list to have moved, both reach Previous period.
+- swipe:
+    start: 50%, 60%
+    end: 50%, 51%
+    duration: 1500
+- waitForAnimationToEnd
+- assertVisible: Previous period
+- tapOn:
+    text: Previous period
+    repeat: 2
+    delay: 800
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.twoBackName}
+# Far down the list, the period row is out of sight. Changing the period in Filters brings the
+# list back to its top: the period row and the total are on screen again.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 50%, 80%
+          end: 50%, 25%
+          duration: 800
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - swipe:
+          start: 15%, 80%
+          end: 15%, 25%
+          duration: 1000
+- waitForAnimationToEnd
+- assertNotVisible: Choose period\..*
+- tapOn: Filters
+- waitForAnimationToEnd
+- tapOn: Date, .*
+- tapOn: Last Month
+- waitForAnimationToEnd
+- tapOn: Done
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
+- assertVisible: View expense insights\..*
+# The same on a group's screen, which opens on Group Total. Android reads the group's row as one
+# name, Open Brisbane and what the row says.
+- tapOn: Groups
+- tapOn: Open Brisbane.*
+- waitForAnimationToEnd
+- assertVisible: Choose period\. Group Total
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 50%, 80%
+          end: 50%, 25%
+          duration: 800
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - swipe:
+          start: 15%, 80%
+          end: 15%, 25%
+          duration: 1000
+- waitForAnimationToEnd
+- assertNotVisible: Choose period\..*
+- tapOn: Filters
+- waitForAnimationToEnd
+- tapOn: Date, .*
+- tapOn: This Month
+- waitForAnimationToEnd
+- tapOn: Done
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible: '${output.thisMonth} ${output.thisYear}: .*'

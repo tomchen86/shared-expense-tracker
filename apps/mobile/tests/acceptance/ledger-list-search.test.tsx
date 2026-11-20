@@ -9,6 +9,7 @@ import {
   inTreeOrder,
   resetPhone,
   restart,
+  setPhoneClock,
   startExpenses,
   watchAlerts,
 } from './ledger-expense-app';
@@ -44,6 +45,7 @@ import {
   chooseRangeDate,
   emptyPeriodTitle,
   expectPeriod,
+  leaveAndComeBack,
   nextPeriod,
   periodName,
   previousPeriod,
@@ -78,7 +80,11 @@ import {
   openArchivedGroup,
   openArchivedGroups,
 } from './group-archive-app';
-import { deleteByAction } from './ledger-trash-app';
+import {
+  deleteByAction,
+  pressUndo,
+  restoreFromTrash,
+} from './ledger-trash-app';
 import { allowWrites, settle } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
 import type { Database } from '../../src/storage';
@@ -455,6 +461,72 @@ test('[LEDGER-125.2] [LEDGER-117.2] keeps the search when an expense is added du
 
   await expectPeriod(expensesRoot, 'September 2026');
   expect(cardTitles()).toEqual(['Lunch']);
+});
+
+test('[LEDGER-125.2] [LEDGER-117.2] [LEDGER-75.5] keeps the search when Undo puts back an expense that matches, lists it, and shows its month once the search ends', async () => {
+  await startExpenses();
+  await spend('Coffee run');
+  await spend('Coffee beans', '2025-12-20');
+  await choosePeriod('Expenses', 'This Month');
+  await search('coffee');
+  await deleteByAction('Coffee beans');
+  expect(cardTitles()).toEqual(['Coffee run']);
+  expect(listCount(expensesRoot())).toBe('1 item');
+
+  await pressUndo('Coffee beans');
+
+  expect(periodName(expensesRoot())).toBeUndefined();
+  expect(cardTitles()).toEqual(['Coffee run', 'Coffee beans']);
+  expect(listCount(expensesRoot())).toBe('2 items');
+
+  await endSearch('Expenses');
+
+  await expectPeriod(expensesRoot, 'December 2025');
+  expect(cardTitles()).toEqual(['Coffee beans']);
+});
+
+test('[LEDGER-125.2] [LEDGER-117.2] [LEDGER-79.5] keeps the search when Restore puts back an expense that does not match, and lists it once the search ends, in its month', async () => {
+  await startExpenses();
+  await spend('Coffee run');
+  await spend('Lunch', '2026-09-12');
+  await deleteByAction('Lunch');
+  await choosePeriod('Expenses', 'This Month');
+  await search('coffee');
+
+  await restoreFromTrash('Lunch');
+  await tapTab('Expenses');
+  await settle();
+
+  expect(periodName(expensesRoot())).toBeUndefined();
+  expect(cardTitles()).toEqual(['Coffee run']);
+  expect(listCount(expensesRoot())).toBe('1 item');
+
+  await endSearch('Expenses');
+
+  await expectPeriod(expensesRoot, 'September 2026');
+  expect(cardTitles()).toEqual(['Lunch']);
+});
+
+test('[LEDGER-146.2] [LEDGER-125.2] keeps the search when the app comes back in a later month, and shows that month once the search ends', async () => {
+  await startExpenses();
+  await spend('Coffee run', '2026-10-01');
+  await spend('Lunch', '2026-10-02');
+  await search('coffee');
+
+  // The user leaves the app and comes back to it on 2026-11-02, at noon in Taipei.
+  await leaveAndComeBack(() =>
+    setPhoneClock('Asia/Taipei', '2026-11-02T04:00:00Z'),
+  );
+
+  expect(periodName(expensesRoot())).toBeUndefined();
+  expect(listTotal()).toEqual([]);
+  expect(cardTitles()).toEqual(['Coffee run']);
+  expect(listCount(expensesRoot())).toBe('1 item');
+
+  await endSearch('Expenses');
+
+  await expectPeriod(expensesRoot, 'November 2026');
+  expect(cardTitles()).toEqual([]);
 });
 
 test('[LEDGER-125.2] keeps searching after the details of a card are opened and closed', async () => {

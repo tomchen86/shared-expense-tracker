@@ -548,17 +548,41 @@ export const tablesIn = (data: Data, like: Data): Data =>
 export const rowsOf = <T,>(data: Data, table: string) =>
   (data[table] ?? []).map((row) => JSON.parse(row) as T);
 
-/** `data` with `fields` set on every row of `table`. */
-export const withFields = (
-  data: Data,
-  table: string,
-  fields: Record<string, unknown>,
-): Data => ({
-  ...data,
-  [table]: rowsOf<object>(data, table)
-    .map((row) => JSON.stringify({ ...row, ...fields }))
-    .sort(),
-});
+/**
+ * `data` as the version of the app that wrote the export file `older` could hold it: the
+ * app's tables that version had and, of each row, the columns it had. A table or a column
+ * that a later version added is left out, and so is the record of the migrations.
+ */
+export function asHeldIn(older: string, data: Data): Data {
+  const database = new DatabaseSync(older, { readOnly: true });
+  try {
+    const columnsOf = (table: string) =>
+      (
+        database.prepare(`PRAGMA table_info("${table}")`).all() as {
+          name: string;
+        }[]
+      ).map((column) => column.name);
+    return Object.fromEntries(
+      Object.keys(dataIn(older))
+        .filter((table) => table !== '_migrations' && table in data)
+        .map((table) => {
+          const columns = columnsOf(table);
+          return [
+            table,
+            rowsOf<Record<string, unknown>>(data, table)
+              .map((row) =>
+                JSON.stringify(
+                  Object.fromEntries(columns.map((name) => [name, row[name]])),
+                ),
+              )
+              .sort(),
+          ];
+        }),
+    );
+  } finally {
+    database.close();
+  }
+}
 
 // Writing data
 

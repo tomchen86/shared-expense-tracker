@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react-native';
 import { barTitled } from './group-details-app';
 import { nameOf } from './ledger-expense-app';
-import { asRead, inContentOf, linesIn } from './ledger-expense-list-app';
+import { asRead, inContentOf } from './ledger-expense-list-app';
 import { iconsIn } from './shell-actions-app';
 import { settle } from './shell-appearance-app';
 import { componentsIn, nativeViews } from './shell-tabs-app';
@@ -182,10 +182,18 @@ export async function chooseSort(root: HostView, order: string) {
 
 // The line above the cards
 
-const COUNT = /^\d+ items?$/;
+// The digits are grouped as the phone's region groups them: 1,000 items, 1.000 items.
+const COUNT = /^\d[\d.,\s'’]* items?$/;
 
 const textOf = (node: HostView | string): string =>
   typeof node === 'string' ? node : node.children.map(textOf).join('');
+
+/** Whether `view` is part of the total above the cards, which on All Time is a number of items too (LEDGER-35.6). */
+function inTotal(view: HostView, root: HostView) {
+  for (let outer = view.parent; outer && outer !== root; outer = outer.parent)
+    if (nameOf(outer).startsWith('View expense insights.')) return true;
+  return false;
+}
 
 /** The text of the list in `root` that says how many expenses it lists, such as 22 items, if it shows one. */
 export const countView = (root: HostView): HostView | undefined =>
@@ -193,12 +201,15 @@ export const countView = (root: HostView): HostView | undefined =>
     (view) =>
       String(view.type) === 'Text' &&
       COUNT.test(asRead(textOf(view))) &&
-      inContentOf(root, view),
+      inContentOf(root, view) &&
+      !inTotal(view, root),
   )[0];
 
 /** How many expenses the line above the cards says the list holds, such as 22 items; undefined while it says none. */
-export const listCount = (root: HostView) =>
-  linesIn(root).find((line) => COUNT.test(line));
+export const listCount = (root: HostView) => {
+  const view = countView(root);
+  return view === undefined ? undefined : asRead(textOf(view));
+};
 
 /** The headings of the list in `root` that are dates, top to bottom, with the cards' titles between them left out. */
 export const dateHeadings = (root: HostView) =>

@@ -4,6 +4,7 @@ import {
   GestureStateManager,
   useNativeGesture,
   usePanGesture,
+  type NativeGesture,
 } from 'react-native-gesture-handler';
 import {
   cancelAnimation,
@@ -18,6 +19,11 @@ interface PeriodSwipeOptions {
   previous: string | undefined;
   next: string | undefined;
   enabled: boolean;
+  /**
+   * The gesture of the scroll view the swipe is in, when that has one of its own: the swipe is
+   * decided before it scrolls. Without it, the scroll view takes the one returned here.
+   */
+  scrollGesture?: NativeGesture;
   onSelect: (key: string) => void;
 }
 
@@ -27,10 +33,12 @@ export function usePeriodSwipe({
   previous,
   next,
   enabled,
+  scrollGesture: outerScrollGesture,
   onSelect,
 }: PeriodSwipeOptions) {
   const { width } = useWindowDimensions();
-  const scrollGesture = useNativeGesture();
+  const ownScrollGesture = useNativeGesture();
+  const scrollGesture = outerScrollGesture ?? ownScrollGesture;
   const offset = useSharedValue(0);
   const origin = useSharedValue({ x: 0, y: 0 });
   const direction = useSharedValue<'pending' | 'horizontal' | 'vertical'>(
@@ -120,5 +128,5 @@ export function usePeriodSwipe({
     transform: [{ translateX: offset.value }],
   }));
 
-  return { pan, scrollGesture, step, nameStyle, pageStyle };
+  return { pan, scrollGesture, step, offset, nameStyle, pageStyle };
 }

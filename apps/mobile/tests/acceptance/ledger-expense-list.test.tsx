@@ -523,13 +523,13 @@ test("[LEDGER-35.6] takes this month from the phone's time zone at the start of 
   expect(listTotal()).toEqual(['$3.00']);
 });
 
-test('[LEDGER-35.6] shows 0 expenses, not a dash, on All Time when there is no expense', async () => {
+test('[LEDGER-35.6] shows 0 items, not a dash, on All Time when there is no expense', async () => {
   await startExpenses();
 
   await choosePeriod('Expenses', 'All Time');
 
-  expect(listTotal()).toEqual(['0 expenses']);
-  expect(readOut(listTotalButton())).toBe('View expense insights. 0 expenses.');
+  expect(listTotal()).toEqual(['0 items']);
+  expect(readOut(listTotalButton())).toBe('View expense insights. 0 items.');
 });
 
 test('[LEDGER-35.6] shows how many cards there are in place of a total on All Time', async () => {
@@ -538,15 +538,15 @@ test('[LEDGER-35.6] shows how many cards there are in place of a total on All Ti
 
   await choosePeriod('Expenses', 'All Time');
 
-  expect(listTotal()).toEqual(['1 expense']);
-  expect(readOut(listTotalButton())).toBe('View expense insights. 1 expense.');
+  expect(listTotal()).toEqual(['1 item']);
+  expect(readOut(listTotalButton())).toBe('View expense insights. 1 item.');
 
   await addExpense({ title: 'Lunch', date: '2026-09-30' });
   await addExpense({ title: 'Dinner', date: '2025-10-15' });
 
   expect(cardTitles()).toEqual(['Coffee run', 'Lunch', 'Dinner']);
-  expect(listTotal()).toEqual(['3 expenses']);
-  expect(readOut(listTotalButton())).toBe('View expense insights. 3 expenses.');
+  expect(listTotal()).toEqual(['3 items']);
+  expect(readOut(listTotalButton())).toBe('View expense insights. 3 items.');
   expect(linesIn(expensesRoot()).join('\n')).not.toContain('$26.25');
 });
 

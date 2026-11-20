@@ -46,7 +46,7 @@ name: "[LEDGER-110.1] [LEDGER-109.2] Chooses Last Month, All Time and Custom Ran
 - assertVisible: Choose period\. All Time
 - assertVisible: Today, .*
 - assertVisible: Last month, .*
-- assertVisible: View expense insights\. 2 expenses\.
+- assertVisible: View expense insights\. 2 items\.
 - assertNotVisible: Previous period
 # Custom Range starts on this month up to today, without arrows; Filters shows its two dates.
 - tapOn: Choose period\..*

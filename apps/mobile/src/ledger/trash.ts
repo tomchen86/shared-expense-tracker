@@ -1,6 +1,6 @@
 import type { Database } from '../storage';
 import { sharedGroup, writeLocalChange } from '../sync/records';
-import { notifyExpensesChanged } from './expenses';
+import { notifyExpensesChanged, recordExpenseChanges } from './expenses';
 
 export function moveExpenseToTrash(
   database: Database,
@@ -37,6 +37,7 @@ async function setTrashed(
       [id, spaceId],
     );
     if (!changes) return false;
+    await recordExpenseChanges(tx, [id]);
     const [expense] = await tx.all<{ spaceId: string }>(
       'SELECT spaceId FROM expenses WHERE id = ?',
       [id],
@@ -45,7 +46,8 @@ async function setTrashed(
     if (group) await writeLocalChange(tx, group, 'expense', id, { trashed });
     return true;
   });
-  if (changed) notifyExpensesChanged(database);
+  if (changed)
+    notifyExpensesChanged(database, undefined, trashed ? undefined : id);
   return changed;
 }
 

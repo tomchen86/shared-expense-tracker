@@ -141,11 +141,27 @@ export async function applySyncEvents(
           if (await applyMergedGroup(tx, groupId, record)) visibleChange = true;
           break;
         case 'category':
-          if (await applyMergedCategory(tx, groupId, record, uncategorized))
+          if (
+            await applyMergedCategory(
+              tx,
+              groupId,
+              record,
+              uncategorized,
+              event.stamp.ms,
+            )
+          )
             visibleChange = true;
           break;
         case 'expense':
-          if (await applyMergedExpense(tx, groupId, record, previous?.record)) {
+          if (
+            await applyMergedExpense(
+              tx,
+              groupId,
+              record,
+              previous?.record,
+              event.stamp.ms,
+            )
+          ) {
             visibleChange = true;
             if (
               previous?.record.type === 'expense' &&

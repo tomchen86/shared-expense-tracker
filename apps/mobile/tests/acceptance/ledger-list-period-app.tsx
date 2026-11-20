@@ -1,3 +1,4 @@
+import { AppState, type AppStateStatus } from 'react-native';
 import {
   act,
   fireEvent,
@@ -427,4 +428,34 @@ export async function choosePeriod(barTitle: string, name: string) {
   await openFilters(barTitle);
   await chooseDateOption(name);
   await closeFilters();
+}
+
+// Leaving the app and coming back
+
+/** What the app has listening to AppState's change, and has not taken off. */
+function appStateListeners() {
+  const listen = jest.mocked(AppState.addEventListener);
+  return listen.mock.calls.flatMap(([type, listener], index) => {
+    const subscription = listen.mock.results[index]?.value as
+      { remove: jest.Mock } | undefined;
+    return type === 'change' && subscription?.remove.mock.calls.length === 0
+      ? [listener as (state: AppStateStatus) => void]
+      : [];
+  });
+}
+
+/**
+ * The user leaves the app and comes back to it (LEDGER-146.2): the app goes to the background,
+ * `away` happens, such as the phone's clock moving on, and the app is active again. The app
+ * hears of both as React Native tells it, through AppState's change event.
+ */
+export async function leaveAndComeBack(away: () => void = () => undefined) {
+  await act(async () => {
+    for (const hear of appStateListeners()) hear('background');
+  });
+  away();
+  await act(async () => {
+    for (const hear of appStateListeners()) hear('active');
+  });
+  await settle();
 }

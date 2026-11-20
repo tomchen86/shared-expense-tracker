@@ -45,6 +45,8 @@ interface ExpenseRow extends Omit<
   payments: string;
   shares: string;
   trashOrder: number | null;
+  addedOrder: number;
+  changedAt: number | null;
 }
 
 export async function categoryExpenseCounts(
@@ -61,13 +63,14 @@ export async function moveExpensesToCategory(
   sourceId: string,
   target: Expense['category'] & { spaceId: string },
   group: SharedGroup | undefined,
+  eventMs?: number,
 ): Promise<void> {
   const { id, name, color, spaceId } = target;
+  const expenses = await transaction.all<{ id: string }>(
+    'SELECT id FROM expenses WHERE categoryId = ? AND spaceId = ? ORDER BY rowid',
+    [sourceId, spaceId],
+  );
   if (group) {
-    const expenses = await transaction.all<{ id: string }>(
-      'SELECT id FROM expenses WHERE categoryId = ? AND spaceId = ? ORDER BY rowid',
-      [sourceId, spaceId],
-    );
     const category = { id, name, color };
     for (const expense of expenses)
       await writeLocalChange(transaction, group, 'expense', expense.id, {
@@ -78,37 +81,74 @@ export async function moveExpensesToCategory(
     'UPDATE expenses SET categoryId = ?, categoryName = ?, categoryColor = ? WHERE categoryId = ? AND spaceId = ?',
     [id, name, color, sourceId, spaceId],
   );
+  await recordExpenseChanges(
+    transaction,
+    expenses.map((expense) => expense.id),
+    eventMs,
+  );
+}
+
+/** Stamp one write, including a whole category move. Only received events keep a later time. */
+export async function recordExpenseChanges(
+  transaction: SqlExecutor,
+  ids: readonly string[],
+  eventMs?: number,
+) {
+  if (ids.length === 0) return;
+  await transaction.run(
+    `INSERT INTO expense_changes (expenseId, changedAt)
+     SELECT value, ? FROM json_each(?) WHERE true
+     ON CONFLICT (expenseId) DO UPDATE SET changedAt = excluded.changedAt
+     WHERE ? IS NULL OR excluded.changedAt > changedAt`,
+    [eventMs ?? Date.now(), JSON.stringify(ids), eventMs ?? null],
+  );
 }
 
 /** Stored expenses in the order of LEDGER-28.1, optionally limited to one space. */
-export function listExpenses(
+export async function listExpenses(
   database: SqlExecutor,
   spaceId?: string,
 ): Promise<Expense[]> {
-  return spaceId === undefined
-    ? readExpenses(database, '', [])
-    : readExpenses(database, 'WHERE e.spaceId = ?', [spaceId]);
+  const rows =
+    spaceId === undefined
+      ? await readExpenseRows(database, '', [])
+      : await readExpenseRows(database, 'WHERE e.spaceId = ?', [spaceId]);
+  return rows.map(expenseOf);
 }
 
-async function readExpenses(
+/** The same expenses with the local sort keys their cards use. */
+export async function listExpensesForCards(database: SqlExecutor) {
+  const rows = await readExpenseRows(database, '', []);
+  return rows.map((row) => ({
+    ...expenseOf(row),
+    addedOrder: row.addedOrder,
+    changedAt: row.changedAt,
+  }));
+}
+
+function readExpenseRows(
   database: SqlExecutor,
   where: string,
   parameters: readonly string[],
-): Promise<Expense[]> {
-  const rows = await database.all<ExpenseRow>(
+): Promise<ExpenseRow[]> {
+  return database.all<ExpenseRow>(
     `
-    SELECT e.*,
+    SELECT e.*, e.rowid AS addedOrder, c.changedAt,
       (SELECT json_group_array(json_object('participant', participant, 'amountMinor', amountMinor))
         FROM (SELECT participant, amountMinor FROM expense_payments
           WHERE expenseId = e.id ORDER BY position, rowid)) AS payments,
       (SELECT json_group_array(json_object('participant', participant, 'amountMinor', amountMinor))
         FROM (SELECT participant, amountMinor FROM expense_shares
           WHERE expenseId = e.id ORDER BY position, rowid)) AS shares
-    FROM expenses AS e ${where} ORDER BY e.date DESC, e.rowid DESC
+    FROM expenses AS e LEFT JOIN expense_changes AS c ON c.expenseId = e.id
+    ${where} ORDER BY e.date DESC, e.rowid DESC
   `,
     parameters,
   );
-  return rows.map((row) => ({
+}
+
+function expenseOf(row: ExpenseRow): Expense {
+  return {
     id: row.id,
     title: row.title,
     amountMinor: row.amountMinor,
@@ -124,7 +164,7 @@ async function readExpenses(
     payments: JSON.parse(row.payments) as Share<string>[],
     shares: JSON.parse(row.shares) as Share<string>[],
     ...(row.trashOrder == null ? {} : { trashOrder: row.trashOrder }),
-  }));
+  };
 }
 
 type ExpenseInput = Pick<
@@ -132,7 +172,14 @@ type ExpenseInput = Pick<
   'title' | 'amountMinor' | 'currency' | 'date' | 'note'
 > & { categoryId: string };
 
-type ExpenseListener = (leftTrash?: ReadonlySet<string>) => void;
+/**
+ * `leftTrash` are the expenses an applied event took out of the trash. `placed` is the expense the
+ * user just added in New Expense or put back from the trash on this phone (LEDGER-117.2).
+ */
+type ExpenseListener = (
+  leftTrash?: ReadonlySet<string>,
+  placed?: string,
+) => void;
 const listeners = new WeakMap<Database, Set<ExpenseListener>>();
 
 /** Mounted screens also refresh while another screen covers them. */
@@ -154,8 +201,9 @@ export function subscribeToExpenses(
 export function notifyExpensesChanged(
   database: Database,
   leftTrash?: ReadonlySet<string>,
+  placed?: string,
 ) {
-  listeners.get(database)?.forEach((listener) => listener(leftTrash));
+  listeners.get(database)?.forEach((listener) => listener(leftTrash, placed));
 }
 
 export interface GroupSplit {
@@ -171,6 +219,7 @@ export async function writeExpenseRows(
   transaction: SqlExecutor,
   expense: Expense,
   existing: boolean,
+  eventMs?: number,
 ) {
   const { id, category, payments, shares } = expense;
   const values = [
@@ -215,6 +264,7 @@ export async function writeExpenseRows(
         [id, share.participant, share.amountMinor, position],
       );
   }
+  await recordExpenseChanges(transaction, [id], eventMs);
 }
 
 /** Save the expense and its ordered allocations together, or leave all of them unchanged. */
@@ -225,10 +275,12 @@ export async function saveExpense(
   original?: Expense,
   split?: GroupSplit,
 ): Promise<void> {
-  await database.transaction(async (transaction) => {
+  const id = await database.transaction(async (transaction) => {
     const spaceId = split?.groupId ?? identity.personalSpaceId;
     const [existing] = original
-      ? await readExpenses(transaction, 'WHERE e.id = ?', [original.id])
+      ? (
+          await readExpenseRows(transaction, 'WHERE e.id = ?', [original.id])
+        ).map(expenseOf)
       : [];
     if (original && !existing) throw new Error('Expense not found');
     let amountMinor = input.amountMinor;
@@ -306,8 +358,9 @@ export async function saveExpense(
       if (keepCategory) delete units.category;
       await writeLocalChange(transaction, shared, 'expense', id, units);
     }
+    return id;
   });
-  notifyExpensesChanged(database);
+  notifyExpensesChanged(database, undefined, original ? undefined : id);
 }
 
 export const savePersonalExpense = saveExpense;

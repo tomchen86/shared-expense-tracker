@@ -1,0 +1,57 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[SHARING-71.1] [SHARING-72.1] Opens Invite Link with the whole link from a link on the app's own scheme, while the app runs and when the link starts it, until Close"
+tags:
+  - android
+---
+# The system hands a link to the app through native code, which Jest replaces: only a build shows
+# whether the part after the # comes through. Each platform does it its own way, so this also runs
+# on Android: scripts/e2e-android.sh.
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      text: Expenses
+      selected: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: Settings
+- assertVisible:
+    text: Settings
+    selected: true
+# While the app runs. iOS asks before it opens a link on an app's own scheme.
+- openLink: shared-expense-tracker://i/3q2-7wEjRWeJq83vEjRWeA#AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8
+- runFlow:
+    when:
+      platform: iOS
+      visible: Open
+    commands:
+      - tapOn: Open
+- extendedWaitUntil:
+    visible: Invite Link
+    timeout: 15000
+- assertVisible: shared-expense-tracker://i/3q2-7wEjRWeJq83vEjRWeA#AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8
+- tapOn: Close
+- waitForAnimationToEnd
+- assertNotVisible: Invite Link
+- assertVisible:
+    text: Settings
+    selected: true
+# When the link starts the app.
+- stopApp
+- openLink: shared-expense-tracker://i/ASNFZ4mrze_-3LqYdlQyEA#ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8
+- runFlow:
+    when:
+      platform: iOS
+      visible: Open
+    commands:
+      - tapOn: Open
+- extendedWaitUntil:
+    visible: Invite Link
+    timeout: 30000
+- assertVisible: shared-expense-tracker://i/ASNFZ4mrze_-3LqYdlQyEA#ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8
+- tapOn: Close
+- waitForAnimationToEnd
+- assertNotVisible: Invite Link
+- assertVisible:
+    text: Expenses
+    selected: true
