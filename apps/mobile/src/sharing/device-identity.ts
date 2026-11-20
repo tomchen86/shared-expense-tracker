@@ -28,8 +28,9 @@ const SEED = /^[0-9a-f]{64}$/;
 const SIGNING_PURPOSE = 'shared-expense/device/signing/v1';
 
 // Readable once the phone has been unlocked after a restart, so that background sync can
-// sign, and never restored to another phone (ADR-0015). No user authentication.
-const SEED_OPTIONS: SecureStore.SecureStoreOptions = {
+// sign, and never restored to another phone (ADR-0015). No user authentication. A group
+// key is kept the same way (SYNC-94.1).
+export const SEED_OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
 };
 
@@ -78,6 +79,16 @@ export async function readClockOffsetMs(
   database: SqlExecutor,
 ): Promise<number> {
   return (await readStoredDevice(database))?.clockOffsetMs ?? 0;
+}
+
+/** This phone's corrected time: its clock plus the offset, kept within what a time can be. */
+export async function readCorrectedTime(
+  database: SqlExecutor,
+): Promise<number> {
+  return Math.min(
+    Number.MAX_SAFE_INTEGER,
+    Math.max(0, Date.now() + (await readClockOffsetMs(database))),
+  );
 }
 
 export async function saveClockOffsetMs(

@@ -1,5 +1,4 @@
 import {
-  checkSyncEvent,
   compareSyncStamps,
   mergeSyncEvent,
   nextSyncStamp,
@@ -22,6 +21,7 @@ import {
   dinnerChange,
   dinnerCreated,
   FUEL_CATEGORY,
+  judge,
   merge,
   merged,
   money,
@@ -882,7 +882,7 @@ test('[SYNC-17.1] 200 shuffled orders with repeats give the result of merging ea
 
 test('[SYNC-17.1] refused events leave the result as if they had never been sent', () => {
   for (const { content, receivedAtMs } of REFUSED) {
-    expect(checkSyncEvent(content, { receivedAtMs }).status).toBe('refused');
+    expect(judge(content, receivedAtMs).status).toBe('refused');
   }
 
   const random = seeded(131);
@@ -1006,7 +1006,7 @@ test('[SYNC-17.1] 150 random events with crowded stamps merge to one result in 5
   expect(unitsEndingOnASharedStamp(deliveries)).toBe(7);
 
   for (const { content, receivedAtMs } of deliveries) {
-    expect(checkSyncEvent(content, { receivedAtMs })).toEqual({
+    expect(judge(content, receivedAtMs)).toEqual({
       status: 'valid',
       event: content,
     });
