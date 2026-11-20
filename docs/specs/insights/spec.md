@@ -1381,3 +1381,12 @@ WHERE Android 手機，WHEN 使用者從類別那一列開始往右或往左滑�
 
 - **WHEN** Android 手機上有這個月和上個月的支出，選中這個月時，從 Food & Dining 那一列開始往右滑，再點一下那一列
 - **THEN** 滑動之後選中上個月，仍在 Insights，沒有打開「Food & Dining」；點一下之後打開上個月的「Food & Dining」
+
+### Requirement: INSIGHTS-57.1 類別的支出開著時總額超過上限
+
+IF 類別的支出開著時支出改變了，而 domain 因為總額超過上限拒絕計算它的期間（INSIGHTS-55.1），THEN the mobile app SHALL 在類別的支出只顯示標題「Totals Too Large」和「These totals are too large to show.」，和 Insights 拒絕計算時（INSIGHTS-20.1）一樣：沒有期間、金額、筆數和卡片，畫面的標題仍是類別的名稱。
+
+#### Scenario: 刪除之後拒絕計算
+
+- **WHEN** 打開 October 2026 的 Food & Dining，裡面有 Coffee run 和 Lunch；從 Lunch 的明細刪除它，而 domain 這時拒絕計算這個期間
+- **THEN** 回到 Food & Dining，畫面上只有「Totals Too Large」和「These totals are too large to show.」，沒有卡片；標題仍是「Food & Dining」
