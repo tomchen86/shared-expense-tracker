@@ -23,7 +23,7 @@ import {
 } from './sync-api';
 
 // The invite tests stand in for phones that create, revoke and read a shared ledger's
-// invite through the API (ADR-0015, ADR-0025). They run in the world of the sync tests.
+// invite through the API (ADR-0015, ADR-0026). They run in the world of the sync tests.
 // The paths, the bodies and the answers are put together here as
 // docs/specs/sharing/spec.md words them, and a card is whatever bytes a test picks: the
 // API never reads it.

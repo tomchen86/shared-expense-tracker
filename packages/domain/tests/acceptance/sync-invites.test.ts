@@ -1,7 +1,7 @@
 import { syncRecordValues, type SyncStamp } from '../../src';
 import { at, CREATED, judge, merged, refused } from './sync-fixtures';
 
-// An invite as a record of a shared ledger (ADR-0015, ADR-0025): its ID is the invite's
+// An invite as a record of a shared ledger (ADR-0015, ADR-0026): its ID is the invite's
 // code, and its one unit, the link, holds the secret that follows `#` in the invite link
 // and when the invite expires. Revoking an invite deletes the record for good.
 

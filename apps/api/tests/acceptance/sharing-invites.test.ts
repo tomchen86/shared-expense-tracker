@@ -53,7 +53,7 @@ import {
   useSyncApi,
 } from './sync-api';
 
-// A shared ledger's invite on the API (ADR-0015, ADR-0025): a code the phone picks, when
+// A shared ledger's invite on the API (ADR-0015, ADR-0026): a code the phone picks, when
 // it expires, and a card the API cannot read. A group has one active invite at a time,
 // any member device creates or revokes it, and any registered device reads it by its code.
 

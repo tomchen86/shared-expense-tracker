@@ -1,4 +1,4 @@
-# ADR-0025: The phone names an invite, and members share its secret as a record
+# ADR-0026: The phone names an invite, and members share its secret as a record
 
 - Date: 2026-11-20
 - Status: Accepted
