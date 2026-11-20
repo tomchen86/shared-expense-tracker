@@ -2,7 +2,9 @@ import {
   DEVICES_PATH,
   REFUSAL_STATUS,
   SIGNED_REQUEST_HEADERS,
+  isDeviceId,
   isRegisterDeviceRequest,
+  isRequestNonce,
   signedRequestBytes,
   type Refusal,
   type RegisterDeviceResponse,
@@ -13,6 +15,7 @@ import type { AppEnv } from '../app';
 import { CLOCK_TOLERANCE_MS, acceptRequest, findPublicKey } from './devices';
 import { fromHex } from './hex';
 import { keyedIpHash } from './ip';
+import { readRequestBody } from './request-body';
 
 // The request time in decimal, with no sign, point, space or leading zero, and the
 // signature's 64 bytes in lowercase hexadecimal (SHARING-32.1).
@@ -65,7 +68,7 @@ async function verifies(
 }
 
 /**
- * Runs the checks of SHARING-31.1 on a request, in their order. Resolves with the answer
+ * Runs the checks of SHARING-31.2 on a request, in their order. Resolves with the answer
  * when the request is refused or is a registration, and with nothing when it passed and
  * goes on to its route.
  */
@@ -78,22 +81,23 @@ async function check(c: Context<AppEnv>): Promise<Response | undefined> {
   const timestamp = c.req.header(SIGNED_REQUEST_HEADERS.timestamp);
   const nonce = c.req.header(SIGNED_REQUEST_HEADERS.nonce);
   const signature = c.req.header(SIGNED_REQUEST_HEADERS.signature);
+  const timestampMs = Number(timestamp);
   if (
-    deviceId === undefined ||
+    !isDeviceId(deviceId) ||
     timestamp === undefined ||
-    nonce === undefined ||
-    signature === undefined ||
     !TIMESTAMP.test(timestamp) ||
+    !Number.isSafeInteger(timestampMs) ||
+    !isRequestNonce(nonce) ||
+    signature === undefined ||
     !SIGNATURE.test(signature)
   ) {
     return refuse({ error: 'signature' });
   }
-  const timestampMs = Number(timestamp);
-  const body = new Uint8Array(await c.req.arrayBuffer());
+  const body = await readRequestBody(c);
+  if (body === undefined) return refuse({ error: 'too-large' });
   let message: Uint8Array<ArrayBuffer>;
   try {
-    // Throws for a device ID, a request time or a nonce that is not written as it must
-    // be, and for a method or a path that cannot be signed (SHARING-18.1, 34.1).
+    // The fields have passed. The method or path may still be unsignable (SHARING-34.2).
     message = Uint8Array.from(
       signedRequestBytes({
         method,
@@ -164,7 +168,7 @@ async function check(c: Context<AppEnv>): Promise<Response | undefined> {
 
 /**
  * Lets a request through to the routes after it only once it has passed the checks, and
- * answers a registration itself (SHARING-31.1, 38.1). A path with no route is checked
+ * answers a registration itself (SHARING-31.2, 38.1). A path with no route is checked
  * too, since this runs before routing finds that out (ADR-0022).
  */
 export const signedRequests = createMiddleware<AppEnv>(async (c, next) => {

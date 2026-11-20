@@ -21,6 +21,8 @@ export interface AppEnv {
     ipHashKey: string | undefined;
     /** What this environment's verification files and download page say. */
     appLinks: AppLinks;
+    /** The Node request stream, which can be cancelled without closing the socket. */
+    readonly incomingBody?: ReadableStream<Uint8Array>;
   };
   Variables: {
     /** The device whose request passed the checks, for the routes after them (ADR-0022). */
@@ -30,7 +32,7 @@ export interface AppEnv {
 
 export const app = new Hono<AppEnv>()
   // The public routes, which take requests that are not signed. A route belongs here only
-  // when its requirement says so (SHARING-31.1).
+  // when its requirement says so (SHARING-31.2).
   .route('/', healthRoutes)
   .route('/', appLinkRoutes)
   // Every other request passes the checks first, whether its path has a route or not.

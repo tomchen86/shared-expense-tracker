@@ -283,3 +283,86 @@ describe('SYNC-63.1', () => {
     });
   });
 });
+
+describe('SYNC-64.1', () => {
+  const QUERIES = ['?name=Brisbane', '?x', '?after=0', '?epoch=1'];
+
+  test.each(QUERIES)(
+    '[SYNC-64.1] refuses to create a group with a request whose URL carries the query %s, and creates nothing',
+    async (query) => {
+      const taylor = await registered(TAYLOR);
+
+      const answer = await leavingGroupsAsTheyWere(() =>
+        call(taylor, { method: 'PUT', path: `/groups/${BRISBANE}${query}` }),
+      );
+
+      expectRefused(answer, REQUEST);
+      expectGroupRefused(await download(taylor, BRISBANE, 0), NOT_A_MEMBER);
+      expect(await timesStored('Brisbane')).toBe(0);
+      // Without the query, the same request creates the group.
+      expectCreated(await createGroup(taylor, BRISBANE), BRISBANE);
+    },
+  );
+
+  test('[SYNC-64.1] refuses a member device that creates its group again with a query', async () => {
+    const [taylor] = await taylorWithBrisbaneAndCasey();
+    const stored = events(2);
+    expectUploaded(await upload(taylor, BRISBANE, stored), stored, [1, 2]);
+
+    const answer = await leavingGroupsAsTheyWere(() =>
+      call(taylor, {
+        method: 'PUT',
+        path: `/groups/${BRISBANE}?name=Brisbane`,
+      }),
+    );
+
+    expectRefused(answer, REQUEST);
+    expect(await timesStored('Brisbane')).toBe(0);
+    expectCreated(await createGroup(taylor, BRISBANE), BRISBANE);
+  });
+
+  test.each(QUERIES)(
+    '[SYNC-64.1] refuses an upload whose URL carries the query %s, and stores none of its events',
+    async (query) => {
+      const [taylor] = await taylorWithBrisbaneAndCasey();
+      const sent = events(1);
+
+      const answer = await leavingGroupsAsTheyWere(() =>
+        call(taylor, {
+          method: 'POST',
+          path: `${eventsPath(BRISBANE)}${query}`,
+          body: JSON.stringify({ epoch: 1, events: sent }),
+        }),
+      );
+
+      expectRefused(answer, REQUEST);
+      expectPage(await download(taylor, BRISBANE, 0), EMPTY_PAGE);
+      // Without the query, the same upload is stored.
+      expectUploaded(await upload(taylor, BRISBANE, sent), sent, [1]);
+    },
+  );
+
+  test('[SYNC-64.1] refuses a query for that, whether or not the phone is a member device', async () => {
+    const [taylor, casey] = await taylorWithBrisbaneAndCasey();
+    const body = JSON.stringify({ epoch: 1, events: events(1) });
+
+    for (const phone of [casey, taylor]) {
+      const created = await leavingGroupsAsTheyWere(() =>
+        call(phone, { method: 'PUT', path: `/groups/${BRISBANE}?x` }),
+      );
+      const uploaded = await leavingGroupsAsTheyWere(() =>
+        call(phone, {
+          method: 'POST',
+          path: `${eventsPath(BRISBANE)}?x`,
+          body,
+        }),
+      );
+
+      expectRefused(created, REQUEST);
+      expectRefused(uploaded, REQUEST);
+    }
+    // Without the query, Casey's phone is refused as no member device.
+    expectGroupRefused(await createGroup(casey, BRISBANE), NOT_A_MEMBER);
+    expectGroupRefused(await uploadBody(casey, BRISBANE, body), NOT_A_MEMBER);
+  });
+});
