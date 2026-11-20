@@ -27,6 +27,9 @@ const isGroupId = (groupId: string) => isCreateGroupResponse({ groupId });
 // escape or leading zero (SYNC-59.1). Read from the URL as the request wrote it.
 const AFTER = /^[^?]*\?after=(0|[1-9][0-9]{0,15})$/;
 
+/** Whether the URL carries a query, which a create and an upload must not (SYNC-64.1). */
+const hasQuery = (url: string) => url.includes('?');
+
 /**
  * The event API (ADR-0016, ADR-0024): a phone creates a group, uploads its events and
  * downloads them page by page. What is wrong with how a request is written is refused
@@ -35,7 +38,11 @@ const AFTER = /^[^?]*\?after=(0|[1-9][0-9]{0,15})$/;
 export const syncRoutes = new Hono<AppEnv>()
   .put('/groups/:groupId', async (c) => {
     const groupId = c.req.param('groupId');
-    if (!isGroupId(groupId) || (await c.req.arrayBuffer()).byteLength > 0) {
+    if (
+      !isGroupId(groupId) ||
+      hasQuery(c.req.url) ||
+      (await c.req.arrayBuffer()).byteLength > 0
+    ) {
       return refuse({ error: 'request' });
     }
     if (!(await createGroup(c.env.sql, groupId, c.var.deviceId))) {
@@ -47,7 +54,11 @@ export const syncRoutes = new Hono<AppEnv>()
   .post('/groups/:groupId/events', async (c) => {
     const groupId = c.req.param('groupId');
     const upload = jsonOf(new Uint8Array(await c.req.arrayBuffer()));
-    if (!isGroupId(groupId) || !isUploadEventsRequest(upload)) {
+    if (
+      !isGroupId(groupId) ||
+      hasQuery(c.req.url) ||
+      !isUploadEventsRequest(upload)
+    ) {
       return refuse({ error: 'request' });
     }
     const outcome = await storeEvents(c.env.sql, {
