@@ -29,7 +29,7 @@ module.exports = {
     // Checks imported amounts and keeps the latest sync stamp across an import.
     './apps/mobile/src/backup/import.ts': { branches: 100 },
     './apps/mobile/src/groups/group-card.tsx': { branches: 83.33 },
-    './apps/mobile/src/groups/group-screen.tsx': { branches: 95.23 },
+    './apps/mobile/src/groups/group-screen.tsx': { branches: 95.38 },
     './apps/mobile/src/groups/group-summary.tsx': { branches: 50 },
     './apps/mobile/src/groups/groups-screen.tsx': { branches: 100 },
     './apps/mobile/src/groups/balances-screen.tsx': { branches: 100 },
@@ -53,9 +53,9 @@ module.exports = {
     './apps/mobile/src/sync/loop.ts': { branches: 98.18 },
     './apps/mobile/src/sync/stamps.ts': { branches: 95.65 },
     './apps/mobile/src/sync/use-sync-notices.ts': { branches: 75 },
-    './apps/mobile/src/sync/use-sync-triggers.ts': { branches: 87.5 },
-    // The acceptance tests decode little but ASCII; utf8.test.ts reaches every branch.
-    './apps/mobile/src/sync/utf8.ts': { branches: 62.5 },
+    './apps/mobile/src/sync/use-sync-triggers.ts': { branches: 93.75 },
+    // No acceptance test decodes a character that is cut short; utf8.test.ts reaches every branch.
+    './apps/mobile/src/sync/utf8.ts': { branches: 95.83 },
     './apps/mobile/src/ledger/merged-expense.ts': { branches: 100 },
     './apps/mobile/src/ledger/trash.ts': { branches: 81.25 },
     './apps/mobile/src/categories/merged-category.ts': { branches: 100 },
