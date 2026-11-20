@@ -7,8 +7,15 @@ import {
 } from './backup-app';
 import { balanceLines, groupTotals } from './group-balances-app';
 import { openGroup } from './group-details-app';
-import { resetPhone } from './ledger-expense-app';
-import { cardTitles, listTotal } from './ledger-expense-list-app';
+import { resetPhone, setPhoneRegion } from './ledger-expense-app';
+import {
+  cardTitles,
+  expensesRoot,
+  listTotal,
+  listTotalButton,
+  readOut,
+} from './ledger-expense-list-app';
+import { listCount, typeSearch } from './ledger-list-find-app';
 import { groupCardTitles } from './ledger-group-expense-app';
 import { choosePeriod } from './ledger-list-period-app';
 import {
@@ -17,10 +24,10 @@ import {
 } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
 
-// Runs on iOS. Each test starts the app on a phone that already holds 300 expenses, written as
-// the screens would write them (backup-app), in Taipei on 2026-11-18, in a region whose
-// currency is USD. Jest has no screen, so "on and near the screen" is checked as fewer cards
-// than expenses, in order from the top.
+// Runs on iOS. Each test starts the app on a phone that already holds 300 expenses, or 1,000
+// for the number All Time shows and the count of a search, written as the screens would write them (backup-app), in
+// Taipei on 2026-11-18, in a region whose currency is USD. Jest has no screen, so "on and near
+// the screen" is checked as fewer cards than expenses, in order from the top.
 
 jest.mock('../../src/storage/expo', () => ({
   openPhoneDatabase: () =>
@@ -88,7 +95,7 @@ function expectOnlyTheFirstCards(titles: string[]) {
   expect(titles).toEqual(FROM_THE_TOP.slice(0, titles.length));
 }
 
-test('[LEDGER-118.1] draws only the first cards of a month of 300 expenses and of All Time, and counts them all', async () => {
+test('[LEDGER-118.2] draws only the first cards of a month of 300 expenses and of All Time, and counts them all', async () => {
   const phone = newPhone();
   await writeData(phone, { expenses: manyExpenses() });
   await startOn(phone, { url: '/' });
@@ -99,10 +106,10 @@ test('[LEDGER-118.1] draws only the first cards of a month of 300 expenses and o
   await choosePeriod('Expenses', 'All Time');
 
   expectOnlyTheFirstCards(cardTitles());
-  expect(listTotal()).toEqual(['300 expenses']);
+  expect(listTotal()).toEqual(['300 items']);
 });
 
-test("[LEDGER-118.1] draws only the first cards of a group's 300 expenses, and counts them all in its total and your net balance", async () => {
+test("[LEDGER-118.2] draws only the first cards of a group's 300 expenses, and counts them all in its total and your net balance", async () => {
   const phone = newPhone();
   await writeData(phone, {
     name: 'Taylor',
@@ -116,4 +123,88 @@ test("[LEDGER-118.1] draws only the first cards of a group's 300 expenses, and c
   expectOnlyTheFirstCards(groupCardTitles('Brisbane'));
   expect(groupTotals('Brisbane')).toEqual(['Group Total: $300.00']);
   expect(balanceLines('Brisbane')).toEqual(["You're owed: $150.00"]);
+});
+
+// The number of cards on All Time
+
+/** A thousand expenses of $1.00 each, dated in March 2025, so that only All Time lists them. */
+const thousandExpenses = () =>
+  Array.from({ length: 1000 }, (_, index) => ({
+    title: `Expense ${index + 1}`,
+    amount: '1',
+    date: '2025-03-10',
+  }));
+
+// These two get a longer limit than usual: a thousand expenses are slow wherever a list draws
+// a card for each of them.
+
+test("[LEDGER-35.5] writes how many cards All Time has in the phone's number format", async () => {
+  const phone = newPhone();
+  await writeData(phone, { expenses: thousandExpenses() });
+  await startOn(phone, { url: '/' });
+
+  await choosePeriod('Expenses', 'All Time');
+
+  expect(listTotal()).toEqual(['1,000 items']);
+  expect(readOut(listTotalButton())).toBe(
+    'View expense insights. 1,000 items.',
+  );
+}, 60_000);
+
+test('[LEDGER-35.5] groups the digits of that number as the region the phone is set to does', async () => {
+  // English (United States) on a phone set to Germany.
+  setPhoneRegion('DE');
+  const phone = newPhone();
+  await writeData(phone, { expenses: thousandExpenses() });
+  await startOn(phone, { url: '/' });
+
+  await choosePeriod('Expenses', 'All Time');
+
+  expect(listTotal()).toEqual(['1.000 items']);
+  expect(readOut(listTotalButton())).toBe(
+    'View expense insights. 1.000 items.',
+  );
+}, 60_000);
+
+// The count while searching
+
+test('[LEDGER-126.1] [LEDGER-118.2] counts every expense a search matches, over every date, while it draws only the first cards', async () => {
+  const phone = newPhone();
+  // Expense 300 is dated today and each one before it a day earlier, back to January.
+  const day = (back: number) =>
+    new Date(Date.UTC(2026, 10, 18 - back)).toISOString().slice(0, 10);
+  await writeData(phone, {
+    expenses: manyExpenses().map((expense, index) => ({
+      ...expense,
+      date: day(COUNT - 1 - index),
+    })),
+  });
+  await startOn(phone, { url: '/' });
+
+  await typeSearch('Expenses', 'expense');
+
+  expect(listCount(expensesRoot())).toBe('300 items');
+  expectOnlyTheFirstCards(cardTitles());
+});
+
+test("[LEDGER-126.1] writes the count of a search in the phone's number format", async () => {
+  const phone = newPhone();
+  await writeData(phone, { expenses: thousandExpenses() });
+  await startOn(phone, { url: '/' });
+
+  await typeSearch('Expenses', 'expense');
+
+  expect(listCount(expensesRoot())).toBe('1,000 items');
+});
+
+test('[LEDGER-126.1] groups the digits of that count as the region the phone is set to does', async () => {
+  // English (United States) on a phone set to Germany.
+  setPhoneRegion('DE');
+  const phone = newPhone();
+  await writeData(phone, { expenses: thousandExpenses() });
+  await startOn(phone, { url: '/' });
+
+  await typeSearch('Expenses', 'expense');
+
+  expect(listCount(expensesRoot())).toBe('1.000 items');
 });

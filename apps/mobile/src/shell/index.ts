@@ -1,6 +1,7 @@
 export {
   LocalDataGate,
   useChartType,
+  useListOrder,
   useLocalIdentity,
   useLocalDatabase,
   useReplaceLocalData,

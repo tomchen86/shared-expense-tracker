@@ -210,7 +210,7 @@ const TEST_ROUTES = {
 /**
  * Starts the app on the Expenses tab, in Taipei on 2026-10-30 unless given another time zone
  * and instant. The clock is set before the app starts as well as after: what the app reads as
- * it starts, such as the month the expense list opens on (LEDGER-107.1), is then the test's
+ * it starts, such as the month the expense list opens on (LEDGER-107.2), is then the test's
  * today, and renderRouter keeps the time it starts at.
  */
 export async function startExpenses(

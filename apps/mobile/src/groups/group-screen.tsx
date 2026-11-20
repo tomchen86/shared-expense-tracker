@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { groupAmounts } from '@shared-expense/domain';
@@ -5,14 +6,13 @@ import { useLocalIdentity } from '../shell';
 import { AddButton } from '../ui/add-button';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
-import { SwipeScrollView } from '../ui/swipe-action';
 import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
-import { DatedCards } from '../ledger/dated-cards';
 import { ExpenseCard } from '../ledger/expense-card';
+import { PeriodList, useListPeriod } from '../ledger/list-period-ui';
 import { useTrashActions } from '../ledger/trash-provider';
-import { useExpenses, type ExpenseView } from '../ledger/use-expenses';
-import { groupTotalLine, yourBalanceLines } from './format-balance';
+import { useReadExpenses, type ExpenseView } from '../ledger/use-expenses';
+import { groupTotals, yourBalanceLines } from './format-balance';
 import { GroupLargeTitle, useLargeTitleScroll } from './group-large-title';
 import { GroupSummary } from './group-summary';
 import { useGroup } from './use-group';
@@ -48,8 +48,19 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const locale = useDisplayLocale();
   const titleScroll = useLargeTitleScroll();
   const base = inSettings ? '/settings/archived-groups' : '/groups';
-  const expenses = useExpenses()?.filter((expense) => expense.spaceId === id);
+  const read = useReadExpenses();
+  const expenses = useMemo(
+    () => read.expenses?.filter((expense) => expense.spaceId === id),
+    [read.expenses, id],
+  );
+  const periods = useListPeriod(true, expenses, read.placed);
+  // Your balance is that of every expense (GROUPS-69.4); the total is that of the period's
+  // cards, drawn or not (GROUPS-68.5, LEDGER-118.2).
   const amounts = group && expenses ? groupAmounts(expenses, group) : [];
+  const total =
+    group && periods.shown
+      ? groupTotals(groupAmounts(periods.shown, group), locale)
+      : '';
   const ownId = group?.members.find((member) => member.userId === userId)?.id;
   const rename = () =>
     whenUnarchived(() =>
@@ -81,6 +92,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
       />
       {group && (
         <HeaderActions
+          filter={{ label: 'Filters', onPress: periods.openFilters }}
           menu={{
             label: 'Group actions',
             actions: group.archived
@@ -94,42 +106,52 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
         />
       )}
       {group !== undefined && (
-        <SwipeScrollView
+        <PeriodList
           backSwipe
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.content}
+          groupId={id}
+          periods={periods}
+          searchExpenses={group ? expenses : undefined}
           scrollEventThrottle={16}
           onScroll={titleScroll.onScroll}
-        >
-          {group && (
-            <GroupLargeTitle
-              name={group.name}
-              onLayout={titleScroll.onTitleLayout}
-              onRename={group.archived ? undefined : rename}
-            />
-          )}
-          {group?.archived && (
-            <ArchivedBanner
-              restoring={pending.has(id)}
-              onRestore={() =>
-                void save(id, false, () =>
-                  setGroup(
-                    (current) => current && { ...current, archived: false },
-                  ),
-                )
-              }
-            />
-          )}
-          {amounts.length > 0 && (
+          top={
+            <>
+              {group && (
+                <GroupLargeTitle
+                  name={group.name}
+                  onLayout={titleScroll.onTitleLayout}
+                  onRename={group.archived ? undefined : rename}
+                />
+              )}
+              {group?.archived && (
+                <ArchivedBanner
+                  restoring={pending.has(id)}
+                  onRestore={() =>
+                    void save(id, false, () =>
+                      setGroup(
+                        (current) => current && { ...current, archived: false },
+                      ),
+                    )
+                  }
+                />
+              )}
+            </>
+          }
+          total={
+            amounts.length > 0
+              ? {
+                  value: total || '—',
+                  accessibilityLabel: `${periods.name}: ${total || 'nothing'}`,
+                  onPress: () =>
+                    router.navigate({
+                      pathname: `${base}/insights`,
+                      params: { groupId: id, ...periods.insights },
+                    }),
+                }
+              : undefined
+          }
+          summary={
             <GroupSummary
-              total={groupTotalLine(amounts, locale)}
               balances={yourBalanceLines(amounts, ownId!, locale)}
-              onOpenInsights={() =>
-                router.navigate({
-                  pathname: `${base}/insights`,
-                  params: { groupId: id },
-                })
-              }
               onOpenBalances={() =>
                 router.navigate({
                   pathname: `${base}/balances`,
@@ -137,31 +159,25 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                 })
               }
             />
-          )}
-          {(!group || expenses?.length === 0) && (
-            <Text style={[styles.message, { color: colors.textMuted }]}>
-              {group ? 'No expenses in this group yet.' : 'Group not found.'}
-            </Text>
-          )}
-          {group && expenses && (
-            <DatedCards
-              expenses={expenses}
-              card={(expense) => (
-                <ExpenseCard
-                  expense={expense}
-                  trailing={paidBy(expense, userId)}
-                  onPress={() =>
-                    router.navigate(`${base}/expenses/${expense.id}`)
-                  }
-                  onDelete={
-                    group.archived ? undefined : () => void move(expense)
-                  }
-                />
-              )}
+          }
+          message={
+            (!group || expenses?.length === 0) && (
+              <Text style={[styles.message, { color: colors.textMuted }]}>
+                {group ? 'No expenses in this group yet.' : 'Group not found.'}
+              </Text>
+            )
+          }
+          card={(expense) => (
+            <ExpenseCard
+              expense={expense}
+              trailing={paidBy(expense, userId)}
+              onPress={() => router.navigate(`${base}/expenses/${expense.id}`)}
+              onDelete={group?.archived ? undefined : () => void move(expense)}
             />
           )}
-        </SwipeScrollView>
+        />
       )}
+      {periods.filters}
       {group && !group.archived && (
         <AddButton
           onPress={() =>

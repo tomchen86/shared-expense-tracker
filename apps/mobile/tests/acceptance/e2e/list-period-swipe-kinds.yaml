@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-114.1] Swipes the words of a month that holds no expense and a year's name, and changes no period with a swipe on Last 3 Months, Custom Range or All Time"
+name: "[LEDGER-114.1] Swipes the words of a month that holds no expense and a year's name, changes no period with a swipe on Last 3 Months, Custom Range or All Time, and opens no Insights with one on the total of All Time"
 ---
 # The names of this month, the two months before it and the years around them, by the
 # simulator's clock.
@@ -120,5 +120,24 @@ name: "[LEDGER-114.1] Swipes the words of a month that holds no expense and a ye
     direction: RIGHT
 - waitForAnimationToEnd
 - assertVisible: Choose period\. All Time
+- assertVisible: Today, .*
+- assertVisible: Last month, .*
+# Nor is a swipe on the total a press, though no period can change: to the right and to the
+# left, the list stays on All Time with its cards, and Insights, whose total reads Total spent,
+# does not open.
+- swipe:
+    from:
+      text: View expense insights\..*
+    direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. All Time
+- assertNotVisible: Total spent.*
+- swipe:
+    from:
+      text: View expense insights\..*
+    direction: LEFT
+- waitForAnimationToEnd
+- assertVisible: Choose period\. All Time
+- assertNotVisible: Total spent.*
 - assertVisible: Today, .*
 - assertVisible: Last month, .*

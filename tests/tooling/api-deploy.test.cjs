@@ -48,6 +48,23 @@ test.each(environments)(
   },
 );
 
+test.each([
+  ['the top level, for local development', () => wrangler],
+  ...environments.map((name) => [name, () => wrangler.env[name]]),
+])(
+  '%s requires the secret that keys the IP hash, so a deploy without it fails',
+  (_, config) => {
+    // Not inherited: each environment has to say so itself.
+    expect(config().secrets).toEqual({ required: ['IP_HASH_KEY'] });
+    // Never a value in this file, which would deploy as plain text.
+    expect(Object.keys(config().vars ?? {})).not.toContain('IP_HASH_KEY');
+  },
+);
+
+test('the Workers entry file reads the secret wrangler.jsonc requires', () => {
+  expect(read('apps/api/src/workers.ts')).toContain('env.IP_HASH_KEY');
+});
+
 test('the deploy workflow offers the environments wrangler.jsonc has', () => {
   expect(/options: \[(.*)\]/.exec(workflow)?.[1].split(', ')).toEqual(
     environments,

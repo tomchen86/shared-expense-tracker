@@ -10,7 +10,7 @@ import { SymbolView, type AndroidSymbol } from 'expo-symbols';
 import type { HeaderAction, HeaderActionsProps } from './header-actions';
 import { useThemeColors } from './theme';
 
-function ActionButton({
+export function ActionButton({
   label,
   onPress,
   disabled,
@@ -45,6 +45,7 @@ export function HeaderActions({
   confirm,
   edit,
   add,
+  filter,
   menu,
   choices,
 }: HeaderActionsProps) {
@@ -90,6 +91,13 @@ export function HeaderActions({
                     { cancelable: true },
                   )
                 }
+              />
+            )}
+            {filter && (
+              <ActionButton
+                {...filter}
+                icon="filter_list"
+                color={colors.text}
               />
             )}
             {menu && (

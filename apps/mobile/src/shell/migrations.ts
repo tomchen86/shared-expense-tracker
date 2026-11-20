@@ -2,9 +2,11 @@ import { categoryMigrations } from '../categories/migrations';
 import { groupArchiveMigration, groupMigrations } from '../groups/migrations';
 import {
   expenseAllocationOrderMigration,
+  expenseListOrderMigration,
   expenseMigrations,
   expenseTrashMigration,
 } from '../ledger/migrations';
+import { sharingMigrations } from '../sharing/migrations';
 import { syncMigration } from '../sync/migrations';
 
 /** Every capability's SQL migrations, in the order they run (ADR-0006). */
@@ -32,4 +34,6 @@ export const appMigrations: readonly string[] = [
     ADD COLUMN chartType TEXT NOT NULL DEFAULT 'auto'
     CHECK (chartType IN ('auto', 'donut', 'bar'))`,
   syncMigration,
+  ...sharingMigrations,
+  expenseListOrderMigration,
 ];

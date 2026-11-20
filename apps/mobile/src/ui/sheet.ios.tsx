@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useState } from 'react';
+import { useId, useLayoutEffect, useState, type ReactNode } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -15,6 +15,43 @@ import type { HeaderAction } from './header-actions';
 import type { SheetProps } from './sheet';
 import { useThemeColors } from './theme';
 
+function SheetContent({
+  children,
+  headerHeight,
+}: {
+  children: ReactNode;
+  headerHeight: number;
+}) {
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const [contentHeight, setContentHeight] = useState(0);
+  // RNS sizes a modal's native scroll view to the sheet, while its origin stays
+  // below the header. Reserve that overrun when the sheet is shorter than its
+  // content so the last row can scroll above the header and bottom safe area.
+  const scrollEndSpace =
+    contentHeight + headerHeight + insets.bottom > height - insets.top
+      ? headerHeight + insets.bottom
+      : 0;
+  return (
+    <ScrollView
+      automaticallyAdjustKeyboardInsets
+      contentInsetAdjustmentBehavior="never"
+      keyboardShouldPersistTaps="handled"
+      style={{ flexGrow: 0 }}
+      contentContainerStyle={{ paddingBottom: scrollEndSpace }}
+    >
+      <View
+        style={styles.content}
+        onLayout={({ nativeEvent }) =>
+          setContentHeight(nativeEvent.layout.height)
+        }
+      >
+        {children}
+      </View>
+    </ScrollView>
+  );
+}
+
 /** A local native sheet keeps its parent's route and scroll view mounted. */
 export function Sheet({
   visible,
@@ -27,22 +64,11 @@ export function Sheet({
 }: SheetProps) {
   const id = useId();
   const colors = useThemeColors();
-  const { height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const [contentHeight, setContentHeight] = useState(0);
   const [presented, setPresented] = useState(visible);
   useLayoutEffect(() => {
     if (visible) setPresented(true);
-    else setContentHeight(0);
   }, [visible]);
   const [headerHeight, setHeaderHeight] = useState(0);
-  // RNS sizes a modal's native scroll view to the sheet, while its origin stays
-  // below the header. Reserve that overrun when the sheet is shorter than its
-  // content so the last row can scroll above the header and bottom safe area.
-  const scrollEndSpace =
-    contentHeight + headerHeight + insets.bottom > height - insets.top
-      ? headerHeight + insets.bottom
-      : 0;
   const button = (
     action: HeaderAction | undefined,
     variant: 'plain' | 'prominent',
@@ -109,22 +135,7 @@ export function Sheet({
           contentStyle={{ backgroundColor: colors.background }}
           style={StyleSheet.absoluteFill}
         >
-          <ScrollView
-            automaticallyAdjustKeyboardInsets
-            contentInsetAdjustmentBehavior="never"
-            keyboardShouldPersistTaps="handled"
-            style={{ flexGrow: 0 }}
-            contentContainerStyle={{ paddingBottom: scrollEndSpace }}
-          >
-            <View
-              style={styles.content}
-              onLayout={({ nativeEvent }) =>
-                setContentHeight(nativeEvent.layout.height)
-              }
-            >
-              {children}
-            </View>
-          </ScrollView>
+          <SheetContent headerHeight={headerHeight}>{children}</SheetContent>
         </ScreenStackItem>
       )}
     </ScreenStack>

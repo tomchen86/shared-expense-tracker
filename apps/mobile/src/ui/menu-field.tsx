@@ -1,3 +1,5 @@
+import type { ReactElement } from 'react';
+
 export interface MenuFieldOption {
   id: string;
   name: string;
@@ -12,7 +14,9 @@ export interface MenuFieldOption {
 export interface MenuFieldProps {
   label: string;
   value: string;
-  /** The sheet's title on Android. */
+  /** A custom button face, with its own size and its decoration hidden from screen readers. */
+  trigger?: ReactElement;
+  /** The sheet's title on Android and the menu heading for a custom trigger on iOS. */
   title: string;
   disabled?: boolean;
   /** The color of the dot in front of the value, for a category. */

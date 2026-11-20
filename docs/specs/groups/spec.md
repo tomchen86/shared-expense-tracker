@@ -2,7 +2,7 @@
 
 ## Purpose
 
-群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。共同帳本是在這支手機上已經變成共同帳本的群組（sync）。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡、日期在群組的畫面的期間裡的支出（GROUPS-61.4），支出的卡片、明細、垃圾桶、期間和期間列見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上清單上方的總額（GROUPS-68.4）和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
+群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。共同帳本是在這支手機上已經變成共同帳本的群組（sync）。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡、日期在群組的畫面的期間裡的支出（GROUPS-61.5），支出的卡片、明細、垃圾桶、期間和期間列見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上清單上方的總額（GROUPS-68.5）和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
 
 ## Requirements
 
@@ -1186,9 +1186,9 @@ WHEN app 重新啟動，the mobile app SHALL 保留每個群組有沒有封存�
 - **WHEN** 還原 Tokyo 之後重新啟動 app
 - **THEN** Groups 根畫面由上而下是 Brisbane、Tokyo、Paris；Archived Groups 只顯示「No archived groups.」
 
-### Requirement: GROUPS-61.4 群組的畫面列出群組在期間裡的支出
+### Requirement: GROUPS-61.5 群組的畫面列出群組在期間裡的支出
 
-WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面依 LEDGER-28.1 的順序列出這個群組每一筆不在垃圾桶裡、日期在群組的畫面的期間裡（LEDGER-107.1）的支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.3、LEDGER-65.4），但卡片金額是支出的全額，分類那一行的右邊不是群組名稱，而是「Paid by <付款人的名稱>」，付款人是你時是「Paid by You」，付款人是前成員時用他存著的名稱，放不下時尾端漸層消失（SHELL-68.1），螢幕閱讀器在分類和日期之間讀出它。
+WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面依這個畫面的排序（LEDGER-121.1）列出這個群組每一筆不在垃圾桶裡、日期在群組的畫面的期間裡（LEDGER-107.2）的支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；還沒選過排序時是 LEDGER-28.1 的順序，搜尋中列出的是這個群組符合搜尋的支出，不管日期（LEDGER-125.1）；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.3、LEDGER-65.4），但卡片金額是支出的全額，分類那一行的右邊不是群組名稱，而是「Paid by <付款人的名稱>」，付款人是你時是「Paid by You」，付款人是前成員時用他存著的名稱，放不下時尾端漸層消失（SHELL-68.1），螢幕閱讀器在分類和日期之間讀出它。
 
 #### Scenario: 兩筆支出
 
@@ -1239,6 +1239,16 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 
 - **WHEN** 今天是 `2026-10-30`，Brisbane 有 `2026-10-29` 的「Taxi」和 `2026-09-30` 的「Dinner」，打開 Brisbane 的畫面，再把期間換成這個月
 - **THEN** 打開時由上而下是 Taxi 和 Dinner 的卡片；換成這個月之後只有 Taxi 的卡片，沒有「No expenses in this group yet.」
+
+#### Scenario: 換了排序
+
+- **WHEN** 把 Brisbane 的畫面的排序換成 Oldest First
+- **THEN** 由上而下是 Dinner 和 Taxi 的卡片
+
+#### Scenario: 搜尋中
+
+- **WHEN** 期間是這個月時，在 Brisbane 的畫面搜尋「dinner」
+- **THEN** 只有 Dinner 的卡片，卡片上仍是「Paid by <付款人的名稱>」
 
 ### Requirement: GROUPS-62.1 讀完支出之前不顯示沒有支出的樣子
 
@@ -1339,9 +1349,9 @@ WHERE iPhone 或 Android 手機，WHEN 群組的畫面捲到最底，the mobile 
 - **WHEN** Brisbane 有 20 筆支出，把它的畫面捲到最底
 - **THEN** 最後一張卡片整張在 + 按鈕上方，沒有被擋住
 
-### Requirement: GROUPS-68.4 群組的畫面上的期間列和總額
+### Requirement: GROUPS-68.5 群組的畫面上的期間列和總額
 
-WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面上、支出的卡片上方顯示期間列（LEDGER-108.1），它下面是清單上方的總額：一行「<畫面上的卡片用到的每個幣別的全額總和，依幣別代碼排序，以「, 」隔開>」，放不下時尾端漸層消失（SHELL-68.1），期間裡沒有卡片時是「—」；期間是全部期間時期間列是「Group Total」，總額就是這個群組全部不在垃圾桶裡的支出的總額。總額是一個按鈕，右邊有「›」，螢幕閱讀器把它讀成一個按鈕，讀出「<期間的名稱>: <這一行的總額>」，期間裡沒有卡片時讀出「<期間的名稱>: nothing」，都不讀「›」，再讀出無障礙提示「Opens Insights」；按一下就在群組的畫面所在的分頁推入開在同一段期間的這個群組的 Insights（INSIGHTS-14.1、INSIGHTS-45.1）：Groups 分頁是 `/groups/insights?groupId=<群組 ID>`，Settings 分頁是 `/settings/archived-groups/insights?groupId=<群組 ID>`，再照 LEDGER-35.4 加上期間，全部期間時和這個月一樣，連按兩次也只推入一個。群組沒有不在垃圾桶裡的支出時，SHALL 不顯示期間列和總額。
+WHILE 群組有不在垃圾桶裡的支出而且群組的畫面不在搜尋中（LEDGER-126.1），the mobile app SHALL 在群組的畫面上、支出的卡片上方顯示期間列（LEDGER-108.2），它下面是清單上方的總額：一行「<畫面上的卡片用到的每個幣別的全額總和，依幣別代碼排序，以「, 」隔開>」，放不下時尾端漸層消失（SHELL-68.1），期間裡沒有卡片時是「—」；期間是全部期間時期間列是「Group Total」，總額就是這個群組全部不在垃圾桶裡的支出的總額。總額是一個按鈕，右邊有「›」，螢幕閱讀器把它讀成一個按鈕，讀出「<期間的名稱>: <這一行的總額>」，期間裡沒有卡片時讀出「<期間的名稱>: nothing」，都不讀「›」，再讀出無障礙提示「Opens Insights」；按一下就在群組的畫面所在的分頁推入開在同一段期間的這個群組的 Insights（INSIGHTS-14.1、INSIGHTS-45.1）：Groups 分頁是 `/groups/insights?groupId=<群組 ID>`，Settings 分頁是 `/settings/archived-groups/insights?groupId=<群組 ID>`，再照 LEDGER-35.5 加上期間，全部期間時和這個月一樣，連按兩次也只推入一個。群組沒有不在垃圾桶裡的支出時，或在搜尋中，SHALL 不顯示期間列和總額。
 
 #### Scenario: 一個幣別
 
@@ -1388,14 +1398,19 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 - **WHEN** 打開還沒有支出的 Brisbane 的畫面
 - **THEN** 沒有期間列和總額
 
+#### Scenario: 搜尋中
+
+- **WHEN** 在 Brisbane 的畫面搜尋「dinner」，再結束搜尋
+- **THEN** 搜尋中沒有期間列和總額；結束之後期間列是「Group Total」，總額是「$125.01」
+
 #### Scenario: 封存的群組
 
 - **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面
 - **THEN** 「Restore Group」下面是期間列「Group Total」和總額「$125.01」，再下面是卡片；按「$125.01」時，在 Settings 分頁推入 `/settings/archived-groups/insights`，加上 Brisbane 的群組 ID，堆疊由下而上是「Settings」、「Archived Groups」、「Brisbane」和「Insights」
 
-### Requirement: GROUPS-69.3 群組的畫面上你的淨額
+### Requirement: GROUPS-69.4 群組的畫面上你的淨額
 
-WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面上、清單上方的總額（GROUPS-68.4）的下面、支出的卡片上方顯示你在這個群組的淨額，算的是這個群組全部不在垃圾桶裡的支出，不跟著期間；最多兩行，先是「You owe: <淨額小於 0 的每個幣別的淨額絕對值>」，再是「You're owed: <淨額大於 0 的每個幣別的淨額>」，都依幣別代碼排序，以「, 」隔開，放不下時尾端漸層消失（SHELL-68.1），沒有這個方向的幣別時就沒有這一行；每個幣別的淨額都是 0 時，只有一行「Settled up」；這幾行合起來是一個按鈕，右邊有「›」，螢幕閱讀器把它讀成一個按鈕，讀出這幾行但不讀「›」，再讀出無障礙提示「Opens Balances」，按一下就打開 Balances（GROUPS-70.1）；群組沒有不在垃圾桶裡的支出時，SHALL 不顯示這幾行。
+WHILE 群組有不在垃圾桶裡的支出而且群組的畫面不在搜尋中（LEDGER-126.1），the mobile app SHALL 在群組的畫面上、清單上方的總額（GROUPS-68.5）的下面、支出的卡片上方顯示你在這個群組的淨額，算的是這個群組全部不在垃圾桶裡的支出，不跟著期間；最多兩行，先是「You owe: <淨額小於 0 的每個幣別的淨額絕對值>」，再是「You're owed: <淨額大於 0 的每個幣別的淨額>」，都依幣別代碼排序，以「, 」隔開，放不下時尾端漸層消失（SHELL-68.1），沒有這個方向的幣別時就沒有這一行；每個幣別的淨額都是 0 時，只有一行「Settled up」；這幾行合起來是一個按鈕，右邊有「›」，螢幕閱讀器把它讀成一個按鈕，讀出這幾行但不讀「›」，再讀出無障礙提示「Opens Balances」，按一下就打開 Balances（GROUPS-70.1）；群組沒有不在垃圾桶裡的支出時，或在搜尋中，SHALL 不顯示這幾行。
 
 #### Scenario: 別人欠你
 
@@ -1442,9 +1457,14 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 - **WHEN** 今天是 `2026-10-30`，Brisbane 只有 `2026-09-30` Taylor 付的 60.00 USD 的 Dinner，分給 Taylor、Casey 和 Blake，把期間換成這個月
 - **THEN** 總額是「—」，它下面仍是「You're owed: $40.00」
 
+#### Scenario: 搜尋中
+
+- **WHEN** 在 Brisbane 的畫面搜尋「dinner」，再結束搜尋
+- **THEN** 搜尋中沒有「You're owed: $40.00」，也沒有打開 Balances 的按鈕；結束之後它又在總額下面
+
 ### Requirement: GROUPS-70.1 開啟和關閉 Balances
 
-WHEN 使用者按群組的畫面上你的淨額（GROUPS-69.3），the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Balances，標題是「Balances」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.2）；按 Close、把 Balances 往下滑或按 Android 的返回鍵，SHALL 關閉 Balances，回到群組的畫面。
+WHEN 使用者按群組的畫面上你的淨額（GROUPS-69.4），the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Balances，標題是「Balances」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.2）；按 Close、把 Balances 往下滑或按 Android 的返回鍵，SHALL 關閉 Balances，回到群組的畫面。
 
 #### Scenario: 開啟
 

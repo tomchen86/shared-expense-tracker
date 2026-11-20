@@ -14,6 +14,7 @@ import {
   Menu,
   Picker,
   Rectangle,
+  Section,
   Text,
   Toggle,
 } from '@expo/ui/swift-ui';
@@ -41,6 +42,8 @@ import { useThemeColors } from './theme';
 export function MenuField({
   label,
   value,
+  title,
+  trigger,
   disabled = false,
   dot,
   options,
@@ -56,83 +59,135 @@ export function MenuField({
     // A press on a native view counts as unhandled: without a responder, a scroll view that keeps
     // the keyboard only for handled presses would blur the field, and the menu would open behind
     // the keyboard.
-    <View onStartShouldSetResponder={() => true} style={styles.row}>
-      <View
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        pointerEvents="none"
-        style={[
-          styles.visual,
-          fontScale > 1.3 && styles.stacked,
-          disabled && styles.disabled,
-        ]}
-      >
-        <NativeText style={[styles.text, { color: colors.text }]}>
-          {label}
-        </NativeText>
-        <View style={styles.value}>
-          {dot && <View style={[styles.dot, { backgroundColor: dot }]} />}
-          <FadeText
-            containerStyle={styles.valueText}
-            style={[styles.text, { color: colors.textMuted }]}
-          >
-            {value}
-          </FadeText>
-          <SymbolView
-            name="chevron.up.chevron.down"
-            size={13}
-            tintColor={colors.textMuted}
-          />
-        </View>
-      </View>
-      <Host ignoreSafeArea="all" style={StyleSheet.absoluteFill}>
-        <Menu
-          modifiers={[
-            buttonStyle('plain'),
-            menuIndicator('hidden'),
-            menuActionDismissBehavior(multiple ? 'disabled' : 'automatic'),
-            disabledModifier(disabled),
-            accessibilityLabel(`${label}, ${value}`),
+    <View
+      onStartShouldSetResponder={() => true}
+      style={trigger ? undefined : styles.row}
+    >
+      {trigger ?? (
+        <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          pointerEvents="none"
+          style={[
+            styles.visual,
+            fontScale > 1.3 && styles.stacked,
+            disabled && styles.disabled,
           ]}
-          label={
-            <Rectangle
-              modifiers={[
-                foregroundStyle('rgba(127,127,127,0.002)'),
-                frame({
-                  maxWidth: Number.MAX_SAFE_INTEGER,
-                  maxHeight: Number.MAX_SAFE_INTEGER,
-                }),
-              ]}
-            />
-          }
         >
-          {multiple ? (
-            options.map((option) => (
-              <Toggle
-                key={option.id}
-                label={option.name}
-                isOn={selected.includes(option.id)}
-                onIsOnChange={() => onSelect(option.id)}
-              />
-            ))
-          ) : options.length === 0 && empty ? (
-            <Button label={empty} modifiers={[disabledModifier(true)]} />
-          ) : (
-            <Picker<string>
-              label={label}
-              selection={selected[0] ?? ''}
-              onSelectionChange={onSelect}
-              modifiers={[pickerStyle('inline')]}
+          <NativeText style={[styles.text, { color: colors.text }]}>
+            {label}
+          </NativeText>
+          <View style={styles.value}>
+            {dot && <View style={[styles.dot, { backgroundColor: dot }]} />}
+            <FadeText
+              containerStyle={styles.valueText}
+              style={[styles.text, { color: colors.textMuted }]}
             >
-              {options.map((option) => (
-                <PickerOption key={option.id} {...option} />
-              ))}
-            </Picker>
-          )}
-          {action && <Button label={action.label} onPress={action.onPress} />}
-        </Menu>
-      </Host>
+              {value}
+            </FadeText>
+            <SymbolView
+              name="chevron.up.chevron.down"
+              size={13}
+              tintColor={colors.textMuted}
+            />
+          </View>
+        </View>
+      )}
+      <MenuOverlay
+        accessibilityLabel={`${label}, ${value}`}
+        label={label}
+        title={trigger ? title : undefined}
+        disabled={disabled}
+        options={options}
+        selected={selected}
+        multiple={multiple}
+        empty={empty}
+        action={action}
+        onSelect={onSelect}
+      />
     </View>
+  );
+}
+
+/**
+ * An invisible system menu that lies over what React Native draws under it and takes the presses
+ * on it. `accessibilityLabel` is what a screen reader reads for it.
+ */
+export function MenuOverlay({
+  accessibilityLabel: name,
+  label,
+  title,
+  disabled = false,
+  options,
+  selected,
+  multiple = false,
+  empty,
+  action,
+  onSelect,
+}: Pick<
+  MenuFieldProps,
+  | 'label'
+  | 'disabled'
+  | 'options'
+  | 'selected'
+  | 'multiple'
+  | 'empty'
+  | 'action'
+  | 'onSelect'
+> & { accessibilityLabel: string; title?: string }) {
+  const picker = (
+    <Picker<string>
+      label={title ? '' : label}
+      selection={selected[0] ?? ''}
+      onSelectionChange={onSelect}
+      modifiers={[pickerStyle('inline')]}
+    >
+      {options.map((option) => (
+        <PickerOption key={option.id} {...option} />
+      ))}
+    </Picker>
+  );
+  return (
+    <Host ignoreSafeArea="all" style={StyleSheet.absoluteFill}>
+      <Menu
+        modifiers={[
+          buttonStyle('plain'),
+          menuIndicator('hidden'),
+          menuActionDismissBehavior(multiple ? 'disabled' : 'automatic'),
+          disabledModifier(disabled),
+          accessibilityLabel(name),
+        ]}
+        label={
+          <Rectangle
+            modifiers={[
+              foregroundStyle('rgba(127,127,127,0.002)'),
+              frame({
+                maxWidth: Number.MAX_SAFE_INTEGER,
+                maxHeight: Number.MAX_SAFE_INTEGER,
+              }),
+            ]}
+          />
+        }
+      >
+        {multiple ? (
+          options.map((option) => (
+            <Toggle
+              key={option.id}
+              label={option.name}
+              isOn={selected.includes(option.id)}
+              onIsOnChange={() => onSelect(option.id)}
+            />
+          ))
+        ) : options.length === 0 && empty ? (
+          <Button label={empty} modifiers={[disabledModifier(true)]} />
+        ) : title ? (
+          <Section title={title}>{picker}</Section>
+        ) : (
+          picker
+        )}
+        {action && <Button label={action.label} onPress={action.onPress} />}
+      </Menu>
+    </Host>
   );
 }
 

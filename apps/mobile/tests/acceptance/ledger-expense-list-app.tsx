@@ -98,6 +98,15 @@ function isInvisible(view: HostView) {
   return false;
 }
 
+/**
+ * The texts inside `root` that draw exactly `text` where it can be seen, also under a view a
+ * screen reader skips. A copy kept only to measure the text is not one of them.
+ */
+export const drawnTexts = (root: HostView, text: string) =>
+  within(root)
+    .queryAllByText(text, { includeHiddenElements: true })
+    .filter((view) => !isInvisible(view));
+
 /** Whether two views sit side by side: the nearest view around both lays its children out in a row. */
 export function inOneRow(one: HostView, other: HostView) {
   const around = new Set<HostView>();
@@ -190,12 +199,14 @@ const LIST_CONTROLS = [
   /^Show /,
   /^From$/,
   /^To$/,
+  /^Sort By, /,
 ];
 
 /**
  * Whether a button above a list's cards is one of the list's own controls: the period row, the
- * dates of a custom range, the total, a group's net balance, or the way out of a period with no
- * expense (LEDGER-108.1 to LEDGER-116.1, GROUPS-68.4, GROUPS-69.3).
+ * dates of a custom range, the total, a group's net balance, the way out of a period with no
+ * expense, or the sort button (LEDGER-108.2 to LEDGER-116.2, LEDGER-122.1, GROUPS-68.5,
+ * GROUPS-69.4).
  */
 export const isListControl = (button: HostView) =>
   LIST_CONTROLS.some((name) => name.test(nameOf(button))) ||
@@ -228,7 +239,7 @@ export const cardTitles = () => cards().map((shown) => linesIn(shown)[0]);
 /** What a screen reader reads for a card: its name. */
 export const readOut = (shown: HostView) => asRead(nameOf(shown));
 
-/** The button under the period row that shows the list's total and opens Insights (LEDGER-35.4). */
+/** The button under the period row that shows the list's total and opens Insights (LEDGER-35.5). */
 export const listTotalButton = () =>
   within(expensesRoot()).getByRole('button', {
     name: /^View expense insights\./,

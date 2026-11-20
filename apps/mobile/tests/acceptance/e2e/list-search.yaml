@@ -1,0 +1,70 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[LEDGER-128.1] [LEDGER-125.1] [LEDGER-126.1] [LEDGER-127.1] [SHELL-73.1] Types into the system search field of the expense list and of a group's screen, sees the matches of every date with their count, then No Results, closes the search back to this month, and keeps a search when the keyboard's search key closes the keyboard"
+---
+# The names of this month and its year, and the 15th of last month, by the simulator's clock.
+- evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
+- evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'
+- evalScript: '${output.thisYear = String(new Date().getFullYear())}'
+- evalScript: '${output.lastMonth15 = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 15)}'
+- evalScript: "${output.lastMonthDate = output.lastMonth15.getFullYear() + '-' + ('0' + (output.lastMonth15.getMonth() + 1)).slice(-2) + '-15'}"
+# Maestro reads ${…} up to the last } in the value, so a seed with dates is built in one script.
+- evalScript: "${output.seedJson = JSON.stringify({ name: 'Taylor', groups: [{ name: 'Brisbane', members: ['Casey'] }], expenses: [{ title: 'Lunch', amount: '3.00' }, { title: 'Lunch box', amount: '2.00', date: output.lastMonthDate }, { title: 'Coffee', amount: '4.00' }, { title: 'Dinner', amount: '60.00', group: 'Brisbane' }, { title: 'Taxi', amount: '25.00', group: 'Brisbane' }] })}"
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: ${output.seedJson}
+# The list opens on this month, without last month's Lunch box.
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible: Lunch, .*
+- assertNotVisible: Lunch box, .*
+# LEDGER-128.1: the search button of the bar opens the system search field, with the keyboard.
+- tapOn: Search
+- waitForAnimationToEnd
+- inputText: lunch
+# LEDGER-125.1 and LEDGER-126.1: the matches of every date and their count; the period row and
+# the total give way.
+- assertVisible: 2 items
+- assertVisible: Lunch, .*
+- assertVisible: Lunch box, .*
+- assertNotVisible: Coffee, .*
+- assertNotVisible: Choose period\..*
+- assertNotVisible: View expense insights\..*
+- assertVisible: Sort By, Newest First
+# LEDGER-127.1: one more letter leaves no match.
+- inputText: x
+- assertVisible: No Results for “lunchx”
+- assertVisible: Check the spelling or try a new search\.
+- assertNotVisible: Lunch, .*
+- assertNotVisible: Sort By, .*
+# LEDGER-128.1: the button beside the field ends the search; the list is back on this month.
+- tapOn: Close
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible: Lunch, .*
+- assertVisible: Coffee, .*
+- assertNotVisible: Lunch box, .*
+- assertNotVisible: 2 items
+# A group's screen searches its own expenses, and its total and your balance give way.
+- tapOn: Groups
+- tapOn: Open Brisbane
+- waitForAnimationToEnd
+- assertVisible: 'Group Total: .*'
+- tapOn: Search
+- waitForAnimationToEnd
+- inputText: taxi
+- assertVisible: 1 item
+- assertVisible: Taxi, .*
+- assertNotVisible: Dinner, .*
+- assertNotVisible: 'Group Total: .*'
+- assertNotVisible: You're owed.*
+# SHELL-73.1: the keyboard's search key closes the keyboard and keeps the search. Nothing reports
+# the keyboard itself on every simulator, but iOS types only into a field that has the focus: a
+# letter typed after the key changes nothing, where it would leave no match in a field still
+# taking input.
+- pressKey: Enter
+- waitForAnimationToEnd
+- inputText: x
+- waitForAnimationToEnd
+- assertVisible: 1 item
+- assertVisible: Taxi, .*
+- assertNotVisible: No Results for .*
