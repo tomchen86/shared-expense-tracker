@@ -195,7 +195,7 @@ export function useListPeriod(
     /** The expenses dated in the period, in the order they came; undefined until they are read. */
     shown,
     filter,
-    /** Changes that return a scrolled-away period row to view (LEDGER-147.3). */
+    /** Changes that return a scrolled-away period row to view (LEDGER-147.4). */
     key: JSON.stringify([period, range, sheetChanges]),
     /** The name on the period row. */
     name,
@@ -229,7 +229,6 @@ export function useListPeriod(
       : undefined,
     /** The search params that open Insights on the period. */
     insights: insightsParams(list, day),
-    openFilters,
     filterAction: {
       label: filter.active ? 'Filters, on' : 'Filters',
       active: filter.active,
@@ -465,7 +464,7 @@ function PeriodListBody({
     const at = position.current;
     if (at === undefined) return;
     // Editing or ending a search returns to the top (LEDGER-148.1). Changing dates or a condition
-    // in Filters does so only with the period row entirely out of sight (LEDGER-147.3).
+    // in Filters does so only with the period row entirely out of sight (LEDGER-147.4).
     if (last.text === activeText) {
       if (
         activeText ||
@@ -603,7 +602,6 @@ function PeriodListBody({
                       selected={periods.option}
                       slideStyle={swipe.nameStyle}
                       onSelect={periods.choose}
-                      onOpenFilters={periods.openFilters}
                     />
                   </View>
                   {steps &&
@@ -675,7 +673,6 @@ function PeriodListBody({
       {showCapsules && (
         <FilterCapsules
           state={filter}
-          openFilters={periods.openFilters}
           onAmountPresented={setAmountPopoverOpen}
         />
       )}

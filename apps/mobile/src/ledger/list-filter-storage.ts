@@ -83,7 +83,7 @@ export async function readSavedFilters(tx: SqlExecutor, spaceId: string) {
   return next;
 }
 
-/** Saving requires a current filter, so the list already has a row (LEDGER-143.1). */
+/** Saving requires a current filter, so the list already has a row (LEDGER-143.2). */
 export function writeSavedFilters(
   tx: SqlExecutor,
   spaceId: string,

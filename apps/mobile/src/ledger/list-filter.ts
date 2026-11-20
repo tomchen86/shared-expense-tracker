@@ -50,7 +50,7 @@ function sameChoices(left: string[], right: string[]) {
   return left.length === right.length && left.every((id) => right.includes(id));
 }
 
-/** Selection order and equivalent spellings of a bound do not distinguish saved filters (LEDGER-143.1). */
+/** Selection order and equivalent spellings of a bound do not distinguish saved filters (LEDGER-143.2). */
 export function sameFilter(left: ListFilter, right: ListFilter) {
   return (
     left.paidByMe === right.paidByMe &&

@@ -3,14 +3,16 @@ import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import type { SearchBarCommands } from 'react-native-screens';
 
-/** The system search field in the screen's navigation bar (SHELL-73.1). */
+export interface HeaderSearchProps {
+  placeholder: string;
+  onChangeText: (text: string) => void;
+}
+
+/** The system search field in the screen's navigation bar (SHELL-73.2). */
 export const HeaderSearch = memo(function HeaderSearch({
   placeholder,
   onChangeText,
-}: {
-  placeholder: string;
-  onChangeText: (text: string) => void;
-}) {
+}: HeaderSearchProps) {
   const field = useRef<SearchBarCommands>(null);
   const close = () => onChangeText('');
   return (

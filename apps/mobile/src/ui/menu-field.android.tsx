@@ -8,14 +8,32 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { GroupedSection } from './grouped-section';
+import { MaterialMenu } from './material-menu.android';
 import type { MenuFieldOption, MenuFieldProps } from './menu-field';
 import { Sheet } from './sheet';
 import { useThemeColors } from './theme';
 
-export function MenuField({
+export function MenuField(props: MenuFieldProps) {
+  if (!props.trigger) return <SheetField {...props} />;
+  return (
+    <MaterialMenu {...props}>
+      {(open) => (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${props.label}, ${props.value}`}
+          disabled={props.disabled}
+          onPress={open}
+        >
+          {props.trigger}
+        </Pressable>
+      )}
+    </MaterialMenu>
+  );
+}
+
+function SheetField({
   label,
   value,
-  trigger,
   title,
   disabled = false,
   dot,
@@ -41,21 +59,15 @@ export function MenuField({
         accessibilityState={{ disabled }}
         disabled={disabled}
         onPress={() => setOpen(true)}
-        style={
-          trigger ? undefined : [styles.row, fontScale > 1.3 && styles.stacked]
-        }
+        style={[styles.row, fontScale > 1.3 && styles.stacked]}
       >
-        {trigger ?? (
-          <>
-            <Text style={[styles.text, { color: colors.text }]}>{label}</Text>
-            <View style={styles.value}>
-              {dot && <View style={[styles.dot, { backgroundColor: dot }]} />}
-              <Text style={[styles.valueText, { color: colors.textMuted }]}>
-                {value}
-              </Text>
-            </View>
-          </>
-        )}
+        <Text style={[styles.text, { color: colors.text }]}>{label}</Text>
+        <View style={styles.value}>
+          {dot && <View style={[styles.dot, { backgroundColor: dot }]} />}
+          <Text style={[styles.valueText, { color: colors.textMuted }]}>
+            {value}
+          </Text>
+        </View>
       </Pressable>
       <Sheet
         visible={open}
