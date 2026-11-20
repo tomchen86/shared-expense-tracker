@@ -81,7 +81,7 @@ import {
 import { formatItemCount, matchingExpenses } from './list-search';
 import type { ExpenseView, GroupWithFormerMembers } from './use-expenses';
 import { NO_FILTER } from './list-filter';
-import { FilterCapsules, FilterRows } from './list-filter-ui';
+import { FilterCapsules, FilterRows, SavedFilterRows } from './list-filter-ui';
 import {
   useListFilter,
   type ChangeFilter,
@@ -290,6 +290,13 @@ function Filters({
       confirm={{ label: 'Done', onPress: onClose }}
       onClose={onClose}
     >
+      <SavedFilterRows
+        state={filter}
+        onApply={(item) => {
+          change(item);
+          onClose();
+        }}
+      />
       <GroupedSection>
         <MenuField
           title="Date"

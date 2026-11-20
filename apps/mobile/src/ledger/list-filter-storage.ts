@@ -6,6 +6,7 @@ import {
   participation,
   passesFilter,
   type ListFilter,
+  type SavedFilter,
 } from './list-filter';
 
 const clearCurrent = (tx: SqlExecutor, spaceId: string) =>
@@ -13,6 +14,28 @@ const clearCurrent = (tx: SqlExecutor, spaceId: string) =>
     'UPDATE expense_list_orders SET currentFilter = NULL WHERE spaceId = ? AND currentFilter IS NOT NULL',
     [spaceId],
   );
+
+/** Check all selected names against this list's categories, including archived ones (LEDGER-141.1). */
+async function pruneCategories(
+  tx: SqlExecutor,
+  spaceId: string,
+  filters: ListFilter[],
+) {
+  const selected = new Set(filters.flatMap((filter) => filter.categories));
+  if (!selected.size) return filters;
+  const names = await tx.all<{ name: string }>(
+    `SELECT DISTINCT name FROM categories
+     WHERE name IN (SELECT value FROM json_each(?))
+       AND (spaceId = ? OR ? = (SELECT personalSpaceId FROM local_identity))`,
+    [JSON.stringify([...selected]), spaceId, spaceId],
+  );
+  if (names.length === selected.size) return filters;
+  const existing = new Set(names.map(({ name }) => name));
+  return filters.map((filter) => ({
+    ...filter,
+    categories: filter.categories.filter((name) => existing.has(name)),
+  }));
+}
 
 /** Read in a transaction: a category name that no longer exists is forgotten for good. */
 export async function readListFilter(
@@ -25,18 +48,8 @@ export async function readListFilter(
   );
   if (!row) return NO_FILTER;
   const filter: ListFilter = JSON.parse(row.currentFilter);
-  if (!filter.categories.length) return filter;
-  const names = await tx.all<{ name: string }>(
-    `SELECT DISTINCT name FROM categories
-     WHERE name IN (SELECT value FROM json_each(?))
-       AND (spaceId = ? OR ? = (SELECT personalSpaceId FROM local_identity))`,
-    [JSON.stringify(filter.categories), spaceId, spaceId],
-  );
-  const existing = new Set(names.map(({ name }) => name));
-  const categories = filter.categories.filter((name) => existing.has(name));
-  if (categories.length === filter.categories.length) return filter;
-  const pruned = { ...filter, categories };
-  await writeListFilter(tx, spaceId, pruned);
+  const [pruned] = await pruneCategories(tx, spaceId, [filter]);
+  if (pruned !== filter) await writeListFilter(tx, spaceId, pruned);
   return pruned;
 }
 
@@ -53,6 +66,32 @@ export async function writeListFilter(
     `INSERT INTO expense_list_orders (spaceId, sortOrder, currentFilter) VALUES (?, 'newest', ?)
      ON CONFLICT (spaceId) DO UPDATE SET currentFilter = excluded.currentFilter`,
     [spaceId, JSON.stringify(filter)],
+  );
+}
+
+export async function readSavedFilters(tx: SqlExecutor, spaceId: string) {
+  const [row] = await tx.all<{ savedFilters: string }>(
+    'SELECT savedFilters FROM expense_list_orders WHERE spaceId = ?',
+    [spaceId],
+  );
+  const saved: SavedFilter[] = JSON.parse(row?.savedFilters ?? '[]');
+  const conditions = saved.map((item) => item.filter);
+  const pruned = await pruneCategories(tx, spaceId, conditions);
+  if (pruned === conditions) return saved;
+  const next = saved.map(({ name }, i) => ({ name, filter: pruned[i] }));
+  await writeSavedFilters(tx, spaceId, next);
+  return next;
+}
+
+/** Saving requires a current filter, so the list already has a row (LEDGER-143.1). */
+export function writeSavedFilters(
+  tx: SqlExecutor,
+  spaceId: string,
+  saved: SavedFilter[],
+) {
+  return tx.run(
+    'UPDATE expense_list_orders SET savedFilters = ? WHERE spaceId = ?',
+    [JSON.stringify(saved), spaceId],
   );
 }
 

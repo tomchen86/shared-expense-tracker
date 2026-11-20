@@ -8,7 +8,7 @@ import {
 import { Alert } from 'react-native';
 import { useIsFocused } from 'expo-router/react-navigation';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
-import type { Database } from '../storage';
+import type { Database, SqlExecutor } from '../storage';
 import type { MenuFieldOption } from '../ui/menu-field';
 import { useDisplayLocale } from '../ui/use-display-locale';
 import { subscribeToExpenses } from './expenses';
@@ -16,17 +16,29 @@ import {
   NO_FILTER,
   hasFilter,
   passesFilter,
+  sameFilter,
   type ListFilter,
+  type SavedFilter,
 } from './list-filter';
-import { readListFilter, writeListFilter } from './list-filter-storage';
+import {
+  readListFilter,
+  readSavedFilters,
+  writeListFilter,
+  writeSavedFilters,
+} from './list-filter-storage';
 import type { ExpenseView, GroupWithFormerMembers } from './use-expenses';
 
 type Update = (current: ListFilter) => ListFilter;
-export type ChangeFilter = (update: Update) => void;
+type FilterChange = Update | SavedFilter;
+export type ChangeFilter = (change: FilterChange) => void;
+interface FilterSettings {
+  filter: ListFilter;
+  savedFilters: SavedFilter[];
+}
 type FilterListener = (
   database: Database,
   spaceId: string,
-  filter: ListFilter,
+  changes: Partial<FilterSettings>,
 ) => void;
 const listeners = new Set<FilterListener>();
 
@@ -34,9 +46,12 @@ const listeners = new Set<FilterListener>();
 function useRememberedFilter(spaceId: string) {
   const database = useLocalDatabase();
   const focused = useIsFocused();
-  const [saved, setFilter] = useState(NO_FILTER);
+  const [settings, setSettings] = useState<FilterSettings>({
+    filter: NO_FILTER,
+    savedFilters: [],
+  });
   const [filter, showChange] = useOptimistic(
-    saved,
+    settings.filter,
     (current: ListFilter, update: Update) => update(current),
   );
   const [error, setError] = useState<unknown>();
@@ -44,18 +59,22 @@ function useRememberedFilter(spaceId: string) {
     let active = true;
     function refresh() {
       void database
-        .transaction((tx) => readListFilter(tx, spaceId))
+        .transaction(async (tx) => ({
+          filter: await readListFilter(tx, spaceId),
+          savedFilters: await readSavedFilters(tx, spaceId),
+        }))
         .then(
           (saved) => {
-            if (active) setFilter(saved);
+            if (active) setSettings(saved);
           },
           (failure: unknown) => {
             if (active) setError(failure);
           },
         );
     }
-    const show: FilterListener = (db, list, saved) => {
-      if (db === database && list === spaceId) setFilter(saved);
+    const show: FilterListener = (db, list, changes) => {
+      if (db === database && list === spaceId)
+        setSettings((current) => ({ ...current, ...changes }));
     };
     listeners.add(show);
     const unsubscribe = subscribeToExpenses(database, refresh);
@@ -68,31 +87,60 @@ function useRememberedFilter(spaceId: string) {
   }, [database, spaceId, focused]);
   if (error) throw error;
 
-  function change(update: Update, onChanged?: () => void) {
+  async function commit(
+    write: (tx: SqlExecutor) => Promise<Partial<FilterSettings> | undefined>,
+    onChanged?: () => void,
+  ) {
+    try {
+      const changes = await database.transaction(write);
+      if (!changes) return;
+      startTransition(() => {
+        for (const show of listeners) show(database, spaceId, changes);
+        onChanged?.();
+      });
+    } catch {
+      Alert.alert(
+        'Unable to Save Settings',
+        'Your settings could not be saved. Please try again.',
+      );
+    }
+  }
+
+  function change(edit: FilterChange, onChanged?: () => void) {
     startTransition(async () => {
-      showChange(update);
-      try {
-        const next = await database.transaction(async (tx) => {
-          const current = await readListFilter(tx, spaceId);
-          const updated = update(current);
-          if (updated === current) return;
-          await writeListFilter(tx, spaceId, updated);
-          return updated;
-        });
-        if (next === undefined) return;
-        startTransition(() => {
-          for (const show of listeners) show(database, spaceId, next);
-          onChanged?.();
-        });
-      } catch {
-        Alert.alert(
-          'Unable to Save Settings',
-          'Your settings could not be saved. Please try again.',
-        );
-      }
+      showChange(typeof edit === 'function' ? edit : () => edit.filter);
+      await commit(async (tx) => {
+        const current = await readListFilter(tx, spaceId);
+        const next =
+          typeof edit === 'function'
+            ? edit(current)
+            : (await readSavedFilters(tx, spaceId)).find(
+                ({ name }) => name === edit.name,
+              )?.filter;
+        if (!next || next === current) return;
+        await writeListFilter(tx, spaceId, next);
+        return { filter: next };
+      }, onChanged);
     });
   }
-  return { filter, change };
+
+  function editSaved(name: string, action: 'save' | 'delete') {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    return commit(async (tx) => {
+      const saved = await readSavedFilters(tx, spaceId);
+      const savedFilters = saved.filter((item) => item.name !== trimmed);
+      if (action === 'save') {
+        const current = await readListFilter(tx, spaceId);
+        if (!hasFilter(current)) return;
+        savedFilters.push({ name: trimmed, filter: current });
+      }
+      await writeSavedFilters(tx, spaceId, savedFilters);
+      return { savedFilters };
+    });
+  }
+
+  return { filter, change, savedFilters: settings.savedFilters, editSaved };
 }
 
 export interface FilterMenu {
@@ -144,8 +192,19 @@ export function useListFilter(
 ) {
   const { personalSpaceId, userId } = useLocalIdentity();
   const locale = useDisplayLocale();
-  const { filter, change } = useRememberedFilter(groupId ?? personalSpaceId);
+  const { filter, change, savedFilters, editSaved } = useRememberedFilter(
+    groupId ?? personalSpaceId,
+  );
   const active = hasFilter(filter);
+  const selectedNames = useMemo(
+    () =>
+      new Set(
+        savedFilters
+          .filter((item) => active && sameFilter(item.filter, filter))
+          .map((item) => item.name),
+      ),
+    [active, filter, savedFilters],
+  );
   const filtered = useMemo(
     () =>
       active
@@ -237,7 +296,16 @@ export function useListFilter(
     }
     return { category, scope, currency };
   }, [expenses, groups, groupId, filter, personalSpaceId, userId, locale]);
-  return { filter, active, filtered, change, ...menus };
+  return {
+    filter,
+    active,
+    filtered,
+    change,
+    savedFilters,
+    selectedNames,
+    editSaved,
+    ...menus,
+  };
 }
 
 export type ListFilterState = ReturnType<typeof useListFilter>;

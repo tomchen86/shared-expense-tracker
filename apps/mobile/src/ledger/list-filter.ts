@@ -12,6 +12,11 @@ export interface ListFilter {
   currency: string;
 }
 
+export interface SavedFilter {
+  name: string;
+  filter: ListFilter;
+}
+
 export const NO_FILTER: ListFilter = {
   categories: [],
   ledgers: [],
@@ -31,6 +36,30 @@ export function hasFilter(filter: ListFilter) {
     filter.min ||
     filter.max ||
     filter.currency,
+  );
+}
+
+/** Compare decimal values without rounding them or changing the text kept for the fields. */
+function decimalValue(text: string) {
+  if (!text) return '';
+  const [whole, fraction = ''] = text.split('.');
+  return `${whole.replace(/^0+/, '')}.${fraction.replace(/0+$/, '')}`;
+}
+
+function sameChoices(left: string[], right: string[]) {
+  return left.length === right.length && left.every((id) => right.includes(id));
+}
+
+/** Selection order and equivalent spellings of a bound do not distinguish saved filters (LEDGER-143.1). */
+export function sameFilter(left: ListFilter, right: ListFilter) {
+  return (
+    left.paidByMe === right.paidByMe &&
+    left.currency === right.currency &&
+    sameChoices(left.categories, right.categories) &&
+    sameChoices(left.ledgers, right.ledgers) &&
+    sameChoices(left.payers, right.payers) &&
+    decimalValue(left.min) === decimalValue(right.min) &&
+    decimalValue(left.max) === decimalValue(right.max)
   );
 }
 
