@@ -30,6 +30,7 @@ Name top-level directories only. File paths go stale.
 - The API runs in a staging and a production environment, each with its own Worker, Hyperdrive configuration, and database; a deploy runs the migrations before it uploads the Worker, and no request runs them (ADR-0019).
 - The API checks every request's signature before routing, unless the route is public; a refused request changes nothing in its database (ADR-0022).
 - The phone sends every request to the API through one function, which signs it with the phone's own key (ADR-0015, ADR-0022).
+- A phone creates a shared ledger's group on the API under the group's own ID. The API stores each event once, numbers a group's events in the order it stores them, hands them out in small pages by cursor, and refuses an upload that would take a group's events past 10 MiB (ADR-0016, ADR-0024).
 - On the phone, data lives in SQLite; zustand holds only screen state (ADR-0002).
 - The phone keeps all its data in one SQLite database; every capability's migrations run in one app-wide order and never change once a release tag contains them (ADR-0006).
 - Only `apps/mobile/src/storage/` imports `expo-sqlite`; tests run the same migrations and queries on SQLite in Node (ADR-0006).
