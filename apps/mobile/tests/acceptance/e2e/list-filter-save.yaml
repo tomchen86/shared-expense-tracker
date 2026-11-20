@@ -44,12 +44,15 @@ tags:
       - assertVisible:
           text: Save
           enabled: false
-      # A press outside the dialog closes it, and Filters stays open.
+      # A press outside the dialog closes it as Cancel does, with a name in the field, and
+      # Filters stays open.
+      - inputText: Outside
       - tapOn:
           point: 50%,8%
       - waitForAnimationToEnd
       - assertNotVisible: Save Filter
       - assertVisible: Done
+      - assertNotVisible: Apply saved filter .*
       # So does the back button, once the keyboard it opened is closed.
       - tapOn: Save Current Filter…
       - waitForAnimationToEnd
