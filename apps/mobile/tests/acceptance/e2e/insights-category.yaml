@@ -33,9 +33,8 @@ name: "[INSIGHTS-47.1] [INSIGHTS-50.1] [INSIGHTS-53.1] [INSIGHTS-54.1] Changes t
 # INSIGHTS-47.1: a tap on the row opens that category's expenses in the month Insights is on.
 - tapOn: Food & Dining, .* percent
 - waitForAnimationToEnd
-- assertVisible: 1 expense
-- assertVisible: ${output.lastMonth} ${output.lastMonthsYear}
-- assertVisible: '\$6\.00'
+# INSIGHTS-48.1: a screen reader reads the period, amount and count at the top as one item.
+- assertVisible: 'Spent in ${output.lastMonth} ${output.lastMonthsYear} \$6\.00\. 1 expense\.'
 - assertVisible: Old lunch, .*
 - assertNotVisible: Old bus, .*
 - assertNotVisible: Total spent.*
@@ -47,17 +46,17 @@ name: "[INSIGHTS-47.1] [INSIGHTS-50.1] [INSIGHTS-53.1] [INSIGHTS-54.1] Changes t
     direction: LEFT
 - waitForAnimationToEnd
 - assertNotVisible: Delete.*
-- assertVisible: 1 expense
+- assertVisible: 'Spent in ${output.lastMonth} ${output.lastMonthsYear} \$6\.00\. 1 expense\.'
 - assertVisible: Old lunch, .*
 # INSIGHTS-50.1: a tap on the card opens the expense's details, and Back returns to the list.
 - tapOn: Old lunch, .*
 - waitForAnimationToEnd
 - assertVisible: Expense
 - assertVisible: Edit
-- assertNotVisible: 1 expense
+- assertNotVisible: 'Spent in .*'
 - tapOn: Back
 - waitForAnimationToEnd
-- assertVisible: 1 expense
+- assertVisible: 'Spent in ${output.lastMonth} ${output.lastMonthsYear} \$6\.00\. 1 expense\.'
 - assertVisible: Old lunch, .*
 # INSIGHTS-47.1: Back returns to Insights, still on last month.
 - tapOn: Back
