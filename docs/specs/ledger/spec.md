@@ -3209,7 +3209,7 @@ WHEN app 從背景回到前景，而支出清單或群組的畫面的期間是�
 
 ### Requirement: LEDGER-147.3 (e2e) 期間或篩選換了而看不到期間列時，清單回到最上面
 
-WHEN 支出清單或群組的畫面的期間換了，或它的自訂範圍的 From 或 To 換了，或使用者在 Filters 裡換了它的篩選（在那裡改條件、套用存起來的篩選或按「Clear Filters」，LEDGER-131.1、LEDGER-144.1、LEDGER-139.1），而那個畫面的期間列已經整個看不到，the mobile app SHALL 把那個畫面的清單捲回最上面，和剛打開這個畫面時一樣：看得到期間列、清單上方的總額和最上面的卡片，有篩選時也看得到膠囊列（LEDGER-133.1）。期間列整個看不到，是指它整個被捲出畫面，或整個在標題列底下；只要還有一部分露在標題列下方，就算看得到。IF 期間或篩選換的時候期間列還看得到，只露出一部分也一樣，THEN the mobile app SHALL 不捲動清單：按「Previous period」或「Next period」、在期間列或總額上左右滑動（LEDGER-114.2）、用期間的選單（LEDGER-110.1）或按「Show …」（LEDGER-116.3）換期間時，期間列留在原來的位置，在同一個位置連按兩次「Previous period」，兩次都按得到。使用者在膠囊列上改篩選（LEDGER-133.1）時膠囊列就在眼前，不管期間列看不看得到，the mobile app SHALL 不捲動清單。搜尋中的畫面沒有期間列（LEDGER-126.2），這一條不適用：期間在搜尋中換了（LEDGER-117.2、LEDGER-146.2）時，不要求捲動搜尋的結果；搜尋結束時清單照 LEDGER-148.1 在最上面。
+WHEN 支出清單或群組的畫面的期間換了，或它的自訂範圍的 From 或 To 換了，或使用者在 Filters 裡換了它的篩選（在那裡改條件、套用存起來的篩選或按「Clear Filters」，LEDGER-131.1、LEDGER-144.1、LEDGER-139.1），而那個畫面的期間列已經整個看不到，the mobile app SHALL 把那個畫面的清單捲回最上面，和剛打開這個畫面時一樣：看得到期間列、清單上方的總額和最上面的卡片，有篩選時也看得到膠囊列（LEDGER-133.1）。期間列整個看不到，是指它整個被捲出畫面，或整個在標題列底下；只要還有一部分露在標題列下方，就算看得到。IF 期間或篩選換的時候期間列還看得到，只露出一部分也一樣，THEN the mobile app SHALL 不捲動清單：按「Previous period」或「Next period」、在期間列或總額上左右滑動（LEDGER-114.2）、用期間的選單（LEDGER-110.1）或按「Show …」（LEDGER-116.3）換期間時，期間列留在原來的位置，在同一個位置連按兩次「Previous period」，兩次都按得到。使用者在膠囊列上改篩選（LEDGER-133.1）時膠囊列就在眼前，不管期間列看不看得到，the mobile app SHALL 不捲動清單（手動檢查見 LEDGER-145.1）；Android 上按膠囊打開的是 Filters（LEDGER-136.1），在那裡改就是在 Filters 裡改。搜尋中的畫面沒有期間列（LEDGER-126.2），這一條不適用：期間在搜尋中換了（LEDGER-117.2、LEDGER-146.2）時，不要求捲動搜尋的結果；搜尋結束時清單照 LEDGER-148.1 在最上面。
 
 #### Scenario: 稍微捲過之後連按箭頭
 
@@ -4137,6 +4137,11 @@ WHILE 支出清單或群組的畫面有篩選、不在搜尋中而且有卡片�
 - **WHEN** 今天是 `2026-11-18`，有依序新增、日期都是今天的 300 筆個人支出「Expense 1」到「Expense 300」，打開 Paid by Me
 - **THEN** 那一行是「300 items」；畫出的卡片不到 300 張
 
+#### Scenario: 一千筆
+
+- **WHEN** 手機設定的地區是德國，有 1,000 筆 1.00 USD 的個人支出，期間是全部期間，Min 是「1」
+- **THEN** 那一行是「1.000 items」
+
 ### Requirement: LEDGER-138.1 篩選之後沒有支出時說明
 
 WHILE 支出清單或群組的畫面有篩選、不在搜尋中、沒有卡片，而這個畫面有可列的支出，the mobile app SHALL 在卡片的位置，也就是膠囊列的下面，顯示標題「No Matching Expenses」，標題下面是「Your expenses are still here. No expense matches the filters that are on.」，再下面是名稱是「Clear Filters」的按鈕，按一下就拿掉這個畫面的篩選（LEDGER-139.1）。期間不是全部期間，而這個畫面可列的支出裡有通過篩選、日期比期間的第一天早的時，the mobile app SHALL 在「Clear Filters」下面再放名稱是「Show <名稱>」的按鈕，和 LEDGER-116.3 的按鈕一樣，但只看通過篩選的支出：期間是某一年時，<名稱> 是其中日期最晚的那一筆所在的年份，其他時候是它所在的月份的名稱（LEDGER-108.2）；按一下就把期間換成那一年或那個月，篩選不變，那裡有通過篩選的卡片。沒有更早、通過篩選的支出時沒有這個按鈕。這時沒有清單上方那一行（LEDGER-122.2），也沒有 LEDGER-116.3 的標題「No Expenses in <期間>」，期間裡本來就沒有支出時也一樣。在這個提示上左右滑動，和在 LEDGER-116.3 的提示上一樣換期間（LEDGER-114.2）。這個畫面沒有任何可列的支出時，顯示的仍是「No expenses to display. Add a personal expense or get involved in a group expense.」（LEDGER-32.2）或「No expenses in this group yet.」（GROUPS-20.2），不是這個提示。搜尋中沒有結果時見 LEDGER-127.2。
@@ -4512,7 +4517,7 @@ WHILE 支出清單或群組的畫面有存起來的篩選，the mobile app SHALL
 
 ### Requirement: LEDGER-145.1 (manual) 手機上的膠囊列和金額的小視窗
 
-WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時可以用手指左右捲動，膠囊捲到畫面的左右邊緣才看不見；Paid by Me 以外的膠囊，文字後面有向下的箭頭；換期間時（LEDGER-115.1）膠囊列留在原位，不跟著期間滑走；深色外觀下關著的膠囊仍看得出是灰底，開著的仍是強調色配白字。WHERE iPhone，Amount 的小視窗（LEDGER-135.1）開著時，鍵盤 SHALL 不擋住它的兩個欄位，兩個欄位裡 SHALL 是現在的 Min 和 Max。
+WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時可以用手指左右捲動，膠囊捲到畫面的左右邊緣才看不見；Paid by Me 以外的膠囊，文字後面有向下的箭頭；換期間時（LEDGER-115.1）膠囊列留在原位，不跟著期間滑走；深色外觀下關著的膠囊仍看得出是灰底，開著的仍是強調色配白字。WHERE iPhone，Amount 的小視窗（LEDGER-135.1）開著時，鍵盤 SHALL 不擋住它的兩個欄位，兩個欄位裡 SHALL 是現在的 Min 和 Max；在膠囊的選單裡取消一項沒有支出用到的選擇之後，選單關閉之前它 SHALL 仍列著，下次打開才沒有（LEDGER-130.1）；清單捲到期間列剛好看不到、膠囊列還看得到時，在膠囊列上改篩選，清單 SHALL 留在原來的位置（LEDGER-147.3）。
 
 #### Scenario: 左右捲動
 
@@ -4543,3 +4548,13 @@ WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時�
 
 - **WHEN** iPhone 上 Min 是「5」、Max 是「10」時按「Amount, 5 – 10」的膠囊
 - **THEN** Lowest amount 裡是「5」，Highest amount 裡是「10」
+
+#### Scenario: 取消沒有支出用到的選擇
+
+- **WHEN** iPhone 上 Shopping 的支出只有「Shoes」，另有 Food & Dining 的支出，Category 選了 Shopping 和 Food & Dining，把 Shoes 移到垃圾桶，按 Category 的膠囊，在選單裡按「Shopping」取消它
+- **THEN** 選單還開著時「Shopping」仍列著、沒有打勾；關閉選單再打開，選單裡沒有「Shopping」
+
+#### Scenario: 在膠囊列上改篩選時清單不動
+
+- **WHEN** iPhone 上這個月有比畫面長的支出，Paid by Me 開著；把清單往上捲到期間列剛好看不到、膠囊列還看得到，按 Paid by Me 的膠囊
+- **THEN** 清單留在原來的位置，膠囊列沒有從手指底下移開

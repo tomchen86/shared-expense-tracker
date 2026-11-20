@@ -10,12 +10,14 @@ name: "[LEDGER-147.3] Brings a list back to its top when its filter changes in F
 - evalScript: "${output.lastMonthDate = output.lastMonth15.getFullYear() + '-' + ('0' + (output.lastMonth15.getMonth() + 1)).slice(-2) + '-15'}"
 - evalScript: '${output.twoBack = new Date(new Date().getFullYear(), new Date().getMonth() - 2, 1)}'
 - evalScript: "${output.twoBackDate = output.twoBack.getFullYear() + '-' + ('0' + (output.twoBack.getMonth() + 1)).slice(-2) + '-15'}"
-# Twelve personal expenses today and twelve on each of those two days, titled Month … card …, and
-# twelve of Brisbane's today and on the 15th of last month, titled Brisbane … card …, each of
-# 1.00: this month and Brisbane's Group Total each hold more cards than the screen has room for,
-# and a lowest amount of 1 leaves all of them. Maestro reads ${…} up to the last } in the value,
-# so the seed is built in one script.
-- evalScript: "${output.seedJson = (function () { var dates = [undefined, output.lastMonthDate, output.twoBackDate]; var expenses = []; for (var month = 0; month < 3; month++) { for (var card = 1; card <= 12; card++) { expenses.push({ title: 'Month ' + month + ' card ' + card, amount: '1.00', date: dates[month] }); if (month < 2) { expenses.push({ title: 'Brisbane ' + month + ' card ' + card, amount: '1.00', date: dates[month], group: 'Brisbane' }); } } } return JSON.stringify({ name: 'Taylor', groups: [{ name: 'Brisbane', members: ['Casey'] }], expenses: expenses }); })()}"
+# Twelve personal expenses of 1.00 today and twelve on each of those two days, titled Month …
+# card …, and twelve of Brisbane's of 2.00 today and on the 15th of last month, titled Brisbane …
+# card …, which you pay and split with Casey: your share of each is 1.00 on the expense list.
+# This month and Brisbane's Group Total each hold more cards than the screen has room for, and a
+# lowest amount of 1 leaves all of them on both screens, so a list that shows its period row
+# again has moved to its top, not shrunk. Maestro reads ${…} up to the last } in the value, so
+# the seed is built in one script.
+- evalScript: "${output.seedJson = (function () { var dates = [undefined, output.lastMonthDate, output.twoBackDate]; var expenses = []; for (var month = 0; month < 3; month++) { for (var card = 1; card <= 12; card++) { expenses.push({ title: 'Month ' + month + ' card ' + card, amount: '1.00', date: dates[month] }); if (month < 2) { expenses.push({ title: 'Brisbane ' + month + ' card ' + card, amount: '2.00', date: dates[month], group: 'Brisbane' }); } } } return JSON.stringify({ name: 'Taylor', groups: [{ name: 'Brisbane', members: ['Casey'] }], expenses: expenses }); })()}"
 - runFlow:
     file: common/launch-with-seed.yaml
     env:

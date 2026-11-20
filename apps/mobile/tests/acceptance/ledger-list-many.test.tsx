@@ -221,3 +221,18 @@ test('[LEDGER-126.2] groups the digits of that count as the region the phone is 
 
   expect(listCount(expensesRoot())).toBe('1.000 items');
 });
+
+// A thousand expenses on All Time are slow, as above.
+
+test('[LEDGER-137.1] groups the digits of the count a filter leaves as the region the phone is set to does', async () => {
+  // English (United States) on a phone set to Germany.
+  setPhoneRegion('DE');
+  const phone = newPhone();
+  await writeData(phone, { expenses: thousandExpenses() });
+  await startOn(phone, { url: '/' });
+  await choosePeriod('Expenses', 'All Time');
+
+  await setAmounts('Expenses', '1');
+
+  expect(listCount(expensesRoot())).toBe('1.000 items');
+}, 60_000);
