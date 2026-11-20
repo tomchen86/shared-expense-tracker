@@ -253,7 +253,8 @@ tags:
 - waitForAnimationToEnd
 - tapOn: You
 - waitForAnimationToEnd
-- assertNotVisible: Paid by.*
+# No Paid by capsule, on or off; the cards' Paid by Casey and Paid by You stay.
+- assertNotVisible: 'Paid by(, .*)?'
 - assertNotVisible: Category
 - assertNotVisible: Casey
 - assertVisible: Filters
