@@ -420,6 +420,20 @@ test('[LEDGER-129.1] compares only the number on the card, whatever its currency
   expect(cardTitles()).toEqual(['Gum', 'Coffee run']);
 });
 
+test('[LEDGER-129.1] compares the value of a bound that has more decimals than the currency of an expense', async () => {
+  await startExpenses();
+  await spendIn('JPY', 'A', '8');
+  await spendIn('JPY', 'B', '9');
+
+  await setAmounts('Expenses', '8.5');
+
+  expect(cardTitles()).toEqual(['B']);
+
+  await setAmounts('Expenses', '', '8.5');
+
+  expect(cardTitles()).toEqual(['A']);
+});
+
 test("[LEDGER-129.1] compares your share on the expense list and the whole amount on a group's screen", async () => {
   await startWithGroups(BRISBANE);
   await spend('Coffee run');
@@ -656,6 +670,24 @@ test('[LEDGER-130.1] orders the categories by name without regard to case', asyn
     'apples',
     'Shopping',
     'Zoo',
+  ]);
+});
+
+test('[LEDGER-130.1] orders a name with an accented letter next to the same letter without the accent', async () => {
+  await startExpenses();
+  await addCategory('Eggs');
+  await addCategory('Éclair');
+  await addCategory('Dinner');
+  await spend('A', { category: 'Eggs' });
+  await spend('B', { category: 'Éclair' });
+  await spend('C', { category: 'Dinner' });
+
+  await openFilters('Expenses');
+
+  expect(await rowOptionNames('Category')).toEqual([
+    'Dinner',
+    'Éclair',
+    'Eggs',
   ]);
 });
 
