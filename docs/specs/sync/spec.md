@@ -2,19 +2,19 @@
 
 ## Purpose
 
-共同帳本的同步：每支手機把自己和別人的修改合併成同一個結果所用的規則，手機 app 怎麼把共同帳本的變更寫成事件、怎麼套用收到的事件，以及 API 怎麼替手機存下和轉送加密過的事件（SYNC-45.1 到 SYNC-64.1）。規則放在 `packages/domain`，是純函式：不讀時鐘，不用亂數，比較字串時不依語言設定，所以每支手機算出的結果都一樣（ADR-0016）。domain 只判定和合併交給它的事件；手機 app 把變更寫成待上傳的事件（SYNC-20.1 到 SYNC-27.1、SYNC-33.1 到 SYNC-35.1、SYNC-38.1），把收到的事件判定、合併之後寫進支出、分類、群組和成員的資料（SYNC-28.1 到 SYNC-32.1、SYNC-36.2、SYNC-37.1、SYNC-39.1 到 SYNC-44.1）。手機 app 怎麼加密事件、什麼時候上傳和下載，以及遇到不認得格式版本的事件之後怎麼辦，都不在這裡。
+共同帳本的同步：每支手機把自己和別人的修改合併成同一個結果所用的規則，手機 app 怎麼把共同帳本的變更寫成事件、怎麼套用收到的事件，API 怎麼替手機存下和轉送加密過的事件（SYNC-45.1 到 SYNC-64.1），以及手機 app 怎麼和 API 同步一個共同帳本：加密、下載、上傳，和什麼時候同步（SYNC-66.1 到 SYNC-79.1、SYNC-82.1 到 SYNC-93.1）。規則放在 `packages/domain`，是純函式：不讀時鐘，不用亂數，比較字串時不依語言設定，所以每支手機算出的結果都一樣（ADR-0016）。domain 只判定和合併交給它的事件；手機 app 把變更寫成待上傳的事件（SYNC-20.1 到 SYNC-27.1、SYNC-33.1 到 SYNC-35.1、SYNC-38.1），把收到的事件判定、合併之後寫進支出、分類、群組和成員的資料（SYNC-28.2 到 SYNC-32.1、SYNC-36.2、SYNC-37.1、SYNC-39.1 到 SYNC-44.1）。
 
 紀錄是共同帳本裡同步的一筆資料，有支出、分類、群組和成員四種，用種類和 ID 辨認。每筆紀錄分成幾個單位（SYNC-5.1、SYNC-6.1），合併時一個單位整個一起換。事件是一次修改：改一筆紀錄的一個或幾個單位，或永久刪除這筆紀錄；一筆紀錄的第一個事件帶著它的每一個單位。事件有哪些欄位、各是什麼型別，定義在 `packages/domain` 的程式裡。每個事件帶著格式版本，這裡寫的是格式版本 1 的規則。把支出移到垃圾桶或還原（ledger），改的是「在不在垃圾桶裡」這個單位，不是永久刪除。
 
-時間戳記由毫秒、計數器和裝置 ID 組成（SYNC-1.1）；每個事件有一個，它改的單位都用這一個。校正後的時間是手機的時鐘加上它和伺服器的時間差（ADR-0015）。手機看過的最新時間戳記，是它合併過的事件裡最晚的時間戳記，自己的修改也算（SYNC-15.1）。單位根據的版本，是寫下這次修改時，這個單位在那支手機上原本的時間戳記；原本沒有這個單位就不帶。收到時間是 API 收到事件的時間，同一個事件在每支手機上都一樣；手機判定自己還沒送出的修改時沒有收到時間。
+時間戳記由毫秒、計數器和裝置 ID 組成（SYNC-1.1）；每個事件有一個，它改的單位都用這一個。校正後的時間是手機的時鐘加上它和伺服器的時間差（ADR-0015）。手機看過的最新時間戳記，是它合併過的事件裡最晚的時間戳記，自己的修改也算（SYNC-15.1）。單位根據的版本，是寫下這次修改時，這個單位在那支手機上原本的時間戳記；原本沒有這個單位就不帶。收到時間是 API 收到事件的時間，上傳的裝置 ID 是上傳這個事件的那支手機的裝置 ID，兩者是事件的外層資訊，同一個事件在每支手機上都一樣；手機判定自己還沒送出的修改時沒有外層資訊，也就沒有收到時間。
 
-判定只看一個事件和它的收到時間，結果是可以套用、不套用，或不認得它的格式版本（SYNC-3.1 到 SYNC-10.1），所以每支手機對同一個事件的判定都一樣；不套用的事件不合併，就像不存在。合併是把可以套用的事件併進它指的那筆紀錄（SYNC-11.1 到 SYNC-13.1、SYNC-15.1 到 SYNC-17.1、SYNC-19.1）。合併的結果是這筆紀錄每個單位的值和時間戳記；紀錄被永久刪除之後只剩刪除紀錄，也就是刪除它的事件的時間戳記。手機自己的金額修改，是這支手機自己對一筆支出最後一次改金額那一組時，那個事件的時間戳記和那一組的內容；別人的事件有沒有蓋掉它，只拿這兩個相比（SYNC-14.1）。
+判定只看一個事件和它的外層資訊，結果是可以套用、不套用，或不認得它的格式版本（SYNC-3.1 到 SYNC-10.2、SYNC-65.1），所以每支手機對同一個事件的判定都一樣；不套用的事件不合併，就像不存在。合併是把可以套用的事件併進它指的那筆紀錄（SYNC-11.1 到 SYNC-13.1、SYNC-15.1 到 SYNC-17.1、SYNC-19.1）。合併的結果是這筆紀錄每個單位的值和時間戳記；紀錄被永久刪除之後只剩刪除紀錄，也就是刪除它的事件的時間戳記。手機自己的金額修改，是這支手機自己對一筆支出最後一次改金額那一組時，那個事件的時間戳記和那一組的內容；別人的事件有沒有蓋掉它，只拿這兩個相比（SYNC-14.1）。
 
 下面的情境裡，時間戳記寫成「毫秒/計數器/裝置 ID」，例如 `2000/0/phone-a`。Dinner 是這樣一筆支出：標題「Dinner」，日期 `2025-03-14`，沒有備註，分類是 Food & Dining、`#D81B60`，金額那一組是 10001 USD、Casey 付 10001、分攤依序是 Blake 3334、Taylor 3334、Casey 3333，不在垃圾桶裡；它的第一個事件的時間戳記是 `1000/0/phone-a`。
 
-手機 app 這一邊，共同帳本是在這支手機上已經變成共同帳本的群組（SYNC-20.1），它的紀錄是這個群組、它的成員和前成員、它的分類和它的支出，封存的分類和垃圾桶裡的支出也算；個人支出、個人分類和還不是共同帳本的群組都不是共同帳本的紀錄。群組什麼時候變成共同帳本（邀請）不在這裡。這支手機的裝置 ID 是群組變成共同帳本時交給手機 app 的裝置 ID。手機還沒有從伺服器得知時間差之前，校正後的時間就是手機的時鐘。本機資料替共同帳本的每筆紀錄記著每個單位的值和時間戳記、它的刪除紀錄，以及手機看過的最新時間戳記；支出、分類、群組和成員的資料（ledger、categories、groups）存的是合併的結果。紀錄建立的時間戳記，是它合併過的事件裡最早的時間戳記；群組變成共同帳本時就有的紀錄，是那時給它的時間戳記。待上傳的事件是這支手機寫下、還沒上傳的事件，每個有自己的事件 ID 和所屬的共同帳本，依寫下的先後排列。收到的事件是 API 轉來、已經解密的事件，帶著它的事件 ID、上傳它的裝置 ID、收到時間和內容；套用是把一次交來的收到的事件判定、合併並存下（SYNC-28.1）。套用之後照新的資料顯示的畫面，不包括已經開著的支出表單（New Expense 和 Edit Expense）：表單裡填的內容，和它列出的群組、成員和分類，都不因套用而改變。事件的大小是它的內容寫成 JSON（JavaScript 的 `JSON.stringify`，沒有多餘的空白）、以 UTF-8 編碼後的 bytes 數，加上加密多出來的 41 bytes（ADR-0015、ADR-0021）。
+手機 app 這一邊，共同帳本是在這支手機上已經變成共同帳本的群組（SYNC-20.1），它的紀錄是這個群組、它的成員和前成員、它的分類和它的支出，封存的分類和垃圾桶裡的支出也算；個人支出、個人分類和還不是共同帳本的群組都不是共同帳本的紀錄。群組什麼時候變成共同帳本（邀請）不在這裡。這支手機的裝置 ID 是群組變成共同帳本時交給手機 app 的裝置 ID。手機還沒有從伺服器得知時間差之前，校正後的時間就是手機的時鐘。本機資料替共同帳本的每筆紀錄記著每個單位的值和時間戳記、它的刪除紀錄，以及手機看過的最新時間戳記；支出、分類、群組和成員的資料（ledger、categories、groups）存的是合併的結果。紀錄建立的時間戳記，是它合併過的事件裡最早的時間戳記；群組變成共同帳本時就有的紀錄，是那時給它的時間戳記。待上傳的事件是這支手機寫下、還沒上傳的事件，每個有自己的事件 ID 和所屬的共同帳本，依寫下的先後排列。收到的事件是 API 轉來、已經解密的事件，帶著它的事件 ID、上傳它的裝置 ID、收到時間和內容；套用是把一次交來的收到的事件判定、合併並存下（SYNC-28.2）。套用之後照新的資料顯示的畫面，不包括已經開著的支出表單（New Expense 和 Edit Expense）：表單裡填的內容，和它列出的群組、成員和分類，都不因套用而改變。事件的大小是它的內容寫成 JSON（JavaScript 的 `JSON.stringify`，沒有多餘的空白）、以 UTF-8 編碼後的 bytes 數，加上加密多出來的 41 bytes（ADR-0015、ADR-0021）。
 
-手機 app 的情境裡，這支手機的裝置 ID 是 `phone-a`，別支手機是 `phone-b`；名字是 Taylor，Brisbane 是 Taylor 建立、依序加入 Casey 和 Blake 的群組，Tokyo 是另一個群組，各有九個預設分類（CATEGORIES-2.1）。T 是 `2026-10-30T04:00:00Z` 的毫秒數：除非另外說明，Brisbane 在校正後的時間 T 變成共同帳本，Tokyo 不是共同帳本，之後的變更都發生在校正後的時間 T+60000，所以這支手機寫的事件，時間戳記依序是 `T+60000/0/phone-a`、`T+60000/1/phone-a`，依此類推。這些情境裡的 Dinner 是在 Brisbane 用 New Expense 新增的那一筆（LEDGER-54.1）：10001 USD、`2026-10-30`、Food & Dining、沒有備註，Casey 付款，分攤依序是 Blake 3334、Taylor 3334、Casey 3333。Lunch 是 `phone-b` 新增的支出：3000 USD、`2026-10-30`、Food & Dining、沒有備註，Casey 付款，分攤依序是 Taylor 1500、Casey 1500，不在垃圾桶裡。別支手機的事件，收到時間都是它的時間戳記的毫秒，除非另外說明。
+手機 app 的情境裡，這支手機的裝置 ID 是 `phone-a`，別支手機是 `phone-b`；名字是 Taylor，Brisbane 是 Taylor 建立、依序加入 Casey 和 Blake 的群組，Tokyo 是另一個群組，各有九個預設分類（CATEGORIES-2.1）。T 是 `2026-10-30T04:00:00Z` 的毫秒數：除非另外說明，Brisbane 在校正後的時間 T 變成共同帳本，Tokyo 不是共同帳本，之後的變更都發生在校正後的時間 T+60000，所以這支手機寫的事件，時間戳記依序是 `T+60000/0/phone-a`、`T+60000/1/phone-a`，依此類推。這些情境裡的 Dinner 是在 Brisbane 用 New Expense 新增的那一筆（LEDGER-54.1）：10001 USD、`2026-10-30`、Food & Dining、沒有備註，Casey 付款，分攤依序是 Blake 3334、Taylor 3334、Casey 3333。Lunch 是 `phone-b` 新增的支出：3000 USD、`2026-10-30`、Food & Dining、沒有備註，Casey 付款，分攤依序是 Taylor 1500、Casey 1500，不在垃圾桶裡。別支手機的事件，收到時間都是它的時間戳記的毫秒，上傳的裝置 ID 都是它的時間戳記的裝置 ID，除非另外說明。
 
 事件 API 是 API 替手機存下和轉送共同帳本事件的三個請求（ADR-0003、ADR-0016、ADR-0024）：建立群組是 `PUT /groups/<群組 ID>`，沒有內容；上傳是 `POST /groups/<群組 ID>/events`，內容是 JSON；下載是 `GET /groups/<群組 ID>/events?after=<cursor>`。三個都是簽名的請求，先通過 sharing 對簽名的請求的檢查，才輪到這裡的規則。上傳的內容和每種回應有哪些欄位、各是什麼型別，定義在 `packages/domain` 的程式裡，手機 app 和 API 用同一份（SYNC-53.1、SYNC-62.1）；API 回答建立好了、回答上傳的事件的序號、回傳一頁，指的都是狀態碼 200 和通過 SYNC-62.1 判定的回應。API 上的群組是 API 替一個共同帳本記的東西：群組 ID、成員手機、現在的鑰匙世代，和它存著的事件；群組 ID 就是手機上那個群組的 ID，是小寫的第 4 版 UUID。成員手機是 API 記在這個群組裡的裝置；建立群組的手機是它的第一支成員手機，別的手機怎麼成為成員手機（邀請和同意）、怎麼不再是，都不在這裡。鑰匙世代是手機加密事件用的那一把群組鑰匙的編號（ADR-0015），API 只知道編號；新的群組是 1，怎麼換到下一個不在這裡。
 
@@ -23,6 +23,10 @@
 事件 API 拒絕一個請求，是回應一個帶著原因的拒絕，不做這個請求要做的事：每個群組的成員手機、鑰匙世代、事件和進度都和收到它之前一樣。原因是內容不對（sharing 的同一個原因，狀態碼 400）、不是成員（403）、鑰匙世代（409）或群組滿了（413）。事件 API 拒絕的請求已經通過 sharing 的檢查，所以照樣算進這支裝置的請求數，它的 nonce 也用掉了（SYNC-60.1）。事件 API 只有這三個請求：同樣的路徑配上別的方法，不是事件 API 的請求（SYNC-63.1）。
 
 API 的情境（SYNC-45.1 到 SYNC-64.1）沿用 sharing 的 API 情境：T 是 `2026-11-18T06:32:00Z`，也就是 1794983520000，不是上面手機 app 情境的 T；Taylor 的手機和 Casey 的手機各有 sharing 寫的裝置 ID，都已經註冊；除非另外說明，API 的時間是 T。Brisbane 是群組 ID `9b2f6c1e-8d47-4f3a-b1c5-2e7d90a4f6b8`，Tokyo 是 `c4a1e2d3-5b6f-4a7c-9d8e-0f1a2b3c4d5e`；除非另外說明，Brisbane 已經由 Taylor 的手機建立，沒有事件，Tokyo 還沒有建立。事件 A、B、C 等各有自己的事件 ID；除非另外說明，內容是 200 bytes，用鑰匙世代 1 上傳。情境說一支手機是成員手機，而那個群組不是它建立的，是測試直接把它記成成員手機：讓手機加入群組的請求還不在這裡。
+
+手機 app 和 API 同步（SYNC-66.1 到 SYNC-79.1、SYNC-82.1 到 SYNC-93.1）：同步一個共同帳本，是這支手機為它先下載、再上傳一次（SYNC-68.1）。同步送的請求都是 sharing 的送請求，送到這個 build 設定的 API 網址，所以每個都簽名，手機還沒有裝置身分時先產生並註冊，時鐘不準和請求太多時各照 sharing 再送一次。這支手機在一個共同帳本的 cursor，是它已經存好序號到這裡為止的事件，存在本機資料；群組剛變成共同帳本時是 0。群組鑰匙是一個共同帳本的一個鑰匙世代的那一把 32 bytes 的鑰匙（ADR-0015），是 secure store 裡的一個項目（SYNC-66.1）；鑰匙怎麼產生、怎麼交給別支手機、什麼時候刪，都不在這裡。這支手機的鑰匙世代，是它有這個共同帳本的群組鑰匙的世代裡最大的那一個。加密和解開事件用的是 sharing 的加密工具（SHARING-1.1 到 SHARING-4.2），所以密文的 bytes 數就是事件的大小。API 確認一個上傳，是 API 回答上傳的事件的序號（SYNC-50.1），而且回應依請求的順序列出請求裡的每個事件 ID，不多也不少。同步結束，是這次同步不再送請求，也不再改本機資料：它做完了，或中途停下。之後再試，是下一次同步這個共同帳本時（SYNC-88.1、SYNC-89.1）從本機資料接著做；手機 app 不另外計時重試。一個待上傳事件的時間戳記超前多少，是它的毫秒減掉校正後的時間；檢查見 SYNC-84.1 到 SYNC-87.1，檢查過沒有也記在本機資料。app 打開，是 app 啟動，或從背景回到前景。這支手機的本機資料回到較早的樣子時，這些都跟著回去（SYNC-92.1）。
+
+同步的情境（SYNC-66.1 到 SYNC-79.1、SYNC-82.1 到 SYNC-93.1）沿用手機 app 的情境：T 是 `2026-10-30T04:00:00Z` 的毫秒數，Brisbane 是 Taylor 建立、依序加入 Casey 和 Blake 的群組，有九個預設分類。Taylor 的手機和 Casey 的手機是 Brisbane 的兩支成員手機，各有自己的裝置身分，都註冊好了，裝置 ID 寫成 A 和 B，事件的時間戳記也用它們，例如 `T+60000/0/A`。除非另外說明：兩支手機都在 T 讓 Brisbane 變成共同帳本，之後手機的時鐘和 API 的時間都是 T+60000，時間差是 0；兩支手機的 secure store 裡都有 Brisbane 鑰匙世代 1 的同一把群組鑰匙，API 上 Brisbane 的鑰匙世代是 1、沒有事件；兩支手機都沒有待上傳的事件，cursor 是 0；Tokyo 不是共同帳本；Dinner、Lunch、Taxi 和 Coffee 是 Brisbane 的支出。讓手機加入共同帳本的功能還不在這裡，所以 Casey 的手機是測試直接設定的：它的本機資料是 Taylor 的手機在 Brisbane 變成共同帳本之前的複本，兩支手機再各自讓 Brisbane 變成共同帳本，API 上由測試把它記成成員手機，群組鑰匙也由測試放進兩支手機的 secure store。情境說「同步」而沒有說哪個共同帳本，是同步 Brisbane；說一支手機上傳了什麼，是它存下那些變更之後同步過；下載的請求寫成 after=<cursor>；說 API 怎麼回答一個請求而真的 API 不會這樣回答時，是測試替 API 回答。
 
 ## Requirements
 
@@ -282,14 +286,24 @@ IF 事件的時間戳記的毫秒比它的收到時間晚超過 600,000 毫秒�
 - **WHEN** `phone-a` 有 Dinner，看過的最新時間戳記是 `1700000000000/0/phone-a`；它收到時鐘調快一小時、改 Dinner 標題的事件，和同樣調快一小時、永久刪除 Dinner 的事件，之後在校正後的時間 1700000001000 修改
 - **THEN** 兩個事件都不套用，Dinner 和看過的最新時間戳記都不變；新修改的時間戳記是 `1700000001000/0/phone-a`
 
-### Requirement: SYNC-10.1 違反不只一種規定時的原因
+### Requirement: SYNC-10.2 違反不只一種規定時的原因
 
-IF 事件違反的規定不只一種，THEN the domain package SHALL 回報這個順序裡最前面的原因：結構、時鐘、幣別、加總。
+IF 事件違反的規定不只一種，THEN the domain package SHALL 回報這個順序裡最前面的原因：結構、裝置、時鐘、幣別、加總。
 
 #### Scenario: 結構和時鐘
 
 - **WHEN** 事件的標題是空字串，時間戳記也比收到時間晚一小時
 - **THEN** 不套用，原因是結構
+
+#### Scenario: 結構和裝置
+
+- **WHEN** 事件的標題是空字串，時間戳記的裝置 ID 也不是上傳的裝置 ID
+- **THEN** 不套用，原因是結構
+
+#### Scenario: 裝置和時鐘
+
+- **WHEN** 事件的時間戳記的裝置 ID 不是上傳的裝置 ID，時間戳記也比收到時間晚一小時；或裝置 ID 不對，幣別也是 `XYZ`
+- **THEN** 不套用，原因是裝置
 
 #### Scenario: 時鐘和幣別
 
@@ -648,12 +662,17 @@ WHEN 群組變成共同帳本，the mobile app SHALL 在同一個 SQLite transac
 
 ### Requirement: SYNC-21.1 共同帳本的變更和它的事件一起存下
 
-WHEN 使用者在共同帳本做了要寫成事件的變更（SYNC-22.1 到 SYNC-25.1、SYNC-33.1、SYNC-34.1、SYNC-38.1），the mobile app SHALL 在存下這次變更的同一個 SQLite transaction 裡，存下它的事件、這些紀錄改過的單位和時間戳記，以及手機看過的最新時間戳記，其中任何一筆存不進去就都不留下，畫面照這個動作原本存不進去時的提示；每個事件的格式版本是 1，判定為可以套用（SYNC-3.1 到 SYNC-10.1），屬於這個共同帳本，有一個新的事件 ID，是小寫的第 4 版 UUID，時間戳記是用校正後的時間和這支手機的裝置 ID 取的新時間戳記（SYNC-2.1），一次變更寫好幾個事件時一個接一個各取一個；待上傳的事件依寫下的先後排列，重新啟動 app 之後還在，事件 ID 和順序都不變。
+WHEN 使用者在共同帳本做了要寫成事件的變更（SYNC-22.1 到 SYNC-25.1、SYNC-33.1、SYNC-34.1、SYNC-38.1），the mobile app SHALL 在存下這次變更的同一個 SQLite transaction 裡，存下它的事件、這些紀錄改過的單位和時間戳記，以及手機看過的最新時間戳記，其中任何一筆存不進去就都不留下，畫面照這個動作原本存不進去時的提示；每個事件的格式版本是 1，判定為可以套用（SYNC-3.1 到 SYNC-10.2），屬於這個共同帳本，有一個新的事件 ID，是小寫的第 4 版 UUID，時間戳記是用校正後的時間和這支手機的裝置 ID 取的新時間戳記（SYNC-2.1），一次變更寫好幾個事件時一個接一個各取一個；待上傳的事件依寫下的先後排列，重新啟動 app 之後還在，事件 ID 和順序都不變。
 
 #### Scenario: 同一毫秒裡的幾次變更
 
 - **WHEN** 在 T+60000 新增 Dinner、把它移到垃圾桶、按 Undo，到了 T+120000 再把標題改成「Supper」
 - **THEN** 四個事件的時間戳記依序是 `T+60000/0/phone-a`、`T+60000/1/phone-a`、`T+60000/2/phone-a`、`T+120000/0/phone-a`
+
+#### Scenario: 得知時間差之後
+
+- **WHEN** 手機的時間差是 -3,600,000 毫秒，手機的時鐘是 T+3,660,000 時新增 Dinner
+- **THEN** 事件的時間戳記是 `T+60000/0/phone-a`
 
 #### Scenario: 事件和事件 ID
 
@@ -844,9 +863,9 @@ IF 一次變更要寫的事件裡，有一個的大小超過 65,536 bytes，THEN
 - **WHEN** 新增備註是 70,000 個「a」的個人支出和 Tokyo 的支出，把 Tokyo 改名為 70,000 個「a」，再加入名稱是 70,000 個「a」的成員
 - **THEN** 都存下，沒有提示框
 
-### Requirement: SYNC-28.1 套用收到的事件
+### Requirement: SYNC-28.2 套用收到的事件
 
-WHEN 手機 app 套用共同帳本收到的事件，the mobile app SHALL 依交來的順序，用每個事件的收到時間判定它（SYNC-3.1 到 SYNC-10.1），把可以套用的合併進它指的紀錄（SYNC-11.1 到 SYNC-19.1），並在同一個 SQLite transaction 裡存下這次交來的事件合併後的單位、時間戳記、刪除紀錄、手機看過的最新時間戳記（SYNC-15.1）和合併的結果，其中任何一筆存不進去就都不留下。同一個事件再收到，或這支手機自己寫的事件再收到，本機資料不變；同一組事件不管以什麼順序收到，每筆紀錄合併的結果都一樣（SYNC-17.1）。
+WHEN 手機 app 套用共同帳本收到的事件，the mobile app SHALL 依交來的順序，用每個事件的外層資訊，也就是收到時間和上傳的裝置 ID，判定它（SYNC-3.1 到 SYNC-10.2、SYNC-65.1），把可以套用的合併進它指的紀錄（SYNC-11.1 到 SYNC-19.1），並在同一個 SQLite transaction 裡存下這次交來的事件合併後的單位、時間戳記、刪除紀錄、手機看過的最新時間戳記（SYNC-15.1）和合併的結果，其中任何一筆存不進去就都不留下。同一個事件再收到，或這支手機自己寫的事件再收到，本機資料不變；同一組事件不管以什麼順序收到，每筆紀錄合併的結果都一樣（SYNC-17.1）。
 
 #### Scenario: 別支手機新增的支出
 
@@ -872,6 +891,11 @@ WHEN 手機 app 套用共同帳本收到的事件，the mobile app SHALL 依交�
 
 - **WHEN** 新增 Dinner 並把標題改成「Supper」之後，把這兩個待上傳的事件當成收到的事件套用
 - **THEN** 本機資料不變
+
+#### Scenario: 冒用別的裝置的事件
+
+- **WHEN** 有 Dinner，套用上傳的裝置 ID 是 `phone-b`、時間戳記卻是 `T+62000/0/phone-a` 的事件，它把 Dinner 的標題改成「Hacked」；再新增 Taxi
+- **THEN** Dinner 的標題不變；留下一筆不套用的紀錄，原因是裝置（SYNC-31.1）；Taxi 的事件的時間戳記是 `T+60000/1/phone-a`
 
 #### Scenario: 比手機的時間晚的事件
 
@@ -983,7 +1007,7 @@ WHEN 套用永久刪除共同帳本支出的事件，the mobile app SHALL 把這
 
 ### Requirement: SYNC-31.1 不套用的事件不改資料，並留下紀錄
 
-IF 收到的事件被判定不套用（SYNC-10.1），THEN the mobile app SHALL 不改任何紀錄，不提高手機看過的最新時間戳記，並留下一筆紀錄：這個事件的 ID、上傳它的裝置 ID、收到時間和內容，它所屬的共同帳本，以及不套用的原因；同一個事件 ID 再收到時不多留一筆，排在它後面的事件照常套用，紀錄在重新啟動 app 之後還在。
+IF 收到的事件被判定不套用（SYNC-10.2），THEN the mobile app SHALL 不改任何紀錄，不提高手機看過的最新時間戳記，並留下一筆紀錄：這個事件的 ID、上傳它的裝置 ID、收到時間和內容，它所屬的共同帳本，以及不套用的原因；同一個事件 ID 再收到時不多留一筆，排在它後面的事件照常套用，紀錄在重新啟動 app 之後還在。
 
 #### Scenario: 四種原因
 
@@ -1851,3 +1875,671 @@ IF 建立群組或上傳的請求的網址帶了查詢，THEN the API SHALL 拒�
 
 - **WHEN** Casey 的手機不是 Brisbane 的成員手機，送 `PUT /groups/9b2f6c1e-8d47-4f3a-b1c5-2e7d90a4f6b8?x`，和帶著上傳的內容的 `POST /groups/9b2f6c1e-8d47-4f3a-b1c5-2e7d90a4f6b8/events?x`
 - **THEN** 兩個請求都被拒絕，原因是內容不對，不是不是成員
+
+### Requirement: SYNC-65.1 時間戳記的裝置 ID 不是上傳的裝置時不套用
+
+IF 事件的時間戳記的裝置 ID 和上傳它的裝置 ID 不是一模一樣的文字，THEN the domain package SHALL 判定它不套用，原因是裝置。只看事件自己的時間戳記：單位根據的版本可以是任何裝置的。沒有外層資訊時不檢查這一條。
+
+#### Scenario: 冒用別的裝置
+
+- **WHEN** 上傳的裝置 ID 是 `phone-b`，事件的時間戳記是 `2000/0/phone-a`
+- **THEN** 不套用，原因是裝置
+
+#### Scenario: 自己的裝置
+
+- **WHEN** 上傳的裝置 ID 是 `phone-b`，事件的時間戳記是 `2000/0/phone-b`
+- **THEN** 可以套用
+
+#### Scenario: 寫法要一模一樣
+
+- **WHEN** 上傳的裝置 ID 是 `phone-b`，事件的時間戳記的裝置 ID 是 `Phone-B`、`phone-b2` 或 `phone-`
+- **THEN** 都不套用，原因是裝置
+
+#### Scenario: 根據的版本是別的裝置的
+
+- **WHEN** 上傳的裝置 ID 是 `phone-b`，事件在 `3000/0/phone-b` 改 Dinner 的標題，根據的版本是 `1000/0/phone-a`
+- **THEN** 可以套用
+
+#### Scenario: 永久刪除的事件
+
+- **WHEN** 上傳的裝置 ID 是 `phone-b`，永久刪除 Dinner 的事件的時間戳記是 `2000/0/phone-a`
+- **THEN** 不套用，原因是裝置
+
+#### Scenario: 還沒送出的修改
+
+- **WHEN** 手機判定自己還沒送出的修改，沒有外層資訊
+- **THEN** 可以套用
+
+### Requirement: SYNC-66.1 群組鑰匙是 secure store 裡的項目
+
+The mobile app SHALL 把 secure store 裡名稱是 `group-key.<群組 ID>.<鑰匙世代的十進位寫法>` 的項目，當成那個共同帳本那個鑰匙世代的群組鑰匙：值是 64 個小寫十六進位字元，也就是 32 bytes；沒有這個項目，或它的值不是這樣寫的，這支手機就沒有那個世代的群組鑰匙。讀這些項目用的設定和 seed 的項目一樣（SHARING-20.1）。IF 這支手機沒有一個共同帳本任何世代的群組鑰匙，或讀 secure store 時它回報錯誤，THEN the mobile app SHALL 在同步這個共同帳本時不上傳，待上傳的事件都留著，之後再試。
+
+#### Scenario: 有鑰匙
+
+- **WHEN** Taylor 的手機的 secure store 裡有 `group-key.<Brisbane 的群組 ID>.1`，值是 64 個小寫十六進位字元；它新增 Dinner 之後同步
+- **THEN** 上傳的內容用這 32 bytes 解得開（SYNC-67.1）
+
+#### Scenario: 沒有鑰匙
+
+- **WHEN** Taylor 的手機的 secure store 裡沒有 Brisbane 的群組鑰匙，新增 Dinner 之後同步
+- **THEN** API 只收到下載的請求；Dinner 存下了，它的事件仍待上傳。之後 secure store 裡有了 `group-key.<Brisbane 的群組 ID>.1`，再同步，事件就上傳了
+
+#### Scenario: 值的寫法不對
+
+- **WHEN** 那個項目的值是 62 個十六進位字元、大寫的十六進位，或文字 `not a key`
+- **THEN** 這支手機沒有那個世代的群組鑰匙：同步時不上傳
+
+#### Scenario: 別的共同帳本的鑰匙
+
+- **WHEN** secure store 裡只有 `group-key.<Tokyo 的群組 ID>.1`，Taylor 的手機在 Brisbane 新增 Dinner 之後同步
+- **THEN** 不上傳，Dinner 的事件仍待上傳
+
+#### Scenario: secure store 一時讀不了
+
+- **WHEN** 讀 secure store 時它回報錯誤（例如手機重開機之後還沒解鎖過），Taylor 的手機新增 Dinner 之後同步；之後讀得到了，再同步
+- **THEN** 第一次同步之後 Dinner 的事件仍待上傳，secure store 不變；第二次上傳了它
+
+### Requirement: SYNC-67.1 事件用群組鑰匙加密之後才上傳
+
+WHEN 手機 app 上傳事件，the mobile app SHALL 讓請求裡每個事件的內容是這個事件的密文（SHARING-1.1），請求的鑰匙世代是這支手機的鑰匙世代：鑰匙是這個共同帳本那個世代的群組鑰匙；明文是事件的內容寫成 JSON（`JSON.stringify`，沒有多餘的空白）的 UTF-8 編碼；nonce 是 `expo-crypto` 的 `getRandomValues` 或 `getRandomBytesAsync` 給的 24 bytes，每加密一次換一個，同一個事件再上傳時也換；附加資料是五行 ASCII 文字以換行（`0x0a`）相連、最後一行後面沒有換行的 bytes，依序是 `shared-expense/event/v1`、群組 ID、事件 ID、這支手機的裝置 ID 和鑰匙世代的十進位寫法。事件的內容只以密文離開手機。
+
+#### Scenario: 別支手機解得開
+
+- **WHEN** Taylor 的手機新增 Dinner 之後同步
+- **THEN** 上傳的請求的鑰匙世代是 1；用 Brisbane 鑰匙世代 1 的群組鑰匙，和 `shared-expense/event/v1`、Brisbane 的群組 ID、這個事件的事件 ID、A、`1` 這五行附加資料，解開 API 存下的內容，得到的就是 Dinner 的事件的 JSON；內容的 bytes 數是這段 JSON 的 bytes 數加 41
+
+#### Scenario: 附加資料差一項就解不開
+
+- **WHEN** 解開時，附加資料的群組 ID 換成 Tokyo 的、事件 ID 換成另一個事件的、裝置 ID 換成 B、鑰匙世代換成 `2`，或最後多一個換行
+- **THEN** 都解不開
+
+#### Scenario: 每次加密都換 nonce
+
+- **WHEN** Taylor 的手機上傳三個事件，回應在路上丟了，下一次同步再上傳一次
+- **THEN** 六份密文的 nonce 都不同，都是 `expo-crypto` 的 `getRandomValues` 或 `getRandomBytesAsync` 給的，沒有用到 `getRandomBytes`
+
+#### Scenario: 這支手機的鑰匙世代
+
+- **WHEN** API 上 Brisbane 的鑰匙世代是 2，Taylor 的手機有鑰匙世代 1 和 2 的群組鑰匙，新增 Dinner 之後同步
+- **THEN** 上傳的請求的鑰匙世代是 2；內容用鑰匙世代 2 的鑰匙和最後一行是 `2` 的附加資料解得開，用鑰匙世代 1 的解不開
+
+#### Scenario: 內容只以密文離開手機
+
+- **WHEN** Taylor 的手機新增標題是「Zanzibar ferry」、備註是「Stone Town pier」的支出之後同步
+- **THEN** 在手機送出的每個請求的網址、標頭和內容裡，和 API 的資料庫裡，都找不到「Zanzibar」和「Stone Town」，不論是原文、十六進位還是 Base64
+
+### Requirement: SYNC-68.1 同步一個共同帳本時先下載，再上傳
+
+WHEN 手機 app 同步一個共同帳本，the mobile app SHALL 先下載這個共同帳本的事件（SYNC-69.1），下載完了才上傳它待上傳的事件（SYNC-76.1），沒有待上傳的事件時不送上傳的請求；只同步這一個共同帳本：別的共同帳本待上傳的事件、個人的資料和還不是共同帳本的群組，都不送出也不改。
+
+#### Scenario: 有待上傳的事件
+
+- **WHEN** Taylor 的手機新增 Dinner 之後同步
+- **THEN** API 依序收到這支手機對 Brisbane 的下載（after=0）和上傳，沒有別的請求；Dinner 的事件存在 API 上，序號是 1，手機上沒有待上傳的事件
+
+#### Scenario: 沒有待上傳的事件
+
+- **WHEN** Taylor 的手機沒有待上傳的事件，同步
+- **THEN** API 只收到一個下載的請求
+
+#### Scenario: 別人的修改先下來
+
+- **WHEN** Casey 的手機上傳了 Lunch；Taylor 的手機新增 Dinner 之後同步
+- **THEN** Taylor 的手機先下載到 Lunch 並套用，再上傳 Dinner：Dinner 的序號是 2，Taylor 的手機的 Brisbane 有 Lunch 和 Dinner
+
+#### Scenario: 只同步這一個共同帳本
+
+- **WHEN** Taylor 的手機上 Brisbane 和 Tokyo 都是共同帳本，各有一個待上傳的事件，另有一筆個人支出；同步 Brisbane
+- **THEN** API 只收到對 Brisbane 的請求；Tokyo 的事件仍待上傳
+
+### Requirement: SYNC-69.1 從 cursor 一頁一頁下載
+
+WHEN 手機 app 下載一個共同帳本的事件，the mobile app SHALL 用這支手機在這個共同帳本的 cursor 下載一頁，把這一頁的事件依序號套用（SYNC-28.2），交去套用的是 API 給每個事件的事件 ID、上傳的裝置 ID 和收到時間，和解開的內容（SYNC-72.1），再把 cursor 移到這一頁最後一個事件的序號；這一頁說之後還有事件時，用新的 cursor 再下載，直到一頁說之後沒有事件為止。沒有事件的一頁不移動 cursor。這支手機自己上傳的事件也會下載到，套用它們不改本機資料。
+
+#### Scenario: 一頁
+
+- **WHEN** Casey 的手機上傳了 Lunch 的第一個事件和把它的標題改成「Brunch」的事件；Taylor 的手機同步兩次
+- **THEN** 第一次的下載是 after=0，之後 Taylor 的手機的 Brisbane 有 Brunch；第二次的下載是 after=2
+
+#### Scenario: 好幾頁
+
+- **WHEN** Casey 的手機上傳了 250 筆支出的第一個事件；Taylor 的手機同步兩次
+- **THEN** 第一次同步的下載依序是 after=0、after=100 和 after=200，之後 Taylor 的手機的 Brisbane 有這 250 筆支出；第二次的下載是 after=250
+
+#### Scenario: 剛好兩頁
+
+- **WHEN** Casey 的手機上傳了 200 筆支出的第一個事件；Taylor 的手機同步
+- **THEN** 下載依序是 after=0 和 after=100：第二頁說之後沒有事件了，沒有第三個請求
+
+#### Scenario: 自己上傳的事件
+
+- **WHEN** Taylor 的手機上傳了 Dinner 之後，再同步兩次
+- **THEN** 前一次的下載是 after=0，下載到自己的事件，本機資料和待上傳的事件都不變，沒有不套用的紀錄；後一次的下載是 after=1
+
+#### Scenario: 沒有新的事件
+
+- **WHEN** Taylor 的手機的 cursor 是 2，Brisbane 沒有新的事件，連續同步三次
+- **THEN** 三次的下載都是 after=2
+
+### Requirement: SYNC-70.1 一頁的事件和 cursor 一起存下
+
+WHEN 手機 app 套用下載的一頁，the mobile app SHALL 在同一個 SQLite transaction 裡存下這一頁套用的結果（SYNC-28.2）和新的 cursor：其中任何一筆存不進去，或 app 在存好之前被結束，這一頁就一個事件都沒有套用，cursor 也沒有動，之後再同步時從原本的 cursor 下載；存好之後重新啟動 app，cursor 和套用的結果都還在。所以每個事件都會套用到，每筆紀錄只有一份。
+
+#### Scenario: 存到一半失敗
+
+- **WHEN** Casey 的手機上傳了 Lunch 的第一個事件、Taxi 的第一個事件和把 Brisbane 改名為「Brissie」的事件；Taylor 的手機同步時，不論套用這一頁的哪一筆寫入失敗
+- **THEN** Taylor 的手機的本機資料和同步之前一樣：沒有 Lunch 和 Taxi，群組仍叫 Brisbane；恢復之後再同步，下載是 after=0，三個事件都套用了，Lunch 和 Taxi 各只有一筆；再同步一次，下載是 after=3
+
+#### Scenario: 下載到一半被結束
+
+- **WHEN** Casey 的手機上傳了 250 筆支出的第一個事件；Taylor 的手機同步時，存好第一頁之後 app 就被結束，第二頁的回應沒有收到；重新啟動 app 之後再同步
+- **THEN** 這次的下載依序是 after=100 和 after=200，之後 Taylor 的手機的 Brisbane 有這 250 筆支出，每筆只有一份
+
+#### Scenario: 重新啟動之後
+
+- **WHEN** Taylor 的手機下載並套用了三個事件之後重新啟動 app，再同步
+- **THEN** 下載是 after=3
+
+### Requirement: SYNC-71.1 回應不是 cursor 之後的一頁時不套用
+
+IF 下載的請求沒有得到回應，API 的回應不是一頁（狀態碼 200 和通過 SYNC-62.1 判定的內容），或這一頁第一個事件的序號不是 cursor 的下一個，THEN the mobile app SHALL 不套用這個回應裡的任何事件，不移動 cursor，結束這次同步，不上傳；待上傳的事件都留著，之後再試。
+
+#### Scenario: 沒有網路
+
+- **WHEN** Taylor 的手機新增 Dinner 之後，在沒有網路時同步；網路恢復之後再同步
+- **THEN** 第一次沒有送出上傳的請求，Dinner 的事件仍待上傳，本機資料不變；第二次依序下載和上傳，Dinner 的事件存在 API 上
+
+#### Scenario: 回應不是一頁
+
+- **WHEN** Taylor 的手機新增 Dinner 之後同步，API 對下載回應狀態碼 200 和 `{}`、`{"events":[],"more":"no"}`、`{"events":[]}` 或 `not json`，或回應 500、404
+- **THEN** 都沒有送出上傳的請求，Dinner 的事件仍待上傳；下一次同步的下載仍是 after=0
+
+#### Scenario: 被 API 拒絕
+
+- **WHEN** API 因為不是成員拒絕 Taylor 的手機的下載
+- **THEN** 沒有送出上傳的請求，待上傳的事件都留著
+
+#### Scenario: 不是從 cursor 的下一個開始
+
+- **WHEN** Taylor 的手機的 cursor 是 0，API 回應的一頁只有一個序號是 2 的事件，它的內容是 Lunch 的第一個事件的密文
+- **THEN** Taylor 的手機沒有 Lunch，下一次同步的下載仍是 after=0
+
+#### Scenario: 超過 65,536 bytes 的事件
+
+- **WHEN** API 回應的內容裡，序號 1 的事件是 Lunch 的第一個事件的密文，序號 2 的事件的內容是 65,537 bytes
+- **THEN** 這個回應不是一頁（SYNC-62.1），所以整個不套用：Taylor 的手機沒有 Lunch，下一次同步的下載仍是 after=0
+
+### Requirement: SYNC-72.1 解不開的事件當成空的內容來判定
+
+IF 下載的事件，這支手機有它的鑰匙世代的群組鑰匙，卻解不開它的內容（SHARING-3.1），或解開的明文不是 UTF-8 的 JSON，THEN the mobile app SHALL 把它當成內容是空值的事件交去套用，所以它不套用，原因是結構，留下的紀錄的內容是空值（SYNC-31.1）；cursor 照樣往前，排在它後面的事件照常套用。解開一個事件用的是它的鑰匙世代的群組鑰匙和 SYNC-67.1 的附加資料，其中的事件 ID、裝置 ID 和鑰匙世代是 API 給這個事件的事件 ID、上傳的裝置 ID 和鑰匙世代。
+
+#### Scenario: 解不開
+
+- **WHEN** Casey 的手機依序上傳四個事件：Lunch 的第一個事件的密文改掉最後一個 byte 的；用另一把鑰匙加密的；加密時附加資料用了別的事件 ID 的；最後是好好加密的 Taxi 的第一個事件。Taylor 的手機同步
+- **THEN** Taylor 的手機的 Brisbane 有 Taxi，沒有 Lunch；留下三筆不套用的紀錄，原因都是結構，內容都是空值，各帶著事件 ID、B 和收到時間；下一次同步的下載是 after=4
+
+#### Scenario: 用別支手機的裝置 ID 加密
+
+- **WHEN** 一個事件加密時附加資料的裝置 ID 是 A，卻由 Casey 的手機上傳
+- **THEN** Taylor 的手機解不開它：不套用，原因是結構
+
+#### Scenario: 明文不是 JSON
+
+- **WHEN** Casey 的手機上傳的事件，明文是 `hello`，或是不是 UTF-8 的兩個 bytes `fffe`
+- **THEN** 都不套用，原因是結構，紀錄的內容是空值
+
+#### Scenario: 明文是 JSON，卻不是事件
+
+- **WHEN** Casey 的手機上傳的事件，明文是 `[1,2]`
+- **THEN** 不套用，原因是結構，紀錄的內容是 `[1,2]`（SYNC-31.1）
+
+### Requirement: SYNC-73.1 沒有那個鑰匙世代的群組鑰匙時停在那個事件
+
+IF 下載的一頁裡，有事件的鑰匙世代是這支手機沒有群組鑰匙的，THEN the mobile app SHALL 照常套用它前面的事件，把 cursor 移到它的前一個序號，不套用它和它後面的事件，不留下不套用的紀錄，這次同步不再下載，接著照常上傳；之後手機有了那個世代的群組鑰匙，同步時就從這個 cursor 接著套用。
+
+#### Scenario: 還沒拿到新的鑰匙
+
+- **WHEN** Casey 的手機用鑰匙世代 1 上傳了 Lunch；之後 API 上 Brisbane 的鑰匙世代是 2，Casey 的手機有鑰匙世代 2 的群組鑰匙，用它上傳了 Taxi 和 Coffee；Taylor 的手機只有鑰匙世代 1 的群組鑰匙，同步兩次
+- **THEN** Taylor 的手機的 Brisbane 有 Lunch，沒有 Taxi 和 Coffee，沒有不套用的紀錄；第一次只有一個下載（after=0），第二次的下載是 after=1
+
+#### Scenario: 拿到之後
+
+- **WHEN** 接著替 Taylor 的手機存下 Brisbane 鑰匙世代 2 的群組鑰匙，再同步兩次
+- **THEN** 前一次的下載是 after=1，之後 Taylor 的手機的 Brisbane 有 Taxi 和 Coffee；後一次的下載是 after=3
+
+#### Scenario: 停下的時候照常上傳
+
+- **WHEN** API 上 Brisbane 的鑰匙世代是 2；Casey 的手機先前用鑰匙世代 1 上傳了 Lunch；Taylor 的手機只有鑰匙世代 2 的群組鑰匙，新增 Dinner 之後同步
+- **THEN** Taylor 的手機沒有 Lunch，下一次同步的下載仍是 after=0；Dinner 的事件上傳了，序號是 2
+
+### Requirement: SYNC-74.1 遇到不認得格式版本的事件時停在那裡
+
+IF 下載的一頁裡，有事件的密文是這支手機不認得的格式版本（SHARING-4.2），或它解開的內容被判定為不認得格式版本（SYNC-3.1），THEN the mobile app SHALL 照常套用它前面的事件，把 cursor 移到它的前一個序號，不套用它和它後面的事件，不留下不套用的紀錄，這次同步不再下載，接著照常上傳；這個共同帳本照常記帳，別的共同帳本照常同步。之後每次同步都從這個 cursor 再下載，所以 app 更新到認得這個格式版本之後，就從這裡接著套用，不漏掉也不重複。
+
+#### Scenario: 格式版本 2 的事件
+
+- **WHEN** Casey 的手機依序上傳 Lunch 的第一個事件、一個格式版本是 2 的事件和 Taxi 的第一個事件；Taylor 的手機新增 Dinner 之後同步兩次
+- **THEN** Taylor 的手機的 Brisbane 有 Lunch 和 Dinner，沒有 Taxi，沒有不套用的紀錄；Dinner 的事件上傳了，序號是 4；兩次同步都只有一個下載，第一次是 after=0，第二次是 after=1
+
+#### Scenario: 密文的格式版本
+
+- **WHEN** Casey 的手機上傳的事件，內容的第一個 byte 是 `02`，後面接著 Taxi 的第一個事件；Taylor 的手機同步
+- **THEN** Taylor 的手機沒有 Taxi，沒有不套用的紀錄，下一次同步的下載仍是 after=0
+
+#### Scenario: 照常記帳
+
+- **WHEN** Taylor 的手機停在格式版本 2 的事件之後，新增 Coffee 並同步
+- **THEN** Coffee 存下了，它的事件也上傳了
+
+#### Scenario: 別的共同帳本
+
+- **WHEN** Taylor 的手機上 Tokyo 也是共同帳本，Casey 的手機在 Tokyo 上傳了 Sushi；Brisbane 停在格式版本 2 的事件時同步 Tokyo
+- **THEN** Taylor 的手機的 Tokyo 有 Sushi
+
+### Requirement: SYNC-75.1 等 app 更新的共同帳本在畫面上提示
+
+WHILE 一個共同帳本最近一次下載停在不認得格式版本的事件（SYNC-74.1），the mobile app SHALL 在它的畫面的大標題下面顯示一行「This group has changes from a newer version of the app. Update the app to see them.」，封存的共同帳本顯示在唯讀的提示（GROUPS-55.2）上面，重新啟動 app 之後、還沒再同步之前也顯示；一次同步下載到沒有事件為止都沒有再遇到不認得的格式版本，就不再顯示。別的群組的畫面不顯示這句話。
+
+#### Scenario: 顯示
+
+- **WHEN** Taylor 的手機的 Brisbane 停在格式版本 2 的事件，打開 Brisbane 的畫面
+- **THEN** 大標題「Brisbane」下面是「This group has changes from a newer version of the app. Update the app to see them.」
+
+#### Scenario: 別的群組
+
+- **WHEN** 接著打開 Tokyo 的畫面
+- **THEN** 沒有這句話
+
+#### Scenario: 重新啟動之後
+
+- **WHEN** 沒有網路時重新啟動 app，打開 Brisbane 的畫面
+- **THEN** 仍有這句話
+
+#### Scenario: 封存的共同帳本
+
+- **WHEN** 封存 Brisbane 之後，從 Archived Groups 打開它的畫面
+- **THEN** 由上而下是大標題「Brisbane」、這句話、「Archived group. Expenses and allocations are read-only.」和「Restore Group」按鈕
+
+#### Scenario: 不再停下之後
+
+- **WHEN** 之後的一次同步，從這個 cursor 下載到的都是認得的事件
+- **THEN** Brisbane 的畫面不再有這句話
+
+#### Scenario: 平常
+
+- **WHEN** Brisbane 同步時沒有遇到不認得的格式版本；Tokyo 不是共同帳本
+- **THEN** 兩個群組的畫面都沒有這句話
+
+### Requirement: SYNC-76.1 依寫下的先後分批上傳
+
+WHEN 手機 app 上傳一個共同帳本待上傳的事件，the mobile app SHALL 依它們寫下的先後上傳，前一個請求得到 API 確認才送下一個：一個請求最多 100 個事件，請求的內容最多 1,048,576 bytes（SHARING-48.2），每個請求都依序裝到再多裝一個事件就會超過其中一個上限為止。
+
+#### Scenario: 順序
+
+- **WHEN** Taylor 的手機新增 Dinner、把標題改成「Supper」、把它移到垃圾桶再還原，然後同步
+- **THEN** 一個上傳的請求帶著四個事件，順序是寫下的先後；API 給它們的序號是 1 到 4
+
+#### Scenario: 250 個事件
+
+- **WHEN** Taylor 的手機有 250 個待上傳的事件，同步
+- **THEN** 依序送出三個上傳的請求，各帶 100、100 和 50 個事件；API 上這 250 個事件的序號是 1 到 250，順序是寫下的先後
+
+#### Scenario: 剛好 100 個事件
+
+- **WHEN** Taylor 的手機有 100 個待上傳的事件，同步
+- **THEN** 只送出一個上傳的請求
+
+#### Scenario: 很大的事件
+
+- **WHEN** Taylor 的手機有 8 個待上傳的事件，大小都是 65,536 bytes，同步
+- **THEN** 依序送出兩個上傳的請求，各帶前 7 個和第 8 個事件，兩個請求的內容都不超過 1,048,576 bytes；API 上有這 8 個事件
+
+### Requirement: SYNC-77.1 API 確認之後才刪掉待上傳的事件
+
+WHEN API 確認一個上傳，the mobile app SHALL 把這個請求裡的事件從待上傳的事件裡刪掉，其他的都不動；沒有得到確認的事件都留著，順序不變，再上傳時事件 ID 和內容都和原本一樣，所以 API 已經存下、手機卻沒有收到回應的事件，再上傳時只得到原本的序號（SYNC-51.1），不會多存一份。
+
+#### Scenario: 得到確認
+
+- **WHEN** Taylor 的手機新增 Dinner 之後同步，API 確認了上傳
+- **THEN** Taylor 的手機沒有待上傳的事件
+
+#### Scenario: 回應在路上丟了
+
+- **WHEN** Taylor 的手機新增 Dinner 之後同步，API 存下了 Dinner 的事件，回應卻沒有送到；之後再同步
+- **THEN** 第一次同步之後 Dinner 的事件仍待上傳，事件 ID 和內容都不變；第二次同步再上傳它，API 回答序號 1，Brisbane 仍只有一個事件，之後沒有待上傳的事件
+
+#### Scenario: 前一批確認了，後一批沒有
+
+- **WHEN** Taylor 的手機有 250 個待上傳的事件，同步時第二個上傳的請求沒有得到回應；之後再同步
+- **THEN** 第一次同步之後，待上傳的是原本的第 101 到第 250 個，順序不變；第二次同步之後，API 上這 250 個事件的序號是 1 到 250，每個只有一份
+
+#### Scenario: 回應不是確認
+
+- **WHEN** API 對上傳回應狀態碼 200，內容卻是 `{}`、`{"events":[]}`，或列的事件 ID 不是請求裡的
+- **THEN** 請求裡的事件都仍待上傳
+
+### Requirement: SYNC-78.1 上傳沒有得到確認時保留待上傳的事件
+
+IF 上傳的請求沒有得到回應，或 API 的回應不是確認，也不是鑰匙世代的拒絕（SYNC-79.1），THEN the mobile app SHALL 保留這個請求裡的事件和排在後面的待上傳事件，結束這次同步，之後再試：沒有網路、API 要求等待（請求太多，照 SHARING-28.1 等過一次再送仍被拒絕）、不是成員、群組滿了（SYNC-82.1）和別的任何回應都一樣；這支手機授權失效（SHARING-29.1）時，同步不發出任何網路請求，待上傳的事件也都留著。這次同步已經套用的下載和已經得到確認的上傳都算數；本機資料不因此改變，共同帳本照常記帳。
+
+#### Scenario: 上傳時沒有網路
+
+- **WHEN** Taylor 的手機新增 Dinner 之後同步，下載成功之後網路斷了；網路恢復之後再同步
+- **THEN** 第一次同步之後 Dinner 的事件仍待上傳；第二次上傳了它
+
+#### Scenario: API 要求等待
+
+- **WHEN** Taylor 的手機新增 Dinner 之後同步，API 對上傳回答請求太多、要等 0 毫秒，對再送的那一次又回答請求太多、要等 30,000 毫秒
+- **THEN** 手機沒有再送第三次，這次同步結束，Dinner 的事件仍待上傳；下一次同步上傳了它
+
+#### Scenario: 別的回應
+
+- **WHEN** API 對 Taylor 的手機的上傳回答不是成員（403），或回應 500、404，或回應 200 和 `oops`
+- **THEN** Dinner 的事件都仍待上傳，支出清單仍有 Dinner
+
+#### Scenario: 授權失效
+
+- **WHEN** Taylor 的手機的 secure store 裡沒有它的 seed，新增 Dinner 之後同步
+- **THEN** 沒有發出任何網路請求，Dinner 存下了，它的事件仍待上傳
+
+#### Scenario: 之後照常記帳
+
+- **WHEN** Taylor 的手機的上傳沒有得到回應之後，再新增 Lunch，網路恢復之後同步
+- **THEN** Dinner 和 Lunch 的事件依寫下的先後上傳，序號是 1 和 2
+
+### Requirement: SYNC-79.1 鑰匙世代被拒絕時用那個世代的鑰匙重新加密
+
+IF API 因為鑰匙世代拒絕一個上傳，THEN the mobile app SHALL 在這支手機有 API 說的那個世代的群組鑰匙時，用它重新加密這個請求裡的事件，在這次同步裡用那個鑰匙世代再上傳一次，事件 ID、事件的內容和順序都不變；沒有那把鑰匙時，保留這些事件，結束這次同步，等手機有了那個世代的群組鑰匙，之後再試。同一個請求在一次同步裡只這樣重送一次。
+
+#### Scenario: 還沒有新的鑰匙
+
+- **WHEN** API 上 Brisbane 的鑰匙世代是 2，Taylor 的手機只有鑰匙世代 1 的群組鑰匙，新增 Dinner 和 Lunch 之後同步
+- **THEN** 上傳被拒絕，原因是鑰匙世代；手機沒有再送，兩個事件仍待上傳，事件 ID 不變，支出清單仍有 Dinner 和 Lunch
+
+#### Scenario: 拿到新的鑰匙之後
+
+- **WHEN** 接著替 Taylor 的手機存下 Brisbane 鑰匙世代 2 的群組鑰匙，再同步
+- **THEN** 上傳的請求的鑰匙世代是 2，兩個事件依原本的順序存在 API 上，各只有一份；用鑰匙世代 2 的鑰匙解開，內容和原本待上傳的一樣
+
+#### Scenario: 手機已經有 API 說的那一把
+
+- **WHEN** API 上 Brisbane 的鑰匙世代是 2，Taylor 的手機有鑰匙世代 1、2 和 3 的群組鑰匙，新增 Dinner 之後同步
+- **THEN** 第一個上傳的請求說鑰匙世代 3，被拒絕；手機接著送第二個，說鑰匙世代 2，Dinner 的事件存下了，用鑰匙世代 2 的鑰匙解得開；沒有第三個上傳的請求
+
+#### Scenario: 重送還是被拒絕
+
+- **WHEN** Taylor 的手機有鑰匙世代 1、2 和 3 的群組鑰匙，API 對第一個上傳回答鑰匙世代是 2，對重送的那一個回答鑰匙世代是 3
+- **THEN** 手機沒有再送，Dinner 的事件仍待上傳
+
+### Requirement: SYNC-82.1 群組滿了時保留待上傳的事件
+
+IF API 因為群組滿了拒絕一個上傳，THEN the mobile app SHALL 保留這個請求裡的事件和排在後面的待上傳事件，結束這次同步；之後每次同步照常下載，再試著上傳；這個共同帳本照常記帳，本機資料不因此改變。
+
+#### Scenario: 滿了
+
+- **WHEN** API 上 Brisbane 存著的事件只差 100 bytes 就到上限；Taylor 的手機新增 Dinner 之後同步，再新增 Lunch
+- **THEN** 上傳被拒絕，原因是群組滿了；Dinner 的事件仍待上傳，Lunch 也存下了，支出清單有 Dinner 和 Lunch
+
+#### Scenario: 之後每次同步都再試
+
+- **WHEN** 接著 Casey 的手機趁 Brisbane 一度有空間時上傳了 Taxi，之後 Brisbane 又滿了；Taylor 的手機再同步
+- **THEN** 這次同步下載並套用了 Taxi，再送出一個上傳的請求，帶著 Dinner 和 Lunch 的事件，又被拒絕；兩個事件仍待上傳
+
+#### Scenario: 有空間之後
+
+- **WHEN** API 上 Brisbane 又有空間之後，Taylor 的手機同步
+- **THEN** Dinner 和 Lunch 的事件依寫下的先後存在 API 上，手機上沒有待上傳的事件
+
+### Requirement: SYNC-83.1 群組滿了的共同帳本在畫面上提示
+
+WHILE 一個共同帳本最近一次上傳是因為群組滿了被拒絕（SYNC-82.1），the mobile app SHALL 在它的畫面的大標題下面顯示一行「This group has reached its storage limit. New changes stay on this phone until there is room.」，位置和 SYNC-75.1 的那句話一樣，兩句都要顯示時這一句在下面，重新啟動 app 之後、還沒再同步之前也顯示；這個共同帳本的一個上傳得到 API 確認之後就不再顯示。別的群組的畫面不顯示這句話。
+
+#### Scenario: 顯示
+
+- **WHEN** Taylor 的手機在 Brisbane 的上傳因為群組滿了被拒絕，打開 Brisbane 的畫面
+- **THEN** 大標題「Brisbane」下面是「This group has reached its storage limit. New changes stay on this phone until there is room.」；Tokyo 的畫面沒有這句話
+
+#### Scenario: 重新啟動之後
+
+- **WHEN** 沒有網路時重新啟動 app，打開 Brisbane 的畫面
+- **THEN** 仍有這句話
+
+#### Scenario: 上傳成功之後
+
+- **WHEN** API 上 Brisbane 又有空間，同步之後上傳得到確認
+- **THEN** Brisbane 的畫面不再有這句話
+
+#### Scenario: 兩句都要顯示
+
+- **WHEN** Brisbane 停在格式版本 2 的事件，上傳也因為群組滿了被拒絕
+- **THEN** 大標題下面由上而下是 SYNC-75.1 的那句話和這句話
+
+### Requirement: SYNC-84.1 送出之前檢查待上傳事件的時間戳記
+
+WHEN 手機 app 套用一個下載的回應（沒有事件的一頁也算），或要把一個還沒檢查過的待上傳事件放進上傳的請求，the mobile app SHALL 檢查這個共同帳本還沒檢查過的待上傳事件的時間戳記，每個事件只檢查一次：比那一刻校正後的時間超前不超過 300,000 毫秒（5 分鐘）的不變，超過的照 SYNC-85.1 換掉。套用下載的回應時的檢查，和這個回應的套用、cursor 在同一個 SQLite transaction 裡。所以送給 API 的每個事件，時間戳記都檢查過。
+
+#### Scenario: 時鐘是準的
+
+- **WHEN** Taylor 的手機在 T+60000 新增 Dinner（`T+60000/0/A`）之後同步
+- **THEN** 上傳的事件的時間戳記仍是 `T+60000/0/A`
+
+#### Scenario: 剛好 5 分鐘
+
+- **WHEN** Taylor 的手機的時鐘是 T+360000 時新增 Dinner（`T+360000/0/A`），再把時鐘調回 T+60000 之後同步
+- **THEN** 時間戳記超前剛好 300,000 毫秒，上傳的事件的時間戳記仍是 `T+360000/0/A`
+
+#### Scenario: 多 1 毫秒
+
+- **WHEN** Taylor 的手機的時鐘是 T+360001 時新增 Dinner，再把時鐘調回 T+60000 之後同步
+- **THEN** 時間戳記超前 300,001 毫秒，上傳的事件的時間戳記換成了 `T+60000/0/A`
+
+#### Scenario: 比校正後的時間早
+
+- **WHEN** Taylor 的手機在 T+60000 新增 Dinner，三天之後（手機和 API 的時鐘都是 T+259,260,000）才同步
+- **THEN** 上傳的事件的時間戳記仍是 `T+60000/0/A`
+
+#### Scenario: 同步到一半才存下的變更
+
+- **WHEN** Taylor 的手機有 150 個待上傳的事件，同步到第一個上傳的請求得到確認時，手機的時鐘正好被調成 T+3,660,000，這時存下了 Late（`T+3660000/0/A`），時鐘隨即調回 T+60000；之後再同步一次
+- **THEN** API 上 Late 的事件，時間戳記的毫秒是 T+60000，不論它是在哪一次同步上傳的
+
+### Requirement: SYNC-85.1 超前超過 5 分鐘的時間戳記換成新的
+
+IF 檢查時，一個待上傳事件的時間戳記比校正後的時間超前超過 300,000 毫秒，THEN the mobile app SHALL 在同一個 SQLite transaction 裡替它換一個新的時間戳記，本機資料裡記著舊時間戳記的地方一起換：這個事件、它改的單位或它留下的刪除紀錄的時間戳記、它建立的紀錄的建立時間戳記，和其他待上傳事件裡根據的版本；先把手機看過的最新時間戳記降成本機資料裡沒有要換的時間戳記中最晚的那一個，再依寫下的先後替每個要換的事件各取一個新的時間戳記（SYNC-2.1，用檢查時校正後的時間和這支手機的裝置 ID），所以新的時間戳記一個比一個晚，也都比它根據的版本晚。事件的 ID、它改的單位和值都不變；沒有超前這麼多的事件不換。
+
+#### Scenario: 時鐘被調快一小時
+
+- **WHEN** Brisbane 在 T 變成共同帳本之後，Taylor 的手機的時鐘被調成 T+3,660,000，接著新增 Dinner、把它的標題改成「Supper」、把 Brisbane 改名為「Brissie」（時間戳記是 `T+3660000/0/A`、`T+3660000/1/A` 和 `T+3660000/2/A`）；API 的時間是 T+60000。同步
+- **THEN** 下載的請求先因為時鐘被拒絕，手機的時間差變成 -3,600,000 之後再送才成功；三個事件的時間戳記換成 `T+60000/0/A`、`T+60000/1/A` 和 `T+60000/2/A`，事件 ID 都不變；改標題的事件根據的版本是 `T+60000/0/A`，改名的事件根據的版本仍是毫秒 T 的那一個；上傳到 API 的就是這三個事件
+
+#### Scenario: 別支手機照常套用
+
+- **WHEN** 接著 Casey 的手機同步
+- **THEN** 三個事件都套用了，沒有不套用的紀錄：Casey 的手機上群組叫 Brissie，有標題是「Supper」的支出
+
+#### Scenario: 之後的修改接在新的時間戳記後面
+
+- **WHEN** 接著 Taylor 的手機把那筆支出的標題改成「Late supper」
+- **THEN** 這個事件的時間戳記是 `T+60000/3/A`，根據的版本是 `T+60000/1/A`
+
+#### Scenario: 只換超前的
+
+- **WHEN** Taylor 的手機在 T+60000 新增 Lunch（`T+60000/0/A`），時鐘被調成 T+3,660,000 之後新增 Dinner（`T+3660000/0/A`）；API 的時間是 T+60000。同步
+- **THEN** Lunch 的事件的時間戳記不變；Dinner 的換成 `T+60000/1/A`
+
+#### Scenario: 建立的時間戳記
+
+- **WHEN** Taylor 的手機的時鐘被調成 T+3,660,000 之後新增分類 Flights；Casey 的手機在 T+120000 新增分類 Hotels；API 的時間是 T+60000 時 Taylor 的手機同步，之後兩支手機的時鐘和 API 的時間都是 T+180000，各同步到沒有新的事件
+- **THEN** 兩支手機的 Brisbane 的分類，九個預設分類之後都依序是 Flights、Hotels
+
+### Requirement: SYNC-86.1 檢查過的時間戳記不再改變
+
+WHILE 一個待上傳事件的時間戳記已經檢查過，the mobile app SHALL 不再檢查也不再換它，每次上傳都原樣送出，重新啟動 app 之後也一樣，不論校正後的時間後來變成多少；只有 SYNC-87.1 的情況會再檢查一次。
+
+#### Scenario: 沒有收到回應之後再上傳
+
+- **WHEN** API 的時間是 T+60000，Taylor 的手機的時鐘快 4 分鐘（T+300000）；它在手機的時鐘是 T+540000 時存下 Dinner（`T+540000/0/A`），時鐘回到 T+300000 之後同步，檢查時超前 240,000 毫秒；API 存下了事件，回應卻沒有送到。之後手機的時鐘被調準成 T+60000，再同步
+- **THEN** 這時時間戳記比校正後的時間超前 480,000 毫秒，手機仍把同一個事件原樣再上傳：API 回答原本的序號，Brisbane 只有這一個事件，它的時間戳記是 `T+540000/0/A`；Casey 的手機同步之後照常套用它，因為它比收到時間晚不到 10 分鐘（SYNC-9.1）
+
+#### Scenario: 還沒送到 API 的也一樣
+
+- **WHEN** 同樣的情況，只是第一次同步時上傳的請求沒有送到 API
+- **THEN** 第二次同步上傳的事件，時間戳記仍是 `T+540000/0/A`
+
+#### Scenario: 重新啟動之後
+
+- **WHEN** 同樣的情況，兩次同步之間重新啟動 app
+- **THEN** 第二次同步上傳的事件，時間戳記仍是 `T+540000/0/A`
+
+### Requirement: SYNC-87.1 上傳因為時鐘被拒絕時，再送之前重新檢查
+
+IF 上傳的請求因為時鐘被 API 拒絕（SHARING-27.2），THEN the mobile app SHALL 在存好新的時間差之後、把這個請求再送一次之前，用新的校正後的時間重新檢查這個請求裡每個事件的時間戳記，超前超過 300,000 毫秒的照 SYNC-85.1 換掉，再重新加密：再送的請求帶的是檢查之後的事件，事件 ID 和順序不變。API 沒有存下被拒絕的請求，所以沒有別支手機看過換掉的時間戳記。
+
+#### Scenario: 下載之後時鐘才被調快
+
+- **WHEN** API 的時間是 T+60000；Taylor 的手機同步，下載的回應送到的那一刻，手機的時鐘被調成 T+3,660,000，接著存下 Dinner（`T+3660000/0/A`）
+- **THEN** 帶著 Dinner 的上傳的請求，請求時間是 T+3,660,000，因為時鐘被拒絕；手機把時間差改成 -3,600,000，再送的請求裡 Dinner 的時間戳記是 `T+60000/0/A`；API 存下的就是它，Casey 的手機同步之後有 Dinner，沒有不套用的紀錄
+
+#### Scenario: 不必換的原樣再送
+
+- **WHEN** Taylor 的手機在 T+60000 新增 Dinner（`T+60000/0/A`）之後同步，下載的回應送到的那一刻，手機的時鐘被調成 T+3,660,000
+- **THEN** 上傳的請求先因為時鐘被拒絕，再送的請求裡 Dinner 的時間戳記仍是 `T+60000/0/A`
+
+#### Scenario: 再送還是被拒絕
+
+- **WHEN** 再送的請求又因為時鐘被 API 拒絕
+- **THEN** 手機不再送，這次同步結束，Dinner 的事件仍待上傳
+
+### Requirement: SYNC-88.1 存下共同帳本的變更之後在背景同步
+
+WHEN 使用者在共同帳本做了要寫成事件的變更而且存下了（SYNC-21.1），the mobile app SHALL 接著同步這個共同帳本，存檔不等同步：表單照常關閉、畫面照常顯示新的資料，不論同步要多久、有沒有網路、API 回答什麼；同步沒有做完時不跳出提示框。不寫事件的存檔（SYNC-26.1）不同步，也不發出網路請求。
+
+#### Scenario: 新增支出之後
+
+- **WHEN** 在 Brisbane 的 New Expense 填好 Dinner，按 Add
+- **THEN** 表單關閉；API 依序收到對 Brisbane 的下載和上傳，之後沒有待上傳的事件
+
+#### Scenario: 存檔不等 API
+
+- **WHEN** API 一直沒有回答時，在 Brisbane 新增 Dinner
+- **THEN** 表單照常關閉，支出清單有 Dinner 的卡片；API 回答之後，Dinner 的事件才上傳
+
+#### Scenario: 沒有網路
+
+- **WHEN** 沒有網路時在 Brisbane 新增 Dinner
+- **THEN** 表單關閉，支出清單有 Dinner 的卡片，沒有提示框；Dinner 的事件待上傳
+
+#### Scenario: 別種變更
+
+- **WHEN** 把 Brisbane 改名為「Brissie」；在 Brisbane 的 Group Categories 新增 Flights；把 Dinner 移到垃圾桶
+- **THEN** 每一次之後，API 都收到對 Brisbane 的下載和上傳
+
+#### Scenario: 不寫事件的存檔
+
+- **WHEN** 新增個人支出 Coffee run，在不是共同帳本的 Tokyo 新增 Sushi，再封存 Brisbane
+- **THEN** app 沒有發出任何網路請求
+
+### Requirement: SYNC-89.1 app 打開時每個共同帳本同步一次
+
+WHEN app 打開，the mobile app SHALL 為這支手機上的每個共同帳本各同步一次，封存的也算；不是共同帳本的群組和個人的資料不同步。除了 app 打開和存檔之後（SYNC-88.1），手機 app 不自己開始同步：app 開著的時候不定時向 API 要資料。
+
+#### Scenario: 啟動
+
+- **WHEN** Taylor 的手機上 Brisbane 和 Tokyo 都是共同帳本，Osaka 不是；重新啟動 app
+- **THEN** API 收到對 Brisbane 和對 Tokyo 的下載各一個，沒有別的請求
+
+#### Scenario: 從背景回到前景
+
+- **WHEN** 接著把 app 留在背景，再回到 app
+- **THEN** API 又收到對 Brisbane 和對 Tokyo 的下載各一個
+
+#### Scenario: 收到別人的修改
+
+- **WHEN** Casey 的手機上傳了 Lunch；Taylor 的手機的支出清單開著，把 app 留在背景，再回到 app
+- **THEN** 不必重新啟動，支出清單就有 Lunch 的卡片
+
+#### Scenario: 離線時存下的變更
+
+- **WHEN** 沒有網路時在 Brisbane 新增 Dinner；網路恢復之後把 app 留在背景，再回到 app
+- **THEN** Dinner 的事件上傳了
+
+#### Scenario: 封存的共同帳本
+
+- **WHEN** 封存 Brisbane 之後重新啟動 app
+- **THEN** API 仍收到對 Brisbane 的下載
+
+#### Scenario: 不輪詢
+
+- **WHEN** app 打開時同步過之後，留在前景一小時，使用者沒有存下任何變更
+- **THEN** API 沒有再收到任何請求
+
+#### Scenario: 沒有共同帳本
+
+- **WHEN** 手機上只有個人的資料和不是共同帳本的群組，重新啟動 app，再把它留在背景後回來
+- **THEN** app 沒有發出任何網路請求，這支手機沒有裝置身分（SHARING-19.1）
+
+### Requirement: SYNC-90.1 一個共同帳本一次只有一個同步
+
+WHILE 一個共同帳本正在同步，the mobile app SHALL 不為它開始第二個同步；這段時間裡不管有幾次要為它同步（SYNC-88.1、SYNC-89.1），都在這次同步結束之後再同步一次，所以同步到一半才存下的變更不必等下一次 app 打開就上傳。別的共同帳本的同步不受影響。
+
+#### Scenario: 同步到一半又存檔
+
+- **WHEN** 在 Brisbane 新增 Dinner 之後，API 還沒有回答它的下載時，再新增 Lunch、把 Dinner 的標題改成「Supper」；之後 API 才回答
+- **THEN** API 回答之前只收到一個請求；之後 API 對 Brisbane 的下載一共收到兩個，沒有同時在進行的；三個事件都上傳了，序號的順序是寫下的先後
+
+#### Scenario: 別的共同帳本
+
+- **WHEN** Tokyo 也是共同帳本；API 還沒有回答對 Brisbane 的下載時，在 Tokyo 新增 Sushi
+- **THEN** API 馬上收到對 Tokyo 的下載
+
+### Requirement: SYNC-91.1 兩支手機離線各改各的，連上線之後一模一樣
+
+WHEN 兩支手機各自在沒有網路時新增和修改同一個共同帳本的支出、群組名稱、成員和分類，之後都連上線，各同步到沒有新的事件為止，the mobile app SHALL 讓兩支手機上這個共同帳本一模一樣：群組名稱、成員和前成員和他們的順序、分類和它們的順序，以及每筆支出的標題、日期、備註、分類、金額那一組和在不在垃圾桶裡；每筆紀錄只有一份，兩支手機都沒有待上傳的事件，再同步也不改任何資料。
+
+#### Scenario: 各改各的
+
+- **WHEN** Brisbane 有 Dinner，兩支手機都同步過；沒有網路時，Taylor 的手機新增 Lunch、把 Dinner 的標題改成「Supper」、加入成員 Dana、新增分類 Flights、把 Other 改名為「Misc」，Casey 的手機新增 Taxi、把 Dinner 的備註改成「Window seat」、把 Blake 改名為「Blake Chen」、新增分類 Hotels、封存 Shopping、把 Taxi 移到垃圾桶；之後 Taylor 的手機同步、Casey 的手機同步、Taylor 的手機再同步
+- **THEN** 兩支手機的 Brisbane 一模一樣：三筆支出 Supper（備註「Window seat」）、Lunch 和垃圾桶裡的 Taxi 各一份；成員依序是 Taylor、Casey、Blake Chen、Dana；分類有 Misc、Flights、Hotels 和封存的 Shopping，順序相同；兩支手機都沒有待上傳的事件，API 上有 11 個事件
+
+#### Scenario: 改同一個地方
+
+- **WHEN** 沒有網路時，Taylor 的手機在 T+60000 把 Brisbane 改名為「Brissie」、把 Dinner 的金額改成 120.00，Casey 的手機在 T+120000 把 Brisbane 改名為「Brisbane 2026」、把 Dinner 的金額改成 90.00；之後不論哪一支手機先同步，兩支都同步到沒有新的事件
+- **THEN** 兩支手機上群組都叫「Brisbane 2026」，Dinner 的金額都是 9000，付款和分攤也一樣
+
+#### Scenario: 同步到一半出錯也一樣
+
+- **WHEN** 兩支手機各自離線改了十幾個地方；連上線之後，同步的過程中有上傳的回應丟了、有下載沒有得到回應、有一頁存到一半失敗；之後兩支手機照常同步到沒有新的事件
+- **THEN** 兩支手機的 Brisbane 一模一樣，每筆紀錄只有一份，API 上每個事件只有一份
+
+#### Scenario: 再同步也不變
+
+- **WHEN** 兩支手機都同步到沒有新的事件之後，各再同步一次
+- **THEN** 兩支手機的本機資料都和同步之前一樣，API 上沒有多出事件
+
+### Requirement: SYNC-92.1 本機資料回到較早的樣子之後照常同步
+
+IF 這支手機的本機資料回到較早的樣子，例如系統還原了備份，或使用者匯入這支手機自己較早的匯出檔（BACKUP-13.1），而 secure store 裡它的 seed 和群組鑰匙還在，THEN the mobile app SHALL 照本機資料裡的 cursor 和待上傳的事件繼續同步：從那個 cursor 再下載並套用，待上傳的事件照常上傳，其中 API 已經有的只得到原本的序號；同步到沒有新的事件之後，這個共同帳本和其他手機一模一樣，每筆紀錄只有一份。
+
+#### Scenario: 還原之後
+
+- **WHEN** 兩支手機的 Brisbane 都有 Dinner 和 Lunch，這時留下 Taylor 的手機本機資料的複本；之後 Taylor 的手機新增 Taxi，Casey 的手機新增 Coffee，兩支手機都同步到沒有新的事件；再把 Taylor 的手機的本機資料換回那份複本，同步
+- **THEN** 這次的下載用的是複本裡的 cursor；之後 Taylor 的手機的 Brisbane 和 Casey 的手機一模一樣，Dinner、Lunch、Taxi 和 Coffee 各一份
+
+#### Scenario: 複本裡有上傳過的事件
+
+- **WHEN** 複本是 Taylor 的手機存下 Taxi、還沒上傳時留的；Taxi 上傳之後，把本機資料換回這份複本，同步
+- **THEN** Taxi 的事件再上傳一次，API 回答原本的序號，Brisbane 的事件沒有多；手機上沒有待上傳的事件
+
+#### Scenario: 匯入之後不必重新啟動
+
+- **WHEN** Taylor 的手機的 cursor 是 0 時留下本機資料的複本；之後 Casey 的手機上傳了 Lunch，Taylor 的手機同步，有了 Lunch，cursor 是 1；再照匯入的做法，把本機資料的每一張表換成複本裡的（BACKUP-13.1），app 沒有重新啟動，接著同步
+- **THEN** 換完之後 Brisbane 仍是共同帳本，沒有 Lunch；這次同步的下載是 after=0，之後又有 Lunch，只有一份
+
+### Requirement: SYNC-93.1 沒有設定 API 的網址時不同步
+
+IF 這個 build 沒有設定 API 的網址，THEN the mobile app SHALL 不同步，不發出任何網路請求，也不產生裝置身分；共同帳本照常記帳，它的事件留著待上傳。
+
+#### Scenario: 沒有設定
+
+- **WHEN** build 沒有設定 API 的網址；Brisbane 是共同帳本，重新啟動 app，新增 Dinner，再把 app 留在背景後回來
+- **THEN** Dinner 存下了，它的事件待上傳；app 沒有發出任何網路請求

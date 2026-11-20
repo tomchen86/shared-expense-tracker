@@ -85,8 +85,8 @@ export type SyncRecord = {
   };
 }[SyncRecordType];
 
-/** Why an event is not applied (SYNC-10.1). */
-export type SyncRefusal = 'structure' | 'clock' | 'currency' | 'sum';
+/** Why an event is not applied (SYNC-10.2). */
+export type SyncRefusal = 'structure' | 'device' | 'clock' | 'currency' | 'sum';
 
 export type SyncVerdict =
   | { status: 'valid'; event: SyncEvent }
@@ -140,11 +140,12 @@ export function nextSyncStamp(input: {
 
 /**
  * Judges one event by itself. `content` is what the event holds once decrypted and parsed;
- * `envelope` is null for a change this phone has not sent yet.
+ * `envelope` is what the API relays with it: when it was received, and the ID of the device
+ * that uploaded it. It is null for a change this phone has not sent yet.
  */
 export function checkSyncEvent(
   content: unknown,
-  envelope: { receivedAtMs: number } | null,
+  envelope: { receivedAtMs: number; device: string } | null,
 ): SyncVerdict {
   if (envelope !== null && !isClockInteger(envelope.receivedAtMs)) {
     throw new Error('Invalid event receive time');

@@ -6,7 +6,7 @@ A bookkeeping app for personal and shared expenses: no sign-up by default, works
 
 - `bash scripts/check.sh`: lint, format check, typecheck, tests, then the requirement trace, which runs even when a step fails. Tests write JUnit XML to `reports/junit/`.
 - `docker compose -f apps/api/compose.yaml up -d --wait`: start the PostgreSQL the API's tests need. Every worktree on the machine shares this one container: never stop or remove it, and if `up` fails with `Conflict`, another session is starting it, so run the command again.
-- `pnpm test:mobile`: every test except the API's, without Docker, for a session that only changes the phone.
+- `pnpm test:mobile`: every test except the API's and the phone's tests against the API (`*-api.test.*`, ADR-0025), without Docker, for a session that only changes the phone's screens.
 - `pnpm --filter api dev`: the API on Node. `pnpm --filter api dev:workers`: the API on Wrangler's local Workers runtime. `pnpm --filter api migrate`: run its migrations (`DATABASE_URL`). All default to the PostgreSQL above.
 - Deploys (ADR-0019): the `deploy` workflow deploys `main` to staging after each merge that changes the API, and to production when the owner runs `gh workflow run deploy.yml -f environment=production` and approves the run. A deploy runs the migrations on that environment's database, then uploads the Worker. Nobody runs production's migrations by hand, and no request runs them. A migration keeps the Worker deployed before it working: what that Worker uses is removed in a later deploy.
 - `pnpm --filter api check:hyperdrive staging`: rule 9's check. `pnpm --filter api check:hyperdrive local` runs its steps on this machine, without Hyperdrive, to try a change to the check itself.

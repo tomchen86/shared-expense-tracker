@@ -867,7 +867,7 @@ describe('SHARING-26.1', () => {
   });
 });
 
-describe('SHARING-27.1', () => {
+describe('SHARING-27.2', () => {
   /** A registered phone whose clock offset is `ms`, learned from the API. */
   async function phoneWithOffset(ms: number) {
     const registered = await registeredPhone();
@@ -882,7 +882,7 @@ describe('SHARING-27.1', () => {
     ['an hour fast', -HOUR],
     ['5 minutes and 1 ms slow', 300_001],
   ])(
-    "[SHARING-27.1] a phone %s takes the API's time and sends again once",
+    "[SHARING-27.2] a phone %s takes the API's time and sends again once",
     async (_, ahead) => {
       const { app, deviceId, publicKey } = await registeredPhone();
       const before = received().length;
@@ -903,7 +903,7 @@ describe('SHARING-27.1', () => {
     },
   );
 
-  test('[SHARING-27.1] later requests are signed with the corrected time, and sent once', async () => {
+  test('[SHARING-27.2] later requests are signed with the corrected time, and sent once', async () => {
     const { app } = await phoneWithOffset(HOUR);
     const before = received().length;
 
@@ -916,7 +916,7 @@ describe('SHARING-27.1', () => {
     ]);
   });
 
-  test('[SHARING-27.1] a phone whose very first request is off corrects the registration, then sends what was asked', async () => {
+  test('[SHARING-27.2] a phone whose very first request is off corrects the registration, then sends what was asked', async () => {
     const app = await startOn(newPhone());
     apiIsAhead(HOUR);
 
@@ -934,7 +934,7 @@ describe('SHARING-27.1', () => {
     expect(await clockOffsetOf(app)).toBe(HOUR);
   });
 
-  test('[SHARING-27.1] when the second try is refused for the clock too, the phone keeps the newer offset and hands that refusal over', async () => {
+  test('[SHARING-27.2] when the second try is refused for the clock too, the phone keeps the newer offset and hands that refusal over', async () => {
     const { app } = await registeredPhone();
     const before = received().length;
     apiRefusesNext('request', { error: 'clock', serverTimeMs: T + HOUR });
@@ -955,7 +955,7 @@ describe('SHARING-27.1', () => {
     expect(await clockOffsetOf(app)).toBe(2 * HOUR);
   });
 
-  test('[SHARING-27.1] a phone whose clock was set right afterwards corrects its offset back', async () => {
+  test('[SHARING-27.2] a phone whose clock was set right afterwards corrects its offset back', async () => {
     const { app } = await phoneWithOffset(HOUR);
     const before = received().length;
     apiIsAhead(0);
@@ -978,7 +978,7 @@ describe('SHARING-27.1', () => {
     ['is past the largest integer', { error: 'clock', serverTimeMs: 2 ** 53 }],
     ['is null', { error: 'clock', serverTimeMs: null }],
   ])(
-    '[SHARING-27.1] a clock refusal whose API time %s changes no offset and is not sent again',
+    '[SHARING-27.2] a clock refusal whose API time %s changes no offset and is not sent again',
     async (_, body) => {
       const { app } = await phoneWithOffset(HOUR);
       const before = received().length;
@@ -992,7 +992,157 @@ describe('SHARING-27.1', () => {
     },
   );
 
-  test('[SHARING-27.1] keeps the offset after a restart', async () => {
+  /** A request with content, and content to send instead once the clock is corrected. */
+  function withContentAfterCorrection(app: App, second: () => string) {
+    const offsetsWhenAsked: number[] = [];
+    const request: Partial<ApiRequest> = {
+      method: 'POST',
+      body: 'first',
+      bodyAfterClockCorrection: async () => {
+        offsetsWhenAsked.push(
+          await app.sharing.readClockOffsetMs(app.database),
+        );
+        return second();
+      },
+    };
+    return { request, offsetsWhenAsked };
+  }
+
+  const bodiesAfter = (before: number) =>
+    receivedAfter(before).map((request) => toHex(request.body));
+  const FIRST = toHex(utf8('first'));
+  const SECOND = toHex(utf8('second'));
+
+  test('[SHARING-27.2] sends again with the content the caller gives once the offset is saved, and signs that content', async () => {
+    const { app, deviceId, publicKey } = await registeredPhone();
+    const before = received().length;
+    apiIsAhead(HOUR);
+    const { request, offsetsWhenAsked } = withContentAfterCorrection(
+      app,
+      () => 'second',
+    );
+
+    const result = await send(app, request);
+
+    expect(readable(result)).toEqual(answered(200, '{}'));
+    const [first, second, ...others] = receivedAfter(before);
+    expect(others).toEqual([]);
+    expect([toHex(first.body), toHex(second.body)]).toEqual([FIRST, SECOND]);
+    expect(second.timestamp).toBe(String(T + HOUR));
+    // The signature covers the hash of the body that arrived.
+    await expectSignedBy(second, { deviceId, publicKey });
+    expect(offsetsWhenAsked).toEqual([HOUR]);
+  });
+
+  test('[SHARING-27.2] does not ask for other content when the clock is not refused', async () => {
+    const { app } = await registeredPhone();
+    const before = received().length;
+    const { request, offsetsWhenAsked } = withContentAfterCorrection(
+      app,
+      () => 'second',
+    );
+
+    const result = await send(app, request);
+
+    expect(readable(result)).toEqual(answered(200, '{}'));
+    expect(bodiesAfter(before)).toEqual([FIRST]);
+    expect(offsetsWhenAsked).toEqual([]);
+  });
+
+  test('[SHARING-27.2] asks for the content once, though the second try is refused for the clock too', async () => {
+    const { app } = await registeredPhone();
+    const before = received().length;
+    apiRefusesNext('request', { error: 'clock', serverTimeMs: T + HOUR });
+    apiRefusesNext('request', { error: 'clock', serverTimeMs: T + 2 * HOUR });
+    const { request, offsetsWhenAsked } = withContentAfterCorrection(
+      app,
+      () => 'second',
+    );
+
+    const result = await send(app, request);
+
+    expect(readable(result)).toEqual(
+      answered(
+        401,
+        JSON.stringify({ error: 'clock', serverTimeMs: T + 2 * HOUR }),
+      ),
+    );
+    expect(bodiesAfter(before)).toEqual([FIRST, SECOND]);
+    expect(offsetsWhenAsked).toEqual([HOUR]);
+  });
+
+  test('[SHARING-27.2] sends the same content again after waiting for too many requests', async () => {
+    const { app } = await registeredPhone();
+    const before = received().length;
+    apiRefusesNext('request', { error: 'too-many-requests', retryAfterMs: 0 });
+    const { request, offsetsWhenAsked } = withContentAfterCorrection(
+      app,
+      () => 'second',
+    );
+
+    const result = await send(app, request);
+
+    expect(readable(result)).toEqual(answered(200, '{}'));
+    expect(bodiesAfter(before)).toEqual([FIRST, FIRST]);
+    expect(offsetsWhenAsked).toEqual([]);
+  });
+
+  test('[SHARING-27.2] does not ask for other content when it is the registration that is refused for the clock', async () => {
+    const app = await startOn(newPhone());
+    apiIsAhead(HOUR);
+    const { request, offsetsWhenAsked } = withContentAfterCorrection(
+      app,
+      () => 'second',
+    );
+
+    const result = await send(app, request);
+
+    expect(readable(result)).toEqual(answered(200, '{}'));
+    expect(received().map((each) => [each.path, each.timestamp])).toEqual([
+      ['/devices', String(T)],
+      ['/devices', String(T + HOUR)],
+      [ITEMS, String(T + HOUR)],
+    ]);
+    expect(toHex(received()[2].body)).toBe(FIRST);
+    expect(offsetsWhenAsked).toEqual([]);
+  });
+
+  test('[SHARING-27.2] does not ask for other content when the refusal carries no usable API time', async () => {
+    const { app } = await registeredPhone();
+    const before = received().length;
+    const body = { error: 'clock', serverTimeMs: 'soon' };
+    apiRefusesNext('request', body, 'clock');
+    const { request, offsetsWhenAsked } = withContentAfterCorrection(
+      app,
+      () => 'second',
+    );
+
+    const result = await send(app, request);
+
+    expect(readable(result)).toEqual(answered(401, JSON.stringify(body)));
+    expect(bodiesAfter(before)).toEqual([FIRST]);
+    expect(offsetsWhenAsked).toEqual([]);
+  });
+
+  test('[SHARING-27.2] fails, and does not send again, when the caller cannot give the content', async () => {
+    const { app } = await registeredPhone();
+    const before = received().length;
+    apiIsAhead(HOUR);
+    const { request, offsetsWhenAsked } = withContentAfterCorrection(
+      app,
+      () => {
+        throw new Error('The events could not be read');
+      },
+    );
+
+    await expect(send(app, request)).rejects.toThrow();
+
+    expect(bodiesAfter(before)).toEqual([FIRST]);
+    expect(offsetsWhenAsked).toEqual([HOUR]);
+    expect(await clockOffsetOf(app)).toBe(HOUR);
+  });
+
+  test('[SHARING-27.2] keeps the offset after a restart', async () => {
     const { phone, app } = await phoneWithOffset(HOUR);
     const before = received().length;
 

@@ -33,6 +33,11 @@ export interface ApiRequest {
   path: string;
   /** The body to send; text is sent as its UTF-8 bytes. */
   body?: Uint8Array | string;
+  /**
+   * The body to send instead when the API refused the request for its clock: asked for
+   * once, after the new clock offset is saved and before the one resend (SHARING-27.2).
+   */
+  bodyAfterClockCorrection?: () => Promise<Uint8Array | string>;
 }
 
 /** What became of a request. */
@@ -167,7 +172,7 @@ async function sendSigned(
  * Sends the request and resolves with the API's answer as it is, or with nothing when
  * there was none (SHARING-26.1). It sends again only after the two refusals the phone can
  * do something about, once each for a request: for the clock it takes the API's time
- * (SHARING-27.1), and for too many requests it waits as long as the API said
+ * (SHARING-27.2), and for too many requests it waits as long as the API said
  * (SHARING-28.1).
  */
 async function exchange(
