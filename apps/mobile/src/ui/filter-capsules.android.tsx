@@ -19,6 +19,7 @@ import { capsuleName, type CapsuleProps } from './capsule';
 import type { AmountCapsuleProps, CapsuleMenuProps } from './filter-capsules';
 import { MaterialHost, useTextWithCaretAtEnd } from './material.android';
 import { MaterialMenu } from './material-menu.android';
+import { useThemeColors } from './theme';
 
 export function CapsuleButton({
   label,
@@ -28,6 +29,7 @@ export function CapsuleButton({
   onPress,
   children,
 }: CapsuleProps & { onPress: () => void; children?: ReactNode }) {
+  const colors = useThemeColors();
   const checked = selected ?? Boolean(value);
   const name = capsuleName({ label, value });
   return (
@@ -40,7 +42,11 @@ export function CapsuleButton({
     >
       <View importantForAccessibility="no-hide-descendants">
         <MaterialHost matchContents>
-          <FilterChip selected={checked} onClick={onPress}>
+          <FilterChip
+            selected={checked}
+            colors={{ labelColor: colors.text }}
+            onClick={onPress}
+          >
             <FilterChip.Label>
               <Text style={{ typography: 'labelLarge' }} maxLines={1}>
                 {text || value || label}
