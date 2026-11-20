@@ -20,6 +20,7 @@ import {
   apiTime,
   fromHex,
   mistakes,
+  received,
   removeWorld,
   requestsReceived,
   resetWorld,
@@ -203,7 +204,10 @@ function route(request: Received) {
   if (invite && request.method === 'DELETE') {
     return deleteInvite(request, invite[1], invite[2]);
   }
-  // Nothing else has a route: the app is not to send it.
+  // Nothing else has a route here, the event API (SYNC-45.1 to 64.1) included, on purpose:
+  // a sync that the app starts after a save in a shared ledger gets "not found" for its
+  // download, keeps its unsent events, and changes nothing these tests look at. The tests
+  // leave such requests out of what they count (`apiRequests`).
   return { status: 404, body: '404 Not Found' };
 }
 
@@ -238,16 +242,32 @@ export function revokedByAnotherPhone(code: string) {
 
 // What the API received
 
-export const isCreateGroup = (request: Received) =>
+type Sent = Pick<Received, 'method' | 'path'>;
+
+export const isCreateGroup = (request: Sent) =>
   request.method === 'PUT' && GROUP_PATH.test(request.path);
-export const isPutInvite = (request: Received) =>
+export const isPutInvite = (request: Sent) =>
   request.method === 'PUT' && INVITE_PATH.test(request.path);
-export const isRevoke = (request: Received) =>
+export const isRevoke = (request: Sent) =>
   request.method === 'DELETE' && INVITE_PATH.test(request.path);
+
+/** A download or an upload of a group's events, which the phone's sync sends by itself. */
+const isEventApi = (request: Sent) =>
+  /^\/groups\/[^/?]+\/events(\?|$)/.test(request.path);
+
+/**
+ * Every request the API received, registrations included, except the downloads and
+ * uploads of events: whether and when the phone syncs is not these tests' to say.
+ */
+export const apiRequests = () =>
+  received().filter((request) => !isEventApi(request));
+
+/** How many such requests the API has received. */
+export const asked = () => apiRequests().length;
 
 /** The requests the API received, each as its method and path. */
 export const requestLines = () =>
-  requestsReceived().map((request) => `${request.method} ${request.path}`);
+  apiRequests().map((request) => `${request.method} ${request.path}`);
 
 export const inviteRequests = () => requestsReceived().filter(isPutInvite);
 
@@ -320,12 +340,24 @@ export function requestsHold(bytes: Uint8Array | string): boolean {
   });
 }
 
-/** Whether a row of the phone's local data holds `bytes`. */
+/**
+ * Whether a value in the phone's local data holds `bytes`: in a text column in any of
+ * those writings, or in a BLOB column, which the reader gives as its bytes by index, as
+ * they are or in any of those writings.
+ */
 export function localDataHolds(bytes: Uint8Array): boolean {
-  const rows = JSON.stringify(everything());
-  return writingsOf(bytes)
-    .slice(1)
-    .some((writing) => rows.includes(writing));
+  const writings = writingsOf(bytes);
+  const holds = (text: string) =>
+    writings.some((writing) => text.includes(writing));
+  return Object.values(everything())
+    .flat()
+    .flatMap((row) => Object.values(JSON.parse(row) as Record<string, unknown>))
+    .some((stored) => {
+      if (typeof stored === 'string') return holds(stored);
+      if (typeof stored !== 'object' || stored === null) return false;
+      const blob = Buffer.from(Object.values(stored) as number[]);
+      return holds(blob.toString('latin1')) || holds(blob.toString('hex'));
+    });
 }
 
 /** The secure store's entries that hold a group key, by name. */
@@ -372,6 +404,48 @@ export async function startAt(groups: Record<string, readonly string[]>) {
 export async function until(done: () => boolean, what: string) {
   for (let turn = 0; turn < 200 && !done(); turn += 1) await settle();
   if (!done()) throw new Error(`Still waiting for ${what}`);
+}
+
+/**
+ * Holds every request before it reaches the API, until the function this returns is
+ * called. Until the test ends, the app's `fetch` is this one.
+ */
+export function holdTheApi(): () => void {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const theApi = globalThis.fetch;
+  globalThis.fetch = (async (...request: Parameters<typeof fetch>) => {
+    await held;
+    return theApi(...request);
+  }) as typeof fetch;
+  return release;
+}
+
+/**
+ * Does `then` once, right after the API has answered the next request `which` picks and
+ * before the app has the answer.
+ */
+export function afterTheAnswerTo(
+  which: (request: Sent) => boolean,
+  then: () => void,
+) {
+  const theApi = globalThis.fetch;
+  let done = false;
+  globalThis.fetch = (async (...request: Parameters<typeof fetch>) => {
+    const sent = new Request(...request);
+    const url = new URL(sent.url);
+    const response = await theApi(...request);
+    if (
+      !done &&
+      which({ method: sent.method, path: url.pathname + url.search })
+    ) {
+      done = true;
+      then();
+    }
+    return response;
+  }) as typeof fetch;
 }
 
 /** The lines Invite shows, top to bottom. */

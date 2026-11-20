@@ -14,7 +14,7 @@ ADR-0015 decides what an invite is: a link `https://<domain>/i/<code>#<secret>`,
 - When a card is replaced, by which phone, and what its label is while a phone has no cursor yet (#135).
 - Where the app learns the address of the API. Until now it never called it.
 
-The owner decided on #138 that the choices it leaves open follow the spec author's recommendation and are listed in the PR: one link for a group at a time, any member can revoke it, Invite sits in Members, and an archived group has to be restored first.
+#138 leaves four choices open and recommends an answer to each, which this decision takes: one link for a group at a time, any member can revoke it, Invite sits in Members, and an archived group has to be restored first. The owner approves them by publishing the spec.
 
 Also considered:
 
@@ -39,9 +39,9 @@ On the API:
 On the phone:
 
 - An invite is a record of the shared ledger, of a kind of its own: its ID is the code, and its one unit holds the secret and the expiry. Revoking is the record's permanent deletion, which beats every change whatever the stamps (ADR-0016). The phone writes either event only after the API has answered, in the transaction that stores or removes the invite.
-- Before it sends the request that creates an invite, the phone stores the code and the secret. With no answer, the next attempt sends the same ones.
+- Before it sends the request that creates an invite, the phone stores the code and the secret, and drops them only in the transaction that stores the invite, or when the API refuses. With no answer, or with an invite the phone could not store, the next attempt sends the same ones.
 - Invite shows the invite the phone holds without asking the API. When it holds more than one that has not expired, it shows the one that expires last.
-- A phone replaces the card when the group's name or its members change on it while it holds an active invite, labelled with its cursor in the group, which is 0 until the sync loop gives it one (#135).
+- A group prepares one invite at a time. A phone replaces the card when the group's name or its members change on it while it holds an active invite, unless the new card would be over the limit, labelled with its cursor in the group, which is 0 until the sync loop gives it one (#135).
 - The group's key for epoch 1 is made on the phone at the first Invite and kept in the secure store under an entry that names the group and the epoch.
 - The app reads the API's address from `EXPO_PUBLIC_API_URL`, set when it is built. The invite link's host is that address's host (ADR-0023).
 
@@ -49,7 +49,7 @@ On the phone:
 
 - #140 reads the card with a route that exists, and decides whether an applicant registers before it reads or the route becomes public. #141 finds the secret on every member's phone.
 - A phone that has not synced can show a link another member revoked, or be told that another member already has one. Both end with its next sync.
-- An invite whose event is lost, because the app stopped between the API's answer and the phone's own transaction, can stay active on the API for up to seven days with no phone showing it. The group cannot make another until then. The stored code and secret cover the usual case, the lost answer.
+- A lost answer, a failed write and an app that stops between the API's answer and the phone's own transaction all leave the stored code and secret in place, so the next attempt gets the same invite. An invite can still be left on the API with no phone showing it when a phone's local data is replaced in between, by an import or a restore. The group then cannot make another for up to seven days.
 - Records of expired invites and the tombstones of revoked ones stay in the group, a few hundred bytes each. A snapshot carries only the active invite (ADR-0016, #139).
 - The API keeps a row for every code it has seen, so that none is used twice, until #155 decides how long.
 - A card's cursor decides between phones that have downloaded different amounts. Two phones at the same cursor replace each other's cards, and the next change puts that right.

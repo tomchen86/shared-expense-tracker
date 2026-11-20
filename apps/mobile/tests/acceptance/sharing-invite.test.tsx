@@ -42,6 +42,7 @@ import {
   requestsReceived,
   secureStoreEntries,
   secureStoreWorks,
+  utf8,
   writeSecureStoreEntry,
 } from './sharing-app';
 import {
@@ -55,12 +56,16 @@ import {
   TOO_MANY_MEMBERS,
   WEEK,
   WENT_WRONG,
+  afterTheAnswerTo,
+  apiRequests,
+  asked,
   cardKeyOf,
   closeInvite,
   codeIn,
   eachTestGetsAnInvitingPhone,
   groupKeys,
   groupOnApi,
+  holdTheApi,
   invite,
   inviteButton,
   inviteByAnotherPhone,
@@ -86,6 +91,7 @@ import {
   tryAgain,
   until,
 } from './sharing-invite-app';
+import { allowWrites, failWrites, settle } from './shell-appearance-app';
 import { selectedTab } from './shell-tabs-app';
 import {
   at,
@@ -201,6 +207,15 @@ const lastCard = (link: string) =>
     members: { id: string; name: string; hasDevice: boolean }[];
   };
 
+/** Renames your member, whose name is `from`, to `to` in the Members that is open. */
+async function renameYouTo(to: string, from: string) {
+  await openRenameMember(`${from} (You)`, from);
+  await fireEvent.changeText(memberNameField(), to);
+  await pressOnBar('Rename Member', 'Save');
+  await expectClosed('Rename Member');
+  await until(() => membersShown().includes(`${to} (You)`), 'the new name');
+}
+
 const waitForCards = (count: number) =>
   until(() => inviteRequests().length === count, `${count} cards to be sent`);
 
@@ -221,6 +236,26 @@ test('[GROUPS-106.1] shows Invite with Link above the member list of a group tha
   ).toBeOnTheScreen();
   // It is no row of the member list.
   expect(membersShown()).toEqual(['Taylor (You)', 'Add Member']);
+});
+
+test('[GROUPS-106.1] keeps Invite with Link on top in a shared ledger that has 20 members', async () => {
+  const others = Array.from(
+    { length: 19 },
+    (_, index) => `Member ${index + 1}`,
+  );
+  await startAt({ Brisbane: others });
+  await invited('Brisbane');
+  await closeInvite();
+
+  const lines = linesIn(screenOf('Members')).filter((line) => line !== '›');
+
+  expect(lines).toEqual([
+    'Invite with Link',
+    'Taylor (You)',
+    ...others,
+    'A shared group can have up to 20 members.',
+  ]);
+  expect(membersButton('Invite with Link')).toBeOnTheScreen();
 });
 
 // A group that never invited
@@ -254,17 +289,18 @@ test('[SHARING-90.1] sends nothing and makes no identity or key for a group nobo
 test('[SHARING-90.1] sends nothing for a second group while only the first is a shared ledger', async () => {
   await startAt(TWO_GROUPS);
   await invitedAndLeft('Brisbane');
-  const sent = fetchCalls();
+  const sent = asked();
 
   await showMembers('Tokyo');
   await addMember('Casey');
   await leaveMembers('Tokyo');
   await renameGroupTo('Tokyo', 'Kyoto');
 
-  expect(fetchCalls()).toBe(sent);
+  expect(asked()).toBe(sent);
+  const tokyo = await groupId('Kyoto');
+  expect(received().filter(({ path }) => path.includes(tokyo))).toEqual([]);
   expect(groupKeys()).toHaveLength(1);
   expect(groupKeys()[0].key).toBe(`group-key.${await groupId('Brisbane')}.1`);
-  const tokyo = await groupId('Kyoto');
   expect((await unsent()).filter((event) => event.groupId === tokyo)).toEqual(
     [],
   );
@@ -277,6 +313,9 @@ test('[SHARING-91.1] opens Invite rising from the bottom over Members, with only
 
   await invite('Brisbane');
 
+  expect(['formSheet', 'pageSheet', 'modal']).toContain(
+    screenOf('Invite').props.stackPresentation,
+  );
   expect(barItems('Invite')).toEqual({ left: ['Close (plain)'], right: [] });
   expect(isOpen('Members')).toBe(true);
   expect(selectedTab()).toBe('Groups');
@@ -284,15 +323,7 @@ test('[SHARING-91.1] opens Invite rising from the bottom over Members, with only
 
 test('[SHARING-91.1] shows only Creating link… until the invite is ready, and can be closed meanwhile', async () => {
   await startAt(ALONE);
-  let answer!: () => void;
-  const held = new Promise<void>((resolve) => {
-    answer = resolve;
-  });
-  const theApi = globalThis.fetch;
-  globalThis.fetch = (async (...request: Parameters<typeof fetch>) => {
-    await held;
-    return theApi(...request);
-  }) as typeof fetch;
+  const answer = holdTheApi();
   await showMembers('Brisbane');
 
   await fireEvent.press(membersButton('Invite with Link'));
@@ -303,6 +334,27 @@ test('[SHARING-91.1] shows only Creating link… until the invite is ready, and 
   expect(isOpen('Members')).toBe(true);
   // Let the request the app was waiting for end before the test does.
   await act(async () => answer());
+});
+
+test('[SHARING-91.1] prepares one invite when Invite with Link is pressed again before the first has a result', async () => {
+  await startAt(ALONE);
+  const answer = holdTheApi();
+  await showMembers('Brisbane');
+  await fireEvent.press(membersButton('Invite with Link'));
+  await expectOpen('Invite');
+  await closeInvite();
+
+  await fireEvent.press(membersButton('Invite with Link'));
+  await expectOpen('Invite');
+  expect(inviteLines()).toEqual([CREATING]);
+  await act(async () => answer());
+  await until(() => shownLink() !== undefined, 'the link');
+
+  expect(registrationsReceived()).toHaveLength(1);
+  expect(requestsReceived().filter(isCreateGroup)).toHaveLength(1);
+  expect(inviteRequests()).toHaveLength(1);
+  expect(partsOf(shownLink()!).code).toBe(codeIn(inviteRequests()[0]));
+  expect(await unsent()).toHaveLength(1);
 });
 
 test('[SHARING-91.1] closes Invite with Close or a swipe down, back on Members', async () => {
@@ -326,7 +378,7 @@ test("[SHARING-92.1] registers the device, creates the group under its own ID, t
 
   const link = await invited('Brisbane');
 
-  expect(received().map(({ method, path }) => `${method} ${path}`)).toEqual([
+  expect(apiRequests().map(({ method, path }) => `${method} ${path}`)).toEqual([
     'POST /devices',
     `PUT /groups/${id}`,
     `PUT /groups/${id}/invites/${partsOf(link).code}`,
@@ -404,6 +456,20 @@ test('[SHARING-92.1] registers once: a second group asks only for its own group 
   ]);
 });
 
+test('[SHARING-92.1] does not ask for the group again once it is a shared ledger', async () => {
+  await startAt(ALONE);
+  await invited('Brisbane');
+  await pressInInvite('Revoke Link');
+  await pressAlertButton('Revoke');
+  await expectClosed('Invite');
+
+  await pressInvite();
+
+  expect(shownLink()).toMatch(LINK);
+  expect(inviteRequests()).toHaveLength(2);
+  expect(requestsReceived().filter(isCreateGroup)).toHaveLength(1);
+});
+
 // The group key
 
 test('[SHARING-93.1] keeps the group key in the secure store: 32 random bytes in an entry named after the group and epoch 1', async () => {
@@ -430,6 +496,8 @@ test('[SHARING-93.1] puts the group key in no request and in no row of the local
   expect(requestsHold(key)).toBe(false);
   expect(received().some(({ body }) => body.length > 0)).toBe(true);
   expect(localDataHolds(key)).toBe(false);
+  // The same search finds what the local data does hold.
+  expect(localDataHolds(utf8(deviceId()))).toBe(true);
 });
 
 test('[SHARING-93.1] gives each group a key of its own', async () => {
@@ -663,12 +731,12 @@ test('[SHARING-100.1] shows the invite it has without asking the API, when Invit
   await startAt(ALONE);
   const link = await invited('Brisbane');
   await closeInvite();
-  const sent = fetchCalls();
+  const sent = asked();
 
   await pressInvite();
 
   expect(shownLink()).toBe(link);
-  expect(fetchCalls()).toBe(sent);
+  expect(asked()).toBe(sent);
 });
 
 test('[SHARING-100.1] shows the invite it has with no network, after the app is started again', async () => {
@@ -697,12 +765,12 @@ test('[SHARING-100.1] shows the invite that expires last when it holds two that 
 test('[SHARING-101.1] shows the invite it has until a millisecond before it expires', async () => {
   await startAt(ALONE);
   const link = await invitedAndLeft('Brisbane');
-  const sent = fetchCalls();
+  const sent = asked();
 
   setClock(T + WEEK - 1);
 
   expect(await invited('Brisbane')).toBe(link);
-  expect(fetchCalls()).toBe(sent);
+  expect(asked()).toBe(sent);
 });
 
 test('[SHARING-101.1] creates a new invite once the one it has expired', async () => {
@@ -822,6 +890,32 @@ test('[SHARING-103.1] keeps the invite and says something went wrong when the AP
   expect(await unsent()).toHaveLength(1);
 });
 
+test('[SHARING-103.1] keeps the invite when the API revoked it and the phone could not store that, and can revoke again', async () => {
+  await startAt(ALONE);
+  const link = await invited('Brisbane');
+  afterTheAnswerTo(isRevoke, failWrites);
+  await pressInInvite('Revoke Link');
+
+  await pressAlertButton('Revoke');
+  await until(() => alertsShown().length === 2, 'the alert');
+
+  expect(alertsShown().at(-1)).toEqual(['Unable to Revoke Link', WENT_WRONG]);
+  expect(shownLink()).toBe(link);
+  expect(await unsent()).toHaveLength(1);
+
+  allowWrites();
+  await pressInInvite('Revoke Link');
+  await pressAlertButton('Revoke');
+  await expectClosed('Invite');
+
+  expect(requestsReceived().filter(isRevoke)).toHaveLength(2);
+  expect((await unsent()).at(-1)?.content).toMatchObject({
+    type: 'invite',
+    id: partsOf(link).code,
+    deleted: true,
+  });
+});
+
 // No answer
 
 test('[SHARING-104.1] says to connect, with Try Again and no link, when there is no network, and recording goes on', async () => {
@@ -916,6 +1010,29 @@ test('[SHARING-105.1] sends the same code again after the app was started again'
   expect(partsOf(link).code).toBe(codeIn(first));
 });
 
+test('[SHARING-105.1] sends the same code again when the API created the invite and the phone could not store it', async () => {
+  await startAt(ALONE);
+  afterTheAnswerTo(isPutInvite, failWrites);
+
+  await invite('Brisbane');
+
+  expect(inviteLines()).toEqual([WENT_WRONG, 'Try Again']);
+  expect(inviteRequests()).toHaveLength(1);
+  expect(inviteOnApi(codeIn(inviteRequests()[0]))?.revoked).toBe(false);
+  expect(await unsent()).toEqual([]);
+
+  allowWrites();
+  await tryAgain();
+
+  const [first, second] = inviteRequests();
+  expect(second.path).toBe(first.path);
+  expect(partsOf(shownLink()!).code).toBe(codeIn(first));
+  expect(openedCard(first, partsOf(shownLink()!).secret)).toContain('Brisbane');
+  expect((await unsent()).map(({ content }) => content.id)).toEqual([
+    codeIn(first),
+  ]);
+});
+
 // Other answers
 
 test('[SHARING-106.1] says the group cannot be shared from this phone when its ID is already a group of another phone', async () => {
@@ -938,12 +1055,12 @@ test('[SHARING-106.1] says the group cannot be shared from this phone, and sends
     key.includes(deviceId()),
   )!;
   removeSecureStoreEntry(seed.key);
-  const sent = fetchCalls();
+  const sent = asked();
 
   await invite('Brisbane');
 
   expect(inviteLines()).toEqual([CANNOT_SHARE]);
-  expect(fetchCalls()).toBe(sent);
+  expect(asked()).toBe(sent);
 });
 
 test('[SHARING-106.1] says another member has an invite when the API has one this phone does not hold, then shows it once its event is applied', async () => {
@@ -1016,6 +1133,16 @@ test.each<[string, () => void]>([
     expect(shownLink()).toMatch(LINK);
   },
 );
+
+test('[SHARING-106.1] takes a 404 that gives no reason for an answer it cannot read, not for a used code', async () => {
+  await startAt(ALONE);
+  apiAnswersNext(isPutInvite, 404, '404 Not Found');
+
+  await invite('Brisbane');
+
+  expect(inviteLines()).toEqual([WENT_WRONG, 'Try Again']);
+  expect(inviteRequests()).toHaveLength(1);
+});
 
 test('[SHARING-106.1] says something went wrong when the API still refuses for too many requests after the wait', async () => {
   await startAt(ALONE);
@@ -1101,6 +1228,23 @@ test('[SHARING-108.1] sends nothing and says the names are too long when the car
   expect(await unsent()).toEqual([]);
 });
 
+test('[SHARING-108.1] still shows the invite it has when the names have grown past what a card holds', async () => {
+  await startAt(ALONE);
+  const link = await invitedAndLeft('Brisbane');
+  const group = 'g'.repeat(40_000);
+  await renameGroupTo('Brisbane', group);
+  await waitForCards(2);
+  await showMembers(group);
+  await renameYouTo('m'.repeat(40_000), 'Taylor');
+  const sent = asked();
+
+  await pressInvite();
+
+  expect(shownLink()).toBe(link);
+  expect(inviteLines()).not.toContain(NAMES_TOO_LONG);
+  expect(asked()).toBe(sent);
+});
+
 // Keeping the card up to date
 
 test('[SHARING-109.1] sends a new card for the same invite when the group is renamed, without a word', async () => {
@@ -1174,7 +1318,7 @@ test('[SHARING-109.1] sends the card of a change made with no network the next t
 test('[SHARING-109.1] sends no card when neither the name nor the members changed', async () => {
   await startAt(BRISBANE);
   await invitedAndLeft('Brisbane');
-  const sent = fetchCalls();
+  const sent = asked();
 
   await addGroupExpense({
     group: 'Brisbane',
@@ -1189,7 +1333,7 @@ test('[SHARING-109.1] sends no card when neither the name nor the members change
   await closeInvite();
   await pressInvite();
 
-  expect(fetchCalls()).toBe(sent);
+  expect(asked()).toBe(sent);
 });
 
 test('[SHARING-109.1] sends no card for a group whose invite was revoked, or has expired', async () => {
@@ -1201,7 +1345,7 @@ test('[SHARING-109.1] sends no card for a group whose invite was revoked, or has
   await leaveMembers('Brisbane');
   await invitedAndLeft('Tokyo');
   setClock(T + WEEK);
-  const sent = fetchCalls();
+  const sent = asked();
 
   await renameGroupTo('Brisbane', 'Brissie');
   await renameGroupTo('Tokyo', 'Kyoto');
@@ -1209,7 +1353,7 @@ test('[SHARING-109.1] sends no card for a group whose invite was revoked, or has
   expect((await unsent()).map(({ content }) => content.type).slice(-2)).toEqual(
     ['group', 'group'],
   );
-  expect(fetchCalls()).toBe(sent);
+  expect(asked()).toBe(sent);
 });
 
 test('[SHARING-109.1] says nothing and keeps the invite when the API refuses the new card', async () => {
@@ -1227,6 +1371,30 @@ test('[SHARING-109.1] says nothing and keeps the invite when the API refuses the
   ]);
   apiLosesNextAnswer(isPutInvite);
   expect(await invited('Brissie')).toBe(link);
+});
+
+test('[SHARING-109.1] sends no card that would be past the limit, and sends one again once it fits', async () => {
+  await startAt(ALONE);
+  const link = await invitedAndLeft('Brisbane');
+  const group = 'g'.repeat(40_000);
+  const member = 'm'.repeat(40_000);
+  await renameGroupTo('Brisbane', group);
+  await waitForCards(2);
+  await showMembers(group);
+
+  await renameYouTo(member, 'Taylor');
+  for (let turn = 0; turn < 20; turn += 1) await settle();
+
+  expect(inviteRequests()).toHaveLength(2);
+  expect(alertsShown()).toEqual([]);
+
+  await renameYouTo('Tay', member);
+  await waitForCards(3);
+
+  expect(lastCard(link)).toMatchObject({
+    name: group,
+    members: [{ name: 'Tay', hasDevice: true }],
+  });
 });
 
 // Invites from other phones
@@ -1269,13 +1437,13 @@ test('[SYNC-81.1] forgets an invite another phone revoked: the next Invite with 
 test('[SYNC-81.1] closes Invite when the invite it shows is revoked by another phone', async () => {
   await startAt(ALONE);
   const { code } = partsOf(await invited('Brisbane'));
-  const sent = fetchCalls();
+  const sent = asked();
 
   await receive(await groupId('Brisbane'), inviteRevoked(code));
 
   await expectClosed('Invite');
   expect(isOpen('Members')).toBe(true);
-  expect(fetchCalls()).toBe(sent);
+  expect(asked()).toBe(sent);
 });
 
 test('[SYNC-81.1] changes nothing when an invite event arrives twice, or is one this phone wrote', async () => {
@@ -1283,16 +1451,16 @@ test('[SYNC-81.1] changes nothing when an invite event arrives twice, or is one 
   const link = await invitedAndLeft('Brisbane');
   const id = await groupId('Brisbane');
   const [own] = await unsent();
-  const sent = fetchCalls();
+  const sent = asked();
 
   await receive(id, own.content, own.content);
 
   expect(await invited('Brisbane')).toBe(link);
   expect(await unsent()).toEqual([own]);
-  expect(fetchCalls()).toBe(sent);
+  expect(asked()).toBe(sent);
 });
 
-test("[SYNC-81.1] leaves another shared ledger's invite alone when an event names its code", async () => {
+test("[SYNC-81.1] leaves another shared ledger's invite alone when an event names its code, and stores nothing of it", async () => {
   await startAt(TWO_GROUPS);
   const tokyos = await invitedAndLeft('Tokyo');
   await invited('Brisbane');
@@ -1301,17 +1469,21 @@ test("[SYNC-81.1] leaves another shared ledger's invite alone when an event name
   await expectClosed('Invite');
   await leaveMembers('Brisbane');
   const { code } = partsOf(tokyos);
+  const brisbane = await groupId('Brisbane');
   const cards = inviteRequests().length;
 
-  await receive(
-    await groupId('Brisbane'),
-    inviteCreated(code, T + WEEK + 60_000),
-    inviteRevoked(code),
-  );
+  // Tokyo's code with another secret, expiring later than Tokyo's own invite.
+  await receive(brisbane, inviteCreated(code, T + WEEK + 60_000));
+
+  // Brisbane did not take it for an invite of its own: it makes a new one.
+  const link = await invitedAndLeft('Brisbane');
+  expect(partsOf(link).code).not.toBe(code);
+  expect(inviteRequests()).toHaveLength(cards + 1);
+  expect(await invitedAndLeft('Tokyo')).toBe(tokyos);
+
+  await receive(brisbane, inviteRevoked(code));
 
   expect(await invitedAndLeft('Tokyo')).toBe(tokyos);
-  expect(inviteRequests()).toHaveLength(cards);
-  const link = await invited('Brisbane');
-  expect(partsOf(link).code).not.toBe(code);
+  expect(await invitedAndLeft('Brisbane')).toBe(link);
   expect(inviteRequests()).toHaveLength(cards + 1);
 });

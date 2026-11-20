@@ -1901,7 +1901,7 @@ IF 邀請 API 的請求有不只一個會讓它被拒絕的問題，THEN the API
 
 ### Requirement: SHARING-88.1 關於一個邀請，API 只存代號、群組、時間、名片和 cursor
 
-The API SHALL 關於一個邀請只存：代號、它的群組、建立和到期的時間、有沒有被撤回，以及有效時的名片和名片的 cursor；被拒絕的請求帶的名片、被換掉的名片、撤回之後的名片，和請求的其他標頭都不存。`#` 後面的字串和從它導出的金鑰不在任何請求裡，所以 API 沒有它們。
+The API SHALL 關於一個邀請只存：代號、它的群組、建立和到期的時間、有沒有被撤回，以及名片和名片的 cursor；被拒絕的請求帶的名片、被換掉的名片、撤回的邀請的名片，和請求的其他標頭都不存。過期的邀請的名片留到什麼時候不在這裡。`#` 後面的字串和從它導出的金鑰不在任何請求裡，所以 API 沒有它們。
 
 #### Scenario: 建立之後的資料庫
 
@@ -1934,11 +1934,11 @@ The mobile app SHALL 不為還不是共同帳本的群組發出任何網路請�
 #### Scenario: 別的群組邀請過
 
 - **WHEN** Brisbane 已經是共同帳本，接著建立 Tokyo，加入成員並新增 Tokyo 的支出
-- **THEN** 這段期間 app 沒有發出任何網路請求，secure store 裡沒有 Tokyo 的群組鑰匙，Tokyo 的變更沒有寫成事件
+- **THEN** 這段期間 app 沒有發出任何路徑裡有 Tokyo 的群組 ID 的請求，也沒有註冊、建立群組或邀請的請求；secure store 裡沒有 Tokyo 的群組鑰匙，Tokyo 的變更沒有寫成事件
 
 ### Requirement: SHARING-91.1 按 Invite with Link 開啟 Invite
 
-WHEN 使用者在 Members 按「Invite with Link」（GROUPS-106.1），the mobile app SHALL 開啟從畫面底部升起、蓋在 Members 上的 Invite，標題是「Invite」，標題列只有關閉「Close」（SHELL-47.2、SHELL-48.2），並開始準備邀請；準備邀請還沒有結果時，Invite 的內容只有「Creating link…」。按 Close、把 Invite 往下滑或按 Android 的返回鍵，SHALL 關閉 Invite，回到 Members，準備邀請還沒有結果時也一樣。
+WHEN 使用者在 Members 按「Invite with Link」（GROUPS-106.1），the mobile app SHALL 開啟從畫面底部升起、蓋在 Members 上的 Invite，標題是「Invite」，標題列只有關閉「Close」（SHELL-47.2、SHELL-48.2），並開始準備邀請；準備邀請還沒有結果時，Invite 的內容只有「Creating link…」。按 Close、把 Invite 往下滑或按 Android 的返回鍵，SHALL 關閉 Invite，回到 Members，準備邀請還沒有結果時也一樣。一個群組同時只準備一次邀請：準備邀請還沒有結果時又按「Invite with Link」，就等同一次的結果，不另外發出請求。
 
 #### Scenario: 開啟
 
@@ -1954,6 +1954,11 @@ WHEN 使用者在 Members 按「Invite with Link」（GROUPS-106.1），the mobi
 
 - **WHEN** 在 Invite 按「Close」，或在 iOS 上把它往下滑，或在 Android 上按返回鍵
 - **THEN** Invite 關閉，顯示 Brisbane 的 Members
+
+#### Scenario: 還沒有結果時再按一次
+
+- **WHEN** API 還沒回答時關閉 Invite，再按「Invite with Link」，之後 API 才回答
+- **THEN** Invite 顯示邀請連結；API 只收到一個註冊的請求、一個建立群組的請求和一個建立邀請的請求
 
 ### Requirement: SHARING-92.1 第一次準備邀請時，群組變成共同帳本
 
@@ -2062,7 +2067,7 @@ The mobile app SHALL 不把 `#` 後面的字串和名片金鑰放進任何請求
 
 ### Requirement: SHARING-97.1 邀請建立好了之後，存下它並寫下它的事件
 
-WHEN API 回答邀請建立好了，the mobile app SHALL 在同一個 SQLite transaction 裡存下這個邀請——代號、`#` 後面的字串和 API 回答的到期時間——並寫下邀請的第一個事件（SYNC-80.1、SYNC-21.1），其中一個存不進去就都不留下。API 沒有回答建立好了時不存邀請，也不寫事件。
+WHEN API 回答邀請建立好了，the mobile app SHALL 在同一個 SQLite transaction 裡存下這個邀請——代號、`#` 後面的字串和 API 回答的到期時間——並寫下邀請的第一個事件（SYNC-80.1、SYNC-21.1），送出請求之前存的那一份代號和字串（SHARING-105.1）也在這個 transaction 裡拿掉；其中一個存不進去就都不留下，那一份也還在。API 沒有回答建立好了時不存邀請，也不寫事件。
 
 #### Scenario: 邀請的事件
 
@@ -2151,7 +2156,7 @@ WHEN 使用者在 Invite 按「Revoke Link」，the mobile app SHALL 先跳出�
 
 ### Requirement: SHARING-103.1 撤回沒成功時邀請還在
 
-IF 撤回的請求沒有得到撤回好了的回答，THEN the mobile app SHALL 留著這個邀請，不寫事件，Invite 仍顯示它，並跳出標題是「Unable to Revoke Link」的提示框：沒有得到回應時訊息是「Connect to the internet and try again.」，其他情況是「Something went wrong. Try again later.」。
+IF 撤回的請求沒有得到撤回好了的回答，或 API 回答撤回好了、本機資料卻存不進去，THEN the mobile app SHALL 留著這個邀請，不寫事件，Invite 仍顯示它，並跳出標題是「Unable to Revoke Link」的提示框：沒有得到回應時訊息是「Connect to the internet and try again.」，其他情況是「Something went wrong. Try again later.」。之後可以再撤回一次。
 
 #### Scenario: 沒有網路
 
@@ -2162,6 +2167,11 @@ IF 撤回的請求沒有得到撤回好了的回答，THEN the mobile app SHALL 
 
 - **WHEN** API 拒絕撤回的請求，原因是不是成員
 - **THEN** 跳出「Unable to Revoke Link」，訊息是「Something went wrong. Try again later.」；Invite 仍顯示原本的連結
+
+#### Scenario: API 撤回了，手機卻存不下
+
+- **WHEN** API 回答撤回好了，本機資料這時卻寫不進去；恢復之後再按「Revoke Link」和「Revoke」
+- **THEN** 先跳出「Unable to Revoke Link」，訊息是「Something went wrong. Try again later.」，Invite 仍顯示原本的連結，沒有多寫事件；再撤回之後 Invite 關閉，待上傳的事件多一個永久刪除這個邀請的事件
 
 ### Requirement: SHARING-104.1 連不上 API 時說明要連上線才能邀請
 
@@ -2194,7 +2204,7 @@ IF 準備邀請時有請求沒有得到回應——沒有網路、連不上 API�
 
 ### Requirement: SHARING-105.1 沒有結果的建立邀請，再試時用同一個代號
 
-WHEN 建立邀請，the mobile app SHALL 在送出請求之前把這次的代號和 `#` 後面的字串存進本機資料；IF 這個請求沒有得到 API 的回答，THEN 下次準備這個群組的邀請時用同一個代號和字串再送，重新啟動 app 之後也一樣，所以 API 已經建立的邀請不會變成沒有人有字串的邀請。API 回答邀請建立好了或拒絕之後，這一份就不再留著。
+WHEN 建立邀請，the mobile app SHALL 在送出請求之前把這次的代號和 `#` 後面的字串存進本機資料；IF 這個請求沒有得到 API 的回答，或 API 回答邀請建立好了、邀請卻沒能存進本機資料（SHARING-97.1），THEN 下次準備這個群組的邀請時用同一個代號和字串再送，重新啟動 app 之後也一樣，所以 API 已經建立的邀請不會變成沒有人有字串的邀請。這一份只在兩個時候拿掉：邀請存好的那個 transaction 裡，和 API 拒絕建立邀請的時候。
 
 #### Scenario: 再試一次
 
@@ -2206,13 +2216,18 @@ WHEN 建立邀請，the mobile app SHALL 在送出請求之前把這次的代號
 - **WHEN** API 建立了邀請，回應卻沒送到手機；重新啟動 app，在 Brisbane 的 Members 按「Invite with Link」
 - **THEN** API 收到的建立邀請的請求，路徑和重新啟動之前的那一個一樣
 
+#### Scenario: API 建立了邀請，手機卻存不下它
+
+- **WHEN** API 回答邀請建立好了，本機資料這時卻寫不進去；恢復之後在 Invite 按「Try Again」
+- **THEN** 先顯示「Something went wrong. Try again later.」（SHARING-106.1），沒有待上傳的事件；按了之後 API 收到的第二個建立邀請的請求，路徑和第一個一樣，Invite 顯示這個代號的連結，待上傳的事件剛好一個
+
 ### Requirement: SHARING-106.1 邀請準備不了時的說明
 
 IF 準備邀請時 API 的回答不是建立好了，或有東西存不進去，THEN the mobile app SHALL 在 Invite 顯示說明，不顯示連結：
 
 - 建立群組或建立邀請被拒絕，原因是不是成員（例如群組 ID 已經是別的手機的群組，SYNC-47.1），或這支手機授權失效（SHARING-29.1）：「This group can't be shared from this phone.」，沒有「Try Again」。
 - 建立邀請被拒絕，原因是已經有邀請：「Another member has already created an invite link. It appears here after this phone syncs.」和「Try Again」。
-- 建立邀請被拒絕，原因是沒有這個邀請：換一組新的代號和字串再送一次；再被拒絕就照下一項。
+- 建立邀請被拒絕，原因是沒有這個邀請：換一組新的代號和字串再送一次；再被拒絕、原因又是沒有這個邀請，就照下一項，是別的原因就照那個原因的那一項。只有帶著這個原因的拒絕才算：沒有帶原因的 404 是看不懂的回應。
 - 其他情況——註冊沒成功、請求太多、看不懂的回應、存不進 secure store 或本機資料——：「Something went wrong. Try again later.」和「Try Again」。
 
 #### Scenario: 群組 ID 已經是別的手機的群組
@@ -2242,7 +2257,7 @@ IF 準備邀請時 API 的回答不是建立好了，或有東西存不進去，
 
 #### Scenario: 其他的拒絕
 
-- **WHEN** API 拒絕註冊，原因是註冊太多；或拒絕建立群組，原因是請求太多，等了之後再送仍被拒絕；或對建立邀請的請求回 500；或回 200 但內容不是邀請建立好了的回應
+- **WHEN** API 拒絕註冊，原因是註冊太多；或拒絕建立群組，原因是請求太多，等了之後再送仍被拒絕；或對建立邀請的請求回 500，回沒有帶原因的 404，或回 200 但內容不是邀請建立好了的回應
 - **THEN** Invite 都顯示「Something went wrong. Try again later.」和「Try Again」
 
 ### Requirement: SHARING-107.1 成員超過 20 位的群組不能變成共同帳本
@@ -2261,7 +2276,7 @@ IF 準備邀請時群組還不是共同帳本，而它有超過 20 位成員，�
 
 ### Requirement: SHARING-108.1 名片太大時不能邀請
 
-IF 準備邀請時名片會超過 65,536 bytes，也就是名片內容的 bytes 數加上加密多出來的 41 bytes 超過它，THEN the mobile app SHALL 不發出任何網路請求，還不是共同帳本的群組不變成共同帳本，在 Invite 顯示「The group and member names are too long to invite people. Shorten them and try again.」，沒有「Try Again」。
+IF 準備邀請時要建立邀請（SHARING-101.1），而名片會超過 65,536 bytes，也就是名片內容的 bytes 數加上加密多出來的 41 bytes 超過它，THEN the mobile app SHALL 不發出任何網路請求，還不是共同帳本的群組不變成共同帳本，在 Invite 顯示「The group and member names are too long to invite people. Shorten them and try again.」，沒有「Try Again」。
 
 #### Scenario: 剛好 65,536 bytes
 
@@ -2273,9 +2288,14 @@ IF 準備邀請時名片會超過 65,536 bytes，也就是名片內容的 bytes 
 - **WHEN** 群組名稱再多一個字元，按「Invite with Link」
 - **THEN** Invite 顯示「The group and member names are too long to invite people. Shorten them and try again.」；app 沒有發出任何網路請求，群組不是共同帳本
 
+#### Scenario: 已經有有效的邀請
+
+- **WHEN** 存著有效的邀請的共同帳本，群組名稱和成員名稱後來長到名片會超過 65,536 bytes，按「Invite with Link」
+- **THEN** Invite 照常顯示存著的邀請（SHARING-100.1），不顯示這句話
+
 ### Requirement: SHARING-109.1 群組名稱或成員變動時更新名片
 
-WHEN 群組名稱，或群組成員的名單、順序、名稱、有沒有使用者 ID，在這支手機上變了——在這支手機上改的，或套用收到的事件改的——而這支手機存著這個群組有效的邀請，the mobile app SHALL 用新的名片替 SHARING-100.1 會顯示的那個邀請再送一次建立邀請的請求（SHARING-78.1、SHARING-95.1），不必等使用者打開 Invite，也不顯示任何提示。IF 這個請求沒有得到邀請建立好了的回答，THEN 下次這些資料再變，或下次準備這個群組的邀請時再送；名片內容和 API 最後一次回答建立好了的那一份相同時不送。
+WHEN 群組名稱，或群組成員的名單、順序、名稱、有沒有使用者 ID，在這支手機上變了——在這支手機上改的，或套用收到的事件改的——而這支手機存著這個群組有效的邀請，the mobile app SHALL 用新的名片替 SHARING-100.1 會顯示的那個邀請再送一次建立邀請的請求（SHARING-78.1、SHARING-95.1），不必等使用者打開 Invite，也不顯示任何提示。IF 這個請求沒有得到邀請建立好了的回答，THEN 下次這些資料再變，或下次準備這個群組的邀請時再送。這些資料沒有變時不送；新的名片會超過 65,536 bytes（SHARING-108.1）時也不送，等它不超過了再送。
 
 #### Scenario: 改群組名稱
 
@@ -2311,6 +2331,11 @@ WHEN 群組名稱，或群組成員的名單、順序、名稱、有沒有使用
 
 - **WHEN** API 拒絕更新名片的請求，原因是沒有這個邀請
 - **THEN** 沒有跳出提示框，存著的邀請不變，沒有多寫事件
+
+#### Scenario: 名片太大
+
+- **WHEN** Brisbane 的邀請建立好了之後，把群組名稱改成 40,000 個字元，再把你的成員名稱改成 40,000 個字元，之後把成員名稱改回「Tay」
+- **THEN** 改群組名稱之後 API 收到新的名片；改成員名稱之後 API 沒有多收到建立邀請的請求，也沒有跳出提示框；改回「Tay」之後 API 收到新的名片，裡面是 40,000 個字元的群組名稱和「Tay」
 
 ### Requirement: SHARING-110.1 (manual) 掃 QR code 和分享連結
 
