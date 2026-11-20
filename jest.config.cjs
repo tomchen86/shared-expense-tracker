@@ -65,6 +65,12 @@ module.exports = {
     './apps/api/src/sharing/signed-requests.ts': { branches: 100 },
     './apps/mobile/src/sharing/api-request.ts': { branches: 100 },
     './apps/mobile/src/sharing/device-identity.ts': { branches: 100 },
+    // The event API: what stores a shared ledger's events, numbers them and hands them
+    // out, and the checks of its bodies that the phone and the API share (ADR-0016,
+    // ADR-0024).
+    './packages/domain/src/api/group-events.ts': { branches: 100 },
+    './apps/api/src/sync/groups.ts': { branches: 100 },
+    './apps/api/src/sync/routes.ts': { branches: 100 },
   },
   testTimeout: 15000,
 };
