@@ -1219,6 +1219,24 @@ test("[LEDGER-146.2] moves a group's screen on this month and the expense list b
   expect(periodName(expensesRoot())).toBe('November 2026');
 });
 
+test("[LEDGER-146.2] leaves a group's screen that is open on Group Total, and the expense list behind it on All Time, when the app comes back in a later month", async () => {
+  await startWithGroups(BRISBANE);
+  await brisbaneSpends('Dinner', '2026-10-29');
+  await tapTab('Expenses');
+  await choosePeriod('Expenses', 'All Time');
+  expect(periodName(expensesRoot())).toBe('All Time');
+  await showGroup('Brisbane');
+  expect(periodName(brisbane())).toBe('Group Total');
+
+  await comeBackOn('2026-11-02');
+
+  expect(periodName(brisbane())).toBe('Group Total');
+  expect(groupCardTitles('Brisbane')).toEqual(['Dinner']);
+  await tapTab('Expenses');
+  expect(periodName(expensesRoot())).toBe('All Time');
+  expect(cardTitles()).toEqual(['Dinner']);
+});
+
 test('[LEDGER-146.2] shows the last three months up to the new today when the app comes back', async () => {
   await startExpenses();
   await choosePeriod('Expenses', 'Last 3 Months');
