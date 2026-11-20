@@ -500,6 +500,23 @@ test('[LEDGER-144.1] keeps the saved filter when the question is answered with C
   expect(savedFilterNames()).toEqual(['Big shopping']);
 });
 
+test('[LEDGER-144.1] [LEDGER-140.1] says the settings could not be saved when a saved filter cannot be deleted, and keeps it', async () => {
+  await startWithShopping();
+  await saveBigShopping();
+  failWrites();
+
+  await pressDeleteSaved('Big shopping');
+  await alerts.choose('Delete');
+
+  await waitFor(() =>
+    expect(alerts.shown().at(-1)).toEqual([
+      'Unable to Save Settings',
+      'Your settings could not be saved. Please try again.',
+    ]),
+  );
+  expect(savedFilterNames()).toEqual(['Big shopping']);
+});
+
 test('[LEDGER-144.1] [LEDGER-140.1] keeps the saved filters over a restart', async () => {
   const app = await startWithShopping();
   await saveBigShopping();
