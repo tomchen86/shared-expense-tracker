@@ -15,6 +15,7 @@ import {
   loseAnswerTo,
   mark,
   noAnswerTo,
+  plaintextOf,
   randomId,
   refusals,
   renameGroup,
@@ -163,7 +164,7 @@ describe('SYNC-84.1', () => {
   });
 
   test('[SYNC-84.1] checks an event saved in the middle of a sync before it sends it, in that sync or the next', async () => {
-    const { a, brisbane, key } = await twoPhones();
+    const { a, A, brisbane, key } = await twoPhones();
     for (let index = 0; index < 150; index += 1) {
       await renameGroup(a, `Trip ${index + 1}`);
     }
@@ -186,9 +187,10 @@ describe('SYNC-84.1', () => {
         'units' in event &&
         event.units.title?.value === 'Late',
     );
-    expect(late?.stamp.ms).toBe(NOW);
+    // The 150 renames are stamped NOW, so the latest stamp left is in that millisecond.
+    expect(late?.stamp).toEqual(at(NOW + 1, 0, A));
     expect(
-      contents.filter((event) => (event?.stamp.ms ?? Infinity) > NOW),
+      contents.filter((event) => (event?.stamp.ms ?? Infinity) > NOW + 1),
     ).toEqual([]);
   });
 
@@ -208,13 +210,13 @@ describe('SYNC-84.1', () => {
       at(NOW, 0, A),
     ]);
     // Tokyo has not synced, and its event already has the stamp it will go up with.
-    expect(await unsentStamps(a, tokyo)).toEqual([at(NOW, 1, A)]);
+    expect(await unsentStamps(a, tokyo)).toEqual([at(NOW + 1, 0, A)]);
     expect(await storedEvents(tokyo)).toEqual([]);
 
     await sync(a, tokyo);
 
     expect(stampsOf(await storedContents(tokyo, keyOf(a, tokyo)))).toEqual([
-      at(NOW, 1, A),
+      at(NOW + 1, 0, A),
     ]);
   });
 
@@ -268,7 +270,7 @@ describe('SYNC-85.1', () => {
     return { ...setup, written, from };
   }
 
-  test('[SYNC-85.1] gives events stamped an hour ahead new stamps at the corrected time, one after another, with the bases that name them', async () => {
+  test('[SYNC-85.1] gives events stamped an hour ahead new stamps from the corrected time on, a millisecond apart, with the bases that name them', async () => {
     const { a, A, brisbane, key, written, from } = await afterAnHourAhead();
 
     // The download is refused for the clock first, and accepted at the API's time.
@@ -281,8 +283,8 @@ describe('SYNC-85.1', () => {
     const stored = await storedContents(brisbane, key);
     expect(stampsOf(stored)).toEqual([
       at(NOW, 0, A),
-      at(NOW, 1, A),
-      at(NOW, 2, A),
+      at(NOW + 1, 0, A),
+      at(NOW + 2, 0, A),
     ]);
     expect(
       (await storedEvents(brisbane)).map((event) => event.eventId),
@@ -313,9 +315,11 @@ describe('SYNC-85.1', () => {
 
     await editExpense(a, 'Supper', { title: 'Late supper' });
 
+    // The corrected time is still NOW, not later than the last new stamp, NOW + 2: the
+    // change takes that millisecond and the next counter (SYNC-2.1).
     const [next] = await unsent(a);
-    expect(next.content.stamp).toEqual(at(NOW, 3, A));
-    expect(baseOf(next.content, 'title')).toEqual(at(NOW, 1, A));
+    expect(next.content.stamp).toEqual(at(NOW + 2, 1, A));
+    expect(baseOf(next.content, 'title')).toEqual(at(NOW + 1, 0, A));
   });
 
   test('[SYNC-85.1] replaces only the stamps that are too far ahead', async () => {
@@ -327,9 +331,10 @@ describe('SYNC-85.1', () => {
 
     await sync(a);
 
+    // Lunch's stamp is left in the millisecond of the corrected time, so Dinner's is the next one.
     expect(stampsOf(await storedContents(brisbane, key))).toEqual([
       at(NOW, 0, A),
-      at(NOW, 1, A),
+      at(NOW + 1, 0, A),
     ]);
   });
 
@@ -375,7 +380,7 @@ describe('SYNC-85.1', () => {
     // A tombstone still stamped an hour ahead would have been the latest stamp left.
     expect(stampsOf(await storedContents(brisbane, key))).toEqual([
       at(NOW, 0, A),
-      at(NOW, 1, A),
+      at(NOW + 1, 0, A),
     ]);
   });
 
@@ -405,7 +410,7 @@ describe('SYNC-85.1', () => {
     expect(stampsOf(await storedContents(brisbane, key))).toEqual([
       at(NOW, 0, B),
       at(NOW + 540_000, 0, B),
-      at(NOW, 1, A),
+      at(NOW + 1, 0, A),
     ]);
   });
 
@@ -418,10 +423,10 @@ describe('SYNC-85.1', () => {
     expect(await unsentStamps(setup.a, tokyo)).toEqual([at(FAST, 0, A)]);
     expect(await unsentStamps(setup.a)).toEqual([at(FAST, 1, A)]);
     const copy = await copyOfData(setup.a);
-    // The API's time is NOW: Dinner goes up stamped NOW.
+    // The API's time is NOW: Sushi is stamped NOW, and Dinner goes up stamped a millisecond later.
     await sync(setup.a);
     expect(stampsOf(await storedContents(brisbane, key))).toEqual([
-      at(NOW, 1, A),
+      at(NOW + 1, 0, A),
     ]);
 
     // Three minutes later the phone, still an hour ahead, is back at the copy. Dinner
@@ -463,12 +468,45 @@ describe('SYNC-85.1', () => {
     const stored = await storedContents(brisbane, key);
     expect(stampsOf(stored)).toEqual([
       at(T + 240_000, 0, B),
-      at(T + 240_000, 1, A),
+      at(T + 240_001, 0, A),
     ]);
     expect(baseOf(stored[1], 'title')).toEqual(at(T + 240_000, 0, B));
     await sync(b);
     expect(await titles(b)).toEqual(['Supper']);
     expect(await titles(a)).toEqual(['Supper']);
+  });
+
+  test('[SYNC-85.1] does not make an event larger: one saved at the size limit and replaced after ten others still uploads', async () => {
+    const { a, b, A, brisbane, key } = await twoPhones();
+    // How long a note makes an event exactly 65,536 bytes, measured on the other phone:
+    // the events differ only in what is as long on both.
+    await addExpense(b, { title: 'Big', note: 'a' });
+    const [trial] = await unsent(b);
+    const noteLength = 1 + 65_536 - (plaintextOf(trial.content).length + 41);
+    setClock(a, FAST);
+    for (let index = 0; index < 10; index += 1) {
+      await renameGroup(a, `Trip ${index + 1}`);
+    }
+    // A second later, so the large event's stamp has counter 0: no stamp is shorter.
+    setClock(a, FAST + 1000);
+    await addExpense(a, { title: 'Big', note: 'a'.repeat(noteLength) });
+    const written = await unsent(a);
+    expect(written.map((event) => event.content.stamp)).toEqual([
+      ...Array.from({ length: 10 }, (_, counter) => at(FAST, counter, A)),
+      at(FAST + 1000, 0, A),
+    ]);
+    expect(plaintextOf(written[10].content).length + 41).toBe(65_536);
+
+    await sync(a);
+
+    // Counting up at the corrected time would have stamped it NOW with counter 10: a byte
+    // more, and the API refuses a request that holds an event over 65,536 bytes.
+    const stored = await storedContents(brisbane, key);
+    expect(stampsOf(stored)).toEqual(
+      Array.from({ length: 11 }, (_, index) => at(NOW + index, 0, A)),
+    );
+    expect(plaintextOf(stored[10]).length + 41).toBe(65_536);
+    expect(await unsent(a)).toEqual([]);
   });
 });
 
