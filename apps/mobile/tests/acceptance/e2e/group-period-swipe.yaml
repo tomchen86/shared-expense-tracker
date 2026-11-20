@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-114.1] Opens no Insights and no Balances with a swipe to the left on a group's total and on your net on Group Total, goes back with a drag to the right from its period row, and on a month swipes the period's name, the total and your net to the month before and back without leaving the group's screen"
+name: "[LEDGER-114.2] Opens no Insights and no Balances with a swipe to the left on a group's total and on your net on Group Total, goes back with a drag to the right from its period row, and on a month swipes the period's name, the total and your net to the month before and back without leaving the group's screen"
 ---
 # The names of this month and last month, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"

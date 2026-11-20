@@ -18,6 +18,8 @@ export interface SheetProps {
   cancel?: HeaderAction;
   confirm?: HeaderAction;
   onClose: () => void;
+  /** Called when the Android modal is shown. */
+  onShow?: () => void;
   dismissible?: boolean;
   children: ReactNode;
 }
@@ -28,6 +30,7 @@ export function Sheet({
   cancel,
   confirm,
   onClose,
+  onShow,
   dismissible = true,
   children,
 }: SheetProps) {
@@ -61,6 +64,7 @@ export function Sheet({
     <Modal
       visible={visible}
       animationType="slide"
+      onShow={onShow}
       onRequestClose={() => {
         if (dismissible) onClose();
       }}

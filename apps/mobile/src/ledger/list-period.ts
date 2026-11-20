@@ -30,7 +30,7 @@ export interface ListPeriod {
 /** The dates a list shows, whatever else the list keeps. */
 type ShownDates = Pick<ListPeriod, 'period' | 'range'>;
 
-/** The periods a list offers by name, in the order of the Date list (LEDGER-109.1). */
+/** The periods a list offers by name, in the order of the Date list (LEDGER-109.2). */
 export const PERIOD_OPTIONS = [
   { id: 'thisMonth', name: 'This Month' },
   { id: 'lastMonth', name: 'Last Month' },
@@ -195,7 +195,7 @@ export function periodName(
   }
 }
 
-/** What a period with no expense is called (LEDGER-116.2): a custom range by its two days. */
+/** What a period with no expense is called (LEDGER-116.3): a custom range by its two days. */
 export function emptyPeriodName(
   list: ShownDates,
   day: string,
@@ -226,7 +226,7 @@ export function hasNext(
 }
 
 /**
- * The search params that open Insights on the list's period (LEDGER-35.5, INSIGHTS-45.1): the
+ * The search params that open Insights on the list's period (LEDGER-35.6, INSIGHTS-45.1): the
  * month or the year, the two days of the last three months or of a custom range, and this
  * month for all dates.
  */
@@ -241,7 +241,7 @@ export function insightsParams(
 }
 
 /**
- * The period to offer in place of one that holds no expense (LEDGER-116.2): the year, from a
+ * The period to offer in place of one that holds no expense (LEDGER-116.3): the year, from a
  * year, or else the month of the latest expense dated before `first`. `dates` are the dates of
  * the list's expenses, latest first.
  */

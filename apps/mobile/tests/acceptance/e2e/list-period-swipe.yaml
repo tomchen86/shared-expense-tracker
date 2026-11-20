@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-114.1] Swipes the period's name and the total to the month before and back, not past this month, and changes no period from a card"
+name: "[LEDGER-114.2] Swipes the period's name and the total to the month before and back, not past this month, and changes no period from a card"
 tags:
   - android
 ---

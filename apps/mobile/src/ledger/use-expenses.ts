@@ -13,6 +13,9 @@ import {
   subscribeToExpenses,
   type Expense,
 } from './expenses';
+import { participation } from './list-filter';
+
+export type GroupWithFormerMembers = Group & { formerMembers: GroupMember[] };
 
 export interface ExpenseView extends Expense {
   addedOrder: number;
@@ -20,6 +23,7 @@ export interface ExpenseView extends Expense {
   categoryLabel: string;
   group?: Group;
   members: GroupMember[];
+  paidByMe: boolean;
   yourPaid: number;
   yourShare: number;
   involved: boolean;
@@ -43,6 +47,7 @@ export function useReadExpenses(trashed = false, { throwOnError = true } = {}) {
   const { personalSpaceId, personalParticipantId, userId } = useLocalIdentity();
   const focused = useIsFocused();
   const [expenses, setExpenses] = useState<ExpenseView[]>();
+  const [groups, setGroups] = useState<GroupWithFormerMembers[]>([]);
   const [placed, setPlaced] = useState<readonly string[]>([]);
   const [error, setError] = useState<unknown>();
   // Kept through the reads that a change of focus starts over, until one read is shown.
@@ -75,12 +80,13 @@ export function useReadExpenses(trashed = false, { throwOnError = true } = {}) {
             (expense) => (expense.trashOrder !== undefined) === trashed,
           );
           if (trashed) selected.sort((a, b) => b.trashOrder! - a.trashOrder!);
+          setGroups(groups);
           setPlaced(waiting.current);
           waiting.current = [];
           setExpenses(
             selected.map((expense) => {
               const category = current.get(expense.category.id);
-              const name = category?.name ?? expense.category.name;
+              const cardCategory = category ?? expense.category;
               const group = groups.find((item) => item.id === expense.spaceId);
               const members = group
                 ? [...group.members, ...group.formerMembers]
@@ -91,32 +97,15 @@ export function useReadExpenses(trashed = false, { throwOnError = true } = {}) {
                   .filter((member) => member.userId === userId)
                   .map((member) => member.id),
               ]);
-              const paid = expense.payments.filter((payment) =>
-                own.has(payment.participant),
-              );
-              const shares = expense.shares.filter((share) =>
-                own.has(share.participant),
-              );
               return {
                 ...expense,
-                category: category ?? expense.category,
+                category: cardCategory,
                 categoryLabel: category?.isArchived
-                  ? `${name} (Archived)`
-                  : name,
+                  ? `${cardCategory.name} (Archived)`
+                  : cardCategory.name,
                 group,
                 members,
-                yourPaid: paid.reduce(
-                  (sum, payment) => sum + payment.amountMinor,
-                  0,
-                ),
-                yourShare: shares.reduce(
-                  (sum, share) => sum + share.amountMinor,
-                  0,
-                ),
-                involved:
-                  expense.spaceId === personalSpaceId ||
-                  paid.length > 0 ||
-                  shares.length > 0,
+                ...participation(expense, personalSpaceId, own),
               };
             }),
           );
@@ -144,5 +133,5 @@ export function useReadExpenses(trashed = false, { throwOnError = true } = {}) {
   ]);
 
   if (error && throwOnError) throw error;
-  return { expenses, placed };
+  return { expenses, groups, placed };
 }

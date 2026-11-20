@@ -18,6 +18,8 @@ export interface MenuFieldProps {
   trigger?: ReactElement;
   /** The sheet's title on Android and the menu heading for a custom trigger on iOS. */
   title: string;
+  /** Also show the title above the options of a standard iOS form row. */
+  showMenuTitle?: boolean;
   disabled?: boolean;
   /** The color of the dot in front of the value, for a category. */
   dot?: string;

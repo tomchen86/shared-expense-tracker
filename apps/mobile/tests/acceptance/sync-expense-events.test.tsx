@@ -37,6 +37,16 @@ import {
 import { showGroup } from './group-balances-app';
 import { alertsShown, pressAlertButton, screenOf } from './group-details-app';
 import { chooseSort, sortName } from './ledger-list-find-app';
+import {
+  SAVE_FILTER,
+  capsuleTexts,
+  choose,
+  pressDeleteSaved,
+  pressInFilters,
+  savedFilterNames,
+  watchPrompts,
+} from './ledger-list-filter-app';
+import { closeFilters, openFilters } from './ledger-list-period-app';
 import { allowWrites, failWritesAfter } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
 import {
@@ -839,5 +849,29 @@ test("[LEDGER-124.1] writes no event when the order of a shared ledger's screen 
   await chooseSort(screenOf('Brisbane'), 'Oldest First');
 
   expect(sortName(screenOf('Brisbane'))).toBe('Sort By, Oldest First');
+  expect(await unsent()).toEqual(before);
+});
+
+test("[LEDGER-140.1] [LEDGER-143.1] writes no event when the filter of a shared ledger's screen is changed, saved or deleted", async () => {
+  await startShared();
+  await addDinner();
+  const before = await unsent();
+  const prompts = watchPrompts();
+  await showGroup('Brisbane');
+
+  await choose('Brisbane', 'Paid by', 'Casey');
+  expect(capsuleTexts(screenOf('Brisbane'))).toContain('Paid by Casey');
+  expect(await unsent()).toEqual(before);
+
+  await openFilters('Brisbane');
+  await pressInFilters(SAVE_FILTER);
+  await prompts.answer('Save', 'Mine');
+  expect(savedFilterNames()).toEqual(['Mine']);
+  expect(await unsent()).toEqual(before);
+
+  await pressDeleteSaved('Mine');
+  await pressAlertButton('Delete');
+  expect(savedFilterNames()).toEqual([]);
+  await closeFilters();
   expect(await unsent()).toEqual(before);
 });

@@ -174,7 +174,7 @@ test('[LEDGER-32.2] shows the card of a group expense you share instead of the h
 
 // Which group expenses the list shows
 
-test('[LEDGER-64.4] lists a group expense you share', async () => {
+test('[LEDGER-64.5] lists a group expense you share', async () => {
   await startWithGroups(BRISBANE);
 
   await addGroupExpense({
@@ -187,7 +187,7 @@ test('[LEDGER-64.4] lists a group expense you share', async () => {
   await waitFor(() => expect(cardTitles()).toEqual(['Dinner']));
 });
 
-test('[LEDGER-64.4] lists a group expense you only paid', async () => {
+test('[LEDGER-64.5] lists a group expense you only paid', async () => {
   await startWithGroups(BRISBANE);
 
   await addGroupExpense({
@@ -200,7 +200,7 @@ test('[LEDGER-64.4] lists a group expense you only paid', async () => {
   await waitFor(() => expect(cardTitles()).toEqual(['Dinner']));
 });
 
-test('[LEDGER-64.4] lists a group expense in which your share is 0', async () => {
+test('[LEDGER-64.5] lists a group expense in which your share is 0', async () => {
   await startWithGroups(BRISBANE);
 
   await addGroupExpense({
@@ -214,7 +214,7 @@ test('[LEDGER-64.4] lists a group expense in which your share is 0', async () =>
   await waitFor(() => expect(cardTitles()).toEqual(['Dinner']));
 });
 
-test('[LEDGER-64.4] leaves out a group expense you neither paid nor share', async () => {
+test('[LEDGER-64.5] leaves out a group expense you neither paid nor share', async () => {
   await startWithGroups(BRISBANE);
   await addExpense();
 
@@ -229,7 +229,7 @@ test('[LEDGER-64.4] leaves out a group expense you neither paid nor share', asyn
   await waitFor(() => expect(cardTitles()).toEqual(['Coffee run']));
 });
 
-test('[LEDGER-64.4] lists group expenses with personal ones, newest date first', async () => {
+test('[LEDGER-64.5] lists group expenses with personal ones, newest date first', async () => {
   await startWithGroups(BRISBANE);
   await addExpense({ title: 'Coffee run', date: '2026-10-02' });
   await addGroupExpense({
@@ -254,7 +254,7 @@ test('[LEDGER-64.4] lists group expenses with personal ones, newest date first',
   );
 });
 
-test("[LEDGER-64.4] keeps listing an archived group's expense", async () => {
+test("[LEDGER-64.5] keeps listing an archived group's expense", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
 
