@@ -3334,12 +3334,17 @@ WHERE iOS，the mobile app SHALL 讓排序鈕是一個系統選單：按一下�
 
 ### Requirement: LEDGER-124.1 記住每個清單的排序
 
-The mobile app SHALL 把支出清單的排序和每個群組的畫面的排序存在本機資料，各存各的：重新啟動 app 或重新打開群組的畫面之後，每個清單仍是它上次選的排序；換期間、搜尋、新增或修改支出都不改排序。排序只留在這支手機，不寫成同步的事件（SYNC-26.1）；它是全部資料的一部分（backup），匯入之後每個清單用的是匯出檔裡的排序；匯出檔裡沒有排序的清單，包括之前的 app 匯出的匯出檔（BACKUP-18.1）裡的每個清單，匯入之後是 Newest First，不管匯入之前這支手機上選的是什麼。
+The mobile app SHALL 把支出清單的排序和每個群組的畫面的排序存在本機資料，各存各的：重新啟動 app 或重新打開群組的畫面之後，每個清單仍是它上次選的排序；換期間、搜尋、新增或修改支出都不改排序。排序只留在這支手機，不寫成同步的事件（SYNC-26.1）；它是全部資料的一部分（backup），匯入之後每個清單用的是匯出檔裡的排序；匯出檔裡沒有排序的清單，包括之前的 app 匯出的匯出檔（BACKUP-18.1）裡的每個清單，匯入之後是 Newest First，不管匯入之前這支手機上選的是什麼。IF 排序存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable to Save Settings」、內容「Your settings could not be saved. Please try again.」的提示框，清單和排序鈕都回到原本的排序，和外觀選項存不進去時一樣（SHELL-33.1）。
 
 #### Scenario: 重新啟動
 
 - **WHEN** 把支出清單的排序換成 Oldest First 之後重新啟動 app
 - **THEN** 排序鈕的名稱是「Sort By, Oldest First」，卡片從最舊的排起
+
+#### Scenario: 存不進去
+
+- **WHEN** 本機資料寫不進去時，把 Newest First 的支出清單換成 Oldest First
+- **THEN** 跳出「Unable to Save Settings」；排序鈕的名稱仍是「Sort By, Newest First」，卡片仍從最新的排起；重新啟動 app 之後也一樣
 
 #### Scenario: 各存各的
 

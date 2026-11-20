@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { ActionSheetIOS } from 'react-native';
-import { renderHook, within } from '@testing-library/react-native';
+import { renderHook, waitFor, within } from '@testing-library/react-native';
 import {
   addExpense,
   editCategory,
@@ -64,7 +64,7 @@ import {
   pressUndo,
   restoreFromTrash,
 } from './ledger-trash-app';
-import { allowWrites, settle } from './shell-appearance-app';
+import { allowWrites, failWrites, settle } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
 import { useThemeColors } from '../../src/ui/theme';
 import type { Database } from '../../src/storage';
@@ -604,6 +604,35 @@ test('[LEDGER-124.1] keeps the order of the expense list when the app starts aga
 
   await expectSort(expensesRoot, 'Oldest First');
   expect(cardTitles()).toEqual(['A', 'B']);
+});
+
+test('[LEDGER-124.1] says the settings could not be saved when the order cannot be stored, and puts the list back in the order it was in', async () => {
+  const alerts = watchAlerts();
+  const app = await startExpenses();
+  await spend('Coffee run', '2026-10-01');
+  await spend('Lunch', '2026-10-02');
+  expect(cardTitles()).toEqual(['Lunch', 'Coffee run']);
+  failWrites();
+
+  await chooseSort(expensesRoot(), 'Oldest First');
+
+  await waitFor(() =>
+    expect(alerts.shown()).toEqual([
+      [
+        'Unable to Save Settings',
+        'Your settings could not be saved. Please try again.',
+      ],
+    ]),
+  );
+  expect(sortName(expensesRoot())).toBe('Sort By, Newest First');
+  expect(cardTitles()).toEqual(['Lunch', 'Coffee run']);
+
+  // Nothing was stored: the list is newest first when the app starts again too.
+  allowWrites();
+  await restart(app);
+
+  await expectSort(expensesRoot, 'Newest First');
+  expect(cardTitles()).toEqual(['Lunch', 'Coffee run']);
 });
 
 test('[LEDGER-124.1] keeps an order for each group and one for the expense list, apart from each other', async () => {
