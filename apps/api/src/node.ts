@@ -1,3 +1,4 @@
+import { ReadableStream } from 'node:stream/web';
 import { serve } from '@hono/node-server';
 import { app } from './app';
 import { connect } from './database/connect';
@@ -48,6 +49,17 @@ export function startServer(options: NodeServerOptions): Promise<NodeServer> {
               : incoming.socket.remoteAddress,
             ipHashKey: options.ipHashKey,
             appLinks,
+            get incomingBody() {
+              if (
+                incoming.headers['content-length'] ||
+                incoming.headers['transfer-encoding']
+              ) {
+                // Cancelling an oversized upload must leave the socket open for the 413.
+                return ReadableStream.from<Uint8Array>(
+                  incoming.iterator({ destroyOnReturn: false }),
+                );
+              }
+            },
           }),
         hostname,
         port: options.port ?? 0,

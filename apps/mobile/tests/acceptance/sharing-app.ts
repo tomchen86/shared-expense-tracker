@@ -516,7 +516,7 @@ const refusalAnswer = (refusal: Refusal) => ({
 /** The API's time now. */
 export const apiTime = () => Date.now() + world().aheadMs;
 
-/** What the API answers when no test has told it otherwise: SHARING-31.1 to 38.1, without the limits. */
+/** What the API answers when no test has told it otherwise: SHARING-31.2 to 38.1, without the limits. */
 function answerOf(request: Received): {
   status: number;
   body: string | Uint8Array;
