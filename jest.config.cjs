@@ -35,7 +35,7 @@ module.exports = {
     './apps/mobile/src/groups/balances-screen.tsx': { branches: 100 },
     './apps/mobile/src/groups/format-balance.ts': { branches: 100 },
     './apps/mobile/src/ledger/expenses.ts': { branches: 92 },
-    './apps/mobile/src/ledger/list-filter.ts': { branches: 98.41 },
+    './apps/mobile/src/ledger/list-filter.ts': { branches: 100 },
     './apps/mobile/src/ledger/expense-form-screen.tsx': { branches: 97.91 },
     './apps/mobile/src/ledger/use-expense-form.ts': { branches: 92.36 },
     './apps/mobile/src/ledger/use-expenses.ts': { branches: 91.66 },

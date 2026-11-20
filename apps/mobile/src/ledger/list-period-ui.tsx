@@ -430,8 +430,8 @@ function PeriodListBody({
   const { filter } = periods;
   const { filtered } = filter;
   const clear = () => filter.change(() => NO_FILTER);
-  const [openCapsule, setOpenCapsule] = useState<string>();
-  const showCapsules = filter.active || openCapsule !== undefined;
+  const [amountPopoverOpen, setAmountPopoverOpen] = useState(false);
+  const showCapsules = filter.active || amountPopoverOpen;
   const matches = useMemo(
     () =>
       query && searchExpenses && filtered
@@ -676,11 +676,7 @@ function PeriodListBody({
         <FilterCapsules
           state={filter}
           openFilters={periods.openFilters}
-          onPresented={(label, open) =>
-            setOpenCapsule((current) =>
-              open ? label : current === label ? undefined : current,
-            )
-          }
+          onAmountPresented={setAmountPopoverOpen}
         />
       )}
       {!searching && showCapsules && periods.empty && (

@@ -5,7 +5,6 @@ interface CapsuleActions {
   label: string;
   value: string;
   onOpenFilters: () => void;
-  onPresented: (open: boolean) => void;
 }
 
 export interface CapsuleMenuProps extends MenuFieldProps, CapsuleActions {
@@ -16,6 +15,7 @@ export interface AmountCapsuleProps extends CapsuleActions {
   min: string;
   max: string;
   onAmount: (side: 'min' | 'max', text: string) => void;
+  onPresented: (open: boolean) => void;
 }
 
 /** A tap on an Android capsule takes the user to the corresponding list's Filters. */

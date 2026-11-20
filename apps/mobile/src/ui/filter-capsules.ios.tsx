@@ -33,7 +33,6 @@ export function CapsuleMenu(props: CapsuleMenuProps) {
         accessibilityLabel={capsuleName(props)}
         title={props.label}
         fixedOrder
-        onPresented={props.onPresented}
       />
     </View>
   );

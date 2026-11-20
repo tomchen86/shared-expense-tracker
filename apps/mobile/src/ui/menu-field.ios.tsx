@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   StyleSheet,
   Text as NativeText,
@@ -28,8 +27,6 @@ import {
   menuActionDismissBehavior,
   menuIndicator,
   menuOrder,
-  onAppear,
-  onDisappear,
   pickerStyle,
   tag,
 } from '@expo/ui/swift-ui/modifiers';
@@ -130,7 +127,6 @@ export function MenuOverlay({
   empty,
   action,
   onSelect,
-  onPresented,
   fixedOrder,
 }: Pick<
   MenuFieldProps,
@@ -145,26 +141,14 @@ export function MenuOverlay({
 > & {
   accessibilityLabel: string;
   title?: string;
-  onPresented?: (open: boolean) => void;
   fixedOrder?: boolean;
 }) {
-  const [presentedOptions, setPresentedOptions] = useState<MenuFieldOption[]>();
-  function presented(open: boolean) {
-    // A deselected option that no expense uses stays in this menu until it closes.
-    setPresentedOptions((snapshot) =>
-      open ? (snapshot ?? options) : undefined,
-    );
-    onPresented?.(open);
-  }
-  const toggles = (presentedOptions ?? options).map((option) => (
+  const toggles = options.map((option) => (
     <Toggle
       key={option.id}
       label={option.name}
       isOn={selected.includes(option.id)}
-      onIsOnChange={() => {
-        if (onPresented && !presentedOptions) presented(true);
-        onSelect(option.id);
-      }}
+      onIsOnChange={() => onSelect(option.id)}
     />
   ));
   const picker = (
@@ -203,17 +187,7 @@ export function MenuOverlay({
         }
       >
         {multiple ? (
-          onPresented ? (
-            <Section
-              title={title}
-              modifiers={[
-                onAppear(() => presented(true)),
-                onDisappear(() => presented(false)),
-              ]}
-            >
-              {toggles}
-            </Section>
-          ) : title ? (
+          title ? (
             <Section title={title}>{toggles}</Section>
           ) : (
             toggles

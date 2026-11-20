@@ -277,11 +277,11 @@ export function FilterRows({
 export function FilterCapsules({
   state,
   openFilters,
-  onPresented,
+  onAmountPresented,
 }: {
   state: ListFilterState;
   openFilters: () => void;
-  onPresented: (label: string, open: boolean) => void;
+  onAmountPresented: (open: boolean) => void;
 }) {
   const { filter, change } = state;
   function capsule(menu: FilterMenu) {
@@ -290,7 +290,6 @@ export function FilterCapsules({
         {...menuProps(menu, change)}
         text={menuText(menu)}
         onOpenFilters={openFilters}
-        onPresented={(open) => onPresented(menu.label, open)}
       />
     );
   }
@@ -321,7 +320,7 @@ export function FilterCapsules({
         max={filter.max}
         onAmount={(side, text) => change(setAmount(side, text))}
         onOpenFilters={openFilters}
-        onPresented={(open) => onPresented('Amount', open)}
+        onPresented={onAmountPresented}
       />
       {state.currency && capsule(state.currency)}
     </ScrollView>
