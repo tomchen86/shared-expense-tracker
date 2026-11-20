@@ -1,19 +1,48 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-123.1] [LEDGER-122.2] [LEDGER-124.1] Opens the system menu of the sort button, lists the five orders, and sorts the expense list and a group's screen each by the order chosen on it"
+name: "[LEDGER-123.1] [LEDGER-149.1] [LEDGER-122.3] [LEDGER-124.1] Opens the menu of the sort button, the system's on iOS and Material's on Android, lists the five orders, sorts the expense list and a group's screen each by the order chosen on it, and closes the menu on Android's back button"
+tags:
+  - android
 ---
+# Also runs on the small Android screen of scripts/e2e-android.sh (ADR-0014), where the sort button
+# opens a Material menu (LEDGER-149.1) instead of a sheet with Cancel.
 # Four expenses of today, added in this order, so newest first is the reverse: your shares on
 # the expense list are 3.00, 9.00, 30.00 and 12.50, and Brisbane's whole amounts 60.00 and 25.00.
 - runFlow:
     file: common/launch-with-seed.yaml
     env:
       SEED: '{"name":"Taylor","groups":[{"name":"Brisbane","members":["Casey"]}],"expenses":[{"title":"Small","amount":"3.00"},{"title":"Large","amount":"9.00"},{"title":"Dinner","amount":"60.00","group":"Brisbane"},{"title":"Taxi","amount":"25.00","group":"Brisbane"}]}'
-# The list opens newest first: Large, added after Small, is above it.
+# The list opens newest first: Large, added after Small, is above it. The small Android screen
+# shows the newest three, Taxi, Dinner and Large.
 - assertVisible: Sort By, Newest First
-- assertVisible:
-    text: Small, .*
-    below: Large, .*
-# LEDGER-123.1: the sort button is a system menu of the five orders.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible:
+          text: Small, .*
+          below: Large, .*
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          text: Dinner, .*
+          below: Taxi, .*
+      - assertVisible:
+          text: Large, .*
+          below: Dinner, .*
+# LEDGER-123.1 and LEDGER-149.1: the sort button is a menu of the five orders.
 - tapOn: Sort By, Newest First
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      # A menu from the button, without the title bar and Cancel of a sheet, with the current
+      # order marked.
+      - assertNotVisible: Cancel
+      - assertVisible:
+          text: Newest First
+          selected: true
 - assertVisible: Newest First
 - assertVisible: Oldest First
 - assertVisible: Recently Edited
@@ -27,25 +56,68 @@ name: "[LEDGER-123.1] [LEDGER-122.2] [LEDGER-124.1] Opens the system menu of the
 - assertVisible:
     text: Large, .*
     below: Small, .*
-- assertVisible:
-    text: Dinner, .*
-    below: Taxi, .*
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible:
+          text: Dinner, .*
+          below: Taxi, .*
 # A group's screen has an order of its own: newest first, so Taxi is above Dinner.
+# Android reads the group's row as one name, Open Brisbane and what the row says.
 - tapOn: Groups
-- tapOn: Open Brisbane
+- tapOn: Open Brisbane.*
 - waitForAnimationToEnd
 - assertVisible: Sort By, Newest First
-- assertVisible:
-    text: Dinner, .*
-    below: Taxi, .*
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible:
+          text: Dinner, .*
+          below: Taxi, .*
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      # The small screen shows only the first card of a group's screen: Taxi, the newest.
+      - assertVisible:
+          text: Taxi, .*
+          below: Sort By, Newest First
 - tapOn: Sort By, Newest First
 - tapOn: Highest Amount
 - waitForAnimationToEnd
 - assertVisible: Sort By, Highest Amount
-- assertVisible:
-    text: Taxi, .*
-    below: Dinner, .*
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible:
+          text: Taxi, .*
+          below: Dinner, .*
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      # Dinner comes first now: Taxi is not above it.
+      - assertVisible:
+          text: Dinner, .*
+          below: Sort By, Highest Amount
+      - assertNotVisible:
+          text: Taxi, .*
+          above: Dinner, .*
 # The expense list kept the order chosen on it.
 - tapOn: Expenses
 - waitForAnimationToEnd
 - assertVisible: Sort By, Lowest Amount
+# LEDGER-149.1: on Android the back button closes the menu and leaves the order as it was.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: Sort By, Lowest Amount
+      - assertVisible: Recently Edited
+      - pressKey: back
+      - waitForAnimationToEnd
+      - assertNotVisible: Recently Edited
+      - assertVisible: Sort By, Lowest Amount

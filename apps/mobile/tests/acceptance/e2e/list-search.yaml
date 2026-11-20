@@ -1,14 +1,20 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-128.1] [LEDGER-125.2] [LEDGER-126.2] [LEDGER-127.2] [SHELL-73.1] Types into the system search field of the expense list and of a group's screen, sees the matches of every date with their count, then No Results, closes the search back to this month, and keeps a search when the keyboard's search key closes the keyboard"
+name: "[LEDGER-128.1] [LEDGER-125.2] [LEDGER-126.2] [LEDGER-127.2] [SHELL-73.2] Types into the system search field of the expense list and of a group's screen, sees the matches of every date with their count, then No Results, closes the search back to this month, keeps a search when the keyboard's search key closes the keyboard, and on Android ends a search with one press of the back button once the keyboard is closed"
+tags:
+  - android
 ---
+# Also runs on the small Android screen of scripts/e2e-android.sh (ADR-0014), where the search
+# field folds back into the search icon at the back button (SHELL-73.2) instead of a Close button.
 # The names of this month and its year, and the 15th of last month, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
 - evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'
 - evalScript: '${output.thisYear = String(new Date().getFullYear())}'
 - evalScript: '${output.lastMonth15 = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 15)}'
 - evalScript: "${output.lastMonthDate = output.lastMonth15.getFullYear() + '-' + ('0' + (output.lastMonth15.getMonth() + 1)).slice(-2) + '-15'}"
+# Casey pays Brisbane's Dinner and Taxi and has them alone, so the expense list holds only Lunch,
+# Lunch box and Coffee, which the small Android screen shows whole.
 # Maestro reads ${…} up to the last } in the value, so a seed with dates is built in one script.
-- evalScript: "${output.seedJson = JSON.stringify({ name: 'Taylor', groups: [{ name: 'Brisbane', members: ['Casey'] }], expenses: [{ title: 'Lunch', amount: '3.00' }, { title: 'Lunch box', amount: '2.00', date: output.lastMonthDate }, { title: 'Coffee', amount: '4.00' }, { title: 'Dinner', amount: '60.00', group: 'Brisbane' }, { title: 'Taxi', amount: '25.00', group: 'Brisbane' }] })}"
+- evalScript: "${output.seedJson = JSON.stringify({ name: 'Taylor', groups: [{ name: 'Brisbane', members: ['Casey'] }], expenses: [{ title: 'Lunch', amount: '3.00' }, { title: 'Lunch box', amount: '2.00', date: output.lastMonthDate }, { title: 'Coffee', amount: '4.00' }, { title: 'Dinner', amount: '60.00', group: 'Brisbane', paidBy: 'Casey', splitBetween: ['Casey'] }, { title: 'Taxi', amount: '25.00', group: 'Brisbane', paidBy: 'Casey', splitBetween: ['Casey'] }] })}"
 - runFlow:
     file: common/launch-with-seed.yaml
     env:
@@ -37,16 +43,32 @@ name: "[LEDGER-128.1] [LEDGER-125.2] [LEDGER-126.2] [LEDGER-127.2] [SHELL-73.1] 
 - assertNotVisible: Lunch, .*
 - assertNotVisible: Sort By, .*
 # LEDGER-128.1: the button beside the field ends the search; the list is back on this month.
-- tapOn: Close
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: Close
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      # SHELL-73.2: with the keyboard open, the back button only closes the keyboard; the search
+      # and its words stay. Once the keyboard is closed, one more press closes the field.
+      - pressKey: back
+      - waitForAnimationToEnd
+      - assertVisible: No Results for “lunchx”
+      - pressKey: back
 - waitForAnimationToEnd
+- assertVisible: Filters
 - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
 - assertVisible: Lunch, .*
 - assertVisible: Coffee, .*
 - assertNotVisible: Lunch box, .*
 - assertNotVisible: 2 items
 # A group's screen searches its own expenses, and its total and your balance give way.
+# Android reads the group's row as one name, Open Brisbane and what the row says.
 - tapOn: Groups
-- tapOn: Open Brisbane
+- tapOn: Open Brisbane.*
 - waitForAnimationToEnd
 - assertVisible: 'Group Total: .*'
 - tapOn: Search
@@ -57,14 +79,32 @@ name: "[LEDGER-128.1] [LEDGER-125.2] [LEDGER-126.2] [LEDGER-127.2] [SHELL-73.1] 
 - assertNotVisible: Dinner, .*
 - assertNotVisible: 'Group Total: .*'
 - assertNotVisible: You're owed.*
-# SHELL-73.1: the keyboard's search key closes the keyboard and keeps the search. Nothing reports
-# the keyboard itself on every simulator, but iOS types only into a field that has the focus: a
-# letter typed after the key changes nothing, where it would leave no match in a field still
-# taking input.
+# SHELL-73.2: the keyboard's search key closes the keyboard and keeps the search.
 - pressKey: Enter
 - waitForAnimationToEnd
-- inputText: x
-- waitForAnimationToEnd
-- assertVisible: 1 item
-- assertVisible: Taxi, .*
-- assertNotVisible: No Results for .*
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      # Nothing reports the keyboard itself on every simulator, but iOS types only into a field
+      # that has the focus: a letter typed after the key changes nothing, where it would leave no
+      # match in a field still taking input.
+      - inputText: x
+      - waitForAnimationToEnd
+      - assertVisible: 1 item
+      - assertVisible: Taxi, .*
+      - assertNotVisible: No Results for .*
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      # Android types into a field without the keyboard too, so the search is seen to stay; then
+      # one press of the back button, with the keyboard closed, ends it: the field folds back into
+      # the search icon, and the screen's total and Filters are back.
+      - assertVisible: 1 item
+      - assertVisible: Taxi, .*
+      - pressKey: back
+      - waitForAnimationToEnd
+      - assertVisible: Filters
+      - assertVisible: 'Group Total: .*'
+      - assertVisible: Taxi, .*

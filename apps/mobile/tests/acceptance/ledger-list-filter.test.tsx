@@ -1154,7 +1154,7 @@ test('[LEDGER-132.1] marks the action of the screen that has the filter, and not
 
 // The capsule row
 
-test('[LEDGER-133.1] shows no capsule row while the list has no filter', async () => {
+test('[LEDGER-133.2] shows no capsule row while the list has no filter', async () => {
   await startExpenses();
   await spend('Coffee run');
 
@@ -1163,7 +1163,7 @@ test('[LEDGER-133.1] shows no capsule row while the list has no filter', async (
   expect(sortName(expensesRoot())).toBe('Sort By, Newest First');
 });
 
-test('[LEDGER-133.1] shows a capsule per condition under the total and above the sort button, with the ones that are on in the accent color and white text', async () => {
+test('[LEDGER-133.2] shows a capsule per condition under the total and above the sort button, with the ones that are on in the accent color and white text', async () => {
   const { accent, text } = await themeColors();
   await startWithGroups(BRISBANE);
   await spend('Coffee run');
@@ -1198,7 +1198,7 @@ test('[LEDGER-133.1] shows a capsule per condition under the total and above the
   ).toBe(true);
 });
 
-test('[LEDGER-133.1] shows the category chosen on the Category capsule, or how many, and keeps the capsule first', async () => {
+test('[LEDGER-133.2] shows the category chosen on the Category capsule, or how many, and keeps the capsule first', async () => {
   const { accent } = await themeColors();
   await startExpenses();
   await spend('Coffee run');
@@ -1220,7 +1220,7 @@ test('[LEDGER-133.1] shows the category chosen on the Category capsule, or how m
   );
 });
 
-test('[LEDGER-133.1] shows the ledger chosen on the Ledger capsule, or how many', async () => {
+test('[LEDGER-133.2] shows the ledger chosen on the Ledger capsule, or how many', async () => {
   await startWithGroups(BRISBANE);
   await spend('Coffee run');
   await brisbaneSpends('Dinner');
@@ -1234,7 +1234,7 @@ test('[LEDGER-133.1] shows the ledger chosen on the Ledger capsule, or how many'
   expect(capsuleName(expensesRoot(), 'Ledger')).toBe('Ledger, 2 Ledgers');
 });
 
-test('[LEDGER-133.1] shows the amounts on the Amount capsule: both, the lowest alone, or the highest alone', async () => {
+test('[LEDGER-133.2] shows the amounts on the Amount capsule: both, the lowest alone, or the highest alone', async () => {
   const { accent } = await themeColors();
   await startExpenses();
   await spend('Coffee run');
@@ -1251,7 +1251,7 @@ test('[LEDGER-133.1] shows the amounts on the Amount capsule: both, the lowest a
   expect(capsuleOf(expensesRoot(), 'Amount')).toBe('50 or less');
 });
 
-test('[LEDGER-133.1] [LEDGER-130.1] shows the Currency capsule last, with the code chosen, and hides the row when All is chosen again', async () => {
+test('[LEDGER-133.2] [LEDGER-130.1] shows the Currency capsule last, with the code chosen, and hides the row when All is chosen again', async () => {
   const { accent } = await themeColors();
   await startExpenses();
   await spendIn('USD', 'Coffee run', '8.75');
@@ -1272,7 +1272,7 @@ test('[LEDGER-133.1] [LEDGER-130.1] shows the Currency capsule last, with the co
   expect(capsuleRow(expensesRoot())).toBeUndefined();
 });
 
-test("[LEDGER-133.1] [GROUPS-69.4] shows the capsule row of a group's screen under your net balance, with Paid by in place of Ledger and Paid by Me", async () => {
+test("[LEDGER-133.2] [GROUPS-69.4] shows the capsule row of a group's screen under your net balance, with Paid by in place of Ledger and Paid by Me", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner');
   await brisbaneSpends('Taxi', { payer: 'Casey' });
@@ -1303,7 +1303,7 @@ test("[LEDGER-133.1] [GROUPS-69.4] shows the capsule row of a group's screen und
   expect(capsuleName(brisbane(), 'Paid by')).toBe('Paid by, You');
 });
 
-test('[LEDGER-133.1] turns Paid by Me off and on at a press on its capsule, which stays in its place', async () => {
+test('[LEDGER-133.2] turns Paid by Me off and on at a press on its capsule, which stays in its place', async () => {
   const { accent } = await themeColors();
   await startWithGroups(BRISBANE);
   await spend('Shoes', { category: 'Shopping' });
@@ -1332,7 +1332,7 @@ test('[LEDGER-133.1] turns Paid by Me off and on at a press on its capsule, whic
   ]);
 });
 
-test('[LEDGER-133.1] hides the capsule row once the last condition is taken off', async () => {
+test('[LEDGER-133.2] hides the capsule row once the last condition is taken off', async () => {
   await startWithGroups(BRISBANE);
   await spend('Coffee run');
   await brisbaneSpends('Taxi', { payer: 'Casey' });
@@ -1345,7 +1345,7 @@ test('[LEDGER-133.1] hides the capsule row once the last condition is taken off'
   expect(cardTitles()).toEqual(['Taxi', 'Coffee run']);
 });
 
-test('[LEDGER-133.1] hides the capsule row once the amount fields are emptied', async () => {
+test('[LEDGER-133.2] hides the capsule row once the amount fields are emptied', async () => {
   await startExpenses();
   await spend('Coffee run');
   await setAmounts('Expenses', '1', '90');
@@ -1359,7 +1359,7 @@ test('[LEDGER-133.1] hides the capsule row once the amount fields are emptied', 
   expect(cardTitles()).toEqual(['Coffee run']);
 });
 
-test('[LEDGER-133.1] changes Category, Ledger and Currency from the menus of their capsules on iOS, several choices for the first two and one for Currency', async () => {
+test('[LEDGER-133.2] changes Category, Ledger and Currency from the menus of their capsules on iOS, several choices for the first two and one for Currency', async () => {
   await startWithGroups(BRISBANE);
   await spendIn('USD', 'Coffee run', '8.75');
   await spendIn('JPY', 'Ramen', '500');
@@ -1408,7 +1408,7 @@ test('[LEDGER-133.1] changes Category, Ledger and Currency from the menus of the
   expect(conditionRow('Currency')).toBe('Currency, JPY');
 });
 
-test("[LEDGER-133.1] changes Paid by from the menu of its capsule on a group's screen on iOS", async () => {
+test("[LEDGER-133.2] changes Paid by from the menu of its capsule on a group's screen on iOS", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner');
   await brisbaneSpends('Taxi', { payer: 'Casey' });
@@ -1429,7 +1429,7 @@ test("[LEDGER-133.1] changes Paid by from the menu of its capsule on a group's s
   ]);
 });
 
-test('[LEDGER-133.1] [LEDGER-126.2] keeps the capsule row on top during a search, above the count and the sort button', async () => {
+test('[LEDGER-133.2] [LEDGER-126.2] keeps the capsule row on top during a search, above the count and the sort button', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await spend('Coffee run');
@@ -1452,7 +1452,7 @@ test('[LEDGER-133.1] [LEDGER-126.2] keeps the capsule row on top during a search
 
 // The count on the line above the cards
 
-test('[LEDGER-137.1] [LEDGER-122.2] shows how many expenses the filter leaves, at the left of the sort button, and no count without a filter', async () => {
+test('[LEDGER-137.1] [LEDGER-122.3] shows how many expenses the filter leaves, at the left of the sort button, and no count without a filter', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await spend('Hat', { category: 'Shopping' });

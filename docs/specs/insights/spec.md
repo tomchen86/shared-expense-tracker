@@ -1250,7 +1250,7 @@ WHEN 使用者點類別的支出上的卡片，the mobile app SHALL 在同一個
 
 ### Requirement: INSIGHTS-51.1 類別的支出只能看
 
-The mobile app SHALL 讓類別的支出只能看：卡片沒有名稱是「Delete expense」的輔助功能動作，畫面上沒有 + 按鈕，也沒有排序鈕（LEDGER-122.2），標題列除了返回沒有其他動作，沒有篩選動作（SHELL-72.2），也沒有搜尋欄位（SHELL-73.1）；個人支出、未封存群組的支出和封存群組的支出的卡片都一樣。
+The mobile app SHALL 讓類別的支出只能看：卡片沒有名稱是「Delete expense」的輔助功能動作，畫面上沒有 + 按鈕，也沒有排序鈕（LEDGER-122.3），標題列除了返回沒有其他動作，沒有篩選動作（SHELL-72.2），也沒有搜尋欄位（SHELL-73.2）；個人支出、未封存群組的支出和封存群組的支出的卡片都一樣。
 
 #### Scenario: 個人的 Insights
 

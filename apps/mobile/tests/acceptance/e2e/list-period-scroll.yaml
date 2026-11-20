@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-147.3] Leaves a list where it is when Previous period is pressed twice in one place with the period row on screen, and brings a list back to its top when its period changes in Filters with the period row scrolled away, on the expense list and on a group's screen"
+name: "[LEDGER-147.4] Leaves a list where it is when Previous period is pressed twice in one place with the period row on screen, and brings a list back to its top when its period changes in Filters with the period row scrolled away, on the expense list and on a group's screen"
 tags:
   - android
 ---

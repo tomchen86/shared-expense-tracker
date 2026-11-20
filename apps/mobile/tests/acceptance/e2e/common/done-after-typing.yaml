@@ -1,0 +1,12 @@
+# Closes Filters with Done after typing in one of its fields. On Android the first press on Done
+# while the keyboard is open only closes the keyboard (seen on the Release build of main at
+# 86422b1), so there the keyboard is closed first. Not a flow of its own: Maestro runs only the
+# files at the top of a folder.
+appId: com.tomchen.sharedexpensetracker
+---
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- tapOn: Done

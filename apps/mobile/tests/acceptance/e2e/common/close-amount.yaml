@@ -1,0 +1,18 @@
+# Closes the small window of the Amount capsule with a press outside it, which presses nothing
+# under it: on iOS the popover (LEDGER-135.1), pressed on the list's margin; on Android the sheet
+# (LEDGER-150.1), pressed on the dimmed screen above it, which the sheet and the keyboard leave
+# uncovered. Not a flow of its own: Maestro runs only the files at the top of a folder.
+appId: com.tomchen.sharedexpensetracker
+---
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: 3%,50%
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          point: 50%,12%

@@ -1,6 +1,10 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-110.1] [LEDGER-109.2] Chooses Last Month, All Time and Custom Range in the system menu on the period's name, also after an arrow slid a month in, and finds each on the Date row of Filters"
+name: "[LEDGER-110.1] [LEDGER-111.2] [LEDGER-109.2] Chooses Last Month, All Time and Custom Range in the menu on the period's name, the system's on iOS and Material's on Android, also after an arrow slid a month in, finds each on the Date row of Filters, and closes the menu on Android's back button"
+tags:
+  - android
 ---
+# Also runs on the small Android screen of scripts/e2e-android.sh (ADR-0014), where the name opens
+# a Material menu (LEDGER-111.2) instead of Filters.
 # The names of this month and last month, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
 - evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'
@@ -20,8 +24,18 @@ name: "[LEDGER-110.1] [LEDGER-109.2] Chooses Last Month, All Time and Custom Ran
 - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
 - assertVisible: Today, .*
 - assertNotVisible: Last month, .*
-# LEDGER-110.1: the name is a system menu of the six periods; Last Month shows last month's card.
+# LEDGER-110.1 and LEDGER-111.2: the name is a menu of the six periods; Last Month shows last
+# month's card.
 - tapOn: Choose period\..*
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      # A menu from the name, not Filters, with the current period marked.
+      - assertNotVisible: Done
+      - assertVisible:
+          text: This Month
+          selected: true
 - assertVisible: This Month
 - assertVisible: Last Month
 - assertVisible: Last 3 Months
@@ -93,3 +107,15 @@ name: "[LEDGER-110.1] [LEDGER-109.2] Chooses Last Month, All Time and Custom Ran
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
 - assertVisible: Today, .*
+# LEDGER-111.2: on Android the back button closes the menu and leaves the period as it was.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: Choose period\..*
+      - assertVisible: Last 3 Months
+      - pressKey: back
+      - waitForAnimationToEnd
+      - assertNotVisible: Last 3 Months
+      - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+      - assertVisible: Today, .*

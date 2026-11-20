@@ -1,6 +1,10 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-135.1] [LEDGER-133.1] [LEDGER-138.1] [LEDGER-114.2] Opens the popover of the Amount capsule, types the lowest and the highest amount there, sees the list follow, swipes the words of a filter that leaves nothing to last month and back, and clears it'
+name: "[LEDGER-135.1] [LEDGER-150.1] [LEDGER-133.2] [LEDGER-138.1] [LEDGER-114.2] Opens the small window of the Amount capsule, a popover on iOS and a sheet on Android, types the lowest and the highest amount there, sees the list follow, swipes the words of a filter that leaves nothing to last month and back, clears it, and closes the sheet with Android's back button"
+tags:
+  - android
 ---
+# Also runs on the small Android screen of scripts/e2e-android.sh (ADR-0014), where the Amount
+# capsule opens a sheet from the bottom (LEDGER-150.1) instead of Filters.
 # Small and Large of today, 3.00 and 9.00, and Brisbane's Dinner and Taxi, 60.00 and 25.00, of
 # which your shares on the expense list are 30.00 and 12.50.
 - runFlow:
@@ -12,42 +16,53 @@ name: '[LEDGER-135.1] [LEDGER-133.1] [LEDGER-138.1] [LEDGER-114.2] Opens the pop
 - waitForAnimationToEnd
 - tapOn: Lowest amount
 - inputText: '1'
-- tapOn: Done
+- runFlow: common/done-after-typing.yaml
 - waitForAnimationToEnd
 - assertVisible: Amount, 1 or more
 - assertVisible: 4 items
-# LEDGER-135.1: a press on the Amount capsule opens a popover with the two fields, the caret in
-# the lowest amount, which holds the 1.
+# LEDGER-135.1 and LEDGER-150.1: a press on the Amount capsule opens a popover or a sheet with the
+# two fields, the caret after the 1 in the lowest amount.
 - tapOn: Amount, 1 or more
 - waitForAnimationToEnd
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      # A sheet with the two fields, not Filters.
+      - assertNotVisible: Done
+      - assertNotVisible: Category, .*
 - assertVisible: Lowest amount
 - assertVisible: Highest amount
 - takeScreenshot: amount-popover
-# With the 1 erased no condition is on: the popover and the row stay, so a new amount can be typed.
+# With the 1 erased no condition is on: the popover or the sheet and the row stay, so a new amount
+# can be typed.
 - eraseText: 1
 - assertVisible: Lowest amount
 - inputText: '5'
-# The popover stays open while its fields change.
+# The popover or the sheet stays open while its fields change.
 - assertVisible: Lowest amount
 - assertVisible: Highest amount
-# A press outside it, on the list's margin, closes it and the keyboard.
-- tapOn:
-    point: 3%,50%
+# A press outside it closes it and the keyboard.
+- runFlow: common/close-amount.yaml
 - waitForAnimationToEnd
 - assertNotVisible: Highest amount
 - assertVisible: Amount, 5 or more
 - assertVisible: 3 items
-- assertVisible: Large, .*
-- assertVisible: Dinner, .*
 - assertVisible: Taxi, .*
+- assertVisible: Dinner, .*
+# The small Android screen shows the first two cards under the capsule row.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible: Large, .*
 - assertNotVisible: Small, .*
 # The highest amount is typed in the second field.
 - tapOn: Amount, 5 or more
 - waitForAnimationToEnd
 - tapOn: Highest amount
 - inputText: '10'
-- tapOn:
-    point: 3%,50%
+- runFlow: common/close-amount.yaml
 - waitForAnimationToEnd
 - assertVisible: Amount, 5 – 10
 - assertVisible: 1 item
@@ -58,8 +73,7 @@ name: '[LEDGER-135.1] [LEDGER-133.1] [LEDGER-138.1] [LEDGER-114.2] Opens the pop
 - waitForAnimationToEnd
 - eraseText: 1
 - inputText: '100'
-- tapOn:
-    point: 3%,50%
+- runFlow: common/close-amount.yaml
 - waitForAnimationToEnd
 - assertVisible: Amount, 100 – 10
 - assertVisible: No Matching Expenses
@@ -93,44 +107,70 @@ name: '[LEDGER-135.1] [LEDGER-133.1] [LEDGER-138.1] [LEDGER-114.2] Opens the pop
 - assertNotVisible: No Matching Expenses
 - assertNotVisible: Amount
 - assertVisible: Filters
-- assertVisible: Small, .*
-- assertVisible: Large, .*
-# A popover that closes with its fields empty and no other condition on takes the row with it.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible: Small, .*
+      - assertVisible: Large, .*
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      # The newest two, which the small screen shows.
+      - assertVisible: Taxi, .*
+      - assertVisible: Dinner, .*
+# A popover or a sheet that closes with its fields empty and no other condition on takes the row
+# with it.
 - tapOn: Filters
 - waitForAnimationToEnd
 - tapOn: Lowest amount
 - inputText: '1'
-- tapOn: Done
+- runFlow: common/done-after-typing.yaml
 - waitForAnimationToEnd
 - tapOn: Amount, 1 or more
 - waitForAnimationToEnd
 - eraseText: 1
 - assertVisible: Lowest amount
-- tapOn:
-    point: 3%,50%
+- runFlow: common/close-amount.yaml
 - waitForAnimationToEnd
 - assertNotVisible: Lowest amount
 - assertNotVisible: Amount.*
 - assertVisible: Filters
 - assertVisible: 'Sort By, Newest First'
 # A group's screen compares the whole amount of each expense.
+# Android reads the group's row as one name, Open Brisbane and what the row says.
 - tapOn: Groups
-- tapOn: Open Brisbane
+- tapOn: Open Brisbane.*
 - waitForAnimationToEnd
 - tapOn: Filters
 - waitForAnimationToEnd
 - tapOn: Lowest amount
 - inputText: '1'
-- tapOn: Done
+- runFlow: common/done-after-typing.yaml
 - waitForAnimationToEnd
 - tapOn: Amount, 1 or more
 - waitForAnimationToEnd
 - eraseText: 1
 - inputText: '30'
-- tapOn:
-    point: 3%,50%
+- runFlow: common/close-amount.yaml
 - waitForAnimationToEnd
 - assertVisible: Amount, 30 or more
 - assertVisible: 1 item
 - assertVisible: Dinner, .*
 - assertNotVisible: Taxi, .*
+# LEDGER-150.1: on Android the back button first closes the keyboard, then the sheet.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn: Amount, 30 or more
+      - waitForAnimationToEnd
+      - pressKey: back
+      - waitForAnimationToEnd
+      - assertVisible: Highest amount
+      - pressKey: back
+      - waitForAnimationToEnd
+      - assertNotVisible: Highest amount
+      - assertVisible: Amount, 30 or more
+      - assertVisible: Dinner, .*

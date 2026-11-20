@@ -4,7 +4,7 @@ tags:
   - android
 ---
 # Also runs on the small Android screen of scripts/e2e-android.sh (ADR-0014), where the period's
-# name is a button that opens Filters (LEDGER-111.1): a swipe that starts on it must not press it.
+# name opens a Material menu (LEDGER-111.2): a swipe that starts on it must not press it.
 # The names of this month and last month, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
 - evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'

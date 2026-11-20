@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-147.3] Brings a list back to its top when its filter changes in Filters with the period row scrolled away, on the expense list and on a group's screen"
+name: "[LEDGER-147.4] Brings a list back to its top when its filter changes in Filters with the period row scrolled away, on the expense list and on a group's screen"
 ---
 # The names of this month and its year, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
