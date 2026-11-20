@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
   Button,
@@ -23,6 +23,7 @@ import {
 import { CapsuleFace, capsuleName } from './capsule';
 import type { AmountCapsuleProps, CapsuleMenuProps } from './filter-capsules';
 import { MenuOverlay } from './menu-field.ios';
+import { usePopoverBackdrop } from './popover-backdrop';
 
 export function CapsuleMenu(props: CapsuleMenuProps) {
   return (
@@ -40,10 +41,15 @@ export function CapsuleMenu(props: CapsuleMenuProps) {
 
 export function AmountCapsule(props: AmountCapsuleProps) {
   const [open, setOpen] = useState(false);
-  function present(next: boolean) {
-    setOpen(next);
-    props.onPresented(next);
-  }
+  const { onPresented } = props;
+  const present = useCallback(
+    (next: boolean) => {
+      setOpen(next);
+      onPresented(next);
+    },
+    [onPresented],
+  );
+  usePopoverBackdrop(open, present);
   return (
     <View onStartShouldSetResponder={() => true} style={styles.trigger}>
       <CapsuleFace {...props} />
@@ -55,7 +61,7 @@ export function AmountCapsule(props: AmountCapsuleProps) {
         >
           <Popover.Trigger>
             <Button
-              onPress={() => present(true)}
+              onPress={() => present(!open)}
               modifiers={[
                 buttonStyle('plain'),
                 accessibilityLabel(capsuleName(props)),
