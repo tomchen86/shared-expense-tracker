@@ -53,9 +53,9 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
     () => read.expenses?.filter((expense) => expense.spaceId === id),
     [read.expenses, id],
   );
-  const periods = useListPeriod(true, expenses, read.placed);
-  // Your balance is that of every expense (GROUPS-69.4); the total is that of the period's
-  // cards, drawn or not (GROUPS-68.5, LEDGER-118.2).
+  const periods = useListPeriod(id, expenses, read);
+  // Your balance uses every expense (GROUPS-69.4). The total uses every card that passes
+  // the dates and the filter (GROUPS-68.6, LEDGER-118.2).
   const amounts = group && expenses ? groupAmounts(expenses, group) : [];
   const total =
     group && periods.shown
@@ -92,7 +92,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
       />
       {group && (
         <HeaderActions
-          filter={{ label: 'Filters', onPress: periods.openFilters }}
+          filter={periods.filterAction}
           menu={{
             label: 'Group actions',
             actions: group.archived

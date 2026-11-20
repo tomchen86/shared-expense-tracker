@@ -190,7 +190,7 @@ const dateHeading = (date: string) =>
 
 // The line above the cards
 
-test('[LEDGER-122.1] [LEDGER-35.5] shows no count beside the sort button on All Time, whose total is a number of items', async () => {
+test('[LEDGER-122.2] [LEDGER-35.6] shows no count beside the sort button on All Time, whose total is a number of items', async () => {
   await startExpenses();
   await spend('Coffee run');
   await spend('Lunch');
@@ -202,7 +202,7 @@ test('[LEDGER-122.1] [LEDGER-35.5] shows no count beside the sort button on All 
   expect(sortName(expensesRoot())).toBe('Sort By, Newest First');
 });
 
-test('[LEDGER-122.1] shows only the sort button on the line above the cards, under the total and over the first date, read as Sort By, Newest First', async () => {
+test('[LEDGER-122.2] shows only the sort button on the line above the cards, under the total and over the first date, read as Sort By, Newest First', async () => {
   await startExpenses();
   await spend('Coffee run');
 
@@ -227,7 +227,7 @@ test('[LEDGER-122.1] shows only the sort button on the line above the cards, und
   ).toHaveLength(1);
 });
 
-test('[LEDGER-122.1] lists the five orders, marks only the current one, and sorts the cards by the one chosen at once', async () => {
+test('[LEDGER-122.2] lists the five orders, marks only the current one, and sorts the cards by the one chosen at once', async () => {
   await startExpenses();
   await spend('A', '2026-10-30', '5.00');
   await spend('B', '2026-10-30', '50.00');
@@ -245,7 +245,7 @@ test('[LEDGER-122.1] lists the five orders, marks only the current one, and sort
   );
 });
 
-test('[LEDGER-122.1] draws the arrows in the accent color while the order is not Newest First', async () => {
+test('[LEDGER-122.2] draws the arrows in the accent color while the order is not Newest First', async () => {
   // Before the app starts: a hook's render becomes what `screen` queries.
   const { accent, textMuted } = (await renderHook(() => useThemeColors()))
     .result.current;
@@ -269,7 +269,7 @@ test('[LEDGER-122.1] draws the arrows in the accent color while the order is not
   ]);
 });
 
-test('[LEDGER-122.1] shows no sort button while the expense list has no card: with no expense, and on a period with none', async () => {
+test('[LEDGER-122.2] shows no sort button while the expense list has no card: with no expense, and on a period with none', async () => {
   await startExpenses();
 
   expect(sortName(expensesRoot())).toBeUndefined();
@@ -284,7 +284,7 @@ test('[LEDGER-122.1] shows no sort button while the expense list has no card: wi
   expect(sortName(expensesRoot())).toBeUndefined();
 });
 
-test("[LEDGER-122.1] [GROUPS-69.4] shows the sort button on a group's screen under your net balance, and none on a group with no expense", async () => {
+test("[LEDGER-122.2] [GROUPS-69.4] shows the sort button on a group's screen under your net balance, and none on a group with no expense", async () => {
   await startWithGroups(BRISBANE);
   await showGroup('Brisbane');
   expect(sortName(brisbane())).toBeUndefined();
@@ -303,7 +303,7 @@ test("[LEDGER-122.1] [GROUPS-69.4] shows the sort button on a group's screen und
   ).toBe(true);
 });
 
-test('[LEDGER-122.1] keeps sorting out of Filters', async () => {
+test('[LEDGER-122.2] keeps sorting out of Filters', async () => {
   await startExpenses();
   await spend('Coffee run');
   await chooseSort(expensesRoot(), 'Highest Amount');
@@ -331,7 +331,7 @@ test('[LEDGER-121.1] lists the cards newest first until an order is chosen, on t
   expect(sortName(brisbane())).toBe('Sort By, Newest First');
 });
 
-test('[LEDGER-121.1] [LEDGER-31.4] lists the oldest first as the exact reverse of newest first', async () => {
+test('[LEDGER-121.1] [LEDGER-31.5] lists the oldest first as the exact reverse of newest first', async () => {
   await startExpenses();
   await spend('A', '2026-10-01');
   await spend('B', '2026-10-03');
@@ -385,7 +385,7 @@ test('[LEDGER-121.1] compares amounts of different currencies by the number on t
   expect(cardTitles()).toEqual(['A', 'B', 'C']);
 });
 
-test("[LEDGER-121.1] [LEDGER-64.4] sorts the expense list by your share of a group expense, and a group's screen by the whole amount", async () => {
+test("[LEDGER-121.1] [LEDGER-64.5] sorts the expense list by your share of a group expense, and a group's screen by the whole amount", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '60.00');
   await spend('Lunch', '2026-10-30', '25.00');
@@ -400,7 +400,7 @@ test("[LEDGER-121.1] [LEDGER-64.4] sorts the expense list by your share of a gro
   expect(groupCardTitles('Brisbane')).toEqual(['Taxi', 'Dinner']);
 });
 
-test("[GROUPS-61.5] [LEDGER-121.1] lists a group's cards in the order chosen on its screen", async () => {
+test("[GROUPS-61.6] [LEDGER-121.1] lists a group's cards in the order chosen on its screen", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '60.00');
   await brisbaneSpends('Taxi', '25.00');

@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-114.1] Swipes the words of a month that holds no expense and a year's name, changes no period with a swipe on Last 3 Months, Custom Range or All Time, and opens no Insights with one on the total of All Time"
+name: "[LEDGER-114.2] Swipes the words of a month that holds no expense and a year's name, changes no period with a swipe on Last 3 Months, Custom Range or All Time, and opens no Insights with one on the total of All Time"
 ---
 # The names of this month, the two months before it and the years around them, by the
 # simulator's clock.

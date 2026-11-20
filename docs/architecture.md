@@ -30,10 +30,11 @@ Name top-level directories only. File paths go stale.
 - The API runs in a staging and a production environment, each with its own Worker, Hyperdrive configuration, and database; a deploy runs the migrations before it uploads the Worker, and no request runs them (ADR-0019).
 - The API checks every request's signature before routing, unless the route is public; a refused request changes nothing in its database (ADR-0022).
 - The phone sends every request to the API through one function, which signs it with the phone's own key (ADR-0015, ADR-0022).
+- A phone creates a shared ledger's group on the API under the group's own ID. The API stores each event once, numbers a group's events in the order it stores them, hands them out in small pages by cursor, and refuses an upload that would take a group's events past 10 MiB (ADR-0016, ADR-0024).
 - On the phone, data lives in SQLite; zustand holds only screen state (ADR-0002).
 - The phone keeps all its data in one SQLite database; every capability's migrations run in one app-wide order and never change once a release tag contains them (ADR-0006).
 - Only `apps/mobile/src/storage/` imports `expo-sqlite`; tests run the same migrations and queries on SQLite in Node (ADR-0006).
-- An export file is a copy of the phone's database, with no secrets in it; import checks a file as untrusted input, then replaces the phone's data in one transaction (ADR-0020).
+- An export file is a copy of the phone's database, with no secrets in it; import checks a file as untrusted input, then replaces the phone's data in one transaction (ADR-0020). A shared ledger's sync state goes back to the export with it, except the latest stamp the phone has seen (ADR-0025).
 - Only `apps/mobile/src/storage/` reaches the phone's files, share sheet, and file picker; tests put Node's file system and a share sheet and picker of their own in their place (ADR-0020).
 - Recording and changing data never needs the network, except changing which phones can open a shared ledger (ADR-0015); sync runs separately and never blocks a local save (ADR-0005).
 - The app contacts no server until the phone first creates or joins a shared ledger (ADR-0015).

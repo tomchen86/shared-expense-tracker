@@ -1,11 +1,13 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-147.2] Leaves a list where it is when Previous period is pressed twice in one place with the period row on screen, and brings a list back to its top when its period changes in Filters with the period row scrolled away, on the expense list and on a group's screen"
+name: "[LEDGER-147.3] Leaves a list where it is when Previous period is pressed twice in one place with the period row on screen, and brings a list back to its top when its period changes in Filters with the period row scrolled away, on the expense list and on a group's screen"
 tags:
   - android
 ---
 # Also runs on the small Android screen of scripts/e2e-android.sh (ADR-0014), where the + button
-# sits at the middle of the width, about three quarters of the way down: a drag that starts on it
-# does not move the list, so there the two long drags start near the left edge, and go slowly.
+# sits at the middle of the width, about three quarters of the way down, and the tab bar begins
+# four fifths of the way down when the system shows its three navigation buttons: a drag that
+# starts on either does not move the list, so there the two long drags start near the left edge,
+# above the tab bar, and go slowly.
 # The names of this month and the two months before it, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
 - evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'
@@ -58,8 +60,8 @@ tags:
       platform: Android
     commands:
       - swipe:
-          start: 15%, 80%
-          end: 15%, 25%
+          start: 15%, 70%
+          end: 15%, 15%
           duration: 1000
 - waitForAnimationToEnd
 - assertNotVisible: Choose period\..*
@@ -91,8 +93,8 @@ tags:
       platform: Android
     commands:
       - swipe:
-          start: 15%, 80%
-          end: 15%, 25%
+          start: 15%, 70%
+          end: 15%, 15%
           duration: 1000
 - waitForAnimationToEnd
 - assertNotVisible: Choose period\..*

@@ -26,6 +26,7 @@ import {
   frame,
   menuActionDismissBehavior,
   menuIndicator,
+  menuOrder,
   pickerStyle,
   tag,
 } from '@expo/ui/swift-ui/modifiers';
@@ -43,6 +44,7 @@ export function MenuField({
   label,
   value,
   title,
+  showMenuTitle,
   trigger,
   disabled = false,
   dot,
@@ -96,7 +98,8 @@ export function MenuField({
       <MenuOverlay
         accessibilityLabel={`${label}, ${value}`}
         label={label}
-        title={trigger ? title : undefined}
+        title={trigger || showMenuTitle ? title : undefined}
+        fixedOrder={showMenuTitle}
         disabled={disabled}
         options={options}
         selected={selected}
@@ -124,6 +127,7 @@ export function MenuOverlay({
   empty,
   action,
   onSelect,
+  fixedOrder,
 }: Pick<
   MenuFieldProps,
   | 'label'
@@ -134,7 +138,19 @@ export function MenuOverlay({
   | 'empty'
   | 'action'
   | 'onSelect'
-> & { accessibilityLabel: string; title?: string }) {
+> & {
+  accessibilityLabel: string;
+  title?: string;
+  fixedOrder?: boolean;
+}) {
+  const toggles = options.map((option) => (
+    <Toggle
+      key={option.id}
+      label={option.name}
+      isOn={selected.includes(option.id)}
+      onIsOnChange={() => onSelect(option.id)}
+    />
+  ));
   const picker = (
     <Picker<string>
       label={title ? '' : label}
@@ -154,6 +170,7 @@ export function MenuOverlay({
           buttonStyle('plain'),
           menuIndicator('hidden'),
           menuActionDismissBehavior(multiple ? 'disabled' : 'automatic'),
+          ...(fixedOrder ? [menuOrder('fixed')] : []),
           disabledModifier(disabled),
           accessibilityLabel(name),
         ]}
@@ -170,14 +187,11 @@ export function MenuOverlay({
         }
       >
         {multiple ? (
-          options.map((option) => (
-            <Toggle
-              key={option.id}
-              label={option.name}
-              isOn={selected.includes(option.id)}
-              onIsOnChange={() => onSelect(option.id)}
-            />
-          ))
+          title ? (
+            <Section title={title}>{toggles}</Section>
+          ) : (
+            toggles
+          )
         ) : options.length === 0 && empty ? (
           <Button label={empty} modifiers={[disabledModifier(true)]} />
         ) : title ? (

@@ -190,7 +190,7 @@ const search = (text: string) => typeSearch('Expenses', text);
 
 // The search field
 
-test('[SHELL-73.1] [LEDGER-125.1] puts the system search field in the bar of the expense list, as a button on the bar, with the prompt Search', async () => {
+test('[SHELL-73.1] [LEDGER-125.2] puts the system search field in the bar of the expense list, as a button on the bar, with the prompt Search', async () => {
   await startExpenses();
 
   const field = searchField('Expenses');
@@ -212,7 +212,7 @@ test('[SHELL-73.1] puts no search field in the bars of Settings and of the detai
   expect(hasSearch('Settings')).toBe(false);
 });
 
-test("[LEDGER-125.1] offers search on a group's screen, also on one with no expense and on an archived one", async () => {
+test("[LEDGER-125.2] offers search on a group's screen, also on one with no expense and on an archived one", async () => {
   await startWithGroups(BRISBANE);
   await showGroup('Brisbane');
 
@@ -226,7 +226,7 @@ test("[LEDGER-125.1] offers search on a group's screen, also on one with no expe
   expect(searchField('Brisbane')?.props.placeholder).toBe('Search');
 });
 
-test('[LEDGER-125.1] offers no search for a group that is not found', async () => {
+test('[LEDGER-125.2] offers no search for a group that is not found', async () => {
   await startExpensesAt(`/groups/${NO_GROUP_ID}`);
 
   expect(hasSearch('Group Details')).toBe(false);
@@ -234,7 +234,7 @@ test('[LEDGER-125.1] offers no search for a group that is not found', async () =
 
 // What a search matches
 
-test('[LEDGER-125.1] [SHELL-73.1] lists the expenses whose title holds the text, at each change of the text', async () => {
+test('[LEDGER-125.2] [SHELL-73.1] lists the expenses whose title holds the text, at each change of the text', async () => {
   await startExpenses();
   await spend('Coffee run');
   await spend('Lunch');
@@ -250,7 +250,7 @@ test('[LEDGER-125.1] [SHELL-73.1] lists the expenses whose title holds the text,
   expect(cardTitles()).toEqual(['Coffee run']);
 });
 
-test('[LEDGER-125.1] matches the note, which the card does not show', async () => {
+test('[LEDGER-125.2] matches the note, which the card does not show', async () => {
   await startExpenses();
   await spend('Coffee run');
   await addExpense({ title: 'Lunch', note: 'Window seat' });
@@ -260,7 +260,7 @@ test('[LEDGER-125.1] matches the note, which the card does not show', async () =
   expect(cardTitles()).toEqual(['Lunch']);
 });
 
-test('[LEDGER-125.1] matches the name of the category, and not the word Archived after it', async () => {
+test('[LEDGER-125.2] matches the name of the category, and not the word Archived after it', async () => {
   await startExpenses();
   await addExpense({ title: 'Coffee run', category: 'Food & Dining' });
   await addExpense({ title: 'Lunch', category: 'Shopping' });
@@ -279,7 +279,7 @@ test('[LEDGER-125.1] matches the name of the category, and not the word Archived
   expect(cardTitles()).toEqual([]);
 });
 
-test('[LEDGER-125.1] [LEDGER-64.4] matches the name of the group of a group expense on the expense list', async () => {
+test('[LEDGER-125.2] [LEDGER-64.5] matches the name of the group of a group expense on the expense list', async () => {
   await startWithGroups(BRISBANE);
   await spend('Coffee run');
   await brisbaneSpends('Dinner');
@@ -290,7 +290,7 @@ test('[LEDGER-125.1] [LEDGER-64.4] matches the name of the group of a group expe
   expect(cardTitles()).toEqual(['Taxi', 'Dinner']);
 });
 
-test("[LEDGER-125.1] [GROUPS-61.5] searches a group's own expenses on its screen, where the group's name matches them all", async () => {
+test("[LEDGER-125.2] [GROUPS-61.6] searches a group's own expenses on its screen, where the group's name matches them all", async () => {
   await startWithGroups(BRISBANE);
   await spend('Taxi home');
   await brisbaneSpends('Dinner');
@@ -305,7 +305,7 @@ test("[LEDGER-125.1] [GROUPS-61.5] searches a group's own expenses on its screen
   expect(groupCardTitles('Brisbane')).toEqual(['Taxi', 'Dinner']);
 });
 
-test('[LEDGER-125.1] ignores the case of letters, and tells a letter with an accent from one without', async () => {
+test('[LEDGER-125.2] ignores the case of letters, and tells a letter with an accent from one without', async () => {
   await startExpenses();
   await spend('Coffee run');
   await spend('CAFÉ latte');
@@ -320,7 +320,7 @@ test('[LEDGER-125.1] ignores the case of letters, and tells a letter with an acc
   expect(cardTitles()).toEqual([]);
 });
 
-test('[LEDGER-125.1] matches the text as one run, not word by word', async () => {
+test('[LEDGER-125.2] matches the text as one run, not word by word', async () => {
   await startExpenses();
   await spend('Coffee run');
 
@@ -331,7 +331,7 @@ test('[LEDGER-125.1] matches the text as one run, not word by word', async () =>
   expect(cardTitles()).toEqual([]);
 });
 
-test('[LEDGER-125.1] leaves the spaces around the text out, and does not search for spaces alone', async () => {
+test('[LEDGER-125.2] leaves the spaces around the text out, and does not search for spaces alone', async () => {
   await startExpenses();
   await spend('Coffee run');
   await spend('Lunch');
@@ -345,7 +345,7 @@ test('[LEDGER-125.1] leaves the spaces around the text out, and does not search 
   expect(listCount(expensesRoot())).toBeUndefined();
 });
 
-test('[LEDGER-125.1] does not match amounts', async () => {
+test('[LEDGER-125.2] does not match amounts', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-30', '8.75');
   await spend('Table 875', '2026-10-30', '12.00');
@@ -357,7 +357,7 @@ test('[LEDGER-125.1] does not match amounts', async () => {
   expect(cardTitles()).toEqual(['Table 875']);
 });
 
-test('[LEDGER-125.1] does not match the payer or the date', async () => {
+test('[LEDGER-125.2] does not match the payer or the date', async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', { payer: 'Casey' });
   await showGroup('Brisbane');
@@ -370,7 +370,7 @@ test('[LEDGER-125.1] does not match the payer or the date', async () => {
   expect(groupCardTitles('Brisbane')).toEqual([]);
 });
 
-test('[LEDGER-125.1] [LEDGER-31.4] [LEDGER-107.2] looks through every date whatever the period, in the order of the list', async () => {
+test('[LEDGER-125.2] [LEDGER-31.5] [LEDGER-107.2] looks through every date whatever the period, in the order of the list', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-01');
   await spend('Lunch', '2026-10-02');
@@ -385,7 +385,7 @@ test('[LEDGER-125.1] [LEDGER-31.4] [LEDGER-107.2] looks through every date whate
   expect(cardTitles()).toEqual(['Coffee beans', 'Coffee run']);
 });
 
-test("[LEDGER-64.4] leaves a group expense that does not involve you out of a search of the expense list, and finds it on the group's screen", async () => {
+test("[LEDGER-64.5] leaves a group expense that does not involve you out of a search of the expense list, and finds it on the group's screen", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Taxi', { payer: 'Casey', sharers: ['Blake'] });
   await brisbaneSpends('Taxi home');
@@ -398,7 +398,7 @@ test("[LEDGER-64.4] leaves a group expense that does not involve you out of a se
   expect(groupCardTitles('Brisbane')).toEqual(['Taxi home', 'Taxi']);
 });
 
-test('[LEDGER-125.1] leaves expenses in the Trash out of a search', async () => {
+test('[LEDGER-125.2] leaves expenses in the Trash out of a search', async () => {
   await startExpenses();
   await spend('Coffee run');
   await spend('Coffee beans');
@@ -411,7 +411,7 @@ test('[LEDGER-125.1] leaves expenses in the Trash out of a search', async () => 
 
 // Ending a search
 
-test('[LEDGER-125.1] [LEDGER-107.2] [SHELL-73.1] goes back to the period the list was on when the search ends', async () => {
+test('[LEDGER-125.2] [LEDGER-107.2] [SHELL-73.1] goes back to the period the list was on when the search ends', async () => {
   await startExpenses();
   await spend('Lunch', '2026-09-12');
   await spend('Lunch box', '2026-08-03');
@@ -428,7 +428,7 @@ test('[LEDGER-125.1] [LEDGER-107.2] [SHELL-73.1] goes back to the period the lis
   expect(cardTitles()).toEqual(['Dinner', 'Lunch']);
 });
 
-test('[LEDGER-125.1] stops searching when the text is cleared', async () => {
+test('[LEDGER-125.2] stops searching when the text is cleared', async () => {
   await startExpenses();
   await spend('Coffee run');
   await spend('Lunch');
@@ -441,7 +441,7 @@ test('[LEDGER-125.1] stops searching when the text is cleared', async () => {
   expect(periodName(expensesRoot())).toBe('October 2026');
 });
 
-test('[LEDGER-125.1] [LEDGER-117.2] keeps the search when an expense is added during it: lists the new expense if it matches, and otherwise once the search ends, in its month', async () => {
+test('[LEDGER-125.2] [LEDGER-117.2] keeps the search when an expense is added during it: lists the new expense if it matches, and otherwise once the search ends, in its month', async () => {
   await startExpenses();
   await spend('Coffee run');
   await search('coffee');
@@ -463,7 +463,7 @@ test('[LEDGER-125.1] [LEDGER-117.2] keeps the search when an expense is added du
   expect(cardTitles()).toEqual(['Lunch']);
 });
 
-test('[LEDGER-125.1] [LEDGER-117.2] [LEDGER-75.5] keeps the search when Undo puts back an expense that matches, lists it, and shows its month once the search ends', async () => {
+test('[LEDGER-125.2] [LEDGER-117.2] [LEDGER-75.5] keeps the search when Undo puts back an expense that matches, lists it, and shows its month once the search ends', async () => {
   await startExpenses();
   await spend('Coffee run');
   await spend('Coffee beans', '2025-12-20');
@@ -485,7 +485,7 @@ test('[LEDGER-125.1] [LEDGER-117.2] [LEDGER-75.5] keeps the search when Undo put
   expect(cardTitles()).toEqual(['Coffee beans']);
 });
 
-test('[LEDGER-125.1] [LEDGER-117.2] [LEDGER-79.5] keeps the search when Restore puts back an expense that does not match, and lists it once the search ends, in its month', async () => {
+test('[LEDGER-125.2] [LEDGER-117.2] [LEDGER-79.5] keeps the search when Restore puts back an expense that does not match, and lists it once the search ends, in its month', async () => {
   await startExpenses();
   await spend('Coffee run');
   await spend('Lunch', '2026-09-12');
@@ -507,7 +507,7 @@ test('[LEDGER-125.1] [LEDGER-117.2] [LEDGER-79.5] keeps the search when Restore 
   expect(cardTitles()).toEqual(['Lunch']);
 });
 
-test('[LEDGER-146.2] [LEDGER-125.1] keeps the search when the app comes back in a later month, and shows that month once the search ends', async () => {
+test('[LEDGER-146.2] [LEDGER-125.2] keeps the search when the app comes back in a later month, and shows that month once the search ends', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-01');
   await spend('Lunch', '2026-10-02');
@@ -529,7 +529,7 @@ test('[LEDGER-146.2] [LEDGER-125.1] keeps the search when the app comes back in 
   expect(cardTitles()).toEqual([]);
 });
 
-test('[LEDGER-125.1] keeps searching after the details of a card are opened and closed', async () => {
+test('[LEDGER-125.2] keeps searching after the details of a card are opened and closed', async () => {
   await startExpenses();
   await spend('Coffee run');
   await spend('Lunch');
@@ -543,7 +543,7 @@ test('[LEDGER-125.1] keeps searching after the details of a card are opened and 
   expect(listCount(expensesRoot())).toBe('1 item');
 });
 
-test("[LEDGER-125.1] keeps the search of the expense list and of a group's screen apart", async () => {
+test("[LEDGER-125.2] keeps the search of the expense list and of a group's screen apart", async () => {
   await startWithGroups(BRISBANE);
   await spend('Coffee run');
   await brisbaneSpends('Dinner');
@@ -561,7 +561,7 @@ test("[LEDGER-125.1] keeps the search of the expense list and of a group's scree
   expect(cardTitles()).toEqual(['Coffee', 'Coffee run']);
 });
 
-test("[LEDGER-125.1] does not keep a search when the app starts again or a group's screen is opened again", async () => {
+test("[LEDGER-125.2] does not keep a search when the app starts again or a group's screen is opened again", async () => {
   const app = await startWithGroups(BRISBANE);
   await spend('Coffee run');
   await brisbaneSpends('Dinner');
@@ -582,7 +582,7 @@ test("[LEDGER-125.1] does not keep a search when the app starts again or a group
 
 // What gives way while searching
 
-test('[LEDGER-126.1] [LEDGER-108.2] [LEDGER-35.5] hides the period row and the total while searching, and says how many expenses match to the left of the sort button', async () => {
+test('[LEDGER-126.2] [LEDGER-108.2] [LEDGER-35.6] hides the period row and the total while searching, and says how many expenses match to the left of the sort button', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-30', '8.75');
   await spend('Lunch', '2026-10-30', '12.50');
@@ -615,7 +615,7 @@ test('[LEDGER-126.1] [LEDGER-108.2] [LEDGER-35.5] hides the period row and the t
   expect(sortName(expensesRoot())).toBe('Sort By, Newest First');
 });
 
-test('[LEDGER-126.1] [LEDGER-112.2] hides the dates of a custom range while searching, and shows them as they were afterwards', async () => {
+test('[LEDGER-126.2] [LEDGER-112.2] hides the dates of a custom range while searching, and shows them as they were afterwards', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-09-15');
   await choosePeriod('Expenses', 'Custom Range');
@@ -637,7 +637,7 @@ test('[LEDGER-126.1] [LEDGER-112.2] hides the dates of a custom range while sear
   });
 });
 
-test('[LEDGER-116.2] [LEDGER-126.1] shows no empty period text while searching', async () => {
+test('[LEDGER-116.3] [LEDGER-126.2] shows no empty period text while searching', async () => {
   await startExpenses();
   await spend('Lunch', '2026-08-15');
   await choosePeriod('Expenses', 'This Month');
@@ -657,7 +657,7 @@ test('[LEDGER-116.2] [LEDGER-126.1] shows no empty period text while searching',
   expect(emptyPeriodTitle(expensesRoot())).toBe('No Expenses in October 2026');
 });
 
-test("[LEDGER-126.1] [GROUPS-68.5] [GROUPS-69.4] hides the period row, the total and your net balance on a group's screen while searching", async () => {
+test("[LEDGER-126.2] [GROUPS-68.6] [GROUPS-69.4] hides the period row, the total and your net balance on a group's screen while searching", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', { amount: '60.00' });
   await brisbaneSpends('Taxi', {
@@ -692,7 +692,7 @@ test("[LEDGER-126.1] [GROUPS-68.5] [GROUPS-69.4] hides the period row, the total
   expect(listCount(brisbane())).toBeUndefined();
 });
 
-test('[LEDGER-126.1] keeps the read-only text and Restore Group of an archived group over the count while searching', async () => {
+test('[LEDGER-126.2] keeps the read-only text and Restore Group of an archived group over the count while searching', async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner');
   await brisbaneSpends('Taxi');
@@ -716,7 +716,7 @@ test('[LEDGER-126.1] keeps the read-only text and Restore Group of an archived g
 
 // No results
 
-test('[LEDGER-127.1] says No Results for the text as typed, without the spaces around it, and shows no card, count or sort button', async () => {
+test('[LEDGER-127.2] says No Results for the text as typed, without the spaces around it, and shows no card, count or sort button', async () => {
   await startExpenses();
   await spend('Coffee run');
 
@@ -738,7 +738,7 @@ test('[LEDGER-127.1] says No Results for the text as typed, without the spaces a
   expect(cardTitles()).toEqual(['Coffee run']);
 });
 
-test("[LEDGER-127.1] says No Results on a group's screen whose expenses do not match", async () => {
+test("[LEDGER-127.2] says No Results on a group's screen whose expenses do not match", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner');
   await showGroup('Brisbane');
@@ -752,7 +752,7 @@ test("[LEDGER-127.1] says No Results on a group's screen whose expenses do not m
   expect(sortName(brisbane())).toBeUndefined();
 });
 
-test('[LEDGER-127.1] keeps the text of a list with no expense at all while searching, on the expense list and on a group', async () => {
+test('[LEDGER-127.2] keeps the text of a list with no expense at all while searching, on the expense list and on a group', async () => {
   await startWithGroups(BRISBANE);
 
   await search('pizza');

@@ -4,11 +4,15 @@
 
 手動匯出入：把這支手機的全部資料存成一個檔案，以及用一個檔案的內容取代這支手機的資料。兩者都只讀寫手機上的東西，不連任何伺服器（ADR-0005）。入口是 Settings 根畫面 DATA 區塊的「Export Data」和「Import Data」兩列（SHELL-71.1）。
 
-全部資料是本機資料（shell）裡的所有內容：個人和群組的支出連同它們的付款、分攤和最後修改時間，垃圾桶裡的也算，以及支出清單和每個群組的畫面的排序（ledger）；每個空間的分類，封存的也算（categories）；群組和成員，封存的群組和前成員也算（groups）；本機身分和它的名字、外觀選項（shell）和 Insights 的圖表類型（insights）；以及這份資料跑過的 migration 紀錄（ADR-0006）。匯出檔是 app 匯出時產生的檔案：一個 SQLite 資料庫檔，內容是全部資料在同一個時間點的複本，另外記著匯出時間，也就是產生它的那一刻（ADR-0020）。匯出檔的版本是它的 migration 紀錄：紀錄是 app 的 migration 清單開頭的一部分，就是比 app 舊；紀錄包含整份清單，後面還有 app 沒有的 migration，就是比 app 新。
+全部資料是本機資料（shell）裡的所有內容：個人和群組的支出連同它們的付款、分攤和最後修改時間，垃圾桶裡的也算，以及支出清單和每個群組的畫面的排序、篩選和存起來的篩選（ledger）；每個空間的分類，封存的也算（categories）；群組和成員，封存的群組和前成員也算（groups）；本機身分和它的名字、外觀選項（shell）和 Insights 的圖表類型（insights）；以及這份資料跑過的 migration 紀錄（ADR-0006）。匯出檔是 app 匯出時產生的檔案：一個 SQLite 資料庫檔，內容是全部資料在同一個時間點的複本，另外記著匯出時間，也就是產生它的那一刻（ADR-0020）。匯出檔的版本是它的 migration 紀錄：紀錄是 app 的 migration 清單開頭的一部分，就是比 app 舊；紀錄包含整份清單，後面還有 app 沒有的 migration，就是比 app 新。
 
 分享畫面是系統用來把檔案存到別處或交給其他 app 的畫面。檔案選擇畫面是系統讓使用者選一個檔案的畫面，它交給 app 的是那個檔案的複本。暫存檔是 app 為了一次匯出或匯入寫在手機上、本機資料以外的檔案，包括交給分享畫面的匯出檔和檔案選擇畫面交來的複本。匯出的暫存檔在分享畫面關閉之後還留著，到 app 下一次啟動或下一次匯出時才刪（BACKUP-25.1）。匯出正在進行，是從點「Export Data」到分享畫面關閉，或到跳出匯出失敗的提示框。匯入正在進行，是從點「Import Data」到下面其中一件事發生：使用者在檔案選擇畫面取消、跳出不能匯入的提示框、使用者在確認框按「Cancel」、匯入完成，或跳出匯入失敗的提示框。裝置所在的時區、手機地區的日期格式和手機的地區，都和 ledger 的定義一樣。
 
 Scenario 裡「Taylor 的資料」是指：名字是「Taylor」，外觀選項是 Dark，Insights 的圖表類型是 Bar；群組 Brisbane 有成員 Taylor、Casey 和已經被移出的 Blake，另有封存的群組 Tokyo；個人空間多了分類「Gym」、封存了「Travel」，Brisbane 多了分類「Flights」；個人支出有 Coffee run 8.75 USD 和 Train 3.00 USD，Brisbane 有 Casey 付、三位成員分攤的 Dinner 100.01 USD，垃圾桶裡有個人支出 Lunch 12.00 USD。它有 2 個群組，不在垃圾桶裡的支出有 3 筆。
+
+全部資料也包括裝置身分的紀錄（SHARING-46.1）和共同帳本的同步資料（sync）。共同帳本、紀錄、單位、時間戳記、刪除紀錄、手機看過的最新時間戳記、待上傳的事件、套用，以及不套用的事件留下的紀錄，都和 sync 的定義一樣。同步資料是本機資料替同步記著的東西：哪些群組是共同帳本和這支手機在裡面用的裝置 ID、每筆紀錄每個單位的值和時間戳記、刪除紀錄、手機看過的最新時間戳記、待上傳的事件，以及不套用的事件留下的紀錄。匯出檔裡的共同帳本，是匯出檔的同步資料記成共同帳本的群組。匯入之後這支手機的同步資料回到匯出那一刻，只有手機看過的最新時間戳記不倒退（BACKUP-13.2、BACKUP-27.1、ADR-0025）。
+
+有共同帳本的 Scenario 裡，T 是 `2026-11-18T06:32:00Z` 的毫秒數；Taylor 的手機的裝置 ID 是 `phone-a`，別支手機是 `phone-b`；Brisbane 是 Taylor 建立、依序加入 Casey 和 Blake 的群組，在校正後的時間 T 變成共同帳本，Tokyo 是另一個群組，不是共同帳本；時間戳記的寫法和 sync 一樣，例如 `T+60000/0/phone-a`。Lunch 是 `phone-b` 新增的 Brisbane 的支出，3000 USD，除非另外說明，Casey 付款、Taylor 和 Casey 各分攤 1500，收到時間是它的時間戳記的毫秒。
 
 ## Requirements
 
@@ -243,9 +247,9 @@ WHEN 使用者在確認框按「Cancel」，the mobile app SHALL 不寫入任何
 - **WHEN** 手機上有名字「Sam」和個人支出 Bus，選了 Taylor 的資料的匯出檔，在確認框按「Cancel」
 - **THEN** 本機資料和選檔案之前一樣，仍停在 Settings 根畫面，名字欄位仍是「Sam」，沒有再跳出提示框
 
-### Requirement: BACKUP-13.1 按 Replace 時用匯出檔的內容取代全部資料
+### Requirement: BACKUP-13.2 按 Replace 時用匯出檔的內容取代全部資料
 
-WHEN 使用者在確認框按「Replace」，the mobile app SHALL 在一個 transaction 裡把本機資料的全部內容換成匯出檔的內容：換完之後，本機資料的每一張表都和匯出時的本機資料一樣，原本在這支手機上、匯出檔裡沒有的資料都不在了，本機身分也是匯出檔裡的那一個。
+WHEN 使用者在確認框按「Replace」，the mobile app SHALL 在一個 transaction 裡把本機資料的全部內容換成匯出檔的內容：換完之後，除了手機看過的最新時間戳記（BACKUP-27.1），本機資料的每一張表都和匯出時的本機資料一樣，原本在這支手機上、匯出檔裡沒有的資料都不在了，本機身分也是匯出檔裡的那一個。同步資料也在內，所以匯入之後：匯出檔裡的共同帳本是共同帳本，其他群組都不是；每筆紀錄每個單位的值和時間戳記、刪除紀錄、待上傳的事件連同它們的事件 ID 和順序、不套用的事件留下的紀錄，都是匯出檔裡的；匯出之後才寫下的待上傳事件，和匯出之後的其他修改一樣不在了。
 
 #### Scenario: 新手機
 
@@ -271,6 +275,40 @@ WHEN 使用者在確認框按「Replace」，the mobile app SHALL 在一個 tran
 
 - **WHEN** 新手機匯入 Taylor 的資料的匯出檔之後，點「Export Data」
 - **THEN** 新的匯出檔裡，本機資料的每一張表都和原本的匯出檔一樣
+
+#### Scenario: 匯入自己之前的匯出檔，手機上有共同帳本
+
+- **WHEN** Taylor 的手機把 Brisbane 改名為「Brissie」，套用了 Lunch 的第一個事件和一個標題是空字串、所以不套用的事件，然後匯出；之後再把群組改名為「Sydney」、讓 Tokyo 也變成共同帳本、又套用一個不套用的事件，再匯入自己剛才的匯出檔
+- **THEN** 待上傳的事件只有改名為「Brissie」的那一個，事件 ID 和匯出時一樣；不套用的事件留下的紀錄只有匯出時的那一筆；群組叫 Brissie，Lunch 還在；之後替 Tokyo 改名不寫事件，替 Brissie 改名寫出一個事件，名稱根據的版本是改名為「Brissie」那個事件的時間戳記
+
+#### Scenario: 新手機匯入有共同帳本的匯出檔
+
+- **WHEN** 一支第一次打開 app 的手機匯入上面那個匯出檔，再替 Brissie 改名
+- **THEN** 匯入之後這支手機待上傳的事件、不套用的事件留下的紀錄都和匯出時一樣；改名寫出的事件屬於 Brisbane 的群組 ID，時間戳記的裝置 ID 是 `phone-a`，名稱根據的版本是改名為「Brissie」那個事件的時間戳記
+
+### Requirement: BACKUP-27.1 匯入不讓手機看過的最新時間戳記倒退
+
+WHEN 使用者在確認框按「Replace」，the mobile app SHALL 在寫入匯出檔內容的同一個 transaction 裡，讓手機看過的最新時間戳記（SYNC-15.1）是匯出檔裡的和這支手機匯入之前的兩個裡比較晚的那一個（SYNC-1.1）；只有一邊有就用那一個，兩邊都沒有就沒有。所以匯入之後新修改的時間戳記（SYNC-2.1），比這支手機匯入之前寫過和看過的時間戳記都晚，也比匯出檔記著的看過的最新時間戳記晚。
+
+#### Scenario: 匯入自己之前的匯出檔
+
+- **WHEN** Taylor 的手機在校正後的時間 T+60000 匯出；之後套用時間戳記是 `T+360000/0/phone-b` 的 Lunch 的第一個事件，再把 Brisbane 改名為「Brissie」，這個事件的時間戳記是 `T+360000/1/phone-a`；然後匯入自己剛才的匯出檔，在校正後的時間 T+120000 把 Brisbane 改名為「Sydney」
+- **THEN** 這個事件的時間戳記是 `T+360000/2/phone-a`，不是 `T+120000/0/phone-a`；名稱根據的版本是匯出檔裡的，毫秒是 T；待上傳的事件只有這一個
+
+#### Scenario: 匯出檔裡的比較晚
+
+- **WHEN** Taylor 的手機套用時間戳記是 `T+360000/0/phone-b` 的 Lunch 的第一個事件之後才匯出；一支第一次打開 app 的手機，或一支有自己的共同帳本 Osaka（在校正後的時間 T 變成共同帳本，裝置 ID 是 `phone-s`）的手機匯入這個匯出檔，在校正後的時間 T+120000 把 Brisbane 改名為「Sydney」
+- **THEN** 兩支手機上，這個事件的時間戳記都是 `T+360000/1/phone-a`
+
+#### Scenario: 匯出檔沒有共同帳本
+
+- **WHEN** Taylor 的手機寫過時間戳記 `T+360000/1/phone-a` 的事件之後，匯入 Taylor 的資料的匯出檔，它沒有共同帳本；在校正後的時間 T+120000，Brisbane 變成共同帳本，裝置 ID 是 `phone-a`，再把它改名為「Sydney」
+- **THEN** 這個事件的時間戳記和名稱根據的版本，毫秒都是 T+360000
+
+#### Scenario: 兩邊都沒有
+
+- **WHEN** 沒有共同帳本的手機匯入 Taylor 的資料的匯出檔，在校正後的時間 T+120000，Brisbane 變成共同帳本，再把它改名為「Sydney」
+- **THEN** 這個事件的時間戳記和名稱根據的版本，毫秒都是 T+120000
 
 ### Requirement: BACKUP-14.1 匯入完成後回到 app 載入後的樣子，顯示匯入的資料
 
@@ -298,7 +336,7 @@ WHEN 匯入完成，the mobile app SHALL 不必重新啟動就回到 app 載入�
 
 ### Requirement: BACKUP-15.1 不能用的檔案不寫入
 
-IF 使用者選的檔案不能用，THEN the mobile app SHALL 不寫入任何資料，本機資料和畫面都不變，並跳出標題「Unable to Import Data」、內容「This file is damaged or was not exported by this app. Your data was not changed.」的提示框。檔案不能用，是指它符合下面任何一項：不是 SQLite 資料庫檔；不完整或損壞；沒有 migration 紀錄，或它的 migration 紀錄和 app 的 migration 清單開頭對不上；裡面有 BACKUP-24.1 不允許的東西；沒有匯出時間，或匯出時間不是一個有效的時刻；內容違反 BACKUP-16.1 的規則。沒有損壞、版本比 app 新的匯出檔不算在這裡，照 BACKUP-17.1 處理。開發版也一樣，不會因為 migration 對不上就刪掉本機資料（SHELL-5.1）。
+IF 使用者選的檔案不能用，THEN the mobile app SHALL 不寫入任何資料，本機資料和畫面都不變，並跳出標題「Unable to Import Data」、內容「This file is damaged or was not exported by this app. Your data was not changed.」的提示框。檔案不能用，是指它符合下面任何一項：不是 SQLite 資料庫檔；不完整或損壞；沒有 migration 紀錄，或它的 migration 紀錄和 app 的 migration 清單開頭對不上；裡面有 BACKUP-24.1 不允許的東西；沒有匯出時間，或匯出時間不是一個有效的時刻；內容違反 BACKUP-16.2 的規則。沒有損壞、版本比 app 新的匯出檔不算在這裡，照 BACKUP-17.1 處理。開發版也一樣，不會因為 migration 對不上就刪掉本機資料（SHELL-5.1）。
 
 #### Scenario: 不是資料庫
 
@@ -364,9 +402,9 @@ IF 使用者選的資料庫檔裡，除了 app 的 migration 建出來的表和�
 - **WHEN** 選了一個版本比 app 舊、多了一個 trigger 的匯出檔
 - **THEN** 跳出「Unable to Import Data」，本機資料不變
 
-### Requirement: BACKUP-16.1 內容違反規則的匯出檔不寫入
+### Requirement: BACKUP-16.2 內容違反規則的匯出檔不寫入
 
-IF 匯出檔的內容違反規則，THEN the mobile app SHALL 照 BACKUP-15.1 不寫入並提示。規則只有這些：資料庫自己的限制都成立，也就是每張表的 CHECK、NOT NULL、UNIQUE、主鍵和 foreign key；有本機身分；每個分類和每筆支出所屬的空間，是本機身分的個人空間或匯出檔裡的一個群組；個人空間的支出，付款和分攤都記在個人 participant 下，群組的支出，付款和分攤都記在那個群組的成員下，前成員也算；每筆支出的付款加總和分攤加總都等於它的金額；每筆支出的幣別是支援的幣別（LEDGER-1.1）；每筆支出的日期是有效的支出日期（LEDGER-9.1）。
+IF 匯出檔的內容違反規則，THEN the mobile app SHALL 照 BACKUP-15.1 不寫入並提示。規則只有這些：資料庫自己的限制都成立，也就是每張表的 CHECK、NOT NULL、UNIQUE、主鍵和 foreign key；有本機身分；每個分類和每筆支出所屬的空間，是本機身分的個人空間或匯出檔裡的一個群組；個人空間的支出，付款和分攤都記在個人 participant 下；不是共同帳本的群組的支出，付款和分攤都記在那個群組的成員下，前成員也算；每筆支出的付款加總和分攤加總都等於它的金額；每筆支出的幣別是支援的幣別（LEDGER-1.1）；每筆支出的日期是有效的支出日期（LEDGER-9.1）。匯出檔裡的共同帳本的支出，付款和分攤記在誰下面都不算違反規則，其他規則照舊：套用事件之後，它們可以記在這支手機上不是那個群組成員的 ID 下（ADR-0021），這樣的手機匯出的檔案也要匯得回去（ADR-0025）。
 
 #### Scenario: 分攤加起來不等於金額
 
@@ -410,7 +448,7 @@ IF 匯出檔的內容違反規則，THEN the mobile app SHALL 照 BACKUP-15.1 �
 
 #### Scenario: 付款或分攤的人不在那個空間
 
-- **WHEN** 匯出檔裡 Dinner 的付款被記在一個不是 Brisbane 成員的 ID 下；或個人支出 Coffee run 的分攤被記在 Casey 的成員 ID 下
+- **WHEN** 匯出檔是 Taylor 的資料，裡面沒有共同帳本，Dinner 的付款被記在一個不是 Brisbane 成員的 ID 下；或個人支出 Coffee run 的分攤被記在 Casey 的成員 ID 下
 - **THEN** 跳出「Unable to Import Data」，本機資料不變
 
 #### Scenario: 前成員
@@ -418,9 +456,29 @@ IF 匯出檔的內容違反規則，THEN the mobile app SHALL 照 BACKUP-15.1 �
 - **WHEN** 匯出檔是 Taylor 的資料，Dinner 的分攤裡有已經被移出的 Blake
 - **THEN** 不算違反規則，跳出的是「Replace All Data?」
 
+#### Scenario: 共同帳本的支出記在這支手機沒有的成員下
+
+- **WHEN** Taylor 的手機套用 `phone-b` 的兩個事件：加入成員 Dana 的事件，時間戳記比收到時間晚一小時，所以不套用（SYNC-9.1）；和 Dana 付款、Taylor 和 Dana 各分攤 1500 的 Lunch 的第一個事件，照常套用（SYNC-31.1）。這支手機匯出，再在自己身上、或在一支第一次打開 app 的手機上選這個匯出檔
+- **THEN** 兩支手機都跳出「Replace All Data?」，內容寫的是「has 2 groups and 1 expense」；按「Replace」之後，本機資料和匯出時一樣，Lunch 的付款和 Dana 的那一筆分攤仍記在 Dana 的 ID 下，Brisbane 的成員裡沒有這個 ID
+
+#### Scenario: 手動改過的匯出檔
+
+- **WHEN** 匯出檔裡 Brisbane 是共同帳本，它的 Lunch 的付款被改記在一個不是 Brisbane 成員的 ID 下
+- **THEN** 不算違反規則，跳出的是「Replace All Data?」
+
+#### Scenario: 共同帳本的支出仍要守其他規則
+
+- **WHEN** Dana 付款的那個匯出檔裡，Lunch 的分攤被改成 1500 和 1400；或 Lunch 的幣別被改成 `XYZ`
+- **THEN** 跳出「Unable to Import Data」，本機資料不變
+
+#### Scenario: 同一個匯出檔裡不是共同帳本的群組和個人支出
+
+- **WHEN** 匯出檔裡 Brisbane 是共同帳本，Tokyo 不是；Tokyo 的支出 Sushi 的付款被記在一個不是 Tokyo 成員的 ID 下；或個人支出 Coffee run 的分攤被記在那個 ID 下
+- **THEN** 跳出「Unable to Import Data」，本機資料不變
+
 ### Requirement: BACKUP-17.1 比 app 新的匯出檔不寫入，請使用者更新 app
 
-IF 使用者選的檔案是沒有損壞的 SQLite 資料庫檔，而它的版本比 app 新，THEN the mobile app SHALL 不寫入任何資料，本機資料和畫面都不變，並跳出標題「Unable to Import Data」、內容「This file was exported by a newer version of the app. Update the app, then try again. Your data was not changed.」的提示框，不再照 BACKUP-24.1 和 BACKUP-16.1 檢查它，因為新版的匯出檔本來就可能有 app 不認得的表和欄位；開發版也一樣。沒有損壞，是指 SQLite 自己檢查這個檔案的完整性時找不到問題；這項檢查不看 foreign key。
+IF 使用者選的檔案是沒有損壞的 SQLite 資料庫檔，而它的版本比 app 新，THEN the mobile app SHALL 不寫入任何資料，本機資料和畫面都不變，並跳出標題「Unable to Import Data」、內容「This file was exported by a newer version of the app. Update the app, then try again. Your data was not changed.」的提示框，不再照 BACKUP-24.1 和 BACKUP-16.2 檢查它，因為新版的匯出檔本來就可能有 app 不認得的表和欄位；開發版也一樣。沒有損壞，是指 SQLite 自己檢查這個檔案的完整性時找不到問題；這項檢查不看 foreign key。
 
 #### Scenario: 違反 foreign key 的新版匯出檔
 
@@ -444,7 +502,7 @@ IF 使用者選的檔案是沒有損壞的 SQLite 資料庫檔，而它的版本
 
 ### Requirement: BACKUP-18.1 比 app 舊的匯出檔升級之後匯入
 
-WHEN 使用者選了一個版本比 app 舊的匯出檔，the mobile app SHALL 先在它的複本上跑它還沒跑過的 migration（ADR-0006），再把升級後的內容當成匯出檔，照 BACKUP-11.1 到 BACKUP-16.1 和 BACKUP-24.1 處理；確認框和同一個版本的匯出檔一樣，不另外說明它是舊版的。有一個 migration 跑不完的檔案是不能用的檔案（BACKUP-15.1）。
+WHEN 使用者選了一個版本比 app 舊的匯出檔，the mobile app SHALL 先在它的複本上跑它還沒跑過的 migration（ADR-0006），再把升級後的內容當成匯出檔，照 BACKUP-11.1 到 BACKUP-16.2 和 BACKUP-24.1 處理；確認框和同一個版本的匯出檔一樣，不另外說明它是舊版的。有一個 migration 跑不完的檔案是不能用的檔案（BACKUP-15.1）。
 
 #### Scenario: 還沒有圖表類型的 app 所匯出的檔案
 
@@ -455,6 +513,11 @@ WHEN 使用者選了一個版本比 app 舊的匯出檔，the mobile app SHALL �
 
 - **WHEN** 選了一個 app 在支出有最後修改時間（LEDGER-120.1）之前所匯出的匯出檔，裡面有依序新增的個人支出 A、B 和 C，按「Replace」
 - **THEN** 照常匯入，支出清單有這三筆；它們沒有最後修改時間，支出清單的排序換成 Recently Edited 時由上而下是 C、B、A
+
+#### Scenario: 還沒有篩選的 app 所匯出的檔案
+
+- **WHEN** 手機上支出清單的 Paid by Me 開著、有存起來的篩選「Mine」，選了一個 app 在清單有篩選（LEDGER-140.1）之前所匯出的匯出檔，按「Replace」
+- **THEN** 照常匯入；匯入完成時支出清單沒有篩選，Filters 裡沒有 SAVED FILTERS
 
 #### Scenario: 升級後違反規則
 

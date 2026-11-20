@@ -62,7 +62,20 @@ import {
 import { cardTitles, expensesRoot } from './ledger-expense-list-app';
 import { chooseSort, expectSort } from './ledger-list-find-app';
 import {
+  SAVE_FILTER,
+  capsuleOf,
+  capsuleRow,
+  hasSavedSection,
+  pressInFilters,
+  savedFilters,
+  setAmounts,
+  typeAmount,
+  watchPrompts,
+} from './ledger-list-filter-app';
+import {
+  closeFilters,
   expectPeriod,
+  openFilters,
   periodName,
   pressPreviousPeriod,
 } from './ledger-list-period-app';
@@ -309,7 +322,7 @@ test('[BACKUP-12.1] writes nothing and stays on Settings when Cancel is pressed'
   expect(alertsShown()).toHaveLength(1);
 });
 
-test('[BACKUP-13.1] makes a new phone hold exactly what the exporting phone held, its local identity included', async () => {
+test('[BACKUP-13.2] makes a new phone hold exactly what the exporting phone held, its local identity included', async () => {
   const { file, data } = await taylorsExport();
   await startOn(phone);
   const own = dataIn(phone.database);
@@ -320,7 +333,7 @@ test('[BACKUP-13.1] makes a new phone hold exactly what the exporting phone held
   expect(data.local_identity).not.toEqual(own.local_identity);
 });
 
-test('[BACKUP-13.1] leaves nothing of the data the phone had before', async () => {
+test('[BACKUP-13.2] leaves nothing of the data the phone had before', async () => {
   const { file, data } = await taylorsExport();
   await startWithSamsData();
 
@@ -331,7 +344,7 @@ test('[BACKUP-13.1] leaves nothing of the data the phone had before', async () =
   expect(JSON.stringify(now)).not.toMatch(/Sam|Osaka|Bus|Tea/);
 });
 
-test('[BACKUP-13.1] takes a phone back to what it held when it exported the file', async () => {
+test('[BACKUP-13.2] takes a phone back to what it held when it exported the file', async () => {
   const taylors = newPhone();
   await writeData(taylors, { name: 'Taylor', groups: [{ name: 'Brisbane' }] });
   const { file, data } = await exportFrom(taylors);
@@ -358,7 +371,7 @@ test('[BACKUP-13.1] takes a phone back to what it held when it exported the file
   expect(dataIn(taylors.database)).toEqual(data);
 });
 
-test('[BACKUP-13.1] ends with the same data when the same file is imported twice', async () => {
+test('[BACKUP-13.2] ends with the same data when the same file is imported twice', async () => {
   const { file, data } = await taylorsExport();
   await startOn(phone);
   await importFile(file);
@@ -369,7 +382,7 @@ test('[BACKUP-13.1] ends with the same data when the same file is imported twice
   expect(dataIn(phone.database)).toEqual(data);
 });
 
-test('[BACKUP-13.1] exports the same data again after an import', async () => {
+test('[BACKUP-13.2] exports the same data again after an import', async () => {
   const { file, data } = await taylorsExport();
   await startOn(phone);
   await importFile(file);
@@ -666,7 +679,7 @@ const AGAINST_THE_RULES: [string, string][] = [
 ];
 
 test.each(AGAINST_THE_RULES)(
-  '[BACKUP-16.1] writes nothing and says the file cannot be used for %s',
+  '[BACKUP-16.2] writes nothing and says the file cannot be used for %s',
   async (_what, sql) => {
     const { file } = await taylorsExport();
     const app = await startWithSamsData();
@@ -968,7 +981,7 @@ async function exportAfterChangingA() {
   return copy;
 }
 
-test('[LEDGER-120.1] [BACKUP-13.1] brings the time each expense was last changed with an import', async () => {
+test('[LEDGER-120.1] [BACKUP-13.2] brings the time each expense was last changed with an import', async () => {
   const file = await exportAfterChangingA();
   await startOn(phone);
 
@@ -995,7 +1008,7 @@ test('[BACKUP-18.1] [LEDGER-120.1] [LEDGER-121.1] imports a file exported before
   expect(cardTitles()).toEqual(['B2', 'C', 'A2']);
 });
 
-test('[LEDGER-124.1] [BACKUP-13.1] lists the expenses in the order the export file holds after an import', async () => {
+test('[LEDGER-124.1] [BACKUP-13.2] lists the expenses in the order the export file holds after an import', async () => {
   const source = newPhone();
   await writeData(source, {
     expenses: [
@@ -1031,4 +1044,69 @@ test('[LEDGER-124.1] [BACKUP-18.1] lists the expenses newest first after importi
 
   await expectSort(expensesRoot, 'Newest First');
   expect(cardTitles()).toEqual(['A2', 'C', 'B']);
+});
+
+// What an import brings of a list's filter and of its saved filters (LEDGER-140.1)
+
+/** On the running app's expense list: sets the lowest amount to `min` and saves that filter as `name`. */
+async function saveLowestAmountAs(min: string, name: string) {
+  const prompts = watchPrompts();
+  await openFilters('Expenses');
+  await typeAmount('Lowest amount', min);
+  await pressInFilters(SAVE_FILTER);
+  await prompts.answer('Save', name);
+  await closeFilters();
+}
+
+test("[LEDGER-140.1] [LEDGER-144.1] [BACKUP-13.2] brings the filter and the saved filters of the export file with an import, in place of the phone's own", async () => {
+  const source = newPhone();
+  await writeData(source, {
+    expenses: [
+      { title: 'A', amount: '9', date: '2026-11-10' },
+      { title: 'B', amount: '1', date: '2026-11-12' },
+    ],
+  });
+  const exporting = await startOn(source, { url: '/' });
+  await saveLowestAmountAs('5', 'Five and up');
+  expect(cardTitles()).toEqual(['A']);
+  await tapTab('Settings');
+  const { copy } = await exportData();
+  await close(exporting);
+
+  await writeSamsData(phone);
+  await startOn(phone, { url: '/' });
+  await saveLowestAmountAs('2', 'Mine');
+  await setAmounts('Expenses', '', '90');
+  expect(capsuleOf(expensesRoot(), 'Amount')).toBe('90 or less');
+  await tapTab('Settings');
+
+  await importFile(copy);
+
+  expect(capsuleOf(expensesRoot(), 'Amount')).toBe('5 or more');
+  expect(cardTitles()).toEqual(['A']);
+  await openFilters('Expenses');
+  expect(savedFilters()).toEqual([['Five and up', true]]);
+});
+
+test('[BACKUP-18.1] [LEDGER-140.1] imports a file exported before the lists had filters, with no filter and no saved filter, and remembers a filter set afterwards', async () => {
+  const { file } = await taylorsExport();
+  const older = await fromBeforeChartTypes(file);
+  expect(dataIn(older)._migrations.length).toBeLessThan(appMigrations.length);
+  await writeSamsData(phone);
+  const app = await startOn(phone, { url: '/' });
+  await saveLowestAmountAs('2', 'Mine');
+  expect(capsuleOf(expensesRoot(), 'Amount')).toBe('2 or more');
+  await tapTab('Settings');
+
+  await importFile(older);
+
+  expect(capsuleRow(expensesRoot())).toBeUndefined();
+  await openFilters('Expenses');
+  expect(hasSavedSection()).toBe(false);
+  await typeAmount('Lowest amount', '3');
+  await closeFilters();
+
+  await close(app);
+  await startOn(phone, { url: '/' });
+  expect(capsuleOf(expensesRoot(), 'Amount')).toBe('3 or more');
 });

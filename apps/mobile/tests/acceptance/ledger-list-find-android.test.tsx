@@ -97,7 +97,7 @@ const spend = (title: string, date = '2026-10-30', amount = '8.75') =>
 
 // The sort button
 
-test('[LEDGER-122.1] opens the orders in a sheet titled Sort By with Cancel on Android, marks the current one, and takes the one chosen', async () => {
+test('[LEDGER-122.2] opens the orders in a sheet titled Sort By with Cancel on Android, marks the current one, and takes the one chosen', async () => {
   await startExpenses();
   await spend('A', '2026-10-01');
   await spend('B', '2026-10-03');
@@ -121,7 +121,7 @@ test('[LEDGER-122.1] opens the orders in a sheet titled Sort By with Cancel on A
   );
 });
 
-test('[LEDGER-122.1] leaves the order as it was when the Sort By sheet is closed with Cancel', async () => {
+test('[LEDGER-122.2] leaves the order as it was when the Sort By sheet is closed with Cancel', async () => {
   await startExpenses();
   await spend('A', '2026-10-01');
   await spend('B', '2026-10-03');
@@ -134,7 +134,7 @@ test('[LEDGER-122.1] leaves the order as it was when the Sort By sheet is closed
   expect(cardTitles()).toEqual(['A', 'B']);
 });
 
-test('[LEDGER-122.1] draws the sort button as a swap_vert icon on Android, in the accent color while the order is not Newest First', async () => {
+test('[LEDGER-122.2] draws the sort button as a swap_vert icon on Android, in the accent color while the order is not Newest First', async () => {
   // Before the app starts: a hook's render becomes what `screen` queries.
   const { accent } = (await renderHook(() => useThemeColors())).result.current;
   await startExpenses();
@@ -157,7 +157,7 @@ test('[LEDGER-122.1] draws the sort button as a swap_vert icon on Android, in th
   );
 });
 
-test("[LEDGER-122.1] sorts a group's screen from its own Sort By sheet on Android", async () => {
+test("[LEDGER-122.2] sorts a group's screen from its own Sort By sheet on Android", async () => {
   await startWithGroups({ Brisbane: ['Casey'] });
   for (const [title, amount] of [
     ['Dinner', '60.00'],
@@ -187,7 +187,7 @@ test('[SHELL-73.1] puts the system search field in the header of the expense lis
   expect(searchField('Expenses')?.props.placeholder).toBe('Search');
 });
 
-test('[LEDGER-125.1] [LEDGER-126.1] [SHELL-73.1] searches at each change of the text on Android, and ends the search when the field closes', async () => {
+test('[LEDGER-125.2] [LEDGER-126.2] [SHELL-73.1] searches at each change of the text on Android, and ends the search when the field closes', async () => {
   await startExpenses();
   await spend('Coffee run');
   await spend('Lunch');
@@ -209,7 +209,7 @@ test('[LEDGER-125.1] [LEDGER-126.1] [SHELL-73.1] searches at each change of the 
   expect(listCount(expensesRoot())).toBeUndefined();
 });
 
-test('[LEDGER-127.1] says No Results for the text on Android', async () => {
+test('[LEDGER-127.2] says No Results for the text on Android', async () => {
   await startExpenses();
   await spend('Coffee run');
 

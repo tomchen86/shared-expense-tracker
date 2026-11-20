@@ -16,6 +16,7 @@ import {
   readOut,
 } from './ledger-expense-list-app';
 import { listCount, typeSearch } from './ledger-list-find-app';
+import { setAmounts } from './ledger-list-filter-app';
 import { groupCardTitles } from './ledger-group-expense-app';
 import { choosePeriod } from './ledger-list-period-app';
 import {
@@ -138,7 +139,7 @@ const thousandExpenses = () =>
 // These two get a longer limit than usual: a thousand expenses are slow wherever a list draws
 // a card for each of them.
 
-test("[LEDGER-35.5] writes how many cards All Time has in the phone's number format", async () => {
+test("[LEDGER-35.6] writes how many cards All Time has in the phone's number format", async () => {
   const phone = newPhone();
   await writeData(phone, { expenses: thousandExpenses() });
   await startOn(phone, { url: '/' });
@@ -151,7 +152,7 @@ test("[LEDGER-35.5] writes how many cards All Time has in the phone's number for
   );
 }, 60_000);
 
-test('[LEDGER-35.5] groups the digits of that number as the region the phone is set to does', async () => {
+test('[LEDGER-35.6] groups the digits of that number as the region the phone is set to does', async () => {
   // English (United States) on a phone set to Germany.
   setPhoneRegion('DE');
   const phone = newPhone();
@@ -168,7 +169,7 @@ test('[LEDGER-35.5] groups the digits of that number as the region the phone is 
 
 // The count while searching
 
-test('[LEDGER-126.1] [LEDGER-118.2] counts every expense a search matches, over every date, while it draws only the first cards', async () => {
+test('[LEDGER-126.2] [LEDGER-118.2] counts every expense a search matches, over every date, while it draws only the first cards', async () => {
   const phone = newPhone();
   // Expense 300 is dated today and each one before it a day earlier, back to January.
   const day = (back: number) =>
@@ -187,7 +188,19 @@ test('[LEDGER-126.1] [LEDGER-118.2] counts every expense a search matches, over 
   expectOnlyTheFirstCards(cardTitles());
 });
 
-test("[LEDGER-126.1] writes the count of a search in the phone's number format", async () => {
+test('[LEDGER-137.1] [LEDGER-118.2] counts and totals every expense the filter leaves while it draws only the first cards', async () => {
+  const phone = newPhone();
+  await writeData(phone, { expenses: manyExpenses() });
+  await startOn(phone, { url: '/' });
+
+  await setAmounts('Expenses', '1');
+
+  expect(listCount(expensesRoot())).toBe('300 items');
+  expect(listTotal()).toEqual(['$300.00']);
+  expectOnlyTheFirstCards(cardTitles());
+});
+
+test("[LEDGER-126.2] writes the count of a search in the phone's number format", async () => {
   const phone = newPhone();
   await writeData(phone, { expenses: thousandExpenses() });
   await startOn(phone, { url: '/' });
@@ -197,7 +210,7 @@ test("[LEDGER-126.1] writes the count of a search in the phone's number format",
   expect(listCount(expensesRoot())).toBe('1,000 items');
 });
 
-test('[LEDGER-126.1] groups the digits of that count as the region the phone is set to does', async () => {
+test('[LEDGER-126.2] groups the digits of that count as the region the phone is set to does', async () => {
   // English (United States) on a phone set to Germany.
   setPhoneRegion('DE');
   const phone = newPhone();
@@ -208,3 +221,18 @@ test('[LEDGER-126.1] groups the digits of that count as the region the phone is 
 
   expect(listCount(expensesRoot())).toBe('1.000 items');
 });
+
+// A thousand expenses on All Time are slow, as above.
+
+test('[LEDGER-137.1] groups the digits of the count a filter leaves as the region the phone is set to does', async () => {
+  // English (United States) on a phone set to Germany.
+  setPhoneRegion('DE');
+  const phone = newPhone();
+  await writeData(phone, { expenses: thousandExpenses() });
+  await startOn(phone, { url: '/' });
+  await choosePeriod('Expenses', 'All Time');
+
+  await setAmounts('Expenses', '1');
+
+  expect(listCount(expensesRoot())).toBe('1.000 items');
+}, 60_000);

@@ -36,7 +36,7 @@ export async function showGroup(group: string) {
 
 /**
  * What a screen reader reads for the total on the group's screen, <period>: <total>, which on
- * the period a group's screen opens on is Group Total: <total> (GROUPS-68.5); nothing while the
+ * the period a group's screen opens on is Group Total: <total> (GROUPS-68.6); nothing while the
  * screen shows no total.
  */
 export const groupTotals = (group: string) => totalRead(screenOf(group));
