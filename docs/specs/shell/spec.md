@@ -1200,11 +1200,6 @@ The mobile app SHALL 把畫面給的搜尋放進原生標題列，用的是系�
 - **WHEN** iOS 上開啟 app
 - **THEN** Expenses 分頁的標題列有系統的搜尋欄位，提示文字是「Search」，放成標題列上的搜尋鈕
 
-#### Scenario: 較早的 iOS
-
-- **WHEN** iOS 18 上開啟 app
-- **THEN** Expenses 分頁的標題列有系統的搜尋欄位，位置交給系統決定，不指定成標題列上的搜尋鈕
-
 #### Scenario: Android
 
 - **WHEN** Android 上開啟 app
