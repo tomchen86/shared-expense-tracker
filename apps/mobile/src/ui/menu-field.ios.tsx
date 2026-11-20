@@ -85,54 +85,94 @@ export function MenuField({
           />
         </View>
       </View>
-      <Host ignoreSafeArea="all" style={StyleSheet.absoluteFill}>
-        <Menu
-          modifiers={[
-            buttonStyle('plain'),
-            menuIndicator('hidden'),
-            menuActionDismissBehavior(multiple ? 'disabled' : 'automatic'),
-            disabledModifier(disabled),
-            accessibilityLabel(`${label}, ${value}`),
-          ]}
-          label={
-            <Rectangle
-              modifiers={[
-                foregroundStyle('rgba(127,127,127,0.002)'),
-                frame({
-                  maxWidth: Number.MAX_SAFE_INTEGER,
-                  maxHeight: Number.MAX_SAFE_INTEGER,
-                }),
-              ]}
-            />
-          }
-        >
-          {multiple ? (
-            options.map((option) => (
-              <Toggle
-                key={option.id}
-                label={option.name}
-                isOn={selected.includes(option.id)}
-                onIsOnChange={() => onSelect(option.id)}
-              />
-            ))
-          ) : options.length === 0 && empty ? (
-            <Button label={empty} modifiers={[disabledModifier(true)]} />
-          ) : (
-            <Picker<string>
-              label={label}
-              selection={selected[0] ?? ''}
-              onSelectionChange={onSelect}
-              modifiers={[pickerStyle('inline')]}
-            >
-              {options.map((option) => (
-                <PickerOption key={option.id} {...option} />
-              ))}
-            </Picker>
-          )}
-          {action && <Button label={action.label} onPress={action.onPress} />}
-        </Menu>
-      </Host>
+      <MenuOverlay
+        accessibilityLabel={`${label}, ${value}`}
+        label={label}
+        disabled={disabled}
+        options={options}
+        selected={selected}
+        multiple={multiple}
+        empty={empty}
+        action={action}
+        onSelect={onSelect}
+      />
     </View>
+  );
+}
+
+/**
+ * An invisible system menu that lies over what React Native draws under it and takes the presses
+ * on it. `accessibilityLabel` is what a screen reader reads for it.
+ */
+export function MenuOverlay({
+  accessibilityLabel: name,
+  label,
+  disabled = false,
+  options,
+  selected,
+  multiple = false,
+  empty,
+  action,
+  onSelect,
+}: Pick<
+  MenuFieldProps,
+  | 'label'
+  | 'disabled'
+  | 'options'
+  | 'selected'
+  | 'multiple'
+  | 'empty'
+  | 'action'
+  | 'onSelect'
+> & { accessibilityLabel: string }) {
+  return (
+    <Host ignoreSafeArea="all" style={StyleSheet.absoluteFill}>
+      <Menu
+        modifiers={[
+          buttonStyle('plain'),
+          menuIndicator('hidden'),
+          menuActionDismissBehavior(multiple ? 'disabled' : 'automatic'),
+          disabledModifier(disabled),
+          accessibilityLabel(name),
+        ]}
+        label={
+          <Rectangle
+            modifiers={[
+              foregroundStyle('rgba(127,127,127,0.002)'),
+              frame({
+                maxWidth: Number.MAX_SAFE_INTEGER,
+                maxHeight: Number.MAX_SAFE_INTEGER,
+              }),
+            ]}
+          />
+        }
+      >
+        {multiple ? (
+          options.map((option) => (
+            <Toggle
+              key={option.id}
+              label={option.name}
+              isOn={selected.includes(option.id)}
+              onIsOnChange={() => onSelect(option.id)}
+            />
+          ))
+        ) : options.length === 0 && empty ? (
+          <Button label={empty} modifiers={[disabledModifier(true)]} />
+        ) : (
+          <Picker<string>
+            label={label}
+            selection={selected[0] ?? ''}
+            onSelectionChange={onSelect}
+            modifiers={[pickerStyle('inline')]}
+          >
+            {options.map((option) => (
+              <PickerOption key={option.id} {...option} />
+            ))}
+          </Picker>
+        )}
+        {action && <Button label={action.label} onPress={action.onPress} />}
+      </Menu>
+    </Host>
   );
 }
 

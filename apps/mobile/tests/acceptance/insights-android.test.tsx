@@ -12,6 +12,7 @@ import {
 } from './ledger-expense-app';
 import {
   allowReads,
+  inOneRow,
   linesIn,
   phoneDatabaseWithReads,
   startExpensesAt,
@@ -212,14 +213,33 @@ test('[INSIGHTS-24.1] hides each chart from screen readers on Android', async ()
 
 // Month and Year
 
-test('[INSIGHTS-31.1] shows Month and Year side by side, Month checked', async () => {
+test('[INSIGHTS-31.2] shows Month, Year and Custom side by side, Month checked', async () => {
   await insightsOn('2025-01-20', '2025-03-10');
 
-  expect(aggregationOptions().map(nameOf)).toEqual(['Month', 'Year']);
+  expect(aggregationOptions().map(nameOf)).toEqual(['Month', 'Year', 'Custom']);
   expect(checkedAggregation()).toEqual(['Month']);
+  const [month, year, custom] = aggregationOptions();
+  expect(inOneRow(month, year)).toBe(true);
+  expect(inOneRow(year, custom)).toBe(true);
 });
 
-test('[INSIGHTS-28.1] puts Period aggregation above Previous period, the period name and Next period', async () => {
+test('[INSIGHTS-46.1] checks Custom when it is pressed and shows From and To as dates of the month that was selected, on Android', async () => {
+  await insightsOn('2025-01-20', '2025-03-10');
+
+  await chooseAggregation('Custom');
+
+  expect(checkedAggregation()).toEqual(['Custom']);
+  const dates = (['From', 'To'] as const).map((name) => {
+    const field = within(insightsScreen()).getByRole('button', { name });
+    return field.props.accessibilityValue?.text;
+  });
+  expect(dates).toEqual(['Mar 1, 2025', 'Mar 31, 2025']);
+  expect(previousButton()).toBeNull();
+  expect(periodButton()).toBeNull();
+  expect(totalCards()).toEqual([['$2.00']]);
+});
+
+test('[INSIGHTS-28.2] puts Period aggregation above Previous period, the period name and Next period', async () => {
   await insightsOn('2025-01-20', '2025-03-10');
 
   const [month] = aggregationOptions();

@@ -15,14 +15,17 @@ import {
 } from './shell-tabs-app';
 import { settle } from './shell-appearance-app';
 import { nameOf, pressBack } from './ledger-expense-app';
-import { asRead, expensesRoot, linesIn } from './ledger-expense-list-app';
+import { asRead, linesIn } from './ledger-expense-list-app';
 import { isSelected } from './ledger-group-expense-app';
 import type { CategoryChartProps } from '../../src/ui/category-chart';
+import type { PeriodPickerProps } from '../../src/ui/period-picker';
+import type { SegmentedControlProps } from '../../src/ui/segmented-control';
 
 // The Insights tests start the app as the expense list tests do
 // (ledger-expense-list-app), add personal expenses through New Expense and group
 // expenses as the group expense tests do (ledger-group-expense-app), and open
-// Insights from This Month or by its URL. They read Insights from what the app
+// Insights by its URL, or from the total above a list where a test is about the
+// period the list hands over. They read Insights from what the app
 // shows: the lines of text, top to bottom, the names a screen reader reads, the items
 // Insights hands to the native navigation bar on iOS and the buttons in its header
 // on Android. Each currency's chart is the ui/ CategoryChart: the tests read what
@@ -76,16 +79,14 @@ export async function expectInsights(on = 'Expenses') {
   await settle();
 }
 
-/** The This Month button on the expense list. */
-export const thisMonthButton = () =>
-  within(expensesRoot()).getByRole('button', {
-    name: /^View expense insights\./,
-  });
-
-/** Opens the personal Insights from This Month on the expense list. */
+/**
+ * Opens the personal Insights on the Expenses tab at /insights, as a link in the app would: with
+ * no period of its own, so on the latest month (INSIGHTS-21.2), whatever period the expense list
+ * is on.
+ */
 export async function openInsights() {
   await tapTab('Expenses');
-  await fireEvent.press(thisMonthButton());
+  await push('/insights');
   await expectInsights();
 }
 
@@ -252,11 +253,21 @@ export const periodButton = (on = 'Expenses') =>
 const PERIOD_NAME =
   /^((January|February|March|April|May|June|July|August|September|October|November|December) )?\d{4}$/;
 
-/** The name of the selected period, from its button or else from the text that shows it. */
+/**
+ * The name of the selected period, from its button or else from the text that shows it. Where
+ * the name is a system menu, as a few years are on iOS (INSIGHTS-37.1), neither is there to
+ * read, so this is the period Insights tells the ui/ PeriodPicker is selected.
+ */
 export function selectedPeriod(on = 'Expenses') {
   const button = periodButton(on);
   if (button !== null) return nameOf(button).replace(/^Choose period\. /, '');
-  return insightsLines(on).find((line) => PERIOD_NAME.test(line));
+  const shown = insightsLines(on).find((line) => PERIOD_NAME.test(line));
+  if (shown !== undefined) return shown;
+  const [picker] = componentsIn(
+    insightsScreen(on),
+    (type) => typeof type === 'function' && type.name === 'PeriodPicker',
+  ).map(({ props }) => props as PeriodPickerProps);
+  return picker?.periods.find(({ key }) => key === picker.selectedKey)?.label;
 }
 
 /** Waits until the selected period is `name`. */
@@ -278,7 +289,43 @@ export const pressNext = (on = 'Expenses') =>
 export const pressPeriod = (on = 'Expenses') =>
   pressIn(on, periodButton(on), 'Choose period');
 
-/** The options of the Period aggregation radio group, as screen readers find them. */
+/**
+ * Period aggregation as Insights tells the ui/ SegmentedControl to show it. On iOS it is the
+ * system's segmented control, which only an E2E flow can press (INSIGHTS-30.2), so the tests read
+ * its props and choose as the control reports a choice; this works the same on Android.
+ */
+function aggregationControl(on: string) {
+  const found = componentsIn(
+    insightsScreen(on),
+    (type) => typeof type === 'function' && type.name === 'SegmentedControl',
+  )
+    .map(({ props }) => props as SegmentedControlProps<string>)
+    .filter((props) => props.label === 'Period aggregation');
+  if (found.length !== 1)
+    throw new Error(`Expected one Period aggregation, found ${found.length}`);
+  return found[0];
+}
+
+/** The names of the options of Period aggregation, in order. */
+export const aggregationNames = (on = 'Expenses') =>
+  aggregationControl(on).options.map((option) => option.label);
+
+/** The option of Period aggregation that is the current mode. */
+export function currentAggregation(on = 'Expenses') {
+  const { options, value } = aggregationControl(on);
+  return options.find((option) => option.value === value)?.label;
+}
+
+/** Chooses an option of Period aggregation by name, as the control reports a choice. */
+export async function selectAggregation(name: string, on = 'Expenses') {
+  const { options, onChange } = aggregationControl(on);
+  const option = options.find((candidate) => candidate.label === name);
+  if (option === undefined) throw new Error(`No ${name} in Period aggregation`);
+  await act(async () => onChange(option.value));
+  await settle();
+}
+
+/** The options of the Period aggregation radio group, as screen readers find them on Android. */
 export function aggregationOptions(on = 'Expenses') {
   const group = inInsights(on).getByLabelText('Period aggregation');
   expect(group.props.role ?? group.props.accessibilityRole).toBe('radiogroup');
@@ -293,9 +340,9 @@ const isChecked = (view: HostView) =>
 export const checkedAggregation = (on = 'Expenses') =>
   aggregationOptions(on).filter(isChecked).map(nameOf);
 
-/** Chooses Month or Year in Period aggregation. */
+/** Chooses Month, Year or Custom in Period aggregation. */
 export async function chooseAggregation(
-  name: 'Month' | 'Year',
+  name: 'Month' | 'Year' | 'Custom',
   on = 'Expenses',
 ) {
   const option = aggregationOptions(on).find((view) => nameOf(view) === name);

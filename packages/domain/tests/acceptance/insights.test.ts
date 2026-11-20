@@ -1,9 +1,11 @@
 import {
   buildInsights,
+  buildRangeInsights,
   type InsightCategory,
   type InsightChartKind,
   type InsightChartPreference,
   type InsightContext,
+  type InsightCurrency,
   type InsightExpense,
   type InsightPeriod,
 } from '../../src';
@@ -798,4 +800,210 @@ test('[INSIGHTS-12.1] rejects a year whose total passes the limit', () => {
       expense({ date: '2025-02-10', amountMinor: 2 }),
     ]),
   ).toBeUndefined();
+});
+
+// A range of dates
+
+/** The currencies of the range from `from` to `to`, or undefined when the range is refused. */
+const range = (
+  expenses: InsightExpense[],
+  from: string,
+  to: string,
+  {
+    context = GROUP,
+    categories = CATEGORIES,
+    chartPreference = 'auto',
+  }: Options = {},
+) =>
+  buildRangeInsights({
+    expenses,
+    categories,
+    context,
+    chartPreference,
+    from,
+    to,
+  });
+
+const rangeTotals = (currencies: InsightCurrency[] | undefined) =>
+  currencies?.map(({ currency, totalMinor }) => [currency, totalMinor]);
+
+test('[INSIGHTS-44.1] counts the expenses dated from the first day of the range to its last, both included', () => {
+  const currencies = range(
+    [
+      expense({ date: '2025-01-09', amountMinor: 100 }),
+      expense({ date: '2025-01-10', amountMinor: 200 }),
+      expense({ date: '2025-01-20', amountMinor: 400 }),
+      expense({ date: '2025-01-21', amountMinor: 800 }),
+    ],
+    '2025-01-10',
+    '2025-01-20',
+  );
+
+  expect(rangeTotals(currencies)).toEqual([['USD', 600]]);
+});
+
+test('[INSIGHTS-44.1] totals a range across months and years as one period, with no comparison', () => {
+  const currencies = range(
+    [
+      expense({ date: '2024-11-30', amountMinor: 100 }),
+      expense({ date: '2024-12-31', amountMinor: 200 }),
+      expense({ date: '2025-01-02', amountMinor: 300 }),
+      expense({ date: '2025-02-01', amountMinor: 500 }),
+    ],
+    '2024-12-15',
+    '2025-01-15',
+  );
+
+  expect(rangeTotals(currencies)).toEqual([['USD', 500]]);
+  expect(currencies?.map(({ comparison }) => comparison)).toEqual([null]);
+});
+
+test('[INSIGHTS-44.1] lists the currencies of a range of one day by currency code', () => {
+  const currencies = range(
+    [
+      expense({ date: '2025-01-10', amountMinor: 200 }),
+      expense({ date: '2025-01-10', currency: 'JPY', amountMinor: 2000 }),
+      expense({ date: '2025-01-11', amountMinor: 400 }),
+    ],
+    '2025-01-10',
+    '2025-01-10',
+  );
+
+  expect(rangeTotals(currencies)).toEqual([
+    ['JPY', 2000],
+    ['USD', 200],
+  ]);
+});
+
+test("[INSIGHTS-44.1] merges, orders and charts a range's categories as a period's, leaving out expenses outside it", () => {
+  const currencies = range(
+    [
+      expense({ date: '2025-01-10', categoryId: 'travel', amountMinor: 200 }),
+      expense({ date: '2025-01-12', categoryId: 'food', amountMinor: 400 }),
+      expense({ date: '2025-01-20', categoryId: 'food', amountMinor: 200 }),
+      expense({ date: '2025-02-01', categoryId: 'travel', amountMinor: 5000 }),
+    ],
+    '2025-01-01',
+    '2025-01-31',
+  );
+
+  const categories = [
+    { name: 'Food', color: '#FF5722', amountMinor: 600, percent: 75 },
+    { name: 'Travel', color: '#2196F3', amountMinor: 200, percent: 25 },
+  ];
+  expect(currencies?.map((usd) => usd.categories)).toEqual([categories]);
+  expect(currencies?.map((usd) => usd.chart)).toEqual([
+    { kind: 'donut', categories },
+  ]);
+});
+
+test('[INSIGHTS-44.1] takes an unmatched category from the latest snapshot inside the range', () => {
+  const gone = (date: string, name: string, color: string) =>
+    expense({
+      date,
+      categoryId: 'gone',
+      categoryName: name,
+      categorySnapshot: { name, color },
+      amountMinor: 100,
+    });
+  const expenses = [
+    gone('2025-01-05', 'Snacks', '#111111'),
+    gone('2025-01-20', 'Treats', '#222222'),
+    gone('2025-02-10', 'Sweets', '#333333'),
+  ];
+
+  const categoriesOf = (from: string, to: string) =>
+    range(expenses, from, to)?.map((usd) => usd.categories);
+
+  expect(categoriesOf('2025-01-01', '2025-01-31')).toEqual([
+    [{ name: 'Treats', color: '#222222', amountMinor: 200, percent: 100 }],
+  ]);
+  expect(categoriesOf('2025-01-01', '2025-02-28')).toEqual([
+    [{ name: 'Sweets', color: '#333333', amountMinor: 300, percent: 100 }],
+  ]);
+});
+
+test('[INSIGHTS-44.1] draws the five largest categories and Others on a donut of a range', () => {
+  const currencies = range(inCategories(7), '2025-01-01', '2025-01-31', {
+    categories: CHART_CATEGORIES,
+    chartPreference: 'donut',
+  });
+
+  expect(currencies?.map((usd) => usd.categories.length)).toEqual([7]);
+  expect(
+    currencies?.map(({ chart }) => [
+      chart.kind,
+      chart.categories.map(({ name, amountMinor }) => [name, amountMinor]),
+    ]),
+  ).toEqual([
+    [
+      'donut',
+      [
+        ['Category 1', 70],
+        ['Category 2', 60],
+        ['Category 3', 50],
+        ['Category 4', 40],
+        ['Category 5', 30],
+        ['Others', 30],
+      ],
+    ],
+  ]);
+});
+
+test.each<[string, InsightExpense[]]>([
+  ['only expenses outside it', [expense({ date: '2025-03-10' })]],
+  ['only an expense of 0', [expense({ date: '2025-01-10', amountMinor: 0 })]],
+  ['only an expense with an invalid date', [expense({ date: '2025-01-32' })]],
+  ['no expenses', []],
+])(
+  '[INSIGHTS-44.1] has no currency for a range with %s, and does not refuse it',
+  (_what, expenses) => {
+    expect(range(expenses, '2025-01-01', '2025-01-31')).toEqual([]);
+  },
+);
+
+test('[INSIGHTS-44.1] counts your shares of group expenses and personal expenses in full in a range of your own spending', () => {
+  const currencies = range(
+    [
+      expense({ date: '2025-01-10', spaceId: 'my-space', amountMinor: 1200 }),
+      expense({
+        date: '2025-01-12',
+        amountMinor: 10000,
+        shares: [share('me-personal', 2000), share('bob', 8000)],
+      }),
+      expense({
+        date: '2025-01-14',
+        amountMinor: 700,
+        shares: [share('ann', 700)],
+      }),
+    ],
+    '2025-01-01',
+    '2025-01-31',
+    { context: PERSONAL },
+  );
+
+  expect(rangeTotals(currencies)).toEqual([['USD', 3200]]);
+});
+
+test('[INSIGHTS-44.1] totals a range up to the safe integer limit, across two years', () => {
+  const currencies = range(
+    [
+      expense({ date: '2024-12-31', amountMinor: Number.MAX_SAFE_INTEGER - 1 }),
+      expense({ date: '2025-01-01', amountMinor: 1 }),
+    ],
+    '2024-12-31',
+    '2025-01-01',
+  );
+
+  expect(rangeTotals(currencies)).toEqual([['USD', Number.MAX_SAFE_INTEGER]]);
+});
+
+test('[INSIGHTS-44.1] refuses a range whose total passes the limit while neither of its years does', () => {
+  const expenses = [
+    expense({ date: '2024-12-31', amountMinor: Number.MAX_SAFE_INTEGER - 1 }),
+    expense({ date: '2025-01-01', amountMinor: 2 }),
+  ];
+
+  expect(buildOrUndefined(expenses)).toBeDefined();
+  expect(range(expenses, '2024-12-31', '2025-01-01')).toBeUndefined();
 });

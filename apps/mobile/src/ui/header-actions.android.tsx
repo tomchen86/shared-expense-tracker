@@ -45,6 +45,7 @@ export function HeaderActions({
   confirm,
   edit,
   add,
+  filter,
   menu,
   choices,
 }: HeaderActionsProps) {
@@ -90,6 +91,13 @@ export function HeaderActions({
                     { cancelable: true },
                   )
                 }
+              />
+            )}
+            {filter && (
+              <ActionButton
+                {...filter}
+                icon="filter_list"
+                color={colors.text}
               />
             )}
             {menu && (

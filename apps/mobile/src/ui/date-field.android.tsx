@@ -11,6 +11,7 @@ export function DateField({
   value,
   maximumDate,
   disabled = false,
+  bare = false,
   onChange,
 }: DateFieldProps) {
   const colors = useThemeColors();
@@ -28,15 +29,23 @@ export function DateField({
         accessibilityState={{ disabled }}
         disabled={disabled}
         onPress={() => setOpen(true)}
-        style={{
-          minHeight: 54,
-          padding: 16,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-        }}
+        style={
+          bare
+            ? { minHeight: 48, paddingHorizontal: 12, justifyContent: 'center' }
+            : {
+                minHeight: 54,
+                padding: 16,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+              }
+        }
       >
-        <Text style={{ color: colors.text, fontSize: 17 }}>{label}</Text>
-        <Text style={{ color: colors.textMuted, fontSize: 17 }}>
+        {!bare && (
+          <Text style={{ color: colors.text, fontSize: 17 }}>{label}</Text>
+        )}
+        <Text
+          style={{ color: bare ? colors.text : colors.textMuted, fontSize: 17 }}
+        >
           {formattedDate}
         </Text>
       </Pressable>

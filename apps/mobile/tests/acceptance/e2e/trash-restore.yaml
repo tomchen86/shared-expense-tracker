@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-76.1] [LEDGER-77.3] [LEDGER-78.4] [LEDGER-79.3] Opens an expense in Trash from Settings and restores it'
+name: '[LEDGER-76.1] [LEDGER-77.3] [LEDGER-78.4] [LEDGER-79.4] Opens an expense in Trash from Settings and restores it'
 ---
 - runFlow:
     file: common/launch-with-seed.yaml

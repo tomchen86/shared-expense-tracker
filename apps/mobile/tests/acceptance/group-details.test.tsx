@@ -252,13 +252,11 @@ test("[GROUPS-22.3] puts a Group actions menu with Members, Rename Group and Cat
   await openGroup('Brisbane');
 
   await waitFor(() =>
-    expect(barItems('Brisbane').right).toEqual([
-      {
-        menu: 'Group actions',
-        icon: 'ellipsis.circle',
-        items: ['Members', 'Rename Group', 'Categories'],
-      },
-    ]),
+    expect(barItems('Brisbane').right).toContainEqual({
+      menu: 'Group actions',
+      icon: 'ellipsis.circle',
+      items: ['Members', 'Rename Group', 'Categories'],
+    }),
   );
 });
 

@@ -54,7 +54,12 @@ import {
 import { openGroup } from './group-details-app';
 import { cardNames } from './groups-app';
 import { resetPhone, setPhoneLanguage } from './ledger-expense-app';
-import { cardTitles } from './ledger-expense-list-app';
+import { cardTitles, expensesRoot } from './ledger-expense-list-app';
+import {
+  expectPeriod,
+  periodName,
+  pressPreviousPeriod,
+} from './ledger-list-period-app';
 import {
   appAppearance,
   fakePhoneAppearance,
@@ -395,6 +400,19 @@ test("[BACKUP-14.1] goes back to the Expenses tab and shows the file's data on e
     expect(screen.getByRole('button', { name: 'Trash, 1' })).toBeOnTheScreen(),
   );
   expect(alertsShown()).toHaveLength(1);
+});
+
+test('[LEDGER-107.1] opens the expense list on this month again once an import is done', async () => {
+  const { file } = await taylorsExport();
+  await startWithSamsData('/');
+  await pressPreviousPeriod(expensesRoot());
+  await expectPeriod(expensesRoot, 'October 2026');
+  await tapTab('Settings');
+
+  await importFile(file);
+
+  await waitFor(() => expect(periodName(expensesRoot())).toBe('November 2026'));
+  expect([...cardTitles()].sort()).toEqual(['Coffee run', 'Dinner', 'Train']);
 });
 
 test("[BACKUP-14.1] uses the file's local identity, chart type and appearance option at once", async () => {

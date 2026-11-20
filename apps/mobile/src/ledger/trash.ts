@@ -45,7 +45,8 @@ async function setTrashed(
     if (group) await writeLocalChange(tx, group, 'expense', id, { trashed });
     return true;
   });
-  if (changed) notifyExpensesChanged(database);
+  if (changed)
+    notifyExpensesChanged(database, undefined, trashed ? undefined : id);
   return changed;
 }
 

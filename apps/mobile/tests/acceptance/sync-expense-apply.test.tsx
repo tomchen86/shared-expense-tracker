@@ -11,11 +11,17 @@ import {
   card,
   cardTitles,
   detailLines,
+  expensesRoot,
   linesIn,
   openDetails,
   shownInOrder,
-  thisMonthLines,
+  listTotal,
 } from './ledger-expense-list-app';
+import {
+  expectPeriod,
+  periodName,
+  pressPreviousPeriod,
+} from './ledger-list-period-app';
 import {
   addGroupExpense,
   groupCard,
@@ -278,7 +284,59 @@ test("[SYNC-29.1] shows an expense another phone added on the expense list, firs
   await expectCards(['Lunch', 'Dinner']);
   const shown = ['Lunch', '$15.00', 'Food & Dining', 'Brisbane'];
   expect(shownInOrder(linesIn(card('Lunch')), shown)).toEqual(shown);
-  expect(thisMonthLines()).toEqual(['This Month: $48.34']);
+  expect(listTotal()).toEqual(['$48.34']);
+});
+
+test('[LEDGER-117.1] leaves the expense list on its period when another phone adds an expense dated outside it', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+
+  await receive(
+    brisbane,
+    created(
+      'expense',
+      LUNCH,
+      at(LATER),
+      await lunchUnits({ date: '2026-09-15' }),
+    ),
+  );
+
+  await expectCards(['Dinner']);
+  expect(periodName(expensesRoot())).toBe('October 2026');
+  await pressPreviousPeriod(expensesRoot());
+  await expectPeriod(expensesRoot, 'September 2026');
+  await expectCards(['Lunch']);
+});
+
+test('[LEDGER-117.1] leaves the expense list on its period when another phone restores an expense dated outside it', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  await receive(
+    brisbane,
+    created(
+      'expense',
+      LUNCH,
+      at(LATER),
+      await lunchUnits({ date: '2026-09-15' }),
+    ),
+    changed('expense', LUNCH, at(LATER + 1000), { trashed: true }),
+  );
+  await openTrash();
+  await expectTrash(['Lunch']);
+  await tapTab('Expenses');
+
+  await receive(
+    brisbane,
+    changed('expense', LUNCH, at(LATER + 2000), { trashed: false }),
+  );
+
+  await expectCards(['Dinner']);
+  expect(periodName(expensesRoot())).toBe('October 2026');
+  await pressPreviousPeriod(expensesRoot());
+  await expectPeriod(expensesRoot, 'September 2026');
+  await expectCards(['Lunch']);
 });
 
 test("[SYNC-29.1] shows it on the group's screen, open at the time, and in the group's total", async () => {
@@ -437,7 +495,7 @@ test('[SYNC-29.1] moves an expense another phone deleted to the top of Trash wit
   );
 
   await expectCards(['Taxi']);
-  expect(thisMonthLines()).toEqual(['This Month: $25.00']);
+  expect(listTotal()).toEqual(['$25.00']);
   expect(undoButton('Dinner')).toBeNull();
   await openTrash();
   await expectTrash(['Dinner', 'Coffee run']);
@@ -516,7 +574,7 @@ test('[SYNC-30.1] takes an expense another phone deleted for good off every scre
   await receive(brisbane, deleted('expense', dinner.id, at(LATER + 1000)));
 
   await expectCards([]);
-  expect(thisMonthLines()).toEqual(['This Month: —']);
+  expect(listTotal()).toEqual(['—']);
   expect(await storedExpenses()).toEqual([]);
   await showGroup('Brisbane');
   expect(groupCardTitles('Brisbane')).toEqual([]);

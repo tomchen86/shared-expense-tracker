@@ -59,7 +59,7 @@ import {
   startExpenses,
   type ExpenseInput,
 } from './ledger-expense-app';
-import { linesIn } from './ledger-expense-list-app';
+import { isListControl, linesIn } from './ledger-expense-list-app';
 
 // The group expense tests start the app as the expense form tests do
 // (ledger-expense-app), save Taylor as your name, and create groups and add members
@@ -688,7 +688,7 @@ const groupButtons = (group: string) =>
     .queryAllByRole('button')
     .filter((button) => !inTitleBar(button));
 
-/** The expense cards on the group's screen, top to bottom: its buttons besides its large title, +, Restore Group, the Group Total and your net balance. */
+/** The expense cards on the group's screen, top to bottom: its buttons besides its large title, +, Restore Group and the list's controls, which include the total and your net balance. */
 export const groupCards = (group: string) =>
   groupButtons(group).filter((button) => {
     const name = nameOf(button);
@@ -696,7 +696,8 @@ export const groupCards = (group: string) =>
       !isLargeTitle(button) &&
       name !== 'Add expense' &&
       name !== 'Restore Group' &&
-      !/^(Group Total: |You're owed: |You owe: |Settled up)/.test(name)
+      !/^(Group Total: |You're owed: |You owe: |Settled up)/.test(name) &&
+      !isListControl(button)
     );
   });
 

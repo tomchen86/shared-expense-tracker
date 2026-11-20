@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-70.2] [LEDGER-71.3] [LEDGER-73.2] [LEDGER-75.3] Swipes an expense card left to move it to the trash, undoes it, moves it again, and keeps it in the trash after a restart'
+name: '[LEDGER-70.2] [LEDGER-71.3] [LEDGER-73.2] [LEDGER-75.4] Swipes an expense card left to move it to the trash, undoes it, moves it again, and keeps it in the trash after a restart'
 ---
 - runFlow:
     file: common/launch-with-seed.yaml

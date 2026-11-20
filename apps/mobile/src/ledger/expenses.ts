@@ -132,7 +132,14 @@ type ExpenseInput = Pick<
   'title' | 'amountMinor' | 'currency' | 'date' | 'note'
 > & { categoryId: string };
 
-type ExpenseListener = (leftTrash?: ReadonlySet<string>) => void;
+/**
+ * `leftTrash` are the expenses an applied event took out of the trash. `placed` is the expense the
+ * user just added in New Expense or put back from the trash on this phone (LEDGER-117.1).
+ */
+type ExpenseListener = (
+  leftTrash?: ReadonlySet<string>,
+  placed?: string,
+) => void;
 const listeners = new WeakMap<Database, Set<ExpenseListener>>();
 
 /** Mounted screens also refresh while another screen covers them. */
@@ -154,8 +161,9 @@ export function subscribeToExpenses(
 export function notifyExpensesChanged(
   database: Database,
   leftTrash?: ReadonlySet<string>,
+  placed?: string,
 ) {
-  listeners.get(database)?.forEach((listener) => listener(leftTrash));
+  listeners.get(database)?.forEach((listener) => listener(leftTrash, placed));
 }
 
 export interface GroupSplit {
@@ -225,7 +233,7 @@ export async function saveExpense(
   original?: Expense,
   split?: GroupSplit,
 ): Promise<void> {
-  await database.transaction(async (transaction) => {
+  const id = await database.transaction(async (transaction) => {
     const spaceId = split?.groupId ?? identity.personalSpaceId;
     const [existing] = original
       ? await readExpenses(transaction, 'WHERE e.id = ?', [original.id])
@@ -306,8 +314,9 @@ export async function saveExpense(
       if (keepCategory) delete units.category;
       await writeLocalChange(transaction, shared, 'expense', id, units);
     }
+    return id;
   });
-  notifyExpensesChanged(database);
+  notifyExpensesChanged(database, undefined, original ? undefined : id);
 }
 
 export const savePersonalExpense = saveExpense;

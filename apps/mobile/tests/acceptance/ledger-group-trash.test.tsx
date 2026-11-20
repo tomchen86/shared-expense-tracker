@@ -230,7 +230,7 @@ test('[LEDGER-71.3] moves group expenses to the trash from their cards without a
   await waitFor(() => expect(groupLines('Brisbane')).toContain(NO_EXPENSES));
 });
 
-test('[LEDGER-64.2] leaves a group expense in the trash off the expense list', async () => {
+test('[LEDGER-64.3] leaves a group expense in the trash off the expense list', async () => {
   await startWithGroups(BRISBANE);
   await addExpense();
   await addDinner();
@@ -321,7 +321,7 @@ test("[LEDGER-67.2] offers no Delete expense on an archived group's expense card
 
 // Undo
 
-test("[LEDGER-75.3] puts group expenses back on the group's screen, and on the expense list if they are yours, when Undo is pressed", async () => {
+test("[LEDGER-75.4] puts group expenses back on the group's screen, and on the expense list if they are yours, when Undo is pressed", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await addTaxi();
@@ -460,7 +460,7 @@ test("[LEDGER-78.4] shows Status but not Shared history on the read-only details
   expect(expenseLines('Settings')).not.toContain(SHARED_HISTORY_TEXT);
 });
 
-test("[LEDGER-79.3] restores a group expense you have no part in to the group's screen, not the expense list", async () => {
+test("[LEDGER-79.4] restores a group expense you have no part in to the group's screen, not the expense list", async () => {
   await startWithGroups(BRISBANE);
   await addTaxi();
   await showGroup('Brisbane');
@@ -475,7 +475,7 @@ test("[LEDGER-79.3] restores a group expense you have no part in to the group's 
   await waitFor(() => expect(linesIn(expensesRoot())).toContain(EMPTY_LIST));
 });
 
-test("[LEDGER-79.3] restores an archived group's expense from Trash without asking, back read-only on the archived group's screen", async () => {
+test("[LEDGER-79.4] restores an archived group's expense from Trash without asking, back read-only on the archived group's screen", async () => {
   await startWithGroups(BRISBANE);
   await addDinner();
   await deleteFromList('Dinner');

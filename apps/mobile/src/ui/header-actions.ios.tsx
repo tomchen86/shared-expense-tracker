@@ -7,6 +7,7 @@ export function HeaderActions({
   confirm,
   edit,
   add,
+  filter,
   menu,
   choices,
 }: HeaderActionsProps) {
@@ -41,6 +42,15 @@ export function HeaderActions({
             accessibilityLabel={add.label}
             disabled={add.disabled}
             onPress={add.onPress}
+          />
+        )}
+        {filter && (
+          <Stack.Toolbar.Button
+            variant="plain"
+            icon="line.3.horizontal.decrease"
+            accessibilityLabel={filter.label}
+            disabled={filter.disabled}
+            onPress={filter.onPress}
           />
         )}
         {menu && (
