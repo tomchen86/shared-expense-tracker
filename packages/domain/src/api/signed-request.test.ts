@@ -218,6 +218,7 @@ describe('isRefusal', () => {
     { error: 'too-many-requests', retryAfterMs: 30_000 },
     { error: 'too-many-requests', retryAfterMs: 0 },
     { error: 'request' },
+    { error: 'too-large' },
     { error: 'too-many-registrations' },
   ];
 

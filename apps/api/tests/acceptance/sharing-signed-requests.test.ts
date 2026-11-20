@@ -41,14 +41,14 @@ async function sendPassing(phone: Phone, count: number) {
   }
 }
 
-describe('SHARING-31.1', () => {
+describe('SHARING-31.2', () => {
   test.each([
     ['POST', '/devices'],
     ['GET', NO_ROUTE],
     ['GET', '/'],
     ['DELETE', '/devices'],
   ])(
-    '[SHARING-31.1] refuses an unsigned %s %s for its signature',
+    '[SHARING-31.2] refuses an unsigned %s %s for its signature',
     async (method, path) => {
       const answer = await leavingTheDatabaseAsItWas(() =>
         send({ method, path }),
@@ -58,7 +58,7 @@ describe('SHARING-31.1', () => {
     },
   );
 
-  test('[SHARING-31.1] answers "not found" to a request for a path with no route only once it has passed the checks', async () => {
+  test('[SHARING-31.2] answers "not found" to a request for a path with no route only once it has passed the checks', async () => {
     const taylor = await registered(TAYLOR);
 
     const unsigned = await send({ path: NO_ROUTE });
@@ -68,7 +68,7 @@ describe('SHARING-31.1', () => {
     expectPassed(signed);
   });
 
-  test('[SHARING-31.1] answers GET /health without a signature, and no other method or path beside it', async () => {
+  test('[SHARING-31.2] answers GET /health without a signature, and no other method or path beside it', async () => {
     const health = await send({ path: '/health' });
     const head = await send({ method: 'HEAD', path: '/health' });
     const posted = await send({ method: 'POST', path: '/health' });
@@ -82,7 +82,7 @@ describe('SHARING-31.1', () => {
     expectRefused(beside, SIGNATURE);
   });
 
-  test('[SHARING-31.1] answers the two verification files and the download page without a signature, and no other method or path beside them', async () => {
+  test('[SHARING-31.2] answers the two verification files and the download page without a signature, and no other method or path beside them', async () => {
     const association = await send({
       path: '/.well-known/apple-app-site-association',
     });
@@ -107,7 +107,7 @@ describe('SHARING-31.1', () => {
     expectRefused(postedFile, SIGNATURE);
   });
 
-  test('[SHARING-31.1] gives the reason of the first check a request fails: signature before clock', async () => {
+  test('[SHARING-31.2] gives the reason of the first check a request fails: signature before clock', async () => {
     const taylor = await registered(TAYLOR);
     const early = signedBy(taylor, { timestampMs: T - 3_600_000 });
 
@@ -124,7 +124,7 @@ describe('SHARING-31.1', () => {
     expectRefused(await send(early), { error: 'clock', serverTimeMs: T });
   });
 
-  test('[SHARING-31.1] gives the reason of the first check a request fails: clock before replay', async () => {
+  test('[SHARING-31.2] gives the reason of the first check a request fails: clock before replay', async () => {
     const taylor = await registered(TAYLOR);
     const nonce = newNonce();
     expectPassed(await send(signedBy(taylor, { nonce })));
@@ -136,7 +136,7 @@ describe('SHARING-31.1', () => {
     expectRefused(answer, { error: 'clock', serverTimeMs: T });
   });
 
-  test('[SHARING-31.1] gives the reason of the first check a request fails: replay before too many requests', async () => {
+  test('[SHARING-31.2] gives the reason of the first check a request fails: replay before too many requests', async () => {
     const taylor = await registered(TAYLOR);
     const nonce = newNonce();
     expectPassed(await send(signedBy(taylor, { nonce })));
@@ -297,7 +297,7 @@ describe('SHARING-33.1', () => {
   });
 });
 
-describe('SHARING-34.1', () => {
+describe('SHARING-34.2', () => {
   const BODY = '{"note":"晚餐"}';
   const signedPost = (phone: Phone) =>
     signedBy(phone, {
@@ -319,7 +319,7 @@ describe('SHARING-34.1', () => {
     expectPassed(await send(request));
   }
 
-  test('[SHARING-34.1] passes a request that arrives as it was signed, with a query and a body', async () => {
+  test('[SHARING-34.2] passes a request that arrives as it was signed, with a query and a body', async () => {
     const taylor = await registered(TAYLOR);
 
     expectPassed(await send(signedPost(taylor)));
@@ -335,7 +335,7 @@ describe('SHARING-34.1', () => {
     );
   });
 
-  test('[SHARING-34.1] refuses a request whose method, path or query was changed', async () => {
+  test('[SHARING-34.2] refuses a request whose method, path or query was changed', async () => {
     const taylor = await registered(TAYLOR);
     const request = signedPost(taylor);
 
@@ -349,7 +349,7 @@ describe('SHARING-34.1', () => {
     ]);
   });
 
-  test('[SHARING-34.1] refuses a request whose body was changed', async () => {
+  test('[SHARING-34.2] refuses a request whose body was changed', async () => {
     const taylor = await registered(TAYLOR);
     const request = signedPost(taylor);
     const body = Buffer.from(request.body);
@@ -364,7 +364,7 @@ describe('SHARING-34.1', () => {
     ]);
   });
 
-  test('[SHARING-34.1] refuses a request that was signed without a body and arrives with one', async () => {
+  test('[SHARING-34.2] refuses a request that was signed without a body and arrives with one', async () => {
     const taylor = await registered(TAYLOR);
     const request = signedBy(taylor, { method: 'POST' });
 
@@ -373,7 +373,7 @@ describe('SHARING-34.1', () => {
     ]);
   });
 
-  test('[SHARING-34.1] refuses a request whose request time, nonce or signature was changed', async () => {
+  test('[SHARING-34.2] refuses a request whose request time, nonce or signature was changed', async () => {
     const taylor = await registered(TAYLOR);
     const request = signedPost(taylor);
     const signature = fieldOf(request, 'signature');
@@ -392,7 +392,7 @@ describe('SHARING-34.1', () => {
     ]);
   });
 
-  test('[SHARING-34.1] refuses a request for a path that is not written as the bytes to sign allow', async () => {
+  test('[SHARING-34.2] refuses a request for a path that is not written as the bytes to sign allow', async () => {
     const taylor = await registered(TAYLOR);
 
     for (const path of [
@@ -414,7 +414,7 @@ describe('SHARING-34.1', () => {
     expectPassed(await send(signedBy(taylor, { path: `${NO_ROUTE}/its?x=1` })));
   });
 
-  test("[SHARING-34.1] refuses a request that names one device and carries another's signature", async () => {
+  test("[SHARING-34.2] refuses a request that names one device and carries another's signature", async () => {
     const taylor = await registered(TAYLOR);
     const casey = await registered(CASEY);
     const request = signedPost(taylor);
