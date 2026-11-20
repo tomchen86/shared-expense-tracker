@@ -924,7 +924,7 @@ WHEN 套用的事件讓共同帳本的一筆支出的六個單位到齊，或改
 #### Scenario: 和你無關的支出
 
 - **WHEN** 套用 Taxi 的第一個事件
-- **THEN** Brisbane 的畫面有 Taxi 的卡片，支出清單沒有（LEDGER-64.4）
+- **THEN** Brisbane 的畫面有 Taxi 的卡片，支出清單沒有（LEDGER-64.5）
 
 #### Scenario: Balances 和 Insights
 

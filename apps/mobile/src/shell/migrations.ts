@@ -2,6 +2,7 @@ import { categoryMigrations } from '../categories/migrations';
 import { groupArchiveMigration, groupMigrations } from '../groups/migrations';
 import {
   expenseAllocationOrderMigration,
+  expenseListFilterMigration,
   expenseListOrderMigration,
   expenseMigrations,
   expenseTrashMigration,
@@ -36,5 +37,6 @@ export const appMigrations: readonly string[] = [
   syncMigration,
   ...sharingMigrations,
   expenseListOrderMigration,
+  expenseListFilterMigration,
   syncLoopMigration,
 ];

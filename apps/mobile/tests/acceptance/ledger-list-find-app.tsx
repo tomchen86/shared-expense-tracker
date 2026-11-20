@@ -21,7 +21,7 @@ import type { MenuFieldProps } from '../../src/ui/menu-field';
 // on iOS the tests read what the list gives the component that draws the button, and choose as
 // the menu does: a component that takes the props of the ui/ MenuField, with the label Sort By,
 // the order's name as its value, the five orders as its options and the current one selected. On
-// Android the button is read as Sort By, <order> and opens a sheet titled Sort By (LEDGER-122.1).
+// Android the button is read as Sort By, <order> and opens a sheet titled Sort By (LEDGER-122.2).
 //
 // The search field is the system's, in the navigation bar (SHELL-73.1): react-native-screens'
 // search bar. The tests type by reporting the text the way that field does, and end a search as
@@ -36,7 +36,7 @@ const isSelected = (view: HostView) =>
   view.props.accessibilityState?.selected === true ||
   view.props['aria-selected'] === true;
 
-/** The orders a list offers, in the order of the Sort By list (LEDGER-122.1). */
+/** The orders a list offers, in the order of the Sort By list (LEDGER-122.2). */
 export const SORT_ORDERS = [
   'Newest First',
   'Oldest First',
@@ -188,7 +188,7 @@ const COUNT = /^\d[\d.,\s'’]* items?$/;
 const textOf = (node: HostView | string): string =>
   typeof node === 'string' ? node : node.children.map(textOf).join('');
 
-/** Whether `view` is part of the total above the cards, which on All Time is a number of items too (LEDGER-35.5). */
+/** Whether `view` is part of the total above the cards, which on All Time is a number of items too (LEDGER-35.6). */
 function inTotal(view: HostView, root: HostView) {
   for (let outer = view.parent; outer && outer !== root; outer = outer.parent)
     if (nameOf(outer).startsWith('View expense insights.')) return true;
@@ -259,7 +259,7 @@ export async function endSearch(barTitle: string) {
   await settle();
 }
 
-/** The No Results for “<text>” heading of the list in `root`, if it shows one (LEDGER-127.1). */
+/** The No Results for “<text>” heading of the list in `root`, if it shows one (LEDGER-127.2). */
 export const noResultsTitle = (root: HostView) =>
   within(root)
     .queryAllByRole('header')

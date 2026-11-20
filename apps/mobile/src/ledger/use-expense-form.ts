@@ -31,6 +31,7 @@ import {
   saveExpense,
   type Expense,
 } from './expenses';
+import { normalizeAmount } from './list-filter';
 
 export interface LoadedForm {
   categories: Category[];
@@ -88,14 +89,6 @@ export function useExpenseFormData(
   }, [read, focused]);
   if (error) throw error;
   return { loaded, latestRead: () => latestRead.current!, reread: read };
-}
-
-function normalizeAmount(text: string) {
-  return text
-    .replace(/[０-９．，]/g, (character) =>
-      String.fromCharCode(character.charCodeAt(0) - 0xfee0),
-    )
-    .replaceAll(',', '.');
 }
 
 export type ExpenseFormProps = LoadedForm & {

@@ -77,7 +77,7 @@ export function usePeriodSwipe({
     });
   }
 
-  const pan = usePanGesture({
+  const panConfig: NonNullable<Parameters<typeof usePanGesture>[0]> = {
     enabled,
     // Decide before the native scroll recognizer activates, and keep that
     // direction until release, as a category row does.
@@ -119,7 +119,8 @@ export function usePeriodSwipe({
         : event.translationX + event.velocityX * 0.15;
       scheduleOnRN(release, projected);
     },
-  });
+  };
+  const pan = usePanGesture(panConfig);
 
   const nameStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: offset.value }],
@@ -128,5 +129,5 @@ export function usePeriodSwipe({
     transform: [{ translateX: offset.value }],
   }));
 
-  return { pan, scrollGesture, step, offset, nameStyle, pageStyle };
+  return { pan, panConfig, scrollGesture, step, offset, nameStyle, pageStyle };
 }

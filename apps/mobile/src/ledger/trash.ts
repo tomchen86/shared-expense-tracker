@@ -1,6 +1,11 @@
 import type { Database } from '../storage';
 import { sharedGroup, writeLocalChange } from '../sync/records';
-import { notifyExpensesChanged, recordExpenseChanges } from './expenses';
+import { revealPlacedExpense } from './list-filter-storage';
+import {
+  notifyExpensesChanged,
+  readExpense,
+  recordExpenseChanges,
+} from './expenses';
 
 export function moveExpenseToTrash(
   database: Database,
@@ -38,10 +43,8 @@ async function setTrashed(
     );
     if (!changes) return false;
     await recordExpenseChanges(tx, [id]);
-    const [expense] = await tx.all<{ spaceId: string }>(
-      'SELECT spaceId FROM expenses WHERE id = ?',
-      [id],
-    );
+    const expense = (await readExpense(tx, id))!;
+    if (!trashed) await revealPlacedExpense(tx, expense);
     const group = await sharedGroup(tx, expense.spaceId);
     if (group) await writeLocalChange(tx, group, 'expense', id, { trashed });
     return true;

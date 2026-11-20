@@ -62,7 +62,20 @@ import {
 import { cardTitles, expensesRoot } from './ledger-expense-list-app';
 import { chooseSort, expectSort } from './ledger-list-find-app';
 import {
+  SAVE_FILTER,
+  capsuleOf,
+  capsuleRow,
+  hasSavedSection,
+  pressInFilters,
+  savedFilters,
+  setAmounts,
+  typeAmount,
+  watchPrompts,
+} from './ledger-list-filter-app';
+import {
+  closeFilters,
   expectPeriod,
+  openFilters,
   periodName,
   pressPreviousPeriod,
 } from './ledger-list-period-app';
@@ -1031,4 +1044,69 @@ test('[LEDGER-124.1] [BACKUP-18.1] lists the expenses newest first after importi
 
   await expectSort(expensesRoot, 'Newest First');
   expect(cardTitles()).toEqual(['A2', 'C', 'B']);
+});
+
+// What an import brings of a list's filter and of its saved filters (LEDGER-140.1)
+
+/** On the running app's expense list: sets the lowest amount to `min` and saves that filter as `name`. */
+async function saveLowestAmountAs(min: string, name: string) {
+  const prompts = watchPrompts();
+  await openFilters('Expenses');
+  await typeAmount('Lowest amount', min);
+  await pressInFilters(SAVE_FILTER);
+  await prompts.answer('Save', name);
+  await closeFilters();
+}
+
+test("[LEDGER-140.1] [LEDGER-144.1] [BACKUP-13.2] brings the filter and the saved filters of the export file with an import, in place of the phone's own", async () => {
+  const source = newPhone();
+  await writeData(source, {
+    expenses: [
+      { title: 'A', amount: '9', date: '2026-11-10' },
+      { title: 'B', amount: '1', date: '2026-11-12' },
+    ],
+  });
+  const exporting = await startOn(source, { url: '/' });
+  await saveLowestAmountAs('5', 'Five and up');
+  expect(cardTitles()).toEqual(['A']);
+  await tapTab('Settings');
+  const { copy } = await exportData();
+  await close(exporting);
+
+  await writeSamsData(phone);
+  await startOn(phone, { url: '/' });
+  await saveLowestAmountAs('2', 'Mine');
+  await setAmounts('Expenses', '', '90');
+  expect(capsuleOf(expensesRoot(), 'Amount')).toBe('90 or less');
+  await tapTab('Settings');
+
+  await importFile(copy);
+
+  expect(capsuleOf(expensesRoot(), 'Amount')).toBe('5 or more');
+  expect(cardTitles()).toEqual(['A']);
+  await openFilters('Expenses');
+  expect(savedFilters()).toEqual([['Five and up', true]]);
+});
+
+test('[BACKUP-18.1] [LEDGER-140.1] imports a file exported before the lists had filters, with no filter and no saved filter, and remembers a filter set afterwards', async () => {
+  const { file } = await taylorsExport();
+  const older = await fromBeforeChartTypes(file);
+  expect(dataIn(older)._migrations.length).toBeLessThan(appMigrations.length);
+  await writeSamsData(phone);
+  const app = await startOn(phone, { url: '/' });
+  await saveLowestAmountAs('2', 'Mine');
+  expect(capsuleOf(expensesRoot(), 'Amount')).toBe('2 or more');
+  await tapTab('Settings');
+
+  await importFile(older);
+
+  expect(capsuleRow(expensesRoot())).toBeUndefined();
+  await openFilters('Expenses');
+  expect(hasSavedSection()).toBe(false);
+  await typeAmount('Lowest amount', '3');
+  await closeFilters();
+
+  await close(app);
+  await startOn(phone, { url: '/' });
+  expect(capsuleOf(expensesRoot(), 'Amount')).toBe('3 or more');
 });

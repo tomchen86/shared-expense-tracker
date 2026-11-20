@@ -53,3 +53,21 @@ export const expenseListOrderMigration = `
     sortOrder TEXT NOT NULL CHECK (sortOrder IN ('newest', 'oldest', 'edited', 'highest', 'lowest'))
   );
 `;
+
+/** Each list's row keeps its order, its current conditions, and its named sets of conditions. */
+export const expenseListFilterMigration = `
+  ALTER TABLE expense_list_orders ADD COLUMN currentFilter TEXT CHECK (
+    currentFilter IS NULL OR (
+      json_valid(currentFilter) AND
+      json_type(currentFilter, '$.categories') IS 'array' AND
+      json_type(currentFilter, '$.ledgers') IS 'array' AND
+      json_type(currentFilter, '$.payers') IS 'array' AND
+      coalesce(json_type(currentFilter, '$.paidByMe'), '') IN ('true', 'false') AND
+      json_type(currentFilter, '$.min') IS 'text' AND
+      json_type(currentFilter, '$.max') IS 'text' AND
+      json_type(currentFilter, '$.currency') IS 'text'
+    )
+  );
+  ALTER TABLE expense_list_orders ADD COLUMN savedFilters TEXT NOT NULL DEFAULT '[]'
+    CHECK (json_valid(savedFilters) AND json_type(savedFilters) = 'array');
+`;

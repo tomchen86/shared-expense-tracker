@@ -117,7 +117,7 @@ test('[LEDGER-108.2] steps to the month before with Previous period on Android',
   await expectPeriod(expensesRoot, 'September 2026');
 });
 
-test('[LEDGER-109.1] opens Filters from its header button on Android, with only Done, and lists the six periods in a sheet titled Date', async () => {
+test('[LEDGER-109.2] opens Filters from its header button on Android, with only Done, and lists the six periods in a sheet titled Date', async () => {
   await startExpenses();
 
   await openFilters('Expenses');
@@ -129,7 +129,7 @@ test('[LEDGER-109.1] opens Filters from its header button on Android, with only 
   );
 });
 
-test('[LEDGER-109.1] closes Filters on the back button, with the period chosen in it', async () => {
+test('[LEDGER-109.2] closes Filters on the back button, with the period chosen in it', async () => {
   await startExpenses();
   await openFilters('Expenses');
   await chooseDateOption('This Year');
@@ -153,7 +153,7 @@ test("[LEDGER-112.2] shows From and To under the period row as dates in the phon
   expect(dates).toEqual(['Oct 1, 2026', 'Oct 30, 2026']);
 });
 
-test('[SHELL-72.1] puts Filters at the right of the header as a filter_list icon button of at least 48 dp on Android', async () => {
+test('[SHELL-72.2] puts Filters at the right of the header as a filter_list icon button of at least 48 dp on Android', async () => {
   await startExpenses();
 
   const filters = await waitFor(() => {
@@ -170,7 +170,7 @@ test('[SHELL-72.1] puts Filters at the right of the header as a filter_list icon
   expect(touchSize(filters).height).toBeGreaterThanOrEqual(48);
 });
 
-test("[SHELL-72.1] puts a screen's menu to the right of Filters on Android", async () => {
+test("[SHELL-72.2] puts a screen's menu to the right of Filters on Android", async () => {
   await startWithGroups({ Brisbane: [] });
 
   await showGroup('Brisbane');
