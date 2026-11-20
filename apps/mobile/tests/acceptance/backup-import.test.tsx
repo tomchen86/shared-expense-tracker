@@ -309,7 +309,7 @@ test('[BACKUP-12.1] writes nothing and stays on Settings when Cancel is pressed'
   expect(alertsShown()).toHaveLength(1);
 });
 
-test('[BACKUP-13.1] makes a new phone hold exactly what the exporting phone held, its local identity included', async () => {
+test('[BACKUP-13.2] makes a new phone hold exactly what the exporting phone held, its local identity included', async () => {
   const { file, data } = await taylorsExport();
   await startOn(phone);
   const own = dataIn(phone.database);
@@ -320,7 +320,7 @@ test('[BACKUP-13.1] makes a new phone hold exactly what the exporting phone held
   expect(data.local_identity).not.toEqual(own.local_identity);
 });
 
-test('[BACKUP-13.1] leaves nothing of the data the phone had before', async () => {
+test('[BACKUP-13.2] leaves nothing of the data the phone had before', async () => {
   const { file, data } = await taylorsExport();
   await startWithSamsData();
 
@@ -331,7 +331,7 @@ test('[BACKUP-13.1] leaves nothing of the data the phone had before', async () =
   expect(JSON.stringify(now)).not.toMatch(/Sam|Osaka|Bus|Tea/);
 });
 
-test('[BACKUP-13.1] takes a phone back to what it held when it exported the file', async () => {
+test('[BACKUP-13.2] takes a phone back to what it held when it exported the file', async () => {
   const taylors = newPhone();
   await writeData(taylors, { name: 'Taylor', groups: [{ name: 'Brisbane' }] });
   const { file, data } = await exportFrom(taylors);
@@ -358,7 +358,7 @@ test('[BACKUP-13.1] takes a phone back to what it held when it exported the file
   expect(dataIn(taylors.database)).toEqual(data);
 });
 
-test('[BACKUP-13.1] ends with the same data when the same file is imported twice', async () => {
+test('[BACKUP-13.2] ends with the same data when the same file is imported twice', async () => {
   const { file, data } = await taylorsExport();
   await startOn(phone);
   await importFile(file);
@@ -369,7 +369,7 @@ test('[BACKUP-13.1] ends with the same data when the same file is imported twice
   expect(dataIn(phone.database)).toEqual(data);
 });
 
-test('[BACKUP-13.1] exports the same data again after an import', async () => {
+test('[BACKUP-13.2] exports the same data again after an import', async () => {
   const { file, data } = await taylorsExport();
   await startOn(phone);
   await importFile(file);
@@ -666,7 +666,7 @@ const AGAINST_THE_RULES: [string, string][] = [
 ];
 
 test.each(AGAINST_THE_RULES)(
-  '[BACKUP-16.1] writes nothing and says the file cannot be used for %s',
+  '[BACKUP-16.2] writes nothing and says the file cannot be used for %s',
   async (_what, sql) => {
     const { file } = await taylorsExport();
     const app = await startWithSamsData();
@@ -968,7 +968,7 @@ async function exportAfterChangingA() {
   return copy;
 }
 
-test('[LEDGER-120.1] [BACKUP-13.1] brings the time each expense was last changed with an import', async () => {
+test('[LEDGER-120.1] [BACKUP-13.2] brings the time each expense was last changed with an import', async () => {
   const file = await exportAfterChangingA();
   await startOn(phone);
 
@@ -995,7 +995,7 @@ test('[BACKUP-18.1] [LEDGER-120.1] [LEDGER-121.1] imports a file exported before
   expect(cardTitles()).toEqual(['B2', 'C', 'A2']);
 });
 
-test('[LEDGER-124.1] [BACKUP-13.1] lists the expenses in the order the export file holds after an import', async () => {
+test('[LEDGER-124.1] [BACKUP-13.2] lists the expenses in the order the export file holds after an import', async () => {
   const source = newPhone();
   await writeData(source, {
     expenses: [
