@@ -1142,7 +1142,7 @@ The mobile app SHALL 在類別的支出最上面由上而下顯示三行：它�
 
 ### Requirement: INSIGHTS-49.1 類別的支出列出 Insights 算進那一列的支出
 
-The mobile app SHALL 在類別的支出的那三行下面，依 LEDGER-28.1 的順序由上而下，列出 Insights 在它的期間、它的幣別算進那一列的每一筆支出的卡片，也就是計入的支出（INSIGHTS-16.1）裡日期在期間裡、幣別相同、合併成這個類別的那些（INSIGHTS-6.2、INSIGHTS-17.1），每一段同一天的卡片上方照 LEDGER-102.1 顯示日期；沒有計入的支出不列出，例如你沒有分攤的群組支出。從個人的 Insights 打開時，卡片和支出清單上的一樣（LEDGER-33.3、LEDGER-65.4），卡片金額是 Insights 計入的金額：個人支出是全額，群組支出是你的份額；從群組的 Insights 打開時，卡片和群組的畫面上的一樣（GROUPS-61.4），卡片金額是支出的全額。這些支出比螢幕上和它上下附近放得下的多時，SHALL 和 LEDGER-118.1 一樣只畫出螢幕上和附近的卡片，金額和筆數仍照全部的支出算。
+The mobile app SHALL 在類別的支出的那三行下面，依 LEDGER-28.1 的順序由上而下，列出 Insights 在它的期間、它的幣別算進那一列的每一筆支出的卡片，也就是計入的支出（INSIGHTS-16.1）裡日期在期間裡、幣別相同、合併成這個類別的那些（INSIGHTS-6.2、INSIGHTS-17.1），每一段同一天的卡片上方照 LEDGER-102.1 顯示日期；沒有計入的支出不列出，例如你沒有分攤的群組支出。類別的支出沒有自己的排序：支出清單或群組的畫面選了別的排序（LEDGER-121.1）時，它的卡片仍照 LEDGER-28.1 的順序。從個人的 Insights 打開時，卡片和支出清單上的一樣（LEDGER-33.3、LEDGER-65.4），卡片金額是 Insights 計入的金額：個人支出是全額，群組支出是你的份額；從群組的 Insights 打開時，卡片和群組的畫面上的一樣（GROUPS-61.5），卡片金額是支出的全額。這些支出比螢幕上和它上下附近放得下的多時，SHALL 和 LEDGER-118.2 一樣只畫出螢幕上和附近的卡片，金額和筆數仍照全部的支出算。
 
 #### Scenario: 個人的 Insights 是你的份額
 
@@ -1183,6 +1183,11 @@ The mobile app SHALL 在類別的支出的那三行下面，依 LEDGER-28.1 的�
 
 - **WHEN** 依序新增日期都是 `2025-01-10`、Food & Dining 的「E」、「F」和「D」，按 Food & Dining 那一列
 - **THEN** 「Jan 10, 2025」只顯示一次，下面的卡片由上而下是 D、F、E
+
+#### Scenario: 清單換了排序
+
+- **WHEN** 有 Coffee run 和 Dinner，Brisbane 還有 `2026-10-30`、在 Dinner 之後新增的 Food & Dining 的 3000 USD 的「Lunch」，Casey 付款，Taylor 和 Casey 分攤；把支出清單和 Brisbane 的畫面的排序都換成 Oldest First，再從個人的 Insights 和 Brisbane 的 Insights 打開 Food & Dining
+- **THEN** 支出清單由上而下是 Coffee run、Dinner、Lunch，Brisbane 的畫面是 Dinner、Lunch；個人的 Insights 打開的 Food & Dining 由上而下仍是 Lunch、Dinner、Coffee run，Brisbane 的 Insights 打開的仍是 Lunch、Dinner
 
 #### Scenario: 分類改了名
 
@@ -1240,21 +1245,21 @@ WHEN 使用者點類別的支出上的卡片，the mobile app SHALL 在同一個
 
 ### Requirement: INSIGHTS-51.1 類別的支出只能看
 
-The mobile app SHALL 讓類別的支出只能看：卡片沒有名稱是「Delete expense」的輔助功能動作，畫面上沒有 + 按鈕，標題列除了返回沒有其他動作；個人支出、未封存群組的支出和封存群組的支出的卡片都一樣。
+The mobile app SHALL 讓類別的支出只能看：卡片沒有名稱是「Delete expense」的輔助功能動作，畫面上沒有 + 按鈕，也沒有排序鈕（LEDGER-122.1），標題列除了返回沒有其他動作，也沒有搜尋欄位（SHELL-73.1）；個人支出、未封存群組的支出和封存群組的支出的卡片都一樣。
 
 #### Scenario: 個人的 Insights
 
 - **WHEN** 在個人的 Insights 打開的 Food & Dining 有 Coffee run 和 Brisbane 的 Dinner 的卡片
-- **THEN** 兩張卡片都沒有「Delete expense」的輔助功能動作，雖然它們在支出清單上有；畫面上沒有「Add expense」，標題列右邊沒有動作
+- **THEN** 兩張卡片都沒有「Delete expense」的輔助功能動作，雖然它們在支出清單上有；畫面上沒有「Add expense」，也沒有支出清單上有的排序鈕；標題列右邊沒有動作，也沒有支出清單的標題列有的搜尋欄位
 
 #### Scenario: 群組的 Insights
 
 - **WHEN** 在 Brisbane 的 Insights 打開 Food & Dining
-- **THEN** Dinner 的卡片沒有「Delete expense」的輔助功能動作，畫面上沒有「Add expense」
+- **THEN** Dinner 的卡片沒有「Delete expense」的輔助功能動作，畫面上沒有「Add expense」和排序鈕，標題列沒有搜尋欄位
 
 ### Requirement: INSIGHTS-52.1 類別的支出跟著存著的支出
 
-The mobile app SHALL 讓類別的支出的金額、筆數和卡片都和存著的支出一致，期間、幣別、類別和畫面的標題仍是打開時的：新增、修改、移到垃圾桶或還原支出之後回到類別的支出時都一樣，不管是在它打開的明細、另一個分頁還是 Trash 做的；類別的支出開著時套用收到的事件（SYNC-29.1），也不必重新啟動就照新的資料顯示。這時才算進那一列的支出照 LEDGER-28.1 出現在它的位置，不再算進那一列的支出離開這個畫面，支出的金額或標題改了的照新的顯示；日期不在期間裡的支出不出現，期間不像 LEDGER-117.1 那樣換成它的月份。一筆都沒有時，金額是這個幣別的 0，筆數是「0 expenses」，下面沒有卡片，也沒有其他提示。在明細的 Expense actions 選「Delete」時，SHALL 照 LEDGER-72.2 存好後返回類別的支出，並照 LEDGER-73.2 顯示 Undo 提示；按「Undo」之後，這筆支出的卡片回到類別的支出。
+The mobile app SHALL 讓類別的支出的金額、筆數和卡片都和存著的支出一致，期間、幣別、類別和畫面的標題仍是打開時的：新增、修改、移到垃圾桶或還原支出之後回到類別的支出時都一樣，不管是在它打開的明細、另一個分頁還是 Trash 做的；類別的支出開著時套用收到的事件（SYNC-29.2），也不必重新啟動就照新的資料顯示。這時才算進那一列的支出照 LEDGER-28.1 出現在它的位置，不再算進那一列的支出離開這個畫面，支出的金額或標題改了的照新的顯示；日期不在期間裡的支出不出現，期間不像 LEDGER-117.2 那樣換成它的月份。一筆都沒有時，金額是這個幣別的 0，筆數是「0 expenses」，下面沒有卡片，也沒有其他提示。在明細的 Expense actions 選「Delete」時，SHALL 照 LEDGER-72.2 存好後返回類別的支出，並照 LEDGER-73.2 顯示 Undo 提示；按「Undo」之後，這筆支出的卡片回到類別的支出。
 
 #### Scenario: 改了金額
 

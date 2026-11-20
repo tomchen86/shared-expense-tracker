@@ -27,6 +27,7 @@ import {
   cardTitles,
   card,
   colorDots,
+  expensesRoot,
   failReads,
   holdReads,
   isUnread,
@@ -35,6 +36,7 @@ import {
   shownInOrder,
   startExpensesAt,
 } from './ledger-expense-list-app';
+import { chooseSort, hasSearch, sortName } from './ledger-list-find-app';
 import { chooseRangeDate, rangeDates } from './ledger-list-period-app';
 import {
   actionLabels,
@@ -54,10 +56,12 @@ import {
   editOn,
   expectDetailsOn,
   groupAddButton,
+  groupCardTitles,
   startWithGroups,
   storedGroup,
 } from './ledger-group-expense-app';
 import { showGroup } from './group-balances-app';
+import { screenOf } from './group-details-app';
 import {
   currentAggregation,
   expectInsights,
@@ -82,6 +86,7 @@ import {
   categoryDates,
   categoryLines,
   categoryRow,
+  categoryScreen,
   expectCategory,
   expectCategorySummary,
   goBackFromCategory,
@@ -551,7 +556,7 @@ test("[INSIGHTS-49.1] leaves out a group expense you have no share of, which the
     title: 'Snacks',
     category: FOOD,
   });
-  // The expense list has the one you only paid, at $0.00 (LEDGER-64.3, LEDGER-65.4).
+  // The expense list has the one you only paid, at $0.00 (LEDGER-64.4, LEDGER-65.4).
   await tapTab('Expenses');
   await waitFor(() => expect(cardTitles()).toContain('Snacks'));
 
@@ -574,6 +579,39 @@ test("[INSIGHTS-49.1] leaves out a group expense you have no share of, which the
     'Taxi',
     'Dinner',
   ]);
+});
+
+test("[INSIGHTS-49.1] keeps the cards newest first when the expense list and the group's screen are in another order", async () => {
+  await startWithCoffeeAndDinner();
+  await addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Casey',
+    sharers: ['Taylor (You)', 'Casey'],
+    amount: '30.00',
+    title: 'Lunch',
+    category: FOOD,
+  });
+  await chooseSort(expensesRoot(), 'Oldest First');
+  expect(cardTitles()).toEqual(['Coffee run', 'Dinner', 'Lunch']);
+  await showGroup('Brisbane');
+  await chooseSort(screenOf('Brisbane'), 'Oldest First');
+  expect(groupCardTitles('Brisbane')).toEqual(['Dinner', 'Lunch']);
+
+  await openInsights();
+  await openCategory(FOOD);
+
+  await expectCategorySummary(['October 2026', '$43.75', '3 expenses'], FOOD);
+  expect(categoryCardTitles(FOOD)).toEqual(['Lunch', 'Dinner', 'Coffee run']);
+
+  await openGroupInsights(await groupId('Brisbane'));
+  await openCategory(FOOD, 'Groups');
+
+  await expectCategorySummary(
+    ['October 2026', '$90.00', '2 expenses'],
+    FOOD,
+    'Groups',
+  );
+  expect(categoryCardTitles(FOOD, 'Groups')).toEqual(['Lunch', 'Dinner']);
 });
 
 test('[INSIGHTS-49.1] leaves out the other categories and the other periods', async () => {
@@ -818,13 +856,16 @@ test("[INSIGHTS-50.1] pushes one details when a card is pressed twice, and goes 
 
 // Read-only
 
-test('[INSIGHTS-51.1] offers no Delete expense action on the cards of a personal category, no + button and no action in its bar', async () => {
+test('[INSIGHTS-51.1] offers no Delete expense action on the cards of a personal category, no + button, no sort button, no search and no action in its bar', async () => {
   await startWithCoffeeAndDinner();
-  // On the expense list the same two cards can be deleted (LEDGER-71.3).
+  // On the expense list the same two cards can be deleted (LEDGER-71.3), and the list has a
+  // sort button and a search (LEDGER-122.1, LEDGER-128.1).
   await tapTab('Expenses');
   await waitFor(() => expect(cardTitles()).toEqual(['Dinner', 'Coffee run']));
   for (const title of ['Dinner', 'Coffee run'])
     expect(actionLabels(card(title))).toContain('Delete expense');
+  expect(sortName(expensesRoot())).toBe('Sort By, Newest First');
+  expect(hasSearch('Expenses')).toBe(true);
   await openInsights();
 
   await openCategory(FOOD);
@@ -835,10 +876,12 @@ test('[INSIGHTS-51.1] offers no Delete expense action on the cards of a personal
   for (const shown of categoryCards(FOOD))
     expect(actionLabels(shown)).not.toContain('Delete expense');
   expect(categoryCards(FOOD).map(nameOf)).not.toContain('Add expense');
+  expect(sortName(categoryScreen(FOOD))).toBeUndefined();
   expect(categoryBarActions(FOOD)).toEqual([]);
+  expect(hasSearch(FOOD)).toBe(false);
 });
 
-test("[INSIGHTS-51.1] offers no Delete expense action on the cards of a group's category, and no + button", async () => {
+test("[INSIGHTS-51.1] offers no Delete expense action on the cards of a group's category, no + button, no sort button and no search", async () => {
   await startWithCoffeeAndDinner();
   await openGroupInsights(await groupId('Brisbane'));
 
@@ -852,7 +895,9 @@ test("[INSIGHTS-51.1] offers no Delete expense action on the cards of a group's 
   expect(categoryCards(FOOD, 'Groups').map(nameOf)).not.toContain(
     'Add expense',
   );
+  expect(sortName(categoryScreen(FOOD, 'Groups'))).toBeUndefined();
   expect(categoryBarActions(FOOD, 'Groups')).toEqual([]);
+  expect(hasSearch(FOOD)).toBe(false);
 });
 
 // Following the stored expenses

@@ -14,6 +14,7 @@ import {
   phoneDatabaseWithReads,
   startExpensesAt,
 } from './ledger-expense-list-app';
+import { hasSearch, sortName } from './ledger-list-find-app';
 import { actionLabels } from './ledger-trash-app';
 import { detailBarsOn, expectDetailsOn } from './ledger-group-expense-app';
 import {
@@ -32,6 +33,7 @@ import {
   categoryCardTitles,
   categoryCards,
   categoryDates,
+  categoryScreen,
   expectCategorySummary,
   openCategory,
 } from './insights-category-app';
@@ -177,7 +179,7 @@ test("[INSIGHTS-50.1] opens the details from a card on Android, and goes back to
   expect(categoryCardTitles(FOOD)).toEqual(['Snack', 'Lunch']);
 });
 
-test("[INSIGHTS-51.1] offers no Delete expense action, no + button and no header action on a category's expenses on Android", async () => {
+test("[INSIGHTS-51.1] offers no Delete expense action, no + button, no sort button, no search and no header action on a category's expenses on Android", async () => {
   await insightsAt('?period=2025-01');
 
   await openCategory(FOOD);
@@ -188,5 +190,7 @@ test("[INSIGHTS-51.1] offers no Delete expense action, no + button and no header
   for (const shown of categoryCards(FOOD))
     expect(actionLabels(shown)).not.toContain('Delete expense');
   expect(categoryCards(FOOD).map(nameOf)).not.toContain('Add expense');
+  expect(sortName(categoryScreen(FOOD))).toBeUndefined();
   expect(categoryBarActions(FOOD)).toEqual([]);
+  expect(hasSearch(FOOD)).toBe(false);
 });
