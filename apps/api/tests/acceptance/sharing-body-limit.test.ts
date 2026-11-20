@@ -21,6 +21,7 @@ import {
   withOneBitChanged,
   type Answer,
   type Phone,
+  type Sending,
   type SentRequest,
 } from './sharing-api';
 
@@ -128,11 +129,17 @@ describe('SHARING-48.1', () => {
 });
 
 describe('SHARING-31.2', () => {
-  // Each request declares a body one byte over the limit, and none of it is sent.
-  const declaringTooMuch = (request: SentRequest) =>
-    leavingTheDatabaseAsItWas(() =>
-      sendPartly(request, { declaredLength: OVER }),
-    );
+  // The two ways a body over the limit shows itself before the request has ended.
+  const WAYS: [string, (request: SentRequest) => Sending][] = [
+    [
+      'declares a body one byte over 1 MiB and sends none of it',
+      () => ({ declaredLength: OVER }),
+    ],
+    [
+      'declares no length and sends one byte over 1 MiB in chunks, without ending',
+      (request) => ({ sent: request.body }),
+    ],
+  ];
 
   test.each([
     [
@@ -145,62 +152,76 @@ describe('SHARING-31.2', () => {
       (taylor: Phone) =>
         withField(posted(taylor, OVER), 'deviceId', TAYLOR.toUpperCase()),
     ],
+    [
+      'whose nonce is in capitals',
+      (taylor: Phone) => {
+        const request = posted(taylor, OVER, { nonce: 'ab'.repeat(16) });
+        return withField(request, 'nonce', 'AB'.repeat(16));
+      },
+    ],
   ])(
-    '[SHARING-31.2] checks the fields before the size: a request %s is refused for its signature',
+    '[SHARING-31.2] checks the fields before the size: a request %s that declares a body one byte over 1 MiB is refused for its signature',
     async (_, requestOf) => {
       const taylor = await registered(TAYLOR);
 
-      const answer = await declaringTooMuch(requestOf(taylor));
+      const answer = await leavingTheDatabaseAsItWas(() =>
+        sendPartly(requestOf(taylor), { declaredLength: OVER }),
+      );
 
       expectAnswered(answer);
       expectRefused(answer, SIGNATURE);
     },
   );
 
-  test.each([
-    [
-      'whose signature is changed and whose time is an hour early',
-      (taylor: Phone) => {
-        const request = posted(taylor, OVER, { timestampMs: EARLY });
-        return withField(
-          request,
-          'signature',
-          withOneBitChanged(fieldOf(request, 'signature')),
+  describe.each(WAYS)('a request that %s', (_, sendingOf) => {
+    test.each([
+      [
+        'whose signature is changed and whose time is an hour early',
+        (taylor: Phone) => {
+          const request = posted(taylor, OVER, { timestampMs: EARLY });
+          return withField(
+            request,
+            'signature',
+            withOneBitChanged(fieldOf(request, 'signature')),
+          );
+        },
+      ],
+      [
+        'whose time is an hour early',
+        (taylor: Phone) => posted(taylor, OVER, { timestampMs: EARLY }),
+      ],
+      [
+        'from a device that has not registered',
+        () => posted(newPhone(CASEY), OVER),
+      ],
+      [
+        'for a path that cannot be signed',
+        (taylor: Phone) => posted(taylor, OVER, { path: `${NO_ROUTE}//x` }),
+      ],
+      [
+        'that is a registration whose body is not JSON',
+        () =>
+          signedBy(newPhone(CASEY), {
+            method: 'POST',
+            path: DEVICES_PATH,
+            body: bytes(OVER),
+          }),
+      ],
+    ])(
+      '[SHARING-31.2] checks the size before everything after the fields: one %s is refused as too large',
+      async (__, requestOf) => {
+        const taylor = await registered(TAYLOR);
+        const request = requestOf(taylor);
+
+        const answer = await leavingTheDatabaseAsItWas(() =>
+          sendPartly(request, sendingOf(request)),
         );
+
+        expectAnswered(answer);
+        expectRefused(answer, TOO_LARGE);
       },
-    ],
-    [
-      'whose time is an hour early',
-      (taylor: Phone) => posted(taylor, OVER, { timestampMs: EARLY }),
-    ],
-    [
-      'from a device that has not registered',
-      () => posted(newPhone(CASEY), OVER),
-    ],
-    [
-      'for a path that cannot be signed',
-      (taylor: Phone) => posted(taylor, OVER, { path: `${NO_ROUTE}//x` }),
-    ],
-    [
-      'that is a registration whose body is not JSON',
-      () =>
-        signedBy(newPhone(CASEY), {
-          method: 'POST',
-          path: DEVICES_PATH,
-          body: bytes(OVER),
-        }),
-    ],
-  ])(
-    '[SHARING-31.2] checks the size before everything after the fields: a request %s is refused as too large',
-    async (_, requestOf) => {
-      const taylor = await registered(TAYLOR);
-
-      const answer = await declaringTooMuch(requestOf(taylor));
-
-      expectAnswered(answer);
-      expectRefused(answer, TOO_LARGE);
-    },
-  );
+    );
+  });
 });
 
 describe('SHARING-49.1', () => {

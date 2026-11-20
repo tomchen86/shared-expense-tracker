@@ -196,8 +196,8 @@ export async function send(
 /** The most bytes a request's body may have (SHARING-48.1): 1 MiB. */
 export const BODY_LIMIT = 1_048_576;
 
-// How long a test waits for an answer before it takes the API to be waiting for more of
-// the body, and the size of the pieces a body is written in.
+// How long a test waits for the answer to a request it has not ended before it takes the
+// API to be waiting for more of the body, and the size of the pieces a body is written in.
 const NO_ANSWER_AFTER_MS = 3_000;
 const PIECE = 65_536;
 
@@ -213,8 +213,9 @@ export interface Sending {
 
 /**
  * Sends the headers of a request and only as much of a body as `sending` says, whatever
- * body `request` has. Resolves with the API's answer as soon as there is one, and with
- * 'no answer' when the API is still waiting after three seconds.
+ * body `request` has. Resolves with the API's answer as soon as there is one. A request
+ * that has not ended resolves with 'no answer' when the API is still waiting after three
+ * seconds; one that has ended always gets its answer, so the test waits for it.
  */
 export function sendPartly(
   request: Partial<SentRequest> & { path: string },
@@ -241,7 +242,9 @@ export function sendPartly(
       resolve(result);
       outgoing.destroy();
     };
-    const timer = setTimeout(() => finish('no answer'), NO_ANSWER_AFTER_MS);
+    const timer = ended
+      ? undefined
+      : setTimeout(() => finish('no answer'), NO_ANSWER_AFTER_MS);
     outgoing.on('response', (response) => {
       const chunks: Buffer[] = [];
       response.on('data', (chunk: Buffer) => chunks.push(chunk));
