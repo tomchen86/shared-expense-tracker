@@ -1,19 +1,22 @@
 import { useState, type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import {
   Box,
   DropdownMenuGroup,
   DropdownMenuPopup,
   Icon,
+  RNHostView,
   SelectableDropdownMenuItem,
+  Text,
 } from '@expo/ui/jetpack-compose';
 import {
+  defaultMinSize,
   fillMaxSize,
-  selectable,
-  semantics,
+  IntrinsicSize,
+  width,
 } from '@expo/ui/jetpack-compose/modifiers';
 import check from './check.xml';
-import { MaterialHost, MaterialLabel } from './material.android';
+import { MaterialHost } from './material.android';
 import type { MenuFieldProps } from './menu-field';
 
 type MenuProps = Pick<
@@ -39,49 +42,69 @@ export function MaterialMenu({
           <Box modifiers={[fillMaxSize()]}>
             <DropdownMenuPopup expanded onDismissRequest={close}>
               <DropdownMenuGroup>
-                {options.map(({ id, name }, index) => {
-                  const checked = selected.includes(id);
-                  function choose() {
+                <MenuRows
+                  options={options}
+                  selected={selected}
+                  multiple={multiple}
+                  onSelect={(id) => {
                     if (!multiple) close();
                     onSelect(id);
-                  }
-                  return (
-                    <SelectableDropdownMenuItem
-                      key={id}
-                      selected={checked}
-                      shapes={{ index, count: options.length }}
-                      onClick={choose}
-                      modifiers={[
-                        semantics({ contentDescription: name }),
-                        // A checked checkbox remains actionable to TalkBack for deselection.
-                        ...(multiple
-                          ? [selectable(checked, choose, 'checkbox')]
-                          : []),
-                      ]}
-                    >
-                      <SelectableDropdownMenuItem.Text>
-                        <MaterialLabel
-                          menu
-                          color={checked ? 'onTertiaryContainer' : 'onSurface'}
-                          accessibilityRole={multiple ? 'checkbox' : 'radio'}
-                          accessibilityState={{ checked }}
-                          onPress={choose}
-                        >
-                          {name}
-                        </MaterialLabel>
-                      </SelectableDropdownMenuItem.Text>
-                      <SelectableDropdownMenuItem.SelectedLeadingIcon>
-                        <Icon source={check} size={20} />
-                      </SelectableDropdownMenuItem.SelectedLeadingIcon>
-                    </SelectableDropdownMenuItem>
-                  );
-                })}
+                  }}
+                />
               </DropdownMenuGroup>
             </DropdownMenuPopup>
           </Box>
         </MaterialHost>
       )}
     </View>
+  );
+}
+
+function MenuRows({ options, selected, multiple, onSelect }: MenuProps) {
+  const [menuWidth, setMenuWidth] = useState(0);
+  return (
+    <RNHostView matchContents>
+      <View
+        collapsable={false}
+        onLayout={({ nativeEvent }) => setMenuWidth(nativeEvent.layout.width)}
+      >
+        {options.map(({ id, name }, index) => {
+          const checked = selected.includes(id);
+          const choose = () => onSelect(id);
+          return (
+            <Pressable
+              key={id}
+              accessibilityRole={multiple ? 'checkbox' : 'radio'}
+              accessibilityLabel={name}
+              accessibilityState={{ checked }}
+              onPress={choose}
+            >
+              {/* TalkBack acts on the whole row. Direct touches go to the Material item. */}
+              <View importantForAccessibility="no-hide-descendants">
+                <MaterialHost matchContents>
+                  <SelectableDropdownMenuItem
+                    selected={checked}
+                    shapes={{ index, count: options.length }}
+                    onClick={choose}
+                    modifiers={[
+                      defaultMinSize({ minWidth: menuWidth }),
+                      width(IntrinsicSize.Max),
+                    ]}
+                  >
+                    <SelectableDropdownMenuItem.Text>
+                      <Text style={{ typography: 'bodyLarge' }}>{name}</Text>
+                    </SelectableDropdownMenuItem.Text>
+                    <SelectableDropdownMenuItem.SelectedLeadingIcon>
+                      <Icon source={check} size={20} />
+                    </SelectableDropdownMenuItem.SelectedLeadingIcon>
+                  </SelectableDropdownMenuItem>
+                </MaterialHost>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </RNHostView>
   );
 }
 

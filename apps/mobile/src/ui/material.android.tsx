@@ -44,22 +44,15 @@ export function MaterialHost(props: HostProps) {
   );
 }
 
-/**
- * The visible text carries the Material surface's checked or enabled state. In a menu
- * popup RNHostView receives the taps on that text, so the label also selects the item.
- */
+/** Exposes the dialog button's disabled state on its visible label. */
 export function MaterialLabel({
   children,
   accessibilityRole,
   accessibilityState,
   color,
-  menu,
-  onPress,
 }: Pick<TextProps, 'accessibilityRole' | 'accessibilityState'> & {
   children: string;
   color: keyof MaterialColors;
-  menu?: boolean;
-  onPress?: () => void;
 }) {
   const palette = useMaterialColors();
   return (
@@ -69,11 +62,10 @@ export function MaterialLabel({
         importantForAccessibility="yes"
         accessibilityRole={accessibilityRole}
         accessibilityState={accessibilityState}
-        onPress={onPress}
         disabled={accessibilityState?.disabled}
-        numberOfLines={menu ? undefined : 1}
+        numberOfLines={1}
         style={[
-          menu ? styles.bodyLarge : styles.labelLarge,
+          styles.labelLarge,
           { color: palette[color] },
           accessibilityState?.disabled && styles.disabled,
         ]}
@@ -85,12 +77,6 @@ export function MaterialLabel({
 }
 
 const styles = StyleSheet.create({
-  bodyLarge: {
-    fontSize: 16,
-    lineHeight: 24,
-    letterSpacing: 0.5,
-    includeFontPadding: false,
-  },
   labelLarge: {
     fontSize: 14,
     lineHeight: 20,
