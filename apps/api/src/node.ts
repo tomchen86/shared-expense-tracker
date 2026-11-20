@@ -54,7 +54,7 @@ export function startServer(options: NodeServerOptions): Promise<NodeServer> {
                 incoming.headers['content-length'] ||
                 incoming.headers['transfer-encoding']
               ) {
-                // Fetch omits GET and HEAD bodies. Keep the socket open for an early 413.
+                // Cancelling an oversized upload must leave the socket open for the 413.
                 return ReadableStream.from<Uint8Array>(
                   incoming.iterator({ destroyOnReturn: false }),
                 );

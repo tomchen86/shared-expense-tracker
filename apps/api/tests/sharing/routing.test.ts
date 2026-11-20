@@ -103,18 +103,17 @@ describe('the method a signature covers', () => {
 
 describe('the body covered by a signature', () => {
   test.each(['GET', 'HEAD'])(
-    'counts a chunked %s body on Node',
+    'accepts a %s signed for empty content even when the chunks exceed the limit',
     async (method) => {
-      const request = signed(newPhone(), {
-        method,
-        body: new Uint8Array(BODY_LIMIT + 1),
+      const phone = await registered();
+      const request = signed(phone, { method });
+      // Let the response arrive while the client still has chunks queued to send.
+      request.headers.connection = 'keep-alive';
+      const answer = await sendRaw(server.url, request, {
+        sent: new Uint8Array(BODY_LIMIT + 1),
       });
-      const answer = await sendRaw(server.url, request, { sent: request.body });
 
-      expect(answer).toEqual({
-        status: 413,
-        body: method === 'HEAD' ? '' : { error: 'too-large' },
-      });
+      expect(answer.status).toBe(404);
     },
   );
 

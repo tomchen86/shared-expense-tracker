@@ -20,7 +20,7 @@ export interface AppEnv {
     ipHashKey: string | undefined;
     /** What this environment's verification files and download page say. */
     appLinks: AppLinks;
-    /** The runtime's incoming body when Fetch does not expose it for every HTTP method. */
+    /** The Node request stream, which can be cancelled without closing the socket. */
     readonly incomingBody?: ReadableStream<Uint8Array>;
   };
 }

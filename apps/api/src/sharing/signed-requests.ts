@@ -97,7 +97,7 @@ async function check(c: Context<AppEnv>): Promise<Response | undefined> {
   if (body === undefined) return refuse({ error: 'too-large' });
   let message: Uint8Array<ArrayBuffer>;
   try {
-    // The fields have passed. The method or path may still be unsignable (SHARING-34.1).
+    // The fields have passed. The method or path may still be unsignable (SHARING-34.2).
     message = Uint8Array.from(
       signedRequestBytes({
         method,

@@ -3,14 +3,9 @@ import type { AppEnv } from '../app';
 
 const MAX_BODY_BYTES = 1_048_576;
 
-/** The exact bytes to verify, or undefined as soon as the body exceeds 1 MiB. */
-export async function readRequestBody(
-  c: Context<AppEnv>,
+async function readStream(
+  stream: ReadableStream<Uint8Array>,
 ): Promise<Uint8Array<ArrayBuffer> | undefined> {
-  if (Number(c.req.header('content-length')) > MAX_BODY_BYTES) return undefined;
-  const stream = c.env.incomingBody ?? c.req.raw.body;
-  if (!stream) return new Uint8Array(0);
-
   const reader = stream.getReader();
   let buffer = new Uint8Array(0);
   let size = 0;
@@ -41,8 +36,27 @@ export async function readRequestBody(
     reader.releaseLock();
   }
 
-  const body = buffer.slice(0, size);
-  // Hono caches the arrayBuffer() promise so the route can read the verified bytes again.
-  Object.assign(c.req.bodyCache, { arrayBuffer: Promise.resolve(body.buffer) });
+  return buffer.slice(0, size);
+}
+
+/** The bytes to verify, or undefined as soon as the content exceeds 1 MiB (SHARING-48.2). */
+export async function readRequestBody(
+  c: Context<AppEnv>,
+): Promise<Uint8Array<ArrayBuffer> | undefined> {
+  // GET and HEAD are signed for zero bytes even when the runtime exposes a body.
+  let stream: ReadableStream<Uint8Array> | null = null;
+  if (c.req.method !== 'GET' && c.req.method !== 'HEAD') {
+    if (Number(c.req.header('content-length')) > MAX_BODY_BYTES)
+      return undefined;
+    stream = c.env.incomingBody ?? c.req.raw.body;
+  }
+
+  const body = stream ? await readStream(stream) : new Uint8Array(0);
+  if (body !== undefined) {
+    // A route that reads the content through Hono gets the same bytes used to verify it.
+    Object.assign(c.req.bodyCache, {
+      arrayBuffer: Promise.resolve(body.buffer),
+    });
+  }
   return body;
 }
