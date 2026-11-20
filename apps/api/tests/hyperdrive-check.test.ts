@@ -1,4 +1,6 @@
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { runMigrations } from '../src/database/migrate';
+import { migrations } from '../src/migrations';
 import { runCommand, startCommand } from './support/command';
 import { useTestDatabase } from './support/database';
 
@@ -20,6 +22,52 @@ test(
     await expect(
       database.sql`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,
     ).resolves.toEqual([]);
+  },
+  COMMAND_TIMEOUT_MS,
+);
+
+test(
+  "the Hyperdrive check sends the event API's requests where the API's tables are, and leaves no row of its own",
+  async () => {
+    await runMigrations(database.sql, migrations);
+    const child = startCommand('tsx', ['tests/hyperdrive/check.ts', 'local'], {
+      DATABASE_URL: database.url,
+    });
+    let output = '';
+    for (const stream of [child.stdout, child.stderr]) {
+      stream.on('data', (chunk: Buffer) => {
+        output += chunk.toString();
+      });
+    }
+
+    const code = await new Promise((resolve) => child.once('exit', resolve));
+
+    expect(output).toContain(
+      'ok    one event that both phones upload together is stored once\n',
+    );
+    expect(output).toContain(
+      'ok    remove the phones and the group the check made\n',
+    );
+    expect(output).not.toContain('skip  ');
+    expect(code).toBe(0);
+    // The API's tables, each as empty as the migrations made it.
+    const tables = await database.sql<{ tablename: string }[]>`
+      SELECT tablename FROM pg_tables
+      WHERE schemaname = 'public' AND tablename <> '_migrations'
+      ORDER BY tablename`;
+    expect(tables.map(({ tablename }) => tablename)).toEqual([
+      'device_registrations',
+      'device_requests',
+      'devices',
+      'group_events',
+      'group_members',
+      'groups',
+    ]);
+    for (const { tablename } of tables) {
+      await expect(
+        database.sql`SELECT 1 FROM ${database.sql(tablename)} LIMIT 1`,
+      ).resolves.toEqual([]);
+    }
   },
   COMMAND_TIMEOUT_MS,
 );
