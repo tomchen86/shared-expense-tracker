@@ -3577,7 +3577,7 @@ The mobile app SHALL 在支出清單和群組的畫面的標題列提供搜尋�
 
 ### Requirement: LEDGER-126.2 搜尋中期間和總額讓位，那一行顯示筆數
 
-WHILE 支出清單或群組的畫面在搜尋中（LEDGER-125.2），the mobile app SHALL 不顯示期間列（LEDGER-108.2）、自訂範圍的 From 和 To（LEDGER-112.2）、清單上方的總額（LEDGER-35.6、GROUPS-68.6）、你的淨額（GROUPS-69.4）和期間裡沒有支出的提示（LEDGER-116.3），並在清單上方那一行（LEDGER-122.2）排序鈕的左邊顯示列出的支出的筆數「<筆數> items」，只有一筆時是「1 item」；筆數和全部期間的張數一樣用手機地區的數字格式顯示（LEDGER-35.6），1,000 筆在美國是「1,000 items」，在德國是「1.000 items」，算的是符合搜尋、也通過篩選的每一筆（LEDGER-125.2），結果很多、清單只畫出螢幕上和附近的卡片時（LEDGER-118.2）也一樣。膠囊列不讓位：有篩選時它照常顯示在那一行的上面（LEDGER-133.1）。群組的畫面上的大標題、封存群組的提示和「Restore Group」照常顯示。搜尋結束之後，這些都照這個畫面的期間顯示（LEDGER-107.2），那一行不再有筆數。
+WHILE 支出清單或群組的畫面在搜尋中（LEDGER-125.2），the mobile app SHALL 不顯示期間列（LEDGER-108.2）、自訂範圍的 From 和 To（LEDGER-112.2）、清單上方的總額（LEDGER-35.6、GROUPS-68.6）、你的淨額（GROUPS-69.4）和期間裡沒有支出的提示（LEDGER-116.3），並在清單上方那一行（LEDGER-122.2）排序鈕的左邊顯示列出的支出的筆數「<筆數> items」，只有一筆時是「1 item」；筆數和全部期間的張數一樣用手機地區的數字格式顯示（LEDGER-35.6），1,000 筆在美國是「1,000 items」，在德國是「1.000 items」，算的是符合搜尋、也通過篩選的每一筆（LEDGER-125.2），結果很多、清單只畫出螢幕上和附近的卡片時（LEDGER-118.2）也一樣。膠囊列不讓位：有篩選時它照常顯示在那一行的上面（LEDGER-133.1）。群組的畫面上的大標題、封存群組的提示和「Restore Group」照常顯示。搜尋結束之後，這些都照這個畫面的期間顯示（LEDGER-107.2），那一行不再有搜尋的筆數；這個畫面有篩選時，它顯示的是 LEDGER-137.1 的筆數。
 
 #### Scenario: 支出清單
 
@@ -3623,6 +3623,11 @@ WHILE 支出清單或群組的畫面在搜尋中（LEDGER-125.2），the mobile 
 
 - **WHEN** 今天是 `2026-10-30`，有今天的 Food & Dining 的「Coffee run」、`2025-10-15` 的 Food & Dining 的「Coffee beans」和今天的 Shopping 的「Coffee mug」，篩選是 Category 的 Food & Dining 時搜尋「coffee」
 - **THEN** 由上而下是膠囊列、「2 items」和排序鈕的那一行、卡片；沒有期間列和總額
+
+#### Scenario: 有篩選時結束搜尋
+
+- **WHEN** 今天是 `2026-10-30`，有今天的 Food & Dining 的「Coffee run」、「Coffee beans」和「Lunch」，以及 Shopping 的「Shoes」，Category 選了 Food & Dining，搜尋「coffee」，再結束搜尋
+- **THEN** 搜尋中那一行是「2 items」；結束之後是「3 items」，卡片由上而下是 Lunch、Coffee beans、Coffee run
 
 ### Requirement: LEDGER-127.2 搜尋沒有結果時說明
 
@@ -4227,12 +4232,17 @@ The mobile app SHALL 在 Filters 最下面放名稱是「Clear Filters」的按�
 
 ### Requirement: LEDGER-140.1 記住每個清單的篩選
 
-The mobile app SHALL 把支出清單的篩選和每個群組的畫面的篩選存在本機資料，各存各的：重新啟動 app 或重新打開群組的畫面之後，每個畫面仍是它上次的篩選。期間不存（LEDGER-107.2），所以重新啟動之後支出清單是這個月，篩選仍是上次的。篩選只留在這支手機，不寫成同步的事件（SYNC-26.1）；它和存起來的篩選（LEDGER-143.1）都是全部資料的一部分（backup），匯入之後每個畫面用的是匯出檔裡的篩選和存起來的篩選。它們是用新的 migration 加進本機資料的：之前的 app 匯出的匯出檔照 BACKUP-18.1 升級之後匯入，匯入完成時每個畫面都沒有篩選，也沒有存起來的篩選。
+The mobile app SHALL 把支出清單的篩選和每個群組的畫面的篩選存在本機資料，各存各的：重新啟動 app 或重新打開群組的畫面之後，每個畫面仍是它上次的篩選。期間不存（LEDGER-107.2），所以重新啟動之後支出清單是這個月，篩選仍是上次的。篩選只留在這支手機，不寫成同步的事件（SYNC-26.1）；它和存起來的篩選（LEDGER-143.1）都是全部資料的一部分（backup），匯入之後每個畫面用的是匯出檔裡的篩選和存起來的篩選。它們是用新的 migration 加進本機資料的：之前的 app 匯出的匯出檔照 BACKUP-18.1 升級之後匯入，匯入完成時每個畫面都沒有篩選，也沒有存起來的篩選。IF 篩選存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable to Save Settings」、內容「Your settings could not be saved. Please try again.」的提示框，這個畫面的篩選、膠囊列和卡片都回到改之前的樣子，和排序存不進去時一樣（LEDGER-124.1、SHELL-33.1）。
 
 #### Scenario: 重新啟動
 
 - **WHEN** 支出清單的 Category 選了 Shopping、Min 是「10」，重新啟動 app
 - **THEN** 膠囊列的 Category 是「Shopping」、Amount 是「10 or more」，卡片只有通過的支出，標題列是「Filters, on」
+
+#### Scenario: 存不進去
+
+- **WHEN** 本機資料寫不進去時，在 Filters 的 Category 選「Shopping」
+- **THEN** 跳出「Unable to Save Settings」；支出清單沒有膠囊列，卡片和改之前一樣；重新啟動 app 之後也沒有篩選
 
 #### Scenario: 不記日期
 
@@ -4414,7 +4424,7 @@ WHEN 使用者在 New Expense 存下一筆支出（LEDGER-21.2、LEDGER-54.1）�
 
 ### Requirement: LEDGER-143.1 把目前的篩選取名存起來
 
-The mobile app SHALL 在 Filters 的條件下面、「Clear Filters」上面放名稱是「Save Current Filter…」的按鈕，這個畫面沒有篩選時停用；這個畫面的篩選和它的一個存起來的篩選條件一樣時，這個按鈕是停用的「Filter Saved」；沒有篩選時它都是停用的「Save Current Filter…」，就算有一個存起來的篩選已經沒有條件（LEDGER-141.1）。條件一樣是指：Category、Ledger 或 Paid by 選的是同樣的幾項，不看選的先後；Paid by Me 一樣；Currency 一樣；Min 和 Max 各自都沒有數字，或是同一個數值，所以「10」和「10.0」一樣。WHEN 使用者按「Save Current Filter…」，the mobile app SHALL 請使用者取名稱：iOS 上是系統的提示框，標題「Save Filter」、內容「Name this filter to use it again later.」，有一個文字欄位，選項是「Cancel」和「Save」；Android 上是從底部升起、蓋在 Filters 上的 sheet，標題「Save Filter」，標題列有「Cancel」和「Save」，裡面是名稱是「Filter name」的欄位，欄位去掉頭尾空白後是空的時 Save 停用。欄位裡先帶著建議的名稱：膠囊列上開著的膠囊的文字（LEDGER-133.1），由左而右以「, 」隔開。WHEN 使用者按 Save 而名稱去掉頭尾空白後不是空的，the mobile app SHALL 把這個畫面現在的條件用去掉頭尾空白的名稱存成這個畫面的一個存起來的篩選，存在本機資料（LEDGER-140.1）；這個畫面已經有名稱一模一樣的，就取代它。存的只有條件：Category、Ledger 或 Paid by、Paid by Me、Amount 和 Currency；期間、排序和搜尋都不存。名稱是空的時不存，按 Cancel 也不存。支出清單和每個群組的畫面各有自己的存起來的篩選；存和刪都不寫成同步的事件（SYNC-26.1）。
+The mobile app SHALL 在 Filters 的條件下面、「Clear Filters」上面放名稱是「Save Current Filter…」的按鈕，這個畫面沒有篩選時停用；這個畫面的篩選和它的一個存起來的篩選條件一樣時，這個按鈕是停用的「Filter Saved」；沒有篩選時它都是停用的「Save Current Filter…」，就算有一個存起來的篩選已經沒有條件（LEDGER-141.1）。條件一樣是指：Category、Ledger 或 Paid by 選的是同樣的幾項，不看選的先後；Paid by Me 一樣；Currency 一樣；Min 和 Max 各自都沒有數字，或是同一個數值，所以「10」和「10.0」一樣。WHEN 使用者按「Save Current Filter…」，the mobile app SHALL 請使用者取名稱：iOS 上是系統的提示框，標題「Save Filter」、內容「Name this filter to use it again later.」，有一個文字欄位，選項是「Cancel」和「Save」；Android 上是從底部升起、蓋在 Filters 上的 sheet，標題「Save Filter」，標題列有「Cancel」和「Save」，裡面是名稱是「Filter name」的欄位，欄位去掉頭尾空白後是空的時 Save 停用。欄位裡先帶著建議的名稱：膠囊列上開著的膠囊的文字（LEDGER-133.1），由左而右以「, 」隔開。WHEN 使用者按 Save 而名稱去掉頭尾空白後不是空的，the mobile app SHALL 把這個畫面現在的條件用去掉頭尾空白的名稱存成這個畫面的一個存起來的篩選，存在本機資料（LEDGER-140.1）；這個畫面已經有名稱一模一樣的，就取代它。存的只有條件：Category、Ledger 或 Paid by、Paid by Me、Amount 和 Currency；期間、排序和搜尋都不存。名稱是空的時不存，按 Cancel 也不存。IF 存起來的篩選存不進本機資料，THEN the mobile app SHALL 跳出 LEDGER-140.1 的那個提示框，SAVED FILTERS 沒有多出它，這個畫面的篩選不變，按鈕仍是「Save Current Filter…」。支出清單和每個群組的畫面各有自己的存起來的篩選；存和刪都不寫成同步的事件（SYNC-26.1）。
 
 #### Scenario: 沒有篩選
 
@@ -4450,6 +4460,11 @@ The mobile app SHALL 在 Filters 的條件下面、「Clear Filters」上面放�
 
 - **WHEN** 把名稱清空或只留空白後按「Save」；或按「Cancel」
 - **THEN** 都沒有多出存起來的篩選；Android 上名稱是空的時「Save」停用
+
+#### Scenario: 存不進去
+
+- **WHEN** 本機資料寫不進去時，Category 選著 Shopping，按「Save Current Filter…」，名稱填「Shopping」後按 Save
+- **THEN** 跳出「Unable to Save Settings」；Filters 沒有 SAVED FILTERS 那一區，按鈕仍是可以按的「Save Current Filter…」，膠囊列的 Category 仍是「Shopping」
 
 #### Scenario: 各存各的
 
@@ -4556,5 +4571,5 @@ WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時�
 
 #### Scenario: 在膠囊列上改篩選時清單不動
 
-- **WHEN** iPhone 上這個月有比畫面長的支出，Paid by Me 開著；把清單往上捲到期間列剛好看不到、膠囊列還看得到，按 Paid by Me 的膠囊
-- **THEN** 清單留在原來的位置，膠囊列沒有從手指底下移開
+- **WHEN** iPhone 上這個月有比畫面長的支出，Paid by Me 開著，Min 是「1」；把清單往上捲到期間列剛好看不到、膠囊列還看得到，按 Paid by Me 的膠囊
+- **THEN** Paid by Me 關掉，Amount 的膠囊仍是「1 or more」，清單留在原來的位置，膠囊列沒有從手指底下移開

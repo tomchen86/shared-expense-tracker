@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { ActionSheetIOS } from 'react-native';
+import { waitFor } from '@testing-library/react-native';
 import {
   addExpense,
   editCategory,
@@ -64,7 +65,7 @@ import {
 import { goBackFrom, screenOf } from './group-details-app';
 import { showGroup } from './group-balances-app';
 import { deleteByAction } from './ledger-trash-app';
-import { allowWrites } from './shell-appearance-app';
+import { allowWrites, failWrites } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
 import type { Database } from '../../src/storage';
 
@@ -282,6 +283,28 @@ test('[LEDGER-143.1] saves nothing when the prompt is answered with Cancel', asy
 
   expect(savedFilterNames()).toEqual([]);
   expect(amountTexts()).toEqual(['1', '']);
+});
+
+test('[LEDGER-143.1] [LEDGER-140.1] says the settings could not be saved when a filter cannot be stored under a name, and saves nothing', async () => {
+  const alerts = watchAlerts();
+  await startWithShopping();
+  await choose('Expenses', 'Category', 'Shopping');
+  await openFilters('Expenses');
+  failWrites();
+
+  await saveAs('Shopping');
+
+  await waitFor(() =>
+    expect(alerts.shown()).toEqual([
+      [
+        'Unable to Save Settings',
+        'Your settings could not be saved. Please try again.',
+      ],
+    ]),
+  );
+  expect(hasSavedSection()).toBe(false);
+  expect(filtersButtonEnabled(SAVE_FILTER)).toBe(true);
+  expect(capsuleOf(expensesRoot(), 'Category')).toBe('Shopping');
 });
 
 test("[LEDGER-143.1] keeps the saved filters of the expense list and of each group's screen apart, and names a group's from its own capsules", async () => {

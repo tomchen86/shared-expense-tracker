@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { ActionSheetIOS } from 'react-native';
-import { fireEvent, renderHook } from '@testing-library/react-native';
+import { fireEvent, renderHook, waitFor } from '@testing-library/react-native';
 import {
   addCategory,
   addExpense,
@@ -146,7 +146,7 @@ import {
   restoreFromTrash,
 } from './ledger-trash-app';
 import { expectInsights, expectTotals, selectedPeriod } from './insights-app';
-import { allowWrites, settle } from './shell-appearance-app';
+import { allowWrites, failWrites, settle } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
 import { useThemeColors } from '../../src/ui/theme';
 import type { Database } from '../../src/storage';
@@ -1483,6 +1483,24 @@ test("[LEDGER-137.1] counts the expenses the filter leaves on a group's screen",
   expect(inOneRow(countView(brisbane())!, sortView(brisbane())!)).toBe(true);
 });
 
+test('[LEDGER-126.2] [LEDGER-137.1] shows the count the filter leaves, in place of the count of matches, once a search under a filter ends', async () => {
+  await startExpenses();
+  await spend('Shoes', { category: 'Shopping' });
+  await spend('Coffee run');
+  await spend('Coffee beans');
+  await spend('Lunch');
+  await choose('Expenses', 'Category', FOOD);
+  expect(listCount(expensesRoot())).toBe('3 items');
+
+  await typeSearch('Expenses', 'coffee');
+  expect(listCount(expensesRoot())).toBe('2 items');
+
+  await endSearch('Expenses');
+
+  expect(listCount(expensesRoot())).toBe('3 items');
+  expect(cardTitles()).toEqual(['Lunch', 'Coffee beans', 'Coffee run']);
+});
+
 // A filter that leaves no expense
 
 test('[LEDGER-138.1] [LEDGER-35.6] says the expenses are still there when the filter leaves none, with Clear Filters under it', async () => {
@@ -1846,6 +1864,34 @@ test('[LEDGER-140.1] keeps the filter of the expense list over a restart, and no
   await openFilters('Expenses');
   expect(conditionRow('Category')).toBe('Category, Shopping');
   expect(amountTexts()).toEqual(['10', '']);
+});
+
+test('[LEDGER-140.1] says the settings could not be saved when the filter cannot be stored, and puts the list back as it was', async () => {
+  const alerts = watchAlerts();
+  const app = await startExpenses();
+  await spend('Shoes', { category: 'Shopping' });
+  await spend('Coffee run');
+  failWrites();
+
+  await choose('Expenses', 'Category', 'Shopping');
+
+  await waitFor(() =>
+    expect(alerts.shown()).toEqual([
+      [
+        'Unable to Save Settings',
+        'Your settings could not be saved. Please try again.',
+      ],
+    ]),
+  );
+  expect(capsuleRow(expensesRoot())).toBeUndefined();
+  expect(cardTitles()).toEqual(['Coffee run', 'Shoes']);
+
+  // Nothing was stored: the list has no filter when the app starts again either.
+  allowWrites();
+  await restart(app);
+
+  await waitFor(() => expect(cardTitles()).toEqual(['Coffee run', 'Shoes']));
+  expect(capsuleRow(expensesRoot())).toBeUndefined();
 });
 
 test('[LEDGER-140.1] keeps Paid by Me and the currency chosen over a restart', async () => {
