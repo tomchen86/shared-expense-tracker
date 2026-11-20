@@ -10,7 +10,7 @@
 
 Scenario 裡「Taylor 的資料」是指：名字是「Taylor」，外觀選項是 Dark，Insights 的圖表類型是 Bar；群組 Brisbane 有成員 Taylor、Casey 和已經被移出的 Blake，另有封存的群組 Tokyo；個人空間多了分類「Gym」、封存了「Travel」，Brisbane 多了分類「Flights」；個人支出有 Coffee run 8.75 USD 和 Train 3.00 USD，Brisbane 有 Casey 付、三位成員分攤的 Dinner 100.01 USD，垃圾桶裡有個人支出 Lunch 12.00 USD。它有 2 個群組，不在垃圾桶裡的支出有 3 筆。
 
-全部資料也包括裝置身分的紀錄（SHARING-46.1）和共同帳本的同步資料（sync）。共同帳本、紀錄、單位、時間戳記、刪除紀錄、手機看過的最新時間戳記、待上傳的事件、套用和不套用的事件留下的紀錄，都和 sync 的定義一樣。同步資料是本機資料替同步記著的東西：哪些群組是共同帳本和這支手機在裡面用的裝置 ID、每筆紀錄每個單位的值和時間戳記、刪除紀錄、手機看過的最新時間戳記、待上傳的事件，以及不套用的事件留下的紀錄。匯出檔裡的共同帳本，是匯出檔的同步資料記成共同帳本的群組。匯入之後這支手機的同步資料回到匯出那一刻，只有手機看過的最新時間戳記不倒退（BACKUP-13.2、BACKUP-27.1、ADR-0025）。
+全部資料也包括裝置身分的紀錄（SHARING-46.1）和共同帳本的同步資料（sync）。共同帳本、紀錄、單位、時間戳記、刪除紀錄、手機看過的最新時間戳記、待上傳的事件、套用，以及不套用的事件留下的紀錄，都和 sync 的定義一樣。同步資料是本機資料替同步記著的東西：哪些群組是共同帳本和這支手機在裡面用的裝置 ID、每筆紀錄每個單位的值和時間戳記、刪除紀錄、手機看過的最新時間戳記、待上傳的事件，以及不套用的事件留下的紀錄。匯出檔裡的共同帳本，是匯出檔的同步資料記成共同帳本的群組。匯入之後這支手機的同步資料回到匯出那一刻，只有手機看過的最新時間戳記不倒退（BACKUP-13.2、BACKUP-27.1、ADR-0025）。
 
 有共同帳本的 Scenario 裡，T 是 `2026-11-18T06:32:00Z` 的毫秒數；Taylor 的手機的裝置 ID 是 `phone-a`，別支手機是 `phone-b`；Brisbane 是 Taylor 建立、依序加入 Casey 和 Blake 的群組，在校正後的時間 T 變成共同帳本，Tokyo 是另一個群組，不是共同帳本；時間戳記的寫法和 sync 一樣，例如 `T+60000/0/phone-a`。Lunch 是 `phone-b` 新增的 Brisbane 的支出，3000 USD，除非另外說明，Casey 付款、Taylor 和 Casey 各分攤 1500，收到時間是它的時間戳記的毫秒。
 
@@ -288,7 +288,7 @@ WHEN 使用者在確認框按「Replace」，the mobile app SHALL 在一個 tran
 
 ### Requirement: BACKUP-27.1 匯入不讓手機看過的最新時間戳記倒退
 
-WHEN 使用者在確認框按「Replace」，the mobile app SHALL 在寫入匯出檔內容的同一個 transaction 裡，讓手機看過的最新時間戳記（SYNC-15.1）是匯出檔裡的和這支手機匯入之前的兩個裡比較晚的那一個（SYNC-1.1）；只有一邊有就用那一個，兩邊都沒有就沒有。所以匯入之後新修改的時間戳記（SYNC-2.1），比這支手機匯入之前寫過和看過的時間戳記都晚，也比匯出檔裡的都晚。
+WHEN 使用者在確認框按「Replace」，the mobile app SHALL 在寫入匯出檔內容的同一個 transaction 裡，讓手機看過的最新時間戳記（SYNC-15.1）是匯出檔裡的和這支手機匯入之前的兩個裡比較晚的那一個（SYNC-1.1）；只有一邊有就用那一個，兩邊都沒有就沒有。所以匯入之後新修改的時間戳記（SYNC-2.1），比這支手機匯入之前寫過和看過的時間戳記都晚，也比匯出檔記著的看過的最新時間戳記晚。
 
 #### Scenario: 匯入自己之前的匯出檔
 
@@ -461,9 +461,14 @@ IF 匯出檔的內容違反規則，THEN the mobile app SHALL 照 BACKUP-15.1 �
 - **WHEN** Taylor 的手機套用 `phone-b` 的兩個事件：加入成員 Dana 的事件，時間戳記比收到時間晚一小時，所以不套用（SYNC-9.1）；和 Dana 付款、Taylor 和 Dana 各分攤 1500 的 Lunch 的第一個事件，照常套用（SYNC-31.1）。這支手機匯出，再在自己身上、或在一支第一次打開 app 的手機上選這個匯出檔
 - **THEN** 兩支手機都跳出「Replace All Data?」，內容寫的是「has 2 groups and 1 expense」；按「Replace」之後，本機資料和匯出時一樣，Lunch 的付款和 Dana 的那一筆分攤仍記在 Dana 的 ID 下，Brisbane 的成員裡沒有這個 ID
 
+#### Scenario: 手動改過的匯出檔
+
+- **WHEN** 匯出檔裡 Brisbane 是共同帳本，它的 Lunch 的付款被改記在一個不是 Brisbane 成員的 ID 下
+- **THEN** 不算違反規則，跳出的是「Replace All Data?」
+
 #### Scenario: 共同帳本的支出仍要守其他規則
 
-- **WHEN** 上面那個匯出檔裡，Lunch 的分攤被改成 1500 和 1400；或 Lunch 的幣別被改成 `XYZ`
+- **WHEN** Dana 付款的那個匯出檔裡，Lunch 的分攤被改成 1500 和 1400；或 Lunch 的幣別被改成 `XYZ`
 - **THEN** 跳出「Unable to Import Data」，本機資料不變
 
 #### Scenario: 同一個匯出檔裡不是共同帳本的群組和個人支出
