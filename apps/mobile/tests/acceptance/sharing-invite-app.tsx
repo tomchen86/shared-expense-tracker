@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { Share } from 'react-native';
-import { fireEvent } from '@testing-library/react-native';
+import { act, fireEvent } from '@testing-library/react-native';
+import { DEVICES_PATH } from '@shared-expense/domain/api';
 import { decrypt, deriveKey } from '@shared-expense/domain/crypto';
 import { QrCode } from '../../src/ui/qr-code';
 import { linesIn } from './ledger-expense-list-app';
@@ -250,6 +251,8 @@ export const isPutInvite = (request: Sent) =>
   request.method === 'PUT' && INVITE_PATH.test(request.path);
 export const isRevoke = (request: Sent) =>
   request.method === 'DELETE' && INVITE_PATH.test(request.path);
+export const isRegistering = (request: Sent) =>
+  request.method === 'POST' && request.path === DEVICES_PATH;
 
 /** A download or an upload of a group's events, which the phone's sync sends by itself. */
 const isEventApi = (request: Sent) =>
@@ -447,6 +450,59 @@ export function afterTheAnswerTo(
     return response;
   }) as typeof fetch;
 }
+
+/**
+ * From now on the API handles the requests `which` picks and keeps their answers back,
+ * until the function this returns is called. A request the app gives up through the signal
+ * it passed fails then, as `fetch` does; with no signal it stays unanswered.
+ */
+export function keepAnswersBack(
+  which: (request: Sent) => boolean,
+): () => Promise<void> {
+  let release!: () => void;
+  const kept = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let keeping = true;
+  const theApi = globalThis.fetch;
+  globalThis.fetch = (async (...request: Parameters<typeof fetch>) => {
+    const sent = new Request(...request);
+    const url = new URL(sent.url);
+    const { signal } = sent;
+    const response = await theApi(...request);
+    if (
+      keeping &&
+      which({ method: sent.method, path: url.pathname + url.search })
+    ) {
+      await Promise.race([
+        kept,
+        new Promise<never>((_resolve, reject) => {
+          const fail = () =>
+            reject(
+              (signal.reason as unknown) ??
+                Object.assign(new Error('Aborted'), { name: 'AbortError' }),
+            );
+          if (signal.aborted) fail();
+          else signal.addEventListener('abort', fail, { once: true });
+        }),
+      ]);
+    }
+    return response;
+  }) as typeof fetch;
+  return async () => {
+    keeping = false;
+    await act(async () => {
+      release();
+      await jest.advanceTimersByTimeAsync(0);
+    });
+  };
+}
+
+/** Lets `seconds` pass on the phone, running the timers that come due. */
+export const secondsPass = (seconds: number) =>
+  act(async () => {
+    await jest.advanceTimersByTimeAsync(seconds * 1000);
+  });
 
 /** The lines Invite shows, top to bottom. */
 export const inviteLines = () => linesIn(screenOf('Invite'));

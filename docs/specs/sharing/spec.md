@@ -2,7 +2,7 @@
 
 ## Purpose
 
-共同帳本靠金鑰認手機，內容加密之後才離開手機（ADR-0015、ADR-0022）。這裡有六塊：`packages/domain` 的加密工具（SHARING-1.1 到 16.1）；手機 app 的裝置身分，和它怎麼替送給 API 的每個請求簽名（SHARING-19.1 到 30.1、43.1、45.1、46.1）；API 怎麼替手機註冊、檢查簽名和限制請求（SHARING-31.2 到 42.1、44.1、47.1 到 51.1）；邀請連結的基礎（SHARING-60.1 到 76.1）；API 怎麼替共同帳本存下邀請和它的名片（SHARING-77.1 到 89.1）；和手機 app 怎麼讓群組變成共同帳本、建立和撤回邀請（SHARING-90.1 到 110.1）。手機 app 和 API 用 `packages/domain` 的同一個函式組出要簽的 bytes（SHARING-17.1、18.1）。裝置身分和簽名沒有畫面：授權失效的手機除了不能邀請（SHARING-106.1）之外畫面上顯示什麼，不在這裡。
+共同帳本靠金鑰認手機，內容加密之後才離開手機（ADR-0015、ADR-0022）。這裡有六塊：`packages/domain` 的加密工具（SHARING-1.1 到 16.1）；手機 app 的裝置身分，和它怎麼替送給 API 的每個請求簽名（SHARING-19.1 到 30.1、43.1、45.1、46.1）；API 怎麼替手機註冊、檢查簽名和限制請求（SHARING-31.2 到 42.1、44.1、47.1 到 51.1）；邀請連結的基礎（SHARING-60.1 到 76.1）；API 怎麼替共同帳本存下邀請和它的名片（SHARING-77.1 到 89.1）；和手機 app 怎麼讓群組變成共同帳本、建立和撤回邀請（SHARING-90.1 到 111.1）。手機 app 和 API 用 `packages/domain` 的同一個函式組出要簽的 bytes（SHARING-17.1、18.1）。裝置身分和簽名沒有畫面：授權失效的手機除了不能邀請（SHARING-106.1）之外畫面上顯示什麼，不在這裡。
 
 加密工具：用鑰匙加密和解密內容、用私鑰簽名、把內容裝成只有另一支手機打得開的 box，以及從密鑰材料導出金鑰。工具放在 `packages/domain` 自己的入口，給手機 app 用；它不存任何東西、不連網路，也不自己產生鑰匙、私鑰、nonce 或 salt（SHARING-14.1）。演算法是 XChaCha20-Poly1305（draft-irtf-cfrg-xchacha-03）、Ed25519（RFC 8032）、X25519（RFC 7748）和 HKDF-SHA-256（RFC 5869）。bytes 是一個 `Uint8Array`，以十六進位寫出：`0x01` 是一個 byte，沒有 `0x` 的一串是依序的 bytes，`…` 是省略的部分。鑰匙是 32 bytes 的對稱金鑰。nonce 是呼叫者給的 24 bytes，每次加密或裝 box 都要是新的隨機值。附加資料是一段不加密、但解密時要給出一模一樣的 bytes，可以是空的。密文是 SHARING-1.1 的格式，它的第一個 byte 是格式版本。簽名私鑰是 32 bytes 的 Ed25519 私鑰，box 私鑰是 32 bytes 的 X25519 私鑰，各有一把 32 bytes 的公開金鑰（SHARING-5.1、7.1）。共享密鑰是 X25519 用一把 box 私鑰和另一把 box 公開金鑰算出的 32 bytes。box 是交出方裝給收受方的密文（SHARING-8.1）：情境是裝 box 時給的一段 bytes，可以是空的；salt 是裝 box 時可以再給的 32 bytes；打開時兩者都要和裝的時候一樣。密鑰材料是導出金鑰的來源，用途是用來區分金鑰的一段 bytes，兩者都可以是字串（SHARING-12.1）。解密密文或打開 box 有兩種失敗：解不開（SHARING-3.1、10.1、11.1）和不認得格式版本（SHARING-4.2），兩種都不回傳任何內容。`packages/domain` 拒絕，是丟出錯誤，不產出任何結果。不是 bytes 的輸入一律先被拒絕（SHARING-16.1），只有導出金鑰的密鑰材料和用途也可以是字串；其他的規則說的都是這樣的輸入。沒給一個輸入，是指沒有它，或它是 `undefined`；只有 salt 可以不給。SHARING-15.1 列出的輸入（鑰匙、私鑰、nonce、box 的 salt 和裝 box 時收受方的公開金鑰）長度不對時也一律先被拒絕；要解密的 bytes、要打開的 box 和交出方的公開金鑰不管多長，都照其他的規則回報。
 
@@ -22,9 +22,9 @@ SHARING-17.1 到 51.1 的情境裡，T 是 `2026-11-18T06:32:00Z`，也就是 17
 
 API 的情境（SHARING-77.1 到 89.1）沿用 sync 的 API 情境：T、Taylor 和 Casey 的手機、Brisbane 和 Tokyo 都和那裡一樣，Brisbane 已經由 Taylor 的手機建立，Tokyo 還沒有建立，除非另外說明。代號 A 是 `3q2-7wEjRWeJq83vEjRWeA`，代號 B 是 `AAECAwQFBgcICQoLDA0ODw`，代號 C 是 `__7dzLuqmYh3ZlVEMyIRAA`。名片 X、Y、Z、W 各是 200 bytes、內容不同的隨機 bytes；除非另外說明，名片的 cursor 是 0。情境說一支手機是成員手機，而那個群組不是它建立的，是測試直接把它記成成員手機。
 
-手機 app 這一邊（SHARING-90.1 到 110.1）：API 的網址是 app 建置時環境變數 `EXPO_PUBLIC_API_URL` 給的網址，沒有結尾的 `/`，例如 `https://api.example.test`；邀請連結的主機就是它的主機。群組鑰匙是共同帳本的手機加密事件用的 32 bytes 的鑰匙，一個鑰匙世代一把（ADR-0015）；這裡只產生世代 1 的，事件怎麼用它加密不在這裡（sync）。手機上的邀請是本機資料替一個共同帳本存著的邀請：代號、`#` 後面的字串和到期時間；校正後的時間比到期時間早，它就是有效的。邀請是共同帳本的一種紀錄：建立和撤回都寫成事件（SYNC-80.1），別的成員手機套用事件之後也存著它（SYNC-81.1），所以每位成員看到的是同一條連結，也都能撤回。待上傳的事件、共同帳本、校正後的時間和套用見 sync。Invite 是從 Members 打開的畫面。準備邀請是按「Invite with Link」或「Try Again」之後手機做的事：有有效的邀請就顯示它（SHARING-100.1），沒有就建立一個，群組還不是共同帳本時先讓它變成共同帳本（SHARING-92.1）；它的結果是 Invite 顯示邀請，或顯示一句說明。
+手機 app 這一邊（SHARING-90.1 到 111.1）：API 的網址是 app 建置時環境變數 `EXPO_PUBLIC_API_URL` 給的網址，沒有結尾的 `/`，例如 `https://api.example.test`；邀請連結的主機就是它的主機。群組鑰匙是共同帳本的手機加密事件用的 32 bytes 的鑰匙，一個鑰匙世代一把（ADR-0015）；這裡只產生世代 1 的，事件怎麼用它加密不在這裡（sync）。手機上的邀請是本機資料替一個共同帳本存著的邀請：代號、`#` 後面的字串和到期時間；校正後的時間比到期時間早，它就是有效的。邀請是共同帳本的一種紀錄：建立和撤回都寫成事件（SYNC-80.1），別的成員手機套用事件之後也存著它（SYNC-81.1），所以每位成員看到的是同一條連結，也都能撤回。待上傳的事件、共同帳本、校正後的時間和套用見 sync。Invite 是從 Members 打開的畫面。準備邀請是按「Invite with Link」或「Try Again」之後手機做的事：有有效的邀請就顯示它（SHARING-100.1），沒有就建立一個，群組還不是共同帳本時先讓它變成共同帳本（SHARING-92.1）；它的結果是 Invite 顯示邀請，或顯示一句說明。
 
-手機 app 的情境（SHARING-90.1 到 110.1）裡，T、手機的時鐘和 API 的時間同 SHARING-17.1 的情境，API 的網址是 `https://api.example.test`，名字是 Taylor，手機的地區是美國、時區是 `Asia/Taipei`。Brisbane 和 Tokyo 是 Taylor 建立的群組；除非另外說明，它們還不是共同帳本，手機沒有裝置身分，API 照 SHARING-31.2 到 89.1 和 SYNC-45.1 回答。「邀請建立好了」指 Invite 顯示邀請連結。
+手機 app 的情境（SHARING-90.1 到 111.1）裡，T、手機的時鐘和 API 的時間同 SHARING-17.1 的情境，API 的網址是 `https://api.example.test`，名字是 Taylor，手機的地區是美國、時區是 `Asia/Taipei`。Brisbane 和 Tokyo 是 Taylor 建立的群組；除非另外說明，它們還不是共同帳本，手機沒有裝置身分，API 照 SHARING-31.2 到 89.1 和 SYNC-45.1 回答。「邀請建立好了」指 Invite 顯示邀請連結。
 
 ## Requirements
 
@@ -2350,3 +2350,27 @@ WHEN 使用者在真的手機上把邀請交給別人，the mobile app SHALL 讓
 
 - **WHEN** 在裝了連到一個環境的 build 的手機上，替一個群組按「Invite with Link」，按「Share Link」用訊息 app 傳給另一支手機；再用另一支手機的相機掃 Invite 上的 QR code；在 Android 上另外按返回鍵
 - **THEN** 系統的分享畫面打開；收到的訊息是完整的連結，連 `#` 後面的字串在內；相機認出同一條連結，點了之後打開 app 的 Invite Link（SHARING-70.1、SHARING-71.1），或在沒裝 app 的手機上打開下載頁；Android 的返回鍵關閉 Invite，回到 Members
+
+### Requirement: SHARING-111.1 邀請的請求等不到回應時在 60 秒後放棄
+
+IF 準備邀請、撤回邀請或更新名片時送出的一個請求——註冊這支手機的請求也算——送出 60 秒之後還沒有收完回應，THEN the mobile app SHALL 放棄這個請求，把它當成沒有得到回應：準備邀請照 SHARING-104.1 和 SHARING-105.1，撤回照 SHARING-103.1，更新名片照 SHARING-109.1。放棄之後才到的回應不算數：不存邀請，不寫事件，Invite 顯示的也不變。這支手機之後送的請求不等被放棄的那一個。每個送出的請求各自算 60 秒：API 要求等待的時間（SHARING-28.1）不算在內，等過之後或校正時鐘之後再送的那一次重新算。
+
+#### Scenario: 註冊一直沒有回應
+
+- **WHEN** Taylor 的手機還沒有裝置身分，在 Brisbane 的 Members 按「Invite with Link」，API 一直沒有回答註冊的請求；過了 50 秒；再過 15 秒；之後 API 照常回答，按「Try Again」
+- **THEN** 50 秒時 Invite 的內容只有「Creating link…」；再過 15 秒，Invite 顯示「Connect to the internet to invite people to this group.」和「Try Again」，Brisbane 不是共同帳本；按了之後 API 收到第二個註冊的請求，Invite 顯示邀請連結
+
+#### Scenario: 建立邀請的回應在放棄之後才到
+
+- **WHEN** API 建立了邀請，卻一直沒有回答那個請求；過了 65 秒 API 才回答；之後按「Try Again」
+- **THEN** 65 秒時 Invite 顯示「Connect to the internet to invite people to this group.」和「Try Again」；回答到了之後 Invite 顯示的不變，沒有待上傳的事件；按了之後 API 收到的第二個建立邀請的請求，路徑和第一個一樣，Invite 顯示這個代號的連結，待上傳的事件剛好一個
+
+#### Scenario: 撤回一直沒有回應
+
+- **WHEN** 在 Invite 按「Revoke Link」，再按「Revoke」，API 撤回了邀請，卻一直沒有回答；過了 50 秒；再過 15 秒
+- **THEN** 50 秒時沒有跳出別的提示框；再過 15 秒，跳出「Unable to Revoke Link」，訊息是「Connect to the internet and try again.」，Invite 仍顯示原本的連結，沒有多寫事件
+
+#### Scenario: 更新名片一直沒有回應
+
+- **WHEN** Brisbane 的邀請建立好了之後，把 Brisbane 改名為「Brissie」，API 一直沒有回答更新名片的請求；過了 65 秒，之後 API 照常回答，再把它改名為「Bris」
+- **THEN** 沒有跳出提示框；API 再收到一個建立邀請的請求，代號和原本的一樣，名片的 `name` 是「Bris」

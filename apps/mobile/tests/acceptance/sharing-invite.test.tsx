@@ -75,7 +75,9 @@ import {
   invited,
   isCreateGroup,
   isPutInvite,
+  isRegistering,
   isRevoke,
+  keepAnswersBack,
   localDataHolds,
   openedCard,
   partsOf,
@@ -84,6 +86,7 @@ import {
   qrCodes,
   requestLines,
   requestsHold,
+  secondsPass,
   sentCard,
   shared,
   shownLink,
@@ -1069,6 +1072,109 @@ test('[SHARING-105.1] sends the same code again when the API created the invite 
   expect((await unsent()).map(({ content }) => content.id)).toEqual([
     codeIn(first),
   ]);
+});
+
+// An answer that does not come
+
+test('[SHARING-111.1] gives up a registration that has had no answer for 60 seconds, and registers again on Try Again', async () => {
+  await startAt(ALONE);
+  const answer = keepAnswersBack(isRegistering);
+  await showMembers('Brisbane');
+  await fireEvent.press(membersButton('Invite with Link'));
+  await expectOpen('Invite');
+  await until(() => registrationsReceived().length === 1, 'the registration');
+
+  await secondsPass(50);
+
+  expect(inviteLines()).toEqual([CREATING]);
+
+  await secondsPass(15);
+  await until(() => !inviteLines().includes(CREATING), 'a result');
+
+  expect(inviteLines()).toEqual([OFFLINE, 'Try Again']);
+  expect(requestsReceived()).toEqual([]);
+  expect(groupKeys()).toEqual([]);
+
+  await answer();
+  await tryAgain();
+
+  expect(registrationsReceived()).toHaveLength(2);
+  expect(shownLink()).toMatch(LINK);
+});
+
+test('[SHARING-111.1] does not use the answer about an invite that comes after it gave the request up, and sends the same code on Try Again', async () => {
+  await startAt(ALONE);
+  const answer = keepAnswersBack(isPutInvite);
+  await showMembers('Brisbane');
+  await fireEvent.press(membersButton('Invite with Link'));
+  await expectOpen('Invite');
+  await until(() => inviteRequests().length === 1, 'the request for an invite');
+
+  await secondsPass(65);
+  await until(() => !inviteLines().includes(CREATING), 'a result');
+
+  expect(inviteLines()).toEqual([OFFLINE, 'Try Again']);
+
+  await answer();
+  await settle();
+
+  expect(inviteLines()).toEqual([OFFLINE, 'Try Again']);
+  expect(await unsent()).toEqual([]);
+
+  await tryAgain();
+
+  const [first, second] = inviteRequests();
+  expect(inviteRequests()).toHaveLength(2);
+  expect(second.path).toBe(first.path);
+  expect(partsOf(shownLink()!).code).toBe(codeIn(first));
+  expect((await unsent()).map(({ content }) => content.id)).toEqual([
+    codeIn(first),
+  ]);
+});
+
+test('[SHARING-111.1] gives up a revocation that has had no answer for 60 seconds, says to connect and keeps the invite', async () => {
+  await startAt(ALONE);
+  const link = await invited('Brisbane');
+  const answer = keepAnswersBack(isRevoke);
+  await pressInInvite('Revoke Link');
+  await pressAlertButton('Revoke');
+  await until(
+    () => requestsReceived().filter(isRevoke).length === 1,
+    'the revocation',
+  );
+
+  await secondsPass(50);
+
+  expect(alertsShown()).toHaveLength(1);
+
+  await secondsPass(15);
+  await until(() => alertsShown().length === 2, 'the alert');
+
+  expect(alertsShown().at(-1)).toEqual([
+    'Unable to Revoke Link',
+    'Connect to the internet and try again.',
+  ]);
+  expect(shownLink()).toBe(link);
+  expect(await unsent()).toHaveLength(1);
+  await answer();
+});
+
+test('[SHARING-111.1] gives up a new card that has had no answer for 60 seconds, without a word, and sends the next one', async () => {
+  await startAt(ALONE);
+  const link = await invitedAndLeft('Brisbane');
+  const answer = keepAnswersBack(isPutInvite);
+  await renameGroupTo('Brisbane', 'Brissie');
+  await waitForCards(2);
+
+  await secondsPass(65);
+  await answer();
+  await renameGroupTo('Brissie', 'Bris');
+  await waitForCards(3);
+
+  const [first, , third] = inviteRequests();
+  expect(third.path).toBe(first.path);
+  expect(lastCard(link).name).toBe('Bris');
+  expect(alertsShown()).toEqual([]);
 });
 
 // Other answers
