@@ -1135,7 +1135,7 @@ IF 呼叫的一方要送的請求，方法是 `GET` 或 `HEAD`，卻帶了不是
 
 ### Requirement: SHARING-46.1 匯入匯出檔時，裝置身分的紀錄換成檔案裡的
 
-WHEN 使用者匯入匯出檔（BACKUP-13.1），the mobile app SHALL 把這支手機的裝置 ID、註冊好了的記號和時間差，和其他本機資料一樣換成匯出檔裡的，匯出檔裡沒有就都沒有；secure store 裡的項目不動，過程中不發出任何網路請求。匯出檔帶著匯出那支手機的這三項（BACKUP-3.1），不帶 seed 和簽名私鑰。所以匯入之後：匯出檔的裝置 ID 在這支手機的 secure store 裡有 seed，這支手機就有裝置身分；沒有，就是授權失效（SHARING-29.1）；匯出檔沒有裝置 ID，就是沒有裝置身分，下一次送請求時產生新的（SHARING-20.1）。這支手機原本的 seed 留在 secure store 裡，不再使用（SHARING-24.1）。
+WHEN 使用者匯入匯出檔（BACKUP-13.2），the mobile app SHALL 把這支手機的裝置 ID、註冊好了的記號和時間差，和其他本機資料一樣換成匯出檔裡的，匯出檔裡沒有就都沒有；secure store 裡的項目不動，過程中不發出任何網路請求。匯出檔帶著匯出那支手機的這三項（BACKUP-3.1），不帶 seed 和簽名私鑰。所以匯入之後：匯出檔的裝置 ID 在這支手機的 secure store 裡有 seed，這支手機就有裝置身分；沒有，就是授權失效（SHARING-29.1）；匯出檔沒有裝置 ID，就是沒有裝置身分，下一次送請求時產生新的（SHARING-20.1）。這支手機原本的 seed 留在 secure store 裡，不再使用（SHARING-24.1）。
 
 #### Scenario: 匯出檔的內容
 
