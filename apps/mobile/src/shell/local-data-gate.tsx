@@ -45,6 +45,18 @@ interface LocalData {
   listOrders: Map<string, ListOrder>;
 }
 
+/**
+ * Runs a step that follows a committed `replaceData`. The data is already replaced, so a
+ * step that throws must not make `replaceData` reject: the caller would say nothing changed.
+ */
+function afterCommit(step: () => void) {
+  try {
+    step();
+  } catch {
+    // Everything inside still starts again on the new data.
+  }
+}
+
 /** What the app keeps in memory of the local data, read in the transaction that opens or replaces it. */
 async function readLocalData(transaction: SqlExecutor) {
   return {
@@ -58,7 +70,8 @@ async function readLocalData(transaction: SqlExecutor) {
 interface LocalDataContextValue extends LocalData {
   /**
    * Runs `replace` in one transaction, then starts everything inside the gate again on
-   * the data it wrote, as the app is after loading (BACKUP-14.1). A failure changes nothing.
+   * the data it wrote, as the app is after loading (BACKUP-14.1). It rejects only when the
+   * transaction fails, which changes nothing.
    */
   replaceData: (
     replace: (transaction: SqlExecutor) => Promise<void>,
@@ -75,7 +88,10 @@ export interface LocalDataGateProps {
   /** The caller closes the returned connections when the app closes. */
   openDatabase: () => Promise<Database>;
   development: boolean;
-  /** Called once `replaceData` has replaced the local data, just before everything inside starts again. */
+  /**
+   * Called once `replaceData` has replaced the local data, just before everything inside
+   * starts again. Everything inside starts again on the new data even if it throws.
+   */
   onReplaced?: () => void;
   /** Writes test data before the first screen shows (ADR-0018), and returns your identity after it. */
   seed?: (
@@ -152,8 +168,8 @@ export function LocalDataGate({
         await replace(transaction);
         return readLocalData(transaction);
       });
-      applyAppearanceOption(data.appearance);
-      onReplaced?.();
+      afterCommit(() => applyAppearanceOption(data.appearance));
+      afterCommit(() => onReplaced?.());
       setStartup((current) =>
         current.status === 'ready' && current.data.database === database
           ? {
