@@ -37,6 +37,7 @@ import {
   startExpensesAt,
 } from './ledger-expense-list-app';
 import { chooseSort, hasSearch, sortName } from './ledger-list-find-app';
+import { choose, setAmounts } from './ledger-list-filter-app';
 import { chooseRangeDate, rangeDates } from './ledger-list-period-app';
 import {
   actionLabels,
@@ -87,6 +88,7 @@ import {
   categoryLines,
   categoryRow,
   categoryScreen,
+  categorySummaryRead,
   expectCategory,
   expectCategorySummary,
   goBackFromCategory,
@@ -393,6 +395,9 @@ test("[INSIGHTS-48.1] shows the month, the category's amount and its count above
   await expectCategorySummary(['January 2025', '$8.50', '2 expenses'], FOOD);
   const lines = categoryLines(FOOD);
   expect(lines.indexOf('2 expenses')).toBeLessThan(lines.indexOf('Snack'));
+  expect(categorySummaryRead(FOOD)).toEqual([
+    'Spent in January 2025 $8.50. 2 expenses.',
+  ]);
 });
 
 test("[INSIGHTS-48.1] shows the year above a category's expenses opened on Year", async () => {
@@ -421,6 +426,9 @@ test('[INSIGHTS-48.1] shows the first and last day of a custom range, and 1 expe
     ['Jan 1, 2025 – Jan 31, 2025', '$6.00', '1 expense'],
     FOOD,
   );
+  expect(categorySummaryRead(FOOD)).toEqual([
+    'Spent in Jan 1, 2025 – Jan 31, 2025 $6.00. 1 expense.',
+  ]);
 });
 
 test('[INSIGHTS-48.1] shows the earlier date first when From is the later one', async () => {
@@ -480,8 +488,16 @@ test("[INSIGHTS-48.1] shows no amount and no count before the category's expense
   const before = categoryLines(FOOD);
   expect(before.filter((line) => / expenses?$/.test(line))).toEqual([]);
   expect(before.filter((line) => line.includes('$'))).toEqual([]);
+  expect(
+    within(categoryScreen(FOOD))
+      .queryAllByLabelText(/\$|expense/)
+      .map(nameOf),
+  ).toEqual([]);
   await reads.release();
   await expectCategorySummary(['January 2025', '$8.50', '2 expenses'], FOOD);
+  expect(categorySummaryRead(FOOD)).toEqual([
+    'Spent in January 2025 $8.50. 2 expenses.',
+  ]);
 });
 
 // The cards
@@ -556,7 +572,7 @@ test("[INSIGHTS-49.1] leaves out a group expense you have no share of, which the
     title: 'Snacks',
     category: FOOD,
   });
-  // The expense list has the one you only paid, at $0.00 (LEDGER-64.4, LEDGER-65.4).
+  // The expense list has the one you only paid, at $0.00 (LEDGER-64.5, LEDGER-65.4).
   await tapTab('Expenses');
   await waitFor(() => expect(cardTitles()).toContain('Snacks'));
 
@@ -612,6 +628,31 @@ test("[INSIGHTS-49.1] keeps the cards newest first when the expense list and the
     'Groups',
   );
   expect(categoryCardTitles(FOOD, 'Groups')).toEqual(['Lunch', 'Dinner']);
+});
+
+test("[INSIGHTS-49.1] lists every expense of the category when the expense list and the group's screen have filters", async () => {
+  await startWithCoffeeAndDinner();
+  await choose('Expenses', 'Ledger', 'Personal');
+  expect(cardTitles()).toEqual(['Coffee run']);
+  await showGroup('Brisbane');
+  await setAmounts('Brisbane', '100');
+  expect(groupCardTitles('Brisbane')).toEqual([]);
+
+  await openInsights();
+  await openCategory(FOOD);
+
+  await expectCategorySummary(['October 2026', '$28.75', '2 expenses'], FOOD);
+  expect(categoryCardTitles(FOOD)).toEqual(['Dinner', 'Coffee run']);
+
+  await openGroupInsights(await groupId('Brisbane'));
+  await openCategory(FOOD, 'Groups');
+
+  await expectCategorySummary(
+    ['October 2026', '$60.00', '1 expense'],
+    FOOD,
+    'Groups',
+  );
+  expect(categoryCardTitles(FOOD, 'Groups')).toEqual(['Dinner']);
 });
 
 test('[INSIGHTS-49.1] leaves out the other categories and the other periods', async () => {
@@ -859,7 +900,7 @@ test("[INSIGHTS-50.1] pushes one details when a card is pressed twice, and goes 
 test('[INSIGHTS-51.1] offers no Delete expense action on the cards of a personal category, no + button, no sort button, no search and no action in its bar', async () => {
   await startWithCoffeeAndDinner();
   // On the expense list the same two cards can be deleted (LEDGER-71.3), and the list has a
-  // sort button and a search (LEDGER-122.1, LEDGER-128.1).
+  // sort button and a search (LEDGER-122.2, LEDGER-128.1).
   await tapTab('Expenses');
   await waitFor(() => expect(cardTitles()).toEqual(['Dinner', 'Coffee run']));
   for (const title of ['Dinner', 'Coffee run'])

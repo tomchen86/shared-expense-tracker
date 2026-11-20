@@ -34,6 +34,7 @@ import {
   categoryCards,
   categoryDates,
   categoryScreen,
+  categorySummaryRead,
   expectCategorySummary,
   openCategory,
 } from './insights-category-app';
@@ -145,6 +146,9 @@ test("[INSIGHTS-47.1] [INSIGHTS-48.1] [INSIGHTS-49.1] opens the category's expen
     FOOD,
   ]);
   await expectCategorySummary(['January 2025', '$8.50', '2 expenses'], FOOD);
+  expect(categorySummaryRead(FOOD)).toEqual([
+    'Spent in January 2025 $8.50. 2 expenses.',
+  ]);
   expect(categoryCardTitles(FOOD)).toEqual(['Snack', 'Lunch']);
   expect(categoryDates(FOOD)).toEqual(['Jan 12, 2025', 'Jan 10, 2025']);
 });

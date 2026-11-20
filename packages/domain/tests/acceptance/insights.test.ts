@@ -1,4 +1,5 @@
 import {
+  buildCategoryExpenses,
   buildInsights,
   buildRangeInsights,
   type InsightCategory,
@@ -1006,4 +1007,167 @@ test('[INSIGHTS-44.1] refuses a range whose total passes the limit while neither
 
   expect(buildOrUndefined(expenses)).toBeDefined();
   expect(range(expenses, '2024-12-31', '2025-01-01')).toBeUndefined();
+});
+
+// The expenses of each category (INSIGHTS-55.1)
+
+type Period = { period: string } | { from: string; to: string };
+
+const categoryExpenses = (
+  expenses: InsightExpense[],
+  period: Period = { period: '2025-01' },
+  { context = GROUP, categories = CATEGORIES }: Options = {},
+) => buildCategoryExpenses({ expenses, categories, context, ...period });
+
+/** Each currency with the expenses of each of its categories, top to bottom. */
+const listed = (...args: Parameters<typeof categoryExpenses>) =>
+  categoryExpenses(...args)?.map(({ currency, categories }) => [
+    currency,
+    categories.map((category) => category.expenses),
+  ]);
+
+/** The keys of the categories of the first currency, top to bottom. */
+const keys = (...args: Parameters<typeof categoryExpenses>) =>
+  categoryExpenses(...args)?.[0]?.categories.map(({ key }) => key) ?? [];
+
+const food = (fields: Partial<InsightExpense> = {}) =>
+  expense({ categoryId: 'food', categoryName: 'Food', ...fields });
+
+test('[INSIGHTS-55.1] lists the expenses of each category by currency code, then in the order of the categories, each in the order given', () => {
+  const lunch = food({ amountMinor: 600 });
+  const train = expense({
+    categoryId: 'travel',
+    categoryName: 'Travel',
+    amountMinor: 300,
+  });
+  const sushi = food({ currency: 'JPY', amountMinor: 2000 });
+  const snack = food({ amountMinor: 200, date: '2025-01-20' });
+
+  const result = categoryExpenses([lunch, train, sushi, snack]);
+
+  expect(listed([lunch, train, sushi, snack])).toEqual([
+    ['JPY', [[sushi]]],
+    ['USD', [[lunch, snack], [train]]],
+  ]);
+  expect(result?.[1]?.categories[0]?.expenses[0]).toBe(lunch);
+});
+
+test('[INSIGHTS-55.1] lists the expenses of a month, a year and a range, both days of the range included', () => {
+  const first = food({ date: '2025-01-10', amountMinor: 100 });
+  const second = food({ date: '2025-01-31', amountMinor: 200 });
+  const third = food({ date: '2025-03-10', amountMinor: 400 });
+  const all = [first, second, third];
+
+  expect(listed(all, { period: '2025-01' })).toEqual([
+    ['USD', [[first, second]]],
+  ]);
+  expect(listed(all, { period: '2025' })).toEqual([
+    ['USD', [[first, second, third]]],
+  ]);
+  expect(listed(all, { from: '2025-01-31', to: '2025-03-10' })).toEqual([
+    ['USD', [[second, third]]],
+  ]);
+  expect(listed(all, { period: '2025-02' })).toEqual([]);
+});
+
+test('[INSIGHTS-55.1] lists the expenses each category merges, in the order Insights shows the categories, with a key of its own for each', () => {
+  const categories: InsightCategory[] = [
+    { id: 'food', name: 'Food', color: '#FF5722' },
+    { id: 'food-in-trip', name: 'food', color: '#00AA00' },
+    { id: 'meals', name: 'Meals', color: '#222222' },
+  ];
+  const byId = food({ amountMinor: 100 });
+  const otherSpace = expense({
+    categoryId: 'food-in-trip',
+    categoryName: 'food',
+    amountMinor: 200,
+  });
+  const byName = expense({ categoryName: 'FOOD', amountMinor: 300 });
+  const renamed = expense({
+    categoryId: 'meals',
+    categoryName: 'Food',
+    amountMinor: 500,
+  });
+  const gone = expense({
+    categoryId: 'gone',
+    categoryName: 'Food',
+    categorySnapshot: { name: 'Food', color: '#333333' },
+    amountMinor: 50,
+  });
+  const expenses = [byId, otherSpace, byName, renamed, gone];
+
+  expect(listed(expenses, undefined, { categories })).toEqual([
+    ['USD', [[byId, otherSpace, byName], [renamed], [gone]]],
+  ]);
+  expect(
+    rows(build(expenses, { categories }).months[0]).map(([name]) => name),
+  ).toEqual(['Food', 'Meals', 'Food']);
+  expect(new Set(keys(expenses, undefined, { categories })).size).toBe(3);
+});
+
+test('[INSIGHTS-55.1] lists your personal expenses and the group expenses you share, not those you only paid', () => {
+  const mine = food({ spaceId: 'my-space', amountMinor: 1200 });
+  const shared = food({
+    shares: [share('me-in-trip', 400), share('bob', 600)],
+  });
+  const paidOnly = food({ shares: [share('bob', 1000)] });
+
+  expect(
+    listed([mine, shared, paidOnly], undefined, { context: PERSONAL }),
+  ).toEqual([['USD', [[mine, shared]]]]);
+});
+
+test("[INSIGHTS-55.1] lists only the group's own expenses on a group's Insights, and none Insights leaves out", () => {
+  const ours = food({ amountMinor: 300 });
+  const theirs = food({ spaceId: 'other-group', amountMinor: 900 });
+  const personal = food({ spaceId: 'my-space', amountMinor: 100 });
+  const badDate = food({ date: '2025-01-32' });
+  const zero = food({ amountMinor: 0 });
+
+  expect(listed([ours, theirs, personal, badDate, zero])).toEqual([
+    ['USD', [[ours]]],
+  ]);
+});
+
+test('[INSIGHTS-55.1] keeps the key of each category when its expenses change and the order of the categories turns', () => {
+  const categories: InsightCategory[] = [
+    { id: 'tea', name: 'Tea', color: '#00AA00' },
+  ];
+  const tea = expense({
+    categoryId: 'tea',
+    categoryName: 'Tea',
+    amountMinor: 500,
+  });
+  const gone = expense({
+    categoryId: 'gone',
+    categoryName: 'Tea',
+    categorySnapshot: { name: 'Tea', color: '#AA0000' },
+    amountMinor: 300,
+  });
+  const changed = { ...gone, amountMinor: 900 };
+
+  expect(listed([tea, gone], undefined, { categories })).toEqual([
+    ['USD', [[tea], [gone]]],
+  ]);
+  expect(listed([tea, changed], undefined, { categories })).toEqual([
+    ['USD', [[changed], [tea]]],
+  ]);
+  const [teaKey, goneKey] = keys([tea, gone], undefined, { categories });
+  expect(teaKey).not.toBe(goneKey);
+  expect(keys([tea, changed], undefined, { categories })).toEqual([
+    goneKey,
+    teaKey,
+  ]);
+});
+
+test('[INSIGHTS-55.1] refuses a month and a range whose total passes the limit', () => {
+  const over = [
+    food({ amountMinor: Number.MAX_SAFE_INTEGER }),
+    food({ amountMinor: 1, date: '2025-01-11' }),
+  ];
+
+  expect(categoryExpenses(over)).toBeUndefined();
+  expect(
+    categoryExpenses(over, { from: '2025-01-01', to: '2025-01-31' }),
+  ).toBeUndefined();
 });

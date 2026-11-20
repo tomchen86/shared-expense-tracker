@@ -92,6 +92,12 @@ export const expectCategorySummary = (
   on = 'Expenses',
 ) => waitFor(() => expect(categorySummary(name, on)).toEqual(expected));
 
+/** What a screen reader reads for the three lines at the top, once they show an amount: the items read from "Spent in". */
+export const categorySummaryRead = (name: string, on = 'Expenses') =>
+  within(categoryScreen(name, on))
+    .queryAllByLabelText(/^Spent in /)
+    .map((view) => asRead(nameOf(view)));
+
 /** The headings a screen reader finds on the category's expenses, top to bottom: the dates over its cards. */
 export const categoryDates = (name: string, on = 'Expenses') =>
   within(categoryScreen(name, on))

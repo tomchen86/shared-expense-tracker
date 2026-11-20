@@ -409,3 +409,41 @@ export function buildRangeInsights(
   // One period, so with no period before it to compare with.
   return buildPeriods(range, input.chartPreference)[0]?.currencies ?? [];
 }
+
+export interface InsightCategoryExpenses<E extends InsightExpense> {
+  /** The same for the same category however the expenses change (INSIGHTS-55.1). */
+  key: string;
+  /** The given expenses counted into the category, in the order given. */
+  expenses: E[];
+}
+
+export interface InsightCurrencyExpenses<E extends InsightExpense> {
+  currency: string;
+  /** In the order of the currency's categories (INSIGHTS-8.1). */
+  categories: InsightCategoryExpenses<E>[];
+}
+
+/**
+ * The expenses each category of a month, a year or a range counts, by currency, or undefined
+ * when a total is rejected (INSIGHTS-55.1).
+ */
+export function buildCategoryExpenses<E extends InsightExpense>(
+  input: Omit<InsightsInput, 'expenses' | 'chartPreference'> & {
+    expenses: readonly E[];
+  } & (
+      | {
+          /** YYYY-MM for a month, YYYY for a year, as InsightPeriod's key. */
+          period: string;
+        }
+      | {
+          /** YYYY-MM-DD */
+          from: string;
+          /** YYYY-MM-DD */
+          to: string;
+        }
+    ),
+): InsightCurrencyExpenses<E>[] | undefined {
+  // Stub until issue 199 is implemented.
+  void input;
+  return [];
+}
