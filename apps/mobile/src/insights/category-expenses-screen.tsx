@@ -74,7 +74,8 @@ export function CategoryExpensesScreen({
       edges={['left', 'right']}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <Stack.Screen options={{ title }} />
+      {/* Clear the Insights route's gesture override to use the iOS default. */}
+      <Stack.Screen options={{ title, fullScreenGestureEnabled: undefined }} />
       {input === null ? (
         <Text style={[styles.message, { color: colors.textMuted }]}>
           Group not found.
