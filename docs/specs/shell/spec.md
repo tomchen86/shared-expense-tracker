@@ -1171,9 +1171,9 @@ The mobile app SHALL 在 Settings 根畫面的 APP 區塊後面顯示 DATA 區�
 - **WHEN** 點「Export Data」，或點「Import Data」
 - **THEN** Settings 分頁的堆疊仍只有「Settings」根畫面，目前的網址仍是 `/settings`
 
-### Requirement: SHELL-72.1 標題列的篩選動作
+### Requirement: SHELL-72.2 標題列的篩選動作
 
-The mobile app SHALL 把畫面給的篩選動作放在標題列右邊：iOS 上是 plain 樣式、圖示是 SF Symbol `line.3.horizontal.decrease` 的按鈕，Android 上是至少 48×48 dp 的 Material Symbols `filter_list` 圖示按鈕，無障礙名稱都是畫面給的名稱；畫面同時給了選單時，選單在篩選動作的右邊。
+The mobile app SHALL 把畫面給的篩選動作放在標題列右邊：iOS 上是 plain 樣式、圖示是 SF Symbol `line.3.horizontal.decrease` 的按鈕，Android 上是至少 48×48 dp 的 Material Symbols `filter_list` 圖示按鈕，無障礙名稱都是畫面給的名稱；畫面說篩選動作是開著的時，圖示是強調色，其他時候是標題列圖示平常的顏色；畫面同時給了選單時，選單在篩選動作的右邊。
 
 #### Scenario: iOS
 
@@ -1189,6 +1189,11 @@ The mobile app SHALL 把畫面給的篩選動作放在標題列右邊：iOS 上�
 
 - **WHEN** 打開 Brisbane 的畫面
 - **THEN** 標題列右邊由左而右是「Filters」和名稱「Group actions」的選單
+
+#### Scenario: 開著
+
+- **WHEN** 在支出清單的 Filters 打開「Paid by Me」（LEDGER-132.1），再關掉
+- **THEN** 打開時 Expenses 分頁標題列的篩選動作名稱是「Filters, on」，圖示是強調色；關掉之後名稱是「Filters」，圖示不是強調色
 
 
 ### Requirement: SHELL-73.1 標題列的搜尋

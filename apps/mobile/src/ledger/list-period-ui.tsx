@@ -24,7 +24,7 @@ import {
   type ListRenderItemInfo,
 } from 'react-native';
 import { useHeaderHeight } from 'expo-router/react-navigation';
-import { GestureDetector } from 'react-native-gesture-handler';
+import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -79,19 +79,35 @@ import {
   type Period,
 } from './list-period';
 import { formatItemCount, matchingExpenses } from './list-search';
-import type { ExpenseView } from './use-expenses';
+import type { ExpenseView, GroupWithFormerMembers } from './use-expenses';
+import { NO_FILTER } from './list-filter';
+import { FilterCapsules, FilterRows, SavedFilterRows } from './list-filter-ui';
+import {
+  useListFilter,
+  type ChangeFilter,
+  type ListFilterState,
+} from './use-list-filter';
 
 /**
  * The period of one list (LEDGER-107.2) and what it leaves of `expenses`, which are all that the
- * list can show, latest first, or undefined until they are read. `inGroup` is a group's screen,
+ * list can show, latest first, or undefined until they are read. A group ID names a group's screen,
  * which opens on all dates and calls them Group Total; the expense list opens on this month.
  * `placed` are the IDs useReadExpenses brought with these expenses.
  */
 export function useListPeriod(
-  inGroup: boolean,
+  groupId: string | undefined,
   expenses: ExpenseView[] | undefined,
-  placed: readonly string[],
+  {
+    placed,
+    groups,
+  }: { placed: readonly string[]; groups: GroupWithFormerMembers[] },
 ) {
+  const inGroup = groupId !== undefined;
+  const filter = useListFilter(groupId, expenses, groups);
+  const { filtered } = filter;
+  const [sheetChanges, setSheetChanges] = useState(0);
+  const changeInSheet: ChangeFilter = (update) =>
+    filter.change(update, () => setSheetChanges((count) => count + 1));
   const locale = useDisplayLocale();
   const day = today();
   const [list, setList] = useState(() =>
@@ -138,9 +154,9 @@ export function useListPeriod(
   const shown = useMemo(
     () =>
       from === undefined || to === undefined
-        ? expenses
-        : expenses?.filter(({ date }) => date >= from && date <= to),
-    [expenses, from, to],
+        ? filtered
+        : filtered?.filter(({ date }) => date >= from && date <= to),
+    [filtered, from, to],
   );
   const choose = (id: string) => {
     const on = today();
@@ -159,26 +175,28 @@ export function useListPeriod(
   };
   const allName = inGroup ? 'Group Total' : 'All Time';
   const name = periodName(period, day, allName);
-  /** The period holds none of the list's expenses, and the list has some (LEDGER-116.2). */
-  const empty =
-    dates !== undefined && shown?.length === 0 && expenses!.length > 0;
-  const earlier = empty
-    ? earlierPeriod(
-        period,
-        dates.from,
-        expenses!.map(({ date }) => date),
-      )
-    : undefined;
+  // The list has expenses, but none pass both its dates and its conditions (LEDGER-116.3, LEDGER-138.1).
+  const empty = shown?.length === 0 && expenses!.length > 0;
+  const earlier =
+    empty && dates
+      ? earlierPeriod(
+          period,
+          dates.from,
+          filtered!.map(({ date }) => date),
+        )
+      : undefined;
   const range =
     period.kind === 'custom' ? (list.range ?? firstRange(day)) : undefined;
   const setRange = (next: Dates) =>
     setList((current) => ({ ...current, range: next }));
 
+  const openFilters = () => setFiltersOpen(true);
   return {
     /** The expenses dated in the period, in the order they came; undefined until they are read. */
     shown,
-    /** Changes when the period does, or the dates of the custom range it is. */
-    key: JSON.stringify([period, range]),
+    filter,
+    /** Changes that return a scrolled-away period row to view (LEDGER-147.3). */
+    key: JSON.stringify([period, range, sheetChanges]),
     /** The name on the period row. */
     name,
     /** Today, the latest day a custom range can reach. */
@@ -211,10 +229,17 @@ export function useListPeriod(
       : undefined,
     /** The search params that open Insights on the period. */
     insights: insightsParams(list, day),
-    openFilters: () => setFiltersOpen(true),
+    openFilters,
+    filterAction: {
+      label: filter.active ? 'Filters, on' : 'Filters',
+      active: filter.active,
+      onPress: openFilters,
+    },
     /** Filters, to render over the list's screen. */
     filters: (
       <Filters
+        filter={filter}
+        change={changeInSheet}
         visible={filtersOpen}
         onClose={() => setFiltersOpen(false)}
         value={
@@ -233,8 +258,10 @@ export function useListPeriod(
 
 export type ListPeriodState = ReturnType<typeof useListPeriod>;
 
-/** Filters (LEDGER-109.1): the Date row, and under it the two dates of a custom range. */
+/** Date and its optional custom range come before the filter conditions (LEDGER-109.2). */
 function Filters({
+  filter,
+  change,
   visible,
   onClose,
   value,
@@ -244,6 +271,8 @@ function Filters({
   day,
   onRange,
 }: {
+  filter: ListFilterState;
+  change: ChangeFilter;
   visible: boolean;
   onClose: () => void;
   /** What the Date row shows. */
@@ -261,6 +290,13 @@ function Filters({
       confirm={{ label: 'Done', onPress: onClose }}
       onClose={onClose}
     >
+      <SavedFilterRows
+        state={filter}
+        onApply={(item) => {
+          change(item);
+          onClose();
+        }}
+      />
       <GroupedSection>
         <MenuField
           title="Date"
@@ -287,6 +323,7 @@ function Filters({
           </>
         )}
       </GroupedSection>
+      {visible && <FilterRows state={filter} change={change} />}
     </Sheet>
   );
 }
@@ -390,12 +427,17 @@ function PeriodListBody({
   const locale = useDisplayLocale();
   const [searchText, setSearchText] = useState('');
   const query = searchText.trim();
+  const { filter } = periods;
+  const { filtered } = filter;
+  const clear = () => filter.change(() => NO_FILTER);
+  const [amountPopoverOpen, setAmountPopoverOpen] = useState(false);
+  const showCapsules = filter.active || amountPopoverOpen;
   const matches = useMemo(
     () =>
-      query && searchExpenses
-        ? matchingExpenses(searchExpenses, query)
+      query && searchExpenses && filtered
+        ? matchingExpenses(filtered, query)
         : undefined,
-    [searchExpenses, query],
+    [searchExpenses, filtered, query],
   );
   const searching = matches !== undefined;
   const activeText = searching ? searchText : '';
@@ -422,8 +464,8 @@ function PeriodListBody({
     previous.current = { period: periods.key, text: activeText };
     const at = position.current;
     if (at === undefined) return;
-    // Editing or ending a search always returns to the top (LEDGER-148.1). A period change
-    // alone does so only outside search, with its row entirely out of sight (LEDGER-147.2).
+    // Editing or ending a search returns to the top (LEDGER-148.1). Changing dates or a condition
+    // in Filters does so only with the period row entirely out of sight (LEDGER-147.3).
     if (last.text === activeText) {
       if (
         activeText ||
@@ -461,7 +503,7 @@ function PeriodListBody({
     () => orderedCards(cards, order, groupId !== undefined),
     [cards, order, groupId],
   );
-  // One sideways swipe for the top of the list and all that slides with it (LEDGER-114.1): to the
+  // One sideways swipe for the top of the list and all that slides with it (LEDGER-114.2): to the
   // right for the period before, to the left for the one after. A period with neither keeps no
   // drag, so that iOS's back gesture gets one to the right on a pushed screen.
   const swipe = usePeriodSwipe({
@@ -490,6 +532,7 @@ function PeriodListBody({
     shift.value = hasRange ? -rangeHeight.current : rangeHeight.current;
     shift.value = withTiming(0, { duration: RANGE_SHIFT });
   }, [hasRange, shift]);
+  const noticeSwipe = usePanGesture(swipe.panConfig);
   const { offset } = swipe;
   const pageStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: offset.value }, { translateY: shift.value }],
@@ -620,7 +663,7 @@ function PeriodListBody({
                   {summary}
                 </Animated.View>
               )}
-              {periods.empty && (
+              {periods.empty && !showCapsules && (
                 <Animated.View style={pageStyle}>
                   <EmptyPeriod {...periods.empty} />
                 </Animated.View>
@@ -628,6 +671,25 @@ function PeriodListBody({
             </View>
           </GestureDetector>
         </View>
+      )}
+      {showCapsules && (
+        <FilterCapsules
+          state={filter}
+          openFilters={periods.openFilters}
+          onAmountPresented={setAmountPopoverOpen}
+        />
+      )}
+      {!searching && showCapsules && periods.empty && (
+        <GestureDetector gesture={noticeSwipe}>
+          <View collapsable={false} {...(steps ? {} : dragIsNoPress)}>
+            <Animated.View style={pageStyle}>
+              <EmptyPeriod
+                {...periods.empty}
+                clear={filter.active ? clear : undefined}
+              />
+            </Animated.View>
+          </View>
+        </GestureDetector>
       )}
       {message}
       {matches?.length === 0 && (searchExpenses?.length ?? 0) > 0 && (
@@ -644,8 +706,13 @@ function PeriodListBody({
             {`No Results for “${query}”`}
           </Text>
           <Text style={[styles.emptyHint, { color: colors.textMuted }]}>
-            Check the spelling or try a new search.
+            {filter.active
+              ? 'Filters are on too. Check the spelling, or clear the filters to search every expense.'
+              : 'Check the spelling or try a new search.'}
           </Text>
+          {filter.active && (
+            <NoticeButton label="Clear Filters" onPress={clear} />
+          )}
         </View>
       )}
       {/*
@@ -657,7 +724,7 @@ function PeriodListBody({
       <Animated.View style={searching ? undefined : pageStyle}>
         {shown.length > 0 && (
           <View style={styles.listLine}>
-            {searching && (
+            {(searching || filter.active) && (
               <Text style={[styles.matchCount, { color: colors.text }]}>
                 {formatItemCount(shown.length, locale)}
               </Text>
@@ -734,11 +801,13 @@ function PeriodListBody({
   );
 }
 
-/** In place of the cards when the period holds no expense (LEDGER-116.2). */
+/** The empty period or filter notice, with the nearest earlier period that has a matching card. */
 function EmptyPeriod({
   name,
   earlier,
+  clear,
 }: {
+  clear?: () => void;
   /** What the period is called. */
   name: string;
   /** An earlier period that holds expenses, and the way to it. */
@@ -748,7 +817,11 @@ function EmptyPeriod({
   return (
     <View style={styles.empty}>
       <SymbolView
-        name={{ ios: 'calendar', android: 'calendar_today' }}
+        name={
+          clear
+            ? { ios: 'line.3.horizontal.decrease', android: 'filter_list' }
+            : { ios: 'calendar', android: 'calendar_today' }
+        }
         size={44}
         tintColor={colors.textMuted}
       />
@@ -756,21 +829,41 @@ function EmptyPeriod({
         accessibilityRole="header"
         style={[styles.emptyTitle, { color: colors.text }]}
       >
-        {`No Expenses in ${name}`}
+        {clear ? 'No Matching Expenses' : `No Expenses in ${name}`}
       </Text>
-      {earlier && (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Show ${earlier.name}`}
-          onPress={earlier.show}
-          style={({ pressed }) => [styles.show, pressed && styles.pressed]}
-        >
-          <Text style={{ color: colors.accent, fontSize: 17 }}>
-            {`Show ${earlier.name}`}
+      {clear && (
+        <>
+          <Text style={[styles.emptyHint, { color: colors.textMuted }]}>
+            Your expenses are still here. No expense matches the filters that
+            are on.
           </Text>
-        </Pressable>
+          <NoticeButton label="Clear Filters" onPress={clear} />
+        </>
+      )}
+      {earlier && (
+        <NoticeButton label={`Show ${earlier.name}`} onPress={earlier.show} />
       )}
     </View>
+  );
+}
+
+function NoticeButton({
+  label,
+  onPress,
+}: {
+  label: string;
+  onPress: () => void;
+}) {
+  const colors = useThemeColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [styles.show, pressed && styles.pressed]}
+    >
+      <Text style={{ color: colors.accent, fontSize: 17 }}>{label}</Text>
+    </Pressable>
   );
 }
 

@@ -298,7 +298,7 @@ test('[LEDGER-107.2] opens on this month again after a restart', async () => {
 
 // The cards of the period
 
-test('[LEDGER-31.4] lists only the personal expenses dated in the period', async () => {
+test('[LEDGER-31.5] lists only the personal expenses dated in the period', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-01');
   await spend('Lunch', '2026-09-30');
@@ -315,7 +315,7 @@ test('[LEDGER-31.4] lists only the personal expenses dated in the period', async
   expect(cardTitles()).toEqual(['Coffee run', 'Lunch', 'Dinner']);
 });
 
-test('[LEDGER-31.4] takes the card of an expense whose date is changed to outside the period off the list, and leaves the period', async () => {
+test('[LEDGER-31.5] takes the card of an expense whose date is changed to outside the period off the list, and leaves the period', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-01');
   await spend('Lunch', '2026-10-02');
@@ -331,7 +331,7 @@ test('[LEDGER-31.4] takes the card of an expense whose date is changed to outsid
   expect(cardTitles()).toEqual(['Coffee run']);
 });
 
-test('[LEDGER-64.4] leaves a group expense dated outside the period off the expense list', async () => {
+test('[LEDGER-64.5] leaves a group expense dated outside the period off the expense list', async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-09-30');
 
@@ -509,7 +509,7 @@ test("[LEDGER-108.2] names all dates Group Total on a group's screen, without ar
 
 // Filters and its Date row
 
-test('[LEDGER-109.1] opens Filters over the expense list from the title bar, titled Filters with only Done, on Date, This Month', async () => {
+test('[LEDGER-109.2] opens Filters over the expense list from the title bar, titled Filters with only Done, on Date, This Month', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-30');
 
@@ -524,7 +524,7 @@ test('[LEDGER-109.1] opens Filters over the expense list from the title bar, tit
   expect(cardTitles()).toEqual(['Coffee run']);
 });
 
-test('[LEDGER-109.1] lists the six periods in the Date list and marks only the current one', async () => {
+test('[LEDGER-109.2] lists the six periods in the Date list and marks only the current one', async () => {
   await startExpenses();
   await openFilters('Expenses');
 
@@ -533,7 +533,7 @@ test('[LEDGER-109.1] lists the six periods in the Date list and marks only the c
   );
 });
 
-test('[LEDGER-109.1] changes the period at once when one is chosen, keeps Filters open, and closes on Done', async () => {
+test('[LEDGER-109.2] changes the period at once when one is chosen, keeps Filters open, and closes on Done', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-01');
   await spend('Lunch', '2026-09-30');
@@ -556,7 +556,7 @@ test('[LEDGER-109.1] changes the period at once when one is chosen, keeps Filter
   expect(cardTitles()).toEqual(['Lunch']);
 });
 
-test('[LEDGER-109.1] shows the name of a month the arrows reached on the Date row, with no period marked', async () => {
+test('[LEDGER-109.2] shows the name of a month the arrows reached on the Date row, with no period marked', async () => {
   await startExpenses();
   await pressPreviousPeriod(expensesRoot());
   await expectPeriod(expensesRoot, 'September 2026');
@@ -571,7 +571,7 @@ test('[LEDGER-109.1] shows the name of a month the arrows reached on the Date ro
   );
 });
 
-test('[LEDGER-109.1] shows From and To under Date for a custom range, the same dates as under the period row', async () => {
+test('[LEDGER-109.2] shows From and To under Date for a custom range, the same dates as under the period row', async () => {
   await startExpenses();
   await openFilters('Expenses');
   expect(rangeDates(filtersRoot())).toBeUndefined();
@@ -598,7 +598,7 @@ test('[LEDGER-109.1] shows From and To under Date for a custom range, the same d
   });
 });
 
-test('[LEDGER-109.1] closes Filters when it is swiped down, with the period chosen in it', async () => {
+test('[LEDGER-109.2] closes Filters when it is swiped down, with the period chosen in it', async () => {
   await startExpenses();
   await openFilters('Expenses');
   await chooseDateOption('This Year');
@@ -609,7 +609,7 @@ test('[LEDGER-109.1] closes Filters when it is swiped down, with the period chos
   expect(periodName(expensesRoot())).toBe('2026');
 });
 
-test("[LEDGER-109.1] changes only the group's period from Filters on a group's screen", async () => {
+test("[LEDGER-109.2] changes only the group's period from Filters on a group's screen", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-10-29');
   await choosePeriod('Expenses', 'Last Month');
@@ -625,7 +625,7 @@ test("[LEDGER-109.1] changes only the group's period from Filters on a group's s
   expect(periodName(expensesRoot())).toBe('September 2026');
 });
 
-test("[LEDGER-109.1] offers Filters on an archived group's screen", async () => {
+test("[LEDGER-109.2] offers Filters on an archived group's screen", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-10-29');
   await archiveGroup('Brisbane');
@@ -636,7 +636,7 @@ test("[LEDGER-109.1] offers Filters on an archived group's screen", async () => 
   await waitFor(() => expect(hasFilters('Brisbane')).toBe(true));
 });
 
-test('[LEDGER-109.1] offers no Filters when the group is not found', async () => {
+test('[LEDGER-109.2] offers no Filters when the group is not found', async () => {
   await startExpensesAt(`/groups/${NO_GROUP_ID}`);
 
   await waitFor(() =>
@@ -645,7 +645,7 @@ test('[LEDGER-109.1] offers no Filters when the group is not found', async () =>
   expect(hasFilters('Group Details')).toBe(false);
 });
 
-test('[SHELL-72.1] puts Filters at the right of the title bar as a plain button with the filter symbol on iOS', async () => {
+test('[SHELL-72.2] puts Filters at the right of the title bar as a plain button with the filter symbol on iOS', async () => {
   await startExpenses();
 
   await waitFor(() =>
@@ -657,7 +657,7 @@ test('[SHELL-72.1] puts Filters at the right of the title bar as a plain button 
   );
 });
 
-test("[SHELL-72.1] puts a screen's menu to the right of Filters on iOS", async () => {
+test("[SHELL-72.2] puts a screen's menu to the right of Filters on iOS", async () => {
   await startWithGroups(BRISBANE);
 
   await showGroup('Brisbane');
@@ -810,7 +810,7 @@ test('[LEDGER-112.2] shows no dates on the screen of a group with no expenses, w
 
 // A period with no expense
 
-test('[LEDGER-116.2] says the month holds no expenses, under a dash for the total, and offers the latest earlier month that holds some', async () => {
+test('[LEDGER-116.3] says the month holds no expenses, under a dash for the total, and offers the latest earlier month that holds some', async () => {
   await startExpenses();
   await spend('Flight', '2026-06-01');
   await spend('Hotel', '2026-08-15');
@@ -825,7 +825,7 @@ test('[LEDGER-116.2] says the month holds no expenses, under a dash for the tota
   expect(shownInOrder(linesIn(root), expected)).toEqual(expected);
 });
 
-test('[LEDGER-116.2] moves to that month when Show is pressed', async () => {
+test('[LEDGER-116.3] moves to that month when Show is pressed', async () => {
   await startExpenses();
   await spend('Flight', '2026-06-01');
   await spend('Hotel', '2026-08-15');
@@ -838,7 +838,7 @@ test('[LEDGER-116.2] moves to that month when Show is pressed', async () => {
   expect(emptyPeriodTitle(expensesRoot())).toBeUndefined();
 });
 
-test('[LEDGER-116.2] offers the latest earlier year that holds expenses when a year holds none', async () => {
+test('[LEDGER-116.3] offers the latest earlier year that holds expenses when a year holds none', async () => {
   await startExpenses();
   await spend('Flight', '2024-03-05');
 
@@ -853,7 +853,7 @@ test('[LEDGER-116.2] offers the latest earlier year that holds expenses when a y
   expect(cardTitles()).toEqual(['Flight']);
 });
 
-test('[LEDGER-116.2] offers the month of the latest earlier expense when the last three months hold none', async () => {
+test('[LEDGER-116.3] offers the month of the latest earlier expense when the last three months hold none', async () => {
   await startExpenses();
   await spend('Flight', '2026-05-20');
 
@@ -870,7 +870,7 @@ test('[LEDGER-116.2] offers the month of the latest earlier expense when the las
   expect(cardTitles()).toEqual(['Flight']);
 });
 
-test('[LEDGER-116.2] names a custom range that holds no expenses by its first and last day', async () => {
+test('[LEDGER-116.3] names a custom range that holds no expenses by its first and last day', async () => {
   await startExpenses();
   await spend('Lunch', '2026-09-30');
 
@@ -882,7 +882,7 @@ test('[LEDGER-116.2] names a custom range that holds no expenses by its first an
   expect(linesIn(expensesRoot())).toContain('Show September 2026');
 });
 
-test('[LEDGER-116.2] offers no earlier period when every expense is later', async () => {
+test('[LEDGER-116.3] offers no earlier period when every expense is later', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-01');
 
@@ -895,7 +895,7 @@ test('[LEDGER-116.2] offers no earlier period when every expense is later', asyn
   expect(showEarlierButton(expensesRoot())).toBeUndefined();
 });
 
-test('[LEDGER-116.2] says nothing of the period while there are no expenses at all', async () => {
+test('[LEDGER-116.3] says nothing of the period while there are no expenses at all', async () => {
   await startExpenses();
 
   await pressPreviousPeriod(expensesRoot());
@@ -905,7 +905,7 @@ test('[LEDGER-116.2] says nothing of the period while there are no expenses at a
   expect(emptyPeriodTitle(expensesRoot())).toBeUndefined();
 });
 
-test("[LEDGER-116.2] says a group's period holds no expenses, not that the group has none", async () => {
+test("[LEDGER-116.3] says a group's period holds no expenses, not that the group has none", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-09-30');
   await showGroup('Brisbane');
@@ -1280,7 +1280,7 @@ test('[LEDGER-146.2] leaves the period at midnight while the app stays in front,
   await expectPeriod(expensesRoot, 'November 2026');
 });
 
-test("[GROUPS-61.5] lists only the group's expenses dated in the period", async () => {
+test("[GROUPS-61.6] lists only the group's expenses dated in the period", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Taxi', '2026-10-29');
   await brisbaneSpends('Dinner', '2026-09-30');
@@ -1295,7 +1295,7 @@ test("[GROUPS-61.5] lists only the group's expenses dated in the period", async 
   expect(groupLines('Brisbane')).not.toContain(NO_EXPENSES);
 });
 
-test("[GROUPS-68.5] totals the group's cards of the period shown, and reads the total after the period's name", async () => {
+test("[GROUPS-68.6] totals the group's cards of the period shown, and reads the total after the period's name", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-10-29', '100.01');
   await brisbaneSpends('Taxi', '2026-09-30', '25.00', ['Blake']);
@@ -1311,7 +1311,7 @@ test("[GROUPS-68.5] totals the group's cards of the period shown, and reads the 
   expect(groupCardTitles('Brisbane')).toEqual(['Dinner']);
 });
 
-test("[GROUPS-68.5] shows a dash for a group's period with no card, read as nothing", async () => {
+test("[GROUPS-68.6] shows a dash for a group's period with no card, read as nothing", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Taxi', '2026-09-30', '25.00', ['Blake']);
   await showGroup('Brisbane');
@@ -1322,7 +1322,7 @@ test("[GROUPS-68.5] shows a dash for a group's period with no card, read as noth
   expect(totalRead(brisbane())).toEqual(['October 2026: nothing']);
 });
 
-test("[GROUPS-68.5] opens the group's Insights on the month the group's screen shows", async () => {
+test("[GROUPS-68.6] opens the group's Insights on the month the group's screen shows", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-10-29', '100.01');
   await brisbaneSpends('Taxi', '2026-09-30', '25.00', ['Blake']);

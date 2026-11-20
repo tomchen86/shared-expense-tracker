@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import type { SFSymbol } from 'expo-symbols';
 import type { HeaderActionsProps } from './header-actions';
+import { useThemeColors } from './theme';
 
 export function HeaderActions({
   cancel,
@@ -11,6 +12,7 @@ export function HeaderActions({
   menu,
   choices,
 }: HeaderActionsProps) {
+  const colors = useThemeColors();
   return (
     <>
       <Stack.Toolbar placement="left">
@@ -48,6 +50,7 @@ export function HeaderActions({
           <Stack.Toolbar.Button
             variant="plain"
             icon="line.3.horizontal.decrease"
+            tintColor={filter.active ? colors.accent : undefined}
             accessibilityLabel={filter.label}
             disabled={filter.disabled}
             onPress={filter.onPress}

@@ -842,6 +842,20 @@ export async function archiveCategory(name: string) {
   await backToExpenses();
 }
 
+/** Deletes a category that no expense uses: Remove on its row in Manage Categories, then Delete in the alert. */
+export async function deleteCategory(name: string) {
+  await openManageCategories();
+  await doAction(tab('Settings'), name, 'Remove');
+  const buttons: AlertButton[] =
+    jest.mocked(Alert.alert).mock.calls.at(-1)?.[2] ?? [];
+  const remove = buttons.find((button) => button.text === 'Delete');
+  if (remove === undefined)
+    throw new Error(`Removing ${name} offered no Delete`);
+  await act(async () => remove.onPress?.());
+  await settle();
+  await backToExpenses();
+}
+
 /** Restores an archived category: presses its Restore row in Manage Categories. */
 export async function restoreCategory(name: string) {
   await openManageCategories();

@@ -28,7 +28,7 @@ name: "[LEDGER-70.2] [LEDGER-88.1] [GROUPS-80.1] [LEDGER-75.5] Swipes a group ex
 # The same drag to the right only closes an open card; from a closed card, it is iOS's back
 # gesture. It starts well left of the middle, since the gesture needs half the screen's width,
 # and at the height of the card: under the large title, the period row, the total, your net
-# balance (GROUPS-68.5, GROUPS-69.4), the line with the sort button (LEDGER-122.1) and the date,
+# balance (GROUPS-68.6, GROUPS-69.4), the line with the sort button (LEDGER-122.2) and the date,
 # the first card of an iPhone 17 lies across 56% of the screen's height.
 - swipe:
     from:

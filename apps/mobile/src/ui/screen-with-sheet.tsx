@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
+import { PopoverBackdropProvider } from './popover-backdrop';
 import { Sheet } from './sheet';
 
 export interface ScreenWithSheetProps {
@@ -15,7 +16,7 @@ export function ScreenWithSheet({
   onClose,
 }: ScreenWithSheetProps) {
   return (
-    <>
+    <PopoverBackdropProvider>
       {children}
       <Sheet
         visible={sheet !== null}
@@ -25,6 +26,6 @@ export function ScreenWithSheet({
       >
         {sheet}
       </Sheet>
-    </>
+    </PopoverBackdropProvider>
   );
 }
