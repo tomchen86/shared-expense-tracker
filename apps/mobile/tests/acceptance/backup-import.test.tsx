@@ -12,7 +12,9 @@ import {
   allowWrites,
   answerPicker,
   appState,
+  asHeldIn,
   chooseFile,
+  close,
   copyOf,
   damagedInTheMiddle,
   dataIn,
@@ -45,7 +47,6 @@ import {
   temporaryFiles,
   withADifferentMigration,
   withAnExportTimeThatIsNoTime,
-  withFields,
   withoutAnExportTime,
   writeData,
   writeSamsData,
@@ -53,8 +54,13 @@ import {
 } from './backup-app';
 import { openGroup } from './group-details-app';
 import { cardNames } from './groups-app';
-import { resetPhone, setPhoneLanguage } from './ledger-expense-app';
+import {
+  editExpense,
+  resetPhone,
+  setPhoneLanguage,
+} from './ledger-expense-app';
 import { cardTitles, expensesRoot } from './ledger-expense-list-app';
+import { chooseSort, expectSort } from './ledger-list-find-app';
 import {
   expectPeriod,
   periodName,
@@ -402,7 +408,7 @@ test("[BACKUP-14.1] goes back to the Expenses tab and shows the file's data on e
   expect(alertsShown()).toHaveLength(1);
 });
 
-test('[LEDGER-107.1] opens the expense list on this month again once an import is done', async () => {
+test('[LEDGER-107.2] opens the expense list on this month again once an import is done', async () => {
   const { file } = await taylorsExport();
   await startWithSamsData('/');
   await pressPreviousPeriod(expensesRoot());
@@ -729,10 +735,17 @@ test('[BACKUP-18.1] upgrades a file from before Insights had a chart type and im
   await pressAlertButton('Replace');
   await waitFor(() => expect(selectedTab()).toBe('Expenses'));
 
-  // Everything as Taylor's phone had it, except the chart type that version did not have.
-  expect(dataIn(phone.database)).toEqual(
-    withFields(data, 'local_identity', { chartType: 'auto' }),
-  );
+  // Everything that version held is as Taylor's phone had it. What later versions added is as
+  // an upgrade leaves it: the chart type is auto, and no expense has a time of its last change
+  // (LEDGER-120.1), which a test below reads from a list in the order Recently Edited.
+  const imported = dataIn(phone.database);
+  expect(asHeldIn(older, imported)).toEqual(asHeldIn(older, data));
+  expect(imported._migrations).toEqual(data._migrations);
+  expect(
+    rowsOf<{ chartType: string }>(imported, 'local_identity').map(
+      (row) => row.chartType,
+    ),
+  ).toEqual(['auto']);
   expect((await appState()).chartType).toBe('auto');
 });
 
@@ -917,4 +930,105 @@ test('[BACKUP-22.1] enables both DATA rows again after a file that cannot be imp
 
   expect(await nextAlert(1)).toEqual(CANNOT_USE_FILE);
   await waitFor(() => expectRows('enabled'));
+});
+
+// What an import brings of the time each expense was last changed and of a list's order
+// (LEDGER-120.1, LEDGER-124.1)
+
+/** The ID of the stored expense titled `title` on `onPhone`. */
+function idOf(onPhone: Phone, title: string) {
+  const found = rowsOf<{ id: string; title: string }>(
+    dataIn(onPhone.database),
+    'expenses',
+  ).find((row) => row.title === title);
+  if (found === undefined) throw new Error(`No expense titled ${title}`);
+  return found.id;
+}
+
+/**
+ * An export file of a phone that got A, B and C, in that order, at one moment on 2026-11-17, and
+ * on which A was renamed A2 a day later: A2 is the expense that was changed last.
+ */
+async function exportAfterChangingA() {
+  const source = newPhone();
+  jest.useFakeTimers();
+  jest.setSystemTime(new Date('2026-11-17T01:00:00Z'));
+  await writeData(source, {
+    expenses: [
+      { title: 'A', amount: '1', date: '2026-11-12' },
+      { title: 'B', amount: '2', date: '2026-11-10' },
+      { title: 'C', amount: '3', date: '2026-11-11' },
+    ],
+  });
+  const app = await startOn(source, { url: '/' });
+  await editExpense(idOf(source, 'A'), { title: 'A2' });
+  await tapTab('Settings');
+  const { copy } = await exportData();
+  await close(app);
+  return copy;
+}
+
+test('[LEDGER-120.1] [BACKUP-13.1] brings the time each expense was last changed with an import', async () => {
+  const file = await exportAfterChangingA();
+  await startOn(phone);
+
+  await importFile(file);
+  await chooseSort(expensesRoot(), 'Recently Edited');
+
+  expect(cardTitles()).toEqual(['A2', 'C', 'B']);
+});
+
+test('[BACKUP-18.1] [LEDGER-120.1] [LEDGER-121.1] imports a file exported before expenses had a time of their last change, and lists its expenses as they were added until one is changed', async () => {
+  const older = await fromBeforeChartTypes(await exportAfterChangingA());
+  expect(dataIn(older)._migrations.length).toBeLessThan(appMigrations.length);
+  await startOn(phone);
+
+  await importFile(older);
+  await chooseSort(expensesRoot(), 'Recently Edited');
+
+  // None has a time, so the one added last comes first.
+  expect(cardTitles()).toEqual(['C', 'B', 'A2']);
+
+  await editExpense(idOf(phone, 'B'), { title: 'B2' });
+  await settle();
+
+  expect(cardTitles()).toEqual(['B2', 'C', 'A2']);
+});
+
+test('[LEDGER-124.1] [BACKUP-13.1] lists the expenses in the order the export file holds after an import', async () => {
+  const source = newPhone();
+  await writeData(source, {
+    expenses: [
+      { title: 'A', amount: '9', date: '2026-11-10' },
+      { title: 'B', amount: '1', date: '2026-11-12' },
+    ],
+  });
+  const exporting = await startOn(source, { url: '/' });
+  await chooseSort(expensesRoot(), 'Oldest First');
+  await tapTab('Settings');
+  const { copy } = await exportData();
+  await close(exporting);
+
+  await writeSamsData(phone);
+  await startOn(phone, { url: '/' });
+  await chooseSort(expensesRoot(), 'Highest Amount');
+  await tapTab('Settings');
+
+  await importFile(copy);
+
+  await expectSort(expensesRoot, 'Oldest First');
+  expect(cardTitles()).toEqual(['A', 'B']);
+});
+
+test('[LEDGER-124.1] [BACKUP-18.1] lists the expenses newest first after importing a file exported before lists had an order, whatever order the phone was on', async () => {
+  const older = await fromBeforeChartTypes(await exportAfterChangingA());
+  await writeSamsData(phone);
+  await startOn(phone, { url: '/' });
+  await chooseSort(expensesRoot(), 'Highest Amount');
+  await tapTab('Settings');
+
+  await importFile(older);
+
+  await expectSort(expensesRoot, 'Newest First');
+  expect(cardTitles()).toEqual(['A2', 'C', 'B']);
 });

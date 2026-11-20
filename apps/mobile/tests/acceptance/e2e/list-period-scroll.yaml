@@ -1,6 +1,11 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-147.1] Leaves a list where it is when Previous period is pressed twice in one place with the period row on screen, and brings a list back to its top when its period changes in Filters with the period row scrolled away, on the expense list and on a group's screen"
+name: "[LEDGER-147.2] Leaves a list where it is when Previous period is pressed twice in one place with the period row on screen, and brings a list back to its top when its period changes in Filters with the period row scrolled away, on the expense list and on a group's screen"
+tags:
+  - android
 ---
+# Also runs on the small Android screen of scripts/e2e-android.sh (ADR-0014), where the + button
+# sits at the middle of the width, about three quarters of the way down: a drag that starts on it
+# does not move the list, so there the two long drags start near the left edge, and go slowly.
 # The names of this month and the two months before it, by the simulator's clock.
 - evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
 - evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'
@@ -40,10 +45,22 @@ name: "[LEDGER-147.1] Leaves a list where it is when Previous period is pressed 
 - assertVisible: Choose period\. ${output.twoBackName}
 # Far down the list, the period row is out of sight. Changing the period in Filters brings the
 # list back to its top: the period row and the total are on screen again.
-- swipe:
-    start: 50%, 80%
-    end: 50%, 25%
-    duration: 800
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 50%, 80%
+          end: 50%, 25%
+          duration: 800
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - swipe:
+          start: 15%, 80%
+          end: 15%, 25%
+          duration: 1000
 - waitForAnimationToEnd
 - assertNotVisible: Choose period\..*
 - tapOn: Filters
@@ -55,15 +72,28 @@ name: "[LEDGER-147.1] Leaves a list where it is when Previous period is pressed 
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
 - assertVisible: View expense insights\..*
-# The same on a group's screen, which opens on Group Total.
+# The same on a group's screen, which opens on Group Total. Android reads the group's row as one
+# name, Open Brisbane and what the row says.
 - tapOn: Groups
-- tapOn: Open Brisbane
+- tapOn: Open Brisbane.*
 - waitForAnimationToEnd
 - assertVisible: Choose period\. Group Total
-- swipe:
-    start: 50%, 80%
-    end: 50%, 25%
-    duration: 800
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 50%, 80%
+          end: 50%, 25%
+          duration: 800
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - swipe:
+          start: 15%, 80%
+          end: 15%, 25%
+          duration: 1000
 - waitForAnimationToEnd
 - assertNotVisible: Choose period\..*
 - tapOn: Filters

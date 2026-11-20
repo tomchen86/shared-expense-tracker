@@ -96,7 +96,7 @@ import type { Database } from '../../src/storage';
 // Runs on iOS. Each test starts the app on a phone database file of its own, in Taipei on
 // 2026-10-30 unless it says otherwise, in a region whose currency is USD, and adds its expenses
 // through New Expense. Adding an expense dated outside the period a list shows moves that list
-// to the expense's month (LEDGER-117.1), so a test chooses the period it is about after it has
+// to the expense's month (LEDGER-117.2), so a test chooses the period it is about after it has
 // added its expenses. It chooses a period by name in Filters, and steps to the month or year
 // before and after with the arrows of the period row (ledger-list-period-app).
 
@@ -196,13 +196,13 @@ async function expenseTitled(title: string) {
 
 // One period at a time
 
-test('[LEDGER-107.1] opens the expense list on this month', async () => {
+test('[LEDGER-107.2] opens the expense list on this month', async () => {
   await startExpenses();
 
   await waitFor(() => expect(periodName(expensesRoot())).toBe('October 2026'));
 });
 
-test('[LEDGER-107.1] shows a month from its first day to its last', async () => {
+test('[LEDGER-107.2] shows a month from its first day to its last', async () => {
   await startExpenses();
   await spend('Aug 31', '2026-08-31');
   await spend('Sep 1', '2026-09-01');
@@ -215,7 +215,7 @@ test('[LEDGER-107.1] shows a month from its first day to its last', async () => 
   expect(cardTitles()).toEqual(['Sep 30', 'Sep 1']);
 });
 
-test('[LEDGER-107.1] shows a year from January 1 to December 31', async () => {
+test('[LEDGER-107.2] shows a year from January 1 to December 31', async () => {
   await startExpenses();
   await spend('Dec 31, 2024', '2024-12-31');
   await spend('Jan 1, 2025', '2025-01-01');
@@ -229,7 +229,7 @@ test('[LEDGER-107.1] shows a year from January 1 to December 31', async () => {
   expect(cardTitles()).toEqual(['Dec 31, 2025', 'Jan 1, 2025']);
 });
 
-test('[LEDGER-107.1] shows the last three months from the first day of the month two months back to today', async () => {
+test('[LEDGER-107.2] shows the last three months from the first day of the month two months back to today', async () => {
   await startExpenses();
   await spend('Jul 31', '2026-07-31');
   await spend('Aug 1', '2026-08-01');
@@ -240,7 +240,7 @@ test('[LEDGER-107.1] shows the last three months from the first day of the month
   await waitFor(() => expect(cardTitles()).toEqual(['Today', 'Aug 1']));
 });
 
-test('[LEDGER-107.1] reaches into last year for the last three months in January', async () => {
+test('[LEDGER-107.2] reaches into last year for the last three months in January', async () => {
   await startExpenses('Asia/Taipei', '2026-01-15T04:00:00Z');
   await spend('Oct 31', '2025-10-31');
   await spend('Nov 1', '2025-11-01');
@@ -250,7 +250,7 @@ test('[LEDGER-107.1] reaches into last year for the last three months in January
   await waitFor(() => expect(cardTitles()).toEqual(['Nov 1']));
 });
 
-test("[LEDGER-107.1] opens a group's screen on all of its expenses each time it opens", async () => {
+test("[LEDGER-107.2] opens a group's screen on all of its expenses each time it opens", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-10-29');
   await brisbaneSpends('Taxi', '2026-09-30');
@@ -271,7 +271,7 @@ test("[LEDGER-107.1] opens a group's screen on all of its expenses each time it 
   expect(periodName(brisbane())).toBe('Group Total');
 });
 
-test("[LEDGER-107.1] keeps the expense list's period apart from a group's", async () => {
+test("[LEDGER-107.2] keeps the expense list's period apart from a group's", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-10-29');
   await choosePeriod('Expenses', 'Last Month');
@@ -284,7 +284,7 @@ test("[LEDGER-107.1] keeps the expense list's period apart from a group's", asyn
   expect(periodName(expensesRoot())).toBe('September 2026');
 });
 
-test('[LEDGER-107.1] opens on this month again after a restart', async () => {
+test('[LEDGER-107.2] opens on this month again after a restart', async () => {
   const app = await startExpenses();
   await spend('Coffee run', '2026-10-01');
   await pressPreviousPeriod(expensesRoot());
@@ -298,7 +298,7 @@ test('[LEDGER-107.1] opens on this month again after a restart', async () => {
 
 // The cards of the period
 
-test('[LEDGER-31.3] lists only the personal expenses dated in the period', async () => {
+test('[LEDGER-31.4] lists only the personal expenses dated in the period', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-01');
   await spend('Lunch', '2026-09-30');
@@ -315,7 +315,7 @@ test('[LEDGER-31.3] lists only the personal expenses dated in the period', async
   expect(cardTitles()).toEqual(['Coffee run', 'Lunch', 'Dinner']);
 });
 
-test('[LEDGER-31.3] takes the card of an expense whose date is changed to outside the period off the list, and leaves the period', async () => {
+test('[LEDGER-31.4] takes the card of an expense whose date is changed to outside the period off the list, and leaves the period', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-01');
   await spend('Lunch', '2026-10-02');
@@ -331,7 +331,7 @@ test('[LEDGER-31.3] takes the card of an expense whose date is changed to outsid
   expect(cardTitles()).toEqual(['Coffee run']);
 });
 
-test('[LEDGER-64.3] leaves a group expense dated outside the period off the expense list', async () => {
+test('[LEDGER-64.4] leaves a group expense dated outside the period off the expense list', async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-09-30');
 
@@ -356,7 +356,7 @@ test('[LEDGER-32.2] shows no empty list text while expenses are only in other pe
 
 // The period row
 
-test('[LEDGER-108.1] shows Previous period, the month on one line and a disabled Next period above the cards', async () => {
+test('[LEDGER-108.2] shows Previous period, the month on one line and a disabled Next period above the cards', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-30');
 
@@ -377,7 +377,7 @@ test('[LEDGER-108.1] shows Previous period, the month on one line and a disabled
   );
 });
 
-test('[LEDGER-108.1] steps to the month before and back, and not past this month', async () => {
+test('[LEDGER-108.2] steps to the month before and back, and not past this month', async () => {
   await startExpenses();
 
   await pressPreviousPeriod(expensesRoot());
@@ -397,7 +397,7 @@ test('[LEDGER-108.1] steps to the month before and back, and not past this month
   expect(periodName(expensesRoot())).toBe('October 2026');
 });
 
-test('[LEDGER-108.1] steps from January to December of the year before', async () => {
+test('[LEDGER-108.2] steps from January to December of the year before', async () => {
   await startExpenses('Asia/Taipei', '2026-01-15T04:00:00Z');
   await waitFor(() => expect(periodName(expensesRoot())).toBe('January 2026'));
 
@@ -406,7 +406,7 @@ test('[LEDGER-108.1] steps from January to December of the year before', async (
   await expectPeriod(expensesRoot, 'December 2025');
 });
 
-test('[LEDGER-108.1] steps to months that hold no expense', async () => {
+test('[LEDGER-108.2] steps to months that hold no expense', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-01');
 
@@ -418,7 +418,7 @@ test('[LEDGER-108.1] steps to months that hold no expense', async () => {
   expect(enabledArrows(expensesRoot())).toContain('Previous period');
 });
 
-test('[LEDGER-108.1] names a year by its number and steps between years, not past this year', async () => {
+test('[LEDGER-108.2] names a year by its number and steps between years, not past this year', async () => {
   await startExpenses();
 
   await choosePeriod('Expenses', 'This Year');
@@ -433,7 +433,7 @@ test('[LEDGER-108.1] names a year by its number and steps between years, not pas
   ]);
 });
 
-test('[LEDGER-108.1] keeps Next period disabled on the months after this one', async () => {
+test('[LEDGER-108.2] keeps Next period disabled on the months after this one', async () => {
   // An expense dated after today is in the Trash: it was added while the phone's date was
   // December 5, as one from a phone whose date is ahead would be.
   const app = await startExpenses('Asia/Taipei', '2026-12-05T04:00:00Z');
@@ -442,7 +442,7 @@ test('[LEDGER-108.1] keeps Next period disabled on the months after this one', a
   await restart(app);
   await expectPeriod(expensesRoot, 'October 2026');
 
-  // Putting it back moves the list to its month (LEDGER-117.1).
+  // Putting it back moves the list to its month (LEDGER-117.2).
   await restoreFromTrash('Flights');
   await tapTab('Expenses');
 
@@ -474,7 +474,7 @@ test.each([
   ['in October', '2026-10-30T04:00:00Z', 'Aug – Oct 2026'],
   ['in January', '2026-01-15T04:00:00Z', 'Nov 2025 – Jan 2026'],
 ])(
-  '[LEDGER-108.1] names the last three months %s by their first and last month, without arrows',
+  '[LEDGER-108.2] names the last three months %s by their first and last month, without arrows',
   async (_when, now, name) => {
     await startExpenses('Asia/Taipei', now);
 
@@ -485,7 +485,7 @@ test.each([
   },
 );
 
-test('[LEDGER-108.1] names a custom range Custom Range and all dates All Time, without arrows', async () => {
+test('[LEDGER-108.2] names a custom range Custom Range and all dates All Time, without arrows', async () => {
   await startExpenses();
 
   await choosePeriod('Expenses', 'Custom Range');
@@ -497,7 +497,7 @@ test('[LEDGER-108.1] names a custom range Custom Range and all dates All Time, w
   expect(arrows(expensesRoot())).toEqual([]);
 });
 
-test("[LEDGER-108.1] names all dates Group Total on a group's screen, without arrows", async () => {
+test("[LEDGER-108.2] names all dates Group Total on a group's screen, without arrows", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-10-29');
 
@@ -672,7 +672,7 @@ test("[SHELL-72.1] puts a screen's menu to the right of Filters on iOS", async (
 
 // The dates of a custom range
 
-test('[LEDGER-112.1] shows From, the first day of this month, and To, today, under the period row and above the total, with today as the latest date', async () => {
+test('[LEDGER-112.2] shows From, the first day of this month, and To, today, under the period row and above the total, with today as the latest date', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-01');
   await spend('Lunch', '2026-09-30', '12.50');
@@ -690,7 +690,7 @@ test('[LEDGER-112.1] shows From, the first day of this month, and To, today, und
   expect(cardTitles()).toEqual(['Coffee run']);
 });
 
-test('[LEDGER-112.1] shows the expenses from From to To, both days included, as soon as a date is chosen', async () => {
+test('[LEDGER-112.2] shows the expenses from From to To, both days included, as soon as a date is chosen', async () => {
   await startExpenses();
   await spend('Sep 9', '2026-09-09', '1.00');
   await spend('Sep 10', '2026-09-10', '2.00');
@@ -705,7 +705,7 @@ test('[LEDGER-112.1] shows the expenses from From to To, both days included, as 
   expect(listTotal()).toEqual(['$6.00']);
 });
 
-test('[LEDGER-112.1] shows the days from To to From when From is the later one', async () => {
+test('[LEDGER-112.2] shows the days from To to From when From is the later one', async () => {
   await startExpenses();
   await spend('Oct 4', '2026-10-04');
   await spend('Oct 5', '2026-10-05');
@@ -719,7 +719,7 @@ test('[LEDGER-112.1] shows the days from To to From when From is the later one',
   expect(cardTitles()).toEqual(['Oct 20', 'Oct 5']);
 });
 
-test('[LEDGER-112.1] shows no dates on another period, and the same dates when the custom range is chosen again', async () => {
+test('[LEDGER-112.2] shows no dates on another period, and the same dates when the custom range is chosen again', async () => {
   await startExpenses();
   await choosePeriod('Expenses', 'Custom Range');
   await chooseRangeDate(expensesRoot(), 'From', '2026-09-10');
@@ -736,7 +736,7 @@ test('[LEDGER-112.1] shows no dates on another period, and the same dates when t
   });
 });
 
-test("[LEDGER-112.1] shows the dates of a group's custom range between its period row and its total", async () => {
+test("[LEDGER-112.2] shows the dates of a group's custom range between its period row and its total", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-10-29');
   await showGroup('Brisbane');
@@ -751,7 +751,7 @@ test("[LEDGER-112.1] shows the dates of a group's custom range between its perio
   expect(shownInOrder(groupLines('Brisbane'), expected)).toEqual(expected);
 });
 
-test("[LEDGER-112.1] starts a group's custom range on this month again once its screen has been opened again", async () => {
+test("[LEDGER-112.2] starts a group's custom range on this month again once its screen has been opened again", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-10-29');
   await showGroup('Brisbane');
@@ -772,7 +772,7 @@ test("[LEDGER-112.1] starts a group's custom range on this month again once its 
   });
 });
 
-test('[LEDGER-112.1] starts a custom range on this month again after a restart', async () => {
+test('[LEDGER-112.2] starts a custom range on this month again after a restart', async () => {
   const app = await startExpenses();
   await choosePeriod('Expenses', 'Custom Range');
   await chooseRangeDate(expensesRoot(), 'From', '2026-09-10');
@@ -790,7 +790,7 @@ test('[LEDGER-112.1] starts a custom range on this month again after a restart',
   });
 });
 
-test('[LEDGER-112.1] shows no dates on the screen of a group with no expenses, whose custom range Filters shows', async () => {
+test('[LEDGER-112.2] shows no dates on the screen of a group with no expenses, whose custom range Filters shows', async () => {
   await startWithGroups(BRISBANE);
   await showGroup('Brisbane');
   await waitFor(() => expect(groupLines('Brisbane')).toContain(NO_EXPENSES));
@@ -810,7 +810,7 @@ test('[LEDGER-112.1] shows no dates on the screen of a group with no expenses, w
 
 // A period with no expense
 
-test('[LEDGER-116.1] says the month holds no expenses, under a dash for the total, and offers the latest earlier month that holds some', async () => {
+test('[LEDGER-116.2] says the month holds no expenses, under a dash for the total, and offers the latest earlier month that holds some', async () => {
   await startExpenses();
   await spend('Flight', '2026-06-01');
   await spend('Hotel', '2026-08-15');
@@ -825,7 +825,7 @@ test('[LEDGER-116.1] says the month holds no expenses, under a dash for the tota
   expect(shownInOrder(linesIn(root), expected)).toEqual(expected);
 });
 
-test('[LEDGER-116.1] moves to that month when Show is pressed', async () => {
+test('[LEDGER-116.2] moves to that month when Show is pressed', async () => {
   await startExpenses();
   await spend('Flight', '2026-06-01');
   await spend('Hotel', '2026-08-15');
@@ -838,7 +838,7 @@ test('[LEDGER-116.1] moves to that month when Show is pressed', async () => {
   expect(emptyPeriodTitle(expensesRoot())).toBeUndefined();
 });
 
-test('[LEDGER-116.1] offers the latest earlier year that holds expenses when a year holds none', async () => {
+test('[LEDGER-116.2] offers the latest earlier year that holds expenses when a year holds none', async () => {
   await startExpenses();
   await spend('Flight', '2024-03-05');
 
@@ -853,7 +853,7 @@ test('[LEDGER-116.1] offers the latest earlier year that holds expenses when a y
   expect(cardTitles()).toEqual(['Flight']);
 });
 
-test('[LEDGER-116.1] offers the month of the latest earlier expense when the last three months hold none', async () => {
+test('[LEDGER-116.2] offers the month of the latest earlier expense when the last three months hold none', async () => {
   await startExpenses();
   await spend('Flight', '2026-05-20');
 
@@ -870,7 +870,7 @@ test('[LEDGER-116.1] offers the month of the latest earlier expense when the las
   expect(cardTitles()).toEqual(['Flight']);
 });
 
-test('[LEDGER-116.1] names a custom range that holds no expenses by its first and last day', async () => {
+test('[LEDGER-116.2] names a custom range that holds no expenses by its first and last day', async () => {
   await startExpenses();
   await spend('Lunch', '2026-09-30');
 
@@ -882,7 +882,7 @@ test('[LEDGER-116.1] names a custom range that holds no expenses by its first an
   expect(linesIn(expensesRoot())).toContain('Show September 2026');
 });
 
-test('[LEDGER-116.1] offers no earlier period when every expense is later', async () => {
+test('[LEDGER-116.2] offers no earlier period when every expense is later', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-01');
 
@@ -895,7 +895,7 @@ test('[LEDGER-116.1] offers no earlier period when every expense is later', asyn
   expect(showEarlierButton(expensesRoot())).toBeUndefined();
 });
 
-test('[LEDGER-116.1] says nothing of the period while there are no expenses at all', async () => {
+test('[LEDGER-116.2] says nothing of the period while there are no expenses at all', async () => {
   await startExpenses();
 
   await pressPreviousPeriod(expensesRoot());
@@ -905,7 +905,7 @@ test('[LEDGER-116.1] says nothing of the period while there are no expenses at a
   expect(emptyPeriodTitle(expensesRoot())).toBeUndefined();
 });
 
-test("[LEDGER-116.1] says a group's period holds no expenses, not that the group has none", async () => {
+test("[LEDGER-116.2] says a group's period holds no expenses, not that the group has none", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-09-30');
   await showGroup('Brisbane');
@@ -915,7 +915,7 @@ test("[LEDGER-116.1] says a group's period holds no expenses, not that the group
   expect(groupCardTitles('Brisbane')).toEqual([]);
   expect(emptyPeriodTitle(brisbane())).toBe('No Expenses in October 2026');
   expect(groupLines('Brisbane')).not.toContain(NO_EXPENSES);
-  // Where the cards would be: under your net balance, which counts Dinner still (GROUPS-69.3).
+  // Where the cards would be: under your net balance, which counts Dinner still (GROUPS-69.4).
   const expected = [
     'You owe: $20.00',
     'No Expenses in October 2026',
@@ -931,7 +931,7 @@ test("[LEDGER-116.1] says a group's period holds no expenses, not that the group
 
 // A new expense outside the period
 
-test('[LEDGER-117.1] moves the expense list to the month of an expense added outside the period', async () => {
+test('[LEDGER-117.2] moves the expense list to the month of an expense added outside the period', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-01');
 
@@ -941,7 +941,7 @@ test('[LEDGER-117.1] moves the expense list to the month of an expense added out
   expect(cardTitles()).toEqual(['Lunch']);
 });
 
-test('[LEDGER-117.1] leaves the period when the new expense is dated in it', async () => {
+test('[LEDGER-117.2] leaves the period when the new expense is dated in it', async () => {
   await startExpenses();
   await spend('Lunch', '2026-09-12');
   await expectPeriod(expensesRoot, 'September 2026');
@@ -952,7 +952,7 @@ test('[LEDGER-117.1] leaves the period when the new expense is dated in it', asy
   expect(cardTitles()).toEqual(['Dinner', 'Lunch']);
 });
 
-test('[LEDGER-117.1] moves from a year to the month of the new expense', async () => {
+test('[LEDGER-117.2] moves from a year to the month of the new expense', async () => {
   await startExpenses();
   await choosePeriod('Expenses', 'This Year');
   await expectPeriod(expensesRoot, '2026');
@@ -963,7 +963,7 @@ test('[LEDGER-117.1] moves from a year to the month of the new expense', async (
   expect(cardTitles()).toEqual(['Lunch']);
 });
 
-test('[LEDGER-117.1] stays on All Time, which holds every new expense', async () => {
+test('[LEDGER-117.2] stays on All Time, which holds every new expense', async () => {
   await startExpenses();
   await choosePeriod('Expenses', 'All Time');
 
@@ -973,7 +973,7 @@ test('[LEDGER-117.1] stays on All Time, which holds every new expense', async ()
   expect(cardTitles()).toEqual(['Lunch']);
 });
 
-test("[LEDGER-117.1] moves a group's screen and the expense list to the month of a group expense added outside their periods", async () => {
+test("[LEDGER-117.2] moves a group's screen and the expense list to the month of a group expense added outside their periods", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Lunch', '2026-10-29');
   await showGroup('Brisbane');
@@ -995,7 +995,7 @@ test("[LEDGER-117.1] moves a group's screen and the expense list to the month of
   expect(cardTitles()).toEqual(['Dinner']);
 });
 
-test('[LEDGER-117.1] leaves the expense list where it is when the new group expense has nothing to do with you', async () => {
+test('[LEDGER-117.2] leaves the expense list where it is when the new group expense has nothing to do with you', async () => {
   await startWithGroups(BRISBANE);
   await spend('Coffee run', '2026-10-01');
 
@@ -1008,7 +1008,7 @@ test('[LEDGER-117.1] leaves the expense list where it is when the new group expe
 
 // An expense put back from the trash outside the period
 
-test('[LEDGER-117.1] [LEDGER-75.4] moves the expense list back to the month of an expense that Undo puts back', async () => {
+test('[LEDGER-117.2] [LEDGER-75.5] moves the expense list back to the month of an expense that Undo puts back', async () => {
   await startExpenses();
   await spend('Lunch', '2026-09-12');
   await expectPeriod(expensesRoot, 'September 2026');
@@ -1023,7 +1023,7 @@ test('[LEDGER-117.1] [LEDGER-75.4] moves the expense list back to the month of a
   expect(listTotal()).toEqual(['$8.75']);
 });
 
-test('[LEDGER-117.1] [LEDGER-79.4] moves the expense list, while Trash is on screen, to the month of an expense that Restore puts back', async () => {
+test('[LEDGER-117.2] [LEDGER-79.5] moves the expense list, while Trash is on screen, to the month of an expense that Restore puts back', async () => {
   await startExpenses();
   await spend('Lunch', '2026-09-12');
   await expectPeriod(expensesRoot, 'September 2026');
@@ -1038,7 +1038,7 @@ test('[LEDGER-117.1] [LEDGER-79.4] moves the expense list, while Trash is on scr
   expect(cardTitles()).toEqual(['Lunch']);
 });
 
-test('[LEDGER-117.1] leaves a year and All Time, which hold the expense that Restore puts back', async () => {
+test('[LEDGER-117.2] leaves a year and All Time, which hold the expense that Restore puts back', async () => {
   await startExpenses();
   await spend('Lunch', '2026-09-12');
   await deleteByAction('Lunch');
@@ -1060,7 +1060,7 @@ test('[LEDGER-117.1] leaves a year and All Time, which hold the expense that Res
   expect(periodName(expensesRoot())).toBe('All Time');
 });
 
-test("[LEDGER-117.1] [LEDGER-79.4] moves an open group's screen and the expense list to the month of a group expense that Restore puts back", async () => {
+test("[LEDGER-117.2] [LEDGER-79.5] moves an open group's screen and the expense list to the month of a group expense that Restore puts back", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-08-15');
   await brisbaneSpends('Lunch', '2026-10-29');
@@ -1085,7 +1085,7 @@ test("[LEDGER-117.1] [LEDGER-79.4] moves an open group's screen and the expense 
   expect(cardTitles()).toEqual(['Dinner']);
 });
 
-test("[LEDGER-117.1] [LEDGER-75.4] leaves a group's screen on Group Total, which holds the expense that Undo puts back, and moves the expense list to its month", async () => {
+test("[LEDGER-117.2] [LEDGER-75.5] leaves a group's screen on Group Total, which holds the expense that Undo puts back, and moves the expense list to its month", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-09-12');
   await brisbaneSpends('Lunch', '2026-10-29');
@@ -1109,7 +1109,7 @@ test("[LEDGER-117.1] [LEDGER-75.4] leaves a group's screen on Group Total, which
   expect(cardTitles()).toEqual(['Dinner']);
 });
 
-test('[LEDGER-117.1] leaves the expense list where it is when the group expense that Restore puts back has nothing to do with you', async () => {
+test('[LEDGER-117.2] leaves the expense list where it is when the group expense that Restore puts back has nothing to do with you', async () => {
   await startWithGroups(BRISBANE);
   await spend('Coffee run', '2026-10-01');
   await brisbaneSpends('Taxi', '2026-08-15', '25.00', ['Blake']);
@@ -1133,7 +1133,7 @@ test('[LEDGER-117.1] leaves the expense list where it is when the group expense 
 const comeBackOn = (day: string) =>
   leaveAndComeBack(() => setPhoneClock('Asia/Taipei', `${day}T04:00:00Z`));
 
-test('[LEDGER-146.1] moves the expense list to this month when the app comes back in a later month than the one it opened on', async () => {
+test('[LEDGER-146.2] moves the expense list to this month when the app comes back in a later month than the one it opened on', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-30');
   await expectPeriod(expensesRoot, 'October 2026');
@@ -1148,7 +1148,7 @@ test('[LEDGER-146.1] moves the expense list to this month when the app comes bac
   expect(dateRow()).toBe('Date, This Month');
 });
 
-test('[LEDGER-146.1] leaves the expense list on its month when the app comes back in the same month', async () => {
+test('[LEDGER-146.2] leaves the expense list on its month when the app comes back in the same month', async () => {
   await startExpenses();
   await spend('Coffee run', '2026-10-30');
 
@@ -1158,7 +1158,7 @@ test('[LEDGER-146.1] leaves the expense list on its month when the app comes bac
   expect(cardTitles()).toEqual(['Coffee run']);
 });
 
-test('[LEDGER-146.1] leaves a month the user stepped to, the next day and in a later month', async () => {
+test('[LEDGER-146.2] leaves a month the user stepped to, the next day and in a later month', async () => {
   await startExpenses();
   await pressPreviousPeriod(expensesRoot());
   await expectPeriod(expensesRoot, 'September 2026');
@@ -1171,7 +1171,7 @@ test('[LEDGER-146.1] leaves a month the user stepped to, the next day and in a l
   expect(periodName(expensesRoot())).toBe('September 2026');
 });
 
-test('[LEDGER-146.1] follows the calendar again once the user has stepped back to this month', async () => {
+test('[LEDGER-146.2] follows the calendar again once the user has stepped back to this month', async () => {
   await startExpenses();
   await pressPreviousPeriod(expensesRoot());
   await expectPeriod(expensesRoot, 'September 2026');
@@ -1183,7 +1183,7 @@ test('[LEDGER-146.1] follows the calendar again once the user has stepped back t
   await expectPeriod(expensesRoot, 'November 2026');
 });
 
-test('[LEDGER-146.1] moves a list on this year to the new year when the app comes back after New Year', async () => {
+test('[LEDGER-146.2] moves a list on this year to the new year when the app comes back after New Year', async () => {
   await startExpenses('Asia/Taipei', '2026-12-31T04:00:00Z');
   await choosePeriod('Expenses', 'This Year');
   await expectPeriod(expensesRoot, '2026');
@@ -1194,7 +1194,7 @@ test('[LEDGER-146.1] moves a list on this year to the new year when the app come
   expect(enabledArrows(expensesRoot())).toEqual(['Previous period']);
 });
 
-test("[LEDGER-146.1] moves a group's screen on this month and the expense list behind it, and leaves a group's screen on Group Total", async () => {
+test("[LEDGER-146.2] moves a group's screen on this month and the expense list behind it, and leaves a group's screen on Group Total", async () => {
   await startWithGroups({ ...BRISBANE, Osaka: [] });
   await brisbaneSpends('Dinner', '2026-10-29');
   await addGroupExpense({
@@ -1219,7 +1219,25 @@ test("[LEDGER-146.1] moves a group's screen on this month and the expense list b
   expect(periodName(expensesRoot())).toBe('November 2026');
 });
 
-test('[LEDGER-146.1] shows the last three months up to the new today when the app comes back', async () => {
+test("[LEDGER-146.2] leaves a group's screen that is open on Group Total, and the expense list behind it on All Time, when the app comes back in a later month", async () => {
+  await startWithGroups(BRISBANE);
+  await brisbaneSpends('Dinner', '2026-10-29');
+  await tapTab('Expenses');
+  await choosePeriod('Expenses', 'All Time');
+  expect(periodName(expensesRoot())).toBe('All Time');
+  await showGroup('Brisbane');
+  expect(periodName(brisbane())).toBe('Group Total');
+
+  await comeBackOn('2026-11-02');
+
+  expect(periodName(brisbane())).toBe('Group Total');
+  expect(groupCardTitles('Brisbane')).toEqual(['Dinner']);
+  await tapTab('Expenses');
+  expect(periodName(expensesRoot())).toBe('All Time');
+  expect(cardTitles()).toEqual(['Dinner']);
+});
+
+test('[LEDGER-146.2] shows the last three months up to the new today when the app comes back', async () => {
   await startExpenses();
   await choosePeriod('Expenses', 'Last 3 Months');
   await expectPeriod(expensesRoot, 'Aug – Oct 2026');
@@ -1229,7 +1247,7 @@ test('[LEDGER-146.1] shows the last three months up to the new today when the ap
   await expectPeriod(expensesRoot, 'Sep – Nov 2026');
 });
 
-test('[LEDGER-146.1] keeps a custom range and its dates when the app comes back in a later month', async () => {
+test('[LEDGER-146.2] keeps a custom range and its dates when the app comes back in a later month', async () => {
   await startExpenses();
   await choosePeriod('Expenses', 'Custom Range');
   expect(rangeDates(expensesRoot())).toMatchObject({
@@ -1246,7 +1264,7 @@ test('[LEDGER-146.1] keeps a custom range and its dates when the app comes back 
   });
 });
 
-test('[LEDGER-146.1] leaves the period at midnight while the app stays in front, and moves it when the app next comes back', async () => {
+test('[LEDGER-146.2] leaves the period at midnight while the app stays in front, and moves it when the app next comes back', async () => {
   await startExpenses('Asia/Taipei', '2026-10-31T04:00:00Z');
   await expectPeriod(expensesRoot, 'October 2026');
 
@@ -1262,7 +1280,7 @@ test('[LEDGER-146.1] leaves the period at midnight while the app stays in front,
   await expectPeriod(expensesRoot, 'November 2026');
 });
 
-test("[GROUPS-61.4] lists only the group's expenses dated in the period", async () => {
+test("[GROUPS-61.5] lists only the group's expenses dated in the period", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Taxi', '2026-10-29');
   await brisbaneSpends('Dinner', '2026-09-30');
@@ -1277,7 +1295,7 @@ test("[GROUPS-61.4] lists only the group's expenses dated in the period", async 
   expect(groupLines('Brisbane')).not.toContain(NO_EXPENSES);
 });
 
-test("[GROUPS-68.4] totals the group's cards of the period shown, and reads the total after the period's name", async () => {
+test("[GROUPS-68.5] totals the group's cards of the period shown, and reads the total after the period's name", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-10-29', '100.01');
   await brisbaneSpends('Taxi', '2026-09-30', '25.00', ['Blake']);
@@ -1293,7 +1311,7 @@ test("[GROUPS-68.4] totals the group's cards of the period shown, and reads the 
   expect(groupCardTitles('Brisbane')).toEqual(['Dinner']);
 });
 
-test("[GROUPS-68.4] shows a dash for a group's period with no card, read as nothing", async () => {
+test("[GROUPS-68.5] shows a dash for a group's period with no card, read as nothing", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Taxi', '2026-09-30', '25.00', ['Blake']);
   await showGroup('Brisbane');
@@ -1304,7 +1322,7 @@ test("[GROUPS-68.4] shows a dash for a group's period with no card, read as noth
   expect(totalRead(brisbane())).toEqual(['October 2026: nothing']);
 });
 
-test("[GROUPS-68.4] opens the group's Insights on the month the group's screen shows", async () => {
+test("[GROUPS-68.5] opens the group's Insights on the month the group's screen shows", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner', '2026-10-29', '100.01');
   await brisbaneSpends('Taxi', '2026-09-30', '25.00', ['Blake']);
@@ -1319,7 +1337,7 @@ test("[GROUPS-68.4] opens the group's Insights on the month the group's screen s
   await expectTotals(['$25.00'], 'Groups');
 });
 
-test('[GROUPS-69.3] keeps your net balance that of every expense, whatever the period', async () => {
+test('[GROUPS-69.4] keeps your net balance that of every expense, whatever the period', async () => {
   await startWithGroups(BRISBANE);
   await addGroupExpense({
     group: 'Brisbane',

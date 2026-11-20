@@ -14,6 +14,7 @@ import {
   Menu,
   Picker,
   Rectangle,
+  Section,
   Text,
   Toggle,
 } from '@expo/ui/swift-ui';
@@ -41,6 +42,8 @@ import { useThemeColors } from './theme';
 export function MenuField({
   label,
   value,
+  title,
+  trigger,
   disabled = false,
   dot,
   options,
@@ -56,38 +59,44 @@ export function MenuField({
     // A press on a native view counts as unhandled: without a responder, a scroll view that keeps
     // the keyboard only for handled presses would blur the field, and the menu would open behind
     // the keyboard.
-    <View onStartShouldSetResponder={() => true} style={styles.row}>
-      <View
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        pointerEvents="none"
-        style={[
-          styles.visual,
-          fontScale > 1.3 && styles.stacked,
-          disabled && styles.disabled,
-        ]}
-      >
-        <NativeText style={[styles.text, { color: colors.text }]}>
-          {label}
-        </NativeText>
-        <View style={styles.value}>
-          {dot && <View style={[styles.dot, { backgroundColor: dot }]} />}
-          <FadeText
-            containerStyle={styles.valueText}
-            style={[styles.text, { color: colors.textMuted }]}
-          >
-            {value}
-          </FadeText>
-          <SymbolView
-            name="chevron.up.chevron.down"
-            size={13}
-            tintColor={colors.textMuted}
-          />
+    <View
+      onStartShouldSetResponder={() => true}
+      style={trigger ? undefined : styles.row}
+    >
+      {trigger ?? (
+        <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          pointerEvents="none"
+          style={[
+            styles.visual,
+            fontScale > 1.3 && styles.stacked,
+            disabled && styles.disabled,
+          ]}
+        >
+          <NativeText style={[styles.text, { color: colors.text }]}>
+            {label}
+          </NativeText>
+          <View style={styles.value}>
+            {dot && <View style={[styles.dot, { backgroundColor: dot }]} />}
+            <FadeText
+              containerStyle={styles.valueText}
+              style={[styles.text, { color: colors.textMuted }]}
+            >
+              {value}
+            </FadeText>
+            <SymbolView
+              name="chevron.up.chevron.down"
+              size={13}
+              tintColor={colors.textMuted}
+            />
+          </View>
         </View>
-      </View>
+      )}
       <MenuOverlay
         accessibilityLabel={`${label}, ${value}`}
         label={label}
+        title={trigger ? title : undefined}
         disabled={disabled}
         options={options}
         selected={selected}
@@ -107,6 +116,7 @@ export function MenuField({
 export function MenuOverlay({
   accessibilityLabel: name,
   label,
+  title,
   disabled = false,
   options,
   selected,
@@ -124,7 +134,19 @@ export function MenuOverlay({
   | 'empty'
   | 'action'
   | 'onSelect'
-> & { accessibilityLabel: string }) {
+> & { accessibilityLabel: string; title?: string }) {
+  const picker = (
+    <Picker<string>
+      label={title ? '' : label}
+      selection={selected[0] ?? ''}
+      onSelectionChange={onSelect}
+      modifiers={[pickerStyle('inline')]}
+    >
+      {options.map((option) => (
+        <PickerOption key={option.id} {...option} />
+      ))}
+    </Picker>
+  );
   return (
     <Host ignoreSafeArea="all" style={StyleSheet.absoluteFill}>
       <Menu
@@ -158,17 +180,10 @@ export function MenuOverlay({
           ))
         ) : options.length === 0 && empty ? (
           <Button label={empty} modifiers={[disabledModifier(true)]} />
+        ) : title ? (
+          <Section title={title}>{picker}</Section>
         ) : (
-          <Picker<string>
-            label={label}
-            selection={selected[0] ?? ''}
-            onSelectionChange={onSelect}
-            modifiers={[pickerStyle('inline')]}
-          >
-            {options.map((option) => (
-              <PickerOption key={option.id} {...option} />
-            ))}
-          </Picker>
+          picker
         )}
         {action && <Button label={action.label} onPress={action.onPress} />}
       </Menu>

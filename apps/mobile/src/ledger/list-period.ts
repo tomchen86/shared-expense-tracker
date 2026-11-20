@@ -2,7 +2,7 @@ import { toLocalDate } from '@shared-expense/domain';
 import { formatExpenseDate } from './format-date';
 
 /**
- * The dates a list shows (LEDGER-107.1): one month or one year, whose `key` is YYYY-MM or YYYY,
+ * The dates a list shows (LEDGER-107.2): one month or one year, whose `key` is YYYY-MM or YYYY,
  * the last three months, a custom range, or all of them.
  */
 export type Period =
@@ -20,7 +20,7 @@ export interface ListPeriod {
   period: Period;
   /**
    * Whether the period was this month or this year on the day the list was put on it. Such a
-   * list follows the calendar when the user comes back to the app (LEDGER-146.1); one the user
+   * list follows the calendar when the user comes back to the app (LEDGER-146.2); one the user
    * moved to another month or year stays there.
    */
   wasCurrent: boolean;
@@ -86,7 +86,7 @@ export const monthOf = (date: string): Period => ({
   key: date.slice(0, 7),
 });
 
-/** The custom range a list starts with: the first day of this month to today (LEDGER-112.1). */
+/** The custom range a list starts with: the first day of this month to today (LEDGER-112.2). */
 export const firstRange = (day: string): Dates => ({
   from: `${day.slice(0, 7)}-01`,
   to: day,
@@ -139,7 +139,7 @@ export function onPeriod(
 }
 
 /**
- * The list as the user finds it on coming back to the app on the day `day` (LEDGER-146.1): one
+ * The list as the user finds it on coming back to the app on the day `day` (LEDGER-146.2): one
  * that was put on what was then this month or this year is on this month or this year now.
  */
 export function afterComingBack(list: ListPeriod, day: string): ListPeriod {
@@ -170,7 +170,7 @@ export function datesOf(
   }
 }
 
-/** The name on the period row (LEDGER-108.1); `allName` is what all dates are called there. */
+/** The name on the period row (LEDGER-108.2); `allName` is what all dates are called there. */
 export function periodName(
   period: Period,
   day: string,
@@ -195,7 +195,7 @@ export function periodName(
   }
 }
 
-/** What a period with no expense is called (LEDGER-116.1): a custom range by its two days. */
+/** What a period with no expense is called (LEDGER-116.2): a custom range by its two days. */
 export function emptyPeriodName(
   list: ShownDates,
   day: string,
@@ -226,7 +226,7 @@ export function hasNext(
 }
 
 /**
- * The search params that open Insights on the list's period (LEDGER-35.4, INSIGHTS-45.1): the
+ * The search params that open Insights on the list's period (LEDGER-35.5, INSIGHTS-45.1): the
  * month or the year, the two days of the last three months or of a custom range, and this
  * month for all dates.
  */
@@ -241,7 +241,7 @@ export function insightsParams(
 }
 
 /**
- * The period to offer in place of one that holds no expense (LEDGER-116.1): the year, from a
+ * The period to offer in place of one that holds no expense (LEDGER-116.2): the year, from a
  * year, or else the month of the latest expense dated before `first`. `dates` are the dates of
  * the list's expenses, latest first.
  */

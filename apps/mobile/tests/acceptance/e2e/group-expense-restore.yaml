@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-77.3] [LEDGER-78.4] [LEDGER-79.4] [LEDGER-84.1] Finds a group expense on Trash at its full amount, finds that swiping its card opens nothing, opens it and restores it'
+name: '[LEDGER-77.3] [LEDGER-78.4] [LEDGER-79.5] [LEDGER-84.1] Finds a group expense on Trash at its full amount, finds that swiping its card opens nothing, opens it and restores it'
 ---
 # Taylor's share of Dinner is $50.01, so a card at $100.01 shows the full amount.
 - runFlow:

@@ -9,6 +9,7 @@ export async function applyMergedCategory(
   groupId: string,
   record: Extract<SyncRecord, { type: 'category' }>,
   uncategorized: Pick<Category, 'id' | 'name' | 'color'>,
+  eventMs: number,
 ) {
   if (record.deleted) {
     // Repoint expense foreign keys first. Their sync units keep the real assignment.
@@ -17,6 +18,7 @@ export async function applyMergedCategory(
       record.id,
       { ...uncategorized, spaceId: groupId },
       undefined,
+      eventMs,
     );
     const { changes } = await tx.run(
       'DELETE FROM categories WHERE spaceId = ? AND id = ?',
@@ -53,6 +55,6 @@ export async function applyMergedCategory(
      VALUES (?, ?, ?, ?, ?, 0, (SELECT COALESCE(MAX(position), 0) + 1 FROM categories))`,
     [record.id, groupId, name, color, Number(archived)],
   );
-  await restoreMergedExpenseCategories(tx, groupId, record.id);
+  await restoreMergedExpenseCategories(tx, groupId, record.id, eventMs);
   return true;
 }

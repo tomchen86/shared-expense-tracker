@@ -9,6 +9,7 @@ import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
 import { ExpenseCard } from './expense-card';
 import { PeriodList, useListPeriod } from './list-period-ui';
+import { formatItemCount } from './list-search';
 import { useTrashActions } from './trash-provider';
 import { useReadExpenses } from './use-expenses';
 
@@ -23,7 +24,7 @@ export function ExpensesScreen() {
   const { move } = useTrashActions();
   const periods = useListPeriod(false, expenses, read.placed);
   // The total is that of the cards under it: of every expense of the period, drawn or not
-  // (LEDGER-35.4, LEDGER-118.1).
+  // (LEDGER-35.5, LEDGER-118.2).
   const cards = periods.shown ?? [];
   const totals = new Map<string, bigint>();
   for (const expense of cards) {
@@ -37,7 +38,7 @@ export function ExpensesScreen() {
     .map((currency) => formatCurrency(totals.get(currency)!, currency, locale))
     .join(', ');
   // A total of every expense ever means little: all dates show how many there are.
-  const count = `${new Intl.NumberFormat(locale).format(cards.length)} ${cards.length === 1 ? 'item' : 'items'}`;
+  const count = formatItemCount(cards.length, locale);
   const allTime = periods.option === 'all';
   const spent = amounts
     ? `Spent in ${periods.name} ${amounts}`
@@ -52,6 +53,7 @@ export function ExpensesScreen() {
       />
       <PeriodList
         periods={periods}
+        searchExpenses={expenses}
         total={
           expenses && {
             value: allTime ? count : amounts || '—',
