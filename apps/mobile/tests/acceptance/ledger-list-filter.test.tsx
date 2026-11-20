@@ -7,6 +7,7 @@ import {
   addCategory,
   addExpense,
   archiveCategory,
+  deleteCategory,
   editCategory,
   editExpense,
   expectForm,
@@ -102,6 +103,7 @@ import {
   openFilters,
   periodName,
   pressPreviousPeriod,
+  pressShowEarlier,
   pressTotal,
   rangeDates,
   showEarlierButton,
@@ -113,6 +115,7 @@ import {
   archiveGroup,
   choosePayer,
   chooseSharers,
+  deleteFromGroup,
   groupAddButton,
   groupCardTitles,
   groupLines,
@@ -549,9 +552,9 @@ test("[GROUPS-61.6] takes an expense off a group's screen once an edit makes it 
   expect(capsuleTexts(brisbane())).toContain('Paid by Casey');
 });
 
-// An edit that leaves a choice of the filter without an expense: the choice is dropped (LEDGER-141.1)
+// An edit that leaves a choice of the filter without an expense: the choice stays (LEDGER-141.1)
 
-test('[LEDGER-31.5] [LEDGER-141.1] drops the category chosen once an edit leaves no expense under it, and keeps the edited expense on the list', async () => {
+test('[LEDGER-31.5] [LEDGER-141.1] keeps the category chosen when an edit leaves no expense under it, and says that no expense matches', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await spend('Coffee run');
@@ -560,11 +563,15 @@ test('[LEDGER-31.5] [LEDGER-141.1] drops the category chosen once an edit leaves
 
   await editExpense(await idOf('Shoes'), { category: FOOD });
 
-  expect(capsuleRow(expensesRoot())).toBeUndefined();
+  expect(capsuleName(expensesRoot(), 'Category')).toBe('Category, Shopping');
+  expect(cardTitles()).toEqual([]);
+  expect(noMatchesTitle(expensesRoot())).toBe(NO_MATCHES_TITLE);
+
+  await pressClearFilters(expensesRoot());
   expect(cardTitles()).toEqual(['Coffee run', 'Shoes']);
 });
 
-test('[LEDGER-141.1] [LEDGER-31.5] drops only the category an edit leaves without an expense, and the edited expense fails what is left of the filter', async () => {
+test('[LEDGER-141.1] [LEDGER-31.5] keeps both categories chosen when an edit leaves one of them without an expense', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await spend('Train', { category: 'Travel' });
@@ -574,11 +581,13 @@ test('[LEDGER-141.1] [LEDGER-31.5] drops only the category an edit leaves withou
 
   await editExpense(await idOf('Shoes'), { category: FOOD });
 
-  expect(capsuleName(expensesRoot(), 'Category')).toBe('Category, Travel');
+  expect(capsuleName(expensesRoot(), 'Category')).toBe(
+    'Category, 2 Categories',
+  );
   expect(cardTitles()).toEqual(['Train']);
 });
 
-test('[LEDGER-64.5] [LEDGER-141.1] drops the ledger chosen once an edit leaves you no part in its only expense', async () => {
+test('[LEDGER-64.5] [LEDGER-141.1] keeps the ledger chosen when an edit leaves you no part in its only expense, and says that no expense matches', async () => {
   await startWithGroups(BRISBANE);
   await spend('Coffee run');
   await brisbaneSpends('Dinner');
@@ -591,11 +600,12 @@ test('[LEDGER-64.5] [LEDGER-141.1] drops the ledger chosen once an edit leaves y
   await press('Save');
   await expectFormClosed();
 
-  expect(capsuleRow(expensesRoot())).toBeUndefined();
-  expect(cardTitles()).toEqual(['Coffee run']);
+  expect(capsuleName(expensesRoot(), 'Ledger')).toBe('Ledger, Brisbane');
+  expect(cardTitles()).toEqual([]);
+  expect(noMatchesTitle(expensesRoot())).toBe(NO_MATCHES_TITLE);
 });
 
-test("[GROUPS-61.6] [LEDGER-141.1] drops the payer chosen once an edit leaves them no expense paid, and keeps the edited expense on the group's screen", async () => {
+test("[GROUPS-61.6] [LEDGER-141.1] keeps the payer chosen when an edit leaves them no expense paid, and says that no expense matches on the group's screen", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner');
   await brisbaneSpends('Taxi', { payer: 'Casey' });
@@ -606,7 +616,11 @@ test("[GROUPS-61.6] [LEDGER-141.1] drops the payer chosen once an edit leaves th
   await changePayer('Taxi', 'Taylor (You)');
   await showGroup('Brisbane');
 
-  expect(capsuleRow(brisbane())).toBeUndefined();
+  expect(capsuleTexts(brisbane())).toContain('Paid by Casey');
+  expect(groupCardTitles('Brisbane')).toEqual([]);
+  expect(noMatchesTitle(brisbane())).toBe(NO_MATCHES_TITLE);
+
+  await pressClearFilters(brisbane());
   expect(groupCardTitles('Brisbane')).toEqual(['Taxi', 'Dinner']);
 });
 
@@ -735,6 +749,52 @@ test("[LEDGER-130.1] has no Currency condition while the list's expenses use few
 
   await deleteByAction('Ramen');
   expect(capsuleTexts(expensesRoot())).not.toContain('Currency');
+  await openFilters('Expenses');
+  expect(conditionRow('Currency')).toBeUndefined();
+});
+
+test('[LEDGER-130.1] [LEDGER-141.1] keeps a category that is chosen on its list, marked, once no expense uses it, until it is taken off', async () => {
+  await startExpenses();
+  await spend('Shoes', { category: 'Shopping' });
+  await spend('Coffee run');
+  await choose('Expenses', 'Category', 'Shopping');
+
+  await deleteByAction('Shoes');
+  await openFilters('Expenses');
+
+  expect(await rowOptions('Category')).toEqual([
+    [FOOD, false],
+    ['Shopping', true],
+  ]);
+
+  await pressInRow('Category', 'Shopping');
+  await closeFilters();
+  await openFilters('Expenses');
+
+  expect(await rowOptions('Category')).toEqual([[FOOD, false]]);
+});
+
+test('[LEDGER-130.1] [LEDGER-141.1] keeps the Currency condition, with the currency chosen on its list, once the list is left with one other currency, and has none once All is chosen', async () => {
+  await startExpenses();
+  await spendIn('USD', 'Coffee run', '8.75');
+  await spendIn('JPY', 'Ramen', '500');
+  await choose('Expenses', 'Currency', 'USD');
+
+  await deleteByAction('Coffee run');
+
+  expect(capsuleTexts(expensesRoot()).at(-1)).toBe('USD');
+  await openFilters('Expenses');
+  expect(conditionRow('Currency')).toBe('Currency, USD');
+  expect(await rowOptions('Currency')).toEqual([
+    ['All', false],
+    ['JPY', false],
+    ['USD', true],
+  ]);
+  await closeFilters();
+
+  await choose('Expenses', 'Currency', 'All');
+
+  expect(capsuleRow(expensesRoot())).toBeUndefined();
   await openFilters('Expenses');
   expect(conditionRow('Currency')).toBeUndefined();
 });
@@ -1388,7 +1448,7 @@ test('[LEDGER-137.1] [LEDGER-122.2] shows how many expenses the filter leaves, a
   expect(sortName(expensesRoot())).toBe('Sort By, Newest First');
 });
 
-test('[LEDGER-137.1] [LEDGER-35.6] counts the expenses of the period that pass, and shows their sum on All Time in place of the count of expenses', async () => {
+test('[LEDGER-137.1] [LEDGER-35.6] counts the expenses of the period that pass, and shows their sum on All Time in place of the number of items', async () => {
   await startExpenses();
   await spend('Shoes', { date: '2026-10-01', category: 'Shopping' });
   await spend('Hat', { date: '2026-09-30', category: 'Shopping' });
@@ -1406,7 +1466,7 @@ test('[LEDGER-137.1] [LEDGER-35.6] counts the expenses of the period that pass, 
   ]);
 
   await clearInFilters('Expenses');
-  expect(listTotal()).toEqual(['3 expenses']);
+  expect(listTotal()).toEqual(['3 items']);
   expect(listCount(expensesRoot())).toBeUndefined();
 });
 
@@ -1435,6 +1495,7 @@ test('[LEDGER-138.1] [LEDGER-35.6] says the expenses are still there when the fi
   expect(noMatchesTitle(expensesRoot())).toBe(NO_MATCHES_TITLE);
   expect(linesIn(expensesRoot())).toContain(NO_MATCHES_HINT);
   expect(clearFiltersButton(expensesRoot())).toBeDefined();
+  expect(showEarlierButton(expensesRoot())).toBeUndefined();
   expect(sortView(expensesRoot())).toBeUndefined();
   expect(listCount(expensesRoot())).toBeUndefined();
   expect(listTotal()).toEqual(['—']);
@@ -1458,7 +1519,7 @@ test('[LEDGER-138.1] [LEDGER-35.6] says the expenses are still there when the fi
   expect(periodName(expensesRoot())).toBe('October 2026');
 });
 
-test("[LEDGER-138.1] [LEDGER-116.3] shows the filter's notice, not the empty period's, while a filter is on, and the empty period's once it is cleared", async () => {
+test("[LEDGER-138.1] [LEDGER-116.3] shows the filter's notice, not the empty period's, while a filter is on, with a button to the latest earlier month that holds an expense the filter passes", async () => {
   await startExpenses();
   await spend('Lunch', { date: '2026-08-15' });
   await choosePeriod('Expenses', 'This Month');
@@ -1468,13 +1529,69 @@ test("[LEDGER-138.1] [LEDGER-116.3] shows the filter's notice, not the empty per
 
   expect(noMatchesTitle(expensesRoot())).toBe(NO_MATCHES_TITLE);
   expect(emptyPeriodTitle(expensesRoot())).toBeUndefined();
+  const expected = [NO_MATCHES_TITLE, CLEAR_FILTERS, 'Show August 2026'];
+  expect(
+    linesIn(expensesRoot()).filter((line) => expected.includes(line)),
+  ).toEqual(expected);
+
+  await pressShowEarlier(expensesRoot());
+
+  await expectPeriod(expensesRoot, 'August 2026');
+  expect(capsuleOf(expensesRoot(), 'Amount')).toBe('1 or more');
+  expect(cardTitles()).toEqual(['Lunch']);
+  expect(noMatchesTitle(expensesRoot())).toBeUndefined();
+});
+
+test('[LEDGER-138.1] offers the latest earlier month that holds an expense the filter passes, not a later one whose expenses it hides', async () => {
+  await startExpenses();
+  await spend('Shoes', { date: '2026-08-15', category: 'Shopping' });
+  await spend('Lunch', { date: '2026-09-10' });
+  await choosePeriod('Expenses', 'This Month');
+
+  await choose('Expenses', 'Category', 'Shopping');
+
+  expect(noMatchesTitle(expensesRoot())).toBe(NO_MATCHES_TITLE);
+  expect(linesIn(expensesRoot())).toContain('Show August 2026');
+  expect(linesIn(expensesRoot())).not.toContain('Show September 2026');
+
+  await pressShowEarlier(expensesRoot());
+
+  await expectPeriod(expensesRoot, 'August 2026');
+  expect(cardTitles()).toEqual(['Shoes']);
+});
+
+test('[LEDGER-138.1] [LEDGER-116.3] offers no earlier period while no earlier expense passes the filter, and the empty period offers one once the filter is cleared', async () => {
+  await startExpenses();
+  await spend('Lunch', { date: '2026-08-15' });
+  await choosePeriod('Expenses', 'This Month');
+
+  await setAmounts('Expenses', '100');
+
+  expect(noMatchesTitle(expensesRoot())).toBe(NO_MATCHES_TITLE);
   expect(showEarlierButton(expensesRoot())).toBeUndefined();
 
   await pressClearFilters(expensesRoot());
 
   expect(noMatchesTitle(expensesRoot())).toBeUndefined();
   expect(emptyPeriodTitle(expensesRoot())).toBe('No Expenses in October 2026');
-  expect(showEarlierButton(expensesRoot())).toBeDefined();
+  expect(linesIn(expensesRoot())).toContain('Show August 2026');
+});
+
+test('[LEDGER-138.1] offers the latest earlier year that holds an expense the filter passes when the period is a year', async () => {
+  await startExpenses();
+  await spend('Flight', { date: '2024-03-05' });
+  await choosePeriod('Expenses', 'This Year');
+
+  await setAmounts('Expenses', '1');
+
+  expect(noMatchesTitle(expensesRoot())).toBe(NO_MATCHES_TITLE);
+  expect(linesIn(expensesRoot())).toContain('Show 2024');
+
+  await pressShowEarlier(expensesRoot());
+
+  await expectPeriod(expensesRoot, '2024');
+  expect(capsuleOf(expensesRoot(), 'Amount')).toBe('1 or more');
+  expect(cardTitles()).toEqual(['Flight']);
 });
 
 test('[LEDGER-138.1] [LEDGER-35.6] shows the notice and a dash for the total on All Time as well', async () => {
@@ -1485,6 +1602,7 @@ test('[LEDGER-138.1] [LEDGER-35.6] shows the notice and a dash for the total on 
   await setAmounts('Expenses', '100');
 
   expect(noMatchesTitle(expensesRoot())).toBe(NO_MATCHES_TITLE);
+  expect(showEarlierButton(expensesRoot())).toBeUndefined();
   expect(listTotal()).toEqual(['—']);
   expect(totalRead(expensesRoot())).toEqual([
     'View expense insights. Nothing spent in All Time.',
@@ -1775,7 +1893,7 @@ test("[LEDGER-140.1] keeps the filter of a group's screen when it is opened agai
   expect(groupCardTitles('Brisbane')).toEqual(['Taxi']);
 });
 
-// A choice that is no longer an option
+// A category that no longer exists is dropped; a choice that no expense uses any more stays
 
 test('[LEDGER-141.1] drops a category from the filter once it is renamed, and does not bring it back when the name returns', async () => {
   await startExpenses();
@@ -1837,7 +1955,34 @@ test('[LEDGER-141.1] keeps a category in the filter while another ledger still h
   expect(cardTitles()).toEqual(['Dinner']);
 });
 
-test('[LEDGER-141.1] drops a category from the filter once its expenses are moved to another category', async () => {
+test('[LEDGER-141.1] keeps a category in the filter while a group still has a category of that name, though no expense uses it', async () => {
+  await startWithGroups(BRISBANE);
+  await spend('Shoes', { category: 'Shopping' });
+  await spend('Coffee run');
+  await choose('Expenses', 'Category', 'Shopping');
+
+  await editCategory('Shopping', 'Groceries');
+
+  expect(capsuleName(expensesRoot(), 'Category')).toBe('Category, Shopping');
+  expect(cardTitles()).toEqual([]);
+  expect(noMatchesTitle(expensesRoot())).toBe(NO_MATCHES_TITLE);
+});
+
+test('[LEDGER-141.1] drops a category from the filter once it is deleted for good', async () => {
+  await startExpenses();
+  await spend('Shoes', { category: 'Shopping' });
+  await spend('Coffee run');
+  await choose('Expenses', 'Category', 'Shopping');
+  await editExpense(await idOf('Shoes'), { category: FOOD });
+  expect(capsuleName(expensesRoot(), 'Category')).toBe('Category, Shopping');
+
+  await deleteCategory('Shopping');
+
+  expect(capsuleRow(expensesRoot())).toBeUndefined();
+  expect(cardTitles()).toEqual(['Coffee run', 'Shoes']);
+});
+
+test('[LEDGER-141.1] keeps a category in the filter once its expenses are moved to another category, which archives it', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await spend('Coffee run');
@@ -1847,12 +1992,15 @@ test('[LEDGER-141.1] drops a category from the filter once its expenses are move
   await tapTab('Expenses');
   await settle();
 
-  expect(capsuleRow(expensesRoot())).toBeUndefined();
-  expect(cardTitles()).toEqual(['Coffee run', 'Shoes']);
+  expect(capsuleName(expensesRoot(), 'Category')).toBe('Category, Shopping');
+  expect(cardTitles()).toEqual([]);
+  expect(noMatchesTitle(expensesRoot())).toBe(NO_MATCHES_TITLE);
+
+  await pressClearFilters(expensesRoot());
   expect(linesIn(card('Shoes'))).toContain('Other');
 });
 
-test('[LEDGER-141.1] drops a category from the filter once its last expense is in the Trash, and Undo does not bring the filter back', async () => {
+test('[LEDGER-141.1] keeps a category in the filter once its last expense is in the Trash, and Undo shows the list as it was', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await spend('Coffee run');
@@ -1861,33 +2009,33 @@ test('[LEDGER-141.1] drops a category from the filter once its last expense is i
 
   await deleteByAction('Shoes');
 
-  expect(capsuleRow(expensesRoot())).toBeUndefined();
-  expect(cardTitles()).toEqual(['Coffee run']);
+  expect(capsuleName(expensesRoot(), 'Category')).toBe('Category, Shopping');
+  expect(cardTitles()).toEqual([]);
+  expect(noMatchesTitle(expensesRoot())).toBe(NO_MATCHES_TITLE);
 
   await pressUndo('Shoes');
 
-  expect(cardTitles()).toEqual(['Coffee run', 'Shoes']);
-  expect(capsuleRow(expensesRoot())).toBeUndefined();
+  expect(cardTitles()).toEqual(['Shoes']);
+  expect(capsuleName(expensesRoot(), 'Category')).toBe('Category, Shopping');
 });
 
-test('[LEDGER-141.1] [LEDGER-130.1] drops the currency chosen once the list is left with one currency', async () => {
+test('[LEDGER-141.1] keeps the currency chosen once the list is left with one other currency, and Undo shows the list as it was', async () => {
   await startExpenses();
   await spendIn('USD', 'Coffee run', '8.75');
   await spendIn('JPY', 'Ramen', '500');
-  await choose('Expenses', 'Currency', 'JPY');
-  expect(cardTitles()).toEqual(['Ramen']);
-
-  await clearInFilters('Expenses');
-  await deleteByAction('Coffee run');
-  expect(cardTitles()).toEqual(['Ramen']);
-  await pressUndo('Coffee run');
   await choose('Expenses', 'Currency', 'USD');
   expect(cardTitles()).toEqual(['Coffee run']);
 
   await deleteByAction('Coffee run');
 
-  expect(capsuleRow(expensesRoot())).toBeUndefined();
-  expect(cardTitles()).toEqual(['Ramen']);
+  expect(capsuleName(expensesRoot(), 'Currency')).toBe('Currency, USD');
+  expect(cardTitles()).toEqual([]);
+  expect(noMatchesTitle(expensesRoot())).toBe(NO_MATCHES_TITLE);
+
+  await pressUndo('Coffee run');
+
+  expect(cardTitles()).toEqual(['Coffee run']);
+  expect(capsuleName(expensesRoot(), 'Currency')).toBe('Currency, USD');
 });
 
 test('[LEDGER-141.1] keeps a payer and a ledger that are renamed, under their new names', async () => {
@@ -2030,20 +2178,56 @@ test('[LEDGER-142.1] keeps the filter of the expense list when the new expense i
   expect(cardTitles()).toEqual(['Coffee run']);
 });
 
-test('[LEDGER-142.1] keeps the filter when an expense that does not pass it is restored from the Trash', async () => {
+test('[LEDGER-142.1] [LEDGER-117.2] [LEDGER-79.5] takes the filter off and moves the list to the month of an expense restored from the Trash, when both would hide it', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
-  await spend('Lunch');
-  await spend('Coffee run');
+  await spend('Lunch', { date: '2026-09-12' });
   await deleteByAction('Lunch');
+  await choosePeriod('Expenses', 'This Month');
   await choose('Expenses', 'Category', 'Shopping');
+  expect(cardTitles()).toEqual(['Shoes']);
 
   await restoreFromTrash('Lunch');
   await tapTab('Expenses');
   await settle();
 
+  await expectPeriod(expensesRoot, 'September 2026');
+  expect(capsuleRow(expensesRoot())).toBeUndefined();
+  expect(cardTitles()).toEqual(['Lunch']);
+});
+
+test('[LEDGER-142.1] keeps the filter when the expense restored from the Trash passes it', async () => {
+  await startExpenses();
+  await spend('Shoes', { category: 'Shopping' });
+  await spend('Hat', { category: 'Shopping' });
+  await spend('Coffee run');
+  await deleteByAction('Hat');
+  await choose('Expenses', 'Category', 'Shopping');
+
+  await restoreFromTrash('Hat');
+  await tapTab('Expenses');
+  await settle();
+
   expect(capsuleName(expensesRoot(), 'Category')).toBe('Category, Shopping');
-  expect(cardTitles()).toEqual(['Shoes']);
+  expect(cardTitles()).toEqual(['Hat', 'Shoes']);
+});
+
+test("[LEDGER-142.1] [LEDGER-75.5] takes off the filter of the expense list when Undo on a group's screen puts back an expense that it hides", async () => {
+  await startWithGroups(BRISBANE);
+  await spend('Coffee run');
+  await brisbaneSpends('Dinner');
+  await choose('Expenses', 'Ledger', 'Personal');
+  expect(cardTitles()).toEqual(['Coffee run']);
+  await showGroup('Brisbane');
+
+  await deleteFromGroup('Brisbane', 'Dinner');
+  await pressUndo('Dinner');
+
+  expect(groupCardTitles('Brisbane')).toEqual(['Dinner']);
+  await tapTab('Expenses');
+  await settle();
+  expect(capsuleRow(expensesRoot())).toBeUndefined();
+  expect(cardTitles()).toEqual(['Dinner', 'Coffee run']);
 });
 
 test('[LEDGER-142.1] [LEDGER-125.2] keeps a search going when an expense is added during it, and takes off the filter that would hide the expense', async () => {

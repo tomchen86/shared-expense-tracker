@@ -63,6 +63,7 @@ import {
 } from './ledger-group-expense-app';
 import { goBackFrom, screenOf } from './group-details-app';
 import { showGroup } from './group-balances-app';
+import { deleteByAction } from './ledger-trash-app';
 import { allowWrites } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
 import type { Database } from '../../src/storage';
@@ -522,9 +523,9 @@ test("[LEDGER-144.1] applies a saved filter of a group's screen to that screen o
   expect(capsuleRow(expensesRoot())).toBeUndefined();
 });
 
-// A saved filter with a choice that is no longer an option
+// A saved filter with a category that no longer exists
 
-test('[LEDGER-141.1] drops from a saved filter a category that is no longer an option, and deletes a saved filter left with no condition', async () => {
+test('[LEDGER-141.1] [LEDGER-144.1] drops from a saved filter a category that no longer exists, and keeps a saved filter left with no condition, which takes every condition off', async () => {
   await startWithShopping();
   await saveBigShopping();
   await pressInFilters(CLEAR_FILTERS);
@@ -536,13 +537,41 @@ test('[LEDGER-141.1] drops from a saved filter a category that is no longer an o
   await editCategory('Shopping', 'Groceries');
   await openFilters('Expenses');
 
-  expect(savedFilterNames()).toEqual(['Big shopping']);
+  expect(savedFilters()).toEqual([
+    ['Big shopping', false],
+    ['Only shopping', false],
+  ]);
+  expect(filtersButton(SAVE_FILTER)).toBeDefined();
+  expect(filtersButtonEnabled(SAVE_FILTER)).toBe(false);
+  expect(filtersButton(FILTER_SAVED)).toBeUndefined();
 
   await applySaved('Big shopping');
 
   expect(capsuleOf(expensesRoot(), 'Category')).toBe('Category');
   expect(capsuleOf(expensesRoot(), 'Amount')).toBe('10 or more');
   expect(cardTitles()).toEqual(['Train', 'Shoes']);
+
+  await applySavedFrom('Expenses', 'Only shopping');
+
+  expect(capsuleRow(expensesRoot())).toBeUndefined();
+  expect(cardTitles()).toEqual(['Coffee run', 'Train', 'Hat', 'Shoes']);
+});
+
+test('[LEDGER-141.1] keeps the category of a saved filter once its last expenses are in the Trash', async () => {
+  await startExpenses();
+  await spend('Shoes', { amount: '20.00', category: 'Shopping' });
+  await spend('Coffee run');
+  await choose('Expenses', 'Category', 'Shopping');
+  await openFilters('Expenses');
+  await saveAs('Only shopping');
+  await pressInFilters(CLEAR_FILTERS);
+  await closeFilters();
+
+  await deleteByAction('Shoes');
+  await applySavedFrom('Expenses', 'Only shopping');
+
+  expect(capsuleOf(expensesRoot(), 'Category')).toBe('Shopping');
+  expect(cardTitles()).toEqual([]);
 });
 
 test('[LEDGER-141.1] does not bring the category back into a saved filter when the name returns', async () => {

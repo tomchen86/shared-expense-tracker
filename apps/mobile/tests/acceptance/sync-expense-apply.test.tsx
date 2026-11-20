@@ -19,7 +19,11 @@ import {
   listTotal,
 } from './ledger-expense-list-app';
 import { chooseSort } from './ledger-list-find-app';
-import { capsuleOf, setAmounts } from './ledger-list-filter-app';
+import {
+  capsuleOf,
+  clearInFilters,
+  setAmounts,
+} from './ledger-list-filter-app';
 import {
   expectPeriod,
   periodName,
@@ -326,6 +330,31 @@ test('[LEDGER-142.1] keeps the filter of the expense list when another phone add
 
   expect(capsuleOf(expensesRoot(), 'Amount')).toBe('20 or more');
   await expectCards(['Dinner']);
+});
+
+test('[LEDGER-142.1] keeps the filter of the expense list when another phone restores an expense that does not pass it', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  await receive(
+    brisbane,
+    await lunchCreated(),
+    changed('expense', LUNCH, at(LATER + 1000), { trashed: true }),
+  );
+  await setAmounts('Expenses', '20');
+  await expectCards(['Dinner']);
+
+  await receive(
+    brisbane,
+    changed('expense', LUNCH, at(LATER + 2000), { trashed: false }),
+  );
+
+  expect(capsuleOf(expensesRoot(), 'Amount')).toBe('20 or more');
+  await expectCards(['Dinner']);
+
+  // The event did put Lunch back: it is on the list once the filter is cleared.
+  await clearInFilters('Expenses');
+  expect(cardTitles()).toContain('Lunch');
 });
 
 test('[LEDGER-117.2] leaves the expense list on its period when another phone restores an expense dated outside it', async () => {

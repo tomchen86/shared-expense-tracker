@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-135.1] [LEDGER-133.1] [LEDGER-138.1] Opens the popover of the Amount capsule, types the lowest and the highest amount there, sees the list follow, and clears a filter that leaves nothing'
+name: '[LEDGER-135.1] [LEDGER-133.1] [LEDGER-138.1] [LEDGER-114.2] Opens the popover of the Amount capsule, types the lowest and the highest amount there, sees the list follow, swipes the words of a filter that leaves nothing to last month and back, and clears it'
 ---
 # Small and Large of today, 3.00 and 9.00, and Brisbane's Dinner and Taxi, 60.00 and 25.00, of
 # which your shares on the expense list are 30.00 and 12.50.
@@ -66,12 +66,23 @@ name: '[LEDGER-135.1] [LEDGER-133.1] [LEDGER-138.1] Opens the popover of the Amo
 - assertVisible: Your expenses are still here\. No expense matches the filters that are on\.
 - assertNotVisible: Large, .*
 - assertNotVisible: Sort By, .*
-# LEDGER-138.1: a sideways swipe on these words does not change the period. Next period stays
-# disabled, as it is on this month.
+# LEDGER-114.2: these words take a sideways swipe as the words of a period with no expense do.
+# Right goes to last month, where Next period can be pressed and the filter still leaves
+# nothing; left comes back to this month, where Next period is disabled.
 - swipe:
     from:
       text: No Matching Expenses
     direction: RIGHT
+- waitForAnimationToEnd
+- assertVisible: No Matching Expenses
+- assertVisible: Amount, 100 – 10
+- assertVisible:
+    text: Next period
+    enabled: true
+- swipe:
+    from:
+      text: No Matching Expenses
+    direction: LEFT
 - waitForAnimationToEnd
 - assertVisible: No Matching Expenses
 - assertVisible:

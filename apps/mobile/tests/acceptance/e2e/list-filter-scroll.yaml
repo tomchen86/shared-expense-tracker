@@ -1,0 +1,61 @@
+appId: com.tomchen.sharedexpensetracker
+name: "[LEDGER-147.3] Brings a list back to its top when its filter changes in Filters with the period row scrolled away, on the expense list and on a group's screen"
+---
+# The names of this month and its year, by the simulator's clock.
+- evalScript: "${output.months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']}"
+- evalScript: '${output.thisMonth = output.months[new Date().getMonth()]}'
+- evalScript: '${output.thisYear = String(new Date().getFullYear())}'
+# The 15th of last month and of the month before it.
+- evalScript: '${output.lastMonth15 = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 15)}'
+- evalScript: "${output.lastMonthDate = output.lastMonth15.getFullYear() + '-' + ('0' + (output.lastMonth15.getMonth() + 1)).slice(-2) + '-15'}"
+- evalScript: '${output.twoBack = new Date(new Date().getFullYear(), new Date().getMonth() - 2, 1)}'
+- evalScript: "${output.twoBackDate = output.twoBack.getFullYear() + '-' + ('0' + (output.twoBack.getMonth() + 1)).slice(-2) + '-15'}"
+# Twelve personal expenses today and twelve on each of those two days, titled Month … card …, and
+# twelve of Brisbane's today and on the 15th of last month, titled Brisbane … card …, each of
+# 1.00: this month and Brisbane's Group Total each hold more cards than the screen has room for,
+# and a lowest amount of 1 leaves all of them. Maestro reads ${…} up to the last } in the value,
+# so the seed is built in one script.
+- evalScript: "${output.seedJson = (function () { var dates = [undefined, output.lastMonthDate, output.twoBackDate]; var expenses = []; for (var month = 0; month < 3; month++) { for (var card = 1; card <= 12; card++) { expenses.push({ title: 'Month ' + month + ' card ' + card, amount: '1.00', date: dates[month] }); if (month < 2) { expenses.push({ title: 'Brisbane ' + month + ' card ' + card, amount: '1.00', date: dates[month], group: 'Brisbane' }); } } } return JSON.stringify({ name: 'Taylor', groups: [{ name: 'Brisbane', members: ['Casey'] }], expenses: expenses }); })()}"
+- runFlow:
+    file: common/launch-with-seed.yaml
+    env:
+      SEED: ${output.seedJson}
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+# Far down the list, the period row is out of sight. A lowest amount typed in Filters, which
+# every expense passes, turns a filter on: the list is back at its top, with the period row, the
+# total and the capsule row on screen.
+- swipe:
+    start: 50%, 80%
+    end: 50%, 25%
+    duration: 800
+- waitForAnimationToEnd
+- assertNotVisible: Choose period\..*
+- tapOn: Filters
+- waitForAnimationToEnd
+- tapOn: Lowest amount
+- inputText: '1'
+- tapOn: Done
+- waitForAnimationToEnd
+- assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
+- assertVisible: View expense insights\..*
+- assertVisible: Amount, 1 or more
+# The same on a group's screen, which opens on Group Total.
+- tapOn: Groups
+- tapOn: Open Brisbane
+- waitForAnimationToEnd
+- assertVisible: Choose period\. Group Total
+- swipe:
+    start: 50%, 80%
+    end: 50%, 25%
+    duration: 800
+- waitForAnimationToEnd
+- assertNotVisible: Choose period\..*
+- tapOn: Filters
+- waitForAnimationToEnd
+- tapOn: Lowest amount
+- inputText: '1'
+- tapOn: Done
+- waitForAnimationToEnd
+- assertVisible: Choose period\. Group Total
+- assertVisible: 'Group Total: .*'
+- assertVisible: Amount, 1 or more

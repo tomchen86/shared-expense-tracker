@@ -1188,7 +1188,7 @@ WHEN app 重新啟動，the mobile app SHALL 保留每個群組有沒有封存�
 
 ### Requirement: GROUPS-61.6 群組的畫面列出群組在期間裡通過篩選的支出
 
-WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面依這個畫面的排序（LEDGER-121.1）列出這個群組每一筆不在垃圾桶裡、日期在群組的畫面的期間裡（LEDGER-107.2）、通過這個畫面的篩選（LEDGER-129.1）的支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；還沒選過排序時是 LEDGER-28.1 的順序，搜尋中列出的是這個群組符合搜尋、通過篩選的支出，不管日期（LEDGER-125.2）；修改之後沒有通過篩選的支出，卡片離開群組的畫面，篩選不變，只有修改讓篩選裡的一個選擇不再是選項時，那個選擇照 LEDGER-141.1 丟掉；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.3、LEDGER-65.4），但卡片金額是支出的全額，分類那一行的右邊不是群組名稱，而是「Paid by <付款人的名稱>」，付款人是你時是「Paid by You」，付款人是前成員時用他存著的名稱，放不下時尾端漸層消失（SHELL-68.1），螢幕閱讀器在分類和日期之間讀出它。
+WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的畫面依這個畫面的排序（LEDGER-121.1）列出這個群組每一筆不在垃圾桶裡、日期在群組的畫面的期間裡（LEDGER-107.2）、通過這個畫面的篩選（LEDGER-129.1）的支出的卡片，包括和你無關的，不顯示「No expenses in this group yet.」；還沒選過排序時是 LEDGER-28.1 的順序，搜尋中列出的是這個群組符合搜尋、通過篩選的支出，不管日期（LEDGER-125.2）；修改之後沒有通過篩選的支出，卡片離開群組的畫面，篩選不變，篩選裡選著的一項因此沒有支出用到時也不變（LEDGER-141.1）；卡片和支出清單上群組支出的卡片一樣（LEDGER-33.3、LEDGER-65.4），但卡片金額是支出的全額，分類那一行的右邊不是群組名稱，而是「Paid by <付款人的名稱>」，付款人是你時是「Paid by You」，付款人是前成員時用他存著的名稱，放不下時尾端漸層消失（SHELL-68.1），螢幕閱讀器在分類和日期之間讀出它。
 
 #### Scenario: 兩筆支出
 
@@ -1260,10 +1260,10 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 - **WHEN** Casey 還付了「Hotel」，篩選是 Paid by 的 Casey 時，在 Edit Expense 把 Taxi 的付款人改成 Taylor 後按 Save
 - **THEN** Brisbane 的畫面只有 Hotel 的卡片，膠囊列的 Paid by 仍是「Paid by Casey」
 
-#### Scenario: 修改之後選擇不再是選項
+#### Scenario: 修改之後沒有支出用到選著的付款人
 
 - **WHEN** Brisbane 有 Taylor 付的「Dinner」，Casey 只付了「Taxi」，篩選是 Paid by 的 Casey 時，在 Edit Expense 把 Taxi 的付款人改成 Taylor 後按 Save
-- **THEN** Brisbane 的畫面沒有膠囊列，Dinner 和 Taxi 的卡片都在
+- **THEN** Brisbane 的畫面的膠囊列仍是「Paid by Casey」，沒有卡片，顯示「No Matching Expenses」；清除篩選之後 Dinner 和 Taxi 的卡片都在
 
 ### Requirement: GROUPS-62.1 讀完支出之前不顯示沒有支出的樣子
 
