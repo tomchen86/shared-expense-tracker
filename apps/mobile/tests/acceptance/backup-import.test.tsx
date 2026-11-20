@@ -1058,7 +1058,7 @@ async function saveLowestAmountAs(min: string, name: string) {
   await closeFilters();
 }
 
-test("[LEDGER-140.1] [LEDGER-144.1] [BACKUP-13.1] brings the filter and the saved filters of the export file with an import, in place of the phone's own", async () => {
+test("[LEDGER-140.1] [LEDGER-144.1] [BACKUP-13.2] brings the filter and the saved filters of the export file with an import, in place of the phone's own", async () => {
   const source = newPhone();
   await writeData(source, {
     expenses: [
