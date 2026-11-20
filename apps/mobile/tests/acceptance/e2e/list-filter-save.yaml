@@ -18,6 +18,11 @@ tags:
 - inputText: '1'
 - runFlow: common/done-after-typing.yaml
 - waitForAnimationToEnd
+# The small Android screen shows the Amount capsule once the row is scrolled sideways.
+- runFlow:
+    file: common/capsules-to-end.yaml
+    env:
+      FROM: Paid by Me
 - assertVisible: Amount, 1 or more
 - tapOn: Filters.*
 - waitForAnimationToEnd

@@ -26,7 +26,17 @@ tags:
 - assertVisible: Category
 - assertVisible: Ledger
 - assertVisible: Paid by Me
+# The small Android screen shows the Amount capsule once the row is scrolled sideways; the row then
+# goes back to its start.
+- runFlow:
+    file: common/capsules-to-end.yaml
+    env:
+      FROM: Paid by Me
 - assertVisible: Amount, 1 or more
+- runFlow:
+    file: common/capsules-to-start.yaml
+    env:
+      FROM: 'Amount, 1 or more'
 - assertVisible: 5 items
 # LEDGER-133.2: the Paid by Me capsule turns the condition on and off where it is. Taxi, which
 # Casey paid, goes while it is on. A screen reader reads it as selected on iOS and as checked on
@@ -185,7 +195,15 @@ tags:
 - waitForAnimationToEnd
 - assertVisible: Category
 - assertVisible: Paid by
+- runFlow:
+    file: common/capsules-to-end.yaml
+    env:
+      FROM: Paid by
 - assertVisible: Amount, 1 or more
+- runFlow:
+    file: common/capsules-to-start.yaml
+    env:
+      FROM: 'Amount, 1 or more'
 - assertNotVisible: Ledger
 - assertNotVisible: Paid by Me
 - tapOn: Paid by
@@ -202,6 +220,11 @@ tags:
 - assertNotVisible: Dinner, .*
 # The amount goes, in the popover or the sheet of its capsule, so Paid by is the only condition
 # that is on.
+# The row stays at its end, where Paid by is on screen too.
+- runFlow:
+    file: common/capsules-to-end.yaml
+    env:
+      FROM: 'Paid by, Casey'
 - tapOn: Amount, 1 or more
 - waitForAnimationToEnd
 - eraseText: 1
