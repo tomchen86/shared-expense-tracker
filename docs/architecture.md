@@ -34,7 +34,7 @@ Name top-level directories only. File paths go stale.
 - On the phone, data lives in SQLite; zustand holds only screen state (ADR-0002).
 - The phone keeps all its data in one SQLite database; every capability's migrations run in one app-wide order and never change once a release tag contains them (ADR-0006).
 - Only `apps/mobile/src/storage/` imports `expo-sqlite`; tests run the same migrations and queries on SQLite in Node (ADR-0006).
-- An export file is a copy of the phone's database, with no secrets in it; import checks a file as untrusted input, then replaces the phone's data in one transaction (ADR-0020).
+- An export file is a copy of the phone's database, with no secrets in it; import checks a file as untrusted input, then replaces the phone's data in one transaction (ADR-0020). A shared ledger's sync state goes back to the export with it, except the latest stamp the phone has seen (ADR-0025).
 - Only `apps/mobile/src/storage/` reaches the phone's files, share sheet, and file picker; tests put Node's file system and a share sheet and picker of their own in their place (ADR-0020).
 - Recording and changing data never needs the network, except changing which phones can open a shared ledger (ADR-0015); sync runs separately and never blocks a local save (ADR-0005).
 - The app contacts no server until the phone first creates or joins a shared ledger (ADR-0015).
