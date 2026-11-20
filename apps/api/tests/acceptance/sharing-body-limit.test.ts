@@ -367,6 +367,26 @@ describe('SHARING-51.1', () => {
     expectRefused(answer, SIGNATURE);
   });
 
+  test('[SHARING-51.1] refuses a HEAD whose signature is for the body that comes with it, with status 401', async () => {
+    const taylor = await registered(TAYLOR);
+    const request = signedBy(taylor, {
+      method: 'HEAD',
+      body: Uint8Array.of(0x00),
+    });
+
+    const answer = await leavingTheDatabaseAsItWas(() =>
+      sendPartly(request, {
+        declaredLength: 1,
+        sent: request.body,
+        ended: true,
+      }),
+    );
+
+    // The answer to a `HEAD` has no body, so only its status tells the refusal.
+    expectAnswered(answer);
+    expect(answer.status).toBe(401);
+  });
+
   test('[SHARING-51.1] refuses a GET from a device that has not registered for its signature, not for the body it declares', async () => {
     const answer = await leavingTheDatabaseAsItWas(() =>
       sendPartly(signedBy(newPhone(CASEY)), { declaredLength: OVER }),

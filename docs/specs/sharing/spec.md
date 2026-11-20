@@ -785,7 +785,7 @@ IF 讀 secure store 時它回報錯誤，不是回報沒有這個項目（例如
 
 ### Requirement: SHARING-31.2 除了公開的路由，請求通過檢查才交給路由
 
-The API SHALL 只把通過檢查的簽名的請求交給路由，公開的路由除外：檢查依序是欄位（SHARING-32.1）、內容太大（SHARING-48.2）、裝置和簽名（SHARING-33.1、34.1）、時鐘（SHARING-35.1）、重送（SHARING-36.1）和請求太多（SHARING-37.1），第一個沒通過的決定拒絕的原因。註冊的請求多三項：內容太大之後先檢查內容（SHARING-39.1、47.1）；裝置和簽名那一項，是用內容裡的公開金鑰驗簽名，而且裝置 ID 沒有用別把公開金鑰註冊過（SHARING-38.1、40.1）；請求太多之後，最後才檢查註冊太多（SHARING-41.1）。路徑沒有路由的請求也要通過檢查，通過了才回答找不到。
+The API SHALL 只把通過檢查的簽名的請求交給路由，公開的路由除外：檢查依序是欄位（SHARING-32.1）、內容太大（SHARING-48.2）、裝置和簽名（SHARING-33.1、34.2）、時鐘（SHARING-35.1）、重送（SHARING-36.1）和請求太多（SHARING-37.1），第一個沒通過的決定拒絕的原因。註冊的請求多三項：內容太大之後先檢查內容（SHARING-39.1、47.1）；裝置和簽名那一項，是用內容裡的公開金鑰驗簽名，而且裝置 ID 沒有用別把公開金鑰註冊過（SHARING-38.1、40.1）；請求太多之後，最後才檢查註冊太多（SHARING-41.1）。路徑沒有路由的請求也要通過檢查，通過了才回答找不到。
 
 #### Scenario: 沒簽名的請求
 
@@ -850,9 +850,9 @@ IF 簽名的請求不是註冊的請求，而它的裝置 ID 沒有註冊過，T
 - **WHEN** Casey 的手機還沒註冊，用自己的簽名私鑰簽了 `GET /no-such-route` 送出
 - **THEN** 被拒絕，原因是簽名；Casey 的手機註冊之後再送一個這樣的請求，就通過檢查
 
-### Requirement: SHARING-34.1 簽名對不上收到的請求
+### Requirement: SHARING-34.2 簽名對不上收到的請求
 
-IF 請求的簽名，不是這支裝置註冊的公開金鑰對收到的請求的簽名，THEN the API SHALL 拒絕，原因是簽名：要簽的 bytes 照 SHARING-17.1，用收到的方法、路徑、收到的內容的雜湊，和請求帶的裝置 ID、請求時間和 nonce；簽名用 Web Crypto 的 `Ed25519` 驗。收到的方法或路徑寫法不對、組不出要簽的 bytes（SHARING-18.1）的請求，也因為簽名被拒絕。註冊的請求用它內容裡的公開金鑰驗（SHARING-38.1、40.1）。
+IF 請求的簽名，不是這支裝置註冊的公開金鑰對收到的請求的簽名，THEN the API SHALL 拒絕，原因是簽名：要簽的 bytes 照 SHARING-17.1，用收到的方法、路徑、收到的內容的雜湊，和請求帶的裝置 ID、請求時間和 nonce；簽名用 Web Crypto 的 `Ed25519` 驗。`GET` 和 `HEAD` 的請求收到的內容是 0 bytes（SHARING-51.1），不論它帶了什麼 body，所以用的是 0 bytes 的雜湊。收到的方法或路徑寫法不對、組不出要簽的 bytes（SHARING-18.1）的請求，也因為簽名被拒絕。註冊的請求用它內容裡的公開金鑰驗（SHARING-38.1、40.1）。
 
 #### Scenario: 沒被改過
 
@@ -968,7 +968,7 @@ IF 一支裝置已經有 60 個請求，在 API 的時間過去不到 60,000 毫
 
 ### Requirement: SHARING-38.1 註冊存下裝置 ID 和公開金鑰
 
-WHEN 對 `/devices` 的 `POST` 是簽名的請求，內容是一把 Ed25519 公開金鑰，簽名用這把公開金鑰驗得過（SHARING-34.1），也通過其餘的檢查，the API SHALL 存下這個裝置 ID 和這把公開金鑰，回答註冊好了；之後這支裝置的請求都用這把公開金鑰驗。這個裝置 ID 已經用同一把公開金鑰註冊過時，只回答註冊好了，不多存一支裝置；同一支裝置、同一把公開金鑰的幾個註冊同時送到時也一樣，每一個都回答註冊好了，只存一支，只算一支新的裝置（SHARING-41.1）。
+WHEN 對 `/devices` 的 `POST` 是簽名的請求，內容是一把 Ed25519 公開金鑰，簽名用這把公開金鑰驗得過（SHARING-34.2），也通過其餘的檢查，the API SHALL 存下這個裝置 ID 和這把公開金鑰，回答註冊好了；之後這支裝置的請求都用這把公開金鑰驗。這個裝置 ID 已經用同一把公開金鑰註冊過時，只回答註冊好了，不多存一支裝置；同一支裝置、同一把公開金鑰的幾個註冊同時送到時也一樣，每一個都回答註冊好了，只存一支，只算一支新的裝置（SHARING-41.1）。
 
 #### Scenario: 新的裝置
 
@@ -1225,7 +1225,7 @@ WHEN 公開的路由收到帶著內容的請求，the API SHALL 回答得和沒�
 
 ### Requirement: SHARING-51.1 `GET` 和 `HEAD` 的請求，內容是 0 bytes
 
-WHEN 不是打公開的路由的 `GET` 或 `HEAD` 請求帶著 body，the API SHALL 不讀這個 body，照內容是 0 bytes 的請求來檢查，不論 body 多大、有沒有標明長度、送到了沒有：它不會因為內容太大被拒絕（SHARING-48.2），簽名要是對 0 bytes 的內容簽的才對得上（SHARING-34.1），API 也不等 body 送到就回應。
+WHEN 不是打公開的路由的 `GET` 或 `HEAD` 請求帶著 body，the API SHALL 不讀這個 body，照內容是 0 bytes 的請求來檢查，不論 body 多大、有沒有標明長度、送到了沒有：它不會因為內容太大被拒絕（SHARING-48.2），簽名要是對 0 bytes 的內容簽的才對得上（SHARING-34.2），API 也不等 body 送到就回應。
 
 #### Scenario: 標明很長的 body，一個 byte 都沒送
 
@@ -1244,8 +1244,8 @@ WHEN 不是打公開的路由的 `GET` 或 `HEAD` 請求帶著 body，the API SH
 
 #### Scenario: 簽名是對 body 簽的
 
-- **WHEN** Taylor 的手機送 `GET /no-such-route`，body 是文字 `{}`，標明長度送完，簽名是對這 2 bytes 的內容簽的
-- **THEN** 被拒絕，原因是簽名
+- **WHEN** Taylor 的手機送 `GET /no-such-route`，body 是文字 `{}`，簽名是對這 2 bytes 的內容簽的；再送 `HEAD /no-such-route`，body 是 `00` 這 1 byte，簽名是對這 1 byte 的內容簽的；body 都標明長度送完
+- **THEN** 都被拒絕，原因是簽名（401）
 
 #### Scenario: 其餘的檢查照舊
 
