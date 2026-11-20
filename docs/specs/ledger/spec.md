@@ -4434,7 +4434,7 @@ WHEN 使用者在 New Expense 存下一筆支出（LEDGER-21.2、LEDGER-54.1）�
 
 ### Requirement: LEDGER-143.1 把目前的篩選取名存起來
 
-The mobile app SHALL 在 Filters 的條件下面、「Clear Filters」上面放名稱是「Save Current Filter…」的按鈕，這個畫面沒有篩選時停用；這個畫面的篩選和它的一個存起來的篩選條件一樣時，這個按鈕是停用的「Filter Saved」；沒有篩選時它都是停用的「Save Current Filter…」，就算有一個存起來的篩選已經沒有條件（LEDGER-141.1）。條件一樣是指：Category、Ledger 或 Paid by 選的是同樣的幾項，不看選的先後；Paid by Me 一樣；Currency 一樣；Min 和 Max 各自都沒有數字，或是同一個數值，所以「10」和「10.0」一樣。WHEN 使用者按「Save Current Filter…」，the mobile app SHALL 請使用者取名稱：iOS 上是系統的提示框，標題「Save Filter」、內容「Name this filter to use it again later.」，有一個文字欄位，選項是「Cancel」和「Save」；Android 上是從底部升起、蓋在 Filters 上的 sheet，標題「Save Filter」，標題列有「Cancel」和「Save」，裡面是名稱是「Filter name」的欄位，sheet 一打開它就取得焦點、鍵盤打開（手動檢查見 LEDGER-145.1），欄位去掉頭尾空白後是空的時 Save 停用。欄位裡先帶著建議的名稱：膠囊列上開著的膠囊的文字（LEDGER-133.1），由左而右以「, 」隔開。WHEN 使用者按 Save 而名稱去掉頭尾空白後不是空的，the mobile app SHALL 把這個畫面現在的條件用去掉頭尾空白的名稱存成這個畫面的一個存起來的篩選，存在本機資料（LEDGER-140.1）；這個畫面已經有名稱一模一樣的，就取代它。存的只有條件：Category、Ledger 或 Paid by、Paid by Me、Amount 和 Currency；期間、排序和搜尋都不存。名稱是空的時不存，按 Cancel 也不存。IF 存起來的篩選存不進本機資料，THEN the mobile app SHALL 跳出 LEDGER-140.1 的那個提示框，SAVED FILTERS 沒有多出它，這個畫面的篩選不變，按鈕仍是「Save Current Filter…」。支出清單和每個群組的畫面各有自己的存起來的篩選；存和刪都不寫成同步的事件（SYNC-26.1）。
+The mobile app SHALL 在 Filters 的條件下面、「Clear Filters」上面放名稱是「Save Current Filter…」的按鈕，這個畫面沒有篩選時停用；這個畫面的篩選和它的一個存起來的篩選條件一樣時，這個按鈕是停用的「Filter Saved」；沒有篩選時它都是停用的「Save Current Filter…」，就算有一個存起來的篩選已經沒有條件（LEDGER-141.1）。條件一樣是指：Category、Ledger 或 Paid by 選的是同樣的幾項，不看選的先後；Paid by Me 一樣；Currency 一樣；Min 和 Max 各自都沒有數字，或是同一個數值，所以「10」和「10.0」一樣。WHEN 使用者按「Save Current Filter…」，the mobile app SHALL 請使用者取名稱：iOS 上是系統的提示框，標題「Save Filter」、內容「Name this filter to use it again later.」，有一個文字欄位，選項是「Cancel」和「Save」；Android 上是從底部升起、蓋在 Filters 上的 sheet，標題「Save Filter」，標題列有「Cancel」和「Save」，裡面是名稱是「Filter name」的欄位，sheet 一打開它就取得焦點，游標在建議的名稱後面，鍵盤要使用者按一下欄位才打開（手動檢查見 LEDGER-145.1），欄位去掉頭尾空白後是空的時 Save 停用。欄位裡先帶著建議的名稱：膠囊列上開著的膠囊的文字（LEDGER-133.1），由左而右以「, 」隔開。WHEN 使用者按 Save 而名稱去掉頭尾空白後不是空的，the mobile app SHALL 把這個畫面現在的條件用去掉頭尾空白的名稱存成這個畫面的一個存起來的篩選，存在本機資料（LEDGER-140.1）；這個畫面已經有名稱一模一樣的，就取代它。存的只有條件：Category、Ledger 或 Paid by、Paid by Me、Amount 和 Currency；期間、排序和搜尋都不存。名稱是空的時不存，按 Cancel 也不存。IF 存起來的篩選存不進本機資料，THEN the mobile app SHALL 跳出 LEDGER-140.1 的那個提示框，SAVED FILTERS 沒有多出它，這個畫面的篩選不變，按鈕仍是「Save Current Filter…」。支出清單和每個群組的畫面各有自己的存起來的篩選；存和刪都不寫成同步的事件（SYNC-26.1）。
 
 #### Scenario: 沒有篩選
 
@@ -4547,7 +4547,7 @@ WHILE 支出清單或群組的畫面有存起來的篩選，the mobile app SHALL
 
 ### Requirement: LEDGER-145.1 (manual) 手機上的膠囊列和金額的小視窗
 
-WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時可以用手指左右捲動，膠囊捲到畫面的左右邊緣才看不見；Paid by Me 以外的膠囊，文字後面有向下的箭頭；換期間時（LEDGER-115.1）膠囊列留在原位，不跟著期間滑走；深色外觀下關著的膠囊仍看得出是灰底，開著的仍是強調色配白字。WHERE iPhone，Amount 的小視窗（LEDGER-135.1）開著時，鍵盤 SHALL 不擋住它的兩個欄位，兩個欄位裡 SHALL 是現在的 Min 和 Max；清單捲到期間列剛好看不到、膠囊列還看得到時，在膠囊列上改篩選，清單 SHALL 留在原來的位置（LEDGER-147.3）；Amount 的小視窗開著時按底下的一張卡片，SHALL 只關閉小視窗，不打開那張卡片（LEDGER-135.1）。WHERE Android 手機，取名的 sheet（LEDGER-143.1）一打開，鍵盤 SHALL 已經打開，可以直接打名稱。
+WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時可以用手指左右捲動，膠囊捲到畫面的左右邊緣才看不見；Paid by Me 以外的膠囊，文字後面有向下的箭頭；換期間時（LEDGER-115.1）膠囊列留在原位，不跟著期間滑走；深色外觀下關著的膠囊仍看得出是灰底，開著的仍是強調色配白字。WHERE iPhone，Amount 的小視窗（LEDGER-135.1）開著時，鍵盤 SHALL 不擋住它的兩個欄位，兩個欄位裡 SHALL 是現在的 Min 和 Max；清單捲到期間列剛好看不到、膠囊列還看得到時，在膠囊列上改篩選，清單 SHALL 留在原來的位置（LEDGER-147.3）；Amount 的小視窗開著時按底下的一張卡片，SHALL 只關閉小視窗，不打開那張卡片（LEDGER-135.1）。WHERE Android 手機，取名的 sheet（LEDGER-143.1）一打開，游標 SHALL 已經在 Filter name 裡建議的名稱後面；按一下欄位，鍵盤 SHALL 打開，接著可以直接打字。
 
 #### Scenario: 左右捲動
 
@@ -4591,5 +4591,5 @@ WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時�
 
 #### Scenario: Android 上取名
 
-- **WHEN** Android 手機上 Min 是「1」，在 Filters 按「Save Current Filter…」
-- **THEN** sheet 打開時鍵盤已經打開，游標在 Filter name 裡建議的名稱後面，可以直接打字
+- **WHEN** Android 手機上 Min 是「1」，在 Filters 按「Save Current Filter…」，再按一下 Filter name
+- **THEN** sheet 打開時游標在 Filter name 裡建議的名稱後面；按了之後鍵盤打開，打的字接在名稱後面
