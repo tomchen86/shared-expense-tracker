@@ -1938,6 +1938,11 @@ WHEN 手機 app 上傳事件，the mobile app SHALL 讓請求裡每個事件的�
 - **WHEN** Taylor 的手機新增 Dinner 之後同步
 - **THEN** 上傳的請求的鑰匙世代是 1；用 Brisbane 鑰匙世代 1 的群組鑰匙，和 `shared-expense/event/v1`、Brisbane 的群組 ID、這個事件的事件 ID、A、`1` 這五行附加資料，解開 API 存下的內容，得到的就是 Dinner 的事件的 JSON；內容的 bytes 數是這段 JSON 的 bytes 數加 41
 
+#### Scenario: ASCII 以外的文字
+
+- **WHEN** Taylor 的手機新增標題是「晚餐 🍜🧡」、備註是「Café ½ ₩ — naïve」的支出之後同步，Casey 的手機再同步
+- **THEN** API 上那個事件解開之後，就是這個事件的 JSON 的 UTF-8 編碼，一個 byte 都不差；Casey 的手機上這筆支出的標題和備註也一字不差，兩支手機的 Brisbane 一模一樣
+
 #### Scenario: 附加資料差一項就解不開
 
 - **WHEN** 解開時，附加資料的群組 ID 換成 Tokyo 的、事件 ID 換成另一個事件的、裝置 ID 換成 B、鑰匙世代換成 `2`，或最後多一個換行
@@ -2507,6 +2512,11 @@ WHEN app 打開，the mobile app SHALL 為這支手機上的每個共同帳本�
 
 - **WHEN** 接著把 app 留在背景，再回到 app
 - **THEN** API 又收到對 Brisbane 和對 Tokyo 的下載各一個
+
+#### Scenario: 沒有到過背景
+
+- **WHEN** app 開著時，iOS 的控制中心被拉下來又收起：app 一度不在作用中，沒有到過背景，又回到作用中；之後過了一小時
+- **THEN** API 沒有收到請求；之後把 app 留在背景再回來，才又同步
 
 #### Scenario: 收到別人的修改
 

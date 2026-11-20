@@ -12,6 +12,7 @@ import {
   forbiddenDraws,
   fromHex,
   keyEntry,
+  ledgerOf,
   loseAnswerTo,
   loseSeed,
   mark,
@@ -121,6 +122,37 @@ describe('SYNC-67.1', () => {
     expect(stored.content).toHaveLength(
       plaintextOf(dinner.content).length + 41,
     );
+  });
+
+  test('[SYNC-67.1] encrypts text outside ASCII as UTF-8, and the other phone reads the same text', async () => {
+    const { a, b, A, brisbane, key } = await twoPhones();
+    // Characters that take two, three and four bytes in UTF-8.
+    const title = '晚餐 🍜🧡';
+    const note = 'Café ½ ₩ — naïve';
+    await addExpense(a, { title, note });
+    const [written] = await unsent(a);
+
+    await sync(a);
+
+    // What the API holds opens to the event's JSON as Node encodes it.
+    const [stored] = await storedEvents(brisbane);
+    const plaintext = opened(
+      key,
+      { groupId: brisbane, eventId: written.id, deviceId: A, epoch: 1 },
+      stored.content,
+    );
+    expect(plaintext && toHex(plaintext)).toBe(
+      toHex(plaintextOf(written.content)),
+    );
+    expect(stored.content).toHaveLength(
+      plaintextOf(written.content).length + 41,
+    );
+
+    await sync(b);
+
+    const [dinner] = (await ledgerOf(b)).expenses;
+    expect([dinner.title, dinner.note]).toEqual([title, note]);
+    expect(await ledgerOf(b)).toEqual(await ledgerOf(a));
   });
 
   test('[SYNC-67.1] the ciphertext opens with no other associated data', async () => {

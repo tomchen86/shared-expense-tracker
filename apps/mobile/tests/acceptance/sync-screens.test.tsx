@@ -51,6 +51,7 @@ import {
   newerEvent,
   otherPhoneUploads,
   otherPhoneUploadsUnderEpoch2,
+  pauseAndResume,
   releaseAnswers,
   setBuiltApiUrl,
   shareAsInvited,
@@ -338,6 +339,25 @@ describe('SYNC-89.1', () => {
     await anHourPasses();
 
     expect(fetchCalls()).toBe(calls);
+  });
+
+  test('[SYNC-89.1] does not sync when the app is active again without having been in the background', async () => {
+    const app = await startSynced();
+    const brisbane = await groupId('Brisbane');
+    const from = mark();
+    await restart(app);
+    await expectRequests(from, [download(brisbane)]);
+    const calls = fetchCalls();
+
+    await pauseAndResume();
+    await anHourPasses();
+
+    expect(fetchCalls()).toBe(calls);
+
+    // The same app does sync once it has been in the background.
+    await leaveAndComeBack();
+
+    await expectRequests(from, [download(brisbane), download(brisbane)]);
   });
 
   test('[SYNC-89.1] sends nothing, and makes no device identity, on a phone with no shared ledger', async () => {

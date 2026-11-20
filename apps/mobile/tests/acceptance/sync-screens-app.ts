@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { act } from '@testing-library/react-native';
+import { AppState, type AppStateStatus } from 'react-native';
 import type { SyncStamp } from '@shared-expense/domain';
 import { encrypt } from '@shared-expense/domain/crypto';
 import { readDeviceIdentity, sendApiRequest } from '../../src/sharing';
@@ -236,6 +237,29 @@ export async function releaseAnswers() {
   state.gate = Promise.resolve();
   await act(async () => {
     await jest.advanceTimersByTimeAsync(0);
+  });
+}
+
+/**
+ * The app stops being active and is active again without having gone to the background, as
+ * when Control Center is pulled down over it and put away on iOS. The app hears of both
+ * through AppState's change event, as leaveAndComeBack has it hear of the background.
+ */
+export async function pauseAndResume() {
+  const listen = jest.mocked(AppState.addEventListener);
+  const listeners = () =>
+    listen.mock.calls.flatMap(([type, listener], index) => {
+      const subscription = listen.mock.results[index]?.value as
+        { remove: jest.Mock } | undefined;
+      return type === 'change' && subscription?.remove.mock.calls.length === 0
+        ? [listener as (state: AppStateStatus) => void]
+        : [];
+    });
+  await act(async () => {
+    for (const hear of listeners()) hear('inactive');
+  });
+  await act(async () => {
+    for (const hear of listeners()) hear('active');
   });
 }
 
