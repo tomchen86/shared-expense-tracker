@@ -35,3 +35,19 @@ export const syncMigration = `
     UNIQUE (groupId, id)
   );
 `;
+
+/**
+ * What a phone keeps to sync a shared ledger with the API (ADR-0027): its cursor, its key
+ * epoch, whether its last download stopped at an event in a format version it does not
+ * know and whether its last upload was refused because the group is full, and which
+ * unsent events have had their stamp checked.
+ */
+export const syncLoopMigration = `
+  ALTER TABLE sync_groups ADD COLUMN cursor INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE sync_groups ADD COLUMN epoch INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE sync_groups
+    ADD COLUMN waitsForUpdate INTEGER NOT NULL DEFAULT 0 CHECK (waitsForUpdate IN (0, 1));
+  ALTER TABLE sync_groups
+    ADD COLUMN groupFull INTEGER NOT NULL DEFAULT 0 CHECK (groupFull IN (0, 1));
+  ALTER TABLE sync_outbox ADD COLUMN checked INTEGER NOT NULL DEFAULT 0 CHECK (checked IN (0, 1));
+`;

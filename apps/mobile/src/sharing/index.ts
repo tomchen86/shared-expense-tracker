@@ -4,5 +4,10 @@
 export { apiUrl } from './api-address';
 export { sendApiRequest } from './api-request';
 export type { ApiRequest, ApiResult } from './api-request';
-export { readClockOffsetMs, readDeviceIdentity } from './device-identity';
+export {
+  readClockOffsetMs,
+  readCorrectedTime,
+  readDeviceIdentity,
+  SEED_OPTIONS,
+} from './device-identity';
 export type { DeviceIdentity } from './device-identity';

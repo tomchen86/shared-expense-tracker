@@ -14,7 +14,7 @@ import { getRandomValues } from 'expo-crypto';
 import type { Database } from '../storage';
 import {
   ensureDevice,
-  readClockOffsetMs,
+  readCorrectedTime,
   saveClockOffsetMs,
   saveRegistered,
   type SigningDevice,
@@ -92,10 +92,6 @@ function assertSignable(method: string, path: string): void {
 const bytesToSend = (body: Uint8Array | string | undefined) =>
   Uint8Array.from(typeof body === 'string' ? utf8ToBytes(body) : (body ?? []));
 
-/** The phone's clock plus the offset, kept within what a request time can be. */
-const correctedTime = (clockOffsetMs: number) =>
-  Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Date.now() + clockOffsetMs));
-
 const wait = (ms: number) =>
   ms > 0
     ? new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -131,7 +127,7 @@ async function sendSigned(
   device: SigningDevice,
   { apiUrl, method, path, body, contentType }: Outgoing,
 ): Promise<Answer | undefined> {
-  const timestampMs = correctedTime(await readClockOffsetMs(database));
+  const timestampMs = await readCorrectedTime(database);
   const nonce = bytesToHex(getRandomValues(new Uint8Array(NONCE_LENGTH)));
   const signature = device.sign(
     signedRequestBytes({
@@ -173,22 +169,32 @@ async function sendSigned(
  * there was none (SHARING-26.1). It sends again only after the two refusals the phone can
  * do something about, once each for a request: for the clock it takes the API's time
  * (SHARING-27.2), and for too many requests it waits as long as the API said
- * (SHARING-28.1).
+ * (SHARING-28.1). After the clock refusal it sends what `bodyAfterClockCorrection` gives,
+ * when the caller gave one.
  */
 async function exchange(
   database: Database,
   device: SigningDevice,
   request: Outgoing,
+  bodyAfterClockCorrection?: ApiRequest['bodyAfterClockCorrection'],
 ): Promise<Answer | undefined> {
+  let outgoing = request;
   let clockCorrected = false;
   let waited = false;
   for (;;) {
-    const answer = await sendSigned(database, device, request);
+    const answer = await sendSigned(database, device, outgoing);
     const refusal = answer && refusalIn(answer);
     if (refusal?.error === 'clock') {
       await saveClockOffsetMs(database, refusal.serverTimeMs - Date.now());
       if (clockCorrected) return answer;
       clockCorrected = true;
+      // Asked for once, and only now that the new offset is saved.
+      if (bodyAfterClockCorrection) {
+        outgoing = {
+          ...outgoing,
+          body: bytesToSend(await bodyAfterClockCorrection()),
+        };
+      }
     } else if (
       refusal?.error === 'too-many-requests' &&
       refusal.retryAfterMs <= LONGEST_WAIT_MS &&
@@ -267,12 +273,11 @@ export async function sendApiRequest(
   });
   if ('outcome' in device) return device;
 
-  const answer = await exchange(database, device, {
-    apiUrl,
-    method,
-    path,
-    body,
-    contentType: 'application/octet-stream',
-  });
+  const answer = await exchange(
+    database,
+    device,
+    { apiUrl, method, path, body, contentType: 'application/octet-stream' },
+    request.bodyAfterClockCorrection,
+  );
   return answer ? { outcome: 'answered', ...answer } : { outcome: 'no-answer' };
 }

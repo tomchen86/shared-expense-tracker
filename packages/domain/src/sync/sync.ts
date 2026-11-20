@@ -159,6 +159,10 @@ export function checkSyncEvent(
     return { status: 'unsupported' };
   }
   if (!isSyncEvent(content)) return { status: 'refused', reason: 'structure' };
+  // Only the stamp of the event itself: a unit's base may name any device (SYNC-65.1).
+  if (envelope !== null && content.stamp.device !== envelope.device) {
+    return { status: 'refused', reason: 'device' };
+  }
   if (envelope !== null && content.stamp.ms - envelope.receivedAtMs > 600_000) {
     return { status: 'refused', reason: 'clock' };
   }

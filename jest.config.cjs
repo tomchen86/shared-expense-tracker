@@ -47,6 +47,15 @@ module.exports = {
     './apps/mobile/src/sync/positions.ts': { branches: 75 },
     './apps/mobile/src/sync/records.ts': { branches: 94.73 },
     './apps/mobile/src/sync/use-synced-focus-effect.ts': { branches: 83.33 },
+    // The phone's sync with the API (ADR-0027): the loop, the check of unsent stamps, and
+    // what starts a sync and shows its notices. Measured with the tests against the API
+    // (`*-api.test.*`), which need Docker.
+    './apps/mobile/src/sync/loop.ts': { branches: 98.14 },
+    './apps/mobile/src/sync/stamps.ts': { branches: 95.23 },
+    './apps/mobile/src/sync/use-sync-notices.ts': { branches: 75 },
+    './apps/mobile/src/sync/use-sync-triggers.ts': { branches: 87.5 },
+    // The acceptance tests decode little but ASCII; utf8.test.ts reaches every branch.
+    './apps/mobile/src/sync/utf8.ts': { branches: 62.5 },
     './apps/mobile/src/ledger/merged-expense.ts': { branches: 100 },
     './apps/mobile/src/ledger/trash.ts': { branches: 81.25 },
     './apps/mobile/src/categories/merged-category.ts': { branches: 100 },
