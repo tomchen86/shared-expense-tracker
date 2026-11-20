@@ -132,6 +132,20 @@ function isContent(value: unknown): value is string {
   );
 }
 
+/**
+ * Whether every item of `items` passes `isItem`, an empty slot included, which is an
+ * item that is `undefined`: `every` would skip it.
+ */
+function everyItem(
+  items: readonly unknown[],
+  isItem: (item: unknown, index: number) => boolean,
+): boolean {
+  for (let index = 0; index < items.length; index += 1) {
+    if (!isItem(items[index], index)) return false;
+  }
+  return true;
+}
+
 /** Whether `value` is exactly the body of an upload (SYNC-53.1). */
 export function isUploadEventsRequest(
   value: unknown,
@@ -143,8 +157,9 @@ export function isUploadEventsRequest(
     Array.isArray(events) &&
     events.length >= 1 &&
     events.length <= UPLOAD_EVENT_LIMIT &&
-    events.every(
-      (event: unknown) =>
+    everyItem(
+      events,
+      (event) =>
         hasExactly(event, ['id', 'content']) &&
         isId(event.id) &&
         isContent(event.content),
@@ -168,8 +183,9 @@ export function isUploadEventsResponse(
   return (
     hasExactly(value, ['events']) &&
     Array.isArray(value.events) &&
-    value.events.every(
-      (event: unknown) =>
+    everyItem(
+      value.events,
+      (event) =>
         hasExactly(event, ['id', 'sequence']) &&
         isId(event.id) &&
         isWhole(event.sequence, 1),
@@ -186,8 +202,9 @@ export function isEventsPageResponse(
   return (
     typeof more === 'boolean' &&
     Array.isArray(events) &&
-    events.every(
-      (event: unknown, index) =>
+    everyItem(
+      events,
+      (event, index) =>
         hasExactly(event, [
           'id',
           'sequence',
