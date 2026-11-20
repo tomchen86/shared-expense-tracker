@@ -2185,6 +2185,11 @@ WHILE 一個共同帳本最近一次下載停在不認得格式版本的事件�
 - **WHEN** Brisbane 同步時沒有遇到不認得的格式版本；Tokyo 不是共同帳本
 - **THEN** 兩個群組的畫面都沒有這句話
 
+#### Scenario: 只是沒有那個鑰匙世代的群組鑰匙
+
+- **WHEN** Casey 的手機上傳了 Lunch 的第一個事件，Brisbane 接著有一個鑰匙世代 2 的事件，密文是這支手機認得的格式版本；Taylor 的手機只有鑰匙世代 1 的群組鑰匙，回到 app 之後打開 Brisbane 的畫面
+- **THEN** Brisbane 有 Lunch，沒有這句話：它停在那個事件是因為沒有鑰匙（SYNC-73.1）
+
 ### Requirement: SYNC-76.1 依寫下的先後分批上傳
 
 WHEN 手機 app 上傳一個共同帳本待上傳的事件，the mobile app SHALL 依它們寫下的先後上傳，前一個請求得到 API 確認才送下一個：一個請求最多 100 個事件，請求的內容最多 1,048,576 bytes（SHARING-48.2），每個請求都依序裝到再多裝一個事件就會超過其中一個上限為止。
@@ -2471,7 +2476,7 @@ WHEN 手機 app 替一個共同帳本存下了待上傳的事件，不論是哪�
 
 #### Scenario: 存檔不等 API
 
-- **WHEN** API 一直沒有回答時，在 Brisbane 新增 Dinner
+- **WHEN** API 遲遲沒有回答時，在 Brisbane 新增 Dinner；API 在 60 秒內回答（SYNC-97.1）
 - **THEN** 表單照常關閉，支出清單有 Dinner 的卡片；API 回答之後，Dinner 的事件才上傳
 
 #### Scenario: 沒有網路
@@ -2534,7 +2539,7 @@ WHILE 一個共同帳本正在同步，the mobile app SHALL 不為它開始第�
 
 #### Scenario: 同步到一半又存檔
 
-- **WHEN** 在 Brisbane 新增 Dinner 之後，API 還沒有回答它的下載時，再新增 Lunch、把 Dinner 的標題改成「Supper」；之後 API 才回答
+- **WHEN** 在 Brisbane 新增 Dinner 之後，API 還沒有回答它的下載時，再新增 Lunch、把 Dinner 的標題改成「Supper」；之後 API 才回答，離下載送出不到 60 秒（SYNC-97.1）
 - **THEN** API 回答之前只收到一個請求；之後 API 對 Brisbane 的下載一共收到兩個，沒有同時在進行的；三個事件都上傳了，序號的順序是寫下的先後
 
 #### Scenario: 別的共同帳本
@@ -2659,3 +2664,8 @@ IF 同步時送出的一個請求，送出 60 秒之後還沒有收完回應，T
 
 - **WHEN** Casey 的手機上傳了 Lunch；Taylor 的手機回到 app，API 一直沒有回答它的下載，65 秒之後才回答
 - **THEN** Taylor 的手機沒有 Lunch，也沒有送出別的請求；再回到 app 一次，才有 Lunch
+
+#### Scenario: 等過之後再送的那一次重新算
+
+- **WHEN** Casey 的手機上傳了 Lunch；Taylor 的手機回到 app，API 因為請求太多拒絕它的下載，要等 50,000 毫秒；手機等過之後再送，API 過了 30 秒才回答
+- **THEN** Taylor 的手機有 Lunch：從第一次送出算起已經 80 秒，再送的那一次才過了 30 秒；API 一共只收到這兩個下載

@@ -329,9 +329,13 @@ export function otherPhoneUploads(group: string, ...contents: unknown[]) {
 
 /**
  * Puts an event in the API as the other phone uploaded it under key epoch 2, which this
- * phone has no key for: its ciphertext is in format version 2, which this app does not know.
+ * phone has no key for. Its ciphertext starts with the format version `version`: `01` is
+ * the one this app knows, `02` one it does not.
  */
-export function otherPhoneUploadsNewerCiphertext(group: string) {
+export function otherPhoneUploadsUnderEpoch2(
+  group: string,
+  version: '01' | '02',
+) {
   const stored = world().groups.get(group)!;
   stored.events.push({
     id: randomUUID(),
@@ -339,7 +343,7 @@ export function otherPhoneUploadsNewerCiphertext(group: string) {
     deviceId: OTHER_DEVICE,
     epoch: 2,
     receivedAtMs: apiTime(),
-    content: `02${randomBytes(80).toString('hex')}`,
+    content: `${version}${randomBytes(80).toString('hex')}`,
   });
 }
 

@@ -17,6 +17,7 @@ import {
 import { showGroup } from './group-balances-app';
 import { alertsShown, goBackFrom, textsOn } from './group-details-app';
 import {
+  apiRefusesNext,
   fetchCalls,
   goOffline,
   goOnline,
@@ -49,7 +50,7 @@ import {
   mostAtOnce,
   newerEvent,
   otherPhoneUploads,
-  otherPhoneUploadsNewerCiphertext,
+  otherPhoneUploadsUnderEpoch2,
   releaseAnswers,
   setBuiltApiUrl,
   shareAsInvited,
@@ -517,6 +518,38 @@ describe('SYNC-97.1', () => {
 
     await expectCards(['Lunch']);
   });
+
+  test('[SYNC-97.1] counts the 60 seconds from each time a request is sent, and not the wait the API asks for', async () => {
+    await startSynced();
+    const brisbane = await groupId('Brisbane');
+    otherPhoneUploads(brisbane, await lunchCreated());
+    await tapTab('Expenses');
+    apiRefusesNext('request', {
+      error: 'too-many-requests',
+      retryAfterMs: 50_000,
+    });
+    const from = mark();
+    await leaveAndComeBack();
+    await waitFor(() =>
+      expect(eventRequests(from)).toEqual([download(brisbane)]),
+    );
+    holdAnswers();
+
+    // The phone has waited as long as the API said, and sends the download again.
+    await secondsPass(50);
+    await waitFor(() =>
+      expect(eventRequests(from)).toEqual([
+        download(brisbane),
+        download(brisbane),
+      ]),
+    );
+    // 80 seconds after the first was sent, 30 after the second.
+    await secondsPass(30);
+    await releaseAnswers();
+
+    await expectCards(['Lunch']);
+    expect(eventRequests(from)).toHaveLength(2);
+  });
 });
 
 describe('SYNC-75.1', () => {
@@ -548,7 +581,7 @@ describe('SYNC-75.1', () => {
     await startSynced();
     const brisbane = await groupId('Brisbane');
     otherPhoneUploads(brisbane, await lunchCreated());
-    otherPhoneUploadsNewerCiphertext(brisbane);
+    otherPhoneUploadsUnderEpoch2(brisbane, '02');
     const from = mark();
     await leaveAndComeBack();
     await expectRequests(from, [download(brisbane)]);
@@ -557,6 +590,21 @@ describe('SYNC-75.1', () => {
 
     await waitFor(() => expect(textsOn('Brisbane')[0]).toBe(UPDATE_NOTICE));
     expect(textsOn('Brisbane')).toContain('Lunch');
+  });
+
+  test('[SYNC-75.1] does not say so at an event in a key epoch it has no key for, when it knows the ciphertext', async () => {
+    await startSynced();
+    const brisbane = await groupId('Brisbane');
+    otherPhoneUploads(brisbane, await lunchCreated());
+    otherPhoneUploadsUnderEpoch2(brisbane, '01');
+    const from = mark();
+    await leaveAndComeBack();
+    await expectRequests(from, [download(brisbane)]);
+
+    await showGroup('Brisbane');
+
+    await waitFor(() => expect(textsOn('Brisbane')).toContain('Lunch'));
+    expect(textsOn('Brisbane')).not.toContain(UPDATE_NOTICE);
   });
 
   test('[SYNC-75.1] still says so after a restart with no network', async () => {
