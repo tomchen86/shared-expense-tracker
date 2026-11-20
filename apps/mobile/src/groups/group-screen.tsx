@@ -241,7 +241,14 @@ function ArchivedBanner({
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 112 },
-  notice: { fontSize: 15, lineHeight: 20, marginTop: -8, marginBottom: 16 },
+  // Under the large title, on its left edge: the title is pulled 4 points to the left.
+  notice: {
+    fontSize: 15,
+    lineHeight: 20,
+    marginLeft: -4,
+    marginTop: -8,
+    marginBottom: 16,
+  },
   banner: { marginBottom: 20, padding: 16 },
   restore: { minHeight: 44, justifyContent: 'center', marginTop: 8 },
   message: { padding: 20, marginTop: 48, textAlign: 'center', fontSize: 16 },
