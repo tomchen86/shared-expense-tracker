@@ -30,7 +30,7 @@ const pathOf = (url: string) =>
   url.slice(url.indexOf('/', url.indexOf('://') + 3));
 
 /** What the bytes say as JSON; undefined when they are not JSON in UTF-8. */
-function jsonOf(bytes: Uint8Array): unknown {
+export function jsonOf(bytes: Uint8Array): unknown {
   try {
     return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
   } catch {
@@ -155,6 +155,8 @@ async function check(c: Context<AppEnv>): Promise<Response | undefined> {
     return new Response('Internal Server Error', { status: 500 });
   }
   if (outcome !== 'accepted') return refuse(outcome);
+  // What a route after the checks does, it does for this device.
+  c.set('deviceId', deviceId);
   if (!registering) return undefined;
   const answer: RegisterDeviceResponse = { deviceId };
   return Response.json(answer);

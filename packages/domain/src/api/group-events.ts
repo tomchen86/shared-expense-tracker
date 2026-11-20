@@ -93,42 +93,129 @@ export const GROUP_REFUSAL_STATUS: Record<GroupRefusalReason, number> = {
   'group-full': 413,
 };
 
-// Stubs: the signatures are the boundary the acceptance tests use, and the implementer
-// replaces the bodies.
+// A group ID, an event ID and a device ID are each a lowercase version-4 UUID.
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const LOWERCASE_HEX = /^[0-9a-f]*$/;
 
-function notImplemented(name: string, ...inputs: unknown[]): never {
-  throw new Error(`Not implemented: ${name} (${inputs.length} inputs)`);
+/** Whether `value` is an object, as JSON has them, with exactly the keys `keys`. */
+function hasExactly<Key extends string>(
+  value: unknown,
+  keys: readonly Key[],
+): value is Record<Key, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const own = Object.keys(value);
+  return own.length === keys.length && keys.every((key) => own.includes(key));
+}
+
+function isId(value: unknown): value is string {
+  return typeof value === 'string' && UUID.test(value);
+}
+
+/** A whole number from `least` to the largest integer a number holds exactly. */
+function isWhole(value: unknown, least: number): value is number {
+  return (
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= least
+  );
+}
+
+/** Two lowercase hexadecimal characters for each of 41 to 65,536 bytes. */
+function isContent(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length >= EVENT_CONTENT_MINIMUM * 2 &&
+    value.length <= EVENT_CONTENT_LIMIT * 2 &&
+    value.length % 2 === 0 &&
+    LOWERCASE_HEX.test(value)
+  );
 }
 
 /** Whether `value` is exactly the body of an upload (SYNC-53.1). */
 export function isUploadEventsRequest(
   value: unknown,
 ): value is UploadEventsRequest {
-  return notImplemented('isUploadEventsRequest', value);
+  if (!hasExactly(value, ['epoch', 'events'])) return false;
+  const { epoch, events } = value;
+  return (
+    isWhole(epoch, 1) &&
+    Array.isArray(events) &&
+    events.length >= 1 &&
+    events.length <= UPLOAD_EVENT_LIMIT &&
+    events.every(
+      (event: unknown) =>
+        hasExactly(event, ['id', 'content']) &&
+        isId(event.id) &&
+        isContent(event.content),
+    ) &&
+    new Set(events.map((event: UploadedEvent) => event.id)).size ===
+      events.length
+  );
 }
 
 /** Whether `value` is exactly what the API answers once a group is created (SYNC-62.1). */
 export function isCreateGroupResponse(
   value: unknown,
 ): value is CreateGroupResponse {
-  return notImplemented('isCreateGroupResponse', value);
+  return hasExactly(value, ['groupId']) && isId(value.groupId);
 }
 
 /** Whether `value` is exactly what the API answers to an upload (SYNC-62.1). */
 export function isUploadEventsResponse(
   value: unknown,
 ): value is UploadEventsResponse {
-  return notImplemented('isUploadEventsResponse', value);
+  return (
+    hasExactly(value, ['events']) &&
+    Array.isArray(value.events) &&
+    value.events.every(
+      (event: unknown) =>
+        hasExactly(event, ['id', 'sequence']) &&
+        isId(event.id) &&
+        isWhole(event.sequence, 1),
+    )
+  );
 }
 
 /** Whether `value` is exactly a page of events (SYNC-62.1). */
 export function isEventsPageResponse(
   value: unknown,
 ): value is EventsPageResponse {
-  return notImplemented('isEventsPageResponse', value);
+  if (!hasExactly(value, ['events', 'more'])) return false;
+  const { events, more } = value;
+  return (
+    typeof more === 'boolean' &&
+    Array.isArray(events) &&
+    events.every(
+      (event: unknown, index) =>
+        hasExactly(event, [
+          'id',
+          'sequence',
+          'deviceId',
+          'epoch',
+          'receivedAtMs',
+          'content',
+        ]) &&
+        isId(event.id) &&
+        isWhole(event.sequence, 1) &&
+        isId(event.deviceId) &&
+        isWhole(event.epoch, 1) &&
+        isWhole(event.receivedAtMs, 0) &&
+        isContent(event.content) &&
+        // Each event before this one has passed, so it has a sequence number.
+        (index === 0 ||
+          event.sequence === (events[index - 1] as RelayedEvent).sequence + 1),
+    )
+  );
 }
 
 /** Whether `value` is exactly the body of one of the event API's own refusals (SYNC-62.1). */
 export function isGroupRefusal(value: unknown): value is GroupRefusal {
-  return notImplemented('isGroupRefusal', value);
+  if (hasExactly(value, ['error', 'epoch'])) {
+    return value.error === 'epoch' && isWhole(value.epoch, 1);
+  }
+  return (
+    hasExactly(value, ['error']) &&
+    (value.error === 'not-a-member' || value.error === 'group-full')
+  );
 }

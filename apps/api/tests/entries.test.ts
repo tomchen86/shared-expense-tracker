@@ -1,7 +1,11 @@
+import { randomBytes, randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { isHealthResponse } from '@shared-expense/domain/api';
+import {
+  isEventsPageResponse,
+  isHealthResponse,
+} from '@shared-expense/domain/api';
 import { runMigrations } from '../src/database/migrate';
 import { migrations } from '../src/migrations';
 import {
@@ -133,6 +137,71 @@ async function expectLowOrderKeysRefused(url: string) {
   expect(other).toEqual({ status: 401, body: { error: 'signature' } });
 }
 
+/**
+ * The event API as the entry file serves it, on its runtime: a phone creates a group,
+ * uploads the largest body the tests send, seven events of 65,536 bytes, and downloads
+ * the first page of them, while a phone that is no member device gets none.
+ */
+async function expectEventsRelayed(url: string) {
+  const at = () => ({ timestampMs: Date.now() });
+  const phone = newPhone();
+  const stranger = newPhone();
+  for (const each of [phone, stranger]) {
+    expect((await sendTo(url, registrationBy(each, at()))).status).toBe(200);
+  }
+  const groupId = randomUUID();
+  const eventsPath = `/groups/${groupId}/events`;
+  const events = Array.from({ length: 7 }, () => ({
+    id: randomUUID(),
+    content: randomBytes(65_536).toString('hex'),
+  }));
+  const numbered = events.map(({ id }, index) => ({ id, sequence: index + 1 }));
+
+  const created = await sendTo(
+    url,
+    signedBy(phone, { ...at(), method: 'PUT', path: `/groups/${groupId}` }),
+  );
+  const uploaded = await sendTo(
+    url,
+    signedBy(phone, {
+      ...at(),
+      method: 'POST',
+      path: eventsPath,
+      body: JSON.stringify({ epoch: 1, events }),
+    }),
+  );
+  const page = await sendTo(
+    url,
+    signedBy(phone, { ...at(), path: `${eventsPath}?after=0` }),
+  );
+  const toAStranger = await sendTo(
+    url,
+    signedBy(stranger, { ...at(), path: `${eventsPath}?after=0` }),
+  );
+
+  expect(created).toEqual({ status: 200, body: { groupId } });
+  expect(uploaded).toEqual({ status: 200, body: { events: numbered } });
+  // Four of the largest events fill a page.
+  expect(isEventsPageResponse(page.body)).toBe(true);
+  expect(page).toEqual({
+    status: 200,
+    body: {
+      events: events.slice(0, 4).map((event, index) => ({
+        ...event,
+        sequence: index + 1,
+        deviceId: phone.deviceId,
+        epoch: 1,
+        receivedAtMs: expect.any(Number),
+      })),
+      more: true,
+    },
+  });
+  expect(toAStranger).toEqual({
+    status: 403,
+    body: { error: 'not-a-member' },
+  });
+}
+
 test(
   'the Node entry file serves GET /health',
   async () => {
@@ -150,7 +219,7 @@ test(
 );
 
 test(
-  'the Node entry file registers a phone with the key in IP_HASH_KEY, and none without it',
+  'the Node entry file registers a phone with the key in IP_HASH_KEY and relays its events, and registers none without it',
   async () => {
     await runMigrations(database.sql, migrations);
     const withKey = await startServerCommand('tsx', ['src/node.ts'], {
@@ -162,6 +231,7 @@ test(
       await expectSignedRequestsPass(withKey.url);
       await expectLowOrderKeysRefused(withKey.url);
       await expectInviteLinkRoutesPublic(withKey.url);
+      await expectEventsRelayed(withKey.url);
     } finally {
       await withKey.stop();
     }
@@ -237,7 +307,7 @@ test(
 );
 
 test(
-  'the Workers entry file registers a phone and checks its signed requests, on the Workers runtime',
+  'the Workers entry file registers a phone, checks its signed requests and relays its events, on the Workers runtime',
   async () => {
     await runMigrations(database.sql, migrations);
     const state = mkdtempSync(path.join(tmpdir(), 'api-wrangler-'));
@@ -266,6 +336,7 @@ test(
         await expectSignedRequestsPass(workers.url);
         await expectLowOrderKeysRefused(workers.url);
         await expectInviteLinkRoutesPublic(workers.url);
+        await expectEventsRelayed(workers.url);
       } finally {
         await workers.stop();
       }

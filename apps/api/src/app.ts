@@ -4,6 +4,7 @@ import { healthRoutes } from './health/routes';
 import type { AppLinks } from './sharing/app-links';
 import { appLinkRoutes } from './sharing/routes';
 import { signedRequests } from './sharing/signed-requests';
+import { syncRoutes } from './sync/routes';
 
 /** What the entry file gives every request, as `c.env` (ADR-0007, ADR-0022, ADR-0023). */
 export interface AppEnv {
@@ -21,6 +22,10 @@ export interface AppEnv {
     /** What this environment's verification files and download page say. */
     appLinks: AppLinks;
   };
+  Variables: {
+    /** The device whose request passed the checks, for the routes after them (ADR-0022). */
+    deviceId: string;
+  };
 }
 
 export const app = new Hono<AppEnv>()
@@ -29,4 +34,6 @@ export const app = new Hono<AppEnv>()
   .route('/', healthRoutes)
   .route('/', appLinkRoutes)
   // Every other request passes the checks first, whether its path has a route or not.
-  .use(signedRequests);
+  .use(signedRequests)
+  // The routes that take signed requests: each runs only once its request has passed.
+  .route('/', syncRoutes);
