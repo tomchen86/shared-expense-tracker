@@ -2204,7 +2204,7 @@ IF 準備邀請時有請求沒有得到回應——沒有網路、連不上 API�
 
 ### Requirement: SHARING-105.1 沒有結果的建立邀請，再試時用同一個代號
 
-WHEN 建立邀請，the mobile app SHALL 在送出請求之前把這次的代號和 `#` 後面的字串存進本機資料；IF 這個請求沒有得到 API 的回答，或 API 回答邀請建立好了、邀請卻沒能存進本機資料（SHARING-97.1），THEN 下次準備這個群組的邀請時用同一個代號和字串再送，重新啟動 app 之後也一樣，所以 API 已經建立的邀請不會變成沒有人有字串的邀請。這一份只在兩個時候拿掉：邀請存好的那個 transaction 裡，和 API 拒絕建立邀請的時候。
+WHEN 建立邀請，the mobile app SHALL 在送出請求之前把這次的代號和 `#` 後面的字串存進本機資料；IF 這個請求沒有得到 API 的回答，被對簽名的請求的檢查拒絕（例如請求太多或時鐘，SHARING-31.2），得到看不懂的回應，或 API 回答邀請建立好了、邀請卻沒能存進本機資料（SHARING-97.1），THEN 下次準備這個群組的邀請時用同一個代號和字串再送，重新啟動 app 之後也一樣，所以 API 已經建立的邀請不會變成沒有人有字串的邀請。這一份只在兩個時候拿掉：邀請存好的那個 transaction 裡，和邀請 API 用它自己的原因拒絕這個請求的時候，也就是已經有邀請、沒有這個邀請、不是成員或內容不對（SHARING-79.1、SHARING-80.1、SHARING-85.1、SHARING-86.1）。
 
 #### Scenario: 再試一次
 
@@ -2215,6 +2215,11 @@ WHEN 建立邀請，the mobile app SHALL 在送出請求之前把這次的代號
 
 - **WHEN** API 建立了邀請，回應卻沒送到手機；重新啟動 app，在 Brisbane 的 Members 按「Invite with Link」
 - **THEN** API 收到的建立邀請的請求，路徑和重新啟動之前的那一個一樣
+
+#### Scenario: 再試時被請求太多擋下
+
+- **WHEN** API 建立了邀請，回應卻沒送到手機；按「Try Again」時，建立邀請的請求因為請求太多被拒絕，等了之後再送仍被拒絕；之後再按一次「Try Again」
+- **THEN** 被拒絕時 Invite 顯示「Something went wrong. Try again later.」（SHARING-106.1）；最後一次送出的建立邀請的請求，路徑和第一個一樣，Invite 顯示這個代號的連結
 
 #### Scenario: API 建立了邀請，手機卻存不下它
 
@@ -2276,7 +2281,7 @@ IF 準備邀請時群組還不是共同帳本，而它有超過 20 位成員，�
 
 ### Requirement: SHARING-108.1 名片太大時不能邀請
 
-IF 準備邀請時要建立邀請（SHARING-101.1），而名片會超過 65,536 bytes，也就是名片內容的 bytes 數加上加密多出來的 41 bytes 超過它，THEN the mobile app SHALL 不發出任何網路請求，還不是共同帳本的群組不變成共同帳本，在 Invite 顯示「The group and member names are too long to invite people. Shorten them and try again.」，沒有「Try Again」。
+IF 準備邀請時要建立邀請（SHARING-92.1、SHARING-101.1），而名片會超過 65,536 bytes，也就是名片內容的 bytes 數加上加密多出來的 41 bytes 超過它，THEN the mobile app SHALL 不發出任何網路請求，還不是共同帳本的群組不變成共同帳本，在 Invite 顯示「The group and member names are too long to invite people. Shorten them and try again.」，沒有「Try Again」。
 
 #### Scenario: 剛好 65,536 bytes
 

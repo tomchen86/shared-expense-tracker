@@ -1010,6 +1010,44 @@ test('[SHARING-105.1] sends the same code again after the app was started again'
   expect(partsOf(link).code).toBe(codeIn(first));
 });
 
+test('[SHARING-105.1] keeps the code when the next attempt is refused for too many requests, and sends it again after that', async () => {
+  await startAt(ALONE);
+  apiLosesNextAnswer(isPutInvite);
+  await invite('Brisbane');
+  expect(inviteLines()).toEqual([OFFLINE, 'Try Again']);
+  const [first] = inviteRequests();
+  expect(inviteOnApi(codeIn(first))?.revoked).toBe(false);
+  for (let times = 0; times < 2; times += 1) {
+    apiRefusesNext(isPutInvite, {
+      error: 'too-many-requests',
+      retryAfterMs: 1_000,
+    });
+  }
+
+  await pressInInvite('Try Again');
+  await until(() => inviteRequests().length === 2, 'the second request');
+  await act(async () => {
+    await jest.advanceTimersByTimeAsync(1_000);
+  });
+  await until(
+    () => inviteLines().includes(WENT_WRONG),
+    'the refusal to be shown',
+  );
+
+  expect(inviteLines()).toEqual([WENT_WRONG, 'Try Again']);
+  expect(inviteRequests()).toHaveLength(3);
+  expect(await unsent()).toEqual([]);
+
+  await tryAgain();
+
+  expect(inviteRequests()).toHaveLength(4);
+  expect(inviteRequests().map((request) => request.path)).toEqual(
+    Array.from({ length: 4 }, () => first.path),
+  );
+  expect(partsOf(shownLink()!).code).toBe(codeIn(first));
+  expect(openedCard(first, partsOf(shownLink()!).secret)).toContain('Brisbane');
+});
+
 test('[SHARING-105.1] sends the same code again when the API created the invite and the phone could not store it', async () => {
   await startAt(ALONE);
   afterTheAnswerTo(isPutInvite, failWrites);
