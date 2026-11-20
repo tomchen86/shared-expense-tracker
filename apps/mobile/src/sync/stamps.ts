@@ -1,6 +1,5 @@
 import {
   compareSyncStamps,
-  nextSyncStamp,
   type SyncEvent,
   type SyncRecord,
   type SyncStamp,
@@ -167,8 +166,11 @@ async function rename(
 
 /**
  * Replaces the stamp of each of `rows` that is more than 5 minutes ahead of the corrected
- * time (SYNC-85.1): the phone's latest stamp comes down to the latest one left, and each
- * replaced event takes the next stamp after it, in the order the events were written.
+ * time (SYNC-85.1). Each replaced event takes a stamp of its own device with counter 0, a
+ * millisecond after the one before it, in the order the events were written: the first at
+ * the corrected time, or a millisecond after the latest stamp left when that one is not
+ * earlier. So a new stamp is later than every stamp left and never longer than the one
+ * it replaces, and no event grows. The phone's latest stamp becomes the last one given.
  */
 async function replaceStampsAhead(
   tx: SqlExecutor,
@@ -184,17 +186,19 @@ async function replaceStampsAhead(
 
   const unsent = await readUnsent(tx);
   const replaced = unsent.filter(({ position }) => ahead.has(position));
-  let seen = await latestStampLeft(
+  const left = await latestStampLeft(
     tx,
     unsent,
     new Set(replaced.map(({ event }) => keyOf(event.stamp))),
   );
-  const renames = new Map<number, SyncStamp>();
-  for (const { position, event } of replaced) {
-    seen = nextSyncStamp({ seen, nowMs, device: event.stamp.device });
-    renames.set(position, seen);
-  }
-  await saveLatestStamp(tx, seen!); // At least one stamp was replaced.
+  const firstMs = left && left.ms >= nowMs ? left.ms + 1 : nowMs;
+  const renames = new Map<number, SyncStamp>(
+    replaced.map(({ position, event }, index) => [
+      position,
+      { ms: firstMs + index, counter: 0, device: event.stamp.device },
+    ]),
+  );
+  await saveLatestStamp(tx, renames.get(replaced.at(-1)!.position)!);
   return rename(tx, unsent, renames);
 }
 

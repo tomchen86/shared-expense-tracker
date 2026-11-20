@@ -32,8 +32,12 @@ import { utf8Text } from './utf8';
 
 /** The most bytes a request's body may have (SHARING-48.2). */
 const BODY_LIMIT = 1_048_576;
+/** How long a request of a sync may take to be answered in full (SYNC-97.1). */
+const GIVE_UP_AFTER_MS = 60_000;
 const NONCE_LENGTH = 24;
 const KEY_LENGTH = 32;
+/** Stands in for a key the phone lacks, where only a ciphertext's format version is asked. */
+const NO_KEY = new Uint8Array(KEY_LENGTH);
 const KEY = /^[0-9a-f]{64}$/;
 /** The lines a shared ledger's screen shows under its title (SYNC-75.1, SYNC-83.1). */
 const UPDATE_NOTICE =
@@ -138,14 +142,16 @@ async function openPage(
     const { id, deviceId, epoch, receivedAtMs } = relayed;
     if (!keys.has(epoch)) keys.set(epoch, await readGroupKey(groupId, epoch));
     const key = keys.get(epoch);
-    if (!key) return { events, stamps, stopped: 'key' };
+    // The tool tells a format version it does not know before it uses the key, so a
+    // ciphertext shows it to a phone without the key too (SYNC-74.1).
     const opened = decrypt({
-      key,
+      key: key ?? NO_KEY,
       ciphertext: hexToBytes(relayed.content),
       associatedData: associatedData(groupId, id, deviceId, epoch),
     });
     if (!opened.ok && opened.reason === 'unsupported-version')
       return { events, stamps, stopped: 'version' };
+    if (!key) return { events, stamps, stopped: 'key' };
     // An event that does not open, or holds no JSON, is judged as empty content.
     const event: ReceivedSyncEvent = {
       id,
@@ -232,6 +238,7 @@ async function download(
       apiUrl,
       method: 'GET',
       path: `${eventsPath(groupId)}?after=${ledger.cursor}`,
+      giveUpAfterMs: GIVE_UP_AFTER_MS,
     });
     if (answer.outcome !== 'answered' || answer.status !== 200) return false;
     const page = jsonIn(answer.body);
@@ -345,6 +352,7 @@ async function upload(
         method: 'POST',
         path: eventsPath(groupId),
         body: uploadBody(groupId, deviceId, underEpoch, underKey, events),
+        giveUpAfterMs: GIVE_UP_AFTER_MS,
         // The stamps were checked against a clock the API has just corrected (SYNC-87.1).
         bodyAfterClockCorrection: async () => {
           const checked = await database.transaction(async (tx) => ({
