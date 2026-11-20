@@ -36,7 +36,7 @@ Also considered:
 - The events a group has stored add up to at most 10,485,760 bytes (10 MiB) of content. An upload that would go past that is refused with a reason of its own, so that the phone can say why. Only content counts, not what a row takes besides.
 - A download records the cursor it carries and the API's time as that device's progress in the group, in place of what was recorded, also when the cursor is lower. A cursor past the last sequence number the group has given is refused: a phone that follows the protocol never has one.
 - The answer to a download says `Cache-Control: no-store`. A phone that is up to date asks for the same URL every time, and a stored answer would tell it nothing is new.
-- The event API is these three requests. Another method on one of their paths, `HEAD` included, has no route.
+- The event API is these three requests. Another method on one of their paths, `HEAD` included, has no route. A create or an upload whose URL carries a query is refused as written wrongly, as a download with a wrong query is: a phone that put a name there would otherwise take it for sent (owner, 2026-11-20, on the implementer's question).
 - These routes run after the checks of ADR-0022. A request one of them refuses was accepted as a request: its nonce is used, and it counts towards the device's limit. What a route refuses leaves every group as it was.
 - A request that is written wrongly is refused before the API looks at membership, and membership comes before whatever depends on the group's state, so a non-member learns nothing about a group.
 - The bodies, the limits, these refusals with their statuses, and the functions that check an upload and each answer are defined once, in `packages/domain`'s API entry (ADR-0007).
