@@ -6,6 +6,7 @@ import {
   addCategory,
   addExpense,
   answerNext,
+  copyOfData,
   deleteCategory,
   editExpense,
   endWorld,
@@ -18,6 +19,7 @@ import {
   refusals,
   renameGroup,
   restart,
+  restoreData,
   send,
   sentBy,
   setApiTime,
@@ -405,6 +407,37 @@ describe('SYNC-85.1', () => {
       at(NOW + 540_000, 0, B),
       at(NOW, 1, A),
     ]);
+  });
+
+  test('[SYNC-85.1] does not count the latest stamp it had stored, once nothing holds that stamp', async () => {
+    const setup = await twoPhones({ tokyoShared: true });
+    const { b, A, brisbane, tokyo, key } = setup;
+    setClock(setup.a, FAST);
+    await addExpense(setup.a, { title: 'Sushi', group: tokyo });
+    await addExpense(setup.a);
+    expect(await unsentStamps(setup.a, tokyo)).toEqual([at(FAST, 0, A)]);
+    expect(await unsentStamps(setup.a)).toEqual([at(FAST, 1, A)]);
+    const copy = await copyOfData(setup.a);
+    // The API's time is NOW: Dinner goes up stamped NOW.
+    await sync(setup.a);
+    expect(stampsOf(await storedContents(brisbane, key))).toEqual([
+      at(NOW, 1, A),
+    ]);
+
+    // Three minutes later the phone, still an hour ahead, is back at the copy. Dinner
+    // takes the stamp the API holds (SYNC-96.1), so nothing holds the stamp the phone has
+    // stored as its latest any more: Dinner's old one.
+    setApiTime(NOW + 180_000);
+    const a = await restoreData(setup.a, copy);
+    setClock(a, FAST + 180_000);
+    await sync(a);
+
+    expect(await unsentStamps(a, tokyo)).toEqual([at(NOW + 180_000, 0, A)]);
+    await sync(a, tokyo);
+    setClock(b, NOW + 180_000);
+    await sync(b, tokyo);
+    expect(await titles(b, tokyo)).toEqual(['Sushi']);
+    expect(await refusals(b)).toEqual([]);
   });
 
   test('[SYNC-85.1] gives a new stamp that is later than the base of the event, when the base is ahead of the corrected time', async () => {
