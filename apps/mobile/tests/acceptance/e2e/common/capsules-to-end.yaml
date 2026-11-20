@@ -1,0 +1,15 @@
+# On Android, scrolls the capsule row to its end with a drag from the capsule named FROM, so the
+# Amount capsule, which the small screen of scripts/e2e-android.sh leaves past the right edge, is
+# on screen (LEDGER-133.2). iOS shows the whole row. Not a flow of its own: Maestro runs only the
+# files at the top of a folder.
+appId: com.tomchen.sharedexpensetracker
+---
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - swipe:
+          from:
+            text: ${FROM}
+          direction: LEFT
+      - waitForAnimationToEnd
