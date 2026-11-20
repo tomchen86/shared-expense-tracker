@@ -26,7 +26,7 @@ module.exports = {
     './packages/domain/src/groups/amounts.ts': { branches: 100 },
     './packages/domain/src/insights/insights.ts': { branches: 98.96 },
     './packages/domain/src/sync/sync.ts': { branches: 100 },
-    // Checks that payments and shares in an imported file add up to each amount.
+    // Checks imported amounts and keeps the latest sync stamp across an import.
     './apps/mobile/src/backup/import.ts': { branches: 100 },
     './apps/mobile/src/groups/group-card.tsx': { branches: 83.33 },
     './apps/mobile/src/groups/group-screen.tsx': { branches: 95.23 },
