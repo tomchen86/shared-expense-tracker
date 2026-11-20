@@ -346,6 +346,19 @@ describe('SYNC-69.1', () => {
     expect(await downloads(a, from)).toEqual(['after=2', 'after=2', 'after=2']);
   });
 
+  test('[SYNC-69.1] takes a page with no events for the last one, though it says more follow, and goes on to upload', async () => {
+    const { a, brisbane } = await twoPhones();
+    await addExpense(a);
+    answerNext('GET', 200, { events: [], more: true });
+    const from = mark();
+
+    await sync(a);
+
+    expect(await downloads(a, from)).toEqual(['after=0']);
+    expect(await unsent(a)).toEqual([]);
+    expect(await storedEvents(brisbane)).toHaveLength(1);
+  });
+
   test('[SYNC-69.1] judges an event by the device the API says uploaded it', async () => {
     const setup = await twoPhones();
     const { a, b, B, key } = setup;

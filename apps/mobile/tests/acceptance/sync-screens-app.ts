@@ -64,6 +64,8 @@ interface World {
   groups: Map<string, FakeGroup>;
   keys: Map<string, Uint8Array>;
   gate: Promise<void>;
+  /** The method whose answers the gate keeps back; every method when undefined. */
+  held?: string;
   release?: () => void;
   inFlight: Map<string, number>;
   mostAtOnce: Map<string, number>;
@@ -142,6 +144,22 @@ function answerOf(
   return json(404, {});
 }
 
+/**
+ * Fails when the caller gives the request up through the signal it passed, as `fetch`
+ * does; with no signal it never settles.
+ */
+const givenUp = (signal: AbortSignal | null | undefined) =>
+  new Promise<never>((_resolve, reject) => {
+    if (!signal) return;
+    const fail = () =>
+      reject(
+        (signal.reason as unknown) ??
+          Object.assign(new Error('Aborted'), { name: 'AbortError' }),
+      );
+    if (signal.aborted) fail();
+    else signal.addEventListener('abort', fail, { once: true });
+  });
+
 async function fetchWithEvents(
   input: RequestInfo | URL,
   init?: RequestInit,
@@ -174,7 +192,10 @@ async function fetchWithEvents(
           request.headers.get('x-device-id'),
         )
       : checked;
-    await state.gate;
+    // The API has handled the request by now; a held answer is one that does not come.
+    if (state.held === undefined || state.held === request.method) {
+      await Promise.race([state.gate, givenUp(request.signal)]);
+    }
     return answer;
   } finally {
     state.inFlight.set(group, (state.inFlight.get(group) ?? 1) - 1);
@@ -195,9 +216,13 @@ export function startEventApi() {
   globalThis.fetch = fetchWithEvents as typeof fetch;
 }
 
-/** From now on the event API keeps its answers back; the requests still arrive. */
-export function holdAnswers() {
+/**
+ * From now on the event API keeps its answers back, or only its answers to requests of
+ * `method`; the requests still arrive, and the API handles them.
+ */
+export function holdAnswers(method?: 'GET' | 'POST') {
   const state = world();
+  state.held = method;
   state.gate = new Promise((resolve) => {
     state.release = resolve;
   });
@@ -207,6 +232,7 @@ export function holdAnswers() {
 export async function releaseAnswers() {
   const state = world();
   state.release?.();
+  state.held = undefined;
   state.gate = Promise.resolve();
   await act(async () => {
     await jest.advanceTimersByTimeAsync(0);
@@ -299,6 +325,26 @@ export function otherPhoneUploads(group: string, ...contents: unknown[]) {
       ).toString('hex'),
     });
   }
+}
+
+/**
+ * Puts an event in the API as the other phone uploaded it under key epoch 2, which this
+ * phone has no key for. Its ciphertext starts with the format version `version`: `01` is
+ * the one this app knows, `02` one it does not.
+ */
+export function otherPhoneUploadsUnderEpoch2(
+  group: string,
+  version: '01' | '02',
+) {
+  const stored = world().groups.get(group)!;
+  stored.events.push({
+    id: randomUUID(),
+    sequence: (stored.events.at(-1)?.sequence ?? 0) + 1,
+    deviceId: OTHER_DEVICE,
+    epoch: 2,
+    receivedAtMs: apiTime(),
+    content: `${version}${randomBytes(80).toString('hex')}`,
+  });
 }
 
 /** The API forgets the group's events, as if they had never been uploaded. */

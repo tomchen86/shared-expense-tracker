@@ -1,4 +1,8 @@
-import { currencyDecimals, isLocalDate } from '@shared-expense/domain';
+import {
+  compareSyncStamps,
+  currencyDecimals,
+  isLocalDate,
+} from '@shared-expense/domain';
 import { appMigrations } from '../shell';
 import {
   compareMigrations,
@@ -7,6 +11,7 @@ import {
   type SqlExecutor,
 } from '../storage';
 import { openDatabaseFile } from '../storage/expo-files';
+import { latestStamp, saveLatestStamp } from '../sync/records';
 import { CREATE_EXPORT_TABLE, EXPORT_TABLE } from './export';
 
 /** What the confirmation says about an export file (BACKUP-11.1). */
@@ -35,7 +40,7 @@ const schemaOf = async (executor: SqlExecutor) =>
     ),
   );
 
-/** One row for each thing in the file that breaks a bookkeeping rule the schema cannot express (BACKUP-16.1). */
+/** One row for each thing in the file that breaks a bookkeeping rule the schema cannot express (BACKUP-16.2). */
 const BROKEN_RULES = `
   SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM local_identity)
   UNION ALL
@@ -48,10 +53,12 @@ const BROKEN_RULES = `
       UNION ALL
       SELECT expenseId, participant FROM expense_shares) AS allocation
     JOIN expenses ON expenses.id = allocation.expenseId
-    WHERE allocation.participant NOT IN (
-      SELECT personalParticipantId FROM local_identity WHERE personalSpaceId = expenses.spaceId
-      UNION ALL
-      SELECT id FROM group_members WHERE groupId = expenses.spaceId)
+    CROSS JOIN local_identity
+    WHERE CASE WHEN expenses.spaceId = local_identity.personalSpaceId
+      THEN allocation.participant <> local_identity.personalParticipantId
+      ELSE expenses.spaceId NOT IN (SELECT groupId FROM sync_groups)
+        AND allocation.participant NOT IN (SELECT id FROM group_members WHERE groupId = expenses.spaceId)
+    END
   UNION ALL
   SELECT 1 FROM expenses
     WHERE amountMinor <> (
@@ -135,9 +142,10 @@ export async function readExportFile(
 const ATTACHED = 'export_file';
 
 /**
- * Replaces every row of the local data with the rows of the export file at `path`,
- * which `readExportFile` has accepted. `replaceLocalData` runs the writes in one
- * transaction on the phone's connection, so a failure leaves the local data as it was.
+ * Replaces the local data with the rows of the accepted export file at `path`,
+ * keeping the later of the phone's and the file's latest sync stamps.
+ * `replaceLocalData` runs the writes in one transaction on the phone's connection,
+ * so a failure leaves the local data as it was.
  */
 export async function importData(
   database: Database,
@@ -155,6 +163,7 @@ export async function importData(
       )
     ).map(({ name }) => `"${name.replaceAll('"', '""')}"`);
     await replaceLocalData(async (transaction) => {
+      const previousStamp = await latestStamp(transaction);
       // ponytail: deferring covers every foreign key the schema has; one declared
       // ON DELETE RESTRICT fails at once, and then its children are deleted first.
       await transaction.exec('PRAGMA defer_foreign_keys = ON');
@@ -165,6 +174,14 @@ export async function importData(
         await transaction.exec(
           `INSERT INTO main.${table} SELECT * FROM ${ATTACHED}.${table} ORDER BY rowid`,
         );
+      if (previousStamp) {
+        const importedStamp = await latestStamp(transaction);
+        if (
+          !importedStamp ||
+          compareSyncStamps(previousStamp, importedStamp) > 0
+        )
+          await saveLatestStamp(transaction, previousStamp);
+      }
     });
   } finally {
     await database.exec(`DETACH DATABASE ${ATTACHED}`).catch(() => undefined);
