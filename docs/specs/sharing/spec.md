@@ -2372,5 +2372,10 @@ IF 準備邀請、撤回邀請或更新名片時送出的一個請求——註�
 
 #### Scenario: 更新名片一直沒有回應
 
-- **WHEN** Brisbane 的邀請建立好了之後，把 Brisbane 改名為「Brissie」，API 一直沒有回答更新名片的請求；過了 65 秒，之後 API 照常回答，再把它改名為「Bris」
+- **WHEN** Brisbane 的邀請建立好了之後，把 Brisbane 改名為「Brissie」，API 一直沒有回答更新名片的請求；過了 65 秒，API 仍沒有回答，再把它改名為「Bris」
 - **THEN** 沒有跳出提示框；API 再收到一個建立邀請的請求，代號和原本的一樣，名片的 `name` 是「Bris」
+
+#### Scenario: 每個請求各自算 60 秒
+
+- **WHEN** Taylor 的手機還沒有裝置身分，在 Brisbane 的 Members 按「Invite with Link」，API 過了 50 秒才回答註冊的請求，又過了 50 秒才回答建立群組的請求
+- **THEN** API 回答建立群組的請求之前，Invite 的內容只有「Creating link…」；回答之後 Invite 顯示邀請連結；API 只收到一個註冊的請求和一個建立群組的請求

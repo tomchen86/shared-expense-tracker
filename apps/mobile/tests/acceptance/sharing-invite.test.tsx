@@ -1167,7 +1167,7 @@ test('[SHARING-111.1] gives up a new card that has had no answer for 60 seconds,
   await waitForCards(2);
 
   await secondsPass(65);
-  await answer();
+  // The first card still has no answer: the next one does not wait for it.
   await renameGroupTo('Brissie', 'Bris');
   await waitForCards(3);
 
@@ -1175,6 +1175,34 @@ test('[SHARING-111.1] gives up a new card that has had no answer for 60 seconds,
   expect(third.path).toBe(first.path);
   expect(lastCard(link).name).toBe('Bris');
   expect(alertsShown()).toEqual([]);
+  await answer();
+});
+
+test('[SHARING-111.1] gives each request 60 seconds of its own: a registration and a group that each take 50 seconds end in a link', async () => {
+  await startAt(ALONE);
+  const registered = keepAnswersBack(isRegistering);
+  const created = keepAnswersBack(isCreateGroup);
+  await showMembers('Brisbane');
+  await fireEvent.press(membersButton('Invite with Link'));
+  await expectOpen('Invite');
+  await until(() => registrationsReceived().length === 1, 'the registration');
+
+  await secondsPass(50);
+  await registered();
+  await until(
+    () => requestsReceived().filter(isCreateGroup).length === 1,
+    'the request for the group',
+  );
+  await secondsPass(50);
+
+  expect(inviteLines()).toEqual([CREATING]);
+
+  await created();
+  await until(() => !inviteLines().includes(CREATING), 'a result');
+
+  expect(shownLink()).toMatch(LINK);
+  expect(registrationsReceived()).toHaveLength(1);
+  expect(requestsReceived().filter(isCreateGroup)).toHaveLength(1);
 });
 
 // Other answers

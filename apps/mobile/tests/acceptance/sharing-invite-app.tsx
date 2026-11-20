@@ -498,7 +498,11 @@ export function keepAnswersBack(
   };
 }
 
-/** Lets `seconds` pass on the phone, running the timers that come due. */
+/**
+ * Lets `seconds` pass on the phone, running the timers that come due. Only what the app
+ * times with `setTimeout` comes due: Jest's clock does not move Node's
+ * `AbortSignal.timeout`, which on the phone is made of `setTimeout`.
+ */
 export const secondsPass = (seconds: number) =>
   act(async () => {
     await jest.advanceTimersByTimeAsync(seconds * 1000);

@@ -1888,7 +1888,7 @@ The domain package SHALL 讓邀請只有「連結」一個單位，它的值是�
 
 ### Requirement: SYNC-81.1 套用邀請的事件
 
-WHEN 套用共同帳本的邀請的事件，the mobile app SHALL 讓這支手機存著的這個共同帳本的邀請是合併的結果：連結這個單位到了、沒有被永久刪除的邀請，存著它的代號、`#` 後面的字串和到期時間；被永久刪除的邀請不再存著。Invite 正顯示的邀請被永久刪除時，Invite 關閉，回到 Members。IF 邀請的事件的代號，在本機資料裡是別的共同帳本的邀請的代號，THEN the mobile app SHALL 不改那個邀請，也不在這個共同帳本存下或刪掉任何邀請；排在它後面的事件照常套用。情境沿用 sharing 的手機 app 情境（SHARING-90.1 到 110.1）。
+WHEN 套用共同帳本的邀請的事件，the mobile app SHALL 讓這支手機存著的這個共同帳本的邀請是合併的結果：連結這個單位到了、沒有被永久刪除的邀請，存著它的代號、`#` 後面的字串和到期時間；被永久刪除的邀請不再存著。Invite 正顯示的邀請被永久刪除時，Invite 關閉，回到 Members。IF 邀請的事件的代號，在本機資料裡是別的共同帳本的邀請的代號，THEN the mobile app SHALL 不改那個邀請，也不在這個共同帳本存下或刪掉任何邀請；排在它後面的事件照常套用。情境沿用 sharing 的手機 app 情境（SHARING-90.1 到 111.1）。
 
 #### Scenario: 別支手機建立的邀請
 
