@@ -6,6 +6,7 @@ import {
   render,
   screen,
 } from '@testing-library/react-native';
+import { verticalScroll } from '@expo/ui/jetpack-compose/modifiers';
 import { MaterialMenu } from '../../src/ui/material-menu.android';
 
 function Menu({ multiple }: { multiple: boolean }) {
@@ -32,6 +33,19 @@ function Menu({ multiple }: { multiple: boolean }) {
 
 const open = () =>
   fireEvent.press(screen.getByRole('button', { name: /^options$/i }));
+
+test('enables vertical scrolling on the open menu popup', async () => {
+  await render(<Menu multiple />);
+  await open();
+  const [popup] = screen.container.queryAll(
+    (node) => node.props.expanded === true,
+  );
+  expect(popup).toHaveProp(
+    'modifiers',
+    expect.arrayContaining([verticalScroll()]),
+  );
+});
+
 test('exposes one named checkbox per row and toggles it from its words or its accessibility action', async () => {
   await render(<Menu multiple />);
   await open();

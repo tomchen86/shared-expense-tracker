@@ -13,6 +13,7 @@ import {
   defaultMinSize,
   fillMaxSize,
   IntrinsicSize,
+  verticalScroll,
   width,
 } from '@expo/ui/jetpack-compose/modifiers';
 import check from './check.xml';
@@ -40,7 +41,11 @@ export function MaterialMenu({
       {open && (
         <MaterialHost style={StyleSheet.absoluteFill}>
           <Box modifiers={[fillMaxSize()]}>
-            <DropdownMenuPopup expanded onDismissRequest={close}>
+            <DropdownMenuPopup
+              expanded
+              onDismissRequest={close}
+              modifiers={[verticalScroll()]}
+            >
               <DropdownMenuGroup>
                 <MenuRows
                   options={options}
