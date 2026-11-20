@@ -19,7 +19,7 @@ import { addMemberDevice } from '../../../api/tests/support/group-members';
 import type { LocalIdentity } from '../../src/shell';
 import type { Database } from '../../src/storage';
 
-// The sync loop's tests run the phone's code in Node against the real API (ADR-0025): the
+// The sync loop's tests run the phone's code in Node against the real API (ADR-0027): the
 // API's Node entry on a port of its own, with a PostgreSQL database of its own for each
 // test. A phone here is a SQLite file, a secure store and a set of the app's modules of its
 // own, with no screen: a test changes its data and syncs it through what the app's
@@ -503,9 +503,8 @@ export async function restoreData(phone: Phone, copy: string): Promise<Phone> {
 }
 
 /**
- * Replaces every table of the phone's local data with the copy's, as an import of the
- * phone's own export file does (BACKUP-13.1): through the app's import, on the open
- * database, with the app still running.
+ * Imports the copy as the phone's own export file (backup): through the app's import, on
+ * the open database, with the app still running.
  */
 export async function importData(phone: Phone, copy: string): Promise<void> {
   turnTo(phone);

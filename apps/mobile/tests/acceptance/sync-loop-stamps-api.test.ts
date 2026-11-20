@@ -8,10 +8,12 @@ import {
   answerNext,
   editExpense,
   endWorld,
+  keyOf,
   ledgerOf,
   loseAnswerTo,
   mark,
   noAnswerTo,
+  randomId,
   refusals,
   renameGroup,
   restart,
@@ -26,6 +28,7 @@ import {
   titles,
   twoPhones,
   unsent,
+  uploadAs,
   uploadedContent,
   uploads,
   whenAnswered,
@@ -69,8 +72,8 @@ const at = (ms: number, counter: number, device: string): SyncStamp => ({
 const stampsOf = (events: readonly (SyncEvent | undefined)[]) =>
   events.map((event) => event?.stamp);
 
-const unsentStamps = async (phone: Phone) =>
-  (await unsent(phone)).map((event) => event.content.stamp);
+const unsentStamps = async (phone: Phone, groupId = phone.brisbane) =>
+  (await unsent(phone, groupId)).map((event) => event.content.stamp);
 
 /** The base an event gives for the unit `unit`. */
 function baseOf(event: SyncEvent | undefined, unit: string) {
@@ -185,6 +188,58 @@ describe('SYNC-84.1', () => {
       contents.filter((event) => (event?.stamp.ms ?? Infinity) > NOW),
     ).toEqual([]);
   });
+
+  test("[SYNC-84.1] checks the unsent events of the phone's other shared ledgers in the same check", async () => {
+    const { a, A, brisbane, tokyo, key } = await twoPhones({
+      tokyoShared: true,
+    });
+    setClock(a, FAST);
+    await addExpense(a);
+    await addExpense(a, { title: 'Sushi', group: tokyo });
+    expect(await unsentStamps(a)).toEqual([at(FAST, 0, A)]);
+    expect(await unsentStamps(a, tokyo)).toEqual([at(FAST, 1, A)]);
+
+    await sync(a);
+
+    expect(stampsOf(await storedContents(brisbane, key))).toEqual([
+      at(NOW, 0, A),
+    ]);
+    // Tokyo has not synced, and its event already has the stamp it will go up with.
+    expect(await unsentStamps(a, tokyo)).toEqual([at(NOW, 1, A)]);
+    expect(await storedEvents(tokyo)).toEqual([]);
+
+    await sync(a, tokyo);
+
+    expect(stampsOf(await storedContents(tokyo, keyOf(a, tokyo)))).toEqual([
+      at(NOW, 1, A),
+    ]);
+  });
+
+  test('[SYNC-84.1] checks before it merges the page, so a downloaded event is compared with the new stamp', async () => {
+    const { a, b, A, B, brisbane, key } = await twoPhones({
+      expenses: ['Dinner'],
+    });
+    await sync(a);
+    await sync(b);
+    setClock(b, T + 90_000);
+    await editExpense(b, 'Dinner', { title: 'Brunch' });
+    await sync(b);
+    setClock(a, FAST);
+    await editExpense(a, 'Dinner', { title: 'Supper' });
+    expect(await unsentStamps(a)).toEqual([at(FAST, 0, A)]);
+
+    await sync(a);
+
+    expect(stampsOf(await storedContents(brisbane, key))).toEqual([
+      at(T + 90_000, 0, B),
+      at(NOW, 0, A),
+    ]);
+    // Supper, now stamped NOW, lost to Brunch on the phone that wrote it too.
+    expect(await titles(a)).toEqual(['Brunch']);
+    await sync(b);
+    expect(await titles(b)).toEqual(['Brunch']);
+    expect(await ledgerOf(b)).toEqual(await ledgerOf(a));
+  });
 });
 
 describe('SYNC-85.1', () => {
@@ -297,6 +352,67 @@ describe('SYNC-85.1', () => {
     expect(await added(a)).toEqual(['Flights', 'Hotels']);
     expect(await added(b)).toEqual(['Flights', 'Hotels']);
     expect(await refusals(b)).toEqual([]);
+  });
+
+  test('[SYNC-85.1] does not keep a latest stamp that no record holds', async () => {
+    const { a, b, A, B, brisbane, key } = await twoPhones();
+    const id = randomId();
+    // An expense deleted for good, and then a change to it stamped 9 minutes ahead:
+    // the change merges, and changes no unit.
+    await uploadAs(b, key, [
+      { version: 1, stamp: at(NOW, 0, B), type: 'expense', id, deleted: true },
+      {
+        version: 1,
+        stamp: at(NOW + 540_000, 0, B),
+        type: 'expense',
+        id,
+        units: { title: { value: 'Late' } },
+      },
+    ]);
+    await sync(a);
+    expect(await refusals(a)).toEqual([]);
+    await addExpense(a);
+    expect(await unsentStamps(a)).toEqual([at(NOW + 540_000, 1, A)]);
+
+    await sync(a);
+
+    // The latest stamp left is the tombstone's.
+    expect(stampsOf(await storedContents(brisbane, key))).toEqual([
+      at(NOW, 0, B),
+      at(NOW + 540_000, 0, B),
+      at(NOW, 1, A),
+    ]);
+  });
+
+  test('[SYNC-85.1] gives a new stamp that is later than the base of the event, when the base is ahead of the corrected time', async () => {
+    const { a, b, A, B, brisbane, key } = await twoPhones({
+      expenses: ['Dinner'],
+    });
+    await sync(a);
+    await sync(b);
+    setClock(b, T + 240_000);
+    await editExpense(b, 'Dinner', { title: 'Brunch' });
+    await sync(b);
+    await sync(a);
+    expect(await titles(a)).toEqual(['Brunch']);
+    setClock(a, FAST);
+    await editExpense(a, 'Brunch', { title: 'Supper' });
+    const [written] = await unsent(a);
+    expect(written.content.stamp).toEqual(at(FAST, 0, A));
+    expect(baseOf(written.content, 'title')).toEqual(at(T + 240_000, 0, B));
+    setClock(a, NOW);
+
+    await sync(a);
+
+    const stored = await storedContents(brisbane, key);
+    expect(stampsOf(stored)).toEqual([
+      at(T + 240_000, 0, B),
+      at(T + 240_000, 1, A),
+    ]);
+    expect(baseOf(stored[1], 'title')).toEqual(at(T + 240_000, 0, B));
+    await sync(b);
+    expect(await titles(b)).toEqual(['Supper']);
+    expect(await titles(a)).toEqual(['Supper']);
   });
 });
 
