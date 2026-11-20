@@ -49,6 +49,7 @@ import {
   mostAtOnce,
   newerEvent,
   otherPhoneUploads,
+  otherPhoneUploadsNewerCiphertext,
   releaseAnswers,
   setBuiltApiUrl,
   shareAsInvited,
@@ -146,6 +147,12 @@ const expectRequests = (from: number, requests: string[]) =>
 const anHourPasses = () =>
   act(async () => {
     await jest.advanceTimersByTimeAsync(60 * 60 * 1000);
+  });
+
+/** Lets this many seconds pass with the app open. */
+const secondsPass = (seconds: number) =>
+  act(async () => {
+    await jest.advanceTimersByTimeAsync(seconds * 1000);
   });
 
 describe('SYNC-88.1', () => {
@@ -416,6 +423,102 @@ describe('SYNC-90.1', () => {
   });
 });
 
+describe('SYNC-97.1', () => {
+  test('[SYNC-97.1] gives up a download that has had no answer for 60 seconds, and then syncs the ledger again', async () => {
+    await startSynced();
+    const brisbane = await groupId('Brisbane');
+    holdAnswers();
+    const from = mark();
+
+    await addDinner();
+    await waitFor(() =>
+      expect(eventRequests(from)).toEqual([download(brisbane)]),
+    );
+    await secondsPass(50);
+    await leaveAndComeBack();
+
+    // The sync still waits for its answer, so coming back to the app sent nothing.
+    expect(eventRequests(from)).toEqual([download(brisbane)]);
+
+    await secondsPass(15);
+
+    // It gave the request up, and the sync that was asked for meanwhile has started (SYNC-90.1).
+    await waitFor(() =>
+      expect(eventRequests(from)).toEqual([
+        download(brisbane),
+        download(brisbane),
+      ]),
+    );
+    expect(await unsent()).toHaveLength(1);
+
+    await releaseAnswers();
+
+    await expectAllUploaded();
+    expect(apiEventIds(brisbane)).toHaveLength(1);
+  });
+
+  test('[SYNC-97.1] gives up an upload the same way, and uploads its events again in a later sync', async () => {
+    await startSynced();
+    const brisbane = await groupId('Brisbane');
+    holdAnswers('POST');
+    const from = mark();
+
+    await addDinner();
+    await waitFor(() =>
+      expect(eventRequests(from)).toEqual([
+        download(brisbane),
+        upload(brisbane),
+      ]),
+    );
+    await secondsPass(65);
+
+    // No confirmation came, so the event is kept, though the API has stored it.
+    expect(await unsent()).toHaveLength(1);
+    expect(apiEventIds(brisbane)).toHaveLength(1);
+
+    await leaveAndComeBack();
+
+    await waitFor(() =>
+      expect(eventRequests(from)).toEqual([
+        download(brisbane),
+        upload(brisbane),
+        download(brisbane),
+        upload(brisbane),
+      ]),
+    );
+    await releaseAnswers();
+
+    await expectAllUploaded();
+    expect(apiEventIds(brisbane)).toHaveLength(1);
+  });
+
+  test('[SYNC-97.1] does not use an answer that comes after it gave the request up', async () => {
+    await startSynced();
+    const brisbane = await groupId('Brisbane');
+    otherPhoneUploads(brisbane, await lunchCreated());
+    await tapTab('Expenses');
+    holdAnswers();
+    const from = mark();
+    await leaveAndComeBack();
+    await waitFor(() =>
+      expect(eventRequests(from)).toEqual([download(brisbane)]),
+    );
+    await secondsPass(65);
+
+    // The answer, which holds Lunch, comes now.
+    await releaseAnswers();
+    await secondsPass(5);
+
+    await expectCards([]);
+    expect(eventRequests(from)).toEqual([download(brisbane)]);
+
+    // The next sync downloads the same page, and applies it.
+    await leaveAndComeBack();
+
+    await expectCards(['Lunch']);
+  });
+});
+
 describe('SYNC-75.1', () => {
   /** Brisbane has an event in a format version this app does not know, and the app has synced. */
   async function waitingForAnUpdate(groups = WITH_TOKYO) {
@@ -439,6 +542,21 @@ describe('SYNC-75.1', () => {
     await showGroup('Tokyo');
 
     expect(textsOn('Tokyo')).not.toContain(UPDATE_NOTICE);
+  });
+
+  test('[SYNC-74.1] says so too at an event whose ciphertext it does not know, in a key epoch it has no key for', async () => {
+    await startSynced();
+    const brisbane = await groupId('Brisbane');
+    otherPhoneUploads(brisbane, await lunchCreated());
+    otherPhoneUploadsNewerCiphertext(brisbane);
+    const from = mark();
+    await leaveAndComeBack();
+    await expectRequests(from, [download(brisbane)]);
+
+    await showGroup('Brisbane');
+
+    await waitFor(() => expect(textsOn('Brisbane')[0]).toBe(UPDATE_NOTICE));
+    expect(textsOn('Brisbane')).toContain('Lunch');
   });
 
   test('[SYNC-75.1] still says so after a restart with no network', async () => {
