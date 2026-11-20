@@ -193,7 +193,7 @@ export async function send(
   }
 }
 
-/** The most bytes a request's body may have (SHARING-48.1): 1 MiB. */
+/** The most bytes a request's body may have (SHARING-48.2): 1 MiB. */
 export const BODY_LIMIT = 1_048_576;
 
 // How long a test waits for the answer to a request it has not ended before it takes the

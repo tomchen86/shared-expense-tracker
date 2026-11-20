@@ -29,7 +29,9 @@ import {
 // fields or its size without waiting for the rest of the body (issue #205): a body the API
 // does not wait for is one it does not have to hold. A test shows this by sending the
 // headers and only part of a body, or none of it, and leaving the request unfinished: an
-// API that read the whole body before it answered would give no answer.
+// API that read the whole body before it answered would give no answer. A `GET` or a `HEAD`
+// has no content to the API, whatever body comes with it (SHARING-51.1): the API does not
+// read that body, so it neither counts it nor waits for it.
 
 useSharingApi();
 
@@ -52,8 +54,8 @@ function expectAnswered(
   expect(answer).not.toBe('no answer');
 }
 
-describe('SHARING-48.1', () => {
-  test('[SHARING-48.1] refuses a signed request whose body is one byte over 1 MiB, with status 413, and stores nothing', async () => {
+describe('SHARING-48.2', () => {
+  test('[SHARING-48.2] refuses a signed request whose body is one byte over 1 MiB, with status 413, and stores nothing', async () => {
     const taylor = await registered(TAYLOR);
 
     const answer = await leavingTheDatabaseAsItWas(() =>
@@ -64,7 +66,7 @@ describe('SHARING-48.1', () => {
     expect(answer.status).toBe(413);
   });
 
-  test('[SHARING-48.1] takes a body of exactly 1 MiB, with its length declared', async () => {
+  test('[SHARING-48.2] takes a body of exactly 1 MiB, with its length declared', async () => {
     const taylor = await registered(TAYLOR);
 
     const answer = await send(posted(taylor, BODY_LIMIT));
@@ -72,7 +74,7 @@ describe('SHARING-48.1', () => {
     expectPassed(answer);
   });
 
-  test('[SHARING-48.1] takes a body of exactly 1 MiB sent in chunks with no length declared', async () => {
+  test('[SHARING-48.2] takes a body of exactly 1 MiB sent in chunks with no length declared', async () => {
     const taylor = await registered(TAYLOR);
     const request = posted(taylor, BODY_LIMIT);
 
@@ -85,7 +87,7 @@ describe('SHARING-48.1', () => {
     expectPassed(answer);
   });
 
-  test('[SHARING-48.1] refuses a body of exactly 1 MiB for its signature, not for its size', async () => {
+  test('[SHARING-48.2] refuses a body of exactly 1 MiB for its signature, not for its size', async () => {
     const taylor = await registered(TAYLOR);
     const request = posted(taylor, BODY_LIMIT);
 
@@ -100,7 +102,7 @@ describe('SHARING-48.1', () => {
     expectRefused(answer, SIGNATURE);
   });
 
-  test('[SHARING-48.1] counts the bytes of a body sent in chunks with no length declared', async () => {
+  test('[SHARING-48.2] counts the bytes of a body sent in chunks with no length declared', async () => {
     const taylor = await registered(TAYLOR);
     const request = posted(taylor, OVER);
 
@@ -112,7 +114,7 @@ describe('SHARING-48.1', () => {
     expectRefused(answer, TOO_LARGE);
   });
 
-  test('[SHARING-48.1] refuses a registration whose body is over 1 MiB, though its key and its signature are right', async () => {
+  test('[SHARING-48.2] refuses a registration whose body is over 1 MiB, though its key and its signature are right', async () => {
     const casey = newPhone(CASEY);
     const key = JSON.stringify({ publicKey: casey.publicKey });
     const registration = registrationBy(casey, {
@@ -293,4 +295,97 @@ describe('SHARING-50.1', () => {
       expect(inChunks).toEqual(plain);
     },
   );
+});
+
+describe('SHARING-51.1', () => {
+  const CLOCK = { error: 'clock', serverTimeMs: T } as const;
+  const THREE_BYTES = Uint8Array.of(0x00, 0xff, 0x10);
+
+  describe.each(['GET', 'HEAD'])('a signed %s', (method) => {
+    test.each([
+      ['one byte over 1 MiB', OVER],
+      ['100 GiB', HUNDRED_GIB],
+    ])(
+      '[SHARING-51.1] passes the checks, signed for no content, though it declares a body of %s and sends none of it',
+      async (_, declaredLength) => {
+        const taylor = await registered(TAYLOR);
+
+        const answer = await sendPartly(signedBy(taylor, { method }), {
+          declaredLength,
+        });
+
+        expectAnswered(answer);
+        expectPassed(answer);
+      },
+    );
+
+    test('[SHARING-51.1] passes the checks without waiting for the end of a body sent in chunks with no length declared', async () => {
+      const taylor = await registered(TAYLOR);
+
+      const answer = await sendPartly(signedBy(taylor, { method }), {
+        sent: bytes(1_024),
+      });
+
+      expectAnswered(answer);
+      expectPassed(answer);
+    });
+
+    test.each<[string, Sending]>([
+      [
+        'with its length declared',
+        { declaredLength: 3, sent: THREE_BYTES, ended: true },
+      ],
+      ['in chunks with no length declared', { sent: THREE_BYTES, ended: true }],
+    ])(
+      '[SHARING-51.1] passes the checks, signed for no content, though a body of 3 bytes comes with it in full, %s',
+      async (_, sending) => {
+        const taylor = await registered(TAYLOR);
+
+        const answer = await sendPartly(signedBy(taylor, { method }), sending);
+
+        expectAnswered(answer);
+        expectPassed(answer);
+      },
+    );
+  });
+
+  test('[SHARING-51.1] refuses a GET whose signature is for the body that comes with it', async () => {
+    const taylor = await registered(TAYLOR);
+    const request = signedBy(taylor, { body: '{}' });
+
+    const answer = await leavingTheDatabaseAsItWas(() =>
+      sendPartly(request, {
+        declaredLength: 2,
+        sent: request.body,
+        ended: true,
+      }),
+    );
+
+    expect(request.method).toBe('GET');
+    expect(request.body).toHaveLength(2);
+    expectAnswered(answer);
+    expectRefused(answer, SIGNATURE);
+  });
+
+  test('[SHARING-51.1] refuses a GET from a device that has not registered for its signature, not for the body it declares', async () => {
+    const answer = await leavingTheDatabaseAsItWas(() =>
+      sendPartly(signedBy(newPhone(CASEY)), { declaredLength: OVER }),
+    );
+
+    expectAnswered(answer);
+    expectRefused(answer, SIGNATURE);
+  });
+
+  test('[SHARING-51.1] refuses a GET whose time is an hour early for its clock, not for the body it declares', async () => {
+    const taylor = await registered(TAYLOR);
+
+    const answer = await leavingTheDatabaseAsItWas(() =>
+      sendPartly(signedBy(taylor, { timestampMs: EARLY }), {
+        declaredLength: OVER,
+      }),
+    );
+
+    expectAnswered(answer);
+    expectRefused(answer, CLOCK);
+  });
 });
