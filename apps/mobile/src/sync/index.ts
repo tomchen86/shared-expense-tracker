@@ -22,6 +22,8 @@ export {
   type RefusedSyncEvent,
 } from './apply';
 
+export { saveGroupKey, syncGroup } from './loop';
+
 /** An event this phone wrote and has not uploaded yet. */
 export interface UnsentSyncEvent {
   /** The event's own ID, the same every time it is uploaded. */

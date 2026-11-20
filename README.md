@@ -10,7 +10,7 @@ Use Node from `.nvmrc`, pnpm from `package.json`, and Python 3 for the requireme
 pnpm install
 bash scripts/check.sh            # lint, format check, typecheck, tests, requirement trace
 pnpm test:traced                  # only requirement-citing acceptance tests, with branch coverage
-pnpm test:mobile                  # every test except the API's, without Docker
+pnpm test:mobile                  # every test except the API's and the phone's tests against the API, without Docker
 pnpm --filter mobile start        # Expo development server
 docker compose -f apps/api/compose.yaml up -d --wait  # the PostgreSQL the API's tests need
 pnpm --filter api dev             # the API on Node

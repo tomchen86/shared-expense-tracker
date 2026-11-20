@@ -26,6 +26,9 @@ const shared = {
 
 // Every test runs on iOS except those named *-android.test.*, which run on Android
 // only. Tests under ui/ run on both, since only ui/ differs by platform (ADR-0002).
+// Tests named *-api.test.* run the phone's code against the API's Node entry and a real
+// PostgreSQL (ADR-0027): they are a project of their own, which `pnpm test:mobile` leaves
+// out, so that every other test of the phone still runs without Docker.
 // The root jest.config.cjs runs these projects; Jest does not nest projects.
 module.exports = {
   projects: [
@@ -36,7 +39,14 @@ module.exports = {
       testMatch: [
         '<rootDir>/{src,tests}/**/*.test.[jt]s?(x)',
         '!**/*-android.test.[jt]s?(x)',
+        '!**/*-api.test.[jt]s?(x)',
       ],
+    },
+    {
+      ...shared,
+      displayName: 'mobile-api',
+      preset: 'jest-expo/ios',
+      testMatch: ['<rootDir>/tests/**/*-api.test.[jt]s?(x)'],
     },
     {
       ...shared,

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { groupAmounts } from '@shared-expense/domain';
-import { useLocalIdentity } from '../shell';
+import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { AddButton } from '../ui/add-button';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
@@ -12,6 +12,7 @@ import { ExpenseCard } from '../ledger/expense-card';
 import { PeriodList, useListPeriod } from '../ledger/list-period-ui';
 import { useTrashActions } from '../ledger/trash-provider';
 import { useReadExpenses, type ExpenseView } from '../ledger/use-expenses';
+import { useSyncNotices } from '../sync/use-sync-notices';
 import { groupTotals, yourBalanceLines } from './format-balance';
 import { GroupLargeTitle, useLargeTitleScroll } from './group-large-title';
 import { GroupSummary } from './group-summary';
@@ -28,6 +29,10 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useThemeColors();
   const [group, setGroup, pendingRead] = useGroup(id);
+  const notices = useSyncNotices(
+    useLocalDatabase(),
+    group?.shared ? id : undefined,
+  );
   /** Runs `go` if the group is unarchived, once a read in progress has finished. */
   function whenUnarchived(go: () => void) {
     const read = pendingRead();
@@ -122,6 +127,14 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                   onRename={group.archived ? undefined : rename}
                 />
               )}
+              {notices.map((notice) => (
+                <Text
+                  key={notice}
+                  style={[styles.notice, { color: colors.textMuted }]}
+                >
+                  {notice}
+                </Text>
+              ))}
               {group?.archived && (
                 <ArchivedBanner
                   restoring={pending.has(id)}
@@ -228,6 +241,14 @@ function ArchivedBanner({
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 112 },
+  // Under the large title, on its left edge: the title is pulled 4 points to the left.
+  notice: {
+    fontSize: 15,
+    lineHeight: 20,
+    marginLeft: -4,
+    marginTop: -8,
+    marginBottom: 16,
+  },
   banner: { marginBottom: 20, padding: 16 },
   restore: { minHeight: 44, justifyContent: 'center', marginTop: 8 },
   message: { padding: 20, marginTop: 48, textAlign: 'center', fontSize: 16 },

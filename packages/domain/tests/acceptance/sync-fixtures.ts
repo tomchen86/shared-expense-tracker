@@ -96,12 +96,28 @@ export const dinnerChange = (
   base: SyncStamp = CREATED,
 ) => change('expense', 'dinner', stamp, values, base);
 
-/** The verdict on an event; without a receive time, as for a change not sent yet. */
+/**
+ * The device that uploads `content` unless a test says otherwise: the one its stamp names,
+ * as with every event a phone writes itself.
+ */
+export function uploaderOf(content: unknown): string {
+  const stamp = (content as { stamp?: { device?: unknown } } | null)?.stamp;
+  return typeof stamp?.device === 'string' ? stamp.device : 'phone-b';
+}
+
+/**
+ * The verdict on an event; without a receive time, as for a change not sent yet, it has no
+ * envelope. `device` is the ID of the device that uploaded it.
+ */
 export const judge = (
   content: unknown,
   receivedAtMs: number | null = null,
+  device: string = uploaderOf(content),
 ): SyncVerdict =>
-  checkSyncEvent(content, receivedAtMs === null ? null : { receivedAtMs });
+  checkSyncEvent(
+    content,
+    receivedAtMs === null ? null : { receivedAtMs, device },
+  );
 
 export const refused = (reason: string) => ({ status: 'refused', reason });
 
@@ -171,13 +187,17 @@ export interface Phone {
 export interface Delivery {
   content: unknown;
   receivedAtMs: number;
+  /** The device that uploaded it: the one its stamp names unless given. */
+  device?: string;
 }
 
 /** Judges a downloaded event and merges it when it is valid, as a phone does. */
 export function receive(phone: Phone, delivery: Delivery): Phone {
-  const verdict = checkSyncEvent(delivery.content, {
-    receivedAtMs: delivery.receivedAtMs,
-  });
+  const verdict = judge(
+    delivery.content,
+    delivery.receivedAtMs,
+    delivery.device,
+  );
   if (verdict.status !== 'valid') return phone;
   const key = `${verdict.event.type}/${verdict.event.id}`;
   const result = mergeSyncEvent({
