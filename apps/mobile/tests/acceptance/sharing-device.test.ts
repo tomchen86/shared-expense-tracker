@@ -830,6 +830,7 @@ describe('SHARING-26.1', () => {
     [{ error: 'signature' } as const, 401],
     [{ error: 'replayed' } as const, 401],
     [{ error: 'request' } as const, 400],
+    [{ error: 'too-large' } as const, 413],
     [{ error: 'too-many-registrations' } as const, 429],
   ])(
     '[SHARING-26.1] hands the caller a refusal %j as it is, and does not send again',

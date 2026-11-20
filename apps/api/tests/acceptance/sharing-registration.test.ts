@@ -532,7 +532,7 @@ describe('with requests from the address a test gives', () => {
     });
   });
 
-  describe('SHARING-31.1', () => {
+  describe('SHARING-31.2', () => {
     const EARLY = T - 3_600_000;
     const emptyRegistration = (phone: Phone, timestampMs = T) =>
       signedBy(phone, {
@@ -542,7 +542,7 @@ describe('with requests from the address a test gives', () => {
         timestampMs,
       });
 
-    test('[SHARING-31.1] checks the fields of a registration before its body', async () => {
+    test('[SHARING-31.2] checks the fields of a registration before its body', async () => {
       const casey = newPhone(CASEY);
 
       const answer = await leavingTheDatabaseAsItWas(() =>
@@ -552,7 +552,7 @@ describe('with requests from the address a test gives', () => {
       expectRefused(answer, SIGNATURE);
     });
 
-    test('[SHARING-31.1] checks the body of a registration before its signature and its time', async () => {
+    test('[SHARING-31.2] checks the body of a registration before its signature and its time', async () => {
       const casey = newPhone(CASEY);
 
       for (const request of [
@@ -570,7 +570,7 @@ describe('with requests from the address a test gives', () => {
       }
     });
 
-    test('[SHARING-31.1] checks whose device ID a registration names before its time', async () => {
+    test('[SHARING-31.2] checks whose device ID a registration names before its time', async () => {
       await registered(TAYLOR);
       const casey = newPhone(TAYLOR);
 
@@ -581,7 +581,7 @@ describe('with requests from the address a test gives', () => {
       expectRefused(answer, SIGNATURE);
     });
 
-    test("[SHARING-31.1] checks the time of a registration before its IP's limit, and the limit last", async () => {
+    test("[SHARING-31.2] checks the time of a registration before its IP's limit, and the limit last", async () => {
       comeFrom('198.51.100.40');
       await registerNew(30);
       const casey = newPhone(CASEY);

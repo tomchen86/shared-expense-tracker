@@ -5,6 +5,7 @@ import { isHealthResponse } from '@shared-expense/domain/api';
 import { runMigrations } from '../src/database/migrate';
 import { migrations } from '../src/migrations';
 import {
+  BODY_LIMIT,
   newPhone,
   registrationBy,
   signedBy,
@@ -12,7 +13,7 @@ import {
 } from './acceptance/sharing-api';
 import { runCommand, startServerCommand } from './support/command';
 import { useTestDatabase } from './support/database';
-import { sendTo } from './support/signed';
+import { sendRaw, sendTo } from './support/signed';
 
 const COMMAND_TIMEOUT_MS = 120_000;
 
@@ -33,7 +34,10 @@ async function expectSignedRequestsPass(url: string) {
   const at = () => ({ timestampMs: Date.now() });
   const request = signedBy(phone, at());
 
-  expect(await sendTo(url, signedBy(phone, at()))).toEqual({
+  const unregistered = await sendRaw(url, signedBy(phone, at()), {
+    declaredLength: BODY_LIMIT + 1,
+  });
+  expect(unregistered).toEqual({
     status: 401,
     body: { error: 'signature' },
   });
@@ -41,11 +45,36 @@ async function expectSignedRequestsPass(url: string) {
     status: 200,
     body: { deviceId: phone.deviceId },
   });
-  expect((await sendTo(url, request)).status).toBe(404);
+  const get = await sendRaw(url, request, {
+    declaredLength: 1,
+    sent: Uint8Array.of(0xff),
+    ended: true,
+  });
+  expect(get.status).toBe(404);
+  const signedHead = signedBy(phone, { ...at(), method: 'HEAD' });
+  const head = await sendRaw(url, signedHead, { declaredLength: 1 });
+  expect(head.status).toBe(404);
   expect(await sendTo(url, request)).toEqual({
     status: 401,
     body: { error: 'replayed' },
   });
+}
+
+async function expectOversizedBodyRefused(url: string) {
+  const request = signedBy(newPhone(), {
+    method: 'POST',
+    body: new Uint8Array(BODY_LIMIT + 1),
+    timestampMs: Date.now(),
+  });
+  const tooLarge = { status: 413, body: { error: 'too-large' } };
+
+  const declared = await sendRaw(url, request, {
+    declaredLength: request.body.length,
+  });
+  expect(declared).toEqual(tooLarge);
+
+  const chunked = await sendRaw(url, request, { sent: request.body });
+  expect(chunked).toEqual(tooLarge);
 }
 
 /**
@@ -160,6 +189,7 @@ test(
     });
     try {
       await expectSignedRequestsPass(withKey.url);
+      await expectOversizedBodyRefused(withKey.url);
       await expectLowOrderKeysRefused(withKey.url);
       await expectInviteLinkRoutesPublic(withKey.url);
     } finally {
@@ -260,10 +290,13 @@ test(
             database.url,
           // The secret wrangler.jsonc requires, which `wrangler dev` reads from here.
           IP_HASH_KEY: 'a key for this test',
+          // Let the client see the Worker's response while the upload is still open.
+          WRANGLER_DISABLE_REQUEST_BODY_DRAINING: '1',
         },
       );
       try {
         await expectSignedRequestsPass(workers.url);
+        await expectOversizedBodyRefused(workers.url);
         await expectLowOrderKeysRefused(workers.url);
         await expectInviteLinkRoutesPublic(workers.url);
       } finally {
