@@ -1041,7 +1041,7 @@ test('[INSIGHTS-55.1] lists the expenses of each category by currency code, then
     amountMinor: 300,
   });
   const sushi = food({ currency: 'JPY', amountMinor: 2000 });
-  const snack = food({ amountMinor: 200, date: '2025-01-20' });
+  const snack = food({ amountMinor: 200, date: '2025-01-05' });
 
   const result = categoryExpenses([lunch, train, sushi, snack]);
 
@@ -1050,6 +1050,21 @@ test('[INSIGHTS-55.1] lists the expenses of each category by currency code, then
     ['USD', [[lunch, snack], [train]]],
   ]);
   expect(result?.[1]?.categories[0]?.expenses[0]).toBe(lunch);
+});
+
+test('[INSIGHTS-55.1] orders categories of equal amounts as Insights does, not in the order given', () => {
+  const train = expense({
+    categoryId: 'travel',
+    categoryName: 'Travel',
+    amountMinor: 500,
+  });
+  const lunch = food({ amountMinor: 500 });
+
+  expect(listed([train, lunch])).toEqual([['USD', [[lunch], [train]]]]);
+  expect(rows(build([train, lunch]).months[0]).map(([name]) => name)).toEqual([
+    'Food',
+    'Travel',
+  ]);
 });
 
 test('[INSIGHTS-55.1] lists the expenses of a month, a year and a range, both days of the range included', () => {
@@ -1158,6 +1173,14 @@ test('[INSIGHTS-55.1] keeps the key of each category when its expenses change an
     goneKey,
     teaKey,
   ]);
+  const recoloured = [{ ...categories[0], color: '#0000FF' }];
+  const goneRecoloured = {
+    ...gone,
+    categorySnapshot: { name: 'Tea', color: '#FFFF00' },
+  };
+  expect(
+    keys([tea, goneRecoloured], undefined, { categories: recoloured }),
+  ).toEqual([teaKey, goneKey]);
 });
 
 test('[INSIGHTS-55.1] refuses a month and a range whose total passes the limit', () => {

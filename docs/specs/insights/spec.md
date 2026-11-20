@@ -1103,7 +1103,7 @@ WHEN 使用者在個人、群組或封存群組的 Insights 按一個類別那�
 
 ### Requirement: INSIGHTS-48.1 類別的支出最上面的期間、金額和筆數
 
-The mobile app SHALL 在類別的支出最上面由上而下顯示三行：它的期間、金額和筆數。期間在月份和年份模式是期間名稱，在自訂模式是「<範圍的第一天> – <範圍的最後一天>」，兩個日期用手機地區的日期格式（LEDGER-30.2），From 晚於 To 時第一天是 To；金額是下面每張卡片的卡片金額的總和（INSIGHTS-49.1），也就是 Insights 上那一列的金額，用手機地區的貨幣格式；筆數是下面的支出的筆數「<筆數> expenses」，只有一筆時是「1 expense」，只寫數字，不加千分位；還沒讀完存著的支出時，金額和筆數都不顯示。螢幕閱讀器把這三行讀成一項「Spent in <期間> <金額>. <筆數>.」，和支出清單上方的總額（LEDGER-35.6）同一個寫法；還沒讀完時這一項只讀出期間。
+The mobile app SHALL 在類別的支出最上面由上而下顯示三行：它的期間、金額和筆數。期間在月份和年份模式是期間名稱，在自訂模式是「<範圍的第一天> – <範圍的最後一天>」，兩個日期用手機地區的日期格式（LEDGER-30.2），From 晚於 To 時第一天是 To；金額是下面每張卡片的卡片金額的總和（INSIGHTS-49.1），也就是 Insights 上那一列的金額，用手機地區的貨幣格式；筆數是下面的支出的筆數「<筆數> expenses」，只有一筆時是「1 expense」，只寫數字，不加千分位；還沒讀完存著的支出時，金額和筆數都不顯示。螢幕閱讀器把這三行讀成一項「Spent in <期間> <金額>. <筆數>.」，和支出清單上方的總額（LEDGER-35.6）同一個寫法；一筆都沒有時也是這樣讀，例如「Spent in October 2026 $0.00. 0 expenses.」，不換成 LEDGER-35.6 沒有卡片時的「Nothing spent in …」；還沒讀完時這一項只讀出期間。
 
 #### Scenario: 月份
 
@@ -1304,7 +1304,7 @@ The mobile app SHALL 讓類別的支出的金額、筆數和卡片都和存著�
 #### Scenario: 一筆都沒有了
 
 - **WHEN** October 2026 只有 Food & Dining 的 Coffee run 和 Transportation 的「Bus」，在個人的 Insights 打開 Food & Dining，從 Coffee run 的明細把它移到垃圾桶
-- **THEN** 回到 Food & Dining，最上面依序是「October 2026」、「$0.00」和「0 expenses」，下面沒有卡片，也沒有「No expenses yet」這類提示
+- **THEN** 回到 Food & Dining，最上面依序是「October 2026」、「$0.00」和「0 expenses」，螢幕閱讀器讀出「Spent in October 2026 $0.00. 0 expenses.」（INSIGHTS-48.1），下面沒有卡片，也沒有「No expenses yet」這類提示
 
 #### Scenario: 回到 Insights
 
@@ -1340,8 +1340,13 @@ WHEN 給一個月份、一個年份（INSIGHTS-4.1）或一段起訖日期（INS
 
 #### Scenario: 幣別和類別的順序
 
-- **WHEN** 2025 年 1 月依序有 Food 的 600 USD、Travel 的 300 USD、Food 的 2000 JPY 和 Food 的 200 USD
-- **THEN** 依序是 JPY 的 Food：2000 JPY 那一筆；USD 的 Food：600 和 200 USD 那兩筆，照給的順序；USD 的 Travel：300 USD 那一筆
+- **WHEN** 2025 年 1 月依序有 Food 的 600 USD、Travel 的 300 USD、Food 的 2000 JPY 和日期比 600 USD 那一筆早的 Food 的 200 USD
+- **THEN** 依序是 JPY 的 Food：2000 JPY 那一筆；USD 的 Food：600 和 200 USD 那兩筆，照給的順序，不照日期；USD 的 Travel：300 USD 那一筆
+
+#### Scenario: 金額相同的類別
+
+- **WHEN** 依序有 Travel 的 500 USD 和 Food 的 500 USD
+- **THEN** 和 Insights 的類別一樣，Food 在 Travel 前面（INSIGHTS-8.1），不照給的順序
 
 #### Scenario: 月份、年份和範圍
 
@@ -1360,8 +1365,8 @@ WHEN 給一個月份、一個年份（INSIGHTS-4.1）或一段起訖日期（INS
 
 #### Scenario: 鍵跟著類別
 
-- **WHEN** 有類別 Tea 的 500 USD，和 `categoryId` 是 `gone`、快照是「Tea」的 300 USD；之後 `gone` 那一筆改成 900 USD
-- **THEN** 兩次都是兩個名稱是 Tea 的類別，順序對調，但 Tea 那一筆和 `gone` 那一筆各自的鍵都和之前一樣
+- **WHEN** 有類別 Tea 的 500 USD，和 `categoryId` 是 `gone`、快照是「Tea」的 300 USD；之後 `gone` 那一筆改成 900 USD；再之後類別 Tea 和那個快照都換了顏色
+- **THEN** 每次都是兩個名稱是 Tea 的類別，第二次順序對調，但 Tea 那一筆和 `gone` 那一筆各自的鍵都和第一次一樣
 
 #### Scenario: 超過上限
 

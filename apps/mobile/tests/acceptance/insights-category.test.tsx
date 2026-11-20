@@ -1033,7 +1033,7 @@ test("[INSIGHTS-52.1] shows an expense added on another tab while the category's
   expect(categoryCardTitles(FOOD)).toEqual(['Lunch', 'Dinner', 'Coffee run']);
 });
 
-test('[INSIGHTS-52.1] shows a zero amount and 0 expenses, and nothing else, once the category has no expense left in the period', async () => {
+test('[INSIGHTS-48.1] [INSIGHTS-52.1] shows a zero amount and 0 expenses, read as spent, and nothing else, once the category has no expense left in the period', async () => {
   await insightsAt(
     '',
     ['2026-10-29', '8.75', 'Coffee run'],
@@ -1058,6 +1058,9 @@ test('[INSIGHTS-52.1] shows a zero amount and 0 expenses, and nothing else, once
       '0 expenses',
     ]),
   );
+  expect(categorySummaryRead(FOOD)).toEqual([
+    'Spent in October 2026 $0.00. 0 expenses.',
+  ]);
   expect(categoryCards(FOOD)).toHaveLength(0);
 
   await goBackFromCategory(FOOD);
