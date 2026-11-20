@@ -11,7 +11,7 @@ import {
   endWorld,
   forbiddenDraws,
   fromHex,
-  giveKey,
+  keyEntry,
   loseAnswerTo,
   loseSeed,
   mark,
@@ -24,7 +24,11 @@ import {
   randomKey,
   renameGroup,
   requestHolds,
+  restart,
   restoreFromTrash,
+  saveKey,
+  secureStoreEntry,
+  seedSettings,
   sent,
   sentBy,
   setClock,
@@ -44,6 +48,7 @@ import {
   uploads,
   utf8,
   whenAnswered,
+  writeKeyEntry,
   type Phone,
 } from './sync-loop-app';
 
@@ -166,11 +171,11 @@ describe('SYNC-67.1', () => {
     expect(forbiddenDraws()).toEqual([]);
   });
 
-  test('[SYNC-67.1] encrypts under the highest key epoch it has a key for', async () => {
+  test('[SYNC-67.1] encrypts under the key epoch of the phone', async () => {
     const { a, A, brisbane, key } = await twoPhones();
     const second = randomKey();
     await setEpoch(brisbane, 2);
-    giveKey(a, brisbane, 2, second);
+    await saveKey(a, brisbane, 2, second);
     await addExpense(a);
     const [dinner] = await unsent(a);
     const from = mark();
@@ -502,7 +507,7 @@ describe('SYNC-79.1', () => {
   test('[SYNC-79.1] encrypts the same events under the new key once it has it, and loses none', async () => {
     const { a, A, brisbane, key, before } = await refusedForItsEpoch();
     const second = randomKey();
-    giveKey(a, brisbane, 2, second);
+    await saveKey(a, brisbane, 2, second);
     const from = mark();
 
     await sync(a);
@@ -527,8 +532,8 @@ describe('SYNC-79.1', () => {
     const { a, brisbane } = await twoPhones();
     const second = randomKey();
     await setEpoch(brisbane, 2);
-    giveKey(a, brisbane, 2, second);
-    giveKey(a, brisbane, 3, randomKey());
+    await saveKey(a, brisbane, 2, second);
+    await saveKey(a, brisbane, 3, randomKey());
     await addExpense(a);
     const [dinner] = await unsent(a);
     const from = mark();
@@ -548,8 +553,8 @@ describe('SYNC-79.1', () => {
 
   test('[SYNC-79.1] sends an upload again for its key epoch only once in a sync', async () => {
     const { a, brisbane } = await twoPhones();
-    giveKey(a, brisbane, 2, randomKey());
-    giveKey(a, brisbane, 3, randomKey());
+    await saveKey(a, brisbane, 2, randomKey());
+    await saveKey(a, brisbane, 3, randomKey());
     await addExpense(a);
     const before = await unsent(a);
     answerNext('POST', 409, { error: 'epoch', epoch: 2 });
@@ -626,6 +631,69 @@ describe('SYNC-82.1', () => {
 
     expect(await storedIds(brisbane)).toEqual(ids);
     expect(await unsent(a)).toEqual([]);
+  });
+});
+
+describe('SYNC-94.1', () => {
+  /** The key epoch and the status of each upload the phone sent since `from`. */
+  const epochsOf = async (phone: Phone, from: number) =>
+    (await uploads(phone, from)).map((upload) => [upload.epoch, upload.status]);
+
+  test('[SYNC-94.1] writes a saved key as the entry of its group and key epoch, kept as the seed is', async () => {
+    const { a, brisbane } = await twoPhones();
+    const second = randomKey();
+
+    await saveKey(a, brisbane, 2, second);
+
+    expect(secureStoreEntry(a, keyEntry(brisbane, 2))).toEqual({
+      value: toHex(second),
+      options: await seedSettings(a),
+    });
+  });
+
+  test('[SYNC-94.1] uploads under the highest key epoch a key was saved for', async () => {
+    const { a, brisbane } = await twoPhones();
+    await setEpoch(brisbane, 2);
+    await saveKey(a, brisbane, 2, randomKey());
+    await addExpense(a);
+    const from = mark();
+
+    await sync(a);
+
+    expect(await epochsOf(a, from)).toEqual([[2, 200]]);
+
+    // A key of an earlier epoch, saved later, does not take the phone back.
+    await saveKey(a, brisbane, 1, randomKey());
+    await addExpense(a, { title: 'Lunch' });
+    const next = mark();
+
+    await sync(a);
+
+    expect(await epochsOf(a, next)).toEqual([[2, 200]]);
+  });
+
+  test('[SYNC-94.1] still knows its key epoch after a restart', async () => {
+    const { a, brisbane } = await twoPhones();
+    await setEpoch(brisbane, 2);
+    await saveKey(a, brisbane, 2, randomKey());
+
+    const restarted = await restart(a);
+    await addExpense(restarted);
+    const from = mark();
+    await sync(restarted);
+
+    expect(await epochsOf(restarted, from)).toEqual([[2, 200]]);
+  });
+
+  test('[SYNC-94.1] does not look in the secure store for a key epoch it was not given', async () => {
+    const { a, brisbane } = await twoPhones();
+    writeKeyEntry(a, brisbane, 2, toHex(randomKey()));
+    await addExpense(a);
+    const from = mark();
+
+    await sync(a);
+
+    expect(await epochsOf(a, from)).toEqual([[1, 200]]);
   });
 });
 

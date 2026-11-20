@@ -22,11 +22,14 @@ import {
   refusals,
   restart,
   restoreData,
+  saveKey,
   sealed,
   secureStoreEntries,
   secureStoreWorks,
   sent,
   sentBy,
+  setApiTime,
+  setClock,
   setEpoch,
   stampOf,
   startWorld,
@@ -101,26 +104,6 @@ describe('SYNC-66.1', () => {
     expect(await storedContents(brisbane, key)).toEqual([dinner.content]);
   });
 
-  test('[SYNC-66.1] uploads nothing while it has no key of the group, and uploads once it has one', async () => {
-    const { a, brisbane, key } = await twoPhones({ keys: false });
-    await addExpense(a);
-    const from = mark();
-
-    await sync(a);
-
-    expect(await requestsOf(a, from)).toEqual([
-      `GET /groups/${brisbane}/events?after=0`,
-    ]);
-    expect(await unsent(a)).toHaveLength(1);
-    expect(await titles(a)).toEqual(['Dinner']);
-
-    giveKey(a, brisbane, 1, key);
-    await sync(a);
-
-    expect(await storedEvents(brisbane)).toHaveLength(1);
-    expect(await unsent(a)).toEqual([]);
-  });
-
   test.each([
     ['62 hexadecimal characters', 'ab'.repeat(31)],
     ['uppercase hexadecimal', 'AB'.repeat(32)],
@@ -150,8 +133,30 @@ describe('SYNC-66.1', () => {
     expect(await uploads(a, from)).toEqual([]);
     expect(await unsent(a)).toHaveLength(1);
   });
+});
 
-  test('[SYNC-66.1] keeps the events while the secure store cannot be read, and uploads them once it can', async () => {
+describe('SYNC-95.1', () => {
+  test('[SYNC-95.1] uploads nothing while it has no key of the group, and uploads once it has one', async () => {
+    const { a, brisbane, key } = await twoPhones({ keys: false });
+    await addExpense(a);
+    const from = mark();
+
+    await sync(a);
+
+    expect(await requestsOf(a, from)).toEqual([
+      `GET /groups/${brisbane}/events?after=0`,
+    ]);
+    expect(await unsent(a)).toHaveLength(1);
+    expect(await titles(a)).toEqual(['Dinner']);
+
+    giveKey(a, brisbane, 1, key);
+    await sync(a);
+
+    expect(await storedEvents(brisbane)).toHaveLength(1);
+    expect(await unsent(a)).toEqual([]);
+  });
+
+  test('[SYNC-95.1] keeps the events while the secure store cannot be read, and uploads them once it can', async () => {
     const { a, brisbane } = await twoPhones();
     await addExpense(a);
     const entries = secureStoreEntries(a);
@@ -340,6 +345,49 @@ describe('SYNC-69.1', () => {
 
     expect(await downloads(a, from)).toEqual(['after=2', 'after=2', 'after=2']);
   });
+
+  test('[SYNC-69.1] judges an event by the device the API says uploaded it', async () => {
+    const setup = await twoPhones();
+    const { a, b, B, key } = setup;
+    // Casey's phone uploads an event whose stamp names Taylor's phone.
+    const [id] = await uploadAs(b, key, [
+      await created(b, 'Lunch', await stampOf(a, NOW)),
+    ]);
+
+    await sync(a);
+
+    expect(await titles(a)).toEqual([]);
+    expect(
+      (await refusals(a)).map((refusal) => [
+        refusal.id,
+        refusal.device,
+        refusal.reason,
+      ]),
+    ).toEqual([[id, B, 'device']]);
+  });
+
+  test('[SYNC-69.1] judges an event by the time the API received it, whenever the phone downloads it', async () => {
+    const setup = await twoPhones();
+    const { a, b, key } = setup;
+    // Stamped 11 minutes after the API receives it.
+    const [id] = await uploadAs(b, key, [
+      await created(b, 'Lunch', await stampOf(b, NOW + 660_000)),
+    ]);
+    const aDayLater = NOW + 24 * 3_600_000;
+    setApiTime(aDayLater);
+    setClock(a, aDayLater);
+
+    await sync(a);
+
+    expect(await titles(a)).toEqual([]);
+    expect(
+      (await refusals(a)).map((refusal) => [
+        refusal.id,
+        refusal.receivedAtMs,
+        refusal.reason,
+      ]),
+    ).toEqual([[id, NOW, 'clock']]);
+  });
 });
 
 describe('SYNC-70.1', () => {
@@ -372,7 +420,11 @@ describe('SYNC-70.1', () => {
 
     let everyWriteFailedOnce = false;
     for (let nth = 1; nth <= 500 && !everyWriteFailedOnce; nth += 1) {
+      // Each round is over a minute after the last, so that the rounds never add up to
+      // more requests than the API takes from a device in a minute.
+      setApiTime(NOW + nth * 61_000);
       phone = await restoreData(phone, copy);
+      setClock(phone, NOW + nth * 61_000);
       const failing = failingAtWrite(phone.database, nth);
       await trySync(phone, failing.database);
       if (!failing.failed()) {
@@ -676,7 +728,7 @@ describe('SYNC-73.1', () => {
   test('[SYNC-73.1] carries on from there once it has the key', async () => {
     const { a, brisbane, second } = await afterARotation();
     await sync(a);
-    giveKey(a, brisbane, 2, second);
+    await saveKey(a, brisbane, 2, second);
     const from = mark();
 
     await sync(a);
@@ -697,7 +749,7 @@ describe('SYNC-73.1', () => {
     await setEpoch(brisbane, 2);
     // Taylor's phone has the key of the group's epoch, and not the earlier one.
     takeKey(a, brisbane, 1);
-    giveKey(a, brisbane, 2, second);
+    await saveKey(a, brisbane, 2, second);
     await addExpense(a);
     const [dinner] = await unsent(a);
 

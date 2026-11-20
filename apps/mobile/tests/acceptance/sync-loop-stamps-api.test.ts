@@ -6,6 +6,7 @@ import {
   addCategory,
   addExpense,
   answerNext,
+  deleteCategory,
   editExpense,
   endWorld,
   keyOf,
@@ -331,27 +332,49 @@ describe('SYNC-85.1', () => {
   });
 
   test('[SYNC-85.1] replaces the stamp a record was created with, so every phone lists it in the same place', async () => {
-    const { a, b } = await twoPhones();
+    const { a, b, A, brisbane, key } = await twoPhones();
     setClock(a, FAST);
     await addCategory(a, 'Flights');
     setClock(b, T + 120_000);
     await addCategory(b, 'Hotels', '#00ACC1');
-    // Taylor's phone syncs while the API's time is NOW: Flights is now stamped NOW.
-    await sync(a);
+    await sync(b);
 
-    // A minute later on every clock; Taylor's phone still runs an hour ahead.
-    setApiTime(T + 180_000);
-    setClock(a, T + 180_000 + HOUR);
-    setClock(b, T + 180_000);
-    await sync(b);
+    // Taylor's phone syncs once while the API's time is NOW: it has not downloaded its
+    // own event yet, and Flights already comes before Hotels.
     await sync(a);
-    await sync(b);
 
     const added = async (phone: Phone) =>
       (await ledgerOf(phone)).categories.slice(9).map(({ name }) => name);
     expect(await added(a)).toEqual(['Flights', 'Hotels']);
+    expect(stampsOf(await storedContents(brisbane, key)).at(-1)).toEqual(
+      at(NOW, 0, A),
+    );
+    await sync(b);
     expect(await added(b)).toEqual(['Flights', 'Hotels']);
     expect(await refusals(b)).toEqual([]);
+  });
+
+  test('[SYNC-85.1] replaces the stamp of the tombstone a replaced deletion left', async () => {
+    const { a, A, brisbane, key } = await twoPhones();
+    setClock(a, FAST);
+    await deleteCategory(a, 'Shopping');
+    expect(await unsentStamps(a)).toEqual([at(FAST, 0, A)]);
+    // The API's time is NOW: the phone's offset becomes an hour, and the deletion is stamped NOW.
+    await sync(a);
+    expect(await a.sharing.readClockOffsetMs(a.database)).toBe(-HOUR);
+
+    // For one save the phone's clock is another hour ahead.
+    setClock(a, FAST + HOUR + 1000);
+    await addExpense(a);
+    expect(await unsentStamps(a)).toEqual([at(FAST + 1000, 0, A)]);
+    setClock(a, FAST);
+    await sync(a);
+
+    // A tombstone still stamped an hour ahead would have been the latest stamp left.
+    expect(stampsOf(await storedContents(brisbane, key))).toEqual([
+      at(NOW, 0, A),
+      at(NOW, 1, A),
+    ]);
   });
 
   test('[SYNC-85.1] does not keep a latest stamp that no record holds', async () => {

@@ -32,13 +32,13 @@ Also considered:
 Encryption:
 
 - An event is encrypted as ADR-0015 and ADR-0021 say. Its associated data is five lines of ASCII joined by line feeds, with none after the last: `shared-expense/event/v1`, the group ID, the event ID, the ID of the device that uploads it, and the key epoch in decimal. The nonce is 24 new bytes from `expo-crypto` for every encryption, also when an event is encrypted again for another try.
-- A group key lives in the secure store, in an entry of its own for each group and key epoch, named after both and kept as the seed is kept (ADR-0015). Whatever makes a key or receives one writes that entry (#138, #141, #143); the loop only reads it. A phone encrypts under the highest epoch it has a key for, and uploads nothing for a group it has no key of.
+- A group key lives in the secure store, in an entry of its own for each group and key epoch, named after both and kept as the seed is kept (ADR-0015). The secure store cannot list its entries, so a phone keeps its key epoch of each shared ledger in its database: 1 from the moment the group is shared, and after that the highest epoch a key was saved for through the `sync` capability, which is how #141 and #143 save one. #138 writes the first key's entry itself, and that key's epoch is 1. A phone encrypts under its key epoch, and uploads nothing while it has no key of that epoch.
 
 One sync of one shared ledger:
 
 - It downloads until the API says no events follow, then uploads. A ledger has one sync at a time; a change saved while one runs is followed by one more.
 - A sync starts when the app starts, when it comes back from the background, and after the phone has saved an unsent event of that ledger, whatever wrote it. Nothing else starts one, and nothing repeats one: a sync that cannot go on ends, and the next start carries on from the local data.
-- A page is what `packages/domain` accepts as a page (ADR-0024) and starts right after the cursor. Anything else is not applied, and the sync ends without uploading.
+- A page is what `packages/domain` accepts as a page (ADR-0024) and starts right after the cursor the database holds when the page is stored: an import can take the cursor back while a page is on its way. Anything else is not applied, and the sync ends without uploading.
 - Applying a page and moving the cursor are one transaction (ADR-0016), so a phone stopped in between has done neither.
 - An event the phone has the key for and still cannot decrypt, or whose plaintext is not JSON, is judged as empty content: refused for its structure, recorded, and passed.
 - An event in a key epoch the phone has no key for stops the applying there, with the cursor before it. So does an event in a format version the phone does not know, in its content or in its ciphertext; that one also shows the update notice. Either way the sync goes on to upload (ADR-0016).
@@ -54,6 +54,7 @@ Stamps:
 
 - The checks of ADR-0016 run in the loop: when the phone applies a page, before it merges the page's events, and before it first sends an event. A checked stamp is final.
 - A check covers every unsent event the phone has not checked, of all its shared ledgers, because they share the phone's one last stamp.
+- A replaced event gets the next stamp after the corrected time and every stamp left, in the order the events were written, where ADR-0016 names the corrected time and the event's own bases: no two events of a phone may share a stamp, and a later event has to keep the later one.
 - The stamps left, the highest of which the last stamp is lowered to (ADR-0016), are the ones the phone's records hold, as a unit's stamp, a tombstone or the stamp a record was created with, and the stamps and bases of its unsent events, without the ones being replaced. The stored last stamp is not one of them, and neither is a stamp in a refused event. So a last stamp that nothing holds does not outlive a replacement: the one an import kept (ADR-0025), or that of an event that changed nothing.
 - The request function (ADR-0022) lets its caller give the content again after a clock refusal, once the new offset is saved. The loop uses it to check the stamps of that upload's events again and to encrypt them again, so the one resend carries what the corrected clock allows.
 
@@ -67,9 +68,10 @@ Where the API is:
 
 Older local data:
 
-- ADR-0025 decides what an export carries of the sync state and what an import does with it. What this issue adds to the database is rows like the rest, which go back with an import: the cursor, which unsent events are checked, and what the notices need.
+- ADR-0025 decides what an export carries of the sync state and what an import does with it. What this issue adds to the database is rows like the rest, which go back with an import: the cursor, the key epoch, which unsent events are checked, and what the notices need. A phone whose key epoch went back that way pays one refused upload in each sync until a key is saved again.
 - A phone syncs from whatever its local data holds, after an import and after a restore of the phone's backup alike. The cursor is lower and the unsent events may be ones the API already has: the API takes the lower cursor (ADR-0024), applying an event again changes nothing, and uploading one again stores nothing.
 - The app says nothing about shared ledgers after an import. The next sync brings them to what their groups hold, as on a phone that was offline since the export (ADR-0025).
+- An unsent event that comes back in a page, uploaded by this phone under the same event ID, takes the stamp of the API's copy before the check, and counts as checked. Local data that went back can hold as unchecked an event the API has under the stamp a check gave it, and a second check would give it another stamp than the one every other phone has merged.
 
 Tests:
 
@@ -82,13 +84,18 @@ Tests:
 - A sync that fails is not tried again until the next start, so a change saved offline goes up when the app is next opened or the next change is saved.
 - A group at its limit costs every sync one refused upload until #155 clears events.
 - #138 stamps a group's records with the device identity's ID, and writes the group's first key where the loop reads it.
-- A phone that takes over another phone's unsent events (#145) gives them stamps of its own device before it uploads them, or waits until none is unsent: every phone would refuse them otherwise.
+- A phone that takes over another phone's unsent events (#144, #145) gives them stamps of its own device before it uploads them, or waits until none is unsent: every phone would refuse them otherwise.
+- #141 and #143 check a key before they save it: a phone that holds a wrong key for an epoch judges every event of that epoch as empty and passes it, and does not get those events back when the right key arrives.
 - A phone without the key of an event's epoch stops there until the key arrives, which #141 and #143 build. Refusing an event in a lower epoch than one already applied (ADR-0015) comes with rotation, in #143.
 - A stamp replaced by the check moves the change to the corrected time. It still comes after what the change replaced, and no other phone has seen the old stamp (ADR-0016).
 - An event that reached the API under a stamp the phone later would not choose stays as it is: a checked stamp never changes, even when the phone's clock is corrected afterwards.
 - The request function's callers that do not give content again are resent as before.
+- The check after a clock refusal covers the events of the refused request (ADR-0016). An event of a later request or of another ledger that was checked against the same wrong clock keeps its stamp, and every other phone refuses it. It takes a clock that moves more than 5 minutes between two requests of one sync, and a change saved in that moment.
+- #147 adds the stamp of the phone's own last change to an amount (ADR-0016) to what a replacement renames.
+- The shape of a page is fixed for format version 1: a phone takes any other answer for no page, applies nothing, uploads nothing, and shows no notice. Changing it takes a new route.
 - A file imported from another phone brings that phone's unsent events with it, and they stay unsent: that phone's authorization has lapsed (ADR-0025).
 - A sync of one shared ledger can give new stamps to the unsent events and records of another. They are uploaded when that ledger syncs.
 - After an import or a restore, the events the phone uploaded since the export are in none of its records until a download brings them back. A change made before then whose stamp is replaced can get a stamp earlier than one of those events, and loses to it where both changed the same unit. An import keeps the phone's last stamp so that this cannot happen (ADR-0025); a replacement gives that up, because the phone cannot tell a last stamp it has sent from one it never sent. It takes a stamp more than 5 minutes ahead of the corrected time: a last stamp kept from a clock that ran fast, or a clock set ahead after the import.
+- An unsent event whose copy comes back later than the first page of a sync can get a new stamp before the phone sees that copy, and the events merged in between were compared with that stamp. It takes local data that went back, an event written with a clock more than 5 minutes ahead and uploaded since, and more than a page of events before it.
 - The phone's tests against the API need Docker, as the API's own do. A session that only changes screens still runs `pnpm test:mobile` without it.
 - The paths of the loop get branch coverage thresholds as they are added (`AGENTS.md` rule 8).

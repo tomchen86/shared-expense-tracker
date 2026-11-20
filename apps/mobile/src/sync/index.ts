@@ -22,7 +22,7 @@ export {
   type RefusedSyncEvent,
 } from './apply';
 
-export { syncGroup } from './loop';
+export { saveGroupKey, syncGroup } from './loop';
 
 /** An event this phone wrote and has not uploaded yet. */
 export interface UnsentSyncEvent {

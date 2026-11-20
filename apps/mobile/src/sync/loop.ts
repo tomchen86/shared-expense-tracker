@@ -14,3 +14,17 @@ export async function syncGroup(
   void ledger;
   throw new Error('Not implemented: #135');
 }
+
+/**
+ * Saves a shared ledger's group key of one key epoch on this phone, as the secure-store
+ * entry a sync reads (SYNC-66.1), and remembers the key epoch: the phone uploads under
+ * the highest one saved this way (SYNC-94.1).
+ */
+export async function saveGroupKey(
+  database: Database,
+  groupKey: { groupId: string; epoch: number; key: Uint8Array },
+): Promise<void> {
+  void database;
+  void groupKey;
+  throw new Error('Not implemented: #135');
+}

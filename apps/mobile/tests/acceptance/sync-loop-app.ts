@@ -523,13 +523,43 @@ export async function deviceId(phone: Phone): Promise<string> {
   return identity.deviceId;
 }
 
-// Group keys, which the tests put in the phones' secure stores (SYNC-66.1)
+// Group keys (SYNC-66.1, SYNC-94.1)
 
 /** The name of the secure-store entry that holds a group's key of one key epoch. */
 export const keyEntry = (groupId: string, epoch: number) =>
   `group-key.${groupId}.${epoch}`;
 
-/** Puts a group key in the phone's secure store, as the entry SYNC-66.1 reads. */
+/**
+ * Saves a group key on the phone as the app saves one (SYNC-94.1): the phone has the key,
+ * and knows the key epoch.
+ */
+export async function saveKey(
+  phone: Phone,
+  groupId: string,
+  epoch: number,
+  key: Uint8Array,
+) {
+  turnTo(phone);
+  await phone.sync.saveGroupKey(phone.database, { groupId, epoch, key });
+}
+
+/** What the phone's secure store holds under `name`: the value, and the settings it was written with. */
+export const secureStoreEntry = (phone: Phone, name: string) =>
+  phone.state.store.get(name);
+
+/** The settings the phone's seed is kept with in the secure store. */
+export async function seedSettings(phone: Phone) {
+  const id = await deviceId(phone);
+  const [seed] = [...phone.state.store].filter(([name]) => name.includes(id));
+  if (!seed) throw new Error('The phone has no seed');
+  return seed[1].options;
+}
+
+/**
+ * Writes a group key straight into the phone's secure store, as the entry SYNC-66.1
+ * reads. The phone is not told the key's epoch, so this is for key epoch 1, which a
+ * phone's key epoch starts at.
+ */
 export function giveKey(
   phone: Phone,
   groupId: string,
@@ -1279,6 +1309,17 @@ export async function archiveCategory(
   turnTo(phone);
   const { id } = await categoryOf(phone, name, groupId);
   await phone.categories.setCategoryArchived(phone.database, id, true);
+}
+
+/** Deletes a category of a shared ledger for good. */
+export async function deleteCategory(
+  phone: Phone,
+  name: string,
+  groupId = phone.brisbane,
+) {
+  turnTo(phone);
+  const { id } = await categoryOf(phone, name, groupId);
+  await phone.categories.deleteCategory(phone.database, id);
 }
 
 // Events another phone's code would write

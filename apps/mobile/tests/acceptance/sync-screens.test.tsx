@@ -15,7 +15,7 @@ import {
   openArchivedGroups,
 } from './group-archive-app';
 import { showGroup } from './group-balances-app';
-import { alertsShown, textsOn } from './group-details-app';
+import { alertsShown, goBackFrom, textsOn } from './group-details-app';
 import {
   fetchCalls,
   goOffline,
@@ -435,7 +435,7 @@ describe('SYNC-75.1', () => {
 
     await waitFor(() => expect(textsOn('Brisbane')[0]).toBe(UPDATE_NOTICE));
 
-    await tapTab('Groups');
+    await goBackFrom('Brisbane');
     await showGroup('Tokyo');
 
     expect(textsOn('Tokyo')).not.toContain(UPDATE_NOTICE);
@@ -497,7 +497,7 @@ describe('SYNC-75.1', () => {
     expect(textsOn('Brisbane')).not.toContain(UPDATE_NOTICE);
     expect(textsOn('Brisbane')).not.toContain(FULL_NOTICE);
 
-    await tapTab('Groups');
+    await goBackFrom('Brisbane');
     await showGroup('Tokyo');
 
     expect(textsOn('Tokyo')).not.toContain(UPDATE_NOTICE);
@@ -530,7 +530,7 @@ describe('SYNC-83.1', () => {
     await waitFor(() => expect(textsOn('Brisbane')[0]).toBe(FULL_NOTICE));
     expect(await unsent()).toHaveLength(1);
 
-    await tapTab('Groups');
+    await goBackFrom('Brisbane');
     await showGroup('Tokyo');
 
     expect(textsOn('Tokyo')).not.toContain(FULL_NOTICE);

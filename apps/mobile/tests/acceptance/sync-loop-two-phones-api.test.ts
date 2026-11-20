@@ -1,4 +1,5 @@
 import {
+  HOUR,
   NOW,
   T,
   addCategory,
@@ -26,9 +27,11 @@ import {
   renameMember,
   restoreData,
   restoreFromTrash,
+  setApiTime,
   setClock,
   stampOf,
   startWorld,
+  storedContents,
   storedEvents,
   sync,
   titles,
@@ -37,6 +40,7 @@ import {
   unsent,
   uploadAs,
   uploads,
+  whenAnswered,
   type Phone,
 } from './sync-loop-app';
 
@@ -342,5 +346,71 @@ describe('SYNC-92.1', () => {
 
     expect(await downloads(a, from)).toEqual(['after=0']);
     expect(await titles(a)).toEqual(['Lunch']);
+  });
+});
+
+describe('SYNC-71.1', () => {
+  test('[SYNC-71.1] does not store a page when an import took the cursor back while the page was on its way', async () => {
+    const { a, b, key } = await twoPhones();
+    const copy = await copyOfData(a);
+    await uploadAs(b, key, [await created(b, 'Lunch', await stampOf(b, NOW))]);
+    await sync(a);
+    expect(await titles(a)).toEqual(['Lunch']);
+    await uploadAs(b, key, [
+      await created(b, 'Taxi', await stampOf(b, NOW, 1)),
+    ]);
+    // As the answer to the download arrives, the local data goes back to cursor 0.
+    whenAnswered('GET', () => importData(a, copy));
+    const from = mark();
+
+    await trySync(a);
+
+    expect(await downloads(a, from)).toEqual(['after=1']);
+    expect(await titles(a)).toEqual([]);
+    const next = mark();
+    await sync(a);
+    await sync(a);
+
+    expect((await downloads(a, next))[0]).toBe('after=0');
+    expect(await titles(a)).toEqual(['Lunch', 'Taxi']);
+  });
+});
+
+describe('SYNC-96.1', () => {
+  test('[SYNC-96.1] takes the stamp the API holds for an unsent event that came back unchecked with older local data', async () => {
+    const setup = await twoPhones({ expenses: ['Dinner'] });
+    const { b, A, B, brisbane, key } = setup;
+    setClock(setup.a, NOW + HOUR);
+    await editExpense(setup.a, 'Dinner', { title: 'Supper' });
+    const [supper] = await unsent(setup.a);
+    const copy = await copyOfData(setup.a);
+    // The first sync checks the event, and uploads it stamped NOW.
+    await sync(setup.a);
+    setClock(b, NOW + 120_000);
+    await editExpense(b, 'Dinner', { title: 'Brunch' });
+    await sync(b);
+    const stored = [
+      { ms: NOW, counter: 0, device: A },
+      { ms: NOW + 120_000, counter: 0, device: B },
+    ];
+    const stamps = async () =>
+      (await storedContents(brisbane, key)).map((event) => event?.stamp);
+    expect(await stamps()).toEqual(stored);
+
+    // Three minutes later Taylor's phone, its clock still an hour ahead, is back at the copy.
+    setApiTime(NOW + 180_000);
+    const a = await restoreData(setup.a, copy);
+    setClock(a, NOW + HOUR + 180_000);
+    expect(await unsent(a)).toEqual([supper]);
+    await sync(a);
+    setClock(b, NOW + 180_000);
+    await sync(b);
+
+    // Supper kept the stamp the API holds, so Brunch, stamped after it, won on both phones.
+    expect(await titles(a)).toEqual(['Brunch']);
+    expect(await titles(b)).toEqual(['Brunch']);
+    expect(await ledgerOf(a)).toEqual(await ledgerOf(b));
+    expect(await unsent(a)).toEqual([]);
+    expect(await stamps()).toEqual(stored);
   });
 });
