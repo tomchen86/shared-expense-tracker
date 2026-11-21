@@ -44,9 +44,10 @@ The content:
 
 - The plaintext is the snapshot as JSON, as `JSON.stringify` writes it, in UTF-8, cut into pieces of 262,103 bytes, the last one whatever is left. Each piece is encrypted on its own as ADR-0015 says, under a nonce of its own, with seven lines of ASCII joined by line feeds as associated data: `shared-expense/snapshot/v1`, the group ID, the snapshot ID, the uploader's device ID, the key epoch, the chunk's index and the number of chunks, the last three in decimal.
 - Snapshot format version 1 holds: that version, the highest event format version among what it covers, the group ID, the sequence number it covers, the ID of the group's Uncategorized category, and every record of the group the phone holds: each unit's value and stamp, or the tombstone, the record's creation stamp, and whether the record was there when the group became a shared ledger. It holds nothing a phone keeps to itself (ADR-0016), and no refused event.
-- The roster and the active invite (ADR-0016) are not in it yet: neither exists on main. #138 makes the invite a kind of record, which a snapshot then carries with the others; #141 adds the roster.
+- The roster and the active invite (ADR-0016) are not in it yet: neither exists on main. #141 adds the roster. How a snapshot carries the invite is settled, within ADR-0016, when #138's invite records and this format meet: whichever of the two merges second adds it.
+- While event format version 1 is the only one, a phone does not store the highest event format version a snapshot names: it is 1, or the snapshot is not taken in.
 - A phone makes a snapshot in one read of its data, at a moment when the ledger has no unsent event (ADR-0016). The number it covers is the phone's cursor at that moment. It may hold more than the events up to that number, namely the phone's own events that the API has stored and the phone has not downloaded again; merging those a second time changes nothing.
-- An upload that stops leaves nothing on the phone, and what it left on the API is never handed out. Trying again makes a new snapshot under a new ID, which takes the old one's place.
+- An upload that stops leaves nothing on the phone. The API hands out only a complete snapshot, so one that lacks a chunk is never handed out. Trying again makes a new snapshot under a new ID, which takes the old one's place.
 
 Taking one in:
 
@@ -66,7 +67,10 @@ Taking one in:
 - #156 has a returning phone merge, so its unsent changes survive. Where the snapshot beats the phone's own money change, #147 flags it (ADR-0016).
 - A ledger whose merged state passes 16 MiB, about 17,000 expenses, cannot be given to a new member or a returning phone. Raising the two limits needs nothing else. A more compact plaintext needs a new snapshot format version.
 - A snapshot of 64 chunks is more requests than a device may send in a minute, so its upload waits once for the limit (`sharing` spec).
-- A recipient that syncs with a cursor at or past a snapshot's number deletes it without having fetched it. Such a phone has stored every event the snapshot covers.
+- A recipient that downloads events with a cursor at or past a snapshot's number deletes it, fetched or not. That is safe only because a phone downloads a group's events once it holds the group as a shared ledger: the records that were there when the group became one are in no event (ADR-0016), so a phone that did not hold the group needs the snapshot whatever its cursor. #141 and #156 keep to this: a new phone takes its snapshot in before its first download, and a phone that already holds the ledger has stored every event up to its cursor.
+- An upload whose last answer is lost leaves a complete snapshot on the API while the phone reports a failure. The recipient can fetch it; the next upload replaces it. #141 approves only after an upload that reported success.
+- A phone that holds the ledger and is handed a snapshot naming another category as the group's Uncategorized cannot use it. Phones that got the group from one phone's snapshots all hold the same one, so only a forged snapshot does this.
+- No one has measured a chunk's request, about 525 KB to hash, parse and check, against the 10 ms of CPU a Worker has. An upload of events can be about twice that, and rule 9's check sends the largest one the tests send (`AGENTS.md`).
 - A phone that shows less because of a forged ID (ADR-0021) makes snapshots without that record, and the phones that start from them never get it.
 - Two phones that each made the group a shared ledger hold different creation stamps for the same record; a snapshot settles them on its maker's. Only the tests' stand-in for joining does this (ADR-0027).
 - A member can upload a snapshot whose content is not the group's, as it can write any event (ADR-0015). The new phone checks that it decrypts under the group key, names this group and is well formed, and nothing more.

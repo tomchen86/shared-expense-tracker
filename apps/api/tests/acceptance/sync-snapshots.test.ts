@@ -23,6 +23,7 @@ import {
   addMember,
   answerHeaders,
   call,
+  callOn,
   createGroup,
   download,
   downloadWith,
@@ -34,6 +35,7 @@ import {
   expectUploaded,
   hexOf,
   leavingGroupsAsTheyWere,
+  ownServer,
   relayedFrom,
   rowsHolding,
   upload,
@@ -158,6 +160,34 @@ describe('SYNC-101.1', () => {
     );
     expect(await chunksStored(s)).toBe(0);
     expect(await chunksStored(s2)).toBe(1);
+  });
+
+  test('[SYNC-101.1] keeps one of two snapshots for one device that begin together, ten times', async () => {
+    const [taylor, casey] = await brisbane();
+    const blake = await anotherMember();
+    const servers = [await ownServer(), await ownServer()];
+
+    for (let round = 0; round < 10; round += 1) {
+      const pair = [
+        snapshotOf(taylor, casey, { sizes: [200] }),
+        snapshotOf(blake, casey, { sizes: [200] }),
+      ];
+
+      const answers = await Promise.all(
+        pair.map((each, index) =>
+          callOn(servers[index], each.by, {
+            method: 'PUT',
+            path: chunkPath(BRISBANE, each.id, 0),
+            body: JSON.stringify(chunkBody(each, 0)),
+          }),
+        ),
+      );
+
+      pair.forEach((each, index) => expectStored(answers[index], each, 0));
+      const stored = await Promise.all(pair.map(chunksStored));
+      expect([...stored].sort()).toEqual([0, 1]);
+      await expectDelivered(casey, BRISBANE, pair[stored.indexOf(1)]);
+    }
   });
 
   test('[SYNC-101.1] keeps one snapshot for each device of each group', async () => {
@@ -648,12 +678,13 @@ async function fillSnapshots(
 describe('SYNC-107.1', () => {
   test('[SYNC-107.1] stores chunks up to 16 MiB for a group, and refuses the one that goes past', async () => {
     const [taylor, casey] = await brisbane();
+    const blake = await anotherMember();
     const [s, s2] = await fillSnapshots(taylor, casey);
     expect(
       s.chunks.reduce((sum, chunk) => sum + chunk.length, 0) + SMALLEST_CHUNK,
     ).toBe(SNAPSHOT_LIMIT);
 
-    // A byte too many, then to the byte.
+    // A byte too many.
     expectSnapshotRefused(
       await uploadChunk(BRISBANE, s2, 0, {
         content: hexOf(randomBytes(SMALLEST_CHUNK + 1)),
@@ -661,8 +692,26 @@ describe('SYNC-107.1', () => {
       SNAPSHOTS_FULL,
     );
     expectSnapshotRefused(await ask(taylor, BRISBANE), NO_SNAPSHOT);
-    expectStored(await uploadChunk(BRISBANE, s2, 0), s2, 0);
-    expectSnapshotRefused(await uploadChunk(BRISBANE, s2, 1), SNAPSHOTS_FULL);
+
+    // Room for one chunk of 41 bytes, and two arrive together: one fills the group to the byte.
+    const forBlake = snapshotOf(taylor, blake, {
+      sizes: [SMALLEST_CHUNK, SMALLEST_CHUNK],
+    });
+    const together = await Promise.all([
+      uploadChunk(BRISBANE, s2, 0),
+      uploadChunk(BRISBANE, forBlake, 0),
+    ]);
+    expect(together.map((answer) => answer.status).sort()).toEqual([200, 413]);
+    const won = together[0].status === 200 ? 0 : 1;
+    const [kept, refused] = won === 0 ? [s2, forBlake] : [forBlake, s2];
+    const recipient = won === 0 ? taylor : blake;
+    expectStored(together[won], kept, 0);
+    expectSnapshotRefused(together[1 - won], SNAPSHOTS_FULL);
+    expectSnapshotRefused(
+      await uploadChunk(BRISBANE, refused, 0),
+      SNAPSHOTS_FULL,
+    );
+    expectSnapshotRefused(await uploadChunk(BRISBANE, kept, 1), SNAPSHOTS_FULL);
 
     // Full: a chunk it has, the group's events, and another group go on as before.
     expectStored(
@@ -677,18 +726,18 @@ describe('SYNC-107.1', () => {
     expectStored(await uploadChunk(TOKYO, inTokyo, 0), inTokyo, 0);
 
     // The snapshot a new one replaces does not count.
-    const s3 = snapshotOf(taylor, taylor, {
+    const s3 = snapshotOf(taylor, recipient, {
       sizes: [SMALLEST_CHUNK, SMALLEST_CHUNK],
     });
     expectStored(await uploadChunk(BRISBANE, s3, 0), s3, 0);
-    const s4 = snapshotOf(taylor, taylor, { sizes: [SMALLEST_CHUNK + 1] });
+    const s4 = snapshotOf(taylor, recipient, { sizes: [SMALLEST_CHUNK + 1] });
     expectSnapshotRefused(await uploadChunk(BRISBANE, s4, 0), SNAPSHOTS_FULL);
     expectSnapshotRefused(await uploadChunk(BRISBANE, s3, 1), SNAPSHOTS_FULL);
 
     // Deleting a snapshot makes room.
     expect((await download(casey, BRISBANE, 0)).status).toBe(200);
     expectStored(await uploadChunk(BRISBANE, s3, 1), s3, 1);
-    await expectDelivered(taylor, BRISBANE, s3);
+    await expectDelivered(recipient, BRISBANE, s3);
   }, 120_000);
 });
 
@@ -1011,28 +1060,36 @@ describe('SYNC-112.1', () => {
     expectRefused(await uploadChunk(BRISBANE, asTaylor, 0), REQUEST);
   });
 
-  test('[SYNC-112.1] says there is no snapshot before it looks at what the chunk says of it', async () => {
+  test('[SYNC-112.1] says there is no snapshot before it says an index is past the end', async () => {
     const [taylor, casey] = await brisbane();
-    const s = snapshotOf(taylor, casey, { sequence: 5 });
+    const s = snapshotOf(taylor, casey);
+    await uploadAll(BRISBANE, s);
 
-    expectSnapshotRefused(await uploadChunk(BRISBANE, s, 1), NO_SNAPSHOT);
+    expectSnapshotRefused(
+      await downloadChunk(taylor, BRISBANE, s.id, 5),
+      NO_SNAPSHOT,
+    );
+    expectRefused(await downloadChunk(casey, BRISBANE, s.id, 5), REQUEST);
   });
 
-  test('[SYNC-112.1] says what a snapshot covers is too far before the key epoch, and the key epoch before there is no room', async () => {
+  test('[SYNC-112.1] says a chunk does not match, or covers too much, or names the wrong key epoch, before it says there is no room', async () => {
     const [taylor, casey] = await brisbane();
+    const blake = await anotherMember();
     const [, s2] = await fillSnapshots(taylor, casey);
     expectStored(await uploadChunk(BRISBANE, s2, 0), s2, 0);
-    const blake = await anotherMember();
     const tooFar = snapshotOf(taylor, blake, { epoch: 2, sequence: 1 });
     const wrongKey = snapshotOf(taylor, blake, { epoch: 2 });
     const noRoom = snapshotOf(taylor, blake);
 
+    expectRefused(await uploadChunk(BRISBANE, s2, 1, { count: 3 }), REQUEST);
     expectRefused(await uploadChunk(BRISBANE, tooFar, 0), REQUEST);
     expectGroupRefused(await uploadChunk(BRISBANE, wrongKey, 0), wrongEpoch(1));
     expectSnapshotRefused(
       await uploadChunk(BRISBANE, noRoom, 0),
       SNAPSHOTS_FULL,
     );
+    // The chunk that matches has no room either.
+    expectSnapshotRefused(await uploadChunk(BRISBANE, s2, 1), SNAPSHOTS_FULL);
   }, 120_000);
 
   test('[SYNC-112.1] a request it refused has used its nonce', async () => {
@@ -1042,6 +1099,18 @@ describe('SYNC-112.1', () => {
     expectSnapshotRefused(await send(request), NO_SNAPSHOT);
 
     expectRefused(await send(request), REPLAYED);
+  });
+
+  test("[SYNC-112.1] counts a request it refuses towards the device's 60 a minute", async () => {
+    const [, casey] = await brisbane();
+    // With its registration, 59 more make 60 in this minute.
+    for (let sent = 0; sent < 59; sent += 1) {
+      expectSnapshotRefused(await ask(casey, BRISBANE), NO_SNAPSHOT);
+    }
+
+    const next = await ask(casey, BRISBANE);
+
+    expectRefused(next, { error: 'too-many-requests', retryAfterMs: 60_000 });
   });
 });
 

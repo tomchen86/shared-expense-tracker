@@ -262,6 +262,11 @@ describe('SYNC-114.1', () => {
       expect(text).not.toContain(absent);
     }
     const content = JSON.parse(text) as SyncSnapshot;
+    // Every unit is one its record's type has: no unit holds the archive or an order.
+    expect(checkSyncSnapshot(content)).toEqual({
+      status: 'valid',
+      snapshot: content,
+    });
     expect(Object.keys(content).sort()).toEqual([
       'eventVersion',
       'groupId',
@@ -312,6 +317,16 @@ describe('SYNC-115.1', () => {
     await expect(sendSnapshot(a, c, tokyo)).rejects.toThrow();
 
     expect(sent().slice(from)).toEqual([]);
+  });
+
+  test('[SYNC-115.1] says the ledger has unsent events before it says the phone lacks the key', async () => {
+    const setup = await twoPhones({ keys: false });
+    const { a } = setup;
+    const c = await newcomer(setup, { key: false });
+    expect(await sendSnapshot(a, c)).toEqual({ outcome: 'no-key' });
+    await addExpense(a);
+
+    expect(await sendSnapshot(a, c)).toEqual({ outcome: 'unsent-events' });
   });
 });
 
@@ -560,8 +575,16 @@ describe('SYNC-118.1', () => {
     const { a } = setup;
     const c = await newcomer(setup);
     loseAnswerTo('PUT', 2);
+    const from = mark();
 
     expect(await sendSnapshot(a, c)).toEqual(FAILED);
+
+    // The API has every chunk, so that snapshot is complete there until the next one.
+    const [lost] = uploadedChunks(from);
+    expect((await fetched(c))?.snapshotId).toBe(lost.snapshotId);
+    const second = await sentSnapshot(a, c);
+    expect(second.snapshotId).not.toBe(lost.snapshotId);
+    expect((await fetched(c))?.snapshotId).toBe(second.snapshotId);
   });
 
   test.each<[string, (snapshotId: string) => unknown]>([
@@ -739,6 +762,9 @@ describe('SYNC-120.1', () => {
     const from = mark();
 
     expect(await sendSnapshot(a, c)).toEqual({ outcome: 'too-large' });
+    // Without the key it says that first (SYNC-115.1).
+    failSecureStoreReads(a);
+    expect(await sendSnapshot(a, c)).toEqual({ outcome: 'no-key' });
 
     expect(sent().slice(from)).toEqual([]);
   }, 120_000);

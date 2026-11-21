@@ -308,6 +308,7 @@ describe('SYNC-122.1', () => {
     expect(everythingIn(c)).toEqual(before);
     expect(await groupNames(c)).toEqual([]);
     expect(localDataHolds(c, first.content)).toBe(false);
+    expect(localDataHolds(c, utf8(LONG_TITLES[0]))).toBe(false);
     expect((await fetched(c))?.snapshotId).toBe(first.snapshotId);
 
     const again = mark();
@@ -596,6 +597,7 @@ describe('SYNC-124.1', () => {
     await sync(c);
 
     expect(await downloads(c, from)).toEqual(['after=5', 'after=5']);
+    expect(await ledgerOf(c)).toEqual(await ledgerOf(setup.a));
   });
 
   test("[SYNC-124.1] the phone's key epoch is the snapshot's", async () => {
@@ -636,6 +638,30 @@ describe('SYNC-124.1', () => {
       counter: 1,
       device: await deviceId(c),
     });
+  });
+
+  test("[SYNC-124.1] keeps the phone's own key epoch and latest stamp where they are higher than the snapshot's", async () => {
+    const setup = await twoPhones({ expenses: ['Dinner'] });
+    const { a, b, B, brisbane } = setup;
+    await sentSnapshot(a, b);
+    await setEpoch(brisbane, 2);
+    await saveKey(b, brisbane, 2, randomKey());
+    setClock(b, T + 5 * MINUTE);
+    await editExpense(b, 'Dinner', { title: 'Supper' });
+    setClock(b, NOW);
+    expect(await takeSnapshot(b)).toEqual(IMPORTED);
+
+    await addExpense(b, { title: 'Coffee' });
+
+    const written = await unsent(b);
+    expect(written.map((event) => event.content.stamp)).toEqual([
+      { ms: T + 5 * MINUTE, counter: 0, device: B },
+      { ms: T + 5 * MINUTE, counter: 1, device: B },
+    ]);
+    const from = mark();
+    await sync(b);
+    expect((await uploads(b, from)).map((upload) => upload.epoch)).toEqual([2]);
+    expect(await unsent(b)).toEqual([]);
   });
 
   test('[SYNC-124.1] the order of the records in a snapshot does not change what the phone holds', async () => {
@@ -1028,9 +1054,14 @@ describe('SYNC-127.1', () => {
     expect(await sendSnapshot(a, b)).toMatchObject({ sequence: 3 });
     const waiting = await unsent(b);
     expect(waiting).toHaveLength(2);
+    // The unsent events as the phone keeps them, with whether each stamp is checked.
+    const kept = everythingIn(b).sync_outbox;
+    expect(kept).toHaveLength(2);
     setClock(b, NOW + MINUTE);
 
     expect(await takeSnapshot(b)).toEqual(IMPORTED);
+
+    expect(everythingIn(b).sync_outbox).toEqual(kept);
 
     const merged = await ledgerOf(b);
     expect(merged.name).toBe('Brissie');
@@ -1257,5 +1288,29 @@ describe('SYNC-128.1', () => {
 
     expect(everythingIn(b)).toEqual(before);
     expect((await groupNamed(b, 'Tokyo')).shared).toBe(false);
+  });
+
+  test('[SYNC-128.1] takes nothing when a phone that has the ledger holds another category as its Uncategorized', async () => {
+    const setup = await twoPhones({ expenses: ['Dinner'] });
+    const { a, b, key } = setup;
+    await sentSnapshot(a, b);
+    const content = await contentFor(b, key);
+    const other = randomId();
+    const renamed: SyncSnapshot = {
+      ...content,
+      uncategorized: other,
+      records: content.records.map((record) =>
+        record.id === content.uncategorized ? { ...record, id: other } : record,
+      ),
+    };
+    const before = everythingIn(b);
+
+    await plant(a, b, key, renamed);
+    expect(await takeSnapshot(b)).toEqual(UNUSABLE);
+
+    expect(everythingIn(b)).toEqual(before);
+    // The snapshot as Taylor's phone made it names the category the phone holds.
+    await plant(a, b, key, content);
+    expect(await takeSnapshot(b)).toEqual(IMPORTED);
   });
 });

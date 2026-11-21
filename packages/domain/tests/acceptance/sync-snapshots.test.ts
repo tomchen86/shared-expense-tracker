@@ -218,10 +218,6 @@ describe('SYNC-98.1', () => {
     ['a tombstone and a unit', { ...FUEL_GONE, units: TAXI.units }],
     ['a tombstone on a member', { ...BLAKE, units: {}, deleted: at(3000) }],
     [
-      'a tombstone on a second group record',
-      { ...GROUP, id: 'tokyo', units: {}, deleted: at(3000) },
-    ],
-    [
       'a unit its type does not have',
       withUnit(BLAKE, 'archived', { value: false, stamp: CREATED }),
     ],
@@ -264,6 +260,17 @@ describe('SYNC-98.1', () => {
     ],
   ])('[SYNC-98.1] refuses a record with %s', (_case, record) => {
     expect(checkSyncSnapshot(snapshot([record]))).toEqual(REFUSED);
+  });
+
+  test('[SYNC-98.1] refuses a tombstone on the group record', () => {
+    expect(checkSyncSnapshot(snapshot()).status).toBe('valid');
+    expect(
+      checkSyncSnapshot(
+        snapshot([], {
+          records: [{ ...GROUP, units: {}, deleted: at(3000) }, UNCATEGORIZED],
+        }),
+      ),
+    ).toEqual(REFUSED);
   });
 
   test('[SYNC-98.1] takes the money of a record that adds up in a supported currency', () => {
@@ -684,6 +691,21 @@ describe('SYNC-99.1', () => {
       }
       const taken = stateOf(inSnapshot);
       const phone = stateOf(onPhone);
+      // What the phone has seen afterwards: what it had seen, and every stamp the
+      // snapshot's records hold. A stamp that left no trace in them is not among these.
+      const seen = [...taken.records.values()]
+        .flatMap((record) => [
+          record.created,
+          ...(record.deleted ? [record.deleted] : []),
+          ...Object.values(
+            record.units as Record<string, { stamp: SyncStamp }>,
+          ).map((unit) => unit.stamp),
+        ])
+        .reduce(
+          (latest, stamp) =>
+            latest && compareSyncStamps(latest, stamp) >= 0 ? latest : stamp,
+          phone.seen,
+        );
 
       for (let pass = 0; pass < 2; pass += 1) {
         for (const [key, incoming] of taken.records) {
@@ -698,6 +720,7 @@ describe('SYNC-99.1', () => {
         expect(Object.fromEntries(phone.records)).toEqual(
           Object.fromEntries(everything.records),
         );
+        expect(phone.seen).toEqual(seen);
       }
     }
   });
