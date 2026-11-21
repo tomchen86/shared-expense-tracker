@@ -308,7 +308,8 @@ describe('SYNC-122.1', () => {
     expect(everythingIn(c)).toEqual(before);
     expect(await groupNames(c)).toEqual([]);
     expect(localDataHolds(c, first.content)).toBe(false);
-    expect(localDataHolds(c, utf8(LONG_TITLES[0]))).toBe(false);
+    // Chunk 0 holds 262,103 bytes of the snapshot, most of them the long titles.
+    expect(localDataHolds(c, utf8('x'.repeat(1_000)))).toBe(false);
     expect((await fetched(c))?.snapshotId).toBe(first.snapshotId);
 
     const again = mark();
