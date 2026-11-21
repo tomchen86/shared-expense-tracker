@@ -621,6 +621,11 @@ test('rejects a local event with unsupported money in the expense transaction', 
 });
 
 test('importing a ledger cannot claim the personal space or its rows', async () => {
+  // A successful signed lookup has already established the receiving device's identity.
+  await database.run(
+    'INSERT INTO device_identity (singleton, deviceId, registered) VALUES (1, ?, 1)',
+    [randomUUID()],
+  );
   const groupId = identity.personalSpaceId;
   const categories = await listCategories(database, groupId);
   const groups = await listGroups(database);
