@@ -51,3 +51,20 @@ export const syncLoopMigration = `
     ADD COLUMN groupFull INTEGER NOT NULL DEFAULT 0 CHECK (groupFull IN (0, 1));
   ALTER TABLE sync_outbox ADD COLUMN checked INTEGER NOT NULL DEFAULT 0 CHECK (checked IN (0, 1));
 `;
+
+export const inviteMigration = `
+  CREATE TABLE group_invites (
+    id TEXT PRIMARY KEY NOT NULL,
+    groupId TEXT NOT NULL REFERENCES sync_groups(groupId),
+    secret TEXT NOT NULL,
+    expiresAtMs INTEGER NOT NULL,
+    cardHash TEXT NOT NULL,
+    cardPending INTEGER NOT NULL DEFAULT 0 CHECK (cardPending IN (0, 1))
+  );
+  CREATE INDEX group_invites_by_expiry ON group_invites(groupId, expiresAtMs, id);
+  CREATE TABLE pending_invites (
+    groupId TEXT PRIMARY KEY NOT NULL REFERENCES sync_groups(groupId),
+    code TEXT NOT NULL UNIQUE,
+    secret TEXT NOT NULL
+  );
+`;

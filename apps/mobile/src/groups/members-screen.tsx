@@ -1,4 +1,4 @@
-import { useRef, useState, type ComponentRef } from 'react';
+import { useCallback, useRef, useState, type ComponentRef } from 'react';
 import {
   AccessibilityInfo,
   Alert,
@@ -17,9 +17,11 @@ import {
   MAX_SHARED_GROUP_MEMBERS,
 } from '@shared-expense/domain';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
+import { InviteContent } from '../sharing/invite-sheet';
 import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
+import { ScreenWithSheet } from '../ui/screen-with-sheet';
 import { useThemeColors } from '../ui/theme';
 import { useSheetScroll } from '../ui/use-sheet-scroll';
 import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
@@ -59,6 +61,8 @@ export function MembersScreen({
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [adding, setAdding] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const closeInvite = useCallback(() => setInviteOpen(false), []);
   const [name, setName] = useState('');
   const [duplicate, setDuplicate] = useState(false);
   const field = useRef<ComponentRef<typeof TextInput>>(null);
@@ -209,7 +213,13 @@ export function MembersScreen({
   }
 
   return (
-    <>
+    <ScreenWithSheet
+      title="Invite"
+      onClose={closeInvite}
+      sheet={
+        inviteOpen ? <InviteContent groupId={id} onClose={closeInvite} /> : null
+      }
+    >
       <Stack.Screen
         options={{
           ...sheetScroll.screenOptions,
@@ -241,6 +251,28 @@ export function MembersScreen({
           { paddingBottom: 32 + sheetScroll.bottomPadding },
         ]}
       >
+        {editable && (
+          <GroupedSection style={{ marginBottom: 20 }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Invite with Link"
+              disabled={busy}
+              onPress={() => setInviteOpen(true)}
+              android_ripple={{ color: colors.pressedSurface }}
+              style={({ pressed }) => [
+                styles.row,
+                pressed && { backgroundColor: colors.pressedSurface },
+              ]}
+            >
+              <Text style={[styles.name, { color: colors.accent }]}>
+                Invite with Link
+              </Text>
+              <Text accessible={false} style={{ color: colors.textMuted }}>
+                ›
+              </Text>
+            </Pressable>
+          </GroupedSection>
+        )}
         <GroupedSection>
           {group?.members.map((member) => {
             const label =
@@ -331,7 +363,7 @@ export function MembersScreen({
           </Text>
         )}
       </ScrollView>
-    </>
+    </ScreenWithSheet>
   );
 }
 

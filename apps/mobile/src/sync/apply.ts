@@ -11,6 +11,7 @@ import { applyMergedGroup } from '../groups';
 import { notifyExpensesChanged } from '../ledger/expenses';
 import { applyMergedExpense } from '../ledger/merged-expense';
 import type { Database, SqlExecutor } from '../storage';
+import { applyMergedInvite } from './invites';
 import { orderSyncedRows } from './positions';
 import {
   latestStamp,
@@ -62,6 +63,7 @@ const recordOwners = {
   expense: ['expenses', 'spaceId'],
   member: ['group_members', 'groupId'],
   category: ['categories', 'spaceId'],
+  invite: ['group_invites', 'groupId'],
 } as const;
 
 async function canMergeInGroup(
@@ -70,7 +72,6 @@ async function canMergeInGroup(
   event: SyncEvent,
 ) {
   if (event.type === 'group') return event.id === groupId;
-  if (event.type === 'invite') return false;
   const [table, owner] = recordOwners[event.type];
   // Partial records and tombstones can belong to another group even without a visible row.
   const foreign = await tx.all(
@@ -137,6 +138,9 @@ export async function applyReceivedEvents(
     if (record.type === 'member' || record.type === 'category')
       toOrder.add(record.type);
     switch (record.type) {
+      case 'invite':
+        if (await applyMergedInvite(tx, groupId, record)) visibleChange = true;
+        break;
       case 'group':
       case 'member':
         if (await applyMergedGroup(tx, groupId, record)) visibleChange = true;

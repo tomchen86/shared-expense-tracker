@@ -125,7 +125,11 @@ export function changedUnits(values: object, stored: SyncRecord['units']) {
 
 type StoredRecord = Awaited<ReturnType<typeof readSyncRecord>>;
 
-type UnsentListener = (groupId: string, position: number) => void;
+type UnsentListener = (
+  groupId: string,
+  position: number,
+  type: SyncRecordType,
+) => void;
 const unsentListeners = new Set<UnsentListener>();
 
 /**
@@ -172,7 +176,7 @@ async function writeEvent(
   await saveLatestStamp(tx, stamp);
   for (const listener of unsentListeners) {
     try {
-      listener(group.groupId, lastInsertRowId);
+      listener(group.groupId, lastInsertRowId, change.type);
     } catch {
       // The event is written whether or not a sync can start.
     }
@@ -198,23 +202,19 @@ export async function writeLocalChange<T extends SyncRecordType>(
 }
 
 /**
- * Writes the event that deletes a shared ledger's category for good, and keeps its
+ * Writes the event that deletes a shared ledger's category or invite for good, and keeps its
  * tombstone. The app writes none for an expense (ADR-0021).
  */
 export async function writeLocalDeletion(
   tx: SqlExecutor,
   group: SharedGroup,
-  categoryId: string,
+  type: 'category' | 'invite',
+  id: string,
 ) {
-  const previous = await readSyncRecord(
-    tx,
-    group.groupId,
-    'category',
-    categoryId,
-  );
+  const previous = await readSyncRecord(tx, group.groupId, type, id);
   await writeEvent(tx, group, previous, {
-    type: 'category',
-    id: categoryId,
+    type,
+    id,
     deleted: true,
   });
 }

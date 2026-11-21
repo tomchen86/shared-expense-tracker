@@ -75,6 +75,14 @@ module.exports = {
     './apps/api/src/sharing/signed-requests.ts': { branches: 100 },
     './apps/mobile/src/sharing/api-request.ts': { branches: 100 },
     './apps/mobile/src/sharing/device-identity.ts': { branches: 100 },
+    // Invite creation, card updates and the sync records that carry links between phones.
+    './apps/mobile/src/sharing/group-key.ts': { branches: 50 },
+    './apps/mobile/src/sharing/invite-api.ts': { branches: 75.75 },
+    './apps/mobile/src/sharing/invite-card.ts': { branches: 100 },
+    './apps/mobile/src/sharing/invite-sheet.tsx': { branches: 80 },
+    './apps/mobile/src/sharing/invites.ts': { branches: 94.73 },
+    './apps/mobile/src/sharing/refresh-invite-card.ts': { branches: 96.77 },
+    './apps/mobile/src/sync/invites.ts': { branches: 75 },
     // The event API: what stores a shared ledger's events, numbers them and hands them
     // out, and the checks of its bodies that the phone and the API share (ADR-0016,
     // ADR-0024).
