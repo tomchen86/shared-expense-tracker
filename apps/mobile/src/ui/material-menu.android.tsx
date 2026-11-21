@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import {
   Box,
+  Column,
   DropdownMenuGroup,
   DropdownMenuPopup,
   Icon,
@@ -41,21 +42,20 @@ export function MaterialMenu({
       {open && (
         <MaterialHost style={StyleSheet.absoluteFill}>
           <Box modifiers={[fillMaxSize()]}>
-            <DropdownMenuPopup
-              expanded
-              onDismissRequest={close}
-              modifiers={[verticalScroll()]}
-            >
+            <DropdownMenuPopup expanded onDismissRequest={close}>
               <DropdownMenuGroup>
-                <MenuRows
-                  options={options}
-                  selected={selected}
-                  multiple={multiple}
-                  onSelect={(id) => {
-                    if (!multiple) close();
-                    onSelect(id);
-                  }}
-                />
+                {/* Keep the scroll clip inside the Surface that draws the group's shadow. */}
+                <Column modifiers={[verticalScroll()]}>
+                  <MenuRows
+                    options={options}
+                    selected={selected}
+                    multiple={multiple}
+                    onSelect={(id) => {
+                      if (!multiple) close();
+                      onSelect(id);
+                    }}
+                  />
+                </Column>
               </DropdownMenuGroup>
             </DropdownMenuPopup>
           </Box>

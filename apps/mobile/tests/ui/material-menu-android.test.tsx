@@ -5,9 +5,12 @@ import {
   isHiddenFromAccessibility,
   render,
   screen,
+  within,
 } from '@testing-library/react-native';
-import { verticalScroll } from '@expo/ui/jetpack-compose/modifiers';
+import { DropdownMenuGroup } from '@expo/ui/jetpack-compose';
+import type { ModifierConfig } from '@expo/ui/jetpack-compose/modifiers';
 import { MaterialMenu } from '../../src/ui/material-menu.android';
+import { componentsIn } from '../acceptance/shell-tabs-app';
 
 function Menu({ multiple }: { multiple: boolean }) {
   const [selected, setSelected] = useState(['food']);
@@ -34,16 +37,22 @@ function Menu({ multiple }: { multiple: boolean }) {
 const open = () =>
   fireEvent.press(screen.getByRole('button', { name: /^options$/i }));
 
-test('enables vertical scrolling on the open menu popup', async () => {
+test('scrolls all options inside the group that draws the menu shadow', async () => {
   await render(<Menu multiple />);
   await open();
-  const [popup] = screen.container.queryAll(
-    (node) => node.props.expanded === true,
+  const [group] = componentsIn(
+    screen.root!,
+    (type) => type === DropdownMenuGroup,
   );
-  expect(popup).toHaveProp(
-    'modifiers',
-    expect.arrayContaining([verticalScroll()]),
+  const scrollContainers = screen.container.queryAll((node) =>
+    node.props.modifiers?.some(
+      (modifier: ModifierConfig) => modifier.$type === 'verticalScroll',
+    ),
   );
+  expect(scrollContainers).toHaveLength(1);
+  const [rows] = scrollContainers;
+  expect(group.view).toContainElement(rows);
+  expect(within(rows).getAllByRole('checkbox')).toHaveLength(2);
 });
 
 test('exposes one named checkbox per row and toggles it from its words or its accessibility action', async () => {
