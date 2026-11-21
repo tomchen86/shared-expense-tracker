@@ -1463,7 +1463,7 @@ WHEN 打開群組支出的 Edit Expense，the mobile app SHALL 照 LEDGER-16.1 �
 
 ### Requirement: LEDGER-56.2 按 Save 存下群組支出的修改
 
-WHEN 使用者在群組支出的 Edit Expense 按 Save，the mobile app SHALL 照 LEDGER-21.2 的規則更新標題、備註、金額、分類和日期，保留它的 ID、幣別和群組，付款改成付款人的全額，分攤改成照 LEDGER-6.1 依分攤的順序把金額平均分給分攤的人，然後關閉表單；打開表單時已經是共同帳本的支出的（sync），只更新表單要存下的值和打開表單時存著的值不同的那幾項，金額、付款和分攤算一項，其他的維持存著的值（SYNC-23.2）。
+WHEN 使用者在群組支出的 Edit Expense 按 Save，the mobile app SHALL 照 LEDGER-21.2 的規則更新標題、備註、金額、分類和日期，保留它的 ID、幣別和群組，付款改成付款人的全額，分攤改成照 LEDGER-6.1 依分攤的順序把金額平均分給分攤的人，然後關閉表單；打開表單時已經是共同帳本的支出的（sync），只更新表單要存下的值和打開表單時存著的值不同的那幾項，金額、付款和分攤算一項，其他的維持存著的值（SYNC-23.2）；更新金額那一項時，幣別是表單的幣別（LEDGER-16.1），表單開著時別支手機換了這筆支出的幣別也一樣。
 
 #### Scenario: 只改金額
 
@@ -1489,6 +1489,11 @@ WHEN 使用者在群組支出的 Edit Expense 按 Save，the mobile app SHALL �
 
 - **WHEN** Brisbane 是共同帳本，Dinner 的 Edit Expense 開著時，套用了別支手機把備註改成「Window seat」、金額改成 90.00 的事件；把表單上的標題改成「Supper」後按 Save
 - **THEN** 表單關閉；Dinner 的標題是「Supper」，備註是「Window seat」，金額是 9000，付款是 Casey 的 9000：表單上沒改的金額和備註沒有被存回去
+
+#### Scenario: 表單開著時別支手機換了幣別
+
+- **WHEN** Brisbane 是共同帳本，100.01 USD 的 Dinner 的 Edit Expense 開著時，套用了別支手機把金額改成 9000 JPY 的事件；把表單上的金額改成「120.00」後按 Save
+- **THEN** 表單關閉；Dinner 的金額是 12000 USD，付款是 Casey 的 12000：存下的是表單上看到的幣別
 
 ### Requirement: LEDGER-57.1 把個人支出改成群組支出
 

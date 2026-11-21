@@ -6,6 +6,7 @@ import {
   editExpense,
   expectFormClosed,
   fillForm,
+  formCurrency,
   inTreeOrder,
   openEditExpense,
   press,
@@ -352,6 +353,62 @@ test('[SYNC-23.2] saves a change of the title though another phone deleted the c
   expect((await expenseTitled('Bench')).category).toEqual(
     await categoryOf('Brisbane', 'Uncategorized'),
   );
+});
+
+/** Dinner's Edit Expense is open, and phone-b's change of its amount group to 9000 JPY has been applied since. */
+async function yenWhileTheFormIsOpen() {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  const dinner = await expenseTitled('Dinner');
+  const theirs = await moneyOf(9000, { currency: 'JPY' });
+  await openEditExpense(dinner.id);
+  await receive(brisbane, await theirChange(dinner.id, { money: theirs }));
+  return { dinner, theirs };
+}
+
+test('[SYNC-23.2] [LEDGER-56.2] saves an amount changed on the form in the currency the form shows, though another phone changed the currency while it was open', async () => {
+  const { dinner } = await yenWhileTheFormIsOpen();
+  expect(formCurrency()).toBe('USD');
+
+  const events = await eventsOf(async () => {
+    await fillForm({ amount: '120.00' });
+    await press('Save');
+    await expectFormClosed();
+  });
+
+  const yours = await moneyOf(12000);
+  expect(events).toEqual([
+    {
+      version: 1,
+      stamp: stamped(1, T120),
+      type: 'expense',
+      id: dinner.id,
+      units: { money: { value: yours, base: stamped(0) } },
+    },
+  ]);
+  expect(await expenseTitled('Dinner')).toMatchObject(stored(yours));
+});
+
+test('[SYNC-23.2] [LEDGER-56.2] leaves the amount in the currency another phone gave it when the form changed only the title', async () => {
+  const { dinner, theirs } = await yenWhileTheFormIsOpen();
+
+  const events = await eventsOf(async () => {
+    await fillForm({ title: 'Supper' });
+    await press('Save');
+    await expectFormClosed();
+  });
+
+  expect(events).toEqual([
+    {
+      version: 1,
+      stamp: stamped(1, T120),
+      type: 'expense',
+      id: dinner.id,
+      units: { title: { value: 'Supper', base: stamped(0) } },
+    },
+  ]);
+  expect(await expenseTitled('Supper')).toMatchObject(stored(theirs));
 });
 
 // This phone's own change of an amount
