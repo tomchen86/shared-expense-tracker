@@ -10,4 +10,5 @@ import { syncMigrations } from './sync/migrations';
 export const migrations: readonly Migration[] = [
   sharingMigrations[0],
   syncMigrations[0],
+  syncMigrations[1],
 ];

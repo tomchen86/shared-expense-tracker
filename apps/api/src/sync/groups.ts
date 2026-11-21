@@ -140,68 +140,80 @@ export function storeEvents(
 
 /**
  * Resolves with the page of the group's events after a cursor, and records the cursor
- * and the API's time as the device's progress in the group (SYNC-57.1, 58.1), or with
- * why the device gets no page (SYNC-49.1, 59.1).
+ * and the API's time as the device's progress in the group. A successful download also
+ * discards the recipient's snapshot when the cursor reaches its sequence.
  */
-export async function readPage(
+export function readPage(
   sql: Sql,
   download: { groupId: string; deviceId: string; after: number; now: number },
 ): Promise<EventsPageResponse | EventApiRefusal> {
   const { groupId, deviceId, after, now } = download;
-  const [member] = await sql<{ reached: boolean }[]>`
-    SELECT g.last_sequence >= ${after}::bigint AS reached
-    FROM groups g
-    JOIN group_members m ON m.group_id = g.id
-    WHERE g.id = ${groupId} AND m.device_id = ${deviceId}`;
-  if (!member) return { error: 'not-a-member' };
-  if (!member.reached) return { error: 'request' };
+  return sql.begin<EventsPageResponse | EventApiRefusal>(
+    'isolation level read committed',
+    async (tx) => {
+      // Concurrent downloads can share this lock. A snapshot upload must wait until
+      // the cursor and any deletion of its recipient's snapshot have committed.
+      const [member] = await tx<{ reached: boolean }[]>`
+        SELECT g.last_sequence >= ${after}::bigint AS reached
+        FROM groups g
+        JOIN group_members m ON m.group_id = g.id
+        WHERE g.id = ${groupId} AND m.device_id = ${deviceId}
+        FOR SHARE OF g`;
+      if (!member) return { error: 'not-a-member' };
+      if (!member.reached) return { error: 'request' };
 
-  // One statement, so the page is the group's events as they were at one moment: with
-  // an event it has every event before it. It reads one event past a full page to tell
-  // whether more follow, and decodes only the contents the page returns.
-  const page = await sql<
-    {
-      id: string;
-      sequence: string;
-      device_id: string;
-      epoch: string;
-      received_at_ms: string;
-      content: string;
-      following: number;
-    }[]
-  >`
-    SELECT id, sequence, device_id, epoch, received_at_ms,
-      encode(content, 'hex') AS content, following
-    FROM (
-      SELECT *,
-        sum(size) OVER (ORDER BY sequence) AS bytes,
-        (count(*) OVER ())::int AS following
-      FROM (
-        SELECT * FROM group_events
-        WHERE group_id = ${groupId} AND sequence > ${after}::bigint
+      // One statement, so the page is the group's events as they were at one moment: with
+      // an event it has every event before it. It reads one event past a full page to tell
+      // whether more follow, and decodes only the contents the page returns.
+      const page = await tx<
+        {
+          id: string;
+          sequence: string;
+          device_id: string;
+          epoch: string;
+          received_at_ms: string;
+          content: string;
+          following: number;
+        }[]
+      >`
+        SELECT id, sequence, device_id, epoch, received_at_ms,
+          encode(content, 'hex') AS content, following
+        FROM (
+          SELECT *,
+            sum(size) OVER (ORDER BY sequence) AS bytes,
+            (count(*) OVER ())::int AS following
+          FROM (
+            SELECT * FROM group_events
+            WHERE group_id = ${groupId} AND sequence > ${after}::bigint
+            ORDER BY sequence
+            LIMIT ${PAGE_EVENT_LIMIT + 1}
+          ) AS next
+        ) AS counted
+        WHERE bytes <= ${PAGE_CONTENT_LIMIT}
         ORDER BY sequence
-        LIMIT ${PAGE_EVENT_LIMIT + 1}
-      ) AS next
-    ) AS counted
-    WHERE bytes <= ${PAGE_CONTENT_LIMIT}
-    ORDER BY sequence
-    LIMIT ${PAGE_EVENT_LIMIT}`;
+        LIMIT ${PAGE_EVENT_LIMIT}`;
 
-  await sql`
-    UPDATE group_members
-    SET progress_cursor = ${after}, progress_at_ms = ${now}
-    WHERE group_id = ${groupId} AND device_id = ${deviceId}`;
-  return {
-    events: page.map((event) => ({
-      id: event.id,
-      sequence: Number(event.sequence),
-      deviceId: event.device_id,
-      epoch: Number(event.epoch),
-      receivedAtMs: Number(event.received_at_ms),
-      content: event.content,
-    })),
-    // The largest event fits a page several times, so a page with no event has none
-    // after it either.
-    more: page.length > 0 && page[0].following > page.length,
-  };
+      await tx`
+        WITH discarded AS (
+          DELETE FROM group_snapshots
+          WHERE group_id = ${groupId} AND recipient = ${deviceId} AND sequence <= ${after}
+        )
+        UPDATE group_members
+        SET progress_cursor = ${after}, progress_at_ms = ${now}
+        WHERE group_id = ${groupId} AND device_id = ${deviceId}`;
+      return {
+        events: page.map((event) => ({
+          id: event.id,
+          sequence: Number(event.sequence),
+          deviceId: event.device_id,
+          epoch: Number(event.epoch),
+          receivedAtMs: Number(event.received_at_ms),
+          content: event.content,
+        })),
+        // The largest event fits a page several times, so a page with no event has none
+        // after it either.
+        more: page.length > 0 && page[0].following > page.length,
+      };
+    },
+  ) as Promise<EventsPageResponse | EventApiRefusal>;
 }

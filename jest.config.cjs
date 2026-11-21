@@ -81,6 +81,14 @@ module.exports = {
     './packages/domain/src/api/group-events.ts': { branches: 100 },
     './apps/api/src/sync/groups.ts': { branches: 100 },
     './apps/api/src/sync/routes.ts': { branches: 100 },
+    // Encrypted ledger snapshots (ADR-0028). The non-acceptance tests also exercise
+    // malformed records, a personal space collision, damaged local data, a lost identity and an unanswered lookup.
+    './packages/domain/src/api/wire.ts': { branches: 100 },
+    './packages/domain/src/api/group-snapshots.ts': { branches: 100 },
+    './packages/domain/src/sync/snapshot.ts': { branches: 98.87 },
+    './apps/api/src/sync/snapshots.ts': { branches: 100 },
+    './apps/mobile/src/sync/snapshot-ledger.ts': { branches: 94.11 },
+    './apps/mobile/src/sync/snapshots.ts': { branches: 96.77 },
   },
   testTimeout: 15000,
 };

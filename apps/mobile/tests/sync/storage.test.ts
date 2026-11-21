@@ -4,6 +4,7 @@ import {
   syncRecordValues,
   type SyncEvent,
   type SyncRecord,
+  type SyncSnapshot,
   type SyncStamp,
 } from '@shared-expense/domain';
 import {
@@ -31,6 +32,7 @@ import {
   listUnsentSyncEvents,
   shareGroup,
 } from '../../src/sync';
+import { importSnapshot } from '../../src/sync/snapshot-ledger';
 import { latestStamp, readSyncRecord } from '../../src/sync/records';
 import { moveExpenseToTrash } from '../../src/ledger/trash';
 import {
@@ -616,4 +618,50 @@ test('rejects a local event with unsupported money in the expense transaction', 
   await expect(save()).rejects.toThrow('Invalid local sync event');
   expect(await listExpenses(database)).toEqual([]);
   expect(await listUnsentSyncEvents(database)).toEqual([]);
+});
+
+test('importing a ledger cannot claim the personal space or its rows', async () => {
+  // A successful signed lookup has already established the receiving device's identity.
+  await database.run(
+    'INSERT INTO device_identity (singleton, deviceId, registered) VALUES (1, ?, 1)',
+    [randomUUID()],
+  );
+  const groupId = identity.personalSpaceId;
+  const categories = await listCategories(database, groupId);
+  const groups = await listGroups(database);
+  const reserved = categories.find((category) => category.isUncategorized)!;
+  const stamp = { ms: 1, counter: 0, device: 'phone' };
+  const content: SyncSnapshot = {
+    version: 1,
+    eventVersion: 1,
+    groupId,
+    sequence: 0,
+    uncategorized: reserved.id,
+    records: [
+      {
+        type: 'group',
+        id: groupId,
+        created: stamp,
+        seeded: true,
+        units: { name: { value: 'Trip', stamp } },
+      },
+      {
+        type: 'category',
+        id: reserved.id,
+        created: stamp,
+        seeded: true,
+        units: {
+          name: { value: reserved.name, stamp },
+          color: { value: reserved.color, stamp },
+          archived: { value: false, stamp },
+        },
+      },
+    ],
+  };
+  const imported = await database
+    .transaction((tx) => importSnapshot(tx, content, 1))
+    .catch(() => false);
+  expect(imported).toBe(false);
+  expect(await listGroups(database)).toEqual(groups);
+  expect(await listCategories(database, groupId)).toEqual(categories);
 });

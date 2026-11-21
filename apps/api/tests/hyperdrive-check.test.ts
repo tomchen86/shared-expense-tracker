@@ -61,7 +61,9 @@ test(
       'devices',
       'group_events',
       'group_members',
+      'group_snapshots',
       'groups',
+      'snapshot_chunks',
     ]);
     for (const { tablename } of tables) {
       await expect(

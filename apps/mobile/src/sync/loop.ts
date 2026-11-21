@@ -33,7 +33,7 @@ import { utf8Text } from './utf8';
 /** The most bytes a request's body may have (SHARING-48.2). */
 const BODY_LIMIT = 1_048_576;
 /** How long a request of a sync may take to be answered in full (SYNC-97.1). */
-const GIVE_UP_AFTER_MS = 60_000;
+export const GIVE_UP_AFTER_MS = 60_000;
 const NONCE_LENGTH = 24;
 const KEY_LENGTH = 32;
 /** Stands in for a key the phone lacks, where only a ciphertext's format version is asked. */
@@ -54,7 +54,7 @@ const eventsPath = (groupId: string) => `/groups/${groupId}/events`;
  * The group key of one key epoch (SYNC-66.1): undefined when this phone has none, and
  * when it cannot read its secure store now, which leaves it without one too (SYNC-95.1).
  */
-async function readGroupKey(
+export async function readGroupKey(
   groupId: string,
   epoch: number,
 ): Promise<Uint8Array | undefined> {
@@ -79,7 +79,7 @@ const associatedData = (
   );
 
 /** What the bytes say as JSON in UTF-8; null when they are not that. */
-function jsonIn(bytes: Uint8Array): unknown {
+export function jsonIn(bytes: Uint8Array): unknown {
   try {
     return JSON.parse(utf8Text(bytes));
   } catch {
