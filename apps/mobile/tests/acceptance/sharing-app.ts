@@ -253,6 +253,13 @@ export function writeSecureStoreEntry(key: string, value: string) {
   entry.value = value;
 }
 
+/** Puts an entry named `key` in the secure store, set the way the app sets its own entries. */
+export function addSecureStoreEntry(key: string, value: string) {
+  storeSet(key, value, {
+    keychainAccessible: secureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+  });
+}
+
 // The random source, in place of `expo-crypto`
 
 function nextBytes(length: number): Uint8Array {

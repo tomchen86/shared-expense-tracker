@@ -277,6 +277,10 @@ const buttonsOfLastAlert = (): AlertButton[] => alerts().at(-1)?.[2] ?? [];
 export const lastAlertButtons = () =>
   buttonsOfLastAlert().map((button) => button.text);
 
+/** The last alert's buttons, as [text, style]. */
+export const lastAlertButtonStyles = () =>
+  buttonsOfLastAlert().map(({ text, style }) => [text, style]);
+
 /** Taps a button of the last alert, which runs its action, if it has one. */
 export async function pressAlertButton(text: string) {
   const button = buttonsOfLastAlert().find(
