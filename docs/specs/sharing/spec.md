@@ -22,7 +22,7 @@ SHARING-17.1 到 51.1 的情境裡，T 是 `2026-11-18T06:32:00Z`，也就是 17
 
 API 的情境（SHARING-77.1 到 89.1）沿用 sync 的 API 情境：T、Taylor 和 Casey 的手機、Brisbane 和 Tokyo 都和那裡一樣，Brisbane 已經由 Taylor 的手機建立，Tokyo 還沒有建立，除非另外說明。代號 A 是 `3q2-7wEjRWeJq83vEjRWeA`，代號 B 是 `AAECAwQFBgcICQoLDA0ODw`，代號 C 是 `__7dzLuqmYh3ZlVEMyIRAA`。名片 X、Y、Z、W 各是 200 bytes、內容不同的隨機 bytes；除非另外說明，名片的 cursor 是 0。情境說一支手機是成員手機，而那個群組不是它建立的，是測試直接把它記成成員手機。
 
-手機 app 這一邊（SHARING-90.1 到 111.1）：API 的網址是 app 建置時環境變數 `EXPO_PUBLIC_API_URL` 給的網址，沒有結尾的 `/`，例如 `https://api.example.test`；邀請連結的主機就是它的主機。群組鑰匙是共同帳本的手機加密事件用的 32 bytes 的鑰匙，一個鑰匙世代一把（ADR-0015）；這裡只產生世代 1 的，事件怎麼用它加密不在這裡（sync）。手機上的邀請是本機資料替一個共同帳本存著的邀請：代號、`#` 後面的字串和到期時間；校正後的時間比到期時間早，它就是有效的。邀請是共同帳本的一種紀錄：建立和撤回都寫成事件（SYNC-80.1），別的成員手機套用事件之後也存著它（SYNC-81.1），所以每位成員看到的是同一條連結，也都能撤回。待上傳的事件、共同帳本、校正後的時間和套用見 sync。Invite 是從 Members 打開的畫面。準備邀請是按「Invite with Link」或「Try Again」之後手機做的事：有有效的邀請就顯示它（SHARING-100.1），沒有就建立一個，群組還不是共同帳本時先讓它變成共同帳本（SHARING-92.1）；它的結果是 Invite 顯示邀請，或顯示一句說明。
+手機 app 這一邊（SHARING-90.1 到 111.1）：API 的網址是 app 建置時環境變數 `EXPO_PUBLIC_API_URL` 給的網址，沒有結尾的 `/`，例如 `https://api.example.test`；邀請連結的主機就是它的主機。群組鑰匙是共同帳本的手機加密事件用的 32 bytes 的鑰匙，一個鑰匙世代一把（ADR-0015）；這裡只產生世代 1 的，事件怎麼用它加密不在這裡（sync）。手機上的邀請是本機資料替一個共同帳本存著的邀請：代號、`#` 後面的字串和到期時間；校正後的時間比到期時間早，它就是有效的。邀請是共同帳本的一種紀錄：建立和撤回都寫成事件（SYNC-80.2），別的成員手機套用事件之後也存著它（SYNC-81.1），所以每位成員看到的是同一條連結，也都能撤回。待上傳的事件、共同帳本、校正後的時間和套用見 sync。Invite 是從 Members 打開的畫面。準備邀請是按「Invite with Link」或「Try Again」之後手機做的事：有有效的邀請就顯示它（SHARING-100.1），沒有就建立一個，群組還不是共同帳本時先讓它變成共同帳本（SHARING-92.1）；它的結果是 Invite 顯示邀請，或顯示一句說明。
 
 手機 app 的情境（SHARING-90.1 到 111.1）裡，T、手機的時鐘和 API 的時間同 SHARING-17.1 的情境，API 的網址是 `https://api.example.test`，名字是 Taylor，手機的地區是美國、時區是 `Asia/Taipei`。Brisbane 和 Tokyo 是 Taylor 建立的群組；除非另外說明，它們還不是共同帳本，手機沒有裝置身分，API 照 SHARING-31.2 到 89.1 和 SYNC-45.1 回答。「邀請建立好了」指 Invite 顯示邀請連結。
 
@@ -2097,7 +2097,7 @@ The mobile app SHALL 不把 `#` 後面的字串和名片金鑰放進任何請求
 
 ### Requirement: SHARING-97.1 邀請建立好了之後，存下它並寫下它的事件
 
-WHEN API 回答邀請建立好了，the mobile app SHALL 在同一個 SQLite transaction 裡存下這個邀請——代號、`#` 後面的字串和 API 回答的到期時間——並寫下邀請的第一個事件（SYNC-80.1、SYNC-21.1），送出請求之前存的那一份代號和字串（SHARING-105.1）也在這個 transaction 裡拿掉；其中一個存不進去就都不留下，那一份也還在。API 沒有回答建立好了時不存邀請，也不寫事件。
+WHEN API 回答邀請建立好了，the mobile app SHALL 在同一個 SQLite transaction 裡存下這個邀請——代號、`#` 後面的字串和 API 回答的到期時間——並寫下邀請的第一個事件（SYNC-80.2、SYNC-21.1），送出請求之前存的那一份代號和字串（SHARING-105.1）也在這個 transaction 裡拿掉；其中一個存不進去就都不留下，那一份也還在。API 沒有回答建立好了時不存邀請，也不寫事件。
 
 #### Scenario: 邀請的事件
 
@@ -2167,7 +2167,7 @@ WHEN 準備邀請，而這個群組是共同帳本，這支手機存著的它的
 
 ### Requirement: SHARING-102.1 撤回邀請
 
-WHEN 使用者在 Invite 按「Revoke Link」，the mobile app SHALL 先跳出提示框：標題「Revoke Link?」，訊息「People who haven't joined yet won't be able to use this link.」，按鈕是「Cancel」和破壞性的「Revoke」。按「Revoke」才送撤回這個邀請的請求（SHARING-82.1）；API 回答撤回好了之後，在同一個 SQLite transaction 裡刪掉存著的這個邀請並寫下永久刪除它的事件（SYNC-80.1），然後關閉 Invite，回到 Members。按「Cancel」什麼都不做。
+WHEN 使用者在 Invite 按「Revoke Link」，the mobile app SHALL 先跳出提示框：標題「Revoke Link?」，訊息「People who haven't joined yet won't be able to use this link.」，按鈕是「Cancel」和破壞性的「Revoke」。按「Revoke」才送撤回這個邀請的請求（SHARING-82.1）；API 回答撤回好了之後，在同一個 SQLite transaction 裡刪掉存著的這個邀請並寫下永久刪除它的事件（SYNC-80.2），然後關閉 Invite，回到 Members。按「Cancel」什麼都不做。
 
 #### Scenario: 撤回
 

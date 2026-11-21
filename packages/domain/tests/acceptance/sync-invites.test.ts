@@ -1,5 +1,13 @@
 import { syncRecordValues, type SyncStamp } from '../../src';
-import { at, CREATED, judge, merged, refused } from './sync-fixtures';
+import {
+  at,
+  bothOrders,
+  CREATED,
+  judge,
+  merged,
+  refused,
+  unit,
+} from './sync-fixtures';
 
 // An invite as a record of a shared ledger (ADR-0015, ADR-0026): its ID is the invite's
 // code, and its one unit, the link, holds the secret that follows `#` in the invite link
@@ -78,7 +86,7 @@ test.each<[string, unknown]>([
     'a secret that ends in any character 32 bytes can end in',
     invite({ ...LINK, secret: `${SECRET.slice(0, -1)}4` }),
   ],
-])('[SYNC-80.1] accepts %s', (_case, content) => {
+])('[SYNC-80.2] accepts %s', (_case, content) => {
   expect(judge(content)).toEqual(VALID(content));
 });
 
@@ -93,7 +101,7 @@ const WRONG_CODES: [string, unknown][] = [
 ];
 
 test.each(WRONG_CODES)(
-  '[SYNC-80.1] refuses an invite whose code is %s, and its deletion, for their structure',
+  '[SYNC-80.2] refuses an invite whose code is %s, and its deletion, for their structure',
   (_case, id) => {
     // Otherwise every invite is refused, whatever its code.
     expect(judge(invite())).toEqual(VALID(invite()));
@@ -126,13 +134,13 @@ test.each<[string, unknown]>([
   ['an extra field', { ...LINK, groupName: 'Brisbane' }],
   ['a link that is only the secret', SECRET],
   ['a link that is null', null],
-])('[SYNC-80.1] refuses an invite with %s for its structure', (_case, link) => {
+])('[SYNC-80.2] refuses an invite with %s for its structure', (_case, link) => {
   expect(judge(invite())).toEqual(VALID(invite()));
 
   expect(judge(invite(link))).toEqual(refused('structure'));
 });
 
-test('[SYNC-80.1] an invite shows its secret and its expiry once its first event is merged', () => {
+test('[SYNC-80.2] an invite shows its secret and its expiry once its first event is merged', () => {
   expect(syncRecordValues(merged([invite()]))).toEqual({ link: LINK });
 });
 
@@ -140,7 +148,7 @@ test.each<[string, unknown[]]>([
   ['after its first event', [invite(), revoked()]],
   ['before its first event', [revoked(), invite()]],
 ])(
-  '[SYNC-80.1] a revoked invite stays revoked when its link is changed later, revoked %s',
+  '[SYNC-80.2] a revoked invite stays revoked when its link is changed later, revoked %s',
   (_case, events) => {
     const later = invite(
       { ...LINK, expiresAtMs: EXPIRES + 1 },
@@ -156,5 +164,38 @@ test.each<[string, unknown[]]>([
       units: {},
     });
     expect(syncRecordValues(record)).toBeUndefined();
+  },
+);
+
+const TIED = at(3000, 0, 'phone-b');
+/** The same secret with another first character: `A` < `Z` < `a` as UTF-16 code units. */
+const secretFrom = (first: string) => first + SECRET.slice(1);
+
+test.each<[string, typeof LINK, typeof LINK]>([
+  [
+    'the later expiry, whatever its secret',
+    { secret: secretFrom('a'), expiresAtMs: EXPIRES },
+    { secret: SECRET, expiresAtMs: EXPIRES + 1 },
+  ],
+  [
+    'the larger secret when the expiry is the same',
+    { secret: secretFrom('Z'), expiresAtMs: EXPIRES },
+    { secret: secretFrom('a'), expiresAtMs: EXPIRES },
+  ],
+])(
+  '[SYNC-80.2] two changes of the link with one stamp leave %s',
+  (_case, smaller, larger) => {
+    const record = merged([invite()]);
+    const orders = bothOrders(
+      invite(smaller, { stamp: TIED }),
+      invite(larger, { stamp: TIED }),
+    );
+
+    for (const order of orders) {
+      expect(unit(merged(order, record), 'link')).toEqual({
+        value: larger,
+        stamp: TIED,
+      });
+    }
   },
 );
