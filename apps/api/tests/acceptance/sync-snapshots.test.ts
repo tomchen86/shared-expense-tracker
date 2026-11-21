@@ -320,7 +320,7 @@ describe('SYNC-102.1', () => {
   });
 });
 
-describe('SYNC-103.1', () => {
+describe('SYNC-103.2', () => {
   const WRONG_GROUP_IDS = [
     BRISBANE.toUpperCase(),
     '9b2f6c1e-8d47-1f3a-b1c5-2e7d90a4f6b8',
@@ -328,7 +328,7 @@ describe('SYNC-103.1', () => {
   ];
 
   test.each(WRONG_GROUP_IDS)(
-    '[SYNC-103.1] refuses the group ID %s in each of the three requests',
+    '[SYNC-103.2] refuses the group ID %s in each of the three requests',
     async (groupId) => {
       const [taylor, casey] = await brisbane();
       const s = snapshotOf(taylor, casey);
@@ -347,7 +347,7 @@ describe('SYNC-103.1', () => {
     ['with no hyphens', (id: string) => id.replaceAll('-', '')],
     ['that is a word', () => 'snapshot-1'],
   ])(
-    '[SYNC-103.1] refuses a snapshot ID %s in an upload and in a download',
+    '[SYNC-103.2] refuses a snapshot ID %s in an upload and in a download',
     async (_case, wrong) => {
       const [taylor, casey] = await brisbane();
       const s = snapshotOf(taylor, casey);
@@ -373,7 +373,7 @@ describe('SYNC-103.1', () => {
     },
   );
 
-  test('[SYNC-103.1] refuses an index that is not written as a whole number from 0 to 63', async () => {
+  test('[SYNC-103.2] refuses an index that is not written as a whole number from 0 to 63', async () => {
     const [taylor, casey] = await brisbane();
     const s = snapshotOf(taylor, casey);
     await uploadAll(BRISBANE, s);
@@ -386,7 +386,6 @@ describe('SYNC-103.1', () => {
         '1.0',
         '1e0',
         '0x1',
-        '%31',
         '64',
         'one',
         '9007199254740992',
@@ -406,7 +405,25 @@ describe('SYNC-103.1', () => {
     expectChunk(await downloadChunk(casey, BRISBANE, s.id, '1'), s.chunks[1]);
   });
 
-  test('[SYNC-103.1] refuses each of the three requests when its URL carries a query', async () => {
+  test('[SYNC-103.2] an index written with an escape is refused for its signature, before the route sees it', async () => {
+    const [taylor, casey] = await brisbane();
+    const s = snapshotOf(taylor, casey);
+    await uploadAll(BRISBANE, s);
+    const body = JSON.stringify(chunkBody(s, 1));
+
+    await leavingGroupsAsTheyWere(async () => {
+      expectRefused(
+        await putChunk(taylor, BRISBANE, s.id, '%31', body),
+        SIGNATURE,
+      );
+      expectRefused(
+        await downloadChunk(casey, BRISBANE, s.id, '%31'),
+        SIGNATURE,
+      );
+    });
+  });
+
+  test('[SYNC-103.2] refuses each of the three requests when its URL carries a query', async () => {
     const [taylor, casey] = await brisbane();
     const s = snapshotOf(taylor, casey);
     await uploadAll(BRISBANE, s);
@@ -431,7 +448,7 @@ describe('SYNC-103.1', () => {
     await expectDelivered(casey, BRISBANE, s);
   });
 
-  test('[SYNC-103.1] refuses an upload whose body is no JSON, or no upload of a chunk', async () => {
+  test('[SYNC-103.2] refuses an upload whose body is no JSON, or no upload of a chunk', async () => {
     const [taylor, casey] = await brisbane();
     const s = snapshotOf(taylor, casey);
     const right = chunkBody(s, 0);
@@ -475,7 +492,7 @@ describe('SYNC-103.1', () => {
     expectStored(await uploadChunk(BRISBANE, s, 0), s, 0);
   });
 
-  test('[SYNC-103.1] refuses an index that is not below the count the request names', async () => {
+  test('[SYNC-103.2] refuses an index that is not below the count the request names', async () => {
     const [taylor, casey] = await brisbane();
     const s = snapshotOf(taylor, casey);
     expectStored(await uploadChunk(BRISBANE, s, 0), s, 0);
@@ -487,7 +504,7 @@ describe('SYNC-103.1', () => {
     });
   });
 
-  test('[SYNC-103.1] says so to a device that is no member device, too', async () => {
+  test('[SYNC-103.2] says so to a device that is no member device, too', async () => {
     const [taylor, casey] = await brisbane(false);
     const s = snapshotOf(taylor, casey);
 
