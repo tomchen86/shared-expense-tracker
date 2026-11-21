@@ -6,13 +6,15 @@ import {
 } from '@shared-expense/domain';
 import { readCorrectedTime } from '../sharing/device-identity';
 import type { SqlExecutor, SqlValue } from '../storage';
+import { renameOwnMoney } from './own-money';
 import { orderSyncedRows } from './positions';
 import { readSyncRecord, saveLatestStamp, storeSyncRecord } from './records';
 
 // The checks of an unsent event's stamp (ADR-0016, ADR-0027). A stamp more than 5 minutes
 // ahead of the corrected time is replaced before any other phone sees it, wherever the
-// local data holds it: in the event, in the record it changed, and as the base of later
-// unsent events. Everything here runs inside the caller's transaction, and resolves with
+// local data holds it: in the event, in the record it changed, as the base of later
+// unsent events, and in the phone's own money change of the expense (ADR-0029).
+// Everything here runs inside the caller's transaction, and resolves with
 // the shared ledgers whose members or categories a replaced stamp put in another order.
 
 /** How far ahead of the corrected time a checked stamp may be, in milliseconds (SYNC-84.1). */
@@ -131,6 +133,8 @@ async function rename(
       } as SyncRecord,
       renamed(stored.created),
     );
+    // So that an event applied later is compared with the stamp the change has now (SYNC-133.1).
+    if (event.type === 'expense') await renameOwnMoney(tx, event.id, renamed);
     if (event.type === 'member' || event.type === 'category')
       toOrder.set(`${groupId}/${event.type}`, [groupId, event.type]);
   }

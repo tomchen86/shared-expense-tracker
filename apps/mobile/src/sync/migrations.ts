@@ -51,3 +51,17 @@ export const syncLoopMigration = `
     ADD COLUMN groupFull INTEGER NOT NULL DEFAULT 0 CHECK (groupFull IN (0, 1));
   ALTER TABLE sync_outbox ADD COLUMN checked INTEGER NOT NULL DEFAULT 0 CHECK (checked IN (0, 1));
 `;
+
+/**
+ * This phone's own change of an expense's money (ADR-0029): the stamp and the money of the
+ * last event it wrote itself that held the money unit, and whether an event has overridden
+ * that change since. It goes with its expense when the expense is deleted for good.
+ */
+export const syncOwnMoneyMigration = `
+  CREATE TABLE sync_own_money (
+    expenseId TEXT PRIMARY KEY NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
+    stamp TEXT NOT NULL,
+    money TEXT NOT NULL,
+    overridden INTEGER NOT NULL DEFAULT 0 CHECK (overridden IN (0, 1))
+  );
+`;
