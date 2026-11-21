@@ -514,11 +514,84 @@ test.each<[string, string, unknown]>([
     { ...dinnerMoney({ currency: 'XYZ', shares: [] }), id: '' },
   ],
 ])(
-  '[SYNC-10.1] an event refused for %s reports its %s',
+  '[SYNC-10.2] an event refused for %s reports its %s',
   (_case, reason, content) => {
     expect(judge(content, RECEIVED)).toEqual(refused(reason));
   },
 );
+
+// Uploaded by phone-c, though the stamp names another device.
+test.each<[string, string, unknown]>([
+  ['its structure and its device', 'structure', dinnerWith('title', '', LATE)],
+  ['its device and its clock', 'device', dinnerWith('title', 'Supper', LATE)],
+  ['its device and its currency', 'device', dinnerMoney({ currency: 'XYZ' })],
+  ['its device and its sum', 'device', dinnerMoney({ shares: [] })],
+  [
+    'its device, its clock, its currency and its sum',
+    'device',
+    dinnerMoney({ currency: 'XYZ', shares: [] }, LATE),
+  ],
+])(
+  '[SYNC-10.2] an event refused for %s reports its %s',
+  (_case, reason, content) => {
+    expect(judge(content, RECEIVED, 'phone-c')).toEqual(refused(reason));
+  },
+);
+
+test('[SYNC-65.1] refuses an event whose stamp names another device than the one that uploaded it, and accepts it from that device', () => {
+  const event = dinnerChange(at(2000, 0, 'phone-a'), { title: 'Supper' });
+  expect(judge(event, 2000, 'phone-b')).toEqual(refused('device'));
+  expect(judge(event, 2000, 'phone-a')).toEqual(VALID(event));
+});
+
+test.each(['Phone-B', 'phone-b2', 'phone-'])(
+  '[SYNC-65.1] refuses a stamp of %s for an event that phone-b uploaded',
+  (device) => {
+    const content = dinnerChange(at(2000, 0, device), { title: 'Supper' });
+    expect(judge(content, 2000, 'phone-b')).toEqual(refused('device'));
+  },
+);
+
+test('[SYNC-65.1] looks at the stamp of the event only: the base of a unit may name any device', () => {
+  const content = dinnerChange(
+    at(3000, 0, 'phone-b'),
+    { title: 'Supper' },
+    at(1000, 0, 'phone-a'),
+  );
+  expect(judge(content, 3000, 'phone-b')).toEqual(VALID(content));
+  expect(judge(content, 3000, 'phone-a')).toEqual(refused('device'));
+});
+
+test('[SYNC-65.1] refuses a deletion stamped as another device', () => {
+  const content = deletion('expense', 'dinner', at(2000, 0, 'phone-a'));
+  expect(judge(content, 2000, 'phone-b')).toEqual(refused('device'));
+  expect(judge(content, 2000, 'phone-a')).toEqual(VALID(content));
+});
+
+test('[SYNC-65.1] does not check the device of a change that is not sent yet', () => {
+  const content = dinnerChange(at(2000, 0, 'phone-a'), { title: 'Supper' });
+  expect(judge(content, 2000, 'phone-b')).toEqual(refused('device'));
+  expect(judge(content)).toEqual(VALID(content));
+});
+
+test('[SYNC-65.1] a forged event changes nothing on the phone it names, and does not move its clock on', () => {
+  const before: Phone = receive(
+    { records: {} },
+    { content: created, receivedAtMs: 1000 },
+  );
+  const forged = dinnerChange(at(9000, 0, 'phone-a'), { title: 'Hacked' });
+
+  const after = receive(before, {
+    content: forged,
+    receivedAtMs: 9000,
+    device: 'phone-b',
+  });
+
+  expect(after).toEqual(before);
+  expect(
+    nextSyncStamp({ seen: after.seen, nowMs: 5000, device: 'phone-a' }),
+  ).toEqual(at(5000, 0, 'phone-a'));
+});
 
 test.each<[string, number]>([
   ['negative', -1],
@@ -526,6 +599,9 @@ test.each<[string, number]>([
   ['not a number', Number.NaN],
   ['past the largest safe integer', Number.MAX_SAFE_INTEGER + 1],
 ])('[SYNC-18.1] throws when the receive time is %s', (_case, receivedAtMs) => {
-  expect(checkSyncEvent(created, { receivedAtMs: 0 })).toEqual(VALID(created));
-  expect(() => checkSyncEvent(created, { receivedAtMs })).toThrow();
+  const device = 'phone-a';
+  expect(checkSyncEvent(created, { receivedAtMs: 0, device })).toEqual(
+    VALID(created),
+  );
+  expect(() => checkSyncEvent(created, { receivedAtMs, device })).toThrow();
 });

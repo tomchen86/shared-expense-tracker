@@ -24,12 +24,12 @@ module.exports = {
     // Measured using acceptance tests alone, so test:traced enforces these too.
     './packages/domain/src/crypto/index.ts': { branches: 100 },
     './packages/domain/src/groups/amounts.ts': { branches: 100 },
-    './packages/domain/src/insights/insights.ts': { branches: 98.96 },
+    './packages/domain/src/insights/insights.ts': { branches: 99.1 },
     './packages/domain/src/sync/sync.ts': { branches: 100 },
     // Checks imported amounts and keeps the latest sync stamp across an import.
     './apps/mobile/src/backup/import.ts': { branches: 100 },
     './apps/mobile/src/groups/group-card.tsx': { branches: 83.33 },
-    './apps/mobile/src/groups/group-screen.tsx': { branches: 95.23 },
+    './apps/mobile/src/groups/group-screen.tsx': { branches: 96.72 },
     './apps/mobile/src/groups/group-summary.tsx': { branches: 50 },
     './apps/mobile/src/groups/groups-screen.tsx': { branches: 100 },
     './apps/mobile/src/groups/balances-screen.tsx': { branches: 100 },
@@ -48,6 +48,15 @@ module.exports = {
     './apps/mobile/src/sync/positions.ts': { branches: 75 },
     './apps/mobile/src/sync/records.ts': { branches: 94.73 },
     './apps/mobile/src/sync/use-synced-focus-effect.ts': { branches: 83.33 },
+    // The phone's sync with the API (ADR-0027): the loop, the check of unsent stamps, and
+    // what starts a sync and shows its notices. Measured with the tests against the API
+    // (`*-api.test.*`), which need Docker.
+    './apps/mobile/src/sync/loop.ts': { branches: 98.18 },
+    './apps/mobile/src/sync/stamps.ts': { branches: 95.65 },
+    './apps/mobile/src/sync/use-sync-notices.ts': { branches: 75 },
+    './apps/mobile/src/sync/use-sync-triggers.ts': { branches: 93.75 },
+    // No acceptance test decodes a character that is cut short; utf8.test.ts reaches every branch.
+    './apps/mobile/src/sync/utf8.ts': { branches: 95.83 },
     './apps/mobile/src/ledger/merged-expense.ts': { branches: 100 },
     './apps/mobile/src/ledger/trash.ts': { branches: 83.33 },
     './apps/mobile/src/categories/merged-category.ts': { branches: 100 },

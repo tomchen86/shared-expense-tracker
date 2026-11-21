@@ -274,7 +274,7 @@ test('[SYNC-39.1] still lists the categories as merged after a restart', async (
   );
 });
 
-test('[SYNC-28.1] leaves the local data as it is when the same category events arrive again', async () => {
+test('[SYNC-28.2] leaves the local data as it is when the same category events arrive again', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   const other = await categoryOf('Brisbane', 'Other');

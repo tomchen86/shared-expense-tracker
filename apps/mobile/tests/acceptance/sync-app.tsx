@@ -168,7 +168,8 @@ export function openPhone(): Database {
 /** Every row of every table of the phone database, read without the app. */
 export const everything = () => localData(file);
 
-function appDatabase(): Database {
+/** The app's own connection to the running test's phone database, for what a test hands the app. */
+export function appDatabase(): Database {
   if (phone === undefined) throw new Error('The app has not opened its data');
   return phone;
 }

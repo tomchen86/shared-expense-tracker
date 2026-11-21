@@ -28,14 +28,15 @@ import type { MenuFieldProps } from '../../src/ui/menu-field';
 // menu, on Android through the row's button and the sheet it opens. Paid by Me is a switch, the
 // amounts are two text fields, and the rest are buttons.
 //
-// The capsule row is the sideways scroll view among what a list shows itself (LEDGER-133.1). A
+// The capsule row is the sideways scroll view among what a list shows itself (LEDGER-133.2). A
 // capsule is read from the text it shows and from the fill behind that text. On iOS the capsules
 // of Category, Ledger, Paid by and Currency are system menus (LEDGER-134.1): the tests read what
 // the list gives the component that draws each one, a component that takes the props of the ui/
 // MenuField with the condition's name as its label, the capsule's value as its value (nothing
 // while the condition is off), its options and the ones chosen, and choose as the menu does. The
-// popover of the Amount capsule (LEDGER-135.1) is left to the E2E flows. On Android every
-// capsule is a button (LEDGER-136.1).
+// popover of the Amount capsule (LEDGER-135.1) is left to the E2E flows. The capsules are read on
+// iOS only: on Android they are Material chips with menus and a sheet (LEDGER-136.2,
+// LEDGER-150.1), which only the E2E flows tagged android open.
 
 type HostView = ReturnType<typeof nativeViews>[number];
 
@@ -461,7 +462,7 @@ const WHITE = ['#fff', '#ffffff', 'white'];
 export const isWhite = (ink: unknown) =>
   typeof ink === 'string' && WHITE.includes(ink.toLowerCase());
 
-/** On iOS: what the list in `root` gives the component that draws the capsule of the condition `label`. */
+/** What the list in `root` gives the component that draws the capsule of the condition `label`. */
 function capsuleMenu(root: HostView, label: ListCondition) {
   const row = capsuleRow(root);
   if (row === undefined) return undefined;
@@ -483,26 +484,15 @@ const capsuleButtons = (root: HostView) => {
   return row === undefined ? [] : within(row).queryAllByRole('button');
 };
 
-/** On Android, or for Paid by Me and Amount: the capsule that is a button named `label`, or `label`, <value>. */
-const capsuleButton = (root: HostView, label: string) =>
-  capsuleButtons(root).find((button) => {
-    const name = asRead(nameOf(button));
-    return name === label || name.startsWith(`${label}, `);
-  });
-
 /**
  * What a screen reader reads for the capsule of the condition `label` of the list in `root`:
  * the label alone while the condition is off, else the label, a comma and its value. Undefined
  * while the list shows no such capsule.
  */
 export function capsuleName(root: HostView, label: ListCondition) {
-  if (!onAndroid()) {
-    const menu = capsuleMenu(root, label);
-    if (menu === undefined) return undefined;
-    return menu.props.value ? `${label}, ${menu.props.value}` : label;
-  }
-  const button = capsuleButton(root, label);
-  return button && asRead(nameOf(button));
+  const menu = capsuleMenu(root, label);
+  if (menu === undefined) return undefined;
+  return menu.props.value ? `${label}, ${menu.props.value}` : label;
 }
 
 /** What the menu of the capsule of the condition `label` holds on iOS, top to bottom, as [name, ticked]. */
@@ -540,7 +530,7 @@ export async function pressInCapsule(
   }
 }
 
-/** The Paid by Me capsule of the list in `root`, a button on both platforms, if the list shows one. */
+/** The Paid by Me capsule of the list in `root`, a button, if the list shows one. */
 export const paidByMeCapsule = (root: HostView) =>
   capsuleButtons(root).find(
     (button) => asRead(nameOf(button)) === 'Paid by Me',
@@ -559,20 +549,6 @@ export async function pressPaidByMeCapsule(root: HostView) {
   const capsule = paidByMeCapsule(root);
   if (capsule === undefined)
     throw new Error('The list shows no Paid by Me capsule');
-  await fireEvent.press(capsule);
-  await settle();
-}
-
-/** The names of the capsules of the list in `root` that are buttons, left to right: all of them on Android. */
-export const capsuleButtonNames = (root: HostView) =>
-  capsuleButtons(root).map((button) => asRead(nameOf(button)));
-
-/** Presses the capsule that is a button named `name`, as every capsule is on Android. */
-export async function pressCapsule(root: HostView, name: string) {
-  const capsule = capsuleButtons(root).find(
-    (button) => asRead(nameOf(button)) === name,
-  );
-  if (capsule === undefined) throw new Error(`The list shows no ${name}`);
   await fireEvent.press(capsule);
   await settle();
 }
@@ -651,7 +627,7 @@ export async function applySavedFrom(barTitle: string, name: string) {
 export const pressDeleteSaved = (name: string) =>
   pressInFilters(`${DELETE}${name}`);
 
-// Naming a filter to save it: a system prompt on iOS, a sheet on Android (LEDGER-143.1)
+// Naming a filter to save it: a system prompt on iOS, a sheet on Android (LEDGER-143.2)
 
 interface PromptButton {
   text?: string;
@@ -687,32 +663,4 @@ export function watchPrompts() {
       await settle();
     },
   };
-}
-
-/** The Save Filter sheet on Android: the sheet around a Save Filter header, if it is open. */
-export const saveSheet = () => listSheet('Save Filter');
-
-/** The name field of the Save Filter sheet on Android. */
-export const filterNameField = () =>
-  within(saveSheet()!).getByLabelText('Filter name');
-
-/** The button named `name` of the Save Filter sheet on Android: Cancel or Save. */
-export const saveSheetButton = (name: 'Cancel' | 'Save') =>
-  within(saveSheet()!).getByRole('button', { name });
-
-/** Whether the Save button of the Save Filter sheet can be pressed, on Android. */
-export const canSaveName = () => !isDisabled(saveSheetButton('Save'));
-
-/** Presses Save Current Filter… on Android and waits for the Save Filter sheet. */
-export async function openSaveSheet() {
-  await pressInFilters(SAVE_FILTER);
-  await waitFor(() => expect(saveSheet()).toBeDefined());
-  await settle();
-}
-
-/** Presses Cancel or Save on the Save Filter sheet on Android and waits until it has closed. */
-export async function pressOnSaveSheet(name: 'Cancel' | 'Save') {
-  await fireEvent.press(saveSheetButton(name));
-  await waitFor(() => expect(saveSheet()).toBeUndefined());
-  await settle();
 }

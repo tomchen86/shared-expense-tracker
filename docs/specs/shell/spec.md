@@ -1196,9 +1196,9 @@ The mobile app SHALL 把畫面給的篩選動作放在標題列右邊：iOS 上�
 - **THEN** 打開時 Expenses 分頁標題列的篩選動作名稱是「Filters, on」，圖示是強調色；關掉之後名稱是「Filters」，圖示不是強調色
 
 
-### Requirement: SHELL-73.1 標題列的搜尋
+### Requirement: SHELL-73.2 標題列的搜尋
 
-The mobile app SHALL 把畫面給的搜尋放進原生標題列，用的是系統的搜尋欄位，提示文字是畫面給的文字：iOS 上請系統把它放成標題列上的搜尋鈕，iOS 26 以上搜尋鈕在標題列的右邊，按了在標題列展開搜尋欄位，較早的 iOS 由系統決定搜尋欄位的位置；Android 上是標題列右邊的搜尋圖示，按了在標題列展開搜尋欄位。使用者每改一次搜尋欄位的文字，the mobile app SHALL 把整段文字交給畫面。WHEN 使用者按鍵盤上的搜尋鍵，the mobile app SHALL 收起鍵盤，搜尋欄位不再接收輸入，搜尋的文字和畫面上的結果不變，搜尋不結束。iOS 上按搜尋欄位的取消或關閉、Android 上關閉搜尋欄位時，搜尋結束，the mobile app SHALL 把搜尋的文字當成空的。畫面沒有給搜尋時，標題列沒有搜尋欄位。
+The mobile app SHALL 把畫面給的搜尋放進原生標題列，用的是系統的搜尋欄位，提示文字是畫面給的文字：iOS 上請系統把它放成標題列上的搜尋鈕，iOS 26 以上搜尋鈕在標題列的右邊，按了在標題列展開搜尋欄位，較早的 iOS 由系統決定搜尋欄位的位置；Android 上是標題列右邊的搜尋圖示，按了在標題列展開搜尋欄位。使用者每改一次搜尋欄位的文字，the mobile app SHALL 把整段文字交給畫面。WHEN 使用者按鍵盤上的搜尋鍵，the mobile app SHALL 收起鍵盤，搜尋欄位不再接收輸入，搜尋的文字和畫面上的結果不變，搜尋不結束；Android 上搜尋欄位的文字去掉頭尾空白之後是空的時例外：和 Android 內建的 Files、Settings 的搜尋欄位一樣，按搜尋鍵沒有反應，鍵盤留著。iOS 上按搜尋欄位的取消或關閉、Android 上關閉搜尋欄位時，搜尋結束，the mobile app SHALL 把搜尋的文字當成空的。WHERE Android，WHILE 搜尋欄位展開、鍵盤收起，WHEN 使用者按一次返回鍵，the mobile app SHALL 關閉搜尋欄位，把它收回成搜尋圖示，不管欄位裡有沒有文字，也不再打開鍵盤；鍵盤開著時按返回鍵只收起鍵盤，搜尋欄位、文字和結果都不變。這和 Files、Settings 的搜尋欄位一樣。畫面沒有給搜尋時，標題列沒有搜尋欄位。
 
 #### Scenario: iOS
 
@@ -1224,6 +1224,16 @@ The mobile app SHALL 把畫面給的搜尋放進原生標題列，用的是系�
 
 - **WHEN** 搜尋欄位的文字是「cof」時，在 iOS 上按搜尋欄位的取消，或在 Android 上關閉搜尋欄位
 - **THEN** 畫面的搜尋文字是空的
+
+#### Scenario: Android 的返回鍵
+
+- **WHEN** Android 上在 Brisbane 的畫面搜尋「taxi」，按一次返回鍵，再按一次返回鍵
+- **THEN** 第一次按完鍵盤收起，搜尋欄位還展開著，仍是「taxi」，清單仍是「1 item」和 Taxi 的卡片；第二次按完搜尋欄位收回成搜尋圖示，鍵盤沒有再打開，畫面的搜尋文字是空的，標題列又有「Filters」
+
+#### Scenario: Android 上空的欄位按搜尋鍵
+
+- **WHEN** Android 上按「Search」，什麼都不打就按鍵盤上的搜尋鍵
+- **THEN** 鍵盤留著，搜尋欄位仍展開著
 
 #### Scenario: 沒有搜尋的畫面
 

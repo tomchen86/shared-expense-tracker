@@ -1,13 +1,17 @@
 appId: com.tomchen.sharedexpensetracker
-name: "[LEDGER-134.1] [LEDGER-133.1] [LEDGER-131.1] Shows the capsule row once a filter is on, chooses categories and a ledger from the system menus of their capsules, which stay open, and a payer on a group's screen"
+name: "[LEDGER-134.1] [LEDGER-136.2] [LEDGER-133.2] [LEDGER-131.1] Shows the capsule row once a filter is on, chooses categories and a ledger from the menus of their capsules, the system's on iOS and Material's on Android, which stay open, and a payer on a group's screen"
+tags:
+  - android
 ---
+# Also runs on the small Android screen of scripts/e2e-android.sh (ADR-0014), where the capsules
+# open Material menus (LEDGER-136.2) and the Amount capsule a sheet (LEDGER-150.1) instead of Filters.
 # Five expenses of today. Taylor pays Dinner and Casey pays Taxi; both are split with Taylor, so
 # the expense list shows all five.
 - runFlow:
     file: common/launch-with-seed.yaml
     env:
       SEED: '{"name":"Taylor","groups":[{"name":"Brisbane","members":["Casey"]}],"expenses":[{"title":"Coffee","amount":"4.00"},{"title":"Shoes","amount":"20.00","category":"Shopping"},{"title":"Train","amount":"30.00","category":"Travel"},{"title":"Dinner","amount":"60.00","group":"Brisbane"},{"title":"Taxi","amount":"25.00","group":"Brisbane","paidBy":"Casey"}]}'
-# LEDGER-133.1: no capsule row while no filter is on.
+# LEDGER-133.2: no capsule row while no filter is on.
 - assertVisible: Filters
 - assertNotVisible: Category
 - assertNotVisible: Ledger
@@ -16,35 +20,111 @@ name: "[LEDGER-134.1] [LEDGER-133.1] [LEDGER-131.1] Shows the capsule row once a
 - waitForAnimationToEnd
 - tapOn: Lowest amount
 - inputText: '1'
-- tapOn: Done
+- runFlow: common/done-after-typing.yaml
 - waitForAnimationToEnd
 - assertVisible: Filters, on
 - assertVisible: Category
 - assertVisible: Ledger
 - assertVisible: Paid by Me
+# The small Android screen shows the Amount capsule once the row is scrolled sideways; the row then
+# goes back to its start.
+- runFlow:
+    file: common/capsules-to-end.yaml
+    env:
+      FROM: Paid by Me
 - assertVisible: Amount, 1 or more
+- runFlow:
+    file: common/capsules-to-start.yaml
+    env:
+      FROM: 'Amount, 1 or more'
 - assertVisible: 5 items
-# LEDGER-134.1: the Category capsule is a system menu of the categories the expenses use. It
-# stays open while categories are chosen.
+# LEDGER-133.2: the Paid by Me capsule turns the condition on and off where it is. Taxi, which
+# Casey paid, goes while it is on. A screen reader reads it as selected on iOS and as checked on
+# Android, where a Material filter chip is a checkbox.
+- tapOn: Paid by Me
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible:
+          text: Paid by Me
+          selected: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          text: Paid by Me
+          checked: true
+- assertVisible: 4 items
+- assertNotVisible: Taxi, .*
+- tapOn: Paid by Me
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible:
+          text: Paid by Me
+          selected: false
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          text: Paid by Me
+          checked: false
+- assertVisible: 5 items
+# LEDGER-134.1 and LEDGER-136.2: the Category capsule is a menu of the categories the expenses
+# use. It stays open while categories are chosen.
 - tapOn: Category
 - waitForAnimationToEnd
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      # A menu from the capsule, not Filters.
+      - assertNotVisible: Done
 - assertVisible: Food & Dining
 - assertVisible: Shopping
 - assertVisible: Travel
+# A chosen item is read as selected on iOS and as checked on Android, as Material menu items are.
 - tapOn: Shopping
 - waitForAnimationToEnd
-- assertVisible:
-    text: Shopping
-    selected: true
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible:
+          text: Shopping
+          selected: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          text: Shopping
+          checked: true
 - tapOn: Travel
 - waitForAnimationToEnd
-- assertVisible:
-    text: Travel
-    selected: true
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible:
+          text: Travel
+          selected: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          text: Travel
+          checked: true
 - assertVisible: Food & Dining
 # A press outside the menu, on the list's margin, closes it.
-- tapOn:
-    point: 3%,50%
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Category, 2 Categories
 - assertVisible: 2 items
@@ -57,8 +137,7 @@ name: "[LEDGER-134.1] [LEDGER-133.1] [LEDGER-131.1] Shows the capsule row once a
 - waitForAnimationToEnd
 - tapOn: Travel
 - waitForAnimationToEnd
-- tapOn:
-    point: 3%,50%
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Category, Shopping
 - assertVisible: 1 item
@@ -68,8 +147,7 @@ name: "[LEDGER-134.1] [LEDGER-133.1] [LEDGER-131.1] Shows the capsule row once a
 - waitForAnimationToEnd
 - tapOn: Shopping
 - waitForAnimationToEnd
-- tapOn:
-    point: 3%,50%
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Category
 - assertVisible: 5 items
@@ -81,8 +159,21 @@ name: "[LEDGER-134.1] [LEDGER-133.1] [LEDGER-131.1] Shows the capsule row once a
 - tapOn: Brisbane
 - waitForAnimationToEnd
 - assertVisible: Personal
-- tapOn:
-    point: 3%,50%
+# On Android the back button closes the menu and leaves the list where it is.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: 3%,50%
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - pressKey: back
+      - waitForAnimationToEnd
+      - assertNotVisible: Personal
+      - assertVisible: Filters.*
 - waitForAnimationToEnd
 - assertVisible: Ledger, Brisbane
 - assertVisible: 2 items
@@ -90,8 +181,9 @@ name: "[LEDGER-134.1] [LEDGER-133.1] [LEDGER-131.1] Shows the capsule row once a
 - assertVisible: Taxi, .*
 - assertNotVisible: Coffee, .*
 # A group's screen has Paid by in place of Ledger and Paid by Me, and a filter of its own.
+# Android reads the group's row as one name, Open Brisbane and what the row says.
 - tapOn: Groups
-- tapOn: Open Brisbane
+- tapOn: Open Brisbane.*
 - waitForAnimationToEnd
 - assertVisible: Filters
 - assertNotVisible: Paid by
@@ -99,11 +191,19 @@ name: "[LEDGER-134.1] [LEDGER-133.1] [LEDGER-131.1] Shows the capsule row once a
 - waitForAnimationToEnd
 - tapOn: Lowest amount
 - inputText: '1'
-- tapOn: Done
+- runFlow: common/done-after-typing.yaml
 - waitForAnimationToEnd
 - assertVisible: Category
 - assertVisible: Paid by
+- runFlow:
+    file: common/capsules-to-end.yaml
+    env:
+      FROM: Paid by
 - assertVisible: Amount, 1 or more
+- runFlow:
+    file: common/capsules-to-start.yaml
+    env:
+      FROM: 'Amount, 1 or more'
 - assertNotVisible: Ledger
 - assertNotVisible: Paid by Me
 - tapOn: Paid by
@@ -112,24 +212,28 @@ name: "[LEDGER-134.1] [LEDGER-133.1] [LEDGER-131.1] Shows the capsule row once a
 - assertVisible: Casey
 - tapOn: Casey
 - waitForAnimationToEnd
-- tapOn:
-    point: 3%,50%
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Paid by, Casey
 - assertVisible: 1 item
 - assertVisible: Taxi, .*
 - assertNotVisible: Dinner, .*
-# The amount goes, in the popover of its capsule, so Paid by is the only condition that is on.
+# The amount goes, in the popover or the sheet of its capsule, so Paid by is the only condition
+# that is on.
+# The row stays at its end, where Paid by is on screen too.
+- runFlow:
+    file: common/capsules-to-end.yaml
+    env:
+      FROM: 'Paid by, Casey'
 - tapOn: Amount, 1 or more
 - waitForAnimationToEnd
 - eraseText: 1
-- tapOn:
-    point: 3%,50%
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Paid by, Casey
 - assertVisible: Amount
-# LEDGER-134.1: another payer is chosen before the first is taken off, and the menu stays open
-# through both presses.
+# LEDGER-134.1 and LEDGER-136.2: another payer is chosen before the first is taken off, and the
+# menu stays open through both presses.
 - tapOn: Paid by, Casey
 - waitForAnimationToEnd
 - tapOn: You
@@ -138,8 +242,7 @@ name: "[LEDGER-134.1] [LEDGER-133.1] [LEDGER-131.1] Shows the capsule row once a
 - tapOn: Casey
 - waitForAnimationToEnd
 - assertVisible: You
-- tapOn:
-    point: 3%,50%
+- runFlow: common/press-outside.yaml
 - waitForAnimationToEnd
 - assertVisible: Paid by, You
 - assertVisible: Dinner, .*
@@ -150,9 +253,15 @@ name: "[LEDGER-134.1] [LEDGER-133.1] [LEDGER-131.1] Shows the capsule row once a
 - waitForAnimationToEnd
 - tapOn: You
 - waitForAnimationToEnd
-- assertNotVisible: Paid by.*
+# No Paid by capsule, on or off; the cards' Paid by Casey and Paid by You stay.
+- assertNotVisible: 'Paid by(, .*)?'
 - assertNotVisible: Category
 - assertNotVisible: Casey
 - assertVisible: Filters
-- assertVisible: Dinner, .*
 - assertVisible: Taxi, .*
+# The small Android screen shows only the first card of a group's screen.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - assertVisible: Dinner, .*

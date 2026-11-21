@@ -20,6 +20,7 @@ import {
   type Database,
   type SqlExecutor,
 } from '../storage';
+import { useSyncTriggers } from '../sync/use-sync-triggers';
 import { applyAppearanceOption, type AppearanceOption } from '../ui/appearance';
 import {
   ReduceTransparencyProvider,
@@ -158,6 +159,11 @@ export function LocalDataGate({
       active = false;
     };
   }, [openDatabase, development, seed, waitUntilReady]);
+
+  // Outside what starts again when the data is replaced: an import opens no app.
+  useSyncTriggers(
+    startup.status === 'ready' ? startup.data.database : undefined,
+  );
 
   if (startup.status === 'ready') {
     const { database } = startup.data;

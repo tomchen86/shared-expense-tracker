@@ -190,7 +190,7 @@ const search = (text: string) => typeSearch('Expenses', text);
 
 // The search field
 
-test('[SHELL-73.1] [LEDGER-125.2] puts the system search field in the bar of the expense list, as a button on the bar, with the prompt Search', async () => {
+test('[SHELL-73.2] [LEDGER-125.2] puts the system search field in the bar of the expense list, as a button on the bar, with the prompt Search', async () => {
   await startExpenses();
 
   const field = searchField('Expenses');
@@ -199,7 +199,7 @@ test('[SHELL-73.1] [LEDGER-125.2] puts the system search field in the bar of the
   expect(field?.props.placement).toBe('integratedButton');
 });
 
-test('[SHELL-73.1] puts no search field in the bars of Settings and of the details of an expense', async () => {
+test('[SHELL-73.2] puts no search field in the bars of Settings and of the details of an expense', async () => {
   await startExpenses();
   await spend('Coffee run');
   expect(hasSearch('Expenses')).toBe(true);
@@ -234,7 +234,7 @@ test('[LEDGER-125.2] offers no search for a group that is not found', async () =
 
 // What a search matches
 
-test('[LEDGER-125.2] [SHELL-73.1] lists the expenses whose title holds the text, at each change of the text', async () => {
+test('[LEDGER-125.2] [SHELL-73.2] lists the expenses whose title holds the text, at each change of the text', async () => {
   await startExpenses();
   await spend('Coffee run');
   await spend('Lunch');
@@ -411,7 +411,7 @@ test('[LEDGER-125.2] leaves expenses in the Trash out of a search', async () => 
 
 // Ending a search
 
-test('[LEDGER-125.2] [LEDGER-107.2] [SHELL-73.1] goes back to the period the list was on when the search ends', async () => {
+test('[LEDGER-125.2] [LEDGER-107.2] [SHELL-73.2] goes back to the period the list was on when the search ends', async () => {
   await startExpenses();
   await spend('Lunch', '2026-09-12');
   await spend('Lunch box', '2026-08-03');

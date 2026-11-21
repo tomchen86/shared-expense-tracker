@@ -1,7 +1,9 @@
-import { useColorScheme } from 'react-native';
+import { useColorScheme, type ColorSchemeName } from 'react-native';
 import type { ThemeColors } from './appearance';
 
-const LIGHT_COLORS: ThemeColors = {
+type AndroidColors = Record<keyof ThemeColors, `#${string}`>;
+
+const LIGHT_COLORS: AndroidColors = {
   background: '#f2f2f7',
   surface: '#ffffff',
   pressedSurface: '#e5e5ea',
@@ -15,7 +17,7 @@ const LIGHT_COLORS: ThemeColors = {
   error: '#b42318',
 };
 
-const DARK_COLORS: ThemeColors = {
+const DARK_COLORS: AndroidColors = {
   background: '#000000',
   surface: '#1c1c1e',
   pressedSurface: '#2c2c2e',
@@ -29,6 +31,10 @@ const DARK_COLORS: ThemeColors = {
   error: '#ff453a',
 };
 
+export function colorsForScheme(scheme: ColorSchemeName | null): AndroidColors {
+  return scheme === 'dark' ? DARK_COLORS : LIGHT_COLORS;
+}
+
 export function useThemeColors(): ThemeColors {
-  return useColorScheme() === 'dark' ? DARK_COLORS : LIGHT_COLORS;
+  return colorsForScheme(useColorScheme());
 }

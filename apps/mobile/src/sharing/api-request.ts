@@ -14,7 +14,7 @@ import { getRandomValues } from 'expo-crypto';
 import type { Database } from '../storage';
 import {
   ensureDevice,
-  readClockOffsetMs,
+  readCorrectedTime,
   saveClockOffsetMs,
   saveRegistered,
   type SigningDevice,
@@ -33,6 +33,18 @@ export interface ApiRequest {
   path: string;
   /** The body to send; text is sent as its UTF-8 bytes. */
   body?: Uint8Array | string;
+  /**
+   * The body to send instead when the API refused the request for its clock: asked for
+   * once, after the new clock offset is saved and before the one resend (SHARING-27.2).
+   */
+  bodyAfterClockCorrection?: () => Promise<Uint8Array | string>;
+  /**
+   * How long each request sent may take to be answered in full, in milliseconds: one that
+   * takes longer is given up and has no answer, whatever arrives later (SYNC-97.1). Each
+   * send has this long, the registration and a resend too, and no wait the API asks for
+   * is part of it. Without it, a request waits as long as the platform does.
+   */
+  giveUpAfterMs?: number;
 }
 
 /** What became of a request. */
@@ -87,10 +99,6 @@ function assertSignable(method: string, path: string): void {
 const bytesToSend = (body: Uint8Array | string | undefined) =>
   Uint8Array.from(typeof body === 'string' ? utf8ToBytes(body) : (body ?? []));
 
-/** The phone's clock plus the offset, kept within what a request time can be. */
-const correctedTime = (clockOffsetMs: number) =>
-  Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Date.now() + clockOffsetMs));
-
 const wait = (ms: number) =>
   ms > 0
     ? new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -119,14 +127,15 @@ function refusalIn(answer: Answer): Refusal | undefined {
 /**
  * Signs the request as of this moment, with the corrected time and a new nonce, and sends
  * it once (SHARING-25.1). Resolves with the API's answer, or with nothing when there was
- * none.
+ * none, or none in full within `giveUpAfterMs`.
  */
 async function sendSigned(
   database: Database,
   device: SigningDevice,
   { apiUrl, method, path, body, contentType }: Outgoing,
+  giveUpAfterMs: number | undefined,
 ): Promise<Answer | undefined> {
-  const timestampMs = correctedTime(await readClockOffsetMs(database));
+  const timestampMs = await readCorrectedTime(database);
   const nonce = bytesToHex(getRandomValues(new Uint8Array(NONCE_LENGTH)));
   const signature = device.sign(
     signedRequestBytes({
@@ -146,20 +155,37 @@ async function sendSigned(
   };
   // Said outright: left to itself, iOS calls a body with no type a submitted form.
   if (body.length > 0) headers['content-type'] = contentType;
+  // Raced, not only aborted: what arrives after the limit is not used, whether or not
+  // the platform's fetch stops at the signal.
+  const givingUp =
+    giveUpAfterMs === undefined ? undefined : new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<undefined>((resolve) => {
+    if (givingUp)
+      timer = setTimeout(() => {
+        givingUp.abort();
+        resolve(undefined);
+      }, giveUpAfterMs);
+  });
   try {
-    const response = await fetch(`${apiUrl}${path}`, {
-      method,
-      headers,
-      // The signature is all that says who is asking.
-      credentials: 'omit',
-      ...(body.length > 0 ? { body } : {}),
-    });
-    return {
-      status: response.status,
-      body: new Uint8Array(await response.arrayBuffer()),
-    };
+    return await Promise.race([
+      fetch(`${apiUrl}${path}`, {
+        method,
+        headers,
+        // The signature is all that says who is asking.
+        credentials: 'omit',
+        ...(body.length > 0 ? { body } : {}),
+        ...(givingUp && { signal: givingUp.signal }),
+      }).then(async (response) => ({
+        status: response.status,
+        body: new Uint8Array(await response.arrayBuffer()),
+      })),
+      limit,
+    ]);
   } catch {
     return undefined;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -167,23 +193,36 @@ async function sendSigned(
  * Sends the request and resolves with the API's answer as it is, or with nothing when
  * there was none (SHARING-26.1). It sends again only after the two refusals the phone can
  * do something about, once each for a request: for the clock it takes the API's time
- * (SHARING-27.1), and for too many requests it waits as long as the API said
- * (SHARING-28.1).
+ * (SHARING-27.2), and for too many requests it waits as long as the API said
+ * (SHARING-28.1). After the clock refusal it sends what `bodyAfterClockCorrection` gives,
+ * when the caller gave one.
  */
 async function exchange(
   database: Database,
   device: SigningDevice,
   request: Outgoing,
+  {
+    bodyAfterClockCorrection,
+    giveUpAfterMs,
+  }: Pick<ApiRequest, 'bodyAfterClockCorrection' | 'giveUpAfterMs'>,
 ): Promise<Answer | undefined> {
+  let outgoing = request;
   let clockCorrected = false;
   let waited = false;
   for (;;) {
-    const answer = await sendSigned(database, device, request);
+    const answer = await sendSigned(database, device, outgoing, giveUpAfterMs);
     const refusal = answer && refusalIn(answer);
     if (refusal?.error === 'clock') {
       await saveClockOffsetMs(database, refusal.serverTimeMs - Date.now());
       if (clockCorrected) return answer;
       clockCorrected = true;
+      // Asked for once, and only now that the new offset is saved.
+      if (bodyAfterClockCorrection) {
+        outgoing = {
+          ...outgoing,
+          body: bytesToSend(await bodyAfterClockCorrection()),
+        };
+      }
     } else if (
       refusal?.error === 'too-many-requests' &&
       refusal.retryAfterMs <= LONGEST_WAIT_MS &&
@@ -205,16 +244,21 @@ async function exchange(
 async function register(
   database: Database,
   device: SigningDevice,
-  apiUrl: string,
+  { apiUrl, giveUpAfterMs }: ApiRequest,
 ): Promise<ApiResult | undefined> {
   const content: RegisterDeviceRequest = { publicKey: device.publicKey };
-  const answer = await exchange(database, device, {
-    apiUrl,
-    method: 'POST',
-    path: DEVICES_PATH,
-    body: bytesToSend(JSON.stringify(content)),
-    contentType: 'application/json',
-  });
+  const answer = await exchange(
+    database,
+    device,
+    {
+      apiUrl,
+      method: 'POST',
+      path: DEVICES_PATH,
+      body: bytesToSend(JSON.stringify(content)),
+      contentType: 'application/json',
+    },
+    { giveUpAfterMs },
+  );
   if (!answer) return { outcome: 'no-answer' };
   const said = jsonIn(answer.body);
   if (
@@ -258,16 +302,15 @@ export async function sendApiRequest(
     const ready = await ensureDevice(database);
     if (ready === 'lost') return { outcome: 'authorization-lost' };
     if (ready.registered) return ready;
-    return (await register(database, ready, apiUrl)) ?? ready;
+    return (await register(database, ready, request)) ?? ready;
   });
   if ('outcome' in device) return device;
 
-  const answer = await exchange(database, device, {
-    apiUrl,
-    method,
-    path,
-    body,
-    contentType: 'application/octet-stream',
-  });
+  const answer = await exchange(
+    database,
+    device,
+    { apiUrl, method, path, body, contentType: 'application/octet-stream' },
+    request,
+  );
   return answer ? { outcome: 'answered', ...answer } : { outcome: 'no-answer' };
 }

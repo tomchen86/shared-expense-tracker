@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useIsFocused } from 'expo-router/react-navigation';
-import { listCategories } from '../categories';
+import { listCategories, type Category } from '../categories';
 import {
   listFormerMembers,
   listGroups,
@@ -20,6 +20,8 @@ export type GroupWithFormerMembers = Group & { formerMembers: GroupMember[] };
 export interface ExpenseView extends Expense {
   addedOrder: number;
   changedAt: number | null;
+  /** The assignment as stored, even after the category used for display changes. */
+  categorySnapshot: Expense['category'];
   categoryLabel: string;
   group?: Group;
   members: GroupMember[];
@@ -47,6 +49,7 @@ export function useReadExpenses(trashed = false, { throwOnError = true } = {}) {
   const { personalSpaceId, personalParticipantId, userId } = useLocalIdentity();
   const focused = useIsFocused();
   const [expenses, setExpenses] = useState<ExpenseView[]>();
+  const [categories, setCategories] = useState<Category[]>([]);
   const [groups, setGroups] = useState<GroupWithFormerMembers[]>([]);
   const [placed, setPlaced] = useState<readonly string[]>([]);
   const [error, setError] = useState<unknown>();
@@ -80,6 +83,7 @@ export function useReadExpenses(trashed = false, { throwOnError = true } = {}) {
             (expense) => (expense.trashOrder !== undefined) === trashed,
           );
           if (trashed) selected.sort((a, b) => b.trashOrder! - a.trashOrder!);
+          setCategories(categories);
           setGroups(groups);
           setPlaced(waiting.current);
           waiting.current = [];
@@ -99,6 +103,7 @@ export function useReadExpenses(trashed = false, { throwOnError = true } = {}) {
               ]);
               return {
                 ...expense,
+                categorySnapshot: expense.category,
                 category: cardCategory,
                 categoryLabel: category?.isArchived
                   ? `${cardCategory.name} (Archived)`
@@ -133,5 +138,5 @@ export function useReadExpenses(trashed = false, { throwOnError = true } = {}) {
   ]);
 
   if (error && throwOnError) throw error;
-  return { expenses, groups, placed };
+  return { expenses, categories, groups, placed };
 }

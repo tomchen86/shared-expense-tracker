@@ -173,7 +173,7 @@ async function taxiCreated(stamp = at(LATER, 1)) {
 
 // Applying events
 
-test('[SYNC-28.1] stores what an applied event holds: the expense another phone added, in this shared ledger', async () => {
+test('[SYNC-28.2] stores what an applied event holds: the expense another phone added, in this shared ledger', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   const units = await lunchUnits();
@@ -195,7 +195,7 @@ test('[SYNC-28.1] stores what an applied event holds: the expense another phone 
   ]);
 });
 
-test('[SYNC-28.1] leaves the local data as it is when the same events arrive again', async () => {
+test('[SYNC-28.2] leaves the local data as it is when the same events arrive again', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   const events = [
@@ -214,7 +214,7 @@ test('[SYNC-28.1] leaves the local data as it is when the same events arrive aga
   await expectCards(['Brunch']);
 });
 
-test('[SYNC-28.1] keeps the later change whichever order two changes of one unit arrive in', async () => {
+test('[SYNC-28.2] keeps the later change whichever order two changes of one unit arrive in', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
 
@@ -229,7 +229,7 @@ test('[SYNC-28.1] keeps the later change whichever order two changes of one unit
   expect((await expenseTitled('Late lunch')).id).toBe(LUNCH);
 });
 
-test('[SYNC-28.1] changes nothing when an event the phone wrote itself comes back', async () => {
+test('[SYNC-28.2] changes nothing when an event the phone wrote itself comes back', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();
@@ -248,7 +248,7 @@ test('[SYNC-28.1] changes nothing when an event the phone wrote itself comes bac
   await expectCards(['Supper']);
 });
 
-test("[SYNC-28.1] stamps the phone's next change after an event it applied, though its own clock is behind that event", async () => {
+test("[SYNC-28.2] stamps the phone's next change after an event it applied, though its own clock is behind that event", async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   const ahead = LATER + 5 * MINUTE;
@@ -259,7 +259,41 @@ test("[SYNC-28.1] stamps the phone's next change after an event it applied, thou
   expect(events.map((event) => event.stamp)).toEqual([stamped(1, ahead)]);
 });
 
-test('[SYNC-28.1] applies none of the events handed over together when a write fails, whichever it is', async () => {
+test('[SYNC-28.2] does not apply an event stamped as another device than the one that uploaded it, and keeps it with the reason', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  const dinner = await expenseTitled('Dinner');
+  // Uploaded by phone-b, and stamped as this phone.
+  const forged = relayed(
+    changed(
+      'expense',
+      dinner.id,
+      { ...stamped(0), ms: LATER + 2000 },
+      { title: 'Hacked' },
+    ),
+    { device: OTHER, receivedAtMs: LATER + 2000 },
+  );
+
+  await receiveEvents(brisbane, forged);
+
+  await expectCards(['Dinner']);
+  expect(await refused()).toEqual([
+    { ...forged, groupId: brisbane, reason: 'device' },
+  ]);
+  // The forged stamp is later than any this phone has seen, and moves nothing on.
+  const [taxi] = await eventsOf(() =>
+    addGroupExpense({
+      group: 'Brisbane',
+      title: 'Taxi',
+      payer: 'Casey',
+      sharers: ['Blake'],
+    }),
+  );
+  expect(taxi.stamp).toEqual(stamped(1));
+});
+
+test('[SYNC-28.2] applies none of the events handed over together when a write fails, whichever it is', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   const contents = [await lunchCreated(), await taxiCreated()];

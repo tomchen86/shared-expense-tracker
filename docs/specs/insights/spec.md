@@ -4,7 +4,7 @@
 
 支出分析：計算規則，以及手機 app 上顯示它的 Insights。計算規則是個人或群組情境下計入哪些支出、各計多少，依月份和年份建立期間，也替一段日期範圍算出一個期間，分幣別和類別加總，與上一個期間比較，以及每個幣別畫哪種圖；這些規則放在 `packages/domain`（ADR-0002）。金額都是最小單位的整數（ADR-0004），支出日期是 `YYYY-MM-DD`（LEDGER-8.1）。domain 只計算交給它的支出和類別清單，不判斷支出是否在垃圾桶裡，也不看群組或類別是否已封存。兩個類別名稱相同，是指兩邊都去掉頭尾空白並轉成小寫後相同，比法同 CATEGORIES-4.1。
 
-Insights 是手機 app 上分析支出的畫面：個人的 Insights 分析個人情境（INSIGHTS-1.1），群組的 Insights 分析一個群組（INSIGHTS-2.1），兩者的畫面相同。計入的支出是 domain 計入的支出（INSIGHTS-3.1）。Insights 一次看一種期間：月份模式看月份期間，年份模式看年份期間（INSIGHTS-4.1），自訂模式看 From 到 To 這一段日期（INSIGHTS-46.1）；選中的期間是 Insights 現在顯示的期間，上一期是它之前最近的同一種期間，下一期是它之後最近的同一種期間，最早和最新的期間是現在這一種期間裡最早和最新的那一個；期間名稱是 INSIGHTS-4.1 的名稱。自訂模式下，選中的期間是 From 到 To 的範圍裡計入的支出算出的期間（INSIGHTS-44.1），範圍裡沒有計入的支出時沒有選中的期間；它沒有上一期和下一期，也沒有期間名稱。期間選擇器是點期間名稱時打開、選一個期間的地方。圖表類型是 Auto、Donut 或 Bar（INSIGHTS-10.1），存在本機資料裡，個人和群組的 Insights 用同一個。手機地區的貨幣格式見 LEDGER-40.2；手機地區的數字格式和百分比格式，是貨幣格式用的同一個語言和地區用來顯示數字和百分比的格式。螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。
+Insights 是手機 app 上分析支出的畫面：個人的 Insights 分析個人情境（INSIGHTS-1.1），群組的 Insights 分析一個群組（INSIGHTS-2.1），兩者的畫面相同。計入的支出是 domain 計入的支出（INSIGHTS-3.1）。Insights 一次看一種期間：月份模式看月份期間，年份模式看年份期間（INSIGHTS-4.1），自訂模式看 From 到 To 這一段日期（INSIGHTS-46.1）；選中的期間是 Insights 現在顯示的期間，上一期是它之前最近的同一種期間，下一期是它之後最近的同一種期間，最早和最新的期間是現在這一種期間裡最早和最新的那一個；期間名稱是 INSIGHTS-4.1 的名稱。自訂模式下，選中的期間是 From 到 To 的範圍裡計入的支出算出的期間（INSIGHTS-44.1），範圍裡沒有計入的支出時沒有選中的期間；它沒有上一期和下一期，也沒有期間名稱。期間選擇器是點期間名稱時打開、選一個期間的地方。類別的支出是按 Insights 上一個類別那一列時打開的畫面（INSIGHTS-47.1）；它的期間、幣別和類別，是按那一列時 Insights 顯示的期間、那一列所在的幣別和那一列的類別。圖表類型是 Auto、Donut 或 Bar（INSIGHTS-10.1），存在本機資料裡，個人和群組的 Insights 用同一個。手機地區的貨幣格式見 LEDGER-40.2；手機地區的數字格式和百分比格式，是貨幣格式用的同一個語言和地區用來顯示數字和百分比的格式。螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。
 
 ## Requirements
 
@@ -516,19 +516,19 @@ The mobile app SHALL 在 Insights 顯示一張總額卡，最上面是一次「T
 - **WHEN** 打開 Expenses 分頁的 Insights
 - **THEN** 沒有「Your share」
 
-### Requirement: INSIGHTS-23.3 每個幣別的類別
+### Requirement: INSIGHTS-23.4 每個幣別的類別
 
-The mobile app SHALL 在總額卡下面，為選中的期間的每個幣別依幣別代碼排序，顯示標題「<幣別代碼> categories」、這個幣別的圖（INSIGHTS-24.1），和這個幣別的類別（INSIGHTS-6.2 到 INSIGHTS-8.1，不含 INSIGHTS-11.1 的 Others），依 INSIGHTS-8.1 的順序由上而下每個類別一列：類別顏色的色點、類別的名稱，和「<金額> · <百分比>」，金額用手機地區的貨幣格式，百分比用手機地區的百分比格式顯示到小數一位，四捨五入，例如英文（美國）是「75.0%」；名稱只佔一行，放不下時尾端漸層消失（SHELL-68.1）。螢幕閱讀器把每個幣別的標題讀成標題，把每一列讀成一項「<完整的名稱>, <金額>, <百分比的數字> percent」，不讀色點。
+The mobile app SHALL 在總額卡下面，為選中的期間的每個幣別依幣別代碼排序，顯示標題「<幣別代碼> categories」、這個幣別的圖（INSIGHTS-24.1），和這個幣別的類別（INSIGHTS-6.2 到 INSIGHTS-8.1，不含 INSIGHTS-11.1 的 Others），依 INSIGHTS-8.1 的順序由上而下每個類別一列：類別顏色的色點、類別的名稱，和「<金額> · <百分比>」，金額用手機地區的貨幣格式，百分比用手機地區的百分比格式顯示到小數一位，四捨五入，例如英文（美國）是「75.0%」；名稱只佔一行，放不下時尾端漸層消失（SHELL-68.1）；每一列是一個按鈕，右邊有「›」，按了打開這個類別的支出（INSIGHTS-47.1）。螢幕閱讀器把每個幣別的標題讀成標題，把每一列讀成一個按鈕「<完整的名稱>, <金額>, <百分比的數字> percent」，再讀出無障礙提示「Shows these expenses」，不讀色點和「›」。
 
 #### Scenario: 一個幣別
 
 - **WHEN** 2025 年 1 月有 Food & Dining 的 600 USD 和 Transportation 的 200 USD
-- **THEN** 總額卡下面依序是「USD categories」、Food & Dining 和「$6.00 · 75.0%」、Transportation 和「$2.00 · 25.0%」；色點分別是 `#D81B60` 和 `#1E88E5`，在名稱前面
+- **THEN** 總額卡下面依序是「USD categories」、Food & Dining 和「$6.00 · 75.0%」、Transportation 和「$2.00 · 25.0%」；色點分別是 `#D81B60` 和 `#1E88E5`，在名稱前面；每一列的右邊是「›」
 
 #### Scenario: 螢幕閱讀器
 
 - **WHEN** 螢幕閱讀器讀這兩列
-- **THEN** 「USD categories」是標題，兩列讀成「Food & Dining, $6.00, 75.0 percent」和「Transportation, $2.00, 25.0 percent」，不讀色點
+- **THEN** 「USD categories」是標題，兩列讀成按鈕「Food & Dining, $6.00, 75.0 percent」和「Transportation, $2.00, 25.0 percent」，提示都是「Shows these expenses」，不讀色點和「›」
 
 #### Scenario: 兩個幣別
 
@@ -1061,3 +1061,332 @@ WHEN 使用者在月份或年份模式選「Custom」，the mobile app SHALL 換
 
 - **WHEN** 2025 年和 2026 年的 USD 支出各自沒有超過 9,007,199,254,740,991，加起來超過，From 和 To 包含這兩年
 - **THEN** From 和 To 下面只有「Totals Too Large」和「These totals are too large to show.」；把範圍縮到 2026 年之後顯示 2026 年的總額
+
+### Requirement: INSIGHTS-47.1 按類別那一列打開類別的支出
+
+WHEN 使用者在個人、群組或封存群組的 Insights 按一個類別那一列，the mobile app SHALL 在 Insights 所在的分頁、Insights 的上面推入這個類別的支出，標題是那一列的類別名稱，分頁列仍選中同一個分頁；連按兩次也只推入一個。返回或按 Android 的返回鍵就回到 Insights，它的模式、選中的期間、From 和 To 都和按之前一樣；這之間支出改變了時，Insights 照改變之後的支出顯示：月份或年份模式選中的期間不再是期間時照 INSIGHTS-40.1 改選，自訂模式的 From 和 To 不變（INSIGHTS-46.1）。
+
+#### Scenario: 個人的 Insights
+
+- **WHEN** 2025 年 1 月有 Food & Dining 的 600 USD 和 Transportation 的 200 USD，在個人的 Insights 按 Food & Dining 那一列
+- **THEN** 分頁列仍選中 Expenses，Expenses 分頁的堆疊由下而上是「Expenses」根畫面、「Insights」和「Food & Dining」
+
+#### Scenario: 群組的 Insights
+
+- **WHEN** Brisbane 有 Food & Dining 的 Dinner，在 Brisbane 的 Insights 按 Food & Dining 那一列
+- **THEN** 分頁列仍選中 Groups，Groups 分頁的堆疊最上面兩個是「Insights」和它上面的「Food & Dining」
+
+#### Scenario: 封存群組的 Insights
+
+- **WHEN** 封存 Brisbane 之後，在 Settings 分頁的 Brisbane 的 Insights 按 Food & Dining 那一列
+- **THEN** 分頁列仍選中 Settings，Settings 分頁的堆疊最上面兩個是「Insights」和它上面的「Food & Dining」
+
+#### Scenario: 連按兩次
+
+- **WHEN** 連按兩次 Food & Dining 那一列
+- **THEN** 只推入一個「Food & Dining」；返回一次就回到 Insights
+
+#### Scenario: 返回
+
+- **WHEN** 有 2024 年和 2025 年的支出，年份模式選中 2024 時按 Food & Dining 那一列，再返回，或在 Android 上按返回鍵
+- **THEN** 回到 Insights，仍標出 Year，選中的期間仍是「2024」
+
+#### Scenario: 從自訂模式打開再返回
+
+- **WHEN** From 是 `2025-01-01`、To 是 `2025-01-31` 時按 Food & Dining 那一列，再返回
+- **THEN** 仍標出 Custom，From 和 To 仍是這兩個日期
+
+#### Scenario: 選中的月份在這之間沒有支出了
+
+- **WHEN** 有 `2026-09-15` Transportation 的「Bus」和 `2026-10-29` Food & Dining 的「Coffee run」，選中 October 2026 時按 Food & Dining 那一列，從 Coffee run 的明細把它移到垃圾桶，再返回
+- **THEN** 返回之前，類別的支出最上面仍是「October 2026」、「$0.00」和「0 expenses」（INSIGHTS-52.1）；回到 Insights 時選中的期間是「September 2026」，只有 Transportation 那一列
+
+### Requirement: INSIGHTS-48.1 類別的支出最上面的期間、金額和筆數
+
+The mobile app SHALL 在類別的支出最上面由上而下顯示三行：它的期間、金額和筆數。期間在月份和年份模式是期間名稱，在自訂模式是「<範圍的第一天> – <範圍的最後一天>」，兩個日期用手機地區的日期格式（LEDGER-30.2），From 晚於 To 時第一天是 To；金額是下面每張卡片的卡片金額的總和（INSIGHTS-49.1），也就是 Insights 上那一列的金額，用手機地區的貨幣格式；筆數是下面的支出的筆數「<筆數> expenses」，只有一筆時是「1 expense」，只寫數字，不加千分位；還沒讀完存著的支出時，金額和筆數都不顯示。螢幕閱讀器把這三行讀成一項「Spent in <期間> <金額>. <筆數>.」，和支出清單上方的總額（LEDGER-35.6）同一個寫法；一筆都沒有時也是這樣讀，例如「Spent in October 2026 $0.00. 0 expenses.」，不換成 LEDGER-35.6 沒有卡片時的「Nothing spent in …」；還沒讀完時這一項只讀出期間。
+
+#### Scenario: 月份
+
+- **WHEN** 2025 年 1 月有 Food & Dining 的 600 USD 和 250 USD 兩筆支出，和 Transportation 的 200 USD，選中 January 2025 時按 Food & Dining 那一列
+- **THEN** 最上面依序是「January 2025」、「$8.50」和「2 expenses」；螢幕閱讀器把它們讀成一項「Spent in January 2025 $8.50. 2 expenses.」
+
+#### Scenario: 年份
+
+- **WHEN** 2025 年 1 月和 3 月各有一筆 Food & Dining 的 600 USD，年份模式選中 2025 時按 Food & Dining 那一列
+- **THEN** 最上面依序是「2025」、「$12.00」和「2 expenses」
+
+#### Scenario: 自訂範圍
+
+- **WHEN** From 是 `2025-01-01`、To 是 `2025-01-31`，範圍裡只有一筆 Food & Dining 的 600 USD，按 Food & Dining 那一列
+- **THEN** 最上面依序是「Jan 1, 2025 – Jan 31, 2025」、「$6.00」和「1 expense」；螢幕閱讀器讀出「Spent in Jan 1, 2025 – Jan 31, 2025 $6.00. 1 expense.」
+
+#### Scenario: From 晚於 To
+
+- **WHEN** From 是 `2025-03-31`、To 是 `2025-01-01` 時按 Food & Dining 那一列
+- **THEN** 期間是「Jan 1, 2025 – Mar 31, 2025」
+
+#### Scenario: 同一天
+
+- **WHEN** From 和 To 都是 `2025-01-10` 時按 Food & Dining 那一列
+- **THEN** 期間是「Jan 10, 2025 – Jan 10, 2025」
+
+#### Scenario: 手機的地區不是美國
+
+- **WHEN** 手機第一個偏好的語言和地區是法文（澳洲），From 是 `2025-01-01`、To 是 `2025-01-31`，範圍裡有 Food & Dining 的 600 AUD，按 Food & Dining 那一列
+- **THEN** 最上面依序是「1 Jan 2025 – 31 Jan 2025」、「$6.00」和「1 expense」
+
+#### Scenario: 讀完之前
+
+- **WHEN** 按 Food & Dining 那一列，類別的支出還沒讀完存著的支出
+- **THEN** 沒有金額和筆數，也沒有「0 expenses」，螢幕閱讀器也讀不到金額和筆數；讀完之後顯示「$8.50」和「2 expenses」
+
+### Requirement: INSIGHTS-49.1 類別的支出列出 Insights 算進那一列的支出
+
+The mobile app SHALL 在類別的支出的那三行下面，依 LEDGER-28.1 的順序由上而下，列出 Insights 在它的期間、它的幣別算進那一列的每一筆支出的卡片，也就是計入的支出（INSIGHTS-16.1）裡日期在期間裡、幣別相同、合併成這個類別的那些（INSIGHTS-6.2、INSIGHTS-17.1），由 domain 為那一列列出（INSIGHTS-55.1），每一段同一天的卡片上方照 LEDGER-102.1 顯示日期；沒有計入的支出不列出，例如你沒有分攤的群組支出。類別的支出沒有自己的排序和篩選：支出清單或群組的畫面選了別的排序（LEDGER-121.1）時，它的卡片仍照 LEDGER-28.1 的順序；那兩個畫面有篩選（LEDGER-129.1）時，它仍列出全部這些支出，和 Insights 一樣不跟著篩選（LEDGER-35.6）。從個人的 Insights 打開時，卡片和支出清單上的一樣（LEDGER-33.3、LEDGER-65.4），卡片金額是 Insights 計入的金額：個人支出是全額，群組支出是你的份額；從群組的 Insights 打開時，卡片和群組的畫面上的一樣（GROUPS-61.6），卡片金額是支出的全額。這些支出比螢幕上和它上下附近放得下的多時，SHALL 和 LEDGER-118.2 一樣只畫出螢幕上和附近的卡片，金額和筆數仍照全部的支出算。
+
+#### Scenario: 個人的 Insights 是你的份額
+
+- **WHEN** 名字是「Taylor」，有 `2026-10-29` 的 875 USD 的個人支出「Coffee run」，和 `2026-10-30` Brisbane 的 6000 USD 的「Dinner」，Casey 付款，依序分給 Taylor、Casey 和 Blake，都是 Food & Dining；在個人的 Insights 選中 October 2026 時按 Food & Dining 那一列
+- **THEN** 最上面是「October 2026」、「$28.75」和「2 expenses」；下面依序是「Oct 30, 2026」、Dinner 的卡片、「Oct 29, 2026」和 Coffee run 的卡片，日期是標題；Dinner 的卡片依序顯示「Dinner」、「$20.00」、「Food & Dining」、「Brisbane」，Coffee run 的依序顯示「Coffee run」、「$8.75」、「Food & Dining」
+
+#### Scenario: 群組的 Insights 是整筆金額
+
+- **WHEN** 在 Brisbane 的 Insights 按 Food & Dining 那一列
+- **THEN** 最上面是「October 2026」、「$60.00」和「1 expense」；Dinner 的卡片依序顯示「Dinner」、「$60.00」、「Food & Dining」、「Paid by Casey」
+
+#### Scenario: 和你無關的群組支出
+
+- **WHEN** Brisbane 還有 Food & Dining 的 900 USD 的「Taxi」，Casey 付款，只有 Blake 分攤
+- **THEN** 個人的 Insights 打開的 Food & Dining 仍是「$28.75」和「2 expenses」，沒有 Taxi 的卡片；Brisbane 的 Insights 打開的是「$69.00」和「2 expenses」，有 Taxi 的卡片
+
+#### Scenario: 你只付款
+
+- **WHEN** Brisbane 還有 Food & Dining 的 1200 USD 的「Snacks」，Taylor 付款，只有 Casey 和 Blake 分攤
+- **THEN** 個人的 Insights 打開的 Food & Dining 沒有 Snacks 的卡片，雖然支出清單上有它
+
+#### Scenario: 其他類別和其他期間
+
+- **WHEN** 有 `2025-01-10` Food & Dining 的「Lunch」、`2025-01-11` Transportation 的「Bus」和 `2025-03-10` Food & Dining 的「Brunch」，選中 January 2025 時按 Food & Dining 那一列
+- **THEN** 只有 Lunch 的卡片
+
+#### Scenario: 其他幣別
+
+- **WHEN** 2025 年 1 月有 Food & Dining 的 600 USD 的「Lunch」和 2000 JPY 的「Ramen」，按「USD categories」下的 Food & Dining；或按「JPY categories」下的
+- **THEN** 分別是「$6.00」、「1 expense」和 Lunch 的卡片，以及「¥2,000」、「1 expense」和 Ramen 的卡片
+
+#### Scenario: 自訂範圍含起訖兩天
+
+- **WHEN** Food & Dining 的支出的日期是 `2025-01-09`、`2025-01-10`、`2025-01-20` 和 `2025-01-21`，From 是 `2025-01-10`、To 是 `2025-01-20` 時按 Food & Dining 那一列
+- **THEN** 只有 `2025-01-20` 和 `2025-01-10` 那兩筆的卡片，由上而下
+
+#### Scenario: 同一天的順序
+
+- **WHEN** 依序新增日期都是 `2025-01-10`、Food & Dining 的「E」、「F」和「D」，按 Food & Dining 那一列
+- **THEN** 「Jan 10, 2025」只顯示一次，下面的卡片由上而下是 D、F、E
+
+#### Scenario: 清單換了排序
+
+- **WHEN** 有 Coffee run 和 Dinner，Brisbane 還有 `2026-10-30`、在 Dinner 之後新增的 Food & Dining 的 3000 USD 的「Lunch」，Casey 付款，Taylor 和 Casey 分攤；把支出清單和 Brisbane 的畫面的排序都換成 Oldest First，再從個人的 Insights 和 Brisbane 的 Insights 打開 Food & Dining
+- **THEN** 支出清單由上而下是 Coffee run、Dinner、Lunch，Brisbane 的畫面是 Dinner、Lunch；個人的 Insights 打開的 Food & Dining 由上而下仍是 Lunch、Dinner、Coffee run，Brisbane 的 Insights 打開的仍是 Lunch、Dinner
+
+#### Scenario: 清單有篩選
+
+- **WHEN** 有 Coffee run 和 Dinner，支出清單的篩選是 Ledger 的 Personal，Brisbane 的畫面的篩選是 Amount 的 Min「100」，再從個人的 Insights 和 Brisbane 的 Insights 打開 Food & Dining
+- **THEN** 支出清單只有 Coffee run，Brisbane 的畫面沒有卡片；個人的 Insights 打開的 Food & Dining 仍是「$28.75」、Dinner 和 Coffee run，Brisbane 的 Insights 打開的仍是「$60.00」和 Dinner
+
+#### Scenario: 分類改了名
+
+- **WHEN** Coffee run 和 Dinner 都在 October 2026，在 Manage Categories 把個人空間的 Food & Dining 改名為「Meals」，個人的 Insights 有 Meals 和 Food & Dining 兩列
+- **THEN** 按 Meals 那一列，標題是「Meals」，只有 Coffee run 的卡片；按 Food & Dining 那一列，只有 Dinner 的卡片
+
+#### Scenario: 名稱只差大小寫的分類
+
+- **WHEN** 依序建立 Tokyo 和 Brisbane，Tokyo 的分類是「flights」，Brisbane 的是「Flights」；先新增 Brisbane 的 300 USD 的「To Brisbane」，再新增 Tokyo 的 200 USD 的「To Tokyo」，都是 Taylor 付款、自己分攤；個人的 Insights 只有一列「flights」（INSIGHTS-17.1），按那一列
+- **THEN** 標題是「flights」，最上面是「$5.00」和「2 expenses」，卡片由上而下是 To Tokyo 和 To Brisbane；To Brisbane 的卡片上的分類仍是它自己的「Flights」
+
+#### Scenario: 封存的分類
+
+- **WHEN** 有 Shopping 的 875 USD 的「Shoes」時封存 Shopping，按 Shopping 那一列
+- **THEN** 標題是「Shopping」，沒有「(Archived)」；Shoes 的卡片上的分類是「Shopping (Archived)」
+
+#### Scenario: 封存的群組
+
+- **WHEN** 封存 Brisbane 之後，在 Settings 分頁的 Brisbane 的 Insights 按 Food & Dining 那一列
+- **THEN** Dinner 的卡片依序顯示「Dinner」、「$60.00」、「Food & Dining」、「Paid by Casey」
+
+#### Scenario: 300 筆
+
+- **WHEN** 有依序新增、日期都是 `2026-11-18`、每筆 100 USD、都是 Food & Dining 的 300 筆個人支出「Expense 1」到「Expense 300」，選中 November 2026 時按 Food & Dining 那一列
+- **THEN** 畫出的卡片不到 300 張，從最上面的 Expense 300 起依序往下，中間沒有跳過；最上面是「$300.00」和「300 expenses」
+
+### Requirement: INSIGHTS-50.1 點類別的支出上的卡片推入明細
+
+WHEN 使用者點類別的支出上的卡片，the mobile app SHALL 在同一個分頁推入這筆支出的明細（LEDGER-37.3、LEDGER-66.3），和從支出清單或群組的畫面打開的一樣：標題是「Expense」，網址在 Expenses 分頁是 `/expenses/<支出的 ID>`，在 Groups 分頁是 `/groups/expenses/<支出的 ID>`，在 Settings 分頁是 `/settings/archived-groups/expenses/<支出的 ID>`，分頁列仍選中同一個分頁；連點兩次也只推入一個明細，返回或按 Android 的返回鍵就回到類別的支出。
+
+#### Scenario: 個人的 Insights
+
+- **WHEN** 在個人的 Insights 打開的 Food & Dining 點 Dinner 的卡片
+- **THEN** 分頁列仍選中 Expenses，Expenses 分頁的堆疊最上面三個是「Insights」、「Food & Dining」和「Expense」，明細是 Dinner 的，網址是 `/expenses/` 加上 Dinner 的 ID，標題列有「Edit」和「Expense actions」
+
+#### Scenario: 群組的 Insights
+
+- **WHEN** 在 Brisbane 的 Insights 打開的 Food & Dining 點 Dinner 的卡片
+- **THEN** 分頁列仍選中 Groups，網址是 `/groups/expenses/` 加上 Dinner 的 ID
+
+#### Scenario: 封存群組的 Insights
+
+- **WHEN** 封存 Brisbane 之後，在 Settings 分頁的 Brisbane 的 Insights 打開的 Food & Dining 點 Dinner 的卡片
+- **THEN** 分頁列仍選中 Settings，網址是 `/settings/archived-groups/expenses/` 加上 Dinner 的 ID；明細照 LEDGER-67.2 是唯讀的
+
+#### Scenario: 連點兩次
+
+- **WHEN** 連點兩次 Dinner 的卡片
+- **THEN** 只推入一個明細；返回一次就回到 Food & Dining
+
+#### Scenario: 返回
+
+- **WHEN** 在明細返回，或在 Android 上按返回鍵
+- **THEN** 回到 Food & Dining，最上面的三行和卡片都和點之前一樣
+
+### Requirement: INSIGHTS-51.1 類別的支出只能看
+
+The mobile app SHALL 讓類別的支出只能看：卡片沒有名稱是「Delete expense」的輔助功能動作，畫面上沒有 + 按鈕，也沒有排序鈕（LEDGER-122.3），標題列除了返回沒有其他動作，沒有篩選動作（SHELL-72.2），也沒有搜尋欄位（SHELL-73.2）；個人支出、未封存群組的支出和封存群組的支出的卡片都一樣。
+
+#### Scenario: 個人的 Insights
+
+- **WHEN** 在個人的 Insights 打開的 Food & Dining 有 Coffee run 和 Brisbane 的 Dinner 的卡片
+- **THEN** 兩張卡片都沒有「Delete expense」的輔助功能動作，雖然它們在支出清單上有；畫面上沒有「Add expense」，也沒有支出清單上有的排序鈕；標題列右邊沒有動作，沒有支出清單的標題列有的篩選動作和搜尋欄位
+
+#### Scenario: 群組的 Insights
+
+- **WHEN** 在 Brisbane 的 Insights 打開 Food & Dining
+- **THEN** Dinner 的卡片沒有「Delete expense」的輔助功能動作，畫面上沒有「Add expense」和排序鈕，標題列沒有搜尋欄位
+
+### Requirement: INSIGHTS-52.1 類別的支出跟著存著的支出
+
+The mobile app SHALL 讓類別的支出的金額、筆數和卡片都和存著的支出一致，期間、幣別、類別和畫面的標題仍是打開時的：新增、修改、移到垃圾桶或還原支出之後回到類別的支出時都一樣，不管是在它打開的明細、另一個分頁還是 Trash 做的；類別的支出開著時套用收到的事件（SYNC-29.2），也不必重新啟動就照新的資料顯示。這時才算進那一列的支出照 LEDGER-28.1 出現在它的位置，不再算進那一列的支出離開這個畫面，支出的金額或標題改了的照新的顯示；日期不在期間裡的支出不出現，期間不像 LEDGER-117.2 那樣換成它的月份。一筆都沒有時，金額是這個幣別的 0，筆數是「0 expenses」，下面沒有卡片，也沒有其他提示。在明細的 Expense actions 選「Delete」時，SHALL 照 LEDGER-72.2 存好後返回類別的支出，並照 LEDGER-73.2 顯示 Undo 提示；按「Undo」之後，這筆支出的卡片回到類別的支出。
+
+#### Scenario: 改了金額
+
+- **WHEN** 個人的 Insights 打開的 Food & Dining 有 875 USD 的 Coffee run 和 Dinner 的份額 2000 USD，點 Coffee run 的卡片，在 Edit Expense 把金額改成「10.00」後按 Save，再返回
+- **THEN** 最上面是「$30.00」和「2 expenses」，Coffee run 的卡片金額是「$10.00」
+
+#### Scenario: 換了分類
+
+- **WHEN** 點 Coffee run 的卡片，在 Edit Expense 把分類換成 Transportation 後按 Save，再返回
+- **THEN** 標題仍是「Food & Dining」，最上面是「$20.00」和「1 expense」，只有 Dinner 的卡片
+
+#### Scenario: 日期改到期間外
+
+- **WHEN** 期間是 October 2026 時，把 Coffee run 的日期改成 `2026-09-15` 後按 Save，再返回
+- **THEN** 期間仍是「October 2026」，只有 Dinner 的卡片
+
+#### Scenario: 從明細移到垃圾桶
+
+- **WHEN** 點 Coffee run 的卡片，在明細的 Expense actions 選「Delete」
+- **THEN** 存好後回到 Food & Dining，不是 Insights 或支出清單；最上面是「$20.00」和「1 expense」，只有 Dinner 的卡片，畫面底部顯示「Moved to Trash」
+
+#### Scenario: 按 Undo
+
+- **WHEN** 接著按「Undo」
+- **THEN** Coffee run 的卡片回到 Food & Dining，最上面是「$28.75」和「2 expenses」
+
+#### Scenario: 在另一個分頁新增
+
+- **WHEN** 個人的 Insights 打開的 Food & Dining 開在 Expenses 分頁，有 Coffee run 和 Dinner；到 Groups 分頁，在 Brisbane 的畫面新增 Food & Dining 的 3000 USD 的「Lunch」，Casey 付款，Taylor 和 Casey 分攤，再回到 Expenses 分頁
+- **THEN** 最上面是「October 2026」、「$43.75」和「3 expenses」，卡片由上而下是 Lunch、Dinner、Coffee run
+
+#### Scenario: 開著時套用另一支手機的事件
+
+- **WHEN** Brisbane 是共同帳本，有 10001 USD 的 Dinner，Casey 付款，依序分給 Blake、Taylor 和 Casey；個人的 Insights 打開的 Food & Dining 開著時，依序套用另一支手機新增的兩筆 Food & Dining 支出的第一個事件，都是 3000 USD、Casey 付款、Taylor 和 Casey 分攤：日期是 `2026-09-15` 的「Brunch」和日期是 `2026-10-30` 的「Lunch」
+- **THEN** 不必重新啟動，最上面是「October 2026」、「$48.34」和「2 expenses」，卡片由上而下是 Lunch、Dinner，沒有 Brunch
+
+#### Scenario: 一筆都沒有了
+
+- **WHEN** October 2026 只有 Food & Dining 的 Coffee run 和 Transportation 的「Bus」，在個人的 Insights 打開 Food & Dining，從 Coffee run 的明細把它移到垃圾桶
+- **THEN** 回到 Food & Dining，最上面依序是「October 2026」、「$0.00」和「0 expenses」，螢幕閱讀器讀出「Spent in October 2026 $0.00. 0 expenses.」（INSIGHTS-48.1），下面沒有卡片，也沒有「No expenses yet」這類提示
+
+#### Scenario: 回到 Insights
+
+- **WHEN** 一筆都沒有之後再返回 Insights
+- **THEN** Insights 只有 Transportation 那一列，沒有 Food & Dining
+
+### Requirement: INSIGHTS-53.1 (e2e) 從類別那一列開始滑動時換期間，不打開類別的支出
+
+WHEN 使用者從類別那一列開始往右或往左滑，the mobile app SHALL 照 INSIGHTS-33.2 選中上一期或下一期，不打開類別的支出；點一下那一列才打開。
+
+#### Scenario: 在類別那一列上往右滑
+
+- **WHEN** iOS 上有這個月和上個月的支出，選中這個月時，從 Food & Dining 那一列開始往右滑
+- **THEN** 選中上個月，仍在 Insights，沒有打開「Food & Dining」
+
+#### Scenario: 點一下
+
+- **WHEN** 接著點 Food & Dining 那一列
+- **THEN** 打開上個月的「Food & Dining」
+
+### Requirement: INSIGHTS-54.1 (e2e) 往左滑類別的支出上的卡片時不露出 Delete
+
+WHEN 使用者把類別的支出上的卡片往左滑，the mobile app SHALL 不露出「Delete」或任何按鈕，也不打開明細。
+
+#### Scenario: 個人支出的卡片
+
+- **WHEN** iOS 上在個人的 Insights 打開上個月的 Food & Dining，把裡面「Old lunch」的卡片往左滑
+- **THEN** 仍是 Food & Dining，卡片旁邊沒有露出「Delete」，也沒有打開 Old lunch 的明細；點一下卡片才打開明細
+
+### Requirement: INSIGHTS-55.1 每一列算進了哪些支出
+
+WHEN 給一個月份、一個年份（INSIGHTS-4.1）或一段起訖日期（INSIGHTS-44.1），the domain package SHALL 為這個期間的每個幣別，依幣別代碼排序（INSIGHTS-5.1），再依它的類別的順序（INSIGHTS-8.1），列出每個類別算進的支出：就是給的支出裡算進這個類別的那些物件本身，照給的順序。每一筆計入的支出（INSIGHTS-1.1 到 INSIGHTS-3.1）只在它的幣別裡它合併進的那一個類別（INSIGHTS-6.2），沒有計入的支出不在任何類別，這個類別的金額就是這些支出計入的金額的總和。每個類別還有一個鍵，只看 INSIGHTS-6.2 合併的依據：對到的類別合併進的那個名稱，對不到時的 `categoryId` 或存的類別名稱；依據相同時鍵就相同，不管金額和其他支出，依據不同時鍵就不同，所以支出改了、類別的順序變了，也找得到同一個類別。期間裡沒有計入的支出時沒有任何幣別。IF 這個期間有幣別的總額超過 9,007,199,254,740,991，THEN the domain package SHALL 拒絕計算這個期間。
+
+#### Scenario: 幣別和類別的順序
+
+- **WHEN** 2025 年 1 月依序有 Food 的 600 USD、Travel 的 300 USD、Food 的 2000 JPY 和日期比 600 USD 那一筆早的 Food 的 200 USD
+- **THEN** 依序是 JPY 的 Food：2000 JPY 那一筆；USD 的 Food：600 和 200 USD 那兩筆，照給的順序，不照日期；USD 的 Travel：300 USD 那一筆
+
+#### Scenario: 金額相同的類別
+
+- **WHEN** 依序有 Travel 的 500 USD 和 Food 的 500 USD
+- **THEN** 和 Insights 的類別一樣，Food 在 Travel 前面（INSIGHTS-8.1），不照給的順序
+
+#### Scenario: 月份、年份和範圍
+
+- **WHEN** 2025 年 1 月 10 日、1 月 31 日和 3 月 10 日各有一筆 Food 的支出
+- **THEN** 2025-01 是前兩筆，2025 是三筆，`2025-01-31` 到 `2025-03-10` 是後兩筆
+
+#### Scenario: 合併成一個類別
+
+- **WHEN** 類別清單依序是 Food、另一個空間的 food 和現在名稱是 Meals 的 `meals`；支出依序是 `categoryId` 是 Food 的、是 food 的、沒有 `categoryId` 而存的名稱是「FOOD」的、`categoryId` 是 `meals` 而存的名稱是「Food」的，和 `categoryId` 是清單裡沒有的 `gone`、快照是「Food」的
+- **THEN** 一個類別是前三筆，Meals 是第四筆，另一個名稱也是 Food 的類別是第五筆，三個類別的鍵都不同
+
+#### Scenario: 個人情境
+
+- **WHEN** 個人情境下，有個人空間的 Food 支出、你分攤的群組 Food 支出，和你只付款、沒有分攤的群組 Food 支出
+- **THEN** Food 是前兩筆；你只付款的那一筆不在任何類別
+
+#### Scenario: 鍵跟著類別
+
+- **WHEN** 有類別 Tea 的 500 USD，和 `categoryId` 是 `gone`、快照是「Tea」的 300 USD；之後 `gone` 那一筆改成 900 USD；再之後類別 Tea 和那個快照都換了顏色
+- **THEN** 每次都是兩個名稱是 Tea 的類別，第二次順序對調，但 Tea 那一筆和 `gone` 那一筆各自的鍵都和第一次一樣
+
+#### Scenario: 超過上限
+
+- **WHEN** 2025 年 1 月有兩筆 USD，合起來超過 9,007,199,254,740,991
+- **THEN** 2025-01 和這兩筆所在的範圍都拒絕計算
+
+### Requirement: INSIGHTS-56.1 (manual) Android 上從類別那一列開始滑動時換期間
+
+WHERE Android 手機，WHEN 使用者從類別那一列開始往右或往左滑，the mobile app SHALL 和 INSIGHTS-53.1 一樣照 INSIGHTS-33.2 選中上一期或下一期，不打開類別的支出；點一下那一列才打開。
+
+#### Scenario: 在類別那一列上往右滑
+
+- **WHEN** Android 手機上有這個月和上個月的支出，選中這個月時，從 Food & Dining 那一列開始往右滑，再點一下那一列
+- **THEN** 滑動之後選中上個月，仍在 Insights，沒有打開「Food & Dining」；點一下之後打開上個月的「Food & Dining」
+
+### Requirement: INSIGHTS-57.1 類別的支出開著時總額超過上限
+
+IF 類別的支出開著時支出改變了，而 domain 因為總額超過上限拒絕計算它的期間（INSIGHTS-55.1），THEN the mobile app SHALL 在類別的支出只顯示標題「Totals Too Large」和「These totals are too large to show.」，和 Insights 拒絕計算時（INSIGHTS-20.1）一樣：沒有期間、金額、筆數和卡片，畫面的標題仍是類別的名稱。
+
+#### Scenario: 刪除之後拒絕計算
+
+- **WHEN** 打開 October 2026 的 Food & Dining，裡面有 Coffee run 和 Lunch；從 Lunch 的明細刪除它，而 domain 這時拒絕計算這個期間
+- **THEN** 回到 Food & Dining，畫面上只有「Totals Too Large」和「These totals are too large to show.」，沒有卡片；標題仍是「Food & Dining」

@@ -142,8 +142,9 @@ export const headings = (on = 'Expenses') =>
 export const rowViews = (on = 'Expenses') =>
   within(insightsScreen(on)).queryAllByLabelText(/ percent$/);
 
-/** The lines each category row shows, top to bottom. */
-export const rows = (on = 'Expenses') => rowViews(on).map(linesIn);
+/** The lines each category row shows, top to bottom, without the › at its right. */
+export const rows = (on = 'Expenses') =>
+  rowViews(on).map((view) => linesIn(view).filter((line) => line !== '›'));
 
 /** What a screen reader reads for each category row, top to bottom. */
 export const rowsRead = (on = 'Expenses') =>

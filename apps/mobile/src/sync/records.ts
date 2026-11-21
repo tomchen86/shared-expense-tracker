@@ -10,6 +10,7 @@ import {
   type SyncUnits,
 } from '@shared-expense/domain';
 import type { Expense } from '../ledger/expenses';
+import { readCorrectedTime } from '../sharing/device-identity';
 import { createUuid, type SqlExecutor } from '../storage';
 
 export interface SharedGroup {
@@ -124,6 +125,21 @@ export function changedUnits(values: object, stored: SyncRecord['units']) {
 
 type StoredRecord = Awaited<ReturnType<typeof readSyncRecord>>;
 
+type UnsentListener = (groupId: string, position: number) => void;
+const unsentListeners = new Set<UnsentListener>();
+
+/**
+ * Calls `listener` each time this phone writes an unsent event, with the shared ledger's
+ * ID and the event's place among the unsent ones. The call comes inside the transaction
+ * that writes the event, which may still fail. Returns the function that ends it.
+ */
+export function subscribeToUnsentEvents(listener: UnsentListener) {
+  unsentListeners.add(listener);
+  return () => {
+    unsentListeners.delete(listener);
+  };
+}
+
 /** Stamps, checks, measures and stores one event of this phone, with the record it changes. */
 async function writeEvent(
   tx: SqlExecutor,
@@ -135,7 +151,7 @@ async function writeEvent(
 ) {
   const stamp = nextSyncStamp({
     seen: await latestStamp(tx),
-    nowMs: Date.now(),
+    nowMs: await readCorrectedTime(tx),
     device: group.device,
   });
   const verdict = checkSyncEvent({ version: 1, stamp, ...change }, null);
@@ -149,11 +165,18 @@ async function writeEvent(
     event: verdict.event,
   });
   await storeSyncRecord(tx, group.groupId, record, previous?.created ?? stamp);
-  await tx.run(
+  const { lastInsertRowId } = await tx.run(
     'INSERT INTO sync_outbox (id, groupId, content) VALUES (?, ?, ?)',
     [await createUuid(tx), group.groupId, content],
   );
   await saveLatestStamp(tx, stamp);
+  for (const listener of unsentListeners) {
+    try {
+      listener(group.groupId, lastInsertRowId);
+    } catch {
+      // The event is written whether or not a sync can start.
+    }
+  }
 }
 
 /**

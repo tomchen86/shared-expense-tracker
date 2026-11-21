@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { useThemeColors } from './theme';
 
-interface CapsuleProps {
+export interface CapsuleProps {
   label: string;
   value: string;
   /** The words on the face when they differ from the accessible value. */

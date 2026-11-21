@@ -77,7 +77,7 @@ const lastDayOf = (month: string) =>
     .toISOString()
     .slice(0, 10);
 
-const monthName = (month: string) =>
+export const monthName = (month: string) =>
   `${MONTHS[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
 
 /** The month a date is in, as a period. */
