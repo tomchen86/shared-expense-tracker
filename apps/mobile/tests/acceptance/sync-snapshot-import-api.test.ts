@@ -60,6 +60,7 @@ import {
   contentFor,
   downloadsOf,
   endSnapshotWorld,
+  faultsLeft,
   fetched,
   join,
   neverAnswer,
@@ -280,11 +281,35 @@ describe('SYNC-122.1', () => {
     expect(await takeSnapshot(c)).toEqual({ outcome: 'no-key' });
     giveKey(c, brisbane, 2, randomKey());
     expect(await takeSnapshot(c)).toEqual({ outcome: 'no-key' });
+
+    expect(downloadsOf(from)).toEqual(['ask', 'ask']);
+    expect(sent().slice(from)).toHaveLength(2);
+    expect(everythingIn(c)).toEqual(before);
+
     giveKey(c, brisbane, 1, key);
-    failSecureStoreReads(c);
+    expect(await takeSnapshot(c)).toEqual(IMPORTED);
+  });
+
+  test('[SYNC-122.1] reports no key while the secure store cannot be read, whether or not it could ask', async () => {
+    const setup = await twoPhones({ expenses: ['Dinner'] });
+    const { a } = setup;
+    const c = await newcomer(setup);
+    await sentSnapshot(a, c);
+    const before = everythingIn(c);
+    const from = mark();
+
+    // The store answers for the phone's seed, and no longer for the group key.
+    whenAnswered('GET', 'ask', async () => failSecureStoreReads(c));
     expect(await takeSnapshot(c)).toEqual({ outcome: 'no-key' });
 
-    expect(downloadsOf(from)).toEqual(['ask', 'ask', 'ask']);
+    expect(faultsLeft()).toBe(0);
+    expect(downloadsOf(from)).toEqual(['ask']);
+    expect(sent().slice(from)).toHaveLength(1);
+
+    // Now it cannot read its seed either, so it sends nothing (SHARING-30.1).
+    expect(await takeSnapshot(c)).toEqual({ outcome: 'no-key' });
+
+    expect(sent().slice(from)).toHaveLength(1);
     expect(everythingIn(c)).toEqual(before);
 
     secureStoreWorks(c);
@@ -1165,8 +1190,8 @@ describe('SYNC-127.1', () => {
   });
 });
 
-describe('SYNC-128.1', () => {
-  test('[SYNC-128.1] leaves out an expense and a member whose IDs this phone holds elsewhere, and takes the rest', async () => {
+describe('SYNC-128.2', () => {
+  test('[SYNC-128.2] leaves out an expense and a member whose IDs this phone holds elsewhere, and takes the rest', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a, b, key } = setup;
     const c = await newcomer(setup);
@@ -1201,7 +1226,7 @@ describe('SYNC-128.1', () => {
     ]);
   });
 
-  test('[SYNC-128.1] leaves out a category whose ID is a personal category’s, and shows its expenses as Uncategorized', async () => {
+  test('[SYNC-128.2] leaves out a category whose ID is a personal category’s, and shows its expenses as Uncategorized', async () => {
     const setup = await twoPhones();
     const { a, b, key } = setup;
     const c = await newcomer(setup);
@@ -1236,7 +1261,7 @@ describe('SYNC-128.1', () => {
     );
   });
 
-  test('[SYNC-128.1] takes nothing when the snapshot’s Uncategorized is another space’s category on this phone', async () => {
+  test('[SYNC-128.2] takes nothing when the snapshot’s Uncategorized is another space’s category on this phone', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a } = setup;
     const c = await newcomer(setup);
@@ -1272,7 +1297,7 @@ describe('SYNC-128.1', () => {
     expect(await groupNames(c)).toEqual(['Osaka']);
   });
 
-  test('[SYNC-128.1] takes nothing when the phone holds the group as one that is no shared ledger', async () => {
+  test('[SYNC-128.2] takes nothing when the phone holds the group as one that is no shared ledger', async () => {
     const setup = await twoPhones();
     const { a, b, A, tokyo } = setup;
     await send(a, 'PUT', `/groups/${tokyo}`);
@@ -1291,7 +1316,48 @@ describe('SYNC-128.1', () => {
     expect((await groupNamed(b, 'Tokyo')).shared).toBe(false);
   });
 
-  test('[SYNC-128.1] takes nothing when a phone that has the ledger holds another category as its Uncategorized', async () => {
+  test('[SYNC-128.2] takes nothing when the snapshot’s group ID is the ID of the phone’s personal space', async () => {
+    const setup = await twoPhones({ expenses: ['Dinner'] });
+    const { a } = setup;
+    const c = await newcomer(setup);
+    await addPersonalExpense(c, 'Coffee run');
+    const content = await realContent(setup, c);
+    // Brisbane's snapshot as one of a group with another ID, stored for the phone under a key
+    // the phone has.
+    const plantAs = async (groupId: string) => {
+      const groupKey = randomKey();
+      await send(a, 'PUT', `/groups/${groupId}`);
+      await join(c, groupId);
+      giveKey(c, groupId, 1, groupKey);
+      const moved: SyncSnapshot = {
+        ...content,
+        groupId,
+        records: content.records.map((record) =>
+          record.type === 'group' ? { ...record, id: groupId } : record,
+        ),
+      };
+      await plant(a, c, groupKey, moved, { groupId });
+    };
+    const mine = c.identity.personalSpaceId;
+    await plantAs(mine);
+    const coffee = await personal(c);
+    const before = everythingIn(c);
+
+    expect(await takeSnapshot(c, mine)).toEqual(UNUSABLE);
+
+    expect(everythingIn(c)).toEqual(before);
+    expect(await personal(c)).toEqual(coffee);
+    expect(await groupNames(c)).toEqual([]);
+
+    // Under an ID the phone holds nowhere, the same snapshot is taken in.
+    const other = randomId();
+    await plantAs(other);
+    expect(await takeSnapshot(c, other)).toEqual(IMPORTED);
+    expect(await personal(c)).toEqual(coffee);
+    expect(await groupNames(c)).toEqual(['Brisbane']);
+  });
+
+  test('[SYNC-128.2] takes nothing when a phone that has the ledger holds another category as its Uncategorized', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a, b, key } = setup;
     await sentSnapshot(a, b);

@@ -437,28 +437,28 @@ export async function leavingTheDatabaseAsItWas<R>(
 }
 
 /**
- * Every value in the database in each way it could be read: text as it is, and bytes as
- * hexadecimal, as Base64 with and without padding, and one character per byte.
+ * Every value in the database, each in every way it could be read: text as it is, and bytes
+ * as hexadecimal, as Base64 with and without padding, and one character per byte.
  */
-async function everyStoredValue(): Promise<string[]> {
-  const values: string[] = [];
+async function everyStoredValue(): Promise<string[][]> {
+  const values: string[][] = [];
   for (const [, tableRows] of await rows()) {
     for (const row of tableRows) {
       for (const value of Object.values(row)) {
         if (value instanceof Uint8Array) {
           const bytes = Buffer.from(value);
-          values.push(
+          values.push([
             bytes.toString('hex'),
             bytes.toString('base64'),
             bytes.toString('base64url'),
             bytes.toString('latin1'),
-          );
+          ]);
         } else if (value instanceof Date) {
-          values.push(value.toISOString());
+          values.push([value.toISOString()]);
         } else if (typeof value === 'object' && value !== null) {
-          values.push(JSON.stringify(value));
+          values.push([JSON.stringify(value)]);
         } else {
-          values.push(String(value));
+          values.push([String(value)]);
         }
       }
     }
@@ -466,7 +466,10 @@ async function everyStoredValue(): Promise<string[]> {
   return values;
 }
 
-/** How many stored values hold `bytes`, written as text, hexadecimal, Base64 or raw. */
+/**
+ * How many stored values hold `bytes`, written as text, hexadecimal, Base64 or raw. A value
+ * counts once, in however many of its readings the bytes are found.
+ */
 export async function timesStored(bytes: Uint8Array | string): Promise<number> {
   const buffer = Buffer.from(
     typeof bytes === 'string' ? Buffer.from(bytes, 'utf8') : bytes,
@@ -478,8 +481,10 @@ export async function timesStored(bytes: Uint8Array | string): Promise<number> {
     buffer.toString('base64'),
     buffer.toString('base64url'),
   ]);
-  return (await everyStoredValue()).filter((value) =>
-    [...forms].some((form) => form.length > 0 && value.includes(form)),
+  return (await everyStoredValue()).filter((readings) =>
+    readings.some((reading) =>
+      [...forms].some((form) => form.length > 0 && reading.includes(form)),
+    ),
   ).length;
 }
 
