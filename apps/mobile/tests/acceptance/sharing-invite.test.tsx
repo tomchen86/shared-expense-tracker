@@ -9,6 +9,7 @@ import {
   expectClosed,
   expectOpen,
   isOpen,
+  lastAlertButtonStyles,
   lastAlertButtons,
   membersButton,
   expectMembers,
@@ -25,6 +26,7 @@ import {
 import {
   API,
   T,
+  addSecureStoreEntry,
   apiAnswersNext,
   apiIsAhead,
   apiLosesNextAnswer,
@@ -43,7 +45,6 @@ import {
   secureStoreEntries,
   secureStoreWorks,
   utf8,
-  writeSecureStoreEntry,
 } from './sharing-app';
 import {
   CANNOT_SHARE,
@@ -86,6 +87,7 @@ import {
   qrCodes,
   requestLines,
   requestsHold,
+  revokedByAnotherPhone,
   secondsPass,
   sentCard,
   shared,
@@ -521,7 +523,7 @@ test('[SHARING-93.1] keeps a key the secure store already has for the group', as
   const entry = `group-key.${await groupId('Brisbane')}.1`;
   const key =
     '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f';
-  writeSecureStoreEntry(entry, key);
+  addSecureStoreEntry(entry, key);
 
   await invited('Brisbane');
 
@@ -709,8 +711,9 @@ test('[SHARING-98.1] shows the QR code, the link, Share Link, who can join, the 
 });
 
 test("[SHARING-98.1] shows the expiry as a date in the phone's time zone", async () => {
-  setPhoneClock('America/Los_Angeles', new Date(T).toISOString());
   await startAt(ALONE);
+  // After the app has started: starting it puts the phone in Taipei.
+  setPhoneClock('America/Los_Angeles', new Date(T).toISOString());
 
   await invited('Brisbane');
 
@@ -811,10 +814,8 @@ test('[SHARING-102.1] asks before revoking, then revokes on the API, deletes the
       "People who haven't joined yet won't be able to use this link.",
     ],
   ]);
-  expect(lastAlertButtons()).toEqual([
-    expect.objectContaining({ text: 'Cancel' }),
-    expect.objectContaining({ text: 'Revoke', style: 'destructive' }),
-  ]);
+  expect(lastAlertButtons()).toEqual(['Cancel', 'Revoke']);
+  expect(lastAlertButtonStyles()[1]).toEqual(['Revoke', 'destructive']);
   expect(requestsReceived().filter(isRevoke)).toEqual([]);
 
   await pressAlertButton('Revoke');
@@ -1599,6 +1600,7 @@ test('[SYNC-81.1] forgets an invite another phone revoked: the next Invite with 
   const old = await invitedAndLeft('Brisbane');
   const { code } = partsOf(old);
 
+  revokedByAnotherPhone(code);
   await receive(await groupId('Brisbane'), inviteRevoked(code));
   const link = await invited('Brisbane');
 
