@@ -57,6 +57,12 @@ async function openSnapshotGroup(
   epoch: number,
 ) {
   const { groupId, uncategorized, records, sequence } = snapshot;
+  // Personal expenses and categories use their space ID in the same column as group rows.
+  const [personal] = await tx.all(
+    'SELECT 1 FROM local_identity WHERE personalSpaceId = ?',
+    [groupId],
+  );
+  if (personal) return false;
   const [group] = await tx.all<{ shared: number }>(
     `SELECT s.groupId IS NOT NULL AS shared FROM groups g
      LEFT JOIN sync_groups s ON s.groupId = g.id WHERE g.id = ?`,
@@ -74,14 +80,6 @@ async function openSnapshotGroup(
     );
     return true;
   }
-  // Expenses and categories use the same space ID column for personal and group rows.
-  // Creating a group here must never make the phone's personal rows part of a shared ledger.
-  const [personal] = await tx.all(
-    'SELECT 1 FROM local_identity WHERE personalSpaceId = ?',
-    [groupId],
-  );
-  if (personal)
-    throw new Error('A shared ledger cannot use the personal space ID');
   if (
     !(await canMergeInGroup(tx, groupId, {
       type: 'category',

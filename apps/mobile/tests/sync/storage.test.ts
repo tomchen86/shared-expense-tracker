@@ -658,9 +658,9 @@ test('importing a ledger cannot claim the personal space or its rows', async () 
       },
     ],
   };
-  const imported = await database
-    .transaction((tx) => importSnapshot(tx, content, 1))
-    .catch(() => false);
+  const imported = await database.transaction((tx) =>
+    importSnapshot(tx, content, 1),
+  );
   expect(imported).toBe(false);
   expect(await listGroups(database)).toEqual(groups);
   expect(await listCategories(database, groupId)).toEqual(categories);

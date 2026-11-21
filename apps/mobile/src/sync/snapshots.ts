@@ -47,13 +47,13 @@ export type SendSnapshotResult =
   /** A request had no answer, or one that is no confirmation. */
   | { outcome: 'failed' };
 
-/** What became of taking a snapshot in (SYNC-121.1 to SYNC-128.1). */
+/** What became of taking a snapshot in (SYNC-121.1 to SYNC-128.2). */
 export type TakeSnapshotResult =
   /** The snapshot is merged into the local data. */
   | { outcome: 'imported' }
   /** The group stores no snapshot for this phone. */
   | { outcome: 'none' }
-  /** This phone lacks the group key of the snapshot's key epoch. */
+  /** The group key for the snapshot's epoch is missing or the secure store cannot be read. */
   | { outcome: 'no-key' }
   /** The snapshot is in a format version this app does not know. */
   | { outcome: 'update-needed' }
@@ -194,17 +194,23 @@ export async function sendSnapshot(
   return second.outcome === 'epoch' ? { outcome: 'failed' } : second;
 }
 
-/** Fetches the snapshot the group stores for this phone, and merges it into the local data. */
-export async function takeSnapshot(
+class DeviceSeedReadError extends Error {}
+
+async function downloadAndImport(
   database: Database,
   group: { apiUrl: string; groupId: string },
 ): Promise<TakeSnapshotResult> {
   const { groupId, apiUrl } = group;
-  const asked = await request(database, {
-    apiUrl,
-    path: `/groups/${groupId}/snapshot`,
-    method: 'GET',
-  });
+  const get = (path: string) =>
+    request(database, {
+      apiUrl,
+      path,
+      method: 'GET',
+      onSeedReadError(cause) {
+        throw new DeviceSeedReadError('Cannot read the device seed', { cause });
+      },
+    });
+  const asked = await get(`/groups/${groupId}/snapshot`);
   if (!asked) return { outcome: 'failed' };
   if (
     asked.status === SNAPSHOT_REFUSAL_STATUS['no-snapshot'] &&
@@ -220,11 +226,7 @@ export async function takeSnapshot(
 
   const pieces: Uint8Array[] = [];
   for (let index = 0; index < envelope.count; index++) {
-    const answer = await request(database, {
-      apiUrl,
-      path: chunkPath(envelope, index),
-      method: 'GET',
-    });
+    const answer = await get(chunkPath(envelope, index));
     if (answer?.status !== 200 || !isSnapshotChunkResponse(answer.body))
       return { outcome: 'failed' };
     const opened = decrypt({
@@ -251,4 +253,17 @@ export async function takeSnapshot(
   if (!imported) return { outcome: 'unusable' };
   notifyApplied(database, groupId);
   return { outcome: 'imported' };
+}
+
+/** Fetches the snapshot the group stores for this phone, and merges it into the local data. */
+export async function takeSnapshot(
+  database: Database,
+  group: { apiUrl: string; groupId: string },
+): Promise<TakeSnapshotResult> {
+  try {
+    return await downloadAndImport(database, group);
+  } catch (error) {
+    if (error instanceof DeviceSeedReadError) return { outcome: 'no-key' };
+    throw error;
+  }
 }

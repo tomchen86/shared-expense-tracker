@@ -45,18 +45,34 @@ jest.mock('../../src/storage/expo-files', () => ({}));
 beforeEach(startSnapshotWorld);
 afterEach(endSnapshotWorld);
 
-test('a key read that fails after the signed lookup leaves the ledger untouched', async () => {
-  const setup = await twoPhones();
+test('losing access to the seed between chunks leaves the ledger untouched and the download can be retried', async () => {
+  const expenses = Array.from({ length: 5 }, (_, i) =>
+    String(i).padEnd(60_000, 'x'),
+  );
+  const setup = await twoPhones({ expenses });
   const phone = await newcomer(setup);
   await sentSnapshot(setup.a, phone);
   const before = everythingIn(phone);
   const from = mark();
-  whenAnswered('GET', 'ask', async () => failSecureStoreReads(phone));
+  whenAnswered('GET', 0, async () => failSecureStoreReads(phone));
   expect(await takeSnapshot(phone)).toEqual({ outcome: 'no-key' });
-  expect(downloadsOf(from)).toEqual(['ask']);
+  expect(downloadsOf(from)).toEqual(['ask', '0']);
   expect(everythingIn(phone)).toEqual(before);
   secureStoreWorks(phone);
   expect(await takeSnapshot(phone)).toEqual({ outcome: 'imported' });
+});
+
+test('a database error while preparing the lookup reaches the caller', async () => {
+  const phone = await newcomer(await twoPhones());
+  const from = mark();
+  const error = new Error('Cannot read the identity row');
+  const read = jest.spyOn(phone.database, 'all').mockRejectedValueOnce(error);
+  try {
+    await expect(takeSnapshot(phone)).rejects.toBe(error);
+    expect(snapshotRequests(from)).toEqual([]);
+  } finally {
+    read.mockRestore();
+  }
 });
 
 test('an unanswered lookup or a refusal with the wrong status leaves the download unstarted', async () => {

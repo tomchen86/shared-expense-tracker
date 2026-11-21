@@ -174,10 +174,11 @@ async function createDevice(database: SqlExecutor): Promise<SigningDevice> {
  */
 export async function ensureDevice(
   database: SqlExecutor,
+  onSeedReadError?: (cause: unknown) => never,
 ): Promise<SigningDevice | 'lost'> {
   const device = await readStoredDevice(database);
   if (!device) return createDevice(database);
-  const seed = await readSeed(device.deviceId);
+  const seed = await readSeed(device.deviceId).catch(onSeedReadError);
   return seed
     ? signingDevice(device.deviceId, seed, device.registered === 1)
     : 'lost';

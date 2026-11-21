@@ -87,8 +87,8 @@ module.exports = {
     './packages/domain/src/api/group-snapshots.ts': { branches: 100 },
     './packages/domain/src/sync/snapshot.ts': { branches: 98.87 },
     './apps/api/src/sync/snapshots.ts': { branches: 100 },
-    './apps/mobile/src/sync/snapshot-ledger.ts': { branches: 94.11 },
-    './apps/mobile/src/sync/snapshots.ts': { branches: 96.77 },
+    './apps/mobile/src/sync/snapshot-ledger.ts': { branches: 97.05 },
+    './apps/mobile/src/sync/snapshots.ts': { branches: 96.87 },
   },
   testTimeout: 15000,
 };
