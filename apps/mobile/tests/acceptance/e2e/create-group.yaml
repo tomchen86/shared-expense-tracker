@@ -11,12 +11,10 @@ name: '[GROUPS-6.1] [GROUPS-8.1] [GROUPS-13.1] [GROUPS-16.1] Closes New Group wh
 - waitForAnimationToEnd
 # The name field has the focus once New Group opens, so the keyboard types into it.
 - inputText: Tokyo
-# Dragging the sheet down by its title closes it, whatever its height.
-- swipe:
-    from:
-      text: New Group
-    direction: DOWN
-- waitForAnimationToEnd
+- runFlow:
+    file: common/swipe-sheet-down.yaml
+    env:
+      TITLE: New Group
 - assertNotVisible: New Group
 - assertVisible: No groups yet. Tap + to create a group.
 - tapOn: Add group
