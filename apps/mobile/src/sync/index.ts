@@ -23,6 +23,12 @@ export {
 } from './apply';
 
 export { saveGroupKey, syncGroup } from './loop';
+export {
+  sendSnapshot,
+  takeSnapshot,
+  type SendSnapshotResult,
+  type TakeSnapshotResult,
+} from './snapshots';
 
 /** An event this phone wrote and has not uploaded yet. */
 export interface UnsentSyncEvent {
