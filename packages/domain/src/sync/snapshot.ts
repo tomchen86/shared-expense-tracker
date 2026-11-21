@@ -1,4 +1,19 @@
-import type { SyncRecord, SyncStamp } from './sync';
+import {
+  compareSyncStamps,
+  hasFields,
+  isClockInteger,
+  isNonemptyString,
+  isObject,
+  isRecordType,
+  isStamp,
+  isSyncUnitValue,
+  moneyRefusal,
+  syncRecordValues,
+  winningSyncUnit,
+  type SyncMoney,
+  type SyncRecord,
+  type SyncStamp,
+} from './sync';
 
 /**
  * One record as a snapshot holds it (ADR-0028): the record as merged so far, the stamp it
@@ -30,10 +45,95 @@ export type SyncSnapshotVerdict =
   // The snapshot, or an event it covers, is in a format version newer than these rules know.
   | { status: 'unsupported' };
 
+function isSnapshotRecord(value: unknown): value is SyncSnapshotRecord {
+  if (!isObject(value)) return false;
+  const tombstone = Object.hasOwn(value, 'deleted');
+  const fields = ['type', 'id', 'units', 'created', 'seeded'];
+  if (tombstone) fields.push('deleted');
+  const { type, id, created, seeded, units } = value;
+  if (
+    !hasFields(value, fields) ||
+    !isRecordType(type) ||
+    !isNonemptyString(id) ||
+    !isStamp(created) ||
+    typeof seeded !== 'boolean' ||
+    !isObject(units)
+  )
+    return false;
+  const entries = Object.entries(units);
+  if (tombstone)
+    return (
+      (type === 'expense' || type === 'category') &&
+      entries.length === 0 &&
+      isStamp(value.deleted)
+    );
+  return (
+    entries.length > 0 &&
+    entries.every(
+      ([name, unit]) =>
+        hasFields(unit, ['stamp', 'value']) &&
+        isStamp(unit.stamp) &&
+        isSyncUnitValue(type, name, unit.value) &&
+        (name !== 'money' ||
+          moneyRefusal(unit.value as SyncMoney) === undefined),
+    )
+  );
+}
+
+const newerVersion = (version: unknown) =>
+  typeof version === 'number' && Number.isInteger(version) && version > 1;
+
+function isSnapshot(content: unknown): content is SyncSnapshot {
+  if (
+    !hasFields(content, [
+      'version',
+      'eventVersion',
+      'groupId',
+      'sequence',
+      'uncategorized',
+      'records',
+    ]) ||
+    content.version !== 1 ||
+    content.eventVersion !== 1 ||
+    !isNonemptyString(content.groupId) ||
+    !isClockInteger(content.sequence) ||
+    !Array.isArray(content.records)
+  )
+    return false;
+
+  const keys = new Set<string>();
+  let groupFound = false;
+  let uncategorizedFound = false;
+  for (const record of content.records) {
+    if (!isSnapshotRecord(record)) return false;
+    const key = record.type + '/' + record.id;
+    if (keys.has(key)) return false;
+    keys.add(key);
+    if (record.type === 'group') {
+      if (record.id !== content.groupId) return false;
+      groupFound = true;
+    }
+    if (record.type === 'category' && record.id === content.uncategorized) {
+      const values = syncRecordValues(record);
+      uncategorizedFound =
+        values?.name === 'Uncategorized' &&
+        values.color === '#757575' &&
+        !values.archived;
+    }
+  }
+  return groupFound && uncategorizedFound;
+}
+
 /** Judges what a snapshot holds once decrypted and parsed (SYNC-98.1). */
 export function checkSyncSnapshot(content: unknown): SyncSnapshotVerdict {
-  void content;
-  throw new Error('Not implemented');
+  if (
+    isObject(content) &&
+    (newerVersion(content.version) || newerVersion(content.eventVersion))
+  )
+    return { status: 'unsupported' };
+  return isSnapshot(content)
+    ? { status: 'valid', snapshot: content }
+    : { status: 'refused' };
 }
 
 /**
@@ -46,6 +146,44 @@ export function mergeSyncSnapshotRecord(input: {
   /** The latest stamp the phone has seen, if any. */
   seen?: SyncStamp;
 }): { record: SyncSnapshotRecord; seen: SyncStamp } {
-  void input;
-  throw new Error('Not implemented');
+  const { incoming, held } = input;
+  if (held && (held.id !== incoming.id || held.type !== incoming.type))
+    throw new Error('Both records must have the same type and ID');
+
+  let seen = incoming.created;
+  function observe(stamp: SyncStamp) {
+    if (compareSyncStamps(stamp, seen) > 0) seen = stamp;
+  }
+  if (input.seen) observe(input.seen);
+  if (incoming.deleted) observe(incoming.deleted);
+  for (const unit of Object.values(incoming.units)) observe(unit.stamp);
+  if (!held) return { record: incoming, seen };
+
+  const created =
+    incoming.seeded ||
+    (!held.seeded && compareSyncStamps(incoming.created, held.created) < 0)
+      ? incoming.created
+      : held.created;
+  const base = {
+    type: incoming.type,
+    id: incoming.id,
+    created,
+    seeded: incoming.seeded || held.seeded,
+  };
+  if (held.deleted || incoming.deleted) {
+    const deleted =
+      held.deleted &&
+      (!incoming.deleted ||
+        compareSyncStamps(held.deleted, incoming.deleted) > 0)
+        ? held.deleted
+        : incoming.deleted;
+    return { record: { ...base, units: {}, deleted }, seen };
+  }
+
+  const units: Record<string, { value: unknown; stamp: SyncStamp }> = {
+    ...held.units,
+  };
+  for (const [name, unit] of Object.entries(incoming.units))
+    units[name] = winningSyncUnit(name, units[name], unit);
+  return { record: { ...base, units } as SyncSnapshotRecord, seen };
 }

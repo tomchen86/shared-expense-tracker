@@ -1,3 +1,5 @@
+import { hasExactly, isHexContent, isId, isWhole } from './wire';
+
 // What the snapshot API's requests and answers look like on the wire (ADR-0028,
 // docs/specs/sync/spec.md): a phone uploads a snapshot of a shared ledger chunk by chunk for
 // one device, and that device asks for it and downloads it chunk by chunk. The phone and
@@ -66,38 +68,70 @@ export const SNAPSHOT_REFUSAL_STATUS: Record<SnapshotRefusalReason, number> = {
   'snapshots-full': 413,
 };
 
+const isChunk = (value: unknown) =>
+  isHexContent(value, SNAPSHOT_CHUNK_MINIMUM, SNAPSHOT_CHUNK_LIMIT);
+
+function hasSnapshotMetadata(
+  value: Record<'deviceId' | 'epoch' | 'sequence' | 'count', unknown>,
+) {
+  return (
+    isId(value.deviceId) &&
+    isWhole(value.epoch, 1) &&
+    isWhole(value.sequence, 0) &&
+    isWhole(value.count, 1) &&
+    value.count <= SNAPSHOT_CHUNK_COUNT_LIMIT
+  );
+}
+
 /** Whether `value` is exactly the body of the upload of one chunk (SYNC-100.1). */
 export function isUploadSnapshotChunkRequest(
   value: unknown,
 ): value is UploadSnapshotChunkRequest {
-  void value;
-  throw new Error('Not implemented');
+  return (
+    hasExactly(value, ['deviceId', 'epoch', 'sequence', 'count', 'content']) &&
+    hasSnapshotMetadata(value) &&
+    isChunk(value.content)
+  );
 }
 
 /** Whether `value` is exactly what the API answers once it has a chunk (SYNC-100.1). */
 export function isSnapshotChunkStoredResponse(
   value: unknown,
 ): value is SnapshotChunkStoredResponse {
-  void value;
-  throw new Error('Not implemented');
+  return (
+    hasExactly(value, ['snapshotId', 'index']) &&
+    isId(value.snapshotId) &&
+    isWhole(value.index, 0) &&
+    value.index < SNAPSHOT_CHUNK_COUNT_LIMIT
+  );
 }
 
 /** Whether `value` is exactly what the API answers to a device that has a snapshot waiting (SYNC-100.1). */
 export function isSnapshotResponse(value: unknown): value is SnapshotResponse {
-  void value;
-  throw new Error('Not implemented');
+  return (
+    hasExactly(value, [
+      'snapshotId',
+      'deviceId',
+      'epoch',
+      'sequence',
+      'count',
+    ]) &&
+    isId(value.snapshotId) &&
+    hasSnapshotMetadata(value)
+  );
 }
 
 /** Whether `value` is exactly what the API answers to the download of one chunk (SYNC-100.1). */
 export function isSnapshotChunkResponse(
   value: unknown,
 ): value is SnapshotChunkResponse {
-  void value;
-  throw new Error('Not implemented');
+  return hasExactly(value, ['content']) && isChunk(value.content);
 }
 
 /** Whether `value` is exactly the body of one of the snapshot API's own refusals (SYNC-100.1). */
 export function isSnapshotRefusal(value: unknown): value is SnapshotRefusal {
-  void value;
-  throw new Error('Not implemented');
+  return (
+    hasExactly(value, ['error']) &&
+    (value.error === 'no-snapshot' || value.error === 'snapshots-full')
+  );
 }

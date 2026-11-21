@@ -167,14 +167,8 @@ export function checkSyncEvent(
     return { status: 'refused', reason: 'clock' };
   }
   if (content.type === 'expense' && 'units' in content && content.units.money) {
-    const { amountMinor, currency, payments, shares } =
-      content.units.money.value;
-    if (currencyDecimals(currency) === undefined) {
-      return { status: 'refused', reason: 'currency' };
-    }
-    if (!addsUp(payments, amountMinor) || !addsUp(shares, amountMinor)) {
-      return { status: 'refused', reason: 'sum' };
-    }
+    const reason = moneyRefusal(content.units.money.value);
+    if (reason) return { status: 'refused', reason };
   }
   return { status: 'valid', event: content };
 }
@@ -211,20 +205,32 @@ export function mergeSyncEvent(input: {
     ...record?.units,
   };
   for (const [name, change] of Object.entries(event.units)) {
-    const current = units[name];
-    const order = current ? compareSyncStamps(event.stamp, current.stamp) : 1;
-    if (
-      order > 0 ||
-      (order === 0 && compareUnitValues(name, change.value, current.value) > 0)
-    ) {
-      units[name] = { value: change.value, stamp: event.stamp };
-    }
+    units[name] = winningSyncUnit(name, units[name], {
+      value: change.value,
+      stamp: event.stamp,
+    });
   }
   // The matching record type and validated event keep each unit's value type.
   return {
     record: { type: event.type, id: event.id, units } as SyncRecord,
     seen,
   };
+}
+
+type StampedUnit = { value: unknown; stamp: SyncStamp };
+
+/** Selects the same value for a unit whether its change arrives in an event or a snapshot. */
+export function winningSyncUnit(
+  name: string,
+  current: StampedUnit | undefined,
+  incoming: StampedUnit,
+): StampedUnit {
+  if (!current) return incoming;
+  const order = compareSyncStamps(incoming.stamp, current.stamp);
+  return order > 0 ||
+    (order === 0 && compareUnitValues(name, incoming.value, current.value) > 0)
+    ? incoming
+    : current;
 }
 
 /**
@@ -271,11 +277,11 @@ export function sameSyncUnitValue(
   return compareUnitValues(unit, a, b) === 0;
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
+export function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function hasFields(
+export function hasFields(
   value: unknown,
   fields: readonly string[],
 ): value is Record<string, unknown> {
@@ -286,7 +292,7 @@ function hasFields(
   );
 }
 
-function isClockInteger(value: unknown): value is number {
+export function isClockInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
 
@@ -294,11 +300,11 @@ function isDevice(value: unknown): value is string {
   return isNonemptyString(value) && !/[^\x21-\x7e]/.test(value);
 }
 
-function isNonemptyString(value: unknown): value is string {
+export function isNonemptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
 }
 
-function isStamp(value: unknown): value is SyncStamp {
+export function isStamp(value: unknown): value is SyncStamp {
   return (
     hasFields(value, ['ms', 'counter', 'device']) &&
     isClockInteger(value.ms) &&
@@ -376,14 +382,38 @@ const unitValidators: {
   },
 };
 
+export function isRecordType(type: unknown): type is SyncRecordType {
+  return typeof type === 'string' && Object.hasOwn(unitValidators, type);
+}
+
+export function isSyncUnitValue(
+  type: SyncRecordType,
+  name: string,
+  value: unknown,
+): boolean {
+  const validators: Record<string, (value: unknown) => boolean> =
+    unitValidators[type];
+  return Object.hasOwn(validators, name) && validators[name](value);
+}
+
+export function moneyRefusal({
+  amountMinor,
+  currency,
+  payments,
+  shares,
+}: SyncMoney): 'currency' | 'sum' | undefined {
+  if (currencyDecimals(currency) === undefined) return 'currency';
+  if (!addsUp(payments, amountMinor) || !addsUp(shares, amountMinor))
+    return 'sum';
+}
+
 function isSyncEvent(content: unknown): content is SyncEvent {
   if (
     !isObject(content) ||
     content.version !== 1 ||
     !isStamp(content.stamp) ||
     !isNonemptyString(content.id) ||
-    typeof content.type !== 'string' ||
-    !Object.hasOwn(unitValidators, content.type)
+    !isRecordType(content.type)
   ) {
     return false;
   }
@@ -401,15 +431,14 @@ function isSyncEvent(content: unknown): content is SyncEvent {
   ) {
     return false;
   }
-  const validators: Record<string, (value: unknown) => boolean> =
-    unitValidators[content.type as SyncRecordType];
+  const type = content.type;
   return Object.entries(content.units).every(([name, change]) => {
-    if (!Object.hasOwn(validators, name) || !isObject(change)) return false;
+    if (!isObject(change)) return false;
     const hasBase = Object.hasOwn(change, 'base');
     return (
       hasFields(change, hasBase ? ['value', 'base'] : ['value']) &&
       (!hasBase || isStamp(change.base)) &&
-      validators[name](change.value)
+      isSyncUnitValue(type, name, change.value)
     );
   });
 }
