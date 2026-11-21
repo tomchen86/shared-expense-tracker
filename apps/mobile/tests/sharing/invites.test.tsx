@@ -1,11 +1,14 @@
-import { Alert } from 'react-native';
+import { Alert, TextInput } from 'react-native';
 import { act, fireEvent } from '@testing-library/react-native';
 import { addGroupMember, renameGroup } from '../../src/groups';
 import { SEED_OPTIONS } from '../../src/sharing/device-identity';
 import {
   expectClosed,
+  memberField,
   membersButton,
+  openMemberField,
   pressAlertButton,
+  pressReturn,
 } from '../acceptance/group-details-app';
 import { setPhoneClock } from '../acceptance/ledger-expense-app';
 import { T, received, secureStore } from '../acceptance/sharing-app';
@@ -13,6 +16,7 @@ import {
   WENT_WRONG,
   TOO_MANY_MEMBERS,
   codeIn,
+  closeInvite,
   eachTestGetsAnInvitingPhone,
   inviteLines,
   inviteOnApi,
@@ -24,6 +28,7 @@ import {
   openedCard,
   partsOf,
   pressInInvite,
+  pressInvite,
   revokedByAnotherPhone,
   shownLink,
   startAt,
@@ -64,6 +69,25 @@ jest.mock(
 );
 
 eachTestGetsAnInvitingPhone('phone-invite-recovery-');
+
+test('opening Invite blurs the member name field and preserves its draft', async () => {
+  await startAt({ Brisbane: [] });
+  await showMembers('Brisbane');
+  await openMemberField();
+  await fireEvent.changeText(memberField()!, 'Casey');
+  const blur = jest.spyOn(TextInput.prototype, 'blur').mockClear();
+
+  await pressInvite();
+  expect(blur).toHaveBeenCalledTimes(1);
+  expect(blur.mock.contexts[0]).toMatchObject({
+    props: { accessibilityLabel: 'Member name' },
+  });
+  await closeInvite();
+  expect(memberField()).toHaveProp('value', 'Casey');
+  await pressReturn(memberField()!);
+  expect(membersButton('Casey')).toBeOnTheScreen();
+  expect(memberField()).toHaveProp('value', '');
+});
 
 test('a retained key can create and revoke an invite', async () => {
   await startAt({ Brisbane: [] });

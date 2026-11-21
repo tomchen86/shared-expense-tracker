@@ -21,7 +21,7 @@ import { InviteContent } from '../sharing/invite-sheet';
 import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
-import { ScreenWithSheet } from '../ui/screen-with-sheet';
+import { Sheet } from '../ui/sheet';
 import { useThemeColors } from '../ui/theme';
 import { useSheetScroll } from '../ui/use-sheet-scroll';
 import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
@@ -213,13 +213,7 @@ export function MembersScreen({
   }
 
   return (
-    <ScreenWithSheet
-      title="Invite"
-      onClose={closeInvite}
-      sheet={
-        inviteOpen ? <InviteContent groupId={id} onClose={closeInvite} /> : null
-      }
-    >
+    <>
       <Stack.Screen
         options={{
           ...sheetScroll.screenOptions,
@@ -257,7 +251,10 @@ export function MembersScreen({
               accessibilityRole="button"
               accessibilityLabel="Invite with Link"
               disabled={busy}
-              onPress={() => setInviteOpen(true)}
+              onPress={() => {
+                field.current?.blur();
+                setInviteOpen(true);
+              }}
               android_ripple={{ color: colors.pressedSurface }}
               style={({ pressed }) => [
                 styles.row,
@@ -363,7 +360,16 @@ export function MembersScreen({
           </Text>
         )}
       </ScrollView>
-    </ScreenWithSheet>
+      <Sheet
+        visible={inviteOpen}
+        title="Invite"
+        cancel={{ label: 'Close', icon: 'close', onPress: closeInvite }}
+        onClose={closeInvite}
+        measureDetent
+      >
+        {inviteOpen && <InviteContent groupId={id} onClose={closeInvite} />}
+      </Sheet>
+    </>
   );
 }
 
