@@ -1344,6 +1344,7 @@ test('[LEDGER-154.1] saves once when Use Mine is pressed twice before the save h
   await openFromGroup('Brisbane', 'Dinner');
   await expectBlockOn('Groups');
   const events = (await unsent()).length;
+  const alerts = alertsShown().length;
   const button = blockButtonOn('Groups', USE_MINE)!;
   const writes = holdWrites();
 
@@ -1354,6 +1355,8 @@ test('[LEDGER-154.1] saves once when Use Mine is pressed twice before the save h
 
   await waitFor(() => expect(detailLinesOn('Groups')).not.toContain(MARK));
   expect(await unsent()).toHaveLength(events + 1);
+  // The second press did nothing: it did not try a save that then failed, either.
+  expect(alertsShown()).toHaveLength(alerts);
 });
 
 test('[LEDGER-153.1] does not save Use Mine when it is pressed before Keep Current has been saved', async () => {
@@ -1361,6 +1364,7 @@ test('[LEDGER-153.1] does not save Use Mine when it is pressed before Keep Curre
   await openFromGroup('Brisbane', 'Dinner');
   await expectBlockOn('Groups');
   const events = (await unsent()).length;
+  const alerts = alertsShown().length;
   const keep = blockButtonOn('Groups', KEEP_CURRENT)!;
   const mine = blockButtonOn('Groups', USE_MINE)!;
   const writes = holdWrites();
@@ -1373,6 +1377,8 @@ test('[LEDGER-153.1] does not save Use Mine when it is pressed before Keep Curre
   await waitFor(() => expect(detailLinesOn('Groups')).not.toContain(MARK));
   expect(await unsent()).toHaveLength(events);
   expect((await expenseTitled('Dinner')).amountMinor).toBe(9000);
+  // Use Mine did nothing: it did not try a save that then failed, either.
+  expect(alertsShown()).toHaveLength(alerts);
 });
 
 test('[LEDGER-154.1] counts Use Mine as the last change of the expense', async () => {
