@@ -67,16 +67,6 @@ export function isRevokeInviteResponse(
   return hasExactly(value, ['code']) && isInviteCode(value.code);
 }
 
-export function isReadInviteResponse(
-  value: unknown,
-): value is ReadInviteResponse {
-  return (
-    hasExactly(value, ['expiresAtMs', 'card']) &&
-    isWhole(value.expiresAtMs, 0) &&
-    isContent(value.card)
-  );
-}
-
 export function isInviteRefusal(value: unknown): value is InviteRefusal {
   return (
     hasExactly(value, ['error']) &&

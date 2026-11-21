@@ -1,7 +1,6 @@
 import { Alert } from 'react-native';
 import { act, fireEvent } from '@testing-library/react-native';
 import { addGroupMember, renameGroup } from '../../src/groups';
-import { readInviteOnApi } from '../../src/sharing/invite-api';
 import { SEED_OPTIONS } from '../../src/sharing/device-identity';
 import {
   expectClosed,
@@ -9,14 +8,8 @@ import {
   pressAlertButton,
 } from '../acceptance/group-details-app';
 import { setPhoneClock } from '../acceptance/ledger-expense-app';
+import { T, received, secureStore } from '../acceptance/sharing-app';
 import {
-  T,
-  apiAnswersNext,
-  received,
-  secureStore,
-} from '../acceptance/sharing-app';
-import {
-  WEEK,
   WENT_WRONG,
   TOO_MANY_MEMBERS,
   codeIn,
@@ -72,7 +65,7 @@ jest.mock(
 
 eachTestGetsAnInvitingPhone('phone-invite-recovery-');
 
-test('a retained key can create an invite, read its card by code, and revoke it', async () => {
+test('a retained key can create and revoke an invite', async () => {
   await startAt({ Brisbane: [] });
   setPhoneClock('America/Los_Angeles', new Date(T).toISOString());
   const entry = `group-key.${await groupId('Brisbane')}.1`;
@@ -82,20 +75,6 @@ test('a retained key can create an invite, read its card by code, and revoke it'
   expect(await secureStore.getItemAsync(entry, SEED_OPTIONS)).toBe(key);
   expect(inviteLines()).toContain('Expires Nov 24, 2026');
 
-  const path = `/invites/${code}`;
-  const card = { expiresAtMs: T + WEEK, card: inviteOnApi(code)!.card };
-  apiAnswersNext(
-    (r) => r.path === path && r.method === 'GET',
-    200,
-    JSON.stringify(card),
-  );
-  expect(await readInviteOnApi(appDatabase(), code)).toEqual(card);
-  expect(received().at(-1)).toMatchObject({
-    method: 'GET',
-    path,
-    body: new Uint8Array(),
-    deviceId: expect.any(String),
-  });
   await pressInInvite('Revoke Link');
   expect(jest.mocked(Alert.alert).mock.lastCall?.[2]).toEqual([
     expect.objectContaining({ text: 'Cancel', style: 'cancel' }),

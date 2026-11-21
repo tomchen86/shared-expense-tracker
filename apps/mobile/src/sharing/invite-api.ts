@@ -1,10 +1,8 @@
 import {
   INVITE_REFUSAL_STATUS,
   isCreateGroupResponse,
-  isInviteCode,
   isInviteRefusal,
   isPutInviteResponse,
-  isReadInviteResponse,
   isRevokeInviteResponse,
   type InviteRefusal,
 } from '@shared-expense/domain/api';
@@ -106,12 +104,4 @@ export async function revokeInviteOnApi(
   const said = await request(database, 'DELETE', pathFor(groupId, code));
   if (!isRevokeInviteResponse(said) || said.code !== code)
     throw new InviteRequestError('unexpected');
-}
-
-/** A registered device can read the encrypted card using only the public code. */
-export async function readInviteOnApi(database: Database, code: string) {
-  if (!isInviteCode(code)) throw new Error('Invalid invite code');
-  const said = await request(database, 'GET', `/invites/${code}`);
-  if (!isReadInviteResponse(said)) throw new InviteRequestError('unexpected');
-  return said;
 }

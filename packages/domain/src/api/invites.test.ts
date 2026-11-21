@@ -1,12 +1,10 @@
 import {
   isInviteRefusal,
   isPutInviteResponse,
-  isReadInviteResponse,
   isRevokeInviteResponse,
 } from './invites';
 
 const code = 'A'.repeat(22);
-const card = 'ab'.repeat(41);
 
 test('the phone can distinguish invite answers from malformed or unrelated replies', () => {
   const put = { code, expiresAtMs: 2000, cursor: 0 };
@@ -18,12 +16,6 @@ test('the phone can distinguish invite answers from malformed or unrelated repli
   expect(isRevokeInviteResponse({ code })).toBe(true);
   expect(isRevokeInviteResponse(put)).toBe(false);
   expect(isRevokeInviteResponse({ code: 'invalid' })).toBe(false);
-
-  const read = { expiresAtMs: 2000, card };
-  expect(isReadInviteResponse(read)).toBe(true);
-  expect(isReadInviteResponse({ ...read, card: 'a' })).toBe(false);
-  expect(isReadInviteResponse({ ...read, expiresAtMs: '2000' })).toBe(false);
-  expect(isReadInviteResponse({ ...read, code })).toBe(false);
 
   for (const error of [
     'no-invite',

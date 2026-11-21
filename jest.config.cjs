@@ -76,8 +76,8 @@ module.exports = {
     './apps/mobile/src/sharing/api-request.ts': { branches: 100 },
     './apps/mobile/src/sharing/device-identity.ts': { branches: 100 },
     // Invite creation, card updates and the sync records that carry links between phones.
-    './apps/mobile/src/sharing/group-key.ts': { branches: 50 },
-    './apps/mobile/src/sharing/invite-api.ts': { branches: 75.75 },
+    './apps/mobile/src/sharing/group-key.ts': { branches: 100 },
+    './apps/mobile/src/sharing/invite-api.ts': { branches: 86.2 },
     './apps/mobile/src/sharing/invite-card.ts': { branches: 100 },
     './apps/mobile/src/sharing/invite-sheet.tsx': { branches: 80 },
     './apps/mobile/src/sharing/invites.ts': { branches: 94.73 },
