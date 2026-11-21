@@ -12,16 +12,12 @@ import {
 import { cardTitles, expensesRoot } from './ledger-expense-list-app';
 import {
   SORT_ORDERS,
-  cancelSortList,
   chooseSort,
   endSearch,
   listCount,
   noResultsTitle,
-  openSortList,
   searchField,
   sortArrows,
-  sortListButtons,
-  sortListOpen,
   sortName,
   sortOptions,
   typeSearch,
@@ -40,9 +36,10 @@ import type { Database } from '../../src/storage';
 
 // Runs on Android only (apps/mobile/jest.config.cjs). Both platforms share the rules of sorting
 // and search, so ledger-list-sort.test.tsx and ledger-list-search.test.tsx check them on iOS;
-// this file checks what Android shows differently: the sort button is a swap_vert icon that
-// opens a sheet titled Sort By, and the search field reports that it closed where the iOS one
-// reports its cancel button.
+// this file checks what Android shows differently: the sort button is a swap_vert icon, and the
+// search field reports that it closed where the iOS one reports its cancel button. The Material
+// menu of the sort button (LEDGER-149.1) and what the back button does to the search field
+// (SHELL-73.2) are native views, which only the E2E flows tagged android open.
 
 let mockOpen: () => Promise<Database>;
 
@@ -97,23 +94,18 @@ const spend = (title: string, date = '2026-10-30', amount = '8.75') =>
 
 // The sort button
 
-test('[LEDGER-122.2] opens the orders in a sheet titled Sort By with Cancel on Android, marks the current one, and takes the one chosen', async () => {
+test('[LEDGER-122.3] gives the sort button of the expense list on Android the five orders, marks the current one, and takes the one chosen', async () => {
   await startExpenses();
   await spend('A', '2026-10-01');
   await spend('B', '2026-10-03');
 
   expect(sortName(expensesRoot())).toBe('Sort By, Newest First');
-  await openSortList(expensesRoot());
-  expect(sortListButtons()).toEqual(expect.arrayContaining(['Cancel']));
-  await cancelSortList();
-
   expect(await sortOptions(expensesRoot())).toEqual(
     SORT_ORDERS.map((name) => [name, name === 'Newest First']),
   );
 
   await chooseSort(expensesRoot(), 'Oldest First');
 
-  expect(sortListOpen()).toBe(false);
   expect(sortName(expensesRoot())).toBe('Sort By, Oldest First');
   expect(cardTitles()).toEqual(['A', 'B']);
   expect(await sortOptions(expensesRoot())).toEqual(
@@ -121,20 +113,7 @@ test('[LEDGER-122.2] opens the orders in a sheet titled Sort By with Cancel on A
   );
 });
 
-test('[LEDGER-122.2] leaves the order as it was when the Sort By sheet is closed with Cancel', async () => {
-  await startExpenses();
-  await spend('A', '2026-10-01');
-  await spend('B', '2026-10-03');
-  await chooseSort(expensesRoot(), 'Oldest First');
-
-  await openSortList(expensesRoot());
-  await cancelSortList();
-
-  expect(sortName(expensesRoot())).toBe('Sort By, Oldest First');
-  expect(cardTitles()).toEqual(['A', 'B']);
-});
-
-test('[LEDGER-122.2] draws the sort button as a swap_vert icon on Android, in the accent color while the order is not Newest First', async () => {
+test('[LEDGER-122.3] draws the sort button as a swap_vert icon on Android, in the accent color while the order is not Newest First', async () => {
   // Before the app starts: a hook's render becomes what `screen` queries.
   const { accent } = (await renderHook(() => useThemeColors())).result.current;
   await startExpenses();
@@ -157,7 +136,7 @@ test('[LEDGER-122.2] draws the sort button as a swap_vert icon on Android, in th
   );
 });
 
-test("[LEDGER-122.2] sorts a group's screen from its own Sort By sheet on Android", async () => {
+test("[LEDGER-122.3] sorts a group's screen by its own order on Android", async () => {
   await startWithGroups({ Brisbane: ['Casey'] });
   for (const [title, amount] of [
     ['Dinner', '60.00'],
@@ -180,14 +159,14 @@ test("[LEDGER-122.2] sorts a group's screen from its own Sort By sheet on Androi
 
 // Search
 
-test('[SHELL-73.1] puts the system search field in the header of the expense list on Android, with the prompt Search', async () => {
+test('[SHELL-73.2] puts the system search field in the header of the expense list on Android, with the prompt Search', async () => {
   await startExpenses();
 
   await waitFor(() => expect(searchField('Expenses')).toBeDefined());
   expect(searchField('Expenses')?.props.placeholder).toBe('Search');
 });
 
-test('[LEDGER-125.2] [LEDGER-126.2] [SHELL-73.1] searches at each change of the text on Android, and ends the search when the field closes', async () => {
+test('[LEDGER-125.2] [LEDGER-126.2] [SHELL-73.2] searches at each change of the text on Android, and ends the search when the field closes', async () => {
   await startExpenses();
   await spend('Coffee run');
   await spend('Lunch');

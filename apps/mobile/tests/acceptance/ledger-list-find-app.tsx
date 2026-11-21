@@ -1,10 +1,4 @@
-import {
-  act,
-  fireEvent,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react-native';
+import { act, fireEvent, waitFor, within } from '@testing-library/react-native';
 import { barTitled } from './group-details-app';
 import { nameOf } from './ledger-expense-app';
 import { asRead, inContentOf } from './ledger-expense-list-app';
@@ -17,13 +11,13 @@ import type { MenuFieldProps } from '../../src/ui/menu-field';
 // list, or a group's screen. Each helper takes the list's native screen, or the title of its
 // navigation bar.
 //
-// The sort button opens a system menu on iOS (LEDGER-123.1), which only an E2E flow can open, so
-// on iOS the tests read what the list gives the component that draws the button, and choose as
-// the menu does: a component that takes the props of the ui/ MenuField, with the label Sort By,
-// the order's name as its value, the five orders as its options and the current one selected. On
-// Android the button is read as Sort By, <order> and opens a sheet titled Sort By (LEDGER-122.2).
+// The sort button opens a system menu on iOS (LEDGER-123.1) and a Material menu on Android
+// (LEDGER-149.1), which only an E2E flow can open, so the tests read what the list gives the
+// component that draws the button, and choose as the menu does: a component that takes the props
+// of the ui/ MenuField, with the label Sort By, the order's name as its value, the five orders as
+// its options and the current one selected.
 //
-// The search field is the system's, in the navigation bar (SHELL-73.1): react-native-screens'
+// The search field is the system's, in the navigation bar (SHELL-73.2): react-native-screens'
 // search bar. The tests type by reporting the text the way that field does, and end a search as
 // it reports its cancel button on iOS and its closing on Android.
 
@@ -32,11 +26,7 @@ type HostView = ReturnType<typeof nativeViews>[number];
 const onAndroid = () =>
   /-android\.test\./.test(expect.getState().testPath ?? '');
 
-const isSelected = (view: HostView) =>
-  view.props.accessibilityState?.selected === true ||
-  view.props['aria-selected'] === true;
-
-/** The orders a list offers, in the order of the Sort By list (LEDGER-122.2). */
+/** The orders a list offers, in the order of the Sort By list (LEDGER-122.3). */
 export const SORT_ORDERS = [
   'Newest First',
   'Oldest First',
@@ -47,7 +37,7 @@ export const SORT_ORDERS = [
 
 // The sort button
 
-/** On iOS: what the list in `root` gives the component that draws its sort button, and that component's view. */
+/** What the list in `root` gives the component that draws its sort button, and that component's view. */
 function sortMenu(root: HostView) {
   return componentsIn(root, (type) => typeof type === 'function')
     .map(({ props, view }) => ({ props: props as MenuFieldProps, view }))
@@ -61,25 +51,11 @@ function sortMenu(root: HostView) {
     );
 }
 
-/** On Android: the button of the list in `root` that is read as Sort By, <order>. */
-const sortButtonView = (root: HostView) =>
-  within(root)
-    .queryAllByRole('button')
-    .find(
-      (button) =>
-        /^Sort By, /.test(nameOf(button)) && inContentOf(root, button),
-    );
-
 /** The view of the sort button of the list in `root`, if it shows one. */
-export const sortView = (root: HostView) =>
-  onAndroid() ? sortButtonView(root) : sortMenu(root)?.view;
+export const sortView = (root: HostView) => sortMenu(root)?.view;
 
 /** What a screen reader reads for the sort button, Sort By, <order>; undefined while the list shows none. */
 export function sortName(root: HostView): string | undefined {
-  if (onAndroid()) {
-    const button = sortButtonView(root);
-    return button && asRead(nameOf(button));
-  }
   const menu = sortMenu(root);
   return menu && `${menu.props.label}, ${menu.props.value}`;
 }
@@ -102,81 +78,24 @@ export function sortArrows(root: HostView) {
     .map((icon) => ({ name: icon.name, color: icon.color }));
 }
 
-/** The open Sort By list on Android: the sheet around a Sort By header. */
-function sortList(): HostView | undefined {
-  const header = screen.queryAllByRole('header', { name: 'Sort By' }).at(-1);
-  if (header === undefined) return undefined;
-  for (let outer = header.parent; outer; outer = outer.parent)
-    if (String(outer.type) === 'Modal') return outer;
-  return header.parent ?? header;
-}
-
-/** Whether the Sort By sheet is open, on Android. */
-export const sortListOpen = () => sortList() !== undefined;
-
-/** Presses the sort button on Android and waits for the Sort By sheet. */
-export async function openSortList(root: HostView) {
-  const button = sortButtonView(root);
-  if (button === undefined) throw new Error('The list shows no sort button');
-  await fireEvent.press(button);
-  await waitFor(() => expect(sortList()).toBeDefined());
-  await settle();
-  return sortList()!;
-}
-
-/** The buttons of the open Sort By sheet on Android, by name, its options and Cancel alike. */
-export const sortListButtons = () =>
-  within(sortList()!)
-    .queryAllByRole('button')
-    .map((button) => asRead(nameOf(button)));
-
-/** Presses Cancel on the open Sort By sheet, on Android. */
-export async function cancelSortList() {
-  await fireEvent.press(
-    within(sortList()!).getByRole('button', { name: 'Cancel' }),
-  );
-  await waitFor(() => expect(sortList()).toBeUndefined());
-  await settle();
-}
-
-/**
- * What the Sort By list of the list in `root` holds, top to bottom, as [name, marked as the
- * current one]. On Android this opens the sheet and closes it again with Cancel.
- */
+/** What the Sort By list of the list in `root` holds, top to bottom, as [name, marked as the current one]. */
 export async function sortOptions(root: HostView) {
-  if (!onAndroid()) {
-    const menu = sortMenu(root);
-    if (menu === undefined) throw new Error('The list shows no sort button');
-    return menu.props.options.map(
-      (option) =>
-        [option.name, menu.props.selected.includes(option.id)] as const,
-    );
-  }
-  const list = await openSortList(root);
-  const options = within(list)
-    .queryAllByRole('button')
-    .filter((button) => nameOf(button) !== 'Cancel')
-    .map((button) => [asRead(nameOf(button)), isSelected(button)] as const);
-  await cancelSortList();
-  return options;
+  const menu = sortMenu(root);
+  if (menu === undefined) throw new Error('The list shows no sort button');
+  return menu.props.options.map(
+    (option) => [option.name, menu.props.selected.includes(option.id)] as const,
+  );
 }
 
 /** Chooses the order named `order` in the Sort By list of the list in `root`. */
 export async function chooseSort(root: HostView, order: string) {
-  if (!onAndroid()) {
-    const menu = sortMenu(root);
-    if (menu === undefined) throw new Error('The list shows no sort button');
-    const option = menu.props.options.find(
-      (candidate) => candidate.name === order,
-    );
-    if (option === undefined) throw new Error(`Sort By has no ${order}`);
-    await act(async () => menu.props.onSelect(option.id));
-    await settle();
-    return;
-  }
-  const list = await openSortList(root);
-  await fireEvent.press(within(list).getByRole('button', { name: order }));
-  await waitFor(() => expect(sortList()).toBeUndefined());
+  const menu = sortMenu(root);
+  if (menu === undefined) throw new Error('The list shows no sort button');
+  const option = menu.props.options.find(
+    (candidate) => candidate.name === order,
+  );
+  if (option === undefined) throw new Error(`Sort By has no ${order}`);
+  await act(async () => menu.props.onSelect(option.id));
   await settle();
 }
 

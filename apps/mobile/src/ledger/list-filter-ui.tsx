@@ -10,9 +10,12 @@ import {
   View,
 } from 'react-native';
 import { SymbolView } from 'expo-symbols';
-import { CapsuleButton } from '../ui/capsule';
 import { FadeText } from '../ui/fade-text';
-import { AmountCapsule, CapsuleMenu } from '../ui/filter-capsules';
+import {
+  AmountCapsule,
+  CapsuleButton,
+  CapsuleMenu,
+} from '../ui/filter-capsules';
 import { GroupedSection } from '../ui/grouped-section';
 import { MenuField } from '../ui/menu-field';
 import { useThemeColors } from '../ui/theme';
@@ -152,7 +155,7 @@ export function FilterRows({
 }) {
   const colors = useThemeColors();
   const { filter } = state;
-  const { prompt, sheet } = useFilterNamePrompt((name) =>
+  const { prompt, dialog } = useFilterNamePrompt((name) =>
     state.editSaved(name, 'save'),
   );
   const alreadySaved = state.selectedNames.size > 0;
@@ -269,29 +272,21 @@ export function FilterRows({
           </Text>
         </Pressable>
       </GroupedSection>
-      {sheet}
+      {dialog}
     </>
   );
 }
 
 export function FilterCapsules({
   state,
-  openFilters,
   onAmountPresented,
 }: {
   state: ListFilterState;
-  openFilters: () => void;
   onAmountPresented: (open: boolean) => void;
 }) {
   const { filter, change } = state;
   function capsule(menu: FilterMenu) {
-    return (
-      <CapsuleMenu
-        {...menuProps(menu, change)}
-        text={menuText(menu)}
-        onOpenFilters={openFilters}
-      />
-    );
+    return <CapsuleMenu {...menuProps(menu, change)} text={menuText(menu)} />;
   }
   return (
     <ScrollView
@@ -319,7 +314,6 @@ export function FilterCapsules({
         min={filter.min}
         max={filter.max}
         onAmount={(side, text) => change(setAmount(side, text))}
-        onOpenFilters={openFilters}
         onPresented={onAmountPresented}
       />
       {state.currency && capsule(state.currency)}

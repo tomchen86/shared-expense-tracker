@@ -900,7 +900,7 @@ test("[INSIGHTS-50.1] pushes one details when a card is pressed twice, and goes 
 test('[INSIGHTS-51.1] offers no Delete expense action on the cards of a personal category, no + button, no sort button, no search and no action in its bar', async () => {
   await startWithCoffeeAndDinner();
   // On the expense list the same two cards can be deleted (LEDGER-71.3), and the list has a
-  // sort button and a search (LEDGER-122.2, LEDGER-128.1).
+  // sort button and a search (LEDGER-122.3, LEDGER-128.1).
   await tapTab('Expenses');
   await waitFor(() => expect(cardTitles()).toEqual(['Dinner', 'Coffee run']));
   for (const title of ['Dinner', 'Coffee run'])

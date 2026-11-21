@@ -2,23 +2,20 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { Alert } from 'react-native';
-import { fireEvent, waitFor, within } from '@testing-library/react-native';
+import { waitFor, within } from '@testing-library/react-native';
 import {
-  addExpense,
   nameOf,
   phoneDatabase,
   resetPhone,
   startExpenses,
 } from './ledger-expense-app';
-import { cardTitles, expensesRoot } from './ledger-expense-list-app';
+import { expensesRoot } from './ledger-expense-list-app';
 import {
   PERIOD_OPTIONS,
   chooseDateOption,
   choosePeriod,
-  closeFilters,
   dateOptions,
   dateRow,
-  expectFilters,
   expectPeriod,
   filtersBarButtons,
   filtersOpen,
@@ -36,8 +33,9 @@ import type { Database } from '../../src/storage';
 
 // Runs on Android only (apps/mobile/jest.config.cjs). Both platforms share the rules of a list's
 // period, so ledger-list-period.test.tsx checks them on iOS; this file checks what Android shows
-// differently: the name on the period row is a button that opens Filters, the Date list is a
-// sheet, the dates of a custom range are drawn by the app, and Filters is a header button.
+// differently: the Date list is a sheet, the dates of a custom range are drawn by the app, and
+// Filters is a header button. The name on the period row is a Material menu (LEDGER-111.2), a
+// native view that only the E2E flows tagged android open.
 
 let mockOpen: () => Promise<Database>;
 
@@ -84,29 +82,6 @@ beforeEach(() => {
 afterEach(() => {
   jest.restoreAllMocks();
   fs.rmSync(directory, { recursive: true, force: true });
-});
-
-/** The button on the expense list that a screen reader reads as Choose period. <name>. */
-const periodButton = () =>
-  within(expensesRoot()).queryByRole('button', { name: /^Choose period\. / });
-
-test('[LEDGER-111.1] opens Filters from the name on the period row, a button read as Choose period. <name>, and takes the period chosen there', async () => {
-  await startExpenses();
-  await addExpense({ title: 'Coffee run', date: '2026-10-01' });
-  await addExpense({ title: 'Lunch', date: '2026-09-30' });
-  await choosePeriod('Expenses', 'This Month');
-
-  const button = periodButton();
-  expect(button && nameOf(button)).toBe('Choose period. October 2026');
-  await fireEvent.press(button!);
-  await expectFilters();
-
-  expect(dateRow()).toBe('Date, This Month');
-  await chooseDateOption('Last Month');
-  await closeFilters();
-
-  expect(nameOf(periodButton()!)).toBe('Choose period. September 2026');
-  expect(cardTitles()).toEqual(['Lunch']);
 });
 
 test('[LEDGER-108.2] steps to the month before with Previous period on Android', async () => {

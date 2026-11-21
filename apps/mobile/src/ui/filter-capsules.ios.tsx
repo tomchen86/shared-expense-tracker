@@ -25,6 +25,8 @@ import type { AmountCapsuleProps, CapsuleMenuProps } from './filter-capsules';
 import { MenuOverlay } from './menu-field.ios';
 import { usePopoverBackdrop } from './popover-backdrop';
 
+export { CapsuleButton } from './capsule';
+
 export function CapsuleMenu(props: CapsuleMenuProps) {
   return (
     <View onStartShouldSetResponder={() => true} style={styles.trigger}>

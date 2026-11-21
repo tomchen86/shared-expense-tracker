@@ -13,6 +13,6 @@ export function useFilterNamePrompt(onSave: (name: string) => void) {
         'plain-text',
         suggested,
       ),
-    sheet: null,
+    dialog: null,
   };
 }
