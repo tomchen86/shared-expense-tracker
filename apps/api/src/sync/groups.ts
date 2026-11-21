@@ -7,10 +7,28 @@ import {
   type UploadEventsRequest,
   type UploadEventsResponse,
 } from '@shared-expense/domain/api';
+import type { TransactionSql } from 'postgres';
 import type { Sql } from '../database/connect';
 
 /** Why the event API refuses a request that passed the checks before routing. */
 export type EventApiRefusal = GroupRefusal | { error: 'request' };
+
+/** Only a member device may lock the group for a write. A waiter sees the last writer's cursor. */
+export async function lockMemberGroup(
+  transaction: TransactionSql,
+  groupId: string,
+  deviceId: string,
+) {
+  const rows = await transaction<
+    { epoch: string; last_sequence: string; stored_bytes: string }[]
+  >`
+    SELECT g.epoch, g.last_sequence, g.stored_bytes
+    FROM groups g
+    JOIN group_members m ON m.group_id = g.id
+    WHERE g.id = ${groupId} AND m.device_id = ${deviceId}
+    FOR UPDATE OF g`;
+  return rows.at(0);
+}
 
 /**
  * Creates the group with the device as its only member device (SYNC-45.1), or finds that
@@ -64,16 +82,7 @@ export function storeEvents(
   return sql.begin<UploadEventsResponse | GroupRefusal>(
     'isolation level read committed',
     async (transaction) => {
-      // Only a member device gets the lock. After waiting for it, this reads the row as
-      // the upload that held it left it.
-      const [group] = await transaction<
-        { epoch: string; last_sequence: string; stored_bytes: string }[]
-      >`
-        SELECT g.epoch, g.last_sequence, g.stored_bytes
-        FROM groups g
-        JOIN group_members m ON m.group_id = g.id
-        WHERE g.id = ${groupId} AND m.device_id = ${deviceId}
-        FOR UPDATE OF g`;
+      const group = await lockMemberGroup(transaction, groupId, deviceId);
       if (!group) return { error: 'not-a-member' };
 
       // The events the group has are answered with their numbers and otherwise ignored.

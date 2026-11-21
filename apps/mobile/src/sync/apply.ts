@@ -70,6 +70,7 @@ async function canMergeInGroup(
   event: SyncEvent,
 ) {
   if (event.type === 'group') return event.id === groupId;
+  if (event.type === 'invite') return false;
   const [table, owner] = recordOwners[event.type];
   // Partial records and tombstones can belong to another group even without a visible row.
   const foreign = await tx.all(
