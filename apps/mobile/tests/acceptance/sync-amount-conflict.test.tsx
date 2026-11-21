@@ -6,6 +6,7 @@ import {
   editExpense,
   expectFormClosed,
   fillForm,
+  inTreeOrder,
   openEditExpense,
   press,
   restart,
@@ -13,6 +14,7 @@ import {
 import {
   card,
   detailLines,
+  drawnTexts,
   linesIn,
   openDetails,
   readOut,
@@ -57,14 +59,18 @@ import {
   NO_EXPENSES,
   alertsShown,
   goBackFrom,
+  largeTitle,
   screenOf,
   textsOn,
 } from './group-details-app';
-import { iconNames } from './shell-actions-app';
+import { openGroupInsights, openInsights } from './insights-app';
+import { categoryCard, openCategory } from './insights-category-app';
+import { iconNames, iconsIn } from './shell-actions-app';
 import {
   allowWrites,
   failWrites,
   failWritesAfter,
+  holdWrites,
   settle,
 } from './shell-appearance-app';
 import {
@@ -473,6 +479,39 @@ test("[SYNC-129.1] [SYNC-28.2] changes nothing when the phone's own events come 
   await expectToReview('Brisbane', []);
 });
 
+test('[SYNC-129.1] settles an override when the amount is changed again: an event that had seen the new amount does not mark the expense', async () => {
+  const { brisbane, dinner } = await overridden();
+  await expectToReview('Brisbane', ['Dinner']);
+  await tapTab('Expenses');
+
+  const [change] = await eventsOf(() =>
+    editExpense(dinner.id, { amount: '70.00' }),
+  );
+
+  expect(change.stamp).toEqual(stamped(1, T120));
+  await showGroup('Brisbane');
+  await waitFor(() =>
+    expect(linesIn(groupCard('Brisbane', 'Dinner'))).toContain('$70.00'),
+  );
+  await expectToReview('Brisbane', []);
+
+  // phone-c had seen the 70.00. Were the expense still held as overridden, it would need
+  // review again as soon as its amount differs from yours.
+  await receive(
+    brisbane,
+    await theirChange(dinner.id, {
+      stamp: at(T180, 0, THIRD),
+      base: stamped(1, T120),
+      money: await moneyOf(8000),
+    }),
+  );
+
+  await waitFor(() =>
+    expect(linesIn(groupCard('Brisbane', 'Dinner'))).toContain('$80.00'),
+  );
+  await expectToReview('Brisbane', []);
+});
+
 // Events that override it
 
 test("[SYNC-130.1] marks an expense whose amount another phone changed without having seen this phone's change", async () => {
@@ -855,6 +894,28 @@ test('[SYNC-132.1] is not undone when the overriding event arrives again, and is
   });
 });
 
+test('[SYNC-132.1] does not mark the expense for an event that had seen what Use Mine wrote', async () => {
+  const { brisbane, dinner } = await overridden();
+  await choose(USE_MINE);
+
+  // phone-c had seen the event of Use Mine, T+120000/1 of this phone. Were the expense
+  // still held as overridden, it would need review again now that its amount differs.
+  await receive(
+    brisbane,
+    await theirChange(dinner.id, {
+      stamp: at(T180, 0, THIRD),
+      base: stamped(1, T120),
+      money: await moneyOf(8000),
+    }),
+  );
+
+  await showGroup('Brisbane');
+  await waitFor(() =>
+    expect(linesIn(groupCard('Brisbane', 'Dinner'))).toContain('$80.00'),
+  );
+  await expectToReview('Brisbane', []);
+});
+
 test('[SYNC-132.1] [LEDGER-154.1] writes nothing when a write of Use Mine fails, whichever it is, says so, and writes one event once it works', async () => {
   await overridden();
   await openFromGroup('Brisbane', 'Dinner');
@@ -920,7 +981,44 @@ test('[LEDGER-151.1] draws the warning icon before the text of the mark, and rea
   await waitFor(() => expect(linesIn(card('Dinner'))).toContain(MARK));
 
   expect(iconNames(card('Dinner'), 'ios')).toEqual([MARK_ICON.ios]);
+  const [icon] = iconsIn(card('Dinner'), 'ios');
+  const [text] = drawnTexts(card('Dinner'), MARK);
+  // After the category, and before the words of the mark.
+  expect(
+    inTreeOrder(
+      drawnTexts(card('Dinner'), 'Food & Dining')[0],
+      icon.view,
+      text,
+    ),
+  ).toBe(true);
   expect(readOut(card('Dinner'))).not.toContain('exclamationmark');
+});
+
+test("[LEDGER-151.1] shows the mark on the cards of a category's expenses, opened from the group's Insights and from your own", async () => {
+  const { brisbane } = await overridden();
+
+  await openGroupInsights(brisbane);
+  await openCategory('Food & Dining', 'Groups');
+
+  const ofGroup = ['Dinner', '$90.00', 'Food & Dining', 'Paid by Casey', MARK];
+  await waitFor(() =>
+    expect(
+      shownInOrder(
+        linesIn(categoryCard('Food & Dining', 'Dinner', 'Groups')),
+        ofGroup,
+      ),
+    ).toEqual(ofGroup),
+  );
+
+  await openInsights();
+  await openCategory('Food & Dining');
+
+  const ofYours = ['Dinner', '$30.00', 'Food & Dining', 'Brisbane', MARK];
+  await waitFor(() =>
+    expect(
+      shownInOrder(linesIn(categoryCard('Food & Dining', 'Dinner')), ofYours),
+    ).toEqual(ofYours),
+  );
 });
 
 test('[LEDGER-151.1] shows no mark on a card of an expense that does not need review', async () => {
@@ -1247,13 +1345,34 @@ test('[LEDGER-154.1] saves once when Use Mine is pressed twice before the save h
   await expectBlockOn('Groups');
   const events = (await unsent()).length;
   const button = blockButtonOn('Groups', USE_MINE)!;
+  const writes = holdWrites();
 
   await fireEvent.press(button);
   await fireEvent.press(button);
+  await writes.release();
   await settle();
 
   await waitFor(() => expect(detailLinesOn('Groups')).not.toContain(MARK));
   expect(await unsent()).toHaveLength(events + 1);
+});
+
+test('[LEDGER-153.1] does not save Use Mine when it is pressed before Keep Current has been saved', async () => {
+  await overridden();
+  await openFromGroup('Brisbane', 'Dinner');
+  await expectBlockOn('Groups');
+  const events = (await unsent()).length;
+  const keep = blockButtonOn('Groups', KEEP_CURRENT)!;
+  const mine = blockButtonOn('Groups', USE_MINE)!;
+  const writes = holdWrites();
+
+  await fireEvent.press(keep);
+  await fireEvent.press(mine);
+  await writes.release();
+  await settle();
+
+  await waitFor(() => expect(detailLinesOn('Groups')).not.toContain(MARK));
+  expect(await unsent()).toHaveLength(events);
+  expect((await expenseTitled('Dinner')).amountMinor).toBe(9000);
 });
 
 test('[LEDGER-154.1] counts Use Mine as the last change of the expense', async () => {
@@ -1306,10 +1425,19 @@ test("[GROUPS-107.1] counts the expenses to review in a button under the group's
   expect(iconNames(button, 'ios')).toEqual([MARK_ICON.ios]);
   const shown = [needsReview(1), '›'];
   expect(shownInOrder(linesIn(button), shown)).toEqual(shown);
-  // Right under the large title, above the total and the cards.
+  // Right under the large title, above the period row, the total and the cards.
   const texts = textsOn('Brisbane');
   expect(texts[0]).toBe(needsReview(1));
   expect(texts.indexOf('$90.00')).toBeGreaterThan(0);
+  const [period] = drawnTexts(screenOf('Brisbane'), 'Group Total');
+  expect(
+    inTreeOrder(
+      largeTitle('Brisbane')!,
+      button,
+      period,
+      groupCard('Brisbane', 'Dinner'),
+    ),
+  ).toBe(true);
 });
 
 test('[GROUPS-107.1] counts every expense to review, and opens the first in the order of dates whatever the order of the screen', async () => {
