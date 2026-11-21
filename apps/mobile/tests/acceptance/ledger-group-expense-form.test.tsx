@@ -904,7 +904,7 @@ test("[LEDGER-55.1] lists the group's categories in a group expense's Edit Expen
   ).toEqual([...DEFAULT_NAMES, 'Flights']);
 });
 
-test('[LEDGER-56.1] splits a changed amount again in the stored order', async () => {
+test('[LEDGER-56.2] splits a changed amount again in the stored order', async () => {
   await startWithGroups(BRISBANE);
   const ids = await memberIds(file, 'Brisbane');
   const dinner = await addDinner();
@@ -927,7 +927,7 @@ test('[LEDGER-56.1] splits a changed amount again in the stored order', async ()
   );
 });
 
-test('[LEDGER-56.1] changes the payer and keeps the split', async () => {
+test('[LEDGER-56.2] changes the payer and keeps the split', async () => {
   await startWithGroups(BRISBANE);
   const ids = await memberIds(file, 'Brisbane');
   const dinner = await addDinner();
@@ -941,7 +941,7 @@ test('[LEDGER-56.1] changes the payer and keeps the split', async () => {
   expect(saved.shares).toEqual(dinner.shares);
 });
 
-test('[LEDGER-56.1] puts someone added to the split at the end', async () => {
+test('[LEDGER-56.2] puts someone added to the split at the end', async () => {
   await startWithGroups(BRISBANE);
   const ids = await memberIds(file, 'Brisbane');
   await addGroupExpense({
@@ -963,7 +963,7 @@ test('[LEDGER-56.1] puts someone added to the split at the end', async () => {
   );
 });
 
-test('[LEDGER-56.1] moves someone taken out and chosen again to the end of the split', async () => {
+test('[LEDGER-56.2] moves someone taken out and chosen again to the end of the split', async () => {
   await startWithGroups(BRISBANE);
   const ids = await memberIds(file, 'Brisbane');
   const dinner = await addDinner();

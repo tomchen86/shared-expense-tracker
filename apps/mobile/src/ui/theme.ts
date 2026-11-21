@@ -15,6 +15,7 @@ const LIGHT_COLORS: AndroidColors = {
   separator: '#c6c6c8',
   accent: '#007aff',
   error: '#b42318',
+  warning: '#e65100',
 };
 
 const DARK_COLORS: AndroidColors = {
@@ -29,6 +30,7 @@ const DARK_COLORS: AndroidColors = {
   separator: '#38383a',
   accent: '#0a84ff',
   error: '#ff453a',
+  warning: '#ffb74d',
 };
 
 export function colorsForScheme(scheme: ColorSchemeName | null): AndroidColors {

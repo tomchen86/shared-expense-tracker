@@ -16,7 +16,9 @@ import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
+import { participantName } from './expense-card';
 import { formatExpenseDate } from './format-date';
+import { ReviewBlock } from './review-block';
 import { useExpenses, type ExpenseView } from './use-expenses';
 import { useTrashActions } from './trash-provider';
 
@@ -134,6 +136,9 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
                 </Pressable>
               </>
             )}
+            {expense.yours && (
+              <ReviewBlock expense={expense} yours={expense.yours} />
+            )}
             <Text style={[styles.title, { color: colors.text }]}>
               {expense.title}
             </Text>
@@ -206,25 +211,21 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
                       {heading}
                     </Text>
                     <GroupedSection>
-                      {allocations.map((share) => {
-                        const member = expense.members.find(
-                          (item) => item.id === share.participant,
-                        );
-                        return (
-                          <DetailRow
-                            key={share.participant}
-                            label={
-                              (member?.name ?? share.participant) +
-                              (member?.userId === userId ? ' (You)' : '')
-                            }
-                            value={formatCurrency(
-                              share.amountMinor,
-                              expense.currency,
-                              locale,
-                            )}
-                          />
-                        );
-                      })}
+                      {allocations.map((share) => (
+                        <DetailRow
+                          key={share.participant}
+                          label={participantName(
+                            expense,
+                            share.participant,
+                            userId,
+                          )}
+                          value={formatCurrency(
+                            share.amountMinor,
+                            expense.currency,
+                            locale,
+                          )}
+                        />
+                      ))}
                     </GroupedSection>
                   </View>
                 ))}

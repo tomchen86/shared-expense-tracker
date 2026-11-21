@@ -6,7 +6,20 @@ import { SwipeAction, useSidewaysDragIsNoPress } from '../ui/swipe-action';
 import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
 import { formatExpenseDate } from './format-date';
+import { REPLACED, ReviewIcon } from './review-mark';
 import type { ExpenseView } from './use-expenses';
+
+/** What an expense's details call the participant: by name as it is now, and yours with " (You)" (LEDGER-66.3). */
+export function participantName(
+  expense: ExpenseView,
+  participant: string,
+  userId: string,
+) {
+  const member = expense.members.find((item) => item.id === participant);
+  return (
+    (member?.name ?? participant) + (member?.userId === userId ? ' (You)' : '')
+  );
+}
 
 /** The trailing label on an expense card viewed in its group's ledger. */
 export function paidBy(expense: ExpenseView, userId: string) {
@@ -38,7 +51,12 @@ export function ExpenseCard({
     trailing ??
     (expense.group &&
       `${expense.group.name}${expense.group.archived ? ' · Archived' : ''}`);
-  const metadata = [expense.categoryLabel, ...(right ? [right] : []), date];
+  const metadata = [
+    expense.categoryLabel,
+    ...(right ? [right] : []),
+    date,
+    ...(expense.yours ? [REPLACED] : []),
+  ];
   const card = (
     <GroupedSection>
       <Pressable
@@ -86,6 +104,14 @@ export function ExpenseCard({
             </FadeText>
           )}
         </View>
+        {expense.yours && (
+          <View style={styles.mark}>
+            <ReviewIcon size={16} />
+            <Text style={[styles.markText, { color: colors.text }]}>
+              {REPLACED}
+            </Text>
+          </View>
+        )}
       </Pressable>
     </GroupedSection>
   );
@@ -124,4 +150,7 @@ const styles = StyleSheet.create({
   shrinks: { flexShrink: 1 },
   gap: { flexGrow: 1, minWidth: 4 },
   detail: { fontSize: 14 },
+  mark: { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  // Wraps at large text sizes instead of fading out: the mark is read whole (LEDGER-155.1).
+  markText: { flexShrink: 1, fontSize: 14 },
 });
