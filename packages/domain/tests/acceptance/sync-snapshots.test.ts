@@ -93,10 +93,30 @@ const withUnit = (record: SyncSnapshotRecord, name: string, unit: unknown) => ({
   units: { ...record.units, [name]: unit },
 });
 
+const CODE = '3q2-7wEjRWeJq83vEjRWeA';
+const SECRET = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';
+const link = (
+  expiresAtMs: unknown = 1795588320000,
+  secret: unknown = SECRET,
+) => ({
+  secret,
+  expiresAtMs,
+});
+/** An invite as a snapshot holds it: its one unit, at one stamp. */
+const invite = (
+  value: unknown = link(),
+  id = CODE,
+  stamp: SyncStamp = at(2000, 0, 'phone-a'),
+) =>
+  held(
+    { type: 'invite', id, units: { link: { value, stamp } } } as SyncRecord,
+    stamp,
+  );
+
 const REFUSED = { status: 'refused' };
 const UNSUPPORTED = { status: 'unsupported' };
 
-describe('SYNC-98.1', () => {
+describe('SYNC-98.2', () => {
   const EVERY_KIND = [DINNER_RECORD, BLAKE, TAXI, FUEL_GONE, HOTELS_GONE];
 
   test.each<[string, unknown]>([
@@ -116,7 +136,7 @@ describe('SYNC-98.1', () => {
       'an expense and a category that share an ID',
       snapshot([DINNER_RECORD, whole('category', 'dinner', FUEL_CATEGORY)]),
     ],
-  ])('[SYNC-98.1] a snapshot with %s can be imported', (_case, content) => {
+  ])('[SYNC-98.2] a snapshot with %s can be imported', (_case, content) => {
     expect(checkSyncSnapshot(content)).toEqual({
       status: 'valid',
       snapshot: content,
@@ -130,7 +150,7 @@ describe('SYNC-98.1', () => {
       'format version 3, an unknown field and a record that is not valid',
       { ...snapshot([{ type: 'settlement' }], { version: 3 }), extra: true },
     ],
-  ])('[SYNC-98.1] reports %s as a version it does not know', (_c, content) => {
+  ])('[SYNC-98.2] reports %s as a version it does not know', (_c, content) => {
     expect(checkSyncSnapshot(content)).toEqual(UNSUPPORTED);
   });
 
@@ -139,7 +159,7 @@ describe('SYNC-98.1', () => {
     ['a text', 'snapshot'],
     ['a number', 7],
     ['an array', [snapshot()]],
-  ])('[SYNC-98.1] %s is no snapshot', (_case, content) => {
+  ])('[SYNC-98.2] %s is no snapshot', (_case, content) => {
     expect(checkSyncSnapshot(content)).toEqual(REFUSED);
   });
 
@@ -153,7 +173,7 @@ describe('SYNC-98.1', () => {
     ['event version 1.5', snapshot([], { eventVersion: 1.5 })],
     ['event version "1"', snapshot([], { eventVersion: '1' })],
     ['no event version', without(snapshot(), 'eventVersion')],
-  ])('[SYNC-98.1] refuses a snapshot with %s', (_case, content) => {
+  ])('[SYNC-98.2] refuses a snapshot with %s', (_case, content) => {
     expect(checkSyncSnapshot(content)).toEqual(REFUSED);
   });
 
@@ -181,7 +201,7 @@ describe('SYNC-98.1', () => {
         }),
       ]),
     ],
-  ])('[SYNC-98.1] refuses a snapshot with %s', (_case, content) => {
+  ])('[SYNC-98.2] refuses a snapshot with %s', (_case, content) => {
     expect(checkSyncSnapshot(content)).toEqual(REFUSED);
   });
 
@@ -192,7 +212,7 @@ describe('SYNC-98.1', () => {
     ['sequence number 1.5', { sequence: 1.5 }],
     ['sequence number 2^53', { sequence: Number.MAX_SAFE_INTEGER + 1 }],
     ['sequence number "0"', { sequence: '0' }],
-  ])('[SYNC-98.1] refuses a snapshot with %s', (_case, changes) => {
+  ])('[SYNC-98.2] refuses a snapshot with %s', (_case, changes) => {
     expect(
       checkSyncSnapshot(snapshot([], changes as Record<string, unknown>)),
     ).toEqual(REFUSED);
@@ -209,7 +229,7 @@ describe('SYNC-98.1', () => {
         withUnit(DINNER_RECORD, 'title', { value: 'Supper', stamp: at(2000) }),
       ],
     ],
-  ])('[SYNC-98.1] refuses a snapshot with %s', (_case, records) => {
+  ])('[SYNC-98.2] refuses a snapshot with %s', (_case, records) => {
     expect(checkSyncSnapshot(snapshot(records))).toEqual(REFUSED);
   });
 
@@ -222,7 +242,7 @@ describe('SYNC-98.1', () => {
       withUnit(BLAKE, 'archived', { value: false, stamp: CREATED }),
     ],
     ['a seeded flag that is a text', { ...BLAKE, seeded: 'yes' }],
-  ])('[SYNC-98.1] refuses a record with %s', (_case, record) => {
+  ])('[SYNC-98.2] refuses a record with %s', (_case, record) => {
     expect(checkSyncSnapshot(snapshot([record]))).toEqual(REFUSED);
   });
 
@@ -258,11 +278,11 @@ describe('SYNC-98.1', () => {
       'a removed flag that is a text',
       withUnit(BLAKE, 'removed', { value: 'true', stamp: CREATED }),
     ],
-  ])('[SYNC-98.1] refuses a record with %s', (_case, record) => {
+  ])('[SYNC-98.2] refuses a record with %s', (_case, record) => {
     expect(checkSyncSnapshot(snapshot([record]))).toEqual(REFUSED);
   });
 
-  test('[SYNC-98.1] refuses a tombstone on the group record', () => {
+  test('[SYNC-98.2] refuses a tombstone on the group record', () => {
     expect(checkSyncSnapshot(snapshot()).status).toBe('valid');
     expect(
       checkSyncSnapshot(
@@ -273,7 +293,7 @@ describe('SYNC-98.1', () => {
     ).toEqual(REFUSED);
   });
 
-  test('[SYNC-98.1] takes the money of a record that adds up in a supported currency', () => {
+  test('[SYNC-98.2] takes the money of a record that adds up in a supported currency', () => {
     expect(DINNER_MONEY.currency).toBe('USD');
     expect(checkSyncSnapshot(snapshot([DINNER_RECORD])).status).toBe('valid');
   });
@@ -291,7 +311,7 @@ describe('SYNC-98.1', () => {
       "a tombstone's stamp with a fraction",
       { ...FUEL_GONE, deleted: at(1000.5) },
     ],
-  ])('[SYNC-98.1] refuses a record with %s', (_case, record) => {
+  ])('[SYNC-98.2] refuses a record with %s', (_case, record) => {
     expect(checkSyncSnapshot(snapshot([record]))).toEqual(REFUSED);
   });
 
@@ -305,7 +325,7 @@ describe('SYNC-98.1', () => {
       'a group record of another group',
       [whole('group', 'tokyo', { name: 'Tokyo' }), UNCATEGORIZED],
     ],
-  ])('[SYNC-98.1] refuses a snapshot with %s', (_case, records) => {
+  ])('[SYNC-98.2] refuses a snapshot with %s', (_case, records) => {
     expect(checkSyncSnapshot(snapshot([], { records }))).toEqual(REFUSED);
   });
 
@@ -362,9 +382,65 @@ describe('SYNC-98.1', () => {
       },
     ],
   ])(
-    '[SYNC-98.1] refuses a snapshot whose Uncategorized %s',
+    '[SYNC-98.2] refuses a snapshot whose Uncategorized %s',
     (_case, changes) => {
       expect(checkSyncSnapshot(snapshot([], changes))).toEqual(REFUSED);
+    },
+  );
+  test.each([null, 'Dinner', 7, [DINNER_RECORD]])(
+    '[SYNC-98.2] a snapshot cannot be taken in when a record is %p and no object',
+    (record) => {
+      expect(checkSyncSnapshot(snapshot([record]))).toEqual(REFUSED);
+    },
+  );
+
+  test('[SYNC-98.2] a snapshot with an invite that is not revoked can be taken in', () => {
+    for (const records of [
+      [invite()],
+      [invite(link(0))],
+      [DINNER_RECORD, invite(), BLAKE],
+    ]) {
+      const content = snapshot(records);
+      expect(checkSyncSnapshot(content)).toEqual({
+        status: 'valid',
+        snapshot: content,
+      });
+    }
+  });
+
+  test.each([
+    ['its ID is 21 characters', invite(link(), '3q2-7wEjRWeJq83vEjRWe')],
+    [
+      'its ID ends in a character 16 bytes cannot give',
+      invite(link(), '3q2-7wEjRWeJq83vEjRWeB'),
+    ],
+    [
+      'its string is a character short',
+      invite(link(1795588320000, SECRET.slice(1))),
+    ],
+    ['its expiry is 1.5', invite(link(1.5))],
+    ['its link holds one thing more', invite({ ...link(), name: 'Brisbane' })],
+    [
+      'it has a unit an invite does not have',
+      withUnit(invite(), 'name', { value: 'Brisbane', stamp: CREATED }),
+    ],
+    ['it has no unit', { ...invite(), units: {} }],
+    [
+      'it is only a tombstone',
+      held(
+        {
+          type: 'invite',
+          id: CODE,
+          deleted: at(3000, 0, 'phone-b'),
+          units: {},
+        } as SyncRecord,
+        CREATED,
+      ),
+    ],
+  ])(
+    '[SYNC-98.2] a snapshot with an invite cannot be taken in when %s',
+    (_, record) => {
+      expect(checkSyncSnapshot(snapshot([record]))).toEqual(REFUSED);
     },
   );
 });
@@ -460,6 +536,35 @@ describe('SYNC-99.1', () => {
       expect(record.deleted).toEqual(at(2500, 0, 'phone-b'));
       expect(record.units).toEqual({});
     }
+  });
+
+  test('[SYNC-99.1] an invite keeps the larger link where the stamps are the same, and a tombstone on the phone beats the snapshot’s link', () => {
+    const sooner = invite(link(1795588320000));
+    const later = invite(link(1795588320001));
+    const kept = { value: link(1795588320001), stamp: at(2000, 0, 'phone-a') };
+
+    expect(
+      mergeSyncSnapshotRecord({ held: sooner, incoming: later }).record.units,
+    ).toEqual({ link: kept });
+    expect(
+      mergeSyncSnapshotRecord({ held: later, incoming: sooner }).record.units,
+    ).toEqual({ link: kept });
+
+    const revoked = held(
+      {
+        type: 'invite',
+        id: CODE,
+        deleted: at(2500, 0, 'phone-b'),
+        units: {},
+      } as SyncRecord,
+      at(2000, 0, 'phone-a'),
+    );
+    const { record } = mergeSyncSnapshotRecord({
+      held: revoked,
+      incoming: invite(link(), CODE, at(3000, 0, 'phone-a')),
+    });
+    expect(record.units).toEqual({});
+    expect(record.deleted).toEqual(at(2500, 0, 'phone-b'));
   });
 
   test.each<

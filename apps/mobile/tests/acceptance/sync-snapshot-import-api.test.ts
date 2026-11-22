@@ -54,6 +54,7 @@ import {
   type Setup,
 } from './sync-loop-app';
 import {
+  WEEK,
   afterSixtySeconds,
   answerNext,
   associatedData,
@@ -62,8 +63,12 @@ import {
   endSnapshotWorld,
   faultsLeft,
   fetched,
+  inviteEvent,
+  inviteHeld,
+  invitesIn,
   join,
   neverAnswer,
+  newInvite,
   newcomer,
   noAnswerTo,
   plant,
@@ -416,6 +421,25 @@ describe('SYNC-122.1', () => {
     expect(await takeSnapshot(c)).toEqual(IMPORTED);
   });
 
+  test('[SYNC-122.1] fails and downloads no chunk when asking for the snapshot gets no answer', async () => {
+    const setup = await twoPhones({ expenses: ['Dinner'] });
+    const c = await newcomer(setup);
+    await sentSnapshot(setup.a, c);
+    const before = everythingIn(c);
+    const from = mark();
+    noAnswerTo('GET', 'ask');
+
+    expect(await takeSnapshot(c)).toEqual(FAILED);
+
+    expect(faultsLeft()).toBe(0);
+    // The request that got no answer is not among those that were sent on.
+    expect(downloadsOf(from)).toEqual([]);
+    expect(everythingIn(c)).toEqual(before);
+    const again = mark();
+    expect(await takeSnapshot(c)).toEqual(IMPORTED);
+    expect(downloadsOf(again)).toEqual(['ask', '0']);
+  });
+
   test('[SYNC-122.1] gives up a chunk that has had no answer for 60 seconds', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const c = await newcomer(setup);
@@ -575,8 +599,8 @@ describe('SYNC-123.1', () => {
   });
 });
 
-describe('SYNC-124.1', () => {
-  test('[SYNC-124.1] takes the snapshot in whole or not at all, whichever write fails', async () => {
+describe('SYNC-124.2', () => {
+  test('[SYNC-124.2] takes the snapshot in whole or not at all, whichever write fails', async () => {
     const setup = await twoPhones({ expenses: ['Dinner', 'Lunch'] });
     const { a, brisbane } = setup;
     const c = await newcomer(setup);
@@ -610,7 +634,7 @@ describe('SYNC-124.1', () => {
     ]);
   }, 120_000);
 
-  test('[SYNC-124.1] the cursor is the number the snapshot covers, and stays after a restart', async () => {
+  test('[SYNC-124.2] the cursor is the number the snapshot covers, and stays after a restart', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     await fiveEvents(setup);
     let c = await newcomer(setup);
@@ -626,7 +650,7 @@ describe('SYNC-124.1', () => {
     expect(await ledgerOf(c)).toEqual(await ledgerOf(setup.a));
   });
 
-  test("[SYNC-124.1] the phone's key epoch is the snapshot's", async () => {
+  test("[SYNC-124.2] the phone's key epoch is the snapshot's", async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a, brisbane } = setup;
     const c = await newcomer(setup, { key: false });
@@ -645,7 +669,7 @@ describe('SYNC-124.1', () => {
     expect(await unsent(c)).toEqual([]);
   });
 
-  test('[SYNC-124.1] the latest stamp seen is not earlier than any stamp of the snapshot', async () => {
+  test('[SYNC-124.2] the latest stamp seen is not earlier than any stamp of the snapshot', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a, b, key } = setup;
     await uploadAs(b, key, [
@@ -666,7 +690,7 @@ describe('SYNC-124.1', () => {
     });
   });
 
-  test("[SYNC-124.1] keeps the phone's own key epoch and latest stamp where they are higher than the snapshot's", async () => {
+  test("[SYNC-124.2] keeps the phone's own key epoch and latest stamp where they are higher than the snapshot's", async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a, b, B, brisbane } = setup;
     await sentSnapshot(a, b);
@@ -690,7 +714,71 @@ describe('SYNC-124.1', () => {
     expect(await unsent(b)).toEqual([]);
   });
 
-  test('[SYNC-124.1] the order of the records in a snapshot does not change what the phone holds', async () => {
+  test('[SYNC-124.2] a new phone stores the invite a snapshot holds, also after a restart, and its own snapshot holds the same record', async () => {
+    const setup = await twoPhones({ expenses: ['Dinner'] });
+    const { a, b, key } = setup;
+    const invite = newInvite(T + WEEK);
+    await uploadAs(b, key, [inviteEvent(invite, await stampOf(b, NOW))]);
+    await sync(a);
+    expect(await inviteHeld(a)).toEqual(invite);
+    let c = await newcomer(setup);
+    await sentSnapshot(a, c);
+    const given = invitesIn(await contentFor(c, key));
+    expect(given).toHaveLength(1);
+    expect(await inviteHeld(c)).toBeUndefined();
+
+    expect(await takeSnapshot(c)).toEqual(IMPORTED);
+
+    expect(await inviteHeld(c)).toEqual(invite);
+    c = await restart(c);
+    expect(await inviteHeld(c)).toEqual(invite);
+    await sentSnapshot(c, a);
+    expect(invitesIn(await contentFor(a, key))).toEqual(given);
+  });
+
+  test('[SYNC-124.2] an invite the phone knows is revoked stays revoked when the snapshot still holds it', async () => {
+    const setup = await twoPhones({ expenses: ['Dinner'] });
+    const { a, b, key } = setup;
+    const invite = newInvite(T + WEEK);
+    const made = inviteEvent(invite, await stampOf(b, NOW));
+    await uploadAs(b, key, [made]);
+    await sync(a);
+    await sentSnapshot(a, b);
+    expect(invitesIn(await contentFor(b, key))).toHaveLength(1);
+    await apply(b, [
+      made,
+      deleted('invite', invite.code, {
+        ms: NOW,
+        counter: 5,
+        device: 'phone-x',
+      }),
+    ]);
+    expect(await inviteHeld(b)).toBeUndefined();
+
+    expect(await takeSnapshot(b)).toEqual(IMPORTED);
+
+    expect(await inviteHeld(b)).toBeUndefined();
+    await sentSnapshot(b, a);
+    expect(invitesIn(await contentFor(a, key))).toEqual([]);
+  });
+
+  test('[SYNC-124.2] an invite the phone holds stays when the snapshot holds none', async () => {
+    const setup = await twoPhones({ expenses: ['Dinner'] });
+    const { a, b, key } = setup;
+    await sentSnapshot(a, b);
+    expect(invitesIn(await contentFor(b, key))).toEqual([]);
+    const invite = newInvite(T + WEEK);
+    await apply(b, [
+      inviteEvent(invite, { ms: NOW, counter: 0, device: 'phone-x' }),
+    ]);
+    expect(await inviteHeld(b)).toEqual(invite);
+
+    expect(await takeSnapshot(b)).toEqual(IMPORTED);
+
+    expect(await inviteHeld(b)).toEqual(invite);
+  });
+
+  test('[SYNC-124.2] the order of the records in a snapshot does not change what the phone holds', async () => {
     const setup = await twoPhones({ expenses: ['Dinner', 'Lunch', 'Taxi'] });
     const { a, key } = setup;
     await addCategory(a, 'Flights');
@@ -1190,8 +1278,8 @@ describe('SYNC-127.1', () => {
   });
 });
 
-describe('SYNC-128.2', () => {
-  test('[SYNC-128.2] leaves out an expense and a member whose IDs this phone holds elsewhere, and takes the rest', async () => {
+describe('SYNC-128.3', () => {
+  test('[SYNC-128.3] leaves out an expense and a member whose IDs this phone holds elsewhere, and takes the rest', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a, b, key } = setup;
     const c = await newcomer(setup);
@@ -1226,7 +1314,7 @@ describe('SYNC-128.2', () => {
     ]);
   });
 
-  test('[SYNC-128.2] leaves out a category whose ID is a personal category’s, and shows its expenses as Uncategorized', async () => {
+  test('[SYNC-128.3] leaves out a category whose ID is a personal category’s, and shows its expenses as Uncategorized', async () => {
     const setup = await twoPhones();
     const { a, b, key } = setup;
     const c = await newcomer(setup);
@@ -1261,7 +1349,40 @@ describe('SYNC-128.2', () => {
     );
   });
 
-  test('[SYNC-128.2] takes nothing when the snapshot’s Uncategorized is another space’s category on this phone', async () => {
+  test('[SYNC-128.3] leaves out an invite whose code another shared ledger of this phone holds, and takes the rest', async () => {
+    const setup = await twoPhones({ expenses: ['Dinner'] });
+    const { a, b, key } = setup;
+    const c = await newcomer(setup);
+    const osaka = await withOsaka(c);
+    await c.sync.shareGroup(c.database, {
+      groupId: osaka,
+      device: await deviceId(c),
+    });
+    const mine = newInvite(T + WEEK);
+    await apply(
+      c,
+      [inviteEvent(mine, { ms: NOW, counter: 0, device: 'phone-x' })],
+      osaka,
+    );
+    expect(await inviteHeld(c, osaka)).toEqual(mine);
+    const theirs = { ...newInvite(T + WEEK), code: mine.code };
+    await uploadAs(b, key, [inviteEvent(theirs, await stampOf(b, NOW))]);
+    await sync(a);
+    expect(await inviteHeld(a)).toEqual(theirs);
+    await sentSnapshot(a, c);
+
+    expect(await takeSnapshot(c)).toEqual(IMPORTED);
+
+    expect(await inviteHeld(c, osaka)).toEqual(mine);
+    expect(await inviteHeld(c)).toBeUndefined();
+    expect(await groupNames(c)).toEqual(['Osaka', 'Brisbane']);
+    expect((await expenseOf(c, 'Dinner')).title).toBe('Dinner');
+    // It holds no record of that invite either, so its own snapshot has none.
+    await sentSnapshot(c, a);
+    expect(invitesIn(await contentFor(a, key))).toEqual([]);
+  });
+
+  test('[SYNC-128.3] takes nothing when the snapshot’s Uncategorized is another space’s category on this phone', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a } = setup;
     const c = await newcomer(setup);
@@ -1297,7 +1418,7 @@ describe('SYNC-128.2', () => {
     expect(await groupNames(c)).toEqual(['Osaka']);
   });
 
-  test('[SYNC-128.2] takes nothing when the phone holds the group as one that is no shared ledger', async () => {
+  test('[SYNC-128.3] takes nothing when the phone holds the group as one that is no shared ledger', async () => {
     const setup = await twoPhones();
     const { a, b, A, tokyo } = setup;
     await send(a, 'PUT', `/groups/${tokyo}`);
@@ -1316,7 +1437,7 @@ describe('SYNC-128.2', () => {
     expect((await groupNamed(b, 'Tokyo')).shared).toBe(false);
   });
 
-  test('[SYNC-128.2] takes nothing when the snapshot’s group ID is the ID of the phone’s personal space', async () => {
+  test('[SYNC-128.3] takes nothing when the snapshot’s group ID is the ID of the phone’s personal space', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a } = setup;
     const c = await newcomer(setup);
@@ -1357,7 +1478,7 @@ describe('SYNC-128.2', () => {
     expect(await groupNames(c)).toEqual(['Brisbane']);
   });
 
-  test('[SYNC-128.2] takes nothing when a phone that has the ledger holds another category as its Uncategorized', async () => {
+  test('[SYNC-128.3] takes nothing when a phone that has the ledger holds another category as its Uncategorized', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a, b, key } = setup;
     await sentSnapshot(a, b);
