@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useIsFocused } from 'expo-router/react-navigation';
+import type { SyncMoney } from '@shared-expense/domain';
 import { listCategories, type Category } from '../categories';
 import {
   listFormerMembers,
@@ -20,6 +21,8 @@ export type GroupWithFormerMembers = Group & { formerMembers: GroupMember[] };
 export interface ExpenseView extends Expense {
   addedOrder: number;
   changedAt: number | null;
+  /** The money the user entered, while the expense needs review (LEDGER-151.1). */
+  yours?: SyncMoney;
   /** The assignment as stored, even after the category used for display changes. */
   categorySnapshot: Expense['category'];
   categoryLabel: string;

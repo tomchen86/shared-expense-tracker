@@ -11,6 +11,8 @@ import { applyMergedGroup } from '../groups';
 import { notifyExpensesChanged } from '../ledger/expenses';
 import { applyMergedExpense } from '../ledger/merged-expense';
 import type { Database, SqlExecutor } from '../storage';
+import { applyMergedInvite } from './invites';
+import { markIfOverridden } from './own-money';
 import { orderSyncedRows } from './positions';
 import {
   latestStamp,
@@ -62,6 +64,7 @@ const recordOwners = {
   expense: ['expenses', 'spaceId'],
   member: ['group_members', 'groupId'],
   category: ['categories', 'spaceId'],
+  invite: ['group_invites', 'groupId'],
 } as const;
 
 async function canMergeInGroup(
@@ -136,6 +139,9 @@ export async function applyReceivedEvents(
     if (record.type === 'member' || record.type === 'category')
       toOrder.add(record.type);
     switch (record.type) {
+      case 'invite':
+        if (await applyMergedInvite(tx, groupId, record)) visibleChange = true;
+        break;
       case 'group':
       case 'member':
         if (await applyMergedGroup(tx, groupId, record)) visibleChange = true;
@@ -153,6 +159,7 @@ export async function applyReceivedEvents(
           visibleChange = true;
         break;
       case 'expense':
+        if (await markIfOverridden(tx, event)) visibleChange = true;
         if (
           await applyMergedExpense(
             tx,

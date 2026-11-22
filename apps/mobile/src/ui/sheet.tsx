@@ -9,16 +9,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { HeaderAction } from './header-actions';
+import { ActionButton } from './header-actions.android';
 import { useThemeColors } from './theme';
 import { useKeyboardInset } from './use-keyboard-inset';
 
 export interface SheetProps {
   visible: boolean;
   title: string;
-  cancel?: HeaderAction;
+  cancel?: HeaderAction & { icon?: 'close' };
   confirm?: HeaderAction;
   onClose: () => void;
   dismissible?: boolean;
+  /** Size an iOS sheet from its measured body when the content changes as it opens. */
+  measureDetent?: boolean;
   children: ReactNode;
 }
 
@@ -67,7 +70,11 @@ export function Sheet({
     >
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={styles.header}>
-          {action(cancel)}
+          {cancel?.icon ? (
+            <ActionButton {...cancel} icon={cancel.icon} color={colors.text} />
+          ) : (
+            action(cancel)
+          )}
           <Text
             accessibilityRole="header"
             style={[styles.title, { color: colors.text }]}

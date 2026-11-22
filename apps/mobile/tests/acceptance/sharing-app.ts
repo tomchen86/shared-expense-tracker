@@ -82,7 +82,14 @@ type Behavior =
   | { kind: 'answer'; status: number; body: string | Uint8Array }
   | { kind: 'lose-answer' };
 
-type When = 'any' | 'registration' | 'request';
+/** Which request a test means: any, a registration, any other, or the ones a function picks. */
+export type When =
+  'any' | 'registration' | 'request' | ((request: Received) => boolean);
+
+/** What a route of the API answers to a request that passed the checks; undefined when the route is not its own. */
+export type Route = (
+  request: Received,
+) => { status: number; body: string | Uint8Array } | undefined;
 
 interface World {
   entries: Map<string, StoreEntry>;
@@ -101,6 +108,7 @@ interface World {
   nonces: Set<string>;
   queue: { when: When; behavior: Behavior }[];
   answers: Map<string, { status: number; body: string | Uint8Array }>;
+  routes: Route[];
   mistakes: string[];
   fetchBefore: typeof fetch | undefined;
   root: string;
@@ -123,6 +131,7 @@ const newWorld = (): World => ({
   nonces: new Set(),
   queue: [],
   answers: new Map(),
+  routes: [],
   mistakes: [],
   fetchBefore: undefined,
   root: '',
@@ -242,6 +251,13 @@ export function writeSecureStoreEntry(key: string, value: string) {
   const entry = [...world().entries.values()].find((each) => each.key === key);
   if (!entry) throw new Error(`The secure store has no entry named ${key}`);
   entry.value = value;
+}
+
+/** Puts an entry named `key` in the secure store, set the way the app sets its own entries. */
+export function addSecureStoreEntry(key: string, value: string) {
+  storeSet(key, value, {
+    keychainAccessible: secureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+  });
 }
 
 // The random source, in place of `expo-crypto`
@@ -554,12 +570,13 @@ function answerOf(request: Received): {
     state.devices.set(deviceId, publicKey);
     return { status: 200, body: JSON.stringify({ deviceId }) };
   }
-  return (
-    state.answers.get(`${request.method} ${request.path}`) ?? {
-      status: 200,
-      body: '{}',
-    }
-  );
+  const told = state.answers.get(`${request.method} ${request.path}`);
+  if (told) return told;
+  for (const route of state.routes) {
+    const answer = route(request);
+    if (answer) return answer;
+  }
+  return { status: 200, body: '{}' };
 }
 
 const noNetwork = () => new TypeError('Network request failed');
@@ -608,8 +625,10 @@ async function fetchFromTheApi(
   };
   state.received.push(received);
   const kind: When = isRegistration(received) ? 'registration' : 'request';
-  const index = state.queue.findIndex(
-    ({ when }) => when === 'any' || when === kind,
+  const index = state.queue.findIndex(({ when }) =>
+    typeof when === 'function'
+      ? when(received)
+      : when === 'any' || when === kind,
   );
   const told = index < 0 ? undefined : state.queue.splice(index, 1)[0].behavior;
   if (told?.kind === 'answer') {
@@ -662,6 +681,11 @@ export function apiAnswers(
   body: string | Uint8Array,
 ) {
   world().answers.set(`${method} ${pathWithQuery}`, { status, body });
+}
+
+/** Gives the API a route: what it answers to the requests the route takes, once they have passed its checks. */
+export function apiRoutes(route: Route) {
+  world().routes.push(route);
 }
 
 /** The API answers the next such request with this status and body, whatever the request is. */

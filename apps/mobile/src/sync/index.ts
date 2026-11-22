@@ -6,6 +6,7 @@ import {
 } from '@shared-expense/domain';
 import { listCategories } from '../categories/repository';
 import { listExpenses } from '../ledger/expenses';
+import { readCorrectedTime } from '../sharing/device-identity';
 import type { Database, SqlExecutor } from '../storage';
 import {
   expenseSyncValues,
@@ -37,9 +38,11 @@ export interface UnsentSyncEvent {
 export async function shareGroup(
   database: Database,
   { groupId, device }: { groupId: string; device: string },
+  beforeSharing?: (tx: SqlExecutor) => Promise<void>,
 ): Promise<void> {
   await database.transaction(async (tx) => {
     if (await sharedGroup(tx, groupId)) return;
+    await beforeSharing?.(tx);
     const [group] = await tx.all<{ name: string }>(
       'SELECT name FROM groups WHERE id = ?',
       [groupId],
@@ -51,12 +54,13 @@ export async function shareGroup(
     ]);
 
     let seen = await latestStamp(tx);
+    const nowMs = await readCorrectedTime(tx);
     async function seed<T extends SyncRecordType>(
       type: T,
       id: string,
       values: SyncUnits[T],
     ) {
-      const stamp = nextSyncStamp({ seen, nowMs: Date.now(), device });
+      const stamp = nextSyncStamp({ seen, nowMs, device });
       seen = stamp;
       const units = Object.fromEntries(
         Object.entries(values).map(([name, value]) => [name, { value, stamp }]),
