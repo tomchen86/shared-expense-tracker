@@ -35,4 +35,19 @@ export default {
       context,
     );
   },
+  /**
+   * What Cloudflare calls when the Worker's Cron trigger fires: runs the cleanup once on
+   * this environment's database, at the API's time (SYNC-145.1). It resolves once the
+   * cleanup has finished.
+   */
+  async scheduled(
+    controller: { readonly cron: string; readonly scheduledTime: number },
+    env: WorkersEnv,
+    context: ExecutionContext,
+  ): Promise<void> {
+    void controller;
+    void env;
+    void context;
+    throw new Error('Not implemented');
+  },
 };
