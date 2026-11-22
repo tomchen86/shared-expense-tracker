@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { act, screen } from '@testing-library/react-native';
+import { act, fireEvent, screen } from '@testing-library/react-native';
 import {
   alertsShown,
   expectClosed,
@@ -800,6 +800,39 @@ describe('SHARING-131.1', () => {
     expect(received()).toHaveLength(sent);
   });
 
+  test.each(['its link', 'its card'])(
+    '[SHARING-131.1] shows only Sending request…, with nothing to press, when a request on its way is opened again from %s',
+    async (from) => {
+      brisbaneInvites();
+      await startAs();
+      await openLink(BRISBANE_LINK);
+      const answer = keepAnswersBack(isSending);
+      await pressInJoin(SEND);
+      await until(() => sendings().length === 1, 'the request');
+      await closeJoin();
+
+      if (from === 'its link') {
+        await receiveLink(BRISBANE_LINK);
+      } else {
+        await tapTab('Groups');
+        await fireEvent.press(requestCard('Brisbane')!);
+      }
+      await expectOpen(TITLE);
+      await settle();
+
+      expect(joinLines()).toEqual([SENDING]);
+      expect(joinButton('Try Again')).toBeUndefined();
+      expect(joinButton(CANCEL)).toBeUndefined();
+      expect(sendings()).toHaveLength(1);
+
+      await answer();
+      await joinSettles();
+
+      expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+      expect(sendings()).toHaveLength(1);
+    },
+  );
+
   test('[SHARING-131.1] shows it with no network', async () => {
     brisbaneInvites();
     await startAs();
@@ -982,11 +1015,6 @@ describe('SHARING-133.1', () => {
     ['a 500', 500, 'Internal Server Error'],
     ['a 404 with no reason', 404, '404 Not Found'],
     ['a 200 that is no invite', 200, json({ card: 7 })],
-    [
-      'a refusal for too many requests',
-      429,
-      json({ error: 'too-many-requests', retryAfterMs: 1_000 }),
-    ],
   ])(
     '[SHARING-133.1] says something went wrong, with Try Again, when the API answers the read with %s',
     async (_, status, body) => {
@@ -1002,6 +1030,25 @@ describe('SHARING-133.1', () => {
       expect(joinLines()).toEqual(FORM);
     },
   );
+  test('[SHARING-133.1] [SHARING-124.1] does not read again by itself when the API refuses the read for too many requests and says how long to wait', async () => {
+    brisbaneInvites();
+    await startAs();
+    apiAnswersNext(
+      isRead,
+      429,
+      json({ error: 'too-many-requests', retryAfterMs: 1_000 }),
+    );
+
+    await openLink(BRISBANE_LINK);
+    await secondsPass(5);
+    await joinSettles();
+
+    expect(joinLines()).toEqual([WENT_WRONG, 'Try Again']);
+    expect(reads()).toHaveLength(1);
+
+    await send('Try Again');
+    expect(joinLines()).toEqual(FORM);
+  });
 });
 
 // Sending the request

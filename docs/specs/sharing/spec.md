@@ -2710,7 +2710,7 @@ IF Join Group 為一條寫法不對的邀請連結打開——連結的代號不
 
 ### Requirement: SHARING-124.1 打開寫法對的連結時讀邀請
 
-WHEN Join Group 為一條寫法對的連結打開，而這支手機沒有存著這個代號的申請（SHARING-131.1），the mobile app SHALL 讀邀請：對 API 的網址送一個 `GET /invites/<連結的代號>`，沒有簽名的四個欄位，沒有內容，不管連結的主機是什麼；不產生裝置身分，也不註冊。還沒有結果時，Join Group 的內容只有「Loading invite…」。讀邀請還沒有結果時 Join Group 被關閉，或換成了別的連結（SHARING-73.2），之後才到的回答 SHALL 不打開 Join Group，不改它顯示的，也不留下任何資料。
+WHEN Join Group 為一條寫法對的連結打開，而這支手機沒有存著這個代號的申請（SHARING-131.1），the mobile app SHALL 讀邀請：對 API 的網址送一個 `GET /invites/<連結的代號>`，沒有簽名的四個欄位，沒有內容，不管連結的主機是什麼；不產生裝置身分，也不註冊。讀邀請不是送請求，所以一次只發這一個請求：得到帶著原因的拒絕時，不校正時鐘再送（SHARING-27.2），也不等了再送（SHARING-28.1），那兩條只管簽名的請求。還沒有結果時，Join Group 的內容只有「Loading invite…」。讀邀請還沒有結果時 Join Group 被關閉，或換成了別的連結（SHARING-73.2），之後才到的回答 SHALL 不理會：不打開 Join Group 或群組的畫面，不改 Join Group 顯示的，也不留下任何資料。
 
 #### Scenario: 新手機打開 Brisbane 的連結
 
@@ -2734,7 +2734,7 @@ WHEN Join Group 為一條寫法對的連結打開，而這支手機沒有存著�
 
 ### Requirement: SHARING-125.1 讀到邀請之後顯示群組名稱和成員
 
-WHEN API 回傳邀請，它的名片用連結的字串導出的名片金鑰和名片的附加資料解得開（SHARING-95.1），the mobile app SHALL 在 Join Group 由上而下顯示表單：群組名稱；名字欄位，無障礙名稱是「Your name」，帶入你的名字，沒有文字時顯示「Enter your name」；「Join as」；角色為 button、名稱為「New Member」的一列，名片上有 20 位以上的成員時沒有這一列（SHARING-129.1）；名片上的每位成員各一列，照名片的順序：沒有手機的成員是角色為 button、名稱是成員名稱的一列，有手機的成員那一列不是按鈕，顯示成員名稱和「Already joined」；「A member of this group has to approve your request.」；以及角色為 button、名稱為「Send Request」的按鈕。「New Member」和沒有手機的成員那幾列裡，同時最多選著一列（預設選哪一列見 SHARING-126.1 和 SHARING-129.1）：選著的那一列右邊有勾號的圖示，iOS 是 SF Symbol `checkmark`，Android 是 Material Symbols 的 `check`，無障礙狀態是 selected，其他列沒有勾號；按其中一列就改選它。
+WHEN API 回傳邀請，它的名片用連結的字串導出的名片金鑰和名片的附加資料解得開（SHARING-95.1），而名片上不是 20 位以上的成員都有手機（SHARING-129.1），the mobile app SHALL 在 Join Group 由上而下顯示表單：群組名稱；名字欄位，無障礙名稱是「Your name」，帶入你的名字，沒有文字時顯示「Enter your name」；「Join as」；角色為 button、名稱為「New Member」的一列，名片上有 20 位以上的成員時沒有這一列（SHARING-129.1）；名片上的每位成員各一列，照名片的順序：沒有手機的成員是角色為 button、名稱是成員名稱的一列，有手機的成員那一列不是按鈕，顯示成員名稱和「Already joined」；「A member of this group has to approve your request.」；以及角色為 button、名稱為「Send Request」的按鈕。「New Member」和沒有手機的成員那幾列裡，同時最多選著一列（預設選哪一列見 SHARING-126.1 和 SHARING-129.1）：選著的那一列右邊有勾號的圖示，iOS 是 SF Symbol `checkmark`，Android 是 Material Symbols 的 `check`，無障礙狀態是 selected，其他列沒有勾號；按其中一列就改選它。
 
 #### Scenario: Brisbane 的表單
 
@@ -2898,7 +2898,7 @@ IF 系統交來寫法對的連結，而這支手機的本機資料替一個共�
 
 ### Requirement: SHARING-131.1 已經申請過的連結顯示那個申請
 
-IF Join Group 為一條寫法對的連結打開，而本機資料存著這個代號的申請，THEN the mobile app SHALL 不讀邀請，讓 Join Group 顯示那個申請：送出了的顯示等待同意（SHARING-138.1），還沒送出的顯示還沒送出（SHARING-139.1）。
+IF Join Group 為一條寫法對的連結打開，而本機資料存著這個代號的申請，THEN the mobile app SHALL 不讀邀請，讓 Join Group 顯示那個申請：送出了的顯示等待同意（SHARING-138.1），還沒送出的顯示還沒送出（SHARING-139.1）。IF 這個申請正在送出，也就是送出它的請求還沒有結果（SHARING-134.1），THEN 不管是從連結還是從申請的卡片（GROUPS-108.1）打開，Join Group 的內容 SHALL 只有「Sending request…」，沒有「Try Again」和「Cancel Request」，結果到了才照 SHARING-134.1、SHARING-139.1 或 SHARING-140.1 顯示：這樣同一個申請不會有兩個請求同時在路上，也不會在送出的請求還沒到 API 時被取消。
 
 #### Scenario: 等待中再點連結
 
@@ -2909,6 +2909,11 @@ IF Join Group 為一條寫法對的連結打開，而本機資料存著這個代
 
 - **WHEN** 送出申請之後手機沒有網路，再打開 Brisbane 的連結
 - **THEN** Join Group 一樣顯示「Waiting for Approval」
+
+#### Scenario: 送出中再打開
+
+- **WHEN** API 還沒回答送出申請的請求時關閉 Join Group，再打開 Brisbane 的連結，或在 Groups 根畫面按申請的卡片；之後 API 回答申請送出了
+- **THEN** Join Group 的內容先是只有「Sending request…」，API 沒有多收到請求；回答到了之後顯示「Waiting for Approval」
 
 ### Requirement: SHARING-132.1 不能用的邀請不留下任何資料
 
@@ -2960,8 +2965,13 @@ IF 讀邀請沒有得到回應——沒有網路、連不上 API，或 app 建�
 
 #### Scenario: 看不懂的回應
 
-- **WHEN** API 對讀邀請的請求回 500，回沒有帶原因的 404，回 200 但內容不是邀請，或拒絕它、原因是請求太多
+- **WHEN** API 對讀邀請的請求回 500，回沒有帶原因的 404，或回 200 但內容不是邀請
 - **THEN** Join Group 都顯示「Something went wrong. Try again later.」和「Try Again」
+
+#### Scenario: 被拒絕，原因是請求太多
+
+- **WHEN** API 拒絕讀邀請的請求，原因是請求太多，說要等 1,000 毫秒；之後過了 5 秒
+- **THEN** Join Group 顯示「Something went wrong. Try again later.」和「Try Again」；app 沒有自己再讀一次（SHARING-124.1），API 只收到那一個請求
 
 ### Requirement: SHARING-134.1 按 Send Request 時存下申請並送出
 
@@ -2999,7 +3009,7 @@ WHEN 使用者在表單按「Send Request」，而它沒有被 SHARING-127.1、S
 
 ### Requirement: SHARING-135.1 申請的內容用從連結的字串導出的金鑰加密
 
-WHEN 送送出申請的請求，the mobile app SHALL 讓申請的內容是申請的明文用申請金鑰加密的密文（SHARING-1.1）：申請金鑰從連結的字串那 32 bytes 導出，用途是 `shared-expense/invite/request/v1`，不給 salt（SHARING-12.1）；nonce 是 `expo-crypto` 給的 24 bytes，每次加密都是新的；附加資料是 `shared-expense/invite/request/v1`、一個換行（`0x0A`）、連結的代號、一個換行和這支手機的裝置 ID，以 UTF-8 編碼。申請的明文是一個 JSON 物件（JavaScript 的 `JSON.stringify`，沒有多餘的空白，以 UTF-8 編碼），依序有四個欄位：`name` 是申請的名字；`memberId` 是選的成員的成員 ID，選「New Member」時是 `null`；`userId` 是你的使用者 ID；`boxKey` 是 box 私鑰的公開金鑰（SHARING-7.1、SHARING-136.1），寫成 64 個小寫十六進位字元。JSON 物件後面 SHALL 補上空格（`0x20`），補到明文的 bytes 數是 256 的倍數，已經是 256 的倍數就不補：這樣 API 從密文的長度看不出名字有多長，也看不出選的是新成員還是一位成員。
+WHEN 送送出申請的請求，the mobile app SHALL 讓申請的內容是申請的明文用申請金鑰加密的密文（SHARING-1.1）：申請金鑰從連結的字串那 32 bytes 導出，用途是 `shared-expense/invite/request/v1`，不給 salt（SHARING-12.1）；nonce 是 `expo-crypto` 給的 24 bytes，每次加密都是新的；附加資料是 `shared-expense/invite/request/v1`、一個換行（`0x0A`）、連結的代號、一個換行和這支手機的裝置 ID，以 UTF-8 編碼。申請的明文是一個 JSON 物件（JavaScript 的 `JSON.stringify`，沒有多餘的空白，以 UTF-8 編碼），依序有四個欄位：`name` 是申請的名字；`memberId` 是選的成員的成員 ID，選「New Member」時是 `null`；`userId` 是你的使用者 ID；`boxKey` 是 box 私鑰的公開金鑰（SHARING-7.1、SHARING-136.1），寫成 64 個小寫十六進位字元。JSON 物件後面 SHALL 補上空格（`0x20`），補到明文的 bytes 數是 256 的倍數，已經是 256 的倍數就不補：這樣 API 從密文的長度只看得出明文有幾個 256 bytes，名字在 71 bytes 以內時，看不出名字有多長，也看不出選的是新成員還是一位成員。
 
 #### Scenario: 當新成員
 

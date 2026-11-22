@@ -41,12 +41,12 @@ On the API:
 On the phone:
 
 - A link is usable only when its code is 16 bytes and its secret 32 bytes in base64url. Anything else is refused before any request is sent.
-- The phone reads an invite from the API its build names (ADR-0026), whatever host the link has, without an identity.
+- The phone reads an invite from the API its build names (ADR-0026), whatever host the link has, without an identity. A read is one request: the phone does not correct its clock or wait and send again, as it does for a signed request (ADR-0022).
 - A phone already belongs to a link's group when it holds an invite with the same code and secret, which needs no network, or when a member ID on the card is one of a shared ledger it holds. It then opens that group instead of asking to join.
 - The request key is derived from the secret with HKDF, as the card key is, with the purpose `shared-expense/invite/request/v1`. The associated data is that purpose, the code and the applicant's device ID, each on its own line, so a request moved to another invite or another device does not open.
 - The request's plaintext is JSON with the name, the chosen member's ID or `null` for a new member, the phone's user ID, and the box key in hexadecimal, followed by spaces up to a multiple of 256 bytes.
 - The box key is an X25519 key derived from the device seed with the purpose `shared-expense/device/box/v1`.
-- The phone makes its identity, then stores the request in its local data, then sends it. The request stays there, marked as not sent, until the API has confirmed it or has refused it in a way that sending it again cannot cure: for a reason of the request API's own, or because its body is too large. Sending it again is the person's step: the app does not retry by itself.
+- The phone makes its identity, then stores the request in its local data, then sends it. The request stays there, marked as not sent, until the API has confirmed it, or has refused it for a reason of the request API's own or because its body is too large. Sending it again is the person's step: the app does not retry by itself.
 - Cancelling asks the API first, also for a request the API never confirmed, and removes the local request only once the API has answered.
 - With 20 or more members on the card, an applicant can only pick a member without a phone. With none of those either, the group is full.
 - The form preselects a member without a phone whose name is the applicant's, and does not send a request for a new member whose name is a member's.
@@ -56,7 +56,7 @@ On the phone:
 
 - Tapping a link makes one request and leaves nothing on the phone or on the API. The first identity is made when the person sends a request, as the proposal says.
 - Anyone who has a code can fetch the encrypted card, as any registered device could before, and learns its size and when the invite expires. Without the secret the card does not open.
-- The API learns that a device asked to join a group and when, before any member has approved. It learns a request's length only in steps of 256 bytes: without the padding, the length would give away how long the name is and, for a name of up to 34 bytes, whether the applicant asked for a new member or picked one, since `null` and a member's ID differ by 34 bytes.
+- The API learns that a device asked to join a group and when, before any member has approved. It learns a request's length only in steps of 256 bytes, which for a name of up to 71 bytes is always one step: without the padding, the length would give away how long the name is and, for a name of up to 34 bytes, whether the applicant asked for a new member or picked one, since `null` and a member's ID differ by 34 bytes.
 - A phone that holds a request the API never received shows it as not sent until the person tries again or cancels. A request the API received and the phone thinks unsent is confirmed by the next try, and removed by a cancel.
 - Cancelling needs the network. A phone that has lost its authorization (ADR-0022) removes its own request without asking.
 - An applicant's phone does not learn that its invite was revoked or expired, or that a member answered, until #141 builds how it asks. Until then a request waits until the person cancels it.
