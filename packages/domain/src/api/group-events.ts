@@ -236,3 +236,6 @@ export function isGroupRefusal(value: unknown): value is GroupRefusal {
     (value.error === 'not-a-member' || value.error === 'group-full')
   );
 }
+
+// The invite API uses the same group IDs, integer cursors and encrypted content limits.
+export { hasExactly, isContent, isId as isGroupId, isWhole };

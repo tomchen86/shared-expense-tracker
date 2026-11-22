@@ -40,4 +40,23 @@ export const sharingMigrations: readonly Migration[] = [
         ON device_registrations (ip_hash, registered_at_ms);
     `,
   },
+  {
+    name: 'sharing/0002-create-invites',
+    sql: `
+      CREATE TABLE group_invites (
+        code text PRIMARY KEY,
+        group_id uuid NOT NULL REFERENCES groups (id),
+        created_at_ms bigint NOT NULL,
+        expires_at_ms bigint NOT NULL,
+        revoked boolean NOT NULL DEFAULT false,
+        card bytea,
+        cursor bigint,
+        CHECK ((card IS NULL) = (cursor IS NULL)),
+        CHECK (NOT revoked OR card IS NULL)
+      );
+
+      CREATE UNIQUE INDEX group_invites_one_card
+        ON group_invites (group_id) WHERE card IS NOT NULL;
+    `,
+  },
 ];

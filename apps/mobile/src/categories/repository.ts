@@ -215,7 +215,7 @@ export async function deleteCategory(
       [id],
     );
     if (result.changes !== 1) throw new Error('Category cannot be deleted');
-    if (group) await writeLocalDeletion(transaction, group, id);
+    if (group) await writeLocalDeletion(transaction, group, 'category', id);
   });
 }
 
