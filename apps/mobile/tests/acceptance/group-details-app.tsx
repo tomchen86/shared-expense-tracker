@@ -277,6 +277,10 @@ const buttonsOfLastAlert = (): AlertButton[] => alerts().at(-1)?.[2] ?? [];
 export const lastAlertButtons = () =>
   buttonsOfLastAlert().map((button) => button.text);
 
+/** The last alert's buttons, as [text, style]. */
+export const lastAlertButtonStyles = () =>
+  buttonsOfLastAlert().map(({ text, style }) => [text, style]);
+
 /** Taps a button of the last alert, which runs its action, if it has one. */
 export async function pressAlertButton(text: string) {
   const button = buttonsOfLastAlert().find(
@@ -346,13 +350,16 @@ export async function openMembers(group: string) {
 }
 
 /**
- * The buttons that Members shows itself, top to bottom, and the row marked (You)
- * when it is not a button, so the other tests still find it.
+ * The buttons of the member list in Members, top to bottom, and the row marked (You)
+ * when it is not a button, so the other tests still find it. Invite with Link sits
+ * above the list and is no row of it (GROUPS-106.1).
  */
 function memberRows() {
   const members = screenOf('Members');
   const all = members.queryAll(() => true, { includeSelf: true });
-  const buttons = within(members).queryAllByRole('button');
+  const buttons = within(members)
+    .queryAllByRole('button')
+    .filter((button) => accessibleName(button) !== 'Invite with Link');
   const inAButton = (view: HostView) =>
     buttons.some(
       (button) =>
