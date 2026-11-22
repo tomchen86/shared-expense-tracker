@@ -38,7 +38,7 @@ export default {
   },
   /**
    * What Cloudflare calls when the Worker's Cron trigger fires: runs the cleanup once on
-   * this environment's database, at the API's time (SYNC-145.1). It resolves once the
+   * this environment's database, at invocation time (SYNC-145.2). It resolves once the
    * cleanup has finished.
    */
   async scheduled(

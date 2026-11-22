@@ -138,6 +138,7 @@ export const syncRoutes = new Hono<AppEnv>()
       c.var.deviceId,
       chunk,
       upload,
+      c.env.now,
     );
     return 'error' in result ? refuse(result) : c.json(result);
   })

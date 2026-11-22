@@ -11,13 +11,14 @@ import type { EventApiRefusal } from './groups';
 
 type Refusal = SnapshotRefusal | EventApiRefusal;
 
-/** The group lock serializes retries, replacements, the byte limit, and deletion by cursor. */
+/** The group lock serializes chunk writes with replacements, cursor downloads and cleanup. */
 export function storeChunk(
   sql: Sql,
   groupId: string,
   uploader: string,
   chunk: SnapshotChunkStoredResponse,
   upload: UploadSnapshotChunkRequest,
+  now: () => number,
 ): Promise<SnapshotChunkStoredResponse | Refusal> {
   const { snapshotId, index } = chunk;
   const { deviceId: recipient, sequence, epoch, count, content } = upload;
@@ -56,8 +57,9 @@ export function storeChunk(
         return { error: 'snapshots-full' };
       if (!existing) {
         await tx`DELETE FROM group_snapshots WHERE group_id = ${groupId} AND recipient = ${recipient}`;
-        await tx`INSERT INTO group_snapshots (group_id, id, uploader, recipient, epoch, sequence, chunk_count)
-          VALUES (${groupId}, ${snapshotId}, ${uploader}, ${recipient}, ${epoch}, ${sequence}, ${count})`;
+        await tx`INSERT INTO group_snapshots
+          (group_id, id, uploader, recipient, epoch, sequence, chunk_count, started_at_ms)
+          VALUES (${groupId}, ${snapshotId}, ${uploader}, ${recipient}, ${epoch}, ${sequence}, ${count}, ${now()})`;
       }
       await tx`INSERT INTO snapshot_chunks (group_id, snapshot_id, chunk_index, content)
         VALUES (${groupId}, ${snapshotId}, ${index}, decode(${content}, 'hex'))`;

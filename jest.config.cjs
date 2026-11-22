@@ -99,6 +99,10 @@ module.exports = {
     './apps/api/src/sync/groups.ts': { branches: 100 },
     './apps/api/src/sync/routes.ts': { branches: 100 },
     './apps/api/src/cleanup.ts': { branches: 100 },
+    './apps/api/src/migrations.ts': { branches: 100 },
+    './apps/api/src/sync/migrations.ts': { branches: 100 },
+    // The traced Cron test calls scheduled. The branches in this entry file are in fetch.
+    './apps/api/src/workers.ts': { branches: 0 },
     // Encrypted ledger snapshots (ADR-0028). The non-acceptance tests also exercise
     // damaged local records and an uploader that has lost its signing identity.
     './packages/domain/src/api/wire.ts': { branches: 100 },

@@ -1,18 +1,19 @@
 import type { Sql } from './database/connect';
 import { CLOCK_TOLERANCE_MS, REGISTRATION_WINDOW_MS } from './sharing/devices';
 
-const EVENT_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000;
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1_000;
 
 /**
- * The cleanup (ADR-0033, SYNC-134.1 to SYNC-144.1): deletes what the API no longer has to
- * keep. In each group, the events every member device has and the ones received more than
- * 30 days ago; the cards of invites that have expired; and what the checks of signed
- * requests no longer need. `now` is the API's time, in milliseconds since the Unix epoch.
+ * Clears event prefixes, expired invite cards and old request and registration records
+ * (ADR-0033, SYNC-134.1 to SYNC-144.1). A snapshot goes when the group is cleared past
+ * it or it began over 30 days ago (SYNC-147.1, SYNC-148.1). `now` is the API's time
+ * in milliseconds since the Unix epoch.
  *
  * It runs on Node as on Workers, on whatever client it is given. Only the Workers entry
- * file knows that a Cron trigger starts it (SYNC-145.1).
+ * file knows that a Cron trigger starts it (SYNC-145.2).
  */
 export async function cleanUp(sql: Sql, now: number): Promise<void> {
+  const retainFromMs = now - THIRTY_DAYS_MS;
   await sql.begin('isolation level read committed', async (tx) => {
     await tx`DELETE FROM device_requests
       WHERE accepted_at_ms < ${now - 2 * CLOCK_TOLERANCE_MS}`;
@@ -28,7 +29,7 @@ export async function cleanUp(sql: Sql, now: number): Promise<void> {
         SELECT g.id, greatest(
           (SELECT min(coalesce(progress_cursor, 0)) FROM group_members WHERE group_id = g.id),
           (SELECT max(sequence) FROM group_events
-           WHERE group_id = g.id AND received_at_ms < ${now - EVENT_RETENTION_MS})
+           WHERE group_id = g.id AND received_at_ms < ${retainFromMs})
         ) AS through
         FROM groups g WHERE g.stored_bytes > 0
       ), removed AS (
@@ -39,6 +40,15 @@ export async function cleanUp(sql: Sql, now: number): Promise<void> {
       UPDATE groups g SET stored_bytes = g.stored_bytes - totals.bytes
       FROM (SELECT group_id, sum(size) AS bytes FROM removed GROUP BY group_id) totals
       WHERE g.id = totals.group_id`;
+    // Read the cleared prefix from the events left by this run. Deleting the
+    // envelope cascades to its chunks, including those of an incomplete snapshot.
+    await tx`DELETE FROM group_snapshots s USING groups g
+      WHERE s.group_id = g.id AND (
+        s.started_at_ms < ${retainFromMs} OR s.sequence < coalesce(
+          (SELECT min(sequence) - 1 FROM group_events WHERE group_id = g.id),
+          g.last_sequence
+        )
+      )`;
     await tx`UPDATE group_invites SET card = NULL, cursor = NULL
       WHERE card IS NOT NULL AND expires_at_ms <= ${now}`;
   });
