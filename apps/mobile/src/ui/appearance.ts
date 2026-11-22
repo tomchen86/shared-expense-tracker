@@ -40,4 +40,5 @@ export interface ThemeColors {
   separator: ColorValue;
   accent: ColorValue;
   error: ColorValue;
+  warning: ColorValue;
 }
