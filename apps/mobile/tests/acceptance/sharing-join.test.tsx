@@ -129,6 +129,7 @@ import {
   tokyoInvites,
   typeName,
 } from './sharing-join-app';
+import { iconNames } from './shell-actions-app';
 import { allowWrites, failWrites, settle } from './shell-appearance-app';
 import { selectedTab, tapTab } from './shell-tabs-app';
 import {
@@ -375,11 +376,19 @@ describe('SHARING-125.1', () => {
     await startAs();
     await openLink(BRISBANE_LINK);
 
+    const marks = () =>
+      [NEW_MEMBER, 'Casey', 'Blake'].map((row) =>
+        iconNames(joinButton(row)!, 'ios'),
+      );
+    expect(marks()).toEqual([['checkmark'], [], []]);
+
     await pressInJoin('Casey');
     expect(chosen()).toEqual(['Casey']);
+    expect(marks()).toEqual([[], ['checkmark'], []]);
 
     await pressInJoin('Blake');
     expect(chosen()).toEqual(['Blake']);
+    expect(marks()).toEqual([[], [], ['checkmark']]);
   });
 
   test('[SHARING-125.1] does not change your name when the name field is changed and the request is sent', async () => {

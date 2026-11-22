@@ -2729,7 +2729,7 @@ WHEN Join Group 為一條寫法對的連結打開，而這支手機沒有存著�
 
 ### Requirement: SHARING-125.1 讀到邀請之後顯示群組名稱和成員
 
-WHEN API 回傳邀請，它的名片用連結的字串導出的名片金鑰和名片的附加資料解得開（SHARING-95.1），the mobile app SHALL 在 Join Group 由上而下顯示表單：群組名稱；名字欄位，無障礙名稱是「Your name」，帶入你的名字，沒有文字時顯示「Enter your name」；「Join as」；角色為 button、名稱為「New Member」的一列；名片上的每位成員各一列，照名片的順序：沒有手機的成員是角色為 button、名稱是成員名稱的一列，有手機的成員那一列不是按鈕，顯示成員名稱和「Already joined」；「A member of this group has to approve your request.」；以及角色為 button、名稱為「Send Request」的按鈕。「New Member」和沒有手機的成員那幾列裡，同時剛好選著一列，選著的那一列的無障礙狀態是 selected；按其中一列就改選它。
+WHEN API 回傳邀請，它的名片用連結的字串導出的名片金鑰和名片的附加資料解得開（SHARING-95.1），the mobile app SHALL 在 Join Group 由上而下顯示表單：群組名稱；名字欄位，無障礙名稱是「Your name」，帶入你的名字，沒有文字時顯示「Enter your name」；「Join as」；角色為 button、名稱為「New Member」的一列；名片上的每位成員各一列，照名片的順序：沒有手機的成員是角色為 button、名稱是成員名稱的一列，有手機的成員那一列不是按鈕，顯示成員名稱和「Already joined」；「A member of this group has to approve your request.」；以及角色為 button、名稱為「Send Request」的按鈕。「New Member」和沒有手機的成員那幾列裡，同時最多選著一列（預設選哪一列見 SHARING-126.1 和 SHARING-129.1）：選著的那一列右邊有勾號的圖示，iOS 是 SF Symbol `checkmark`，Android 是 Material Symbols 的 `check`，無障礙狀態是 selected，其他列沒有勾號；按其中一列就改選它。
 
 #### Scenario: Brisbane 的表單
 
@@ -2749,7 +2749,7 @@ WHEN API 回傳邀請，它的名片用連結的字串導出的名片金鑰和�
 #### Scenario: 改選
 
 - **WHEN** 在 Brisbane 的表單按「Casey」，再按「Blake」
-- **THEN** 先是只選著「Casey」，再是只選著「Blake」
+- **THEN** 先是只選著「Casey」，只有它那一列有勾號；再是只選著「Blake」，勾號換到它那一列
 
 #### Scenario: 改名字不改你的名字
 
