@@ -54,7 +54,7 @@ WHILE a member scrolls a list of 500 expenses on a physical phone, the mobile ap
 - Wording and typo fixes keep the version.
 - `(manual)` right after the ID marks a requirement no automated test can check. The trace check lists these as the pre-release manual checklist.
 - `(e2e)` in the same place marks a requirement that only an E2E flow can check, such as one about a native control, a gesture, or the keyboard (ADR-0008). PRs do not run the flows, so the trace check in `bash scripts/check.sh` only lists these; a run of the flows, `bash scripts/e2e-ios.sh`, fails while one has no passing flow that cites it. A flow finds elements only by the text and accessibility labels its requirements state.
-- `(e2e android)` in its place marks one that holds only on Android, so only a flow's Android steps can check it (ADR-0031). An iOS run skips those steps and still passes, so its trace skips these, and `bash scripts/e2e-android.sh <serial>` fails while one has no passing flow that cites it. One that holds only on iOS stays `(e2e)`.
+- `(e2e android)` in its place marks one that holds only on Android, so only a flow's Android steps can check it (ADR-0030). An iOS run skips those steps and still passes, so its trace skips these, and `bash scripts/e2e-android.sh <serial>` fails while one has no passing flow that cites it. One that holds only on iOS stays `(e2e)`.
 - A heading that looks like a requirement (any level, any case, singular or plural) but is not exactly `### Requirement: <ID>` fails the trace check instead of being skipped.
 
 ## Sentences (EARS)

@@ -17,7 +17,7 @@ of test source means skipped, failing, and commented-out tests never count.
 (ADR-0008): without --e2e they are listed like (manual) ones; with --e2e,
 given the flows' reports, each of them needs a passing flow and nothing else does.
 (e2e android) requirements hold only on Android, so the same goes for them with
---e2e android and the Android run's reports, and --e2e skips them (ADR-0031).
+--e2e android and the Android run's reports, and --e2e skips them (ADR-0030).
 
 Exits 1 on any of:
   untested          a requirement no passing test cites

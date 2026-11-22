@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs E2E flows (ADR-0014) on the Release build already on that emulator, on a 360×640 dp screen,
-# then checks that each (e2e android) requirement has a passing flow (ADR-0031).
+# then checks that each (e2e android) requirement has a passing flow (ADR-0030).
 #
 #   bash scripts/e2e-android.sh <serial>            the flows tagged android, then the trace
 #   bash scripts/e2e-android.sh <serial> <flow>...  only those flows, without the trace

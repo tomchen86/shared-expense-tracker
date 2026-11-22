@@ -1,4 +1,4 @@
-# ADR-0031: The Android run traces the requirements that hold only on Android, and runs a failed flow once more
+# ADR-0030: The Android run traces the requirements that hold only on Android, and runs a failed flow once more
 
 - Date: 2026-11-22
 - Status: Accepted
