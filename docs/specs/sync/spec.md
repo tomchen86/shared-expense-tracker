@@ -2821,7 +2821,7 @@ WHEN app 打開，the mobile app SHALL 為這支手機上的每個共同帳本�
 #### Scenario: 沒有共同帳本
 
 - **WHEN** 手機上只有個人的資料和不是共同帳本的群組，重新啟動 app，再把它留在背景後回來
-- **THEN** app 沒有發出任何網路請求，這支手機沒有裝置身分（SHARING-19.1）
+- **THEN** app 沒有發出任何網路請求，這支手機沒有裝置身分（SHARING-19.2）
 
 ### Requirement: SYNC-90.1 一個共同帳本一次只有一個同步
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。共同帳本是在這支手機上已經變成共同帳本的群組（sync）。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；Members 的成員清單是成員那幾列，加上最後的「Add Member」或名稱欄位，和清單下面關於人數上限的那句話（GROUPS-105.1）；「Invite with Link」在成員清單的上面，自成一區，不是清單的一列（GROUPS-106.1），它打開的 Invite 見 sharing；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡、日期在群組的畫面的期間裡、通過這個畫面的篩選的支出（GROUPS-61.6），支出的卡片、明細、垃圾桶、期間、期間列、篩選和膠囊列見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上清單上方的總額（GROUPS-68.6）和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
+群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。共同帳本是在這支手機上已經變成共同帳本的群組（sync）。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；Members 的成員清單是成員那幾列，加上最後的「Add Member」或名稱欄位，和清單下面關於人數上限的那句話（GROUPS-105.1）；「Invite with Link」在成員清單的上面，自成一區，不是清單的一列（GROUPS-106.1），它打開的 Invite 見 sharing；手機上的申請是這支手機用邀請連結申請加入別人的群組、還在等待同意的申請（sharing），申請的卡片是 Groups 根畫面上替它顯示的卡片（GROUPS-108.1）；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡、日期在群組的畫面的期間裡、通過這個畫面的篩選的支出（GROUPS-61.6），支出的卡片、明細、垃圾桶、期間、期間列、篩選和膠囊列見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上清單上方的總額（GROUPS-68.6）和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
 
 ## Requirements
 
@@ -1952,3 +1952,37 @@ WHILE 群組沒有封存，the mobile app SHALL 在它的 Members 的成員清�
 
 - **WHEN** 封存 Brisbane 之後打開它的 Members
 - **THEN** 沒有「Invite with Link」（GROUPS-56.1）；還原之後又有
+
+### Requirement: GROUPS-108.1 Groups 根畫面列出這支手機的申請
+
+WHILE 本機資料存著申請（sharing），the mobile app SHALL 在 Groups 根畫面群組的卡片上面，依存下的先後由上而下各顯示一張申請的卡片：卡片顯示申請的群組名稱，送出了的申請另外顯示「Waiting for approval」，還沒送出的顯示「Not sent」；卡片是角色為 button、無障礙名稱為「Open request to join <群組名稱>」的按鈕，按了打開 Join Group，顯示這個申請（SHARING-138.1、SHARING-139.1）。沒有申請時沒有這些卡片；沒有未封存的群組時，申請的卡片下面仍是 GROUPS-1.2 的那句話。
+
+#### Scenario: 一個等待中的申請
+
+- **WHEN** 沒有群組的手機用邀請連結申請加入 Brisbane，API 回答申請送出了，關閉 Join Group 之後選中 Groups 分頁
+- **THEN** 由上而下是名稱為「Open request to join Brisbane」的卡片，上面有「Brisbane」和「Waiting for approval」，和「No groups yet. Tap + to create a group.」
+
+#### Scenario: 按卡片
+
+- **WHEN** 按這張卡片
+- **THEN** Join Group 蓋在 Groups 根畫面上，顯示「Waiting for Approval」和「Brisbane」；關閉之後回到 Groups 根畫面
+
+#### Scenario: 還沒送出的申請
+
+- **WHEN** 沒有網路時按了「Send Request」，關閉 Join Group 之後選中 Groups 分頁
+- **THEN** 申請的卡片上有「Brisbane」和「Not sent」；按了之後 Join Group 顯示「Your request hasn't been sent.」、「Try Again」和「Cancel Request」
+
+#### Scenario: 排在群組的卡片上面
+
+- **WHEN** 有群組 Paris 的手機，依序申請加入 Brisbane 和 Tokyo
+- **THEN** 由上而下是 Brisbane 的申請的卡片、Tokyo 的申請的卡片，和「Open Paris」
+
+#### Scenario: 取消之後
+
+- **WHEN** 取消 Brisbane 的申請
+- **THEN** Groups 根畫面沒有它的卡片
+
+#### Scenario: 重新啟動之後
+
+- **WHEN** 有一個等待中的申請時重新啟動 app，選中 Groups 分頁
+- **THEN** 申請的卡片還在

@@ -17,6 +17,7 @@ import {
 import {
   API,
   T,
+  apiPublicRoutes,
   apiRoutes,
   apiTime,
   fromHex,
@@ -42,8 +43,9 @@ import {
 // The invite tests start the whole app as the sync tests do (sync-app) and press Invite
 // with Link as a person would. Around the app they stand in for the phone and the API as
 // the sharing tests do (sharing-app): the secure store, the random source, and an API
-// behind `fetch` that here also creates groups (SYNC-45.1 to 48.1) and keeps invites
-// (SHARING-77.1 to 87.1) as docs/specs say the real one does. The app is built with
+// behind `fetch` that here also creates groups (SYNC-45.1 to 48.1), keeps invites
+// (SHARING-77.1 to 87.2) and takes join requests (SHARING-112.1 to 122.1) as docs/specs
+// say the real one does. The app is built with
 // `EXPO_PUBLIC_API_URL` set to that API's address, and reads it when it prepares an
 // invite. The phone's clock is Jest's faked one, at T once the app has started, and
 // stands still unless a test moves it.
@@ -86,11 +88,17 @@ interface Api {
   /** The member devices of each group. */
   groups: Map<string, Set<string>>;
   invites: Map<string, Invite>;
+  /** The join requests of each invite, by its code: each device's content, in hexadecimal. */
+  requests: Map<string, Map<string, string>>;
 }
 
 const holder = globalThis as { inviteTestApi?: Api };
 const api = (): Api =>
-  (holder.inviteTestApi ??= { groups: new Map(), invites: new Map() });
+  (holder.inviteTestApi ??= {
+    groups: new Map(),
+    invites: new Map(),
+    requests: new Map(),
+  });
 
 const json = (status: number, body: unknown) => ({
   status,
@@ -188,12 +196,84 @@ function deleteInvite(request: Received, groupId: string, code: string) {
   if (invite?.groupId === groupId && isActive(invite)) {
     invite.revoked = true;
     invite.card = '';
+    api().requests.delete(code);
+  }
+  return json(200, { code });
+}
+
+/** `GET /invites/<code>`, which takes no signature (SHARING-83.2 to 86.1). */
+function readInvite(request: Received) {
+  const read = READ_PATH.exec(request.path.split('?')[0]);
+  if (!read || request.method !== 'GET') return undefined;
+  if (!CODE.test(read[1]) || request.path.includes('?')) {
+    return json(400, { error: 'request' });
+  }
+  const invite = api().invites.get(read[1]);
+  if (!isActive(invite)) return json(404, { error: 'no-invite' });
+  return json(200, { expiresAtMs: invite!.expiresAtMs, card: invite!.card });
+}
+
+function requestIn(request: Received): string | undefined {
+  try {
+    const body: unknown = JSON.parse(
+      Buffer.from(request.body).toString('utf8'),
+    );
+    if (
+      typeof body === 'object' &&
+      body !== null &&
+      !Array.isArray(body) &&
+      Object.keys(body).length === 1 &&
+      'request' in body &&
+      typeof body.request === 'string' &&
+      CARD.test(body.request)
+    ) {
+      return body.request;
+    }
+  } catch {
+    // Not JSON.
+  }
+  return undefined;
+}
+
+/** `PUT /invites/<code>/request` (SHARING-112.1 to 116.1, 118.1, 119.1). */
+function putRequest(request: Received, code: string) {
+  const sent = requestIn(request);
+  if (!CODE.test(code) || request.path.includes('?') || sent === undefined) {
+    return json(400, { error: 'request' });
+  }
+  const invite = api().invites.get(code);
+  if (!isActive(invite)) return json(404, { error: 'no-invite' });
+  if (api().groups.get(invite!.groupId)?.has(request.deviceId!)) {
+    return json(409, { error: 'already-a-member' });
+  }
+  const requests = api().requests.get(code) ?? new Map<string, string>();
+  if (!requests.has(request.deviceId!) && requests.size >= 20) {
+    return json(409, { error: 'requests-full' });
+  }
+  requests.set(request.deviceId!, sent);
+  api().requests.set(code, requests);
+  return json(200, { code });
+}
+
+/** `DELETE /invites/<code>/request` (SHARING-117.1, 118.1). */
+function deleteRequest(request: Received, code: string) {
+  if (
+    !CODE.test(code) ||
+    request.path.includes('?') ||
+    request.body.length > 0
+  ) {
+    return json(400, { error: 'request' });
+  }
+  if (isActive(api().invites.get(code))) {
+    api().requests.get(code)?.delete(request.deviceId!);
   }
   return json(200, { code });
 }
 
 const GROUP_PATH = /^\/groups\/([^/?]+)$/;
 const INVITE_PATH = /^\/groups\/([^/?]+)\/invites\/([^/?]+)$/;
+const READ_PATH = /^\/invites\/([^/?]+)$/;
+const REQUEST_PATH = /^\/invites\/([^/?]+)\/request$/;
 
 function route(request: Received) {
   const group = GROUP_PATH.exec(request.path);
@@ -204,6 +284,13 @@ function route(request: Received) {
   }
   if (invite && request.method === 'DELETE') {
     return deleteInvite(request, invite[1], invite[2]);
+  }
+  const joining = REQUEST_PATH.exec(request.path.split('?')[0]);
+  if (joining && request.method === 'PUT') {
+    return putRequest(request, joining[1]);
+  }
+  if (joining && request.method === 'DELETE') {
+    return deleteRequest(request, joining[1]);
   }
   // Nothing else has a route here, the event API (SYNC-45.1 to 64.1) included, on purpose:
   // a sync that the app starts after a save in a shared ledger gets "not found" for its
@@ -239,6 +326,45 @@ export function revokedByAnotherPhone(code: string) {
   const invite = api().invites.get(code)!;
   invite.revoked = true;
   invite.card = '';
+  api().requests.delete(code);
+}
+
+/**
+ * Another phone's group and its invite on the API, with the card that phone uploaded:
+ * `deviceId` is its only member device.
+ */
+export function inviteWithCard(
+  groupId: string,
+  deviceId: string,
+  code: string,
+  card: Uint8Array,
+) {
+  const members = api().groups.get(groupId) ?? new Set<string>();
+  members.add(deviceId);
+  api().groups.set(groupId, members);
+  api().invites.set(code, {
+    groupId,
+    expiresAtMs: apiNow() + WEEK,
+    revoked: false,
+    card: toHex(card),
+    cursor: 0,
+  });
+}
+
+/** The join requests the API holds for an invite: each device's content. */
+export const requestsOnApi = (code: string) =>
+  [...(api().requests.get(code) ?? [])].map(([deviceId, content]) => ({
+    deviceId,
+    content: fromHex(content),
+  }));
+
+/** Other devices fill the invite's requests up to `count`. */
+export function requestsFromOthers(code: string, count: number) {
+  const requests = api().requests.get(code) ?? new Map<string, string>();
+  for (let each = requests.size; each < count; each += 1) {
+    requests.set(`other-device-${each}`, '00'.repeat(41));
+  }
+  api().requests.set(code, requests);
 }
 
 // What the API received
@@ -381,6 +507,7 @@ export function eachTestGetsAnInvitingPhone(prefix: string) {
   beforeEach(() => {
     resetWorld();
     holder.inviteTestApi = undefined;
+    apiPublicRoutes(readInvite);
     apiRoutes(route);
     process.env.EXPO_PUBLIC_API_URL = API;
     jest

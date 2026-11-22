@@ -28,9 +28,11 @@ import {
 } from './group-details-app';
 import {
   APP_SCHEME_LINK,
+  CANNOT_USE,
+  CONNECT,
+  HALF_LINK,
   NOT_INVITE_LINKS,
   OTHER_SPELLINGS,
-  SECOND_LINK,
   TITLE,
   WHOLE_LINK,
   forgetLinks,
@@ -105,7 +107,7 @@ async function expectOnSettingsRoot() {
   expect(navigationBarTitles(tab('Settings'))).toEqual(['Settings']);
 }
 
-/** Whether Invite Link rises from the bottom with a title bar of its own. */
+/** Whether Join Group rises from the bottom with a title bar of its own. */
 function risesFromTheBottom() {
   const sheet = screenOf(TITLE);
   expect(FROM_THE_BOTTOM).toContain(sheet.props.stackAnimation);
@@ -114,7 +116,7 @@ function risesFromTheBottom() {
   expect(sheet.props.stackPresentation).not.toBe('formSheet');
 }
 
-test('[SHARING-71.1] opens Invite Link from the bottom over Settings on Android, with only Close and the whole link', async () => {
+test('[SHARING-71.2] opens Join Group from the bottom over Settings on Android, with only Close', async () => {
   await startApp('/settings');
 
   await receiveLink(WHOLE_LINK);
@@ -126,11 +128,11 @@ test('[SHARING-71.1] opens Invite Link from the bottom over Settings on Android,
     name: 'Close',
   });
   await waitFor(() => expect(iconNames(close, 'android')).toEqual(['close']));
-  expect(textsOn(TITLE)).toEqual([WHOLE_LINK]);
+  expect(textsOn(TITLE)).toEqual(CONNECT);
   expect(selectedTab()).toBe('Settings');
 });
 
-test('[SHARING-71.1] shows only the loading indicator while the local data opens on Android, then Invite Link over the Expenses root, when a link starts the app', async () => {
+test('[SHARING-71.2] shows only the loading indicator while the local data opens on Android, then Join Group over the Expenses root, when a link starts the app', async () => {
   let finishOpening!: () => void;
   const opening = new Promise<void>((resolve) => {
     finishOpening = resolve;
@@ -145,29 +147,42 @@ test('[SHARING-71.1] shows only the loading indicator while the local data opens
 
   expect(screen.getByLabelText('Restoring local data')).toBeOnTheScreen();
   expect(inviteLinksOpen()).toBe(0);
-  expect(screen.queryByText(WHOLE_LINK)).toBeNull();
+  expect(screen.queryByText(CONNECT[0])).toBeNull();
   finishOpening();
   await settle();
   await expectOpen(TITLE);
-  expect(textsOn(TITLE)).toEqual([WHOLE_LINK]);
+  expect(textsOn(TITLE)).toEqual(CONNECT);
   expect(selectedTab()).toBe('Expenses');
   expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses']);
 });
 
-test.each([WHOLE_LINK, APP_SCHEME_LINK, ...OTHER_SPELLINGS])(
-  '[SHARING-71.1] opens Invite Link over the Expenses root on Android, with that link, when %s starts the app',
+test.each([WHOLE_LINK, APP_SCHEME_LINK])(
+  '[SHARING-71.2] opens Join Group over the Expenses root on Android, with what follows the # taken in, when %s starts the app',
   async (link) => {
     await startAppFromLink(link);
 
     await expectOpen(TITLE);
     risesFromTheBottom();
-    expect(textsOn(TITLE)).toEqual([link]);
+    expect(textsOn(TITLE)).toEqual(CONNECT);
     expect(selectedTab()).toBe('Expenses');
     expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses']);
   },
 );
 
-test('[SHARING-72.1] closes Invite Link with Close on Android and is back on the Settings root', async () => {
+test.each([HALF_LINK, ...OTHER_SPELLINGS])(
+  '[SHARING-71.2] opens Join Group over the Expenses root on Android when %s starts the app',
+  async (link) => {
+    await startAppFromLink(link);
+
+    await expectOpen(TITLE);
+    risesFromTheBottom();
+    expect(inviteLinksOpen()).toBe(1);
+    expect(selectedTab()).toBe('Expenses');
+    expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses']);
+  },
+);
+
+test('[SHARING-72.1] closes Join Group with Close on Android and is back on the Settings root', async () => {
   await receiveOnSettings(WHOLE_LINK);
 
   await pressOnBar(TITLE, 'Close');
@@ -175,7 +190,7 @@ test('[SHARING-72.1] closes Invite Link with Close on Android and is back on the
   await expectOnSettingsRoot();
 });
 
-test('[SHARING-72.1] closes Invite Link with the back button on Android, without leaving the app', async () => {
+test('[SHARING-72.1] closes Join Group with the back button on Android, without leaving the app', async () => {
   await receiveOnSettings(WHOLE_LINK);
 
   await pressBack();
@@ -184,7 +199,7 @@ test('[SHARING-72.1] closes Invite Link with the back button on Android, without
   expect(exitApp).not.toHaveBeenCalled();
 });
 
-test('[SHARING-72.1] closes the Invite Link that a link started the app with on the first back press, and leaves the app on the second', async () => {
+test('[SHARING-72.1] closes the Join Group that a link started the app with on the first back press, and leaves the app on the second', async () => {
   await startAppFromLink(WHOLE_LINK);
   await expectOpen(TITLE);
 
@@ -198,19 +213,19 @@ test('[SHARING-72.1] closes the Invite Link that a link started the app with on 
   expect(exitApp).toHaveBeenCalledTimes(1);
 });
 
-test('[SHARING-73.1] shows the second link in the one Invite Link on Android, and one back press closes it', async () => {
+test('[SHARING-73.2] shows what the second link gets in the one Join Group on Android, and one back press closes it', async () => {
   await receiveOnSettings(WHOLE_LINK);
 
-  await receiveLink(SECOND_LINK);
+  await receiveLink(HALF_LINK);
 
-  await waitFor(() => expect(textsOn(TITLE)).toEqual([SECOND_LINK]));
+  await waitFor(() => expect(textsOn(TITLE)).toEqual(CANNOT_USE));
   expect(inviteLinksOpen()).toBe(1);
   await pressBack();
   await expectOnSettingsRoot();
   expect(exitApp).not.toHaveBeenCalled();
 });
 
-test('[SHARING-74.1] selects Groups, without Invite Link, when shared-expense-tracker://groups starts the app on Android', async () => {
+test('[SHARING-74.1] selects Groups, without Join Group, when shared-expense-tracker://groups starts the app on Android', async () => {
   await startAppFromLink('shared-expense-tracker://groups');
 
   await waitFor(() => expect(selectedTab()).toBe('Groups'));
@@ -218,7 +233,7 @@ test('[SHARING-74.1] selects Groups, without Invite Link, when shared-expense-tr
 });
 
 test.each(NOT_INVITE_LINKS)(
-  '[SHARING-74.1] does not open Invite Link when %s, which is not an invite link, starts the app on Android',
+  '[SHARING-74.1] does not open Join Group when %s, which is not an invite link, starts the app on Android',
   async (link) => {
     await startAppFromLink(link);
 
