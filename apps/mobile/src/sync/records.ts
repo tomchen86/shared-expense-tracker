@@ -12,6 +12,7 @@ import {
 import type { Expense } from '../ledger/expenses';
 import { readCorrectedTime } from '../sharing/device-identity';
 import { createUuid, type SqlExecutor } from '../storage';
+import { keepOwnMoney } from './own-money';
 
 export interface SharedGroup {
   groupId: string;
@@ -105,8 +106,10 @@ export function expenseSyncValues(expense: Expense): SyncUnits['expense'] {
 }
 
 /**
- * The units among `values` whose value differs from the stored one, each with the stamp
- * it replaces as its base, and with no base where nothing was stored (SYNC-23.1).
+ * The units among `values` whose value differs from the one in `stored`, each with the
+ * stamp it has there as its base, and with no base where `stored` has none. `stored` is
+ * what the record holds, or what it held when the form that made the change opened
+ * (SYNC-23.2).
  */
 export function changedUnits(values: object, stored: SyncRecord['units']) {
   const current: Record<
@@ -160,15 +163,16 @@ async function writeEvent(
   });
   const verdict = checkSyncEvent({ version: 1, stamp, ...change }, null);
   if (verdict.status !== 'valid') throw new Error('Invalid local sync event');
-  const content = JSON.stringify(verdict.event);
+  const { event } = verdict;
+  const content = JSON.stringify(event);
   if (new TextEncoder().encode(content).byteLength > MAX_SYNC_PLAINTEXT_BYTES)
     throw new SyncEventTooLargeError();
 
-  const { record } = mergeSyncEvent({
-    record: previous?.record,
-    event: verdict.event,
-  });
+  const { record } = mergeSyncEvent({ record: previous?.record, event });
   await storeSyncRecord(tx, group.groupId, record, previous?.created ?? stamp);
+  // The last event of this phone that held the expense's money (SYNC-129.1).
+  if (event.type === 'expense' && 'units' in event && event.units.money)
+    await keepOwnMoney(tx, event.id, stamp, event.units.money.value);
   const { lastInsertRowId } = await tx.run(
     'INSERT INTO sync_outbox (id, groupId, content) VALUES (?, ?, ?)',
     [await createUuid(tx), group.groupId, content],
@@ -186,7 +190,9 @@ async function writeEvent(
 /**
  * Writes the event for a change to a shared ledger's record, holding the units among
  * `values` that changed, or nothing when none did. Called inside the transaction that
- * writes the capability's own rows (SYNC-21.1).
+ * writes the capability's own rows (SYNC-21.1). A change made in a form gives `opened`,
+ * the units the record held when the form opened: the event then holds what differs from
+ * those, based on their stamps, whatever the record holds now (SYNC-23.2).
  */
 export async function writeLocalChange<T extends SyncRecordType>(
   tx: SqlExecutor,
@@ -194,9 +200,10 @@ export async function writeLocalChange<T extends SyncRecordType>(
   type: T,
   id: string,
   values: Partial<SyncUnits[T]>,
+  opened?: SyncRecord['units'],
 ) {
   const previous = await readSyncRecord(tx, group.groupId, type, id);
-  const units = changedUnits(values, previous?.record.units ?? {});
+  const units = changedUnits(values, opened ?? previous?.record.units ?? {});
   if (Object.keys(units).length === 0) return;
   await writeEvent(tx, group, previous, { type, id, units });
 }

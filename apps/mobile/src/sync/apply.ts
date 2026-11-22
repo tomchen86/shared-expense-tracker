@@ -12,6 +12,7 @@ import { notifyExpensesChanged } from '../ledger/expenses';
 import { applyMergedExpense } from '../ledger/merged-expense';
 import type { Database, SqlExecutor } from '../storage';
 import { applyMergedInvite } from './invites';
+import { markIfOverridden } from './own-money';
 import { orderSyncedRows } from './positions';
 import {
   latestStamp,
@@ -158,6 +159,7 @@ export async function applyReceivedEvents(
           visibleChange = true;
         break;
       case 'expense':
+        if (await markIfOverridden(tx, event)) visibleChange = true;
         if (
           await applyMergedExpense(
             tx,

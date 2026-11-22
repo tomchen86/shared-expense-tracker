@@ -2,7 +2,7 @@
 
 ## Purpose
 
-記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、和群組分攤、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。群組支出是屬於一個群組的空間的支出，付款和分攤都記在這個群組的成員的成員 ID 下；成員、你的成員、前成員和成員現在的名稱見 groups。你的 participant 是個人 participant，以及每個群組裡你的成員；一筆支出裡你付的，是它的付款裡你的 participant 的金額總和，你的份額是它的分攤裡你的 participant 的金額總和。和你有關的群組支出，是付款或分攤裡有你的 participant 的群組支出，分攤的金額是 0 也算。表單的空間在「Split with others」開著並選了群組時是那個群組，其他時候是個人空間；分攤的欄位是「Split with others」、群組、付款人和分攤的人；表單的清單是分類清單、Select Group、Who Paid? 和 Split Between：iOS 上是系統選單（LEDGER-100.1），Android 上是 sheet（LEDGER-101.1）；關閉清單是不選任何一項就離開清單，iOS 上是按 sheet 裡選單外面的地方，Android 上是按 Cancel 或 Done，或按返回鍵。分攤的順序是分攤的人被選的先後（LEDGER-49.2），存下之後是存著的順序（LEDGER-58.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是這筆支出的幣別；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期、備註或分攤的欄位（LEDGER-59.1）有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是期間列（LEDGER-108.2）和清單上方的總額（LEDGER-35.6），下面是期間裡的支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。期間是支出清單或群組的畫面現在顯示的那一段日期：某個月、某一年、最近三個月、自訂範圍或全部期間（LEDGER-107.2），兩個畫面各有自己的期間；這個月是今天所在的月份，上個月是它的前一個月，今年是今天所在的年份；期間的名稱是期間列上顯示的名稱（LEDGER-108.2）。一個畫面可列的支出，是不看期間時它會列出的支出：支出清單是不在垃圾桶裡的個人支出和不在垃圾桶裡、和你有關的群組支出，群組的畫面是這個群組不在垃圾桶裡的支出。清單上方的總額是期間列下面的那一行，支出清單的見 LEDGER-35.6，群組的畫面的見 GROUPS-68.6。Filters 是從支出清單或群組的畫面打開、設定那個畫面顯示哪些支出的畫面（LEDGER-109.2）。篩選是支出清單或群組的畫面上，期間和搜尋以外用來縮小卡片的條件：Category、Ledger（支出清單）或 Paid by（群組的畫面）、支出清單的 Paid by Me、Amount 和 Currency（LEDGER-129.1），兩個畫面各有自己的篩選；一個條件有選擇、開關開著或有數字時是開著的，有篩選是指至少一個條件開著，一筆支出通過篩選是指它符合每一個開著的條件；期間和排序都不算篩選。帳本是個人空間或一個群組。膠囊列是有篩選時卡片上方的那一列條件（LEDGER-133.2）。存起來的篩選是使用者取了名稱存下來的一組條件（LEDGER-143.2），支出清單和每個群組的畫面各有自己的。手機的語言不影響 app 顯示的金額和日期：手機地區的貨幣格式，是英文加手機的地區用來顯示一個幣別的金額的格式，手機回報不出地區或平台沒有這個地區的英文格式時只用英文；手機的地區是手機設定的地區，不是語言標籤裡的地區；手機地區的日期格式見 LEDGER-30.2。刪除支出是把它移到垃圾桶：本機資料把它標成在垃圾桶裡，它的其他資料都不變，所以垃圾桶裡的支出仍是存著的支出，仍算使用它的分類（CATEGORIES-34.1、35.1、40.1）；還原是拿掉這個標記，永久刪除是把這筆支出和它的付款、分攤從本機資料刪掉，只有個人支出能永久刪除（LEDGER-80.2、LEDGER-81.2）。Undo 提示是支出移到垃圾桶之後，顯示在畫面底部、可以按 Undo 的提示；Undo 時間是 5 秒，螢幕閱讀器開著時是 15 秒，螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。Trash 是 Settings 分頁上列出垃圾桶裡的支出的畫面；唯讀明細是在 Trash 點卡片後推入、顯示垃圾桶裡一筆支出的畫面。
+記帳：金額規則（每個幣別的小數位數、金額文字怎麼解析和轉回文字、金額上限、平均分攤和支出日期），以及手機 app 上新增和修改支出的支出表單、和群組分攤、存著的支出、Expenses 分頁的支出清單和支出的明細。金額規則放在 `packages/domain`，每個客戶端都照同一套套用（ADR-0002、ADR-0004）；手機 app 把支出存在本機資料裡（ADR-0006）。支出表單是新增支出的 New Expense 和修改支出的 Edit Expense。個人支出是屬於本機身分的個人空間、付款和分攤都是個人 participant 的支出（SHELL-2.1）。群組支出是屬於一個群組的空間的支出，付款和分攤都記在這個群組的成員的成員 ID 下；成員、你的成員、前成員和成員現在的名稱見 groups。你的 participant 是個人 participant，以及每個群組裡你的成員；一筆支出裡你付的，是它的付款裡你的 participant 的金額總和，你的份額是它的分攤裡你的 participant 的金額總和。和你有關的群組支出，是付款或分攤裡有你的 participant 的群組支出，分攤的金額是 0 也算。表單的空間在「Split with others」開著並選了群組時是那個群組，其他時候是個人空間；分攤的欄位是「Split with others」、群組、付款人和分攤的人；表單的清單是分類清單、Select Group、Who Paid? 和 Split Between：iOS 上是系統選單（LEDGER-100.1），Android 上是 sheet（LEDGER-101.1）；關閉清單是不選任何一項就離開清單，iOS 上是按 sheet 裡選單外面的地方，Android 上是按 Cancel 或 Done，或按返回鍵。分攤的順序是分攤的人被選的先後（LEDGER-49.2），存下之後是存著的順序（LEDGER-58.1）。手機地區的幣別是手機第一個偏好的語言和地區所用的幣別。表單的幣別在 New Expense 是新支出的幣別（LEDGER-15.1），在 Edit Expense 是打開表單時這筆支出的幣別（LEDGER-16.1）；金額欄位的文字經 LEDGER-19.1 轉換後，依 LEDGER-2.1 到 LEDGER-4.1 能換成表單幣別的最小單位，就是合法的金額。表單有變更，是指金額、標題、分類、日期、備註或分攤的欄位（LEDGER-59.1）有任何一欄和打開表單時不同；比較金額、標題和備註時不管頭尾空白。裝置所在的時區是 JavaScript 執行環境回報的時區，今天是裝置所在時區的今天（LEDGER-8.1）。支出清單是 Expenses 分頁的根畫面，上方是期間列（LEDGER-108.2）和清單上方的總額（LEDGER-35.6），下面是期間裡的支出的卡片；明細是點卡片後推入、顯示一筆支出的畫面。期間是支出清單或群組的畫面現在顯示的那一段日期：某個月、某一年、最近三個月、自訂範圍或全部期間（LEDGER-107.2），兩個畫面各有自己的期間；這個月是今天所在的月份，上個月是它的前一個月，今年是今天所在的年份；期間的名稱是期間列上顯示的名稱（LEDGER-108.2）。一個畫面可列的支出，是不看期間時它會列出的支出：支出清單是不在垃圾桶裡的個人支出和不在垃圾桶裡、和你有關的群組支出，群組的畫面是這個群組不在垃圾桶裡的支出。清單上方的總額是期間列下面的那一行，支出清單的見 LEDGER-35.6，群組的畫面的見 GROUPS-68.6。Filters 是從支出清單或群組的畫面打開、設定那個畫面顯示哪些支出的畫面（LEDGER-109.2）。篩選是支出清單或群組的畫面上，期間和搜尋以外用來縮小卡片的條件：Category、Ledger（支出清單）或 Paid by（群組的畫面）、支出清單的 Paid by Me、Amount 和 Currency（LEDGER-129.1），兩個畫面各有自己的篩選；一個條件有選擇、開關開著或有數字時是開著的，有篩選是指至少一個條件開著，一筆支出通過篩選是指它符合每一個開著的條件；期間和排序都不算篩選。帳本是個人空間或一個群組。膠囊列是有篩選時卡片上方的那一列條件（LEDGER-133.2）。存起來的篩選是使用者取了名稱存下來的一組條件（LEDGER-143.2），支出清單和每個群組的畫面各有自己的。手機的語言不影響 app 顯示的金額和日期：手機地區的貨幣格式，是英文加手機的地區用來顯示一個幣別的金額的格式，手機回報不出地區或平台沒有這個地區的英文格式時只用英文；手機的地區是手機設定的地區，不是語言標籤裡的地區；手機地區的日期格式見 LEDGER-30.2。刪除支出是把它移到垃圾桶：本機資料把它標成在垃圾桶裡，它的其他資料都不變，所以垃圾桶裡的支出仍是存著的支出，仍算使用它的分類（CATEGORIES-34.1、35.1、40.1）；還原是拿掉這個標記，永久刪除是把這筆支出和它的付款、分攤從本機資料刪掉，只有個人支出能永久刪除（LEDGER-80.2、LEDGER-81.2）。Undo 提示是支出移到垃圾桶之後，顯示在畫面底部、可以按 Undo 的提示；Undo 時間是 5 秒，螢幕閱讀器開著時是 15 秒，螢幕閱讀器是 iOS 的 VoiceOver 或 Android 的 TalkBack。Trash 是 Settings 分頁上列出垃圾桶裡的支出的畫面；唯讀明細是在 Trash 點卡片後推入、顯示垃圾桶裡一筆支出的畫面。需要確認的支出，和它現在的那一組、你的那一組，都和 sync 的定義一樣（SYNC-129.1 到 SYNC-133.1）；標記是需要確認的支出的卡片上多的那一行（LEDGER-151.1）和明細最上面的區塊（LEDGER-152.1）。
 
 ## Requirements
 
@@ -592,7 +592,7 @@ IF 支出存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable
 
 ### Requirement: LEDGER-27.2 本機資料保存的支出
 
-The mobile app SHALL 在本機資料保存每筆支出的 ID、標題、金額、幣別、日期、分類（分類的 ID，以及最後一次存檔時分類的名稱和顏色；共同帳本的支出存的是合併後的分類，它的名稱和顏色只在支出換分類時才換，分類改了名稱或顏色之後再存檔也不變，見 SYNC-23.1 和 SYNC-29.2）、有的話還有備註、所屬的空間（個人空間或某個群組）、付款和分攤，重新啟動 app 後都還在。
+The mobile app SHALL 在本機資料保存每筆支出的 ID、標題、金額、幣別、日期、分類（分類的 ID，以及最後一次存檔時分類的名稱和顏色；共同帳本的支出存的是合併後的分類，它的名稱和顏色只在支出換分類時才換，分類改了名稱或顏色之後再存檔也不變，見 SYNC-23.2 和 SYNC-29.2）、有的話還有備註、所屬的空間（個人空間或某個群組）、付款和分攤，重新啟動 app 後都還在。
 
 #### Scenario: 重新啟動
 
@@ -1461,9 +1461,9 @@ WHEN 打開群組支出的 Edit Expense，the mobile app SHALL 照 LEDGER-16.1 �
 - **WHEN** 在 Dinner 的 Edit Expense 打開分類清單
 - **THEN** 列出 Brisbane 的分類
 
-### Requirement: LEDGER-56.1 按 Save 存下群組支出的修改
+### Requirement: LEDGER-56.2 按 Save 存下群組支出的修改
 
-WHEN 使用者在群組支出的 Edit Expense 按 Save，the mobile app SHALL 照 LEDGER-21.2 的規則更新標題、備註、金額、分類和日期，保留它的 ID、幣別和群組，付款改成付款人的全額，分攤改成照 LEDGER-6.1 依分攤的順序把金額平均分給分攤的人，然後關閉表單。
+WHEN 使用者在群組支出的 Edit Expense 按 Save，the mobile app SHALL 照 LEDGER-21.2 的規則更新標題、備註、金額、分類和日期，保留它的 ID、幣別和群組，付款改成付款人的全額，分攤改成照 LEDGER-6.1 依分攤的順序把金額平均分給分攤的人，然後關閉表單；打開表單時已經是共同帳本的支出的（sync），只更新表單要存下的值和打開表單時存著的值不同的那幾項，金額、付款和分攤算一項，其他的維持存著的值（SYNC-23.2）；更新金額那一項時，幣別是表單的幣別（LEDGER-16.1），表單開著時別支手機換了這筆支出的幣別也一樣。
 
 #### Scenario: 只改金額
 
@@ -1485,9 +1485,19 @@ WHEN 使用者在群組支出的 Edit Expense 按 Save，the mobile app SHALL �
 - **WHEN** 分攤依序是 Blake、Taylor、Casey，拿掉 Blake 再選 Blake，並把標題改成「Supper」後按 Save
 - **THEN** 分攤依序是 Taylor 3334、Casey 3334、Blake 3333
 
+#### Scenario: 共同帳本的支出在表單開著時被別支手機改了
+
+- **WHEN** Brisbane 是共同帳本，Dinner 的 Edit Expense 開著時，套用了別支手機把備註改成「Window seat」、金額改成 90.00 的事件；把表單上的標題改成「Supper」後按 Save
+- **THEN** 表單關閉；Dinner 的標題是「Supper」，備註是「Window seat」，金額是 9000，付款是 Casey 的 9000：表單上沒改的金額和備註沒有被存回去
+
+#### Scenario: 表單開著時別支手機換了幣別
+
+- **WHEN** Brisbane 是共同帳本，100.01 USD 的 Dinner 的 Edit Expense 開著時，套用了別支手機把金額改成 9000 JPY 的事件；把表單上的金額改成「120.00」後按 Save
+- **THEN** 表單關閉；Dinner 的金額是 12000 USD，付款是 Casey 的 12000：存下的是表單上看到的幣別
+
 ### Requirement: LEDGER-57.1 把個人支出改成群組支出
 
-WHEN 使用者在個人支出的 Edit Expense 打開「Split with others」，選好群組、付款人和分攤的人後按 Save，the mobile app SHALL 照 LEDGER-56.1 的規則把這筆支出存成屬於選的群組的支出，保留它的 ID 和幣別，然後關閉表單。
+WHEN 使用者在個人支出的 Edit Expense 打開「Split with others」，選好群組、付款人和分攤的人後按 Save，the mobile app SHALL 照 LEDGER-56.2 的規則把這筆支出存成屬於選的群組的支出，保留它的 ID 和幣別，然後關閉表單。
 
 #### Scenario: 改成群組支出
 
@@ -3248,7 +3258,7 @@ WHEN 支出清單或群組的畫面的期間換了，或它的自訂範圍的 Fr
 
 ### Requirement: LEDGER-120.1 每筆支出記著最後修改時間
 
-The mobile app SHALL 在本機資料替每筆支出記著最後修改時間，也就是這支手機最後一次寫入這筆支出的時刻：新增它（LEDGER-21.2、LEDGER-54.1）、存下它的修改（LEDGER-22.2、LEDGER-56.1）、把它移到垃圾桶或還原（LEDGER-71.3、LEDGER-75.5、LEDGER-79.5）、把它搬到另一個分類（CATEGORIES-40.1）時，是手機的時鐘當下的時刻；套用收到的事件讓它的單位到齊，或改了存著的這筆支出時（SYNC-29.2），是那個事件的時間戳記的毫秒，比原本記著的早時不改。沒有寫入這筆支出的事不改它，例如分類改了名稱或顏色、成員改了名字，或同一個事件再收到（SYNC-28.2）。最後修改時間只留在這支手機，不寫進同步的事件；匯出檔帶著它，匯入之後和匯出時一樣（BACKUP-3.1、BACKUP-13.2）。它是用一個新的 migration 加進本機資料的：在那之前就存著的支出沒有最後修改時間，之前的 app 匯出的匯出檔照 BACKUP-18.1 升級之後匯入，裡面的支出也沒有，到下一次寫入才有。使用者從 Recently Edited 的排序（LEDGER-121.1）看到它。
+The mobile app SHALL 在本機資料替每筆支出記著最後修改時間，也就是這支手機最後一次寫入這筆支出的時刻：新增它（LEDGER-21.2、LEDGER-54.1）、存下它的修改（LEDGER-22.2、LEDGER-56.2）、把它移到垃圾桶或還原（LEDGER-71.3、LEDGER-75.5、LEDGER-79.5）、把它搬到另一個分類（CATEGORIES-40.1）、選 Use Mine 把你的那一組再存一次（LEDGER-154.1）時，是手機的時鐘當下的時刻；套用收到的事件讓它的單位到齊，或改了存著的這筆支出時（SYNC-29.2），是那個事件的時間戳記的毫秒，比原本記著的早時不改。沒有寫入這筆支出的事不改它，例如分類改了名稱或顏色、成員改了名字，或同一個事件再收到（SYNC-28.2）。最後修改時間只留在這支手機，不寫進同步的事件；匯出檔帶著它，匯入之後和匯出時一樣（BACKUP-3.1、BACKUP-13.2）。它是用一個新的 migration 加進本機資料的：在那之前就存著的支出沒有最後修改時間，之前的 app 匯出的匯出檔照 BACKUP-18.1 升級之後匯入，裡面的支出也沒有，到下一次寫入才有。使用者從 Recently Edited 的排序（LEDGER-121.1）看到它。
 
 #### Scenario: 新增
 
@@ -4677,3 +4687,167 @@ WHERE iPhone 或 Android 手機，the mobile app SHALL 讓膠囊列放不下時�
 - **WHEN** Android 手機是淺色外觀，app 的外觀選項是 Dark，打開期間的名稱的選單、Category 的膠囊的選單、Amount 的 sheet 和取名的對話框；再把手機換成深色外觀、app 的外觀選項換成 Light，做一次
 - **THEN** 第一次膠囊、選單、sheet 和對話框都是深色的，和 app 的畫面一樣；第二次都是淺色的
 
+### Requirement: LEDGER-151.1 需要確認的支出的卡片多一行標記
+
+WHILE 一筆支出需要確認（sync），the mobile app SHALL 在它的每一張卡片上、分類那一行的下面多顯示一行標記：一個警示圖示，iOS 上是 SF Symbol `exclamationmark.triangle.fill`，Android 上是 Material Symbol `warning`，後面是文字「Your change was replaced」；卡片的其他內容不變（LEDGER-33.3、LEDGER-65.4、GROUPS-61.6），螢幕閱讀器在日期之後讀出「Your change was replaced」，不讀圖示。不需要確認的支出的卡片沒有這一行；垃圾桶裡的支出不算需要確認，所以 Trash 的卡片也沒有。
+
+#### Scenario: 群組的畫面
+
+- **WHEN** 名字是「Taylor」，Brisbane 是共同帳本，你把 Dinner 的金額改成 120.00，之後套用別支手機的 90.00（sync）
+- **THEN** Brisbane 的畫面上 Dinner 的卡片依序顯示「Dinner」、「$90.00」、「Food & Dining」、「Paid by Casey」、「Your change was replaced」；螢幕閱讀器讀出一個按鈕，依序是「Dinner」、「$90.00」、「Food & Dining」、「Paid by Casey」、「Oct 30, 2026」和「Your change was replaced」
+
+#### Scenario: 支出清單
+
+- **WHEN** 同樣的情況下看支出清單
+- **THEN** Dinner 的卡片依序顯示「Dinner」、「$30.00」、「Food & Dining」、「Brisbane」、「Your change was replaced」
+
+#### Scenario: 類別的支出
+
+- **WHEN** 同樣的情況下，在 Brisbane 的 Insights 按 Food & Dining 那一列；或在個人的 Insights 按 Food & Dining 那一列
+- **THEN** 類別的支出（INSIGHTS-49.1）上 Dinner 的卡片，前者依序顯示「Dinner」、「$90.00」、「Food & Dining」、「Paid by Casey」、「Your change was replaced」，後者依序顯示「Dinner」、「$30.00」、「Food & Dining」、「Brisbane」、「Your change was replaced」
+
+#### Scenario: 圖示
+
+- **WHEN** 在 iOS 和 Android 上看這張卡片
+- **THEN** 「Your change was replaced」前面的圖示，iOS 上是 `exclamationmark.triangle.fill`，Android 上是 `warning`
+
+#### Scenario: 不需要確認的支出
+
+- **WHEN** 別支手機的事件只改了 Dinner 的標題和備註；或它看過你的 120.00 才把金額改成 90.00；Brisbane 另有一筆沒有人改過的 Taxi
+- **THEN** 這些卡片都沒有「Your change was replaced」
+
+#### Scenario: 現在的那一組又和你的相同
+
+- **WHEN** Dinner 需要確認時，套用另一個看過 90.00、把金額那一組改回 12000 USD、Casey 付 12000、分攤依序是 Blake 4000、Taylor 4000、Casey 4000 的事件
+- **THEN** Dinner 的卡片沒有「Your change was replaced」
+
+#### Scenario: 垃圾桶
+
+- **WHEN** Dinner 需要確認時把它移到垃圾桶，看 Trash，再把它還原
+- **THEN** Trash 上 Dinner 的卡片沒有「Your change was replaced」；還原之後支出清單上它的卡片又有
+
+#### Scenario: 重新啟動
+
+- **WHEN** Dinner 需要確認時重新啟動 app
+- **THEN** 支出清單和 Brisbane 的畫面上，Dinner 的卡片仍有「Your change was replaced」
+
+### Requirement: LEDGER-152.1 需要確認的支出的明細最上面列出現在的和你的那一組
+
+WHILE 一筆支出需要確認（sync），the mobile app SHALL 在它的明細最上面、支出的標題上方顯示標記的區塊，由上而下是：LEDGER-151.1 的圖示和「Your change was replaced」；「This expense was changed on another phone before your change reached it. Choose which version to keep.」；「CURRENT」和現在的那一組；「YOURS」和你的那一組；以及角色為 button、名稱為「Keep Current」和「Use Mine」的兩個按鈕（LEDGER-153.1、LEDGER-154.1）。每一組依序三行：全額，用那一組的幣別和手機地區的貨幣格式（LEDGER-40.2）；「Paid by <付款的人>」；「Split between <分攤的人>」；人依那一組裡的順序以「, 」隔開，是他現在的名稱，你的成員加上「 (You)」，前成員是他存著的名稱（LEDGER-66.3）。區塊下面是明細原本的內容，不因此改變；明細開著時支出變成需要確認，區塊不必重新打開就出現。支出不需要確認時沒有這個區塊；Trash 的唯讀明細（LEDGER-78.4）也沒有。
+
+#### Scenario: 金額不同
+
+- **WHEN** 名字是「Taylor」，你把 Dinner 的金額改成 120.00，之後套用別支手機的 90.00，打開 Dinner 的明細
+- **THEN** 由上而下依序是「Your change was replaced」、「This expense was changed on another phone before your change reached it. Choose which version to keep.」、「CURRENT」、「$90.00」、「Paid by Casey」、「Split between Blake, Taylor (You), Casey」、「YOURS」、「$120.00」、「Paid by Casey」、「Split between Blake, Taylor (You), Casey」、「Keep Current」、「Use Mine」，再來是「Dinner」、「$90.00」和明細其他的內容
+
+#### Scenario: 金額相同，付款人和分攤不同
+
+- **WHEN** 你把 Dinner 的付款人改成 Taylor（金額仍是 10001），之後套用別支手機沒看過它、把金額那一組改成 10001 USD、Casey 付 10001、分攤依序是 Blake 5001、Casey 5000 的事件
+- **THEN** 「CURRENT」下面是「$100.01」、「Paid by Casey」、「Split between Blake, Casey」；「YOURS」下面是「$100.01」、「Paid by Taylor (You)」、「Split between Blake, Taylor (You), Casey」
+
+#### Scenario: 幣別不同
+
+- **WHEN** 你把 Dinner 的金額改成 120.00，之後套用別支手機沒看過它、把金額那一組改成 9000 JPY、Casey 付 9000、分攤依序是 Blake 3000、Taylor 3000、Casey 3000 的事件
+- **THEN** 「CURRENT」下面的全額是「¥9,000」，「YOURS」下面的是「$120.00」
+
+#### Scenario: 成員改了名或被移出
+
+- **WHEN** Dinner 需要確認之後，把 Casey 改名為「Cass」，把 Blake 移出 Brisbane
+- **THEN** 兩組都是「Paid by Cass」和「Split between Blake, Taylor (You), Cass」
+
+#### Scenario: 明細開著時被蓋掉
+
+- **WHEN** 你把 Dinner 的金額改成 120.00，Dinner 的明細開著時套用別支手機的 90.00
+- **THEN** 不必重新打開，明細最上面就有這個區塊，下面的金額是「$90.00」
+
+#### Scenario: 從群組的畫面打開
+
+- **WHEN** Dinner 需要確認時，在 Brisbane 的畫面點它的卡片
+- **THEN** 明細最上面有這個區塊
+
+#### Scenario: 不需要確認的支出
+
+- **WHEN** 打開沒有被蓋掉過的 Taxi 的明細
+- **THEN** 沒有這個區塊，最上面是「Taxi」
+
+#### Scenario: 唯讀明細
+
+- **WHEN** Dinner 需要確認時把它移到垃圾桶，在 Trash 點它的卡片
+- **THEN** 唯讀明細最上面是「This expense is in the Trash.」，沒有這個區塊，也沒有「Keep Current」和「Use Mine」
+
+### Requirement: LEDGER-153.1 按 Keep Current 留下現在的那一組
+
+WHEN 使用者在需要確認的支出的明細按「Keep Current」，the mobile app SHALL 不改這筆支出，讓它不再需要確認（SYNC-131.1）：存好之後明細仍開著，標記的區塊消失，其他內容不變，它在每個畫面的卡片都沒有標記那一行，重新啟動 app 之後也一樣；存好之前再按「Keep Current」或「Use Mine」都不再做一次；存不進本機資料時，跳出標題「Unable to Save Expense」、內容「Your expense could not be saved. Please try again.」的提示框，支出仍需要確認，本機資料和按之前一樣。支出的群組已封存時也照樣可以按。
+
+#### Scenario: 按下
+
+- **WHEN** Dinner 需要確認（現在的那一組是 $90.00 的，你的是 $120.00 的）時，在它的明細按「Keep Current」
+- **THEN** 明細仍開著，最上面是「Dinner」和「$90.00」，沒有標記的區塊；返回之後，支出清單和 Brisbane 的畫面上 Dinner 的卡片都沒有「Your change was replaced」，卡片金額不變
+
+#### Scenario: 重新啟動
+
+- **WHEN** 按了「Keep Current」之後重新啟動 app
+- **THEN** Dinner 的卡片和明細都沒有標記
+
+#### Scenario: 存不進去
+
+- **WHEN** 資料庫無法寫入時按「Keep Current」
+- **THEN** 跳出「Unable to Save Expense」和「Your expense could not be saved. Please try again.」；明細仍有標記的區塊，兩個按鈕都可以再按；恢復後再按一次，區塊消失
+
+#### Scenario: 封存的群組
+
+- **WHEN** Dinner 需要確認時封存 Brisbane，在 Dinner 的明細按「Keep Current」
+- **THEN** 區塊消失，Dinner 仍是 $90.00
+
+### Requirement: LEDGER-154.1 按 Use Mine 把你的那一組再存一次
+
+WHEN 使用者在需要確認的支出的明細按「Use Mine」，the mobile app SHALL 把這筆支出的金額、幣別、付款和分攤換成你的那一組，其他都不變，當成一次新的修改存下（SYNC-132.1），讓它不再需要確認：存好之後明細仍開著，標記的區塊消失，明細、卡片、清單上方的總額和群組的金額都照這一組顯示；這是對這筆支出的一次寫入，最後修改時間是這時（LEDGER-120.1）；你的那一組裡有前成員時也照樣存下（GROUPS-66.1）；存好之前再按「Use Mine」或「Keep Current」都不再做一次，所以只存一次；存不進本機資料時，跳出 LEDGER-26.1 的提示框，支出仍需要確認，本機資料和按之前一樣。WHILE 支出的群組已封存，the mobile app SHALL 停用「Use Mine」，它不能按，按了也不儲存（LEDGER-67.2）。
+
+#### Scenario: 按下
+
+- **WHEN** 名字是「Taylor」，Dinner 需要確認（現在的那一組是 $90.00 的，你的是 $120.00 的）時，在它的明細按「Use Mine」
+- **THEN** 明細仍開著，沒有標記的區塊，依序顯示「Dinner」、「$120.00」，「Your share」是「$40.00」，PAID BY 是「Casey」「$120.00」，SPLIT 是「Blake」「$40.00」、「Taylor (You)」「$40.00」、「Casey」「$40.00」；返回之後 Brisbane 的畫面上 Dinner 的卡片金額是「$120.00」，總額是「$120.00」，卡片沒有「Your change was replaced」
+
+#### Scenario: 連按兩次
+
+- **WHEN** 連按兩次「Use Mine」，第二次在存好之前
+- **THEN** 只多一個待上傳的事件
+
+#### Scenario: 最後修改時間
+
+- **WHEN** Dinner 需要確認之後，手機的時鐘是 T+180000 時在 Brisbane 新增 Taxi，Brisbane 的畫面的排序是 Recently Edited；到了 T+240000，在 Dinner 的明細按「Use Mine」
+- **THEN** 按之前卡片由上而下是 Taxi、Dinner；按之後是 Dinner、Taxi
+
+#### Scenario: 你的那一組裡有前成員
+
+- **WHEN** Dinner 需要確認之後，把 Blake 移出 Brisbane，再在 Dinner 的明細按「Use Mine」
+- **THEN** 存下你的那一組，SPLIT 依序是「Blake」「$40.00」、「Taylor (You)」「$40.00」、「Casey」「$40.00」
+
+#### Scenario: 存不進去
+
+- **WHEN** 資料庫無法寫入時按「Use Mine」
+- **THEN** 跳出「Unable to Save Expense」和「Your expense could not be saved. Please try again.」；明細仍有標記的區塊，金額仍是「$90.00」；恢復後再按一次，金額是「$120.00」，區塊消失
+
+#### Scenario: 封存的群組
+
+- **WHEN** Dinner 需要確認時封存 Brisbane，打開 Dinner 的明細
+- **THEN** 標記的區塊仍在，「Use Mine」停用，按了沒有反應，Dinner 仍是 $90.00；「Keep Current」可以按。還原 Brisbane 之後「Use Mine」可以按
+
+### Requirement: LEDGER-155.1 (manual) 手機上的標記
+
+The mobile app SHALL 讓標記在手機上看得清楚、讀得出來：圖示是警示的顏色，文字是一般文字的顏色，所以不靠顏色也讀得出意思，淺色和深色外觀都一樣；系統字級最大時，卡片上的那一行和明細的區塊裡每一行都換行顯示完整的文字，不截斷也不重疊，兩個按鈕都按得到；VoiceOver 和 TalkBack 把卡片讀成一個按鈕並讀出「Your change was replaced」，在明細依序讀出區塊的每一行和兩個按鈕。
+
+#### Scenario: 兩種外觀
+
+- **WHEN** Dinner 需要確認，依序在淺色和深色外觀看 Brisbane 的畫面、支出清單和 Dinner 的明細
+- **THEN** 圖示和「Your change was replaced」都看得清楚，圖示和文字的顏色不同；把手機調成灰階之後仍讀得出這是標記
+
+#### Scenario: 最大的字級
+
+- **WHEN** 把系統字級調到最大，看 Dinner 的卡片和明細
+- **THEN** 卡片上「Your change was replaced」換行顯示完整；明細的區塊裡每一行都完整，「Keep Current」和「Use Mine」都在畫面上按得到
+
+#### Scenario: 螢幕閱讀器
+
+- **WHEN** 開著 VoiceOver 或 TalkBack 滑過 Dinner 的卡片，再打開它的明細一項一項滑
+- **THEN** 卡片讀成一個按鈕，最後讀出「Your change was replaced」；明細依序讀出「Your change was replaced」、那句說明、「CURRENT」和它的三行、「YOURS」和它的三行，以及「Keep Current」和「Use Mine」兩個按鈕

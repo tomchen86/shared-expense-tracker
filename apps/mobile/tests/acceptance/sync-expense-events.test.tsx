@@ -358,7 +358,7 @@ test("[SYNC-22.1] writes a first event under the expense's own ID when a persona
 
 // Editing
 
-test('[SYNC-23.1] writes only the title, with the stamp it replaces as its base, when only the title changes', async () => {
+test('[SYNC-23.2] writes only the title, with the stamp it replaces as its base, when only the title changes', async () => {
   await startShared();
   await addDinner();
   const dinner = await expenseTitled('Dinner');
@@ -374,7 +374,7 @@ test('[SYNC-23.1] writes only the title, with the stamp it replaces as its base,
   ]);
 });
 
-test('[SYNC-23.1] writes no event, and takes no stamp, for a save that leaves every unit as it was', async () => {
+test('[SYNC-23.2] writes no event, and takes no stamp, for a save that leaves every unit as it was', async () => {
   await startShared();
   await addDinner();
   const dinner = await expenseTitled('Dinner');
@@ -395,7 +395,7 @@ test('[SYNC-23.1] writes no event, and takes no stamp, for a save that leaves ev
   ]);
 });
 
-test('[SYNC-23.1] writes the whole money unit when the amount changes', async () => {
+test('[SYNC-23.2] writes the whole money unit when the amount changes', async () => {
   await startShared();
   const ids = await members('Brisbane');
   await addDinner();
@@ -424,7 +424,7 @@ test('[SYNC-23.1] writes the whole money unit when the amount changes', async ()
   ]);
 });
 
-test('[SYNC-23.1] writes the whole money unit when only the payer changes', async () => {
+test('[SYNC-23.2] writes the whole money unit when only the payer changes', async () => {
   await startShared();
   const ids = await members('Brisbane');
   await addDinner();
@@ -453,7 +453,7 @@ test('[SYNC-23.1] writes the whole money unit when only the payer changes', asyn
   ]);
 });
 
-test('[SYNC-23.1] writes the whole money unit when the order of the split changes, beside the title that changed with it', async () => {
+test('[SYNC-23.2] writes the whole money unit when the order of the split changes, beside the title that changed with it', async () => {
   await startShared();
   const ids = await members('Brisbane');
   await addDinner();
@@ -461,7 +461,7 @@ test('[SYNC-23.1] writes the whole money unit when the order of the split change
 
   const events = await eventsOf(() =>
     editWith(dinner.id, async () => {
-      // Taking Blake out and choosing him again puts him last (LEDGER-56.1).
+      // Taking Blake out and choosing him again puts him last (LEDGER-56.2).
       await chooseSharers('Blake', 'Blake');
       await fillForm({ title: 'Supper' });
     }),
@@ -487,7 +487,7 @@ test('[SYNC-23.1] writes the whole money unit when the order of the split change
   ]);
 });
 
-test('[SYNC-23.1] writes the note, the date and the category when they change, and the note as null once it is cleared', async () => {
+test('[SYNC-23.2] writes the note, the date and the category when they change, and the note as null once it is cleared', async () => {
   await startShared();
   await addDinner();
   const dinner = await expenseTitled('Dinner');
@@ -516,7 +516,7 @@ test('[SYNC-23.1] writes the note, the date and the category when they change, a
   ]);
 });
 
-test('[SYNC-23.1] [LEDGER-27.2] leaves the category out, and the stored name and color as they were, when the category was only renamed and recolored', async () => {
+test('[SYNC-23.2] [LEDGER-27.2] leaves the category out, and the stored name and color as they were, when the category was only renamed and recolored', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();
@@ -539,7 +539,7 @@ test('[SYNC-23.1] [LEDGER-27.2] leaves the category out, and the stored name and
   });
 });
 
-test('[SYNC-23.1] [LEDGER-27.2] writes the category, with its name and color at that save, once the expense is moved to it', async () => {
+test('[SYNC-23.2] [LEDGER-27.2] writes the category, with its name and color at that save, once the expense is moved to it', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();
