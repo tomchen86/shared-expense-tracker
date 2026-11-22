@@ -1377,6 +1377,9 @@ describe('SYNC-128.3', () => {
     expect(await inviteHeld(c)).toBeUndefined();
     expect(await groupNames(c)).toEqual(['Osaka', 'Brisbane']);
     expect((await expenseOf(c, 'Dinner')).title).toBe('Dinner');
+    // It holds no record of that invite either, so its own snapshot has none.
+    await sentSnapshot(c, a);
+    expect(invitesIn(await contentFor(a, key))).toEqual([]);
   });
 
   test('[SYNC-128.3] takes nothing when the snapshot’s Uncategorized is another space’s category on this phone', async () => {

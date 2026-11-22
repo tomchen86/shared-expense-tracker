@@ -27,6 +27,7 @@ import {
   saveKey,
   secureStoreWorks,
   sent,
+  setApiTime,
   setClock,
   setEpoch,
   stampOf,
@@ -242,6 +243,30 @@ describe('SYNC-114.2', () => {
     expect(text).not.toContain(revoked.code);
     expect(text).not.toContain(expired.code);
     expect(checkSyncSnapshot(content).status).toBe('valid');
+  });
+
+  test('[SYNC-114.2] leaves out an invite that has expired by the corrected time, though not by the phone’s clock', async () => {
+    const setup = await twoPhones();
+    const { a, b, key } = setup;
+    const kept = newInvite(T + WEEK);
+    const expired = newInvite(T + 30 * 60_000);
+    await uploadAs(b, key, [
+      inviteEvent(kept, await stampOf(b, NOW, 0)),
+      inviteEvent(expired, await stampOf(b, NOW, 1)),
+    ]);
+    const c = await newcomer(setup);
+    // The API's time is an hour ahead of the phone's clock, which the phone learns.
+    setApiTime(NOW + 3_600_000);
+    await sync(a);
+    expect(a.state.clockMs).toBe(NOW);
+    expect(await inviteHeld(a)).toEqual(kept);
+
+    await sentSnapshot(a, c);
+
+    setClock(c, NOW + 3_600_000);
+    const content = await contentFor(c, key);
+    expect(invitesIn(content).map(({ id }) => id)).toEqual([kept.code]);
+    expect(JSON.stringify(content)).not.toContain(expired.code);
   });
 
   test('[SYNC-114.2] holds a record whose units have not all arrived', async () => {
