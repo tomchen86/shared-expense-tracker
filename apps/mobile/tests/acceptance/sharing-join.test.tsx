@@ -9,9 +9,13 @@ import {
   pressAlertButton,
   pressOnBar,
 } from './group-details-app';
-import { createGroup } from './groups-app';
+import { createGroup, inTreeOrder } from './groups-app';
 import { addExpense, restart } from './ledger-expense-app';
-import { addGroupExpense, archiveGroup } from './ledger-group-expense-app';
+import {
+  addGroupExpense,
+  archiveGroup,
+  removeFromGroup,
+} from './ledger-group-expense-app';
 import {
   API,
   T,
@@ -19,6 +23,7 @@ import {
   apiLosesNextAnswer,
   apiRefusesNext,
   drewFromTheRandomSource,
+  failSecureStoreReads,
   failSecureStoreWrites,
   fetchCalls,
   fromHex,
@@ -41,9 +46,11 @@ import {
   holdTheApi,
   inviteWithCard,
   invited,
+  isRegistering,
   keepAnswersBack,
   localDataHolds,
   partsOf,
+  pressInInvite,
   requestsFromOthers,
   requestsHold,
   requestsOnApi,
@@ -316,6 +323,23 @@ describe('SHARING-124.1', () => {
     expect(joinLines()).toEqual(FORM);
   });
 
+  test('[SHARING-124.1] does not open Join Group again, or keep anything, for an answer that comes after it was closed', async () => {
+    brisbaneInvites();
+    await startAs();
+    const before = everything();
+    const answer = keepAnswersBack(isRead);
+    await receiveLink(BRISBANE_LINK);
+    await expectOpen(TITLE);
+    await until(() => reads().length === 1, 'the read');
+
+    await closeJoin();
+    await answer();
+    await settle();
+
+    expect(isOpen(TITLE)).toBe(false);
+    expectNothingLeft(before);
+  });
+
   test("[SHARING-124.1] reads from the build's API whatever host the link has", async () => {
     brisbaneInvites();
     await startAs();
@@ -555,28 +579,47 @@ describe('SHARING-128.1', () => {
 });
 
 describe('SHARING-129.1', () => {
+  /** 18 members with a phone, then Casey and Blake without one. */
+  const TWENTY = {
+    name: 'Brisbane',
+    members: [
+      ...cardOf(18, 18).members,
+      { id: CASEY_ID, name: 'Casey', hasDevice: false },
+      { id: BLAKE_ID, name: 'Blake', hasDevice: false },
+    ],
+  };
+
   test('[SHARING-129.1] offers only the members without a phone when the card lists 20, with nobody picked', async () => {
-    const card = cardOf(20, 18);
-    invites(CODE_A, S, card);
+    invites(CODE_A, S, TWENTY);
     await startAs();
 
     await openLink(BRISBANE_LINK);
 
-    expect(choices()).toEqual(['Member 19', 'Member 20']);
+    expect(choices()).toEqual(['Casey', 'Blake']);
     expect(chosen()).toEqual([]);
     expect(canSend()).toBe(false);
     const lines = joinLines();
     expect(lines).not.toContain(NEW_MEMBER);
-    expect(lines.slice(lines.indexOf('Member 20') + 1)).toEqual([
+    expect(lines.slice(lines.indexOf('Blake') + 1)).toEqual([
       ONLY_MEMBERS,
       APPROVAL,
       SEND,
     ]);
 
-    await pressInJoin('Member 19');
+    await pressInJoin('Casey');
     expect(canSend()).toBe(true);
     await send();
-    expect(lastRequest().memberId).toBe(card.members[18].id);
+    expect(lastRequest().memberId).toBe(CASEY_ID);
+  });
+
+  test('[SHARING-129.1] picks the member without a phone whose name is yours, among 20', async () => {
+    invites(CODE_A, S, TWENTY);
+    await startAs('casey');
+
+    await openLink(BRISBANE_LINK);
+
+    expect(chosen()).toEqual(['Casey']);
+    expect(canSend()).toBe(true);
   });
 
   test('[SHARING-129.1] says the group is full when all 20 members on the card have a phone', async () => {
@@ -686,6 +729,47 @@ describe('SHARING-130.1', () => {
     expect(reads()).toHaveLength(1);
     expect(sendings()).toEqual([]);
     expect(rowsWith(CODE_B)).toEqual([]);
+  });
+
+  test('[SHARING-130.1] opens the group when the only member the phone knows on the card is a former member', async () => {
+    await startAt({ Brisbane: ['Casey', 'Blake'] });
+    await share('Brisbane');
+    await removeFromGroup('Brisbane', 'Blake');
+    const ids = await members('Brisbane');
+    invites(
+      CODE_B,
+      S2,
+      {
+        name: 'Brisbane',
+        members: [
+          { id: TAYLOR_ID, name: 'Someone', hasDevice: true },
+          { id: ids.Blake, name: 'Blake', hasDevice: false },
+        ],
+      },
+      await groupId('Brisbane'),
+    );
+    await tapTab('Settings');
+
+    await openLink(linkOf(CODE_B, S2));
+
+    await expectOpen('Brisbane');
+    expect(isOpen(TITLE)).toBe(false);
+    expect(selectedTab()).toBe('Groups');
+  });
+
+  test('[SHARING-130.1] says the link cannot be used once the phone has revoked its invite, member or not', async () => {
+    await startAt({ Brisbane: ['Casey', 'Blake'] });
+    const link = await invited('Brisbane');
+    await pressInInvite('Revoke Link');
+    await pressAlertButton('Revoke');
+    await expectClosed('Invite');
+    await leaveMembers('Brisbane');
+    await tapTab('Settings');
+
+    await openLink(link);
+
+    expect(joinLines()).toEqual([CANNOT_USE]);
+    expect(selectedTab()).toBe('Settings');
   });
 
   test('[SHARING-130.1] opens an archived group on the Settings tab', async () => {
@@ -898,6 +982,11 @@ describe('SHARING-133.1', () => {
     ['a 500', 500, 'Internal Server Error'],
     ['a 404 with no reason', 404, '404 Not Found'],
     ['a 200 that is no invite', 200, json({ card: 7 })],
+    [
+      'a refusal for too many requests',
+      429,
+      json({ error: 'too-many-requests', retryAfterMs: 1_000 }),
+    ],
   ])(
     '[SHARING-133.1] says something went wrong, with Try Again, when the API answers the read with %s',
     async (_, status, body) => {
@@ -968,28 +1057,80 @@ describe('SHARING-134.1', () => {
     await until(() => sendings().length === 1, 'the request');
 
     expect(joinLines()).toEqual([SENDING]);
-    expect(rowsWith(CODE_A, 'Brisbane', '"Dana"')).toHaveLength(1);
+    expect(rowsWith(CODE_A)).toHaveLength(1);
 
     await answer();
     await joinSettles();
     expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
   });
 
-  test('[SHARING-134.1] stores the code, the secret, the group, the trimmed name and the picked member', async () => {
+  test('[SHARING-134.1] stores the request with its secret, group, trimmed name and picked member: after a restart it sends the same one', async () => {
     brisbaneInvites();
-    await startAs();
+    let app = await startAs();
     await openLink(BRISBANE_LINK);
     await typeName(' Dana K. ');
     await pressInJoin('Blake');
-
+    goOffline();
     await send();
-
+    await closeJoin();
     expect(rowsWith(CODE_A)).toHaveLength(1);
-    expect(rowsWith(CODE_A, 'Brisbane', '"Dana K."', BLAKE_ID)).toHaveLength(1);
-    expect(localDataHolds(new Uint8Array(Buffer.from(S, 'base64url')))).toBe(
-      true,
-    );
+
+    app = await restart(app);
+    setClock(T);
+    expect(app).toBeDefined();
+    goOnline();
+    await tapTab('Groups');
+    await openRequest('Brisbane');
+    await send('Try Again');
+
     expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+    expect(sendings()).toHaveLength(1);
+    expect(lastRequest(S)).toMatchObject({
+      name: 'Dana K.',
+      memberId: BLAKE_ID,
+    });
+    expect(rowsWith(CODE_A)).toHaveLength(1);
+  });
+
+  test('[SHARING-134.1] marks the request as sent, without opening Join Group again, when the answer comes after it was closed', async () => {
+    brisbaneInvites();
+    await startAs();
+    await openLink(BRISBANE_LINK);
+    const answer = keepAnswersBack(isSending);
+    await pressInJoin(SEND);
+    await until(() => sendings().length === 1, 'the request');
+
+    await closeJoin();
+    await answer();
+    await settle();
+
+    expect(isOpen(TITLE)).toBe(false);
+    await tapTab('Groups');
+    expect(requestCard('Brisbane')).toBeOnTheScreen();
+    expect(screen.getByText('Waiting for approval')).toBeOnTheScreen();
+    expect(screen.queryByText('Not sent')).toBeNull();
+  });
+
+  test("[SHARING-134.1] leaves Join Group on another group's form when the answer comes after its link arrived", async () => {
+    brisbaneInvites();
+    tokyoInvites();
+    await startAs();
+    await openLink(BRISBANE_LINK);
+    const answer = keepAnswersBack(isSending);
+    await pressInJoin(SEND);
+    await until(() => sendings().length === 1, 'the request');
+
+    await openLink(TOKYO_LINK);
+    expect(joinLines()[0]).toBe('Tokyo');
+    await answer();
+    await settle();
+
+    expect(joinLines()[0]).toBe('Tokyo');
+    expect(joinLines()).toContain(SEND);
+    await closeJoin();
+    await tapTab('Groups');
+    expect(requestCard('Brisbane')).toBeOnTheScreen();
+    expect(screen.getByText('Waiting for approval')).toBeOnTheScreen();
   });
 });
 
@@ -1006,9 +1147,9 @@ describe('SHARING-135.1', () => {
     ).toEqual(['request']);
     const plaintext = openedRequest(sending, S)!;
     const said = lastRequest();
-    expect(plaintext).toBe(
-      `{"name":"Dana","memberId":null,"userId":"${said.userId}","boxKey":"${said.boxKey}"}`,
-    );
+    const object = `{"name":"Dana","memberId":null,"userId":"${said.userId}","boxKey":"${said.boxKey}"}`;
+    expect(plaintext).toBe(object.padEnd(256, ' '));
+    expect(sentRequest(sending)).toHaveLength(297);
     expect(said.userId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
     );
@@ -1028,7 +1169,33 @@ describe('SHARING-135.1', () => {
     await send();
 
     expect(lastRequest()).toMatchObject({ name: 'Dana', memberId: CASEY_ID });
+    expect(sentRequest(sendings()[0])).toHaveLength(297);
   });
+
+  test.each([
+    [105, 256, false],
+    [106, 512, true],
+    [500, 768, true],
+  ])(
+    '[SHARING-135.1] pads the request for a new member named with %i letters to %i bytes',
+    async (letters, bytes, padded) => {
+      brisbaneInvites();
+      await startAs();
+      await openLink(BRISBANE_LINK);
+      await typeName('a'.repeat(letters));
+
+      await send();
+
+      const plaintext = openedRequest(sendings()[0], S)!;
+      expect(Buffer.byteLength(plaintext, 'utf8')).toBe(bytes);
+      expect(plaintext.endsWith(' ')).toBe(padded);
+      expect(plaintext.trimEnd().endsWith('"}')).toBe(true);
+      expect(/^ *$/.test(plaintext.slice(plaintext.trimEnd().length))).toBe(
+        true,
+      );
+      expect(lastRequest().name).toBe('a'.repeat(letters));
+    },
+  );
 
   test('[SHARING-135.1] binds the request to the invite and to the device: it opens for no other code or device ID', async () => {
     brisbaneInvites();
@@ -1249,6 +1416,28 @@ describe('SHARING-139.1', () => {
     expect(rowsWith(CODE_A)).toHaveLength(1);
   });
 
+  test('[SHARING-139.1] keeps the request as not sent when the secure store cannot be read, and sends it on Try Again once it can', async () => {
+    brisbaneInvites();
+    tokyoInvites();
+    await startAs();
+    await requested(TOKYO_LINK);
+    await closeJoin();
+    await openLink(BRISBANE_LINK);
+    failSecureStoreReads();
+
+    await send();
+
+    expect(joinLines()).toEqual([NOT_SENT, WENT_WRONG, 'Try Again', CANCEL]);
+    expect(sendings()).toHaveLength(1);
+    expect(rowsWith(CODE_A)).toHaveLength(1);
+
+    secureStoreWorks();
+    await send('Try Again');
+
+    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+    expect(sendings()).toHaveLength(2);
+  });
+
   test('[SHARING-139.1] shows a request that was not sent without the reason, and sends nothing by itself, after a restart', async () => {
     brisbaneInvites();
     let app = await startAs();
@@ -1374,6 +1563,28 @@ describe('SHARING-141.1', () => {
       name: 'Dana K.',
       memberId: CASEY_ID,
     });
+  });
+
+  test('[SHARING-141.1] keeps a request that was not sent, and says the phone cannot join, when Try Again finds the authorization lost', async () => {
+    brisbaneInvites();
+    await startAs();
+    await openLink(BRISBANE_LINK);
+    goOffline();
+    await send();
+    await closeJoin();
+    loseTheSeed();
+    goOnline();
+    await openLink(BRISBANE_LINK);
+    expect(joinLines()).toEqual(UNSENT);
+    const sent = received().length;
+
+    await pressInJoin('Try Again');
+    await joinSettles();
+
+    expect(alertsShown().at(-1)).toEqual([UNABLE_TO_SEND, CANNOT_JOIN]);
+    expect(received()).toHaveLength(sent);
+    expect(joinLines()).toEqual(UNSENT);
+    expect(rowsWith(CODE_A)).toHaveLength(1);
   });
 
   test('[SHARING-141.1] stays on the form when the request cannot be stored on the phone', async () => {
@@ -1643,6 +1854,36 @@ describe('SHARING-145.1', () => {
     expect(screen.getByText('Not sent')).toBeOnTheScreen();
   });
 
+  test('[SHARING-145.1] gives up a registration that has had no answer for 60 seconds, and the next try does not wait for it', async () => {
+    brisbaneInvites();
+    await startAs();
+    await openLink(BRISBANE_LINK);
+    let registrations = 0;
+    // Only the first registration is kept back, and it never gets its answer.
+    keepAnswersBack(
+      (request) => isRegistering(request) && (registrations += 1) === 1,
+    );
+    await pressInJoin(SEND);
+    await until(() => registrationsReceived().length === 1, 'the registration');
+
+    await secondsPass(65);
+    await joinSettles();
+
+    expect(joinLines()).toEqual([
+      NOT_SENT,
+      NOT_SENT_OFFLINE,
+      'Try Again',
+      CANCEL,
+    ]);
+    expect(sendings()).toEqual([]);
+
+    await send('Try Again');
+
+    expect(registrationsReceived()).toHaveLength(2);
+    expect(sendings()).toHaveLength(1);
+    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+  });
+
   test('[SHARING-145.1] gives up a cancellation that has had no answer for 60 seconds, says to connect and keeps the request', async () => {
     brisbaneInvites();
     await startAs();
@@ -1709,12 +1950,14 @@ describe('GROUPS-108.1', () => {
 
     await tapTab('Groups');
 
-    const card = requestCard('Brisbane');
+    const card = requestCard('Brisbane')!;
+    const sentence = screen.getByText(
+      'No groups yet. Tap + to create a group.',
+    );
     expect(card).toBeOnTheScreen();
     expect(screen.getByText('Waiting for approval')).toBeOnTheScreen();
-    expect(
-      screen.getByText('No groups yet. Tap + to create a group.'),
-    ).toBeOnTheScreen();
+    expect(sentence).toBeOnTheScreen();
+    expect(inTreeOrder(card, sentence)).toBe(true);
   });
 
   test('[GROUPS-108.1] opens Join Group on the request when its card is pressed, over the Groups root', async () => {
