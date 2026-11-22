@@ -1,3 +1,5 @@
+import { hasExactly, isHexContent, isId, isWhole } from './wire';
+
 // What the event API's requests and answers look like on the wire (ADR-0016, ADR-0024,
 // docs/specs/sync/spec.md): a phone creates a group on the API, uploads the group's
 // events and downloads them page by page. The phone and the API both use this file, so
@@ -105,44 +107,8 @@ export const GROUP_REFUSAL_STATUS: Record<GroupRefusalReason, number> = {
   'group-full': 413,
 };
 
-// A group ID, an event ID and a device ID are each a lowercase version-4 UUID.
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const LOWERCASE_HEX = /^[0-9a-f]*$/;
-
-/** Whether `value` is an object, as JSON has them, with exactly the keys `keys`. */
-function hasExactly<Key extends string>(
-  value: unknown,
-  keys: readonly Key[],
-): value is Record<Key, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return false;
-  }
-  const own = Object.keys(value);
-  return own.length === keys.length && keys.every((key) => own.includes(key));
-}
-
-function isId(value: unknown): value is string {
-  return typeof value === 'string' && UUID.test(value);
-}
-
-/** A whole number from `least` to the largest integer a number holds exactly. */
-function isWhole(value: unknown, least: number): value is number {
-  return (
-    typeof value === 'number' && Number.isSafeInteger(value) && value >= least
-  );
-}
-
-/** Two lowercase hexadecimal characters for each of 41 to 65,536 bytes. */
-function isContent(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    value.length >= EVENT_CONTENT_MINIMUM * 2 &&
-    value.length <= EVENT_CONTENT_LIMIT * 2 &&
-    value.length % 2 === 0 &&
-    LOWERCASE_HEX.test(value)
-  );
-}
+const isContent = (value: unknown) =>
+  isHexContent(value, EVENT_CONTENT_MINIMUM, EVENT_CONTENT_LIMIT);
 
 /**
  * Whether every item of `items` passes `isItem`, an empty slot included, which is an
