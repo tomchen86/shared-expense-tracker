@@ -368,7 +368,7 @@ test("[SYNC-41.1] shows the expense's own category once that category arrives af
   expect((await expenseTitled('Lunch')).category).toEqual(hotels);
 });
 
-test('[SYNC-23.1] [SYNC-41.1] writes no category for an edit of an expense that shows Uncategorized, until the expense is moved to a category', async () => {
+test('[SYNC-23.2] [SYNC-41.1] writes no category for an edit of an expense that shows Uncategorized, until the expense is moved to a category', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addCategory('Gym', brisbane);
