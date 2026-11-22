@@ -4,7 +4,9 @@
 # a stall of the app. Such a stall at the touch-down also leaves the sheet open, as the touches
 # queued meanwhile arrive at once. So while TITLE is still there, it drags once more, which is
 # optional in case the sheet closes in the meantime. A sheet that a drag cannot close stays open
-# after both, and the flow's own assertion that it closed fails.
+# after both, and the flow's own assertion that it closed fails. A sheet that only the second drag
+# closes passes too, such as one that the first drag only lowers to a shorter height, or to its
+# lowest by putting the keyboard away: the flows that use this do not show that one drag closes it.
 # Not a flow of its own: Maestro runs only the files at the top of a folder.
 appId: com.tomchen.sharedexpensetracker
 ---
