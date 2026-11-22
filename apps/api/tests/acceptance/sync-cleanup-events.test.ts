@@ -464,8 +464,8 @@ describe('SYNC-139.1', () => {
   });
 });
 
-describe('SYNC-141.1', () => {
-  test('[SYNC-141.1] leaves a phone that has not synced for a year a member device, with its key and its progress', async () => {
+describe('SYNC-141.2', () => {
+  test('[SYNC-141.2] leaves a phone that has not synced for a year a member device, with its key and its progress', async () => {
     const [taylor, casey] = await bothInBrisbane();
     await reach(casey, 0);
     setTime(T + 364 * DAY);
@@ -487,7 +487,7 @@ describe('SYNC-141.1', () => {
     });
   });
 
-  test('[SYNC-141.1] leaves a group its key epoch and its last sequence number when every event of it is deleted', async () => {
+  test('[SYNC-141.2] leaves a group its key epoch and its last sequence number when every event of it is deleted', async () => {
     const [taylor] = await bothInBrisbane();
     await store(taylor, 3);
 

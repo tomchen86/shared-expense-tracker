@@ -8,7 +8,7 @@ import {
   type SnapshotRefusal,
 } from '@shared-expense/domain/api';
 import { sql, timesStored, type Answer, type Phone } from './sharing-api';
-import { call, hexOf } from './sync-api';
+import { BRISBANE, aMinuteLater, call, hexOf } from './sync-api';
 
 // The snapshot tests stand in for phones that pass a shared ledger's snapshot through the
 // API (ADR-0028), in the world of the sync tests. A chunk's content is whatever bytes a test
@@ -200,6 +200,33 @@ export async function expectDelivered(
       snapshot.chunks[index],
     );
   }
+}
+
+/**
+ * Fills Brisbane's snapshots to the byte: a snapshot for Casey's phone in 64 chunks, the
+ * last one 41 bytes short of the largest, and chunk 0, 41 bytes, of a snapshot of two
+ * chunks for Taylor's own phone. Resolves with the two.
+ */
+export async function fillSnapshots(
+  taylor: Phone,
+  casey: Phone,
+): Promise<[Snapshot, Snapshot]> {
+  const s = snapshotOf(taylor, casey, {
+    sizes: [
+      ...Array.from({ length: 63 }, () => LARGEST_CHUNK),
+      LARGEST_CHUNK - SMALLEST_CHUNK,
+    ],
+  });
+  for (let index = 0; index < 64; index += 1) {
+    // A device sends at most 60 requests a minute (SHARING-37.1).
+    if (index % 40 === 0) aMinuteLater();
+    expectStored(await uploadChunk(BRISBANE, s, index), s, index);
+  }
+  aMinuteLater();
+  const s2 = snapshotOf(taylor, taylor, {
+    sizes: [SMALLEST_CHUNK, SMALLEST_CHUNK],
+  });
+  return [s, s2];
 }
 
 // The database
