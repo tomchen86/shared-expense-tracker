@@ -14,7 +14,8 @@ The cloud sharing proposal decides that the server does not keep events for good
 - What a request gets that arrives while a cleanup runs. A download reads the group, then the events, then writes its progress, in statements of their own.
 - How long the rows of ADR-0015, ADR-0022 and ADR-0026 stay.
 - What starts the cleanup and how often. As of 2026-11, on the free plans a Cron invocation of a Worker has 10 ms of CPU, waiting for the database apart, and Neon's compute sleeps after five minutes without a query and runs 400 hours a month at its smallest size.
-- Snapshots (ADR-0028), join requests (ADR-0032) and transfer bundles (#145), which #155 also names, are not on main. ADR-0028 and ADR-0032 leave to #155 when a snapshot nobody fetched and the requests of an expired invite go.
+- When a snapshot that nobody fetched goes. ADR-0028 deletes a snapshot once its recipient's cursor has reached what it covers, leaves the rest to #155, and keeps no time for a snapshot.
+- Join requests (ADR-0032) and transfer bundles (#145), which #155 also names, are not on main. ADR-0032 leaves to #155 when the requests of an expired invite go.
 
 Also considered:
 
@@ -24,6 +25,8 @@ Also considered:
 - Counting "snapshot needed" among the refusals, which change nothing: the progress of a phone whose data went back would stay ahead of what the phone holds, and the events it needs after its snapshot could be cleared as delivered before it gets to them.
 - Keeping an event for some days after every phone has it, so that a phone whose data went back catches up without a snapshot: #155 says an event goes when every phone has it, and a period of grace would be the owner's to add.
 - Holding the events after the number a stored snapshot covers, which ADR-0028 says #155 can do: approving a join records the new device's cursor at that number (ADR-0016). Before that, only a cleanup in the moments between the upload and the approval takes them, and the approval is then refused and a new snapshot made.
+- Deleting a snapshot only once its group is cleared past what it covers, with no limit of its own: in a group that gets no new event, a snapshot that is never fetched would stay for good, up to 16 MiB of a ledger for nobody.
+- Refusing the upload of a snapshot that covers less than the group is cleared to: what a phone does that is itself behind is #141's and #156's to decide, and the next cleanup takes such a snapshot.
 - Forgetting an invite's code some time after it expires, as ADR-0026 expected: a phone whose local data went back to a code it had prepared could create that invite again, under a secret that was shared and then revoked. A row without its card is a random code and four values.
 - Clearing from the routes, such as when an upload finds its group full: every upload would pay for it, and #155 asks for Cron.
 - Running it every hour: with nobody syncing, the database would wake 24 times a day, about 60 of Neon's 400 free hours a month, and nothing here needs it sooner than a day.
@@ -44,6 +47,8 @@ Events:
 
 Other rows:
 
+- A snapshot is deleted when it covers less than its group is cleared to. The phone that takes it in asks next for the events after that number (ADR-0028) and would be told it needs a snapshot, so nobody can go on from it. The cleanup judges snapshots after it has cleared the group's events, so the run that leaves a snapshot behind also deletes it. A snapshot that covers exactly what the group is cleared to stays.
+- A snapshot is deleted once it began more than 30 days before the cleanup's time, complete or not, fetched or not: it holds the same ledger as the events, which stay 30 days at most. The API records the time a snapshot began, its own time when it stored the chunk that began it. Later chunks do not move it, and a snapshot that replaces another has its own.
 - An invite's card is deleted once the invite has expired. Its row stays, so its code stays used (ADR-0026 left the time to this issue).
 - The record of an accepted request, its nonce and its times (ADR-0015), is deleted once the request was accepted more than 10 minutes before the cleanup's time. A request passes with a request time at most 5 minutes after the API's time, and a nonce matters while its request time is within 5 minutes of the API's (ADR-0022), so nothing older can be replayed. The limit of 60 requests counts one minute.
 - The record of a registration, the keyed hash of its IP and its time, is deleted an hour after the registration, when the limit no longer counts it (ADR-0022). The device ID and the public key stay.
@@ -56,7 +61,7 @@ How it runs:
 
 What is not on main:
 
-- Snapshots and join requests are specified on branches that are not on main, and transfer bundles are not specified at all, so this decision has no rule for them yet: no test of one could run. Each gets its rule once it is on main, as an addition to #155's spec while #155 is open, and otherwise with an issue of its own.
+- Join requests are specified on a branch that is not on main, and transfer bundles are not specified at all, so this decision has no rule for them yet: no test of one could run. Each gets its rule once it is on main, as an addition to #155's spec while #155 is open, and otherwise with an issue of its own.
 
 ## Consequences
 
@@ -72,7 +77,10 @@ What is not on main:
 - The 10 minutes of a request's record leave no room for that difference either. Where the clock of the Worker that runs the cleanup is ahead of the one that checks a request, a request signed the full five minutes ahead can pass a second time during the last milliseconds before its time is too old.
 - What stays for good is a group, its member devices and their progress, a device's ID and public key, and an invite's row without its card. A device that creates invites in a loop still adds rows (#159).
 - An expired invite's card stays until the next cleanup, a day at most. Nobody can read it meanwhile (ADR-0026).
-- Until snapshots and join requests have their rules, a snapshot nobody fetched and the requests of an expired invite stay as ADR-0028 and ADR-0032 leave them. A snapshot's rule will need the time the snapshot was begun, which ADR-0028 does not keep: in a group that gets no new event, a snapshot that is never fetched is otherwise never out of date.
+- Until join requests have their rule, the requests of an expired invite stay as ADR-0032 leaves them.
+- The time a snapshot began is one more value the API stores about a group, in a table main already has. A deploy runs its migration before the new Worker is uploaded (ADR-0019), and the Worker deployed before writes snapshots without that time, so the new column takes a default from the database's clock for those rows.
+- A phone whose snapshot the cleanup deleted is told there is none, as before one was made. A new member who does not open the app within 30 days of the snapshot, or whose group has moved on 30 days past it, needs another. #141 and #156 decide how a phone asks again.
+- The API still stores a snapshot that covers less than its group is cleared to, until the next cleanup. Whether a phone that is itself behind may make one is #141's and #156's to decide.
 - #141 refuses an approval whose snapshot covers less than the group is cleared to (ADR-0016), and records the new device's progress at the snapshot's number. From then on the cleanup keeps the events after it, for up to 30 days. #156 can rely on the progress this decision records for a returning phone.
 - A group's cleanup has to shut out the group's uploads and be seen whole by its downloads. An upload already holds the group's row lock across its statements (ADR-0016), and since PR 210 the check of `AGENTS.md` rule 9 sends uploads that arrive together through the real Hyperdrive. That check does not run the cleanup: only a deployed Worker's Cron runs it through Hyperdrive. Whether the check should run it too is the owner's to decide.
 - A Worker from before this change does not know that events can be missing. Rolled back (ADR-0019) onto a database a cleanup has run on, it would answer a phone behind the deleted events with a page that has a gap, or with an empty page that looks like being in sync. After the first cleanup in an environment, a bad deploy is put right by a new deploy, not by a rollback past this change.
