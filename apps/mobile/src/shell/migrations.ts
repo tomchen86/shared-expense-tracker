@@ -9,6 +9,7 @@ import {
 } from '../ledger/migrations';
 import { sharingMigrations } from '../sharing/migrations';
 import {
+  inviteMigration,
   syncLoopMigration,
   syncMigration,
   syncOwnMoneyMigration,
@@ -44,4 +45,5 @@ export const appMigrations: readonly string[] = [
   expenseListFilterMigration,
   syncLoopMigration,
   syncOwnMoneyMigration,
+  inviteMigration,
 ];

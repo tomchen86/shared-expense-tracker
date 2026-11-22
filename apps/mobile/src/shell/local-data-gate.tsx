@@ -21,6 +21,7 @@ import {
   type SqlExecutor,
 } from '../storage';
 import { useSyncTriggers } from '../sync/use-sync-triggers';
+import { watchInviteCards } from '../sharing/refresh-invite-card';
 import { applyAppearanceOption, type AppearanceOption } from '../ui/appearance';
 import {
   ReduceTransparencyProvider,
@@ -161,8 +162,12 @@ export function LocalDataGate({
   }, [openDatabase, development, seed, waitUntilReady]);
 
   // Outside what starts again when the data is replaced: an import opens no app.
-  useSyncTriggers(
-    startup.status === 'ready' ? startup.data.database : undefined,
+  const readyDatabase =
+    startup.status === 'ready' ? startup.data.database : undefined;
+  useSyncTriggers(readyDatabase);
+  useEffect(
+    () => readyDatabase && watchInviteCards(readyDatabase),
+    [readyDatabase],
   );
 
   if (startup.status === 'ready') {
