@@ -48,26 +48,46 @@ export async function saveLatestStamp(tx: SqlExecutor, stamp: SyncStamp) {
   );
 }
 
+interface RecordRow {
+  created: string;
+  record: string;
+  seeded: number;
+}
+
+function unpackRecord(row: RecordRow) {
+  return {
+    created: JSON.parse(row.created) as SyncStamp,
+    record: JSON.parse(row.record) as SyncRecord,
+    seeded: row.seeded === 1,
+  };
+}
+
+export async function snapshotRecords(tx: SqlExecutor, groupId: string) {
+  const rows = await tx.all<RecordRow>(
+    `SELECT created, record, seeded FROM sync_records r
+     WHERE r.groupId = ? AND (r.type <> 'invite' OR EXISTS (
+       SELECT 1 FROM group_invites i
+       WHERE i.id = r.id AND i.groupId = r.groupId AND i.expiresAtMs > ?
+     ))`,
+    [groupId, await readCorrectedTime(tx)],
+  );
+  return rows.map((row) => {
+    const { record, created, seeded } = unpackRecord(row);
+    return { ...record, created, seeded };
+  });
+}
+
 export async function readSyncRecord(
   tx: SqlExecutor,
   groupId: string,
   type: SyncRecordType,
   id: string,
 ) {
-  const [row] = await tx.all<{
-    created: string;
-    record: string;
-    seeded: number;
-  }>(
+  const [row] = await tx.all<RecordRow>(
     'SELECT created, record, seeded FROM sync_records WHERE groupId = ? AND type = ? AND id = ?',
     [groupId, type, id],
   );
-  if (row)
-    return {
-      created: JSON.parse(row.created) as SyncStamp,
-      record: JSON.parse(row.record) as SyncRecord,
-      seeded: row.seeded === 1,
-    };
+  if (row) return unpackRecord(row);
 }
 
 export async function storeSyncRecord(
@@ -79,8 +99,9 @@ export async function storeSyncRecord(
 ) {
   await tx.run(
     `INSERT INTO sync_records (groupId, type, id, created, record, seeded) VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT (groupId, type, id) DO UPDATE SET created = excluded.created, record = excluded.record
-     WHERE created <> excluded.created OR record <> excluded.record`,
+     ON CONFLICT (groupId, type, id) DO UPDATE SET created = excluded.created, record = excluded.record,
+       seeded = MAX(seeded, excluded.seeded)
+     WHERE created <> excluded.created OR record <> excluded.record OR seeded < excluded.seeded`,
     [
       groupId,
       record.type,
