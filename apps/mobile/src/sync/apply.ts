@@ -67,10 +67,10 @@ const recordOwners = {
   invite: ['group_invites', 'groupId'],
 } as const;
 
-async function canMergeInGroup(
+export async function canMergeInGroup(
   tx: SqlExecutor,
   groupId: string,
-  event: SyncEvent,
+  event: Pick<SyncEvent, 'type' | 'id'>,
 ) {
   if (event.type === 'group') return event.id === groupId;
   const [table, owner] = recordOwners[event.type];
