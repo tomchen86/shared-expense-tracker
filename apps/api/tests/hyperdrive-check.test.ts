@@ -60,6 +60,7 @@ test(
       'device_requests',
       'devices',
       'group_events',
+      'group_invites',
       'group_members',
       'group_snapshots',
       'groups',

@@ -13,9 +13,13 @@ import {
 } from '@shared-expense/domain/api';
 import { decrypt, encrypt } from '@shared-expense/domain/crypto';
 import { getRandomValues } from 'expo-crypto';
-import * as SecureStore from 'expo-secure-store';
 import { sendApiRequest, type ApiResult } from '../sharing/api-request';
-import { readDeviceIdentity, SEED_OPTIONS } from '../sharing/device-identity';
+import { readDeviceIdentity } from '../sharing/device-identity';
+import {
+  GROUP_KEY_HEX,
+  readGroupKeyEntry,
+  storeGroupKey,
+} from '../sharing/group-key';
 import type { Database, SqlExecutor } from '../storage';
 import {
   applyReceivedEvents,
@@ -38,15 +42,11 @@ const NONCE_LENGTH = 24;
 const KEY_LENGTH = 32;
 /** Stands in for a key the phone lacks, where only a ciphertext's format version is asked. */
 const NO_KEY = new Uint8Array(KEY_LENGTH);
-const KEY = /^[0-9a-f]{64}$/;
 /** The lines a shared ledger's screen shows under its title (SYNC-75.1, SYNC-83.1). */
 const UPDATE_NOTICE =
   'This group has changes from a newer version of the app. Update the app to see them.';
 const FULL_NOTICE =
   'This group has reached its storage limit. New changes stay on this phone until there is room.';
-
-const keyEntry = (groupId: string, epoch: number) =>
-  `group-key.${groupId}.${epoch}`;
 
 const eventsPath = (groupId: string) => `/groups/${groupId}/events`;
 
@@ -58,11 +58,10 @@ export async function readGroupKey(
   groupId: string,
   epoch: number,
 ): Promise<Uint8Array | undefined> {
-  const value = await SecureStore.getItemAsync(
-    keyEntry(groupId, epoch),
-    SEED_OPTIONS,
-  ).catch(() => null);
-  return value !== null && KEY.test(value) ? hexToBytes(value) : undefined;
+  const value = await readGroupKeyEntry(groupId, epoch).catch(() => null);
+  return value !== null && GROUP_KEY_HEX.test(value)
+    ? hexToBytes(value)
+    : undefined;
 }
 
 /** What an event is encrypted with besides its key: five lines of ASCII (SYNC-67.1). */
@@ -465,11 +464,7 @@ export async function saveGroupKey(
     throw new Error('Not a group key of a shared ledger');
   // The entry first: a phone stopped here has the key, and learns the epoch from the
   // API's refusal of its next upload (SYNC-79.1).
-  await SecureStore.setItemAsync(
-    keyEntry(groupId, epoch),
-    bytesToHex(key),
-    SEED_OPTIONS,
-  );
+  await storeGroupKey(groupId, epoch, key);
   await database.run(
     'UPDATE sync_groups SET epoch = ? WHERE groupId = ? AND epoch < ?',
     [epoch, groupId, epoch],

@@ -728,6 +728,30 @@ test('[GROUPS-56.1] makes the members buttons again, with Add Member, once the g
   await expectMembers(['Taylor (You)', 'Blake', 'Add Member']);
 });
 
+test("[GROUPS-106.1] shows no Invite with Link in an archived group's Members, and shows it again once the group is restored", async () => {
+  await startWithGroups(['Brisbane']);
+  await openArchived('Brisbane');
+  await openMembers('Brisbane');
+  await waitFor(() => expect(textsOn('Members')).toEqual(['Taylor (You)']));
+
+  expect(
+    within(screenOf('Members')).queryAllByRole('button', {
+      name: 'Invite with Link',
+    }),
+  ).toEqual([]);
+
+  await pressOnBar('Members', 'Close');
+  await expectClosed('Members');
+  await pressRestoreGroup('Brisbane');
+  await openMembers('Brisbane');
+
+  expect(
+    within(screenOf('Members')).getByRole('button', {
+      name: 'Invite with Link',
+    }),
+  ).toBeOnTheScreen();
+});
+
 // Restoring
 
 test('[GROUPS-57.1] restores a group from Archived Groups to its place on the Groups root', async () => {

@@ -1,3 +1,4 @@
+import { isInviteCode } from '../api/invites';
 import { isLocalDate } from '../ledger/dates';
 import { currencyDecimals, type Share } from '../ledger/money';
 
@@ -37,6 +38,7 @@ export interface SyncUnits {
   category: { name: string; color: string; archived: boolean };
   group: { name: string };
   member: { name: string; removed: boolean };
+  invite: { link: { secret: string; expiresAtMs: number } };
 }
 
 export type SyncRecordType = keyof SyncUnits;
@@ -62,7 +64,7 @@ export type SyncChange = {
 export interface SyncDeletion {
   version: 1;
   stamp: SyncStamp;
-  type: 'expense' | 'category';
+  type: 'expense' | 'category' | 'invite';
   id: string;
   deleted: true;
 }
@@ -380,6 +382,13 @@ const unitValidators: {
     name: isNonemptyString,
     removed: (value) => typeof value === 'boolean',
   },
+  invite: {
+    link: (value) =>
+      hasFields(value, ['secret', 'expiresAtMs']) &&
+      typeof value.secret === 'string' &&
+      /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(value.secret) &&
+      isClockInteger(value.expiresAtMs),
+  },
 };
 
 export function isRecordType(type: unknown): type is SyncRecordType {
@@ -412,6 +421,7 @@ function isSyncEvent(content: unknown): content is SyncEvent {
     !isObject(content) ||
     content.version !== 1 ||
     !isStamp(content.stamp) ||
+    (content.type === 'invite' && !isInviteCode(content.id)) ||
     !isNonemptyString(content.id) ||
     !isRecordType(content.type)
   ) {
@@ -421,7 +431,9 @@ function isSyncEvent(content: unknown): content is SyncEvent {
     return (
       hasFields(content, ['version', 'stamp', 'type', 'id', 'deleted']) &&
       content.deleted === true &&
-      (content.type === 'expense' || content.type === 'category')
+      (content.type === 'expense' ||
+        content.type === 'category' ||
+        content.type === 'invite')
     );
   }
   if (
@@ -481,6 +493,14 @@ function compareMoney(a: SyncMoney, b: SyncMoney): number {
 }
 
 function compareUnitValues(name: string, a: unknown, b: unknown): number {
+  if (name === 'link') {
+    const first = a as SyncUnits['invite']['link'];
+    const second = b as SyncUnits['invite']['link'];
+    return (
+      compare(first.expiresAtMs, second.expiresAtMs) ||
+      compare(first.secret, second.secret)
+    );
+  }
   if (name === 'money') return compareMoney(a as SyncMoney, b as SyncMoney);
   if (name === 'category') {
     const first = a as SyncUnits['expense']['category'];

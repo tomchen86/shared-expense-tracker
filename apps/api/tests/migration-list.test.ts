@@ -8,6 +8,7 @@ test('the migrations that have merged keep their names and their order', () => {
   expect(migrations.map(({ name }) => name)).toEqual([
     'sharing/0001-create-devices',
     'sync/0001-create-groups',
+    'sharing/0002-create-invites',
     'sync/0002-create-snapshots',
   ]);
 });

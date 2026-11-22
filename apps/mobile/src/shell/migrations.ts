@@ -8,7 +8,12 @@ import {
   expenseTrashMigration,
 } from '../ledger/migrations';
 import { sharingMigrations } from '../sharing/migrations';
-import { syncLoopMigration, syncMigration } from '../sync/migrations';
+import {
+  inviteMigration,
+  syncLoopMigration,
+  syncMigration,
+  syncOwnMoneyMigration,
+} from '../sync/migrations';
 
 /** Every capability's SQL migrations, in the order they run (ADR-0006). */
 export const appMigrations: readonly string[] = [
@@ -39,4 +44,6 @@ export const appMigrations: readonly string[] = [
   expenseListOrderMigration,
   expenseListFilterMigration,
   syncLoopMigration,
+  syncOwnMoneyMigration,
+  inviteMigration,
 ];

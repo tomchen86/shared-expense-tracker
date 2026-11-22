@@ -29,30 +29,39 @@ module.exports = {
     // Checks imported amounts and keeps the latest sync stamp across an import.
     './apps/mobile/src/backup/import.ts': { branches: 100 },
     './apps/mobile/src/groups/group-card.tsx': { branches: 83.33 },
-    './apps/mobile/src/groups/group-screen.tsx': { branches: 96.72 },
+    './apps/mobile/src/groups/group-screen.tsx': { branches: 96.92 },
     './apps/mobile/src/groups/group-summary.tsx': { branches: 50 },
     './apps/mobile/src/groups/groups-screen.tsx': { branches: 100 },
     './apps/mobile/src/groups/balances-screen.tsx': { branches: 100 },
     './apps/mobile/src/groups/format-balance.ts': { branches: 100 },
-    './apps/mobile/src/ledger/expenses.ts': { branches: 92 },
+    './apps/mobile/src/ledger/expenses.ts': { branches: 93.2 },
     './apps/mobile/src/ledger/list-filter.ts': { branches: 100 },
     './apps/mobile/src/ledger/expense-form-screen.tsx': { branches: 97.91 },
     './apps/mobile/src/ledger/use-expense-form.ts': { branches: 92.36 },
     './apps/mobile/src/ledger/use-expenses.ts': { branches: 91.66 },
-    './apps/mobile/src/ledger/expense-screen.tsx': { branches: 98.21 },
+    './apps/mobile/src/ledger/expense-screen.tsx': { branches: 100 },
     './apps/mobile/src/ledger/expenses-screen.tsx': { branches: 100 },
     // Offline sync: what writes a shared ledger's changes as events and applies the
     // events received, in the sync capability and in the capabilities whose tables it changes.
     './apps/mobile/src/sync/apply.ts': { branches: 100 },
     './apps/mobile/src/sync/index.ts': { branches: 75 },
     './apps/mobile/src/sync/positions.ts': { branches: 75 },
-    './apps/mobile/src/sync/records.ts': { branches: 94.73 },
+    './apps/mobile/src/sync/records.ts': { branches: 96 },
     './apps/mobile/src/sync/use-synced-focus-effect.ts': { branches: 83.33 },
+    // The mark of an expense whose money another phone replaced (ADR-0029): what keeps the
+    // phone's own money change and raises the mark, what settles it, and what shows it.
+    // No acceptance test presses Use Mine on an expense that is settled already, which
+    // review.ts leaves alone, nor holds a button down, which draws it pressed.
+    './apps/mobile/src/sync/own-money.ts': { branches: 100 },
+    './apps/mobile/src/ledger/review.ts': { branches: 50 },
+    './apps/mobile/src/ledger/review-block.tsx': { branches: 85.71 },
+    './apps/mobile/src/ledger/review-mark.tsx': { branches: 100 },
+    './apps/mobile/src/groups/review-button.tsx': { branches: 75 },
     // The phone's sync with the API (ADR-0027): the loop, the check of unsent stamps, and
     // what starts a sync and shows its notices. Measured with the tests against the API
     // (`*-api.test.*`), which need Docker.
     './apps/mobile/src/sync/loop.ts': { branches: 98.18 },
-    './apps/mobile/src/sync/stamps.ts': { branches: 95.65 },
+    './apps/mobile/src/sync/stamps.ts': { branches: 95.83 },
     './apps/mobile/src/sync/use-sync-notices.ts': { branches: 75 },
     './apps/mobile/src/sync/use-sync-triggers.ts': { branches: 93.75 },
     // No acceptance test decodes a character that is cut short; utf8.test.ts reaches every branch.
@@ -75,6 +84,14 @@ module.exports = {
     './apps/api/src/sharing/signed-requests.ts': { branches: 100 },
     './apps/mobile/src/sharing/api-request.ts': { branches: 100 },
     './apps/mobile/src/sharing/device-identity.ts': { branches: 100 },
+    // Invite creation, card updates and the sync records that carry links between phones.
+    './apps/mobile/src/sharing/group-key.ts': { branches: 100 },
+    './apps/mobile/src/sharing/invite-api.ts': { branches: 86.2 },
+    './apps/mobile/src/sharing/invite-card.ts': { branches: 100 },
+    './apps/mobile/src/sharing/invite-sheet.tsx': { branches: 80 },
+    './apps/mobile/src/sharing/invites.ts': { branches: 94.73 },
+    './apps/mobile/src/sharing/refresh-invite-card.ts': { branches: 96.77 },
+    './apps/mobile/src/sync/invites.ts': { branches: 75 },
     // The event API: what stores a shared ledger's events, numbers them and hands them
     // out, and the checks of its bodies that the phone and the API share (ADR-0016,
     // ADR-0024).
