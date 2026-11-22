@@ -64,8 +64,12 @@ function unpackRecord(row: RecordRow) {
 
 export async function snapshotRecords(tx: SqlExecutor, groupId: string) {
   const rows = await tx.all<RecordRow>(
-    'SELECT created, record, seeded FROM sync_records WHERE groupId = ?',
-    [groupId],
+    `SELECT created, record, seeded FROM sync_records r
+     WHERE r.groupId = ? AND (r.type <> 'invite' OR EXISTS (
+       SELECT 1 FROM group_invites i
+       WHERE i.id = r.id AND i.groupId = r.groupId AND i.expiresAtMs > ?
+     ))`,
+    [groupId, await readCorrectedTime(tx)],
   );
   return rows.map((row) => {
     const { record, created, seeded } = unpackRecord(row);

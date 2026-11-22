@@ -6,6 +6,7 @@ import {
   isObject,
   isRecordType,
   isStamp,
+  isSyncRecordId,
   isSyncUnitValue,
   moneyRefusal,
   syncRecordValues,
@@ -25,7 +26,7 @@ export type SyncSnapshotRecord = SyncRecord & {
   seeded: boolean;
 };
 
-/** What a snapshot of format version 1 holds (SYNC-98.1). */
+/** What a snapshot of format version 1 holds (SYNC-98.2). */
 export interface SyncSnapshot {
   /** The snapshot's own format version. */
   version: 1;
@@ -54,7 +55,7 @@ function isSnapshotRecord(value: unknown): value is SyncSnapshotRecord {
   if (
     !hasFields(value, fields) ||
     !isRecordType(type) ||
-    !isNonemptyString(id) ||
+    !isSyncRecordId(type, id) ||
     !isStamp(created) ||
     typeof seeded !== 'boolean' ||
     !isObject(units)
@@ -124,7 +125,7 @@ function isSnapshot(content: unknown): content is SyncSnapshot {
   return groupFound && uncategorizedFound;
 }
 
-/** Judges what a snapshot holds once decrypted and parsed (SYNC-98.1). */
+/** Judges what a snapshot holds once decrypted and parsed (SYNC-98.2). */
 export function checkSyncSnapshot(content: unknown): SyncSnapshotVerdict {
   if (
     isObject(content) &&

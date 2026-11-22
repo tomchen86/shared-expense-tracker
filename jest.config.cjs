@@ -60,7 +60,7 @@ module.exports = {
     // The phone's sync with the API (ADR-0027): the loop, the check of unsent stamps, and
     // what starts a sync and shows its notices. Measured with the tests against the API
     // (`*-api.test.*`), which need Docker.
-    './apps/mobile/src/sync/loop.ts': { branches: 98.18 },
+    './apps/mobile/src/sync/loop.ts': { branches: 98.19 },
     './apps/mobile/src/sync/stamps.ts': { branches: 95.83 },
     './apps/mobile/src/sync/use-sync-notices.ts': { branches: 75 },
     './apps/mobile/src/sync/use-sync-triggers.ts': { branches: 93.75 },
@@ -99,13 +99,13 @@ module.exports = {
     './apps/api/src/sync/groups.ts': { branches: 100 },
     './apps/api/src/sync/routes.ts': { branches: 100 },
     // Encrypted ledger snapshots (ADR-0028). The non-acceptance tests also exercise
-    // malformed records, a personal space collision, damaged local data, a lost identity and an unanswered lookup.
+    // damaged local records and an uploader that has lost its signing identity.
     './packages/domain/src/api/wire.ts': { branches: 100 },
     './packages/domain/src/api/group-snapshots.ts': { branches: 100 },
-    './packages/domain/src/sync/snapshot.ts': { branches: 98.87 },
+    './packages/domain/src/sync/snapshot.ts': { branches: 100 },
     './apps/api/src/sync/snapshots.ts': { branches: 100 },
-    './apps/mobile/src/sync/snapshot-ledger.ts': { branches: 97.05 },
-    './apps/mobile/src/sync/snapshots.ts': { branches: 96.87 },
+    './apps/mobile/src/sync/snapshot-ledger.ts': { branches: 97.29 },
+    './apps/mobile/src/sync/snapshots.ts': { branches: 98.43 },
   },
   testTimeout: 15000,
 };

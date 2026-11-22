@@ -38,7 +38,7 @@ export type SendSnapshotResult =
   | { outcome: 'uploaded'; snapshotId: string; sequence: number }
   /** Not made: the shared ledger has events that are not uploaded yet. */
   | { outcome: 'unsent-events' }
-  /** Not made: this phone lacks the group key of its key epoch. */
+  /** The group key is missing or the secure store cannot be read during upload. */
   | { outcome: 'no-key' }
   /** Not sent: the snapshot would take more chunks than a snapshot may have. */
   | { outcome: 'too-large' }
@@ -47,7 +47,7 @@ export type SendSnapshotResult =
   /** A request had no answer, or one that is no confirmation. */
   | { outcome: 'failed' };
 
-/** What became of taking a snapshot in (SYNC-121.1 to SYNC-128.2). */
+/** What became of taking a snapshot in (SYNC-121.1 to SYNC-128.3). */
 export type TakeSnapshotResult =
   /** The snapshot is merged into the local data. */
   | { outcome: 'imported' }
@@ -87,10 +87,22 @@ function chunkData(
   );
 }
 
+class SnapshotKeyReadError extends Error {}
+
+function onKeyReadError(cause: unknown): never {
+  throw new SnapshotKeyReadError('Cannot read the secure store', { cause });
+}
+
+function reportKeyReadError(error: unknown): { outcome: 'no-key' } {
+  if (error instanceof SnapshotKeyReadError) return { outcome: 'no-key' };
+  throw error;
+}
+
 async function request(database: Database, input: ApiRequest) {
   const answer = await sendApiRequest(database, {
     ...input,
     giveUpAfterMs: GIVE_UP_AFTER_MS,
+    onSeedReadError: onKeyReadError,
   });
   if (answer.outcome === 'answered')
     return { status: answer.status, body: jsonIn(answer.body) };
@@ -168,33 +180,35 @@ export async function sendSnapshot(
   const count = Math.ceil(plaintext.length / PIECE_BYTES);
   if (count > SNAPSHOT_CHUNK_COUNT_LIMIT) return { outcome: 'too-large' };
 
-  const identity = await readDeviceIdentity(database);
-  if (identity.status !== 'ready') return { outcome: 'failed' };
-  const send = (epoch: number, key: Uint8Array) =>
-    uploadChunks(
-      database,
-      apiUrl,
-      recipient,
-      {
-        groupId,
-        deviceId: identity.deviceId,
-        sequence: made.content.sequence,
-        count,
-        epoch,
-        snapshotId: randomUUID(),
-      },
-      key,
-      plaintext,
-    );
-  const first = await send(made.epoch, made.key);
-  if (first.outcome !== 'epoch') return first;
-  const key = await readGroupKey(groupId, first.epoch);
-  if (!key) return { outcome: 'failed' };
-  const second = await send(first.epoch, key);
-  return second.outcome === 'epoch' ? { outcome: 'failed' } : second;
+  try {
+    const identity = await readDeviceIdentity(database, onKeyReadError);
+    if (identity.status !== 'ready') return { outcome: 'failed' };
+    const send = (epoch: number, key: Uint8Array) =>
+      uploadChunks(
+        database,
+        apiUrl,
+        recipient,
+        {
+          groupId,
+          deviceId: identity.deviceId,
+          sequence: made.content.sequence,
+          count,
+          epoch,
+          snapshotId: randomUUID(),
+        },
+        key,
+        plaintext,
+      );
+    const first = await send(made.epoch, made.key);
+    if (first.outcome !== 'epoch') return first;
+    const key = await readGroupKey(groupId, first.epoch, onKeyReadError);
+    if (!key) return { outcome: 'failed' };
+    const second = await send(first.epoch, key);
+    return second.outcome === 'epoch' ? { outcome: 'failed' } : second;
+  } catch (error) {
+    return reportKeyReadError(error);
+  }
 }
-
-class DeviceSeedReadError extends Error {}
 
 async function downloadAndImport(
   database: Database,
@@ -206,9 +220,6 @@ async function downloadAndImport(
       apiUrl,
       path,
       method: 'GET',
-      onSeedReadError(cause) {
-        throw new DeviceSeedReadError('Cannot read the device seed', { cause });
-      },
     });
   const asked = await get(`/groups/${groupId}/snapshot`);
   if (!asked) return { outcome: 'failed' };
@@ -256,14 +267,9 @@ async function downloadAndImport(
 }
 
 /** Fetches the snapshot the group stores for this phone, and merges it into the local data. */
-export async function takeSnapshot(
+export function takeSnapshot(
   database: Database,
   group: { apiUrl: string; groupId: string },
 ): Promise<TakeSnapshotResult> {
-  try {
-    return await downloadAndImport(database, group);
-  } catch (error) {
-    if (error instanceof DeviceSeedReadError) return { outcome: 'no-key' };
-    throw error;
-  }
+  return downloadAndImport(database, group).catch(reportKeyReadError);
 }

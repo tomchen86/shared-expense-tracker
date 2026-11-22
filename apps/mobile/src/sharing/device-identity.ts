@@ -67,10 +67,11 @@ async function readSeed(deviceId: string): Promise<Uint8Array | undefined> {
 /** Reads this phone's device identity without making one. Rejects when the secure store cannot be read. */
 export async function readDeviceIdentity(
   database: SqlExecutor,
+  onSeedReadError?: (cause: unknown) => never,
 ): Promise<DeviceIdentity> {
   const device = await readStoredDevice(database);
   if (!device) return { status: 'none' };
-  const seed = await readSeed(device.deviceId);
+  const seed = await readSeed(device.deviceId).catch(onSeedReadError);
   return { status: seed ? 'ready' : 'lost', deviceId: device.deviceId };
 }
 

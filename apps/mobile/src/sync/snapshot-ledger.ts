@@ -12,6 +12,7 @@ import { applyMergedGroup } from '../groups';
 import { applyMergedExpense } from '../ledger/merged-expense';
 import type { SqlExecutor } from '../storage';
 import { canMergeInGroup } from './apply';
+import { applyMergedInvite } from './invites';
 import { readGroupKey } from './loop';
 import { orderSyncedRows } from './positions';
 import {
@@ -50,7 +51,7 @@ export async function makeSnapshot(tx: SqlExecutor, groupId: string) {
   return { outcome: 'made', content, epoch: ledger.epoch, key } as const;
 }
 
-/** Check ownership before the first write. Only a new group needs local identity and position. */
+/** Only a new shared ledger needs a local device and a position. */
 async function openSnapshotGroup(
   tx: SqlExecutor,
   snapshot: SyncSnapshot,
@@ -80,13 +81,6 @@ async function openSnapshotGroup(
     );
     return true;
   }
-  if (
-    !(await canMergeInGroup(tx, groupId, {
-      type: 'category',
-      id: uncategorized,
-    }))
-  )
-    return false;
   // Validation established exactly one group record and a complete reserved category.
   const groupRecord = records.find((r) => r.type === 'group')!;
   const name = groupRecord.units.name!.value;
@@ -162,18 +156,28 @@ export async function importSnapshot(
   snapshot: SyncSnapshot,
   epoch: number,
 ) {
-  if (!(await openSnapshotGroup(tx, snapshot, epoch))) return false;
   const { groupId, uncategorized } = snapshot;
   const reservedRecord = snapshot.records.find(
     (record): record is Extract<SyncSnapshotRecord, { type: 'category' }> =>
       record.type === 'category' && record.id === uncategorized,
   )!;
+  // Decide ownership against the phone's data before creating or updating any rows.
+  const foreign = new Set<SyncSnapshotRecord>();
+  for (const record of snapshot.records) {
+    if (!(await canMergeInGroup(tx, groupId, record))) foreign.add(record);
+  }
+  if (
+    foreign.has(reservedRecord) ||
+    !(await openSnapshotGroup(tx, snapshot, epoch))
+  )
+    return false;
   const reserved = {
     id: uncategorized,
     name: reservedRecord.units.name!.value,
     color: reservedRecord.units.color!.value,
   };
   const expenses: MergedExpense[] = [];
+  const invites: Extract<SyncRecord, { type: 'invite' }>[] = [];
   let seen = await latestStamp(tx);
   for (const incoming of snapshot.records) {
     const previous = await readSyncRecord(
@@ -192,10 +196,13 @@ export async function importSnapshot(
       seen,
     });
     seen = merged.seen;
-    if (!(await canMergeInGroup(tx, groupId, incoming))) continue;
+    if (foreign.has(incoming)) continue;
     const { created, seeded, ...record } = merged.record;
     await storeSyncRecord(tx, groupId, record, created, seeded);
     switch (record.type) {
+      case 'invite':
+        invites.push(record);
+        break;
       case 'group':
       case 'member':
         await applyMergedGroup(tx, groupId, record);
@@ -224,6 +231,8 @@ export async function importSnapshot(
   await applyExpenses(tx, groupId, expenses);
   await orderSyncedRows(tx, groupId, 'category');
   await orderSyncedRows(tx, groupId, 'member');
+  // An invite's card uses the merged group name and ordered members.
+  for (const invite of invites) await applyMergedInvite(tx, groupId, invite);
   await saveLatestStamp(tx, seen!); // A valid snapshot always includes the group itself.
   return true;
 }

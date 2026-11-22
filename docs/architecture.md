@@ -15,7 +15,7 @@ flowchart LR
 | Part | Responsibility | Where |
 |---|---|---|
 | Mobile app | What a member does on the phone, including offline; syncs with the API | `apps/mobile` |
-| API | Authorizes members and devices, and stores and exchanges each shared ledger's encrypted events and snapshots. Serves what lets an invite link open the app, and the page for a phone without it | `apps/api` |
+| API | Authorizes members and devices. Stores and exchanges each shared ledger's encrypted events and snapshots and applies no bookkeeping rules. Serves what lets an invite link open the app, and the page for a phone without it | `apps/api` |
 | Domain | Rules every client applies identically, and the API's request and response types with the functions that check them | `packages/domain` |
 
 Name top-level directories only. File paths go stale.
@@ -24,7 +24,7 @@ Name top-level directories only. File paths go stale.
 
 - Each capability's code lives in one directory per app, named after its spec (ADR-0002).
 - A rule every client applies lives once, in `packages/domain`; no client redefines it (ADR-0002).
-- The API authorizes members and devices. Each client validates the bookkeeping data it receives (ADR-0003).
+- The API never applies bookkeeping rules. Each client validates the events and snapshots it receives (ADR-0003).
 - The API stores data only in PostgreSQL, in tests too (ADR-0002).
 - The API's code runs unchanged on Node and on Cloudflare Workers; only one entry file per runtime knows which (ADR-0007).
 - The API runs in a staging and a production environment, each with its own Worker, Hyperdrive configuration, and database; a deploy runs the migrations before it uploads the Worker, and no request runs them (ADR-0019).

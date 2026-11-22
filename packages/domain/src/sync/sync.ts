@@ -395,6 +395,13 @@ export function isRecordType(type: unknown): type is SyncRecordType {
   return typeof type === 'string' && Object.hasOwn(unitValidators, type);
 }
 
+export function isSyncRecordId(
+  type: SyncRecordType,
+  id: unknown,
+): id is string {
+  return type === 'invite' ? isInviteCode(id) : isNonemptyString(id);
+}
+
 export function isSyncUnitValue(
   type: SyncRecordType,
   name: string,
@@ -421,9 +428,8 @@ function isSyncEvent(content: unknown): content is SyncEvent {
     !isObject(content) ||
     content.version !== 1 ||
     !isStamp(content.stamp) ||
-    (content.type === 'invite' && !isInviteCode(content.id)) ||
-    !isNonemptyString(content.id) ||
-    !isRecordType(content.type)
+    !isRecordType(content.type) ||
+    !isSyncRecordId(content.type, content.id)
   ) {
     return false;
   }
