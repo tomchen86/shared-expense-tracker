@@ -575,3 +575,59 @@ export async function plant(
   }
   return { snapshotId: envelope.snapshotId, chunks };
 }
+
+// Invites (ADR-0026)
+
+export const WEEK = 604_800_000;
+
+/** An invite as a phone holds it: its code, the string after the link's `#`, and its expiry. */
+export interface HeldInvite {
+  code: string;
+  secret: string;
+  expiresAtMs: number;
+}
+
+/** An invite with a code and a string of its own. */
+export const newInvite = (expiresAtMs: number): HeldInvite => ({
+  code: randomBytes(16).toString('base64url'),
+  secret: randomBytes(32).toString('base64url'),
+  expiresAtMs,
+});
+
+/** The first event of an invite, as another phone's code would write it (SYNC-80.2). */
+export const inviteEvent = (
+  { code, secret, expiresAtMs }: HeldInvite,
+  stamp: { ms: number; counter: number; device: string },
+) => ({
+  version: 1,
+  stamp,
+  type: 'invite',
+  id: code,
+  units: { link: { value: { secret, expiresAtMs } } },
+});
+
+/** The invite records of a snapshot. */
+export const invitesIn = (snapshot: SyncSnapshot) =>
+  snapshot.records.filter((record) => record.type === 'invite');
+
+/**
+ * The invite the phone shows for the group without asking the API: the one it stores that
+ * has not expired (sharing), or undefined when it stores none.
+ */
+export async function inviteHeld(
+  phone: Phone,
+  groupId = phone.brisbane,
+): Promise<HeldInvite | undefined> {
+  setClock(phone, phone.state.clockMs);
+  const { activeInvite } = jest.requireActual<
+    typeof import('../../src/sync/invites')
+  >('../../src/sync/invites');
+  const invite = await activeInvite(phone.database, groupId);
+  return (
+    invite && {
+      code: invite.code,
+      secret: invite.secret,
+      expiresAtMs: invite.expiresAtMs,
+    }
+  );
+}

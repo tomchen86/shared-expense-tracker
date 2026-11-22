@@ -25,6 +25,7 @@ import {
   renameGroup,
   requestHolds,
   saveKey,
+  secureStoreWorks,
   sent,
   setClock,
   setEpoch,
@@ -37,6 +38,7 @@ import {
 } from './sync-loop-app';
 import {
   PIECE,
+  WEEK,
   afterSixtySeconds,
   answerNext,
   answerUpload,
@@ -45,9 +47,13 @@ import {
   endSnapshotWorld,
   faultsLeft,
   fetched,
+  inviteEvent,
+  inviteHeld,
+  invitesIn,
   joined,
   loseAnswerTo,
   neverAnswer,
+  newInvite,
   newcomer,
   noAnswerTo,
   opensWith,
@@ -57,6 +63,7 @@ import {
   snapshotRequests,
   startSnapshotWorld,
   uploadedChunks,
+  whenAnswered,
 } from './sync-snapshot-app';
 
 // Runs in Node against the real API (sync-loop-app, sync-snapshot-app): a phone makes a
@@ -100,8 +107,8 @@ const FAILED = { outcome: 'failed' };
 const unitsOf = (record: { units: object } | undefined) =>
   record?.units as Record<string, { value: unknown; stamp: unknown }>;
 
-describe('SYNC-114.1', () => {
-  test('[SYNC-114.1] holds every record of the ledger with its stamps, tombstones and creation stamps, and the cursor it covers', async () => {
+describe('SYNC-114.2', () => {
+  test('[SYNC-114.2] holds every record of the ledger with its stamps, tombstones and creation stamps, and the cursor it covers', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a, b, A, B, key, brisbane } = setup;
     const lunch = await created(b, 'Lunch', await stampOf(b, NOW));
@@ -191,7 +198,53 @@ describe('SYNC-114.1', () => {
     ]);
   });
 
-  test('[SYNC-114.1] holds a record whose units have not all arrived', async () => {
+  test('[SYNC-114.2] holds only the invites that are neither revoked nor expired', async () => {
+    const setup = await twoPhones();
+    const { a, b, key } = setup;
+    const kept = newInvite(T + WEEK);
+    const revoked = newInvite(T + WEEK);
+    const expired = newInvite(T + 30_000);
+    const made = await stampOf(b, NOW, 0);
+    await uploadAs(b, key, [
+      inviteEvent(kept, made),
+      inviteEvent(revoked, await stampOf(b, NOW, 1)),
+      inviteEvent(expired, await stampOf(b, NOW, 2)),
+      {
+        version: 1,
+        stamp: await stampOf(b, NOW, 3),
+        type: 'invite',
+        id: revoked.code,
+        deleted: true,
+      },
+    ]);
+    await sync(a);
+    expect(await inviteHeld(a)).toEqual(kept);
+    const c = await newcomer(setup);
+
+    await sentSnapshot(a, c);
+
+    const content = await contentFor(c, key);
+    expect(invitesIn(content)).toEqual([
+      {
+        type: 'invite',
+        id: kept.code,
+        units: {
+          link: {
+            value: { secret: kept.secret, expiresAtMs: kept.expiresAtMs },
+            stamp: made,
+          },
+        },
+        created: made,
+        seeded: false,
+      },
+    ]);
+    const text = JSON.stringify(content);
+    expect(text).not.toContain(revoked.code);
+    expect(text).not.toContain(expired.code);
+    expect(checkSyncSnapshot(content).status).toBe('valid');
+  });
+
+  test('[SYNC-114.2] holds a record whose units have not all arrived', async () => {
     const setup = await twoPhones();
     const { a, b, key } = setup;
     const id = randomId();
@@ -216,7 +269,7 @@ describe('SYNC-114.1', () => {
     expect(Object.keys(unitsOf(brunch))).toEqual(['title']);
   });
 
-  test('[SYNC-114.1] covers the cursor, and still holds what the phone uploaded after it', async () => {
+  test('[SYNC-114.2] covers the cursor, and still holds what the phone uploaded after it', async () => {
     const setup = await twoPhones();
     const { a, key } = setup;
     await addExpense(a);
@@ -231,7 +284,7 @@ describe('SYNC-114.1', () => {
     expect(recordWith(content, 'expense', 'title', 'Dinner')).toBeDefined();
   });
 
-  test('[SYNC-114.1] holds nothing the phone keeps to itself, and nothing of its other data', async () => {
+  test('[SYNC-114.2] holds nothing the phone keeps to itself, and nothing of its other data', async () => {
     const setup = await twoPhones({ tokyoShared: true });
     const { a, b, A, key, brisbane, tokyo } = setup;
     await a.groups.setGroupArchived(a.database, brisbane, true);
@@ -750,6 +803,27 @@ describe('SYNC-120.1', () => {
     expect(await sendSnapshot(a, c)).toEqual({ outcome: 'no-key' });
 
     expect(snapshotRequests(from)).toEqual([]);
+  });
+
+  test('[SYNC-120.1] stops and reports no key when the secure store cannot be read after a chunk was uploaded, and starts over later', async () => {
+    const setup = await twoPhones({ expenses: LONG_TITLES });
+    const { a } = setup;
+    const c = await newcomer(setup);
+    const from = mark();
+    whenAnswered('PUT', 0, async () => failSecureStoreReads(a));
+
+    expect(await sendSnapshot(a, c)).toEqual({ outcome: 'no-key' });
+
+    expect(faultsLeft()).toBe(0);
+    const first = uploadedChunks(from);
+    expect(first.map((chunk) => chunk.index)).toEqual([0]);
+    expect(first[0].count).toBe(3);
+    secureStoreWorks(a);
+    const again = mark();
+    expect(await sendSnapshot(a, c)).toEqual(UPLOADED);
+    const second = uploadedChunks(again);
+    expect(second.map((chunk) => chunk.index)).toEqual([0, 1, 2]);
+    expect(second[0].snapshotId).not.toBe(first[0].snapshotId);
   });
 
   test('[SYNC-120.1] sends nothing of a snapshot that would take more than 64 chunks', async () => {
