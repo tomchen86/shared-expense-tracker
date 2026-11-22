@@ -108,17 +108,25 @@ describe('SYNC-142.1', () => {
 });
 
 describe('SYNC-143.1', () => {
-  test('[SYNC-143.1] deletes the record of a request that passed the checks more than 600,000 ms before, and none that passed exactly that long before', async () => {
+  test('[SYNC-143.1] deletes the record of a request that passed the checks more than 600,000 ms before, whatever its request time, and none that passed exactly that long before', async () => {
     const taylor = await registered(TAYLOR);
-    const request = signedBy(taylor);
-    expectPassed(await send(request));
-    const nonce = Buffer.from(fieldOf(request, 'nonce'), 'hex');
+    const onTime = signedBy(taylor);
+    // Signed by a clock five minutes behind the API's: its request time is no measure.
+    const early = signedBy(taylor, { timestampMs: T - 300_000 });
+    expectPassed(await send(onTime));
+    expectPassed(await send(early));
+    const nonces = [onTime, early].map((request) =>
+      Buffer.from(fieldOf(request, 'nonce'), 'hex'),
+    );
 
     await cleanUpAt(T + 600_000);
-    expect(await timesStored(nonce)).toBe(1);
+    const kept = [await timesStored(nonces[0]), await timesStored(nonces[1])];
 
     await cleanUpAt(T + 600_001);
-    expect(await timesStored(nonce)).toBe(0);
+    const left = [await timesStored(nonces[0]), await timesStored(nonces[1])];
+
+    expect(kept).toEqual([1, 1]);
+    expect(left).toEqual([0, 0]);
   });
 
   test('[SYNC-143.1] keeps the record of a request for as long as the same request could pass the clock check again, so that [SHARING-36.1] it is refused as replayed until then', async () => {

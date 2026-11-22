@@ -54,6 +54,7 @@ async function all<R>(promises: Promise<R>[]): Promise<R[]> {
 describe('SYNC-140.1', () => {
   test('[SYNC-140.1] answers a download that meets a cleanup with a page that starts right after its cursor or with snapshot-needed, numbers the uploads on, and counts what it deletes once', async () => {
     const ROUNDS = 20;
+    const DOWNLOADS_EACH = 12;
     const taylor = await registered(TAYLOR);
     expectCreated(await createGroup(taylor, BRISBANE), BRISBANE);
     const taylorsServer = await ownServer();
@@ -79,23 +80,43 @@ describe('SYNC-140.1', () => {
         numbersFrom(before + 1, 5),
       );
 
-      // Together: two cleanups to which every event so far is over 30 days old, nine
-      // downloads from cursors that have events after them, and one more upload.
+      // Together: each of the three phones downloads twelve times in a row from cursors
+      // that have events after them, one more upload goes in, and two cleanups, to which
+      // every event so far is over 30 days old, start once the first download is
+      // answered, a little later each round, so that their commit falls among the
+      // downloads. Started with the downloads, a cleanup has committed before the first
+      // of them is past the checks of its signature.
       const more = events(3, 50);
       const at = now() + 31 * DAY;
       const uploading = callOn(taylorsServer, taylor, uploadOf(BRISBANE, more));
-      const reading = readers.flatMap(({ phone, server }) =>
-        [before, before, before + 2].map(async (cursor) => {
-          const answer = await callOn(server, phone, {
-            path: `${eventsPath(BRISBANE)}?after=${cursor}`,
-          });
-          downloads.push({ cursor, answer });
-        }),
-      );
+      let answered!: () => void;
+      const firstAnswer = new Promise<void>((resolve) => {
+        answered = resolve;
+      });
+      const reading = readers.map(async ({ phone, server }) => {
+        try {
+          for (let sent = 0; sent < DOWNLOADS_EACH; sent += 1) {
+            const cursor = sent % 3 === 2 ? before + 2 : before;
+            const answer = await callOn(server, phone, {
+              path: `${eventsPath(BRISBANE)}?after=${cursor}`,
+            });
+            downloads.push({ cursor, answer });
+            answered();
+          }
+        } finally {
+          // The cleanups never wait for a download that failed.
+          answered();
+        }
+      });
+      const cleaning = async () => {
+        await firstAnswer;
+        await new Promise((resolve) => setTimeout(resolve, round % 4));
+        await cleanUp(sql(), at);
+      };
       const [uploaded] = await all<unknown>([
         uploading,
-        cleanUp(sql(), at),
-        cleanUp(sql(), at),
+        cleaning(),
+        cleaning(),
         ...reading,
       ]);
 
@@ -103,7 +124,8 @@ describe('SYNC-140.1', () => {
       last = before + 8;
     }
 
-    expect(downloads).toHaveLength(ROUNDS * 9);
+    expect(downloads).toHaveLength(ROUNDS * readers.length * DOWNLOADS_EACH);
+    let pages = 0;
     for (const { cursor, answer } of downloads) {
       if (answer.status === 200) {
         // Events after this cursor were stored before the download was sent: a page
@@ -114,10 +136,14 @@ describe('SYNC-140.1', () => {
           cursor,
           cursor + 1,
         ]);
+        pages += 1;
       } else {
         expectSnapshotNeeded(answer);
       }
     }
+    // Downloads were answered on both sides of a cleanup's commit.
+    expect(pages).toBeGreaterThan(0);
+    expect(pages).toBeLessThan(downloads.length);
 
     // Once every event is deleted the group has room for exactly its limit again: each
     // event's size came off its count once, however many cleanups met it.
