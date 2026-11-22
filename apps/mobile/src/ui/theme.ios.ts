@@ -13,6 +13,7 @@ const IOS_COLORS: ThemeColors = {
   separator: PlatformColor('separatorColor'),
   accent: PlatformColor('systemBlueColor'),
   error: PlatformColor('systemRedColor'),
+  warning: PlatformColor('systemOrangeColor'),
 };
 
 export function useThemeColors(): ThemeColors {

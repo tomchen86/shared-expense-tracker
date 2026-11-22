@@ -4,3 +4,4 @@ export * from './group-events';
 export * from './group-snapshots';
 export * from './health';
 export * from './signed-request';
+export * from './invites';

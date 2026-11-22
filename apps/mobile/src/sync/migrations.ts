@@ -51,3 +51,34 @@ export const syncLoopMigration = `
     ADD COLUMN groupFull INTEGER NOT NULL DEFAULT 0 CHECK (groupFull IN (0, 1));
   ALTER TABLE sync_outbox ADD COLUMN checked INTEGER NOT NULL DEFAULT 0 CHECK (checked IN (0, 1));
 `;
+
+/**
+ * This phone's own change of an expense's money (ADR-0029): the stamp and the money of the
+ * last event it wrote itself that held the money unit, and whether an event has overridden
+ * that change since. It goes with its expense when the expense is deleted for good.
+ */
+export const syncOwnMoneyMigration = `
+  CREATE TABLE sync_own_money (
+    expenseId TEXT PRIMARY KEY NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
+    stamp TEXT NOT NULL,
+    money TEXT NOT NULL,
+    overridden INTEGER NOT NULL DEFAULT 0 CHECK (overridden IN (0, 1))
+  );
+`;
+
+export const inviteMigration = `
+  CREATE TABLE group_invites (
+    id TEXT PRIMARY KEY NOT NULL,
+    groupId TEXT NOT NULL REFERENCES sync_groups(groupId),
+    secret TEXT NOT NULL,
+    expiresAtMs INTEGER NOT NULL,
+    cardHash TEXT NOT NULL,
+    cardPending INTEGER NOT NULL DEFAULT 0 CHECK (cardPending IN (0, 1))
+  );
+  CREATE INDEX group_invites_by_expiry ON group_invites(groupId, expiresAtMs, id);
+  CREATE TABLE pending_invites (
+    groupId TEXT PRIMARY KEY NOT NULL REFERENCES sync_groups(groupId),
+    code TEXT NOT NULL UNIQUE,
+    secret TEXT NOT NULL
+  );
+`;

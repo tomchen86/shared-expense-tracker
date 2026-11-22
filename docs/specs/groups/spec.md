@@ -2,7 +2,7 @@
 
 ## Purpose
 
-群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。共同帳本是在這支手機上已經變成共同帳本的群組（sync）。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡、日期在群組的畫面的期間裡、通過這個畫面的篩選的支出（GROUPS-61.6），支出的卡片、明細、垃圾桶、期間、期間列、篩選和膠囊列見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上清單上方的總額（GROUPS-68.6）和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
+群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。共同帳本是在這支手機上已經變成共同帳本的群組（sync）。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；Members 的成員清單是成員那幾列，加上最後的「Add Member」或名稱欄位，和清單下面關於人數上限的那句話（GROUPS-105.1）；「Invite with Link」在成員清單的上面，自成一區，不是清單的一列（GROUPS-106.1），它打開的 Invite 見 sharing；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡、日期在群組的畫面的期間裡、通過這個畫面的篩選的支出（GROUPS-61.6），支出的卡片、明細、垃圾桶、期間、期間列、篩選和膠囊列見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上清單上方的總額（GROUPS-68.6）和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
 
 ## Requirements
 
@@ -1779,6 +1779,65 @@ The mobile app SHALL 讓群組的畫面的大標題放不下時先縮小，最�
 - **WHEN** 打開名稱是 300 個「a」的群組，再按大標題
 - **THEN** 收起時字級是 24 pt，尾端漸層消失；展開時字級不變，顯示完整的名稱
 
+### Requirement: GROUPS-107.1 群組的畫面最上面顯示有幾筆支出需要確認
+
+WHILE 共同帳本有需要確認的支出（sync），the mobile app SHALL 在它的畫面的大標題下面顯示一個按鈕：LEDGER-151.1 的圖示，後面是「1 expense needs review」，不只一筆時是「<筆數> expenses need review」，右邊有「›」；筆數是這個群組全部需要確認的支出，不跟著期間、篩選和搜尋；它在 SYNC-75.1 和 SYNC-83.1 的那兩句話下面，封存的共同帳本顯示在唯讀的提示（GROUPS-55.2）上面；螢幕閱讀器把它讀成一個按鈕，讀出這句話，不讀圖示和「›」，再讀出無障礙提示「Opens the first one」；按一下就照 GROUPS-63.1 推入第一筆的明細，也就是這些支出依 LEDGER-28.1 的順序最前面的那一筆，不管畫面的排序，連按兩次也只推入一個。群組沒有需要確認的支出時，SHALL 不顯示這個按鈕；別的群組的畫面只算自己的。
+
+#### Scenario: 一筆
+
+- **WHEN** Brisbane 是共同帳本，你把 Dinner 的金額改成 120.00，之後套用別支手機的 90.00（sync），打開 Brisbane 的畫面
+- **THEN** 大標題「Brisbane」下面是一個按鈕「1 expense needs review」，前面是 LEDGER-151.1 的圖示，右邊有「›」，再下面是期間列；螢幕閱讀器讀出一個按鈕「1 expense needs review」和提示「Opens the first one」
+
+#### Scenario: 兩筆
+
+- **WHEN** Brisbane 還有日期是 `2026-10-29` 的 Taxi，它也需要確認
+- **THEN** 按鈕是「2 expenses need review」
+
+#### Scenario: 按下
+
+- **WHEN** Dinner（`2026-10-30`）和 Taxi（`2026-10-29`）都需要確認，Brisbane 的畫面的排序是 Oldest First，按「2 expenses need review」
+- **THEN** 仍選中 Groups 分頁，Groups 分頁的堆疊由下而上是「Groups」、「Brisbane」和「Expense」，網址是 `/groups/expenses/` 加上 Dinner 的 ID，明細最上面是標記的區塊（LEDGER-152.1）
+
+#### Scenario: 連按兩次
+
+- **WHEN** 連按兩次這個按鈕
+- **THEN** 只推入一個明細；返回一次就回到 Brisbane 的畫面
+
+#### Scenario: 處理之後
+
+- **WHEN** 在 Dinner 的明細按「Keep Current」再返回；之後在 Taxi 的明細按「Use Mine」再返回
+- **THEN** 第一次返回時按鈕是「1 expense needs review」，按了打開的是 Taxi；第二次返回時沒有這個按鈕
+
+#### Scenario: 不跟著期間、篩選和搜尋
+
+- **WHEN** 今天是 `2026-10-30`，需要確認的只有 `2026-09-15` 的 Hotel，它現在是 $90.00，Brisbane 另有今天的 Taxi（$100.01）；Brisbane 的畫面的期間是這個月，或期間是全部期間而篩選是 Amount 的 Min「95」，或正在搜尋「taxi」
+- **THEN** 畫面上都只有 Taxi 的卡片，仍有「1 expense needs review」；按了打開 Hotel 的明細
+
+#### Scenario: 垃圾桶裡的支出
+
+- **WHEN** 只有 Dinner 需要確認，把它移到垃圾桶，再按 Undo
+- **THEN** 移到垃圾桶之後沒有這個按鈕；Undo 之後又是「1 expense needs review」
+
+#### Scenario: 和同步的那兩句話
+
+- **WHEN** Brisbane 停在格式版本 2 的事件（SYNC-75.1），Dinner 也需要確認
+- **THEN** 大標題下面由上而下是 SYNC-75.1 的那句話和「1 expense needs review」
+
+#### Scenario: 封存的共同帳本
+
+- **WHEN** Dinner 需要確認時封存 Brisbane，從 Archived Groups 打開它的畫面，按「1 expense needs review」
+- **THEN** 由上而下是大標題「Brisbane」、「1 expense needs review」、「Archived group. Expenses and allocations are read-only.」和「Restore Group」；按了之後在 Settings 分頁推入 `/settings/archived-groups/expenses/` 加上 Dinner 的 ID
+
+#### Scenario: 沒有需要確認的支出
+
+- **WHEN** 打開沒有支出被蓋掉過的 Brisbane 的畫面，和不是共同帳本的 Tokyo 的畫面；或 Brisbane 的 Dinner 需要確認時打開 Tokyo 的畫面
+- **THEN** 都沒有這個按鈕
+
+#### Scenario: 重新啟動
+
+- **WHEN** Dinner 需要確認時重新啟動 app，打開 Brisbane 的畫面
+- **THEN** 仍是「1 expense needs review」
+
 ### Requirement: GROUPS-102.1 在 Group actions 打開 Group Categories
 
 WHEN 使用者在 Group actions 選「Categories」，the mobile app SHALL 打開蓋在群組的畫面上的 sheet，網址是 `/manage-categories?scopeKind=group&spaceId=<群組 ID>`，內容是這個群組的 Group Categories（CATEGORIES-23.4）；按「Close」，或 iOS 上往下滑、Android 上按返回鍵時關閉，回到群組的畫面。封存的群組打開時是唯讀的（CATEGORIES-43.1）。
@@ -1874,3 +1933,22 @@ WHILE 未封存的共同帳本有 20 位以上的成員，the mobile app SHALL �
 
 - **WHEN** 還不是共同帳本的群組有 31 位成員
 - **THEN** Members 最後仍是「Add Member」（GROUPS-31.3）
+
+### Requirement: GROUPS-106.1 未封存群組的 Members 有 Invite with Link
+
+WHILE 群組沒有封存，the mobile app SHALL 在它的 Members 的成員清單上面另外顯示一區，裡面只有一列：角色為 button、名稱為「Invite with Link」的按鈕，右邊有「›」，按了開啟 Invite（SHARING-91.1）。封存群組的 Members 沒有這一列。
+
+#### Scenario: 未封存的群組
+
+- **WHEN** 名字是「Taylor」，建立「Brisbane」後開啟它的 Members
+- **THEN** 由上而下是「Invite with Link」、「Taylor (You)」和「Add Member」；「Invite with Link」是名稱為「Invite with Link」的按鈕，右邊有「›」，在成員清單的那一區之外
+
+#### Scenario: 共同帳本有 20 位成員
+
+- **WHEN** 你和 19 位成員的共同帳本 Brisbane，打開它的 Members
+- **THEN** 最上面仍是「Invite with Link」，最後是「A shared group can have up to 20 members.」（GROUPS-105.1）
+
+#### Scenario: 封存的群組
+
+- **WHEN** 封存 Brisbane 之後打開它的 Members
+- **THEN** 沒有「Invite with Link」（GROUPS-56.1）；還原之後又有

@@ -1,4 +1,12 @@
-import { checkSyncEvent, nextSyncStamp } from './sync';
+import {
+  checkSyncEvent,
+  mergeSyncEvent,
+  nextSyncStamp,
+  sameSyncUnitValue,
+  syncRecordValues,
+  type SyncChange,
+  type SyncUnits,
+} from './sync';
 
 const stamp = { ms: 1000, counter: 0, device: 'phone-a' };
 const event = {
@@ -77,4 +85,35 @@ test('accepts object property names as identifiers and distinct participants', (
     status: 'valid',
     event: content,
   });
+});
+
+test('invite links with the same stamp converge by expiry, then secret', () => {
+  const firstSecret = 'A'.repeat(43);
+  const lastSecret = 'B' + firstSecret.slice(1);
+  const first = { expiresAtMs: 1, secret: lastSecret };
+  const second = { expiresAtMs: 2, secret: firstSecret };
+  const third = { expiresAtMs: 2, secret: lastSecret };
+  const change = (value: SyncUnits['invite']['link']): SyncChange => ({
+    version: 1,
+    type: 'invite',
+    id: 'A'.repeat(22),
+    stamp,
+    units: { link: { value } },
+  });
+
+  for (const [smaller, larger] of [
+    [first, second],
+    [second, third],
+  ]) {
+    for (const [a, b] of [
+      [smaller, larger],
+      [larger, smaller],
+    ]) {
+      const { record } = mergeSyncEvent({ event: change(a) });
+      const result = mergeSyncEvent({ record, event: change(b) });
+      expect(syncRecordValues(result.record)).toEqual({ link: larger });
+    }
+  }
+  expect(sameSyncUnitValue('link', first, { ...first })).toBe(true);
+  expect(sameSyncUnitValue('link', second, third)).toBe(false);
 });

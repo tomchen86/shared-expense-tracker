@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useState, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useState, type ComponentProps } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -15,40 +15,56 @@ import type { HeaderAction } from './header-actions';
 import type { SheetProps } from './sheet';
 import { useThemeColors } from './theme';
 
-function SheetContent({
+function SheetItem({
   children,
   headerHeight,
-}: {
-  children: ReactNode;
+  measureDetent,
+  ...screen
+}: ComponentProps<typeof ScreenStackItem> & {
   headerHeight: number;
+  measureDetent?: boolean;
 }) {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [contentHeight, setContentHeight] = useState(0);
+  const availableHeight = height - insets.top;
+  const requiredHeight = contentHeight + headerHeight + insets.bottom;
   // RNS sizes a modal's native scroll view to the sheet, while its origin stays
   // below the header. Reserve that overrun when the sheet is shorter than its
   // content so the last row can scroll above the header and bottom safe area.
   const scrollEndSpace =
-    contentHeight + headerHeight + insets.bottom > height - insets.top
-      ? headerHeight + insets.bottom
-      : 0;
+    requiredHeight > availableHeight ? headerHeight + insets.bottom : 0;
   return (
-    <ScrollView
-      automaticallyAdjustKeyboardInsets
-      contentInsetAdjustmentBehavior="never"
-      keyboardShouldPersistTaps="handled"
-      style={{ flexGrow: 0 }}
-      contentContainerStyle={{ paddingBottom: scrollEndSpace }}
+    <ScreenStackItem
+      {...screen}
+      // Invite can replace its one-line placeholder during presentation. Send
+      // each measured height to UIKit even if the first fit is already in use.
+      sheetAllowedDetents={
+        measureDetent &&
+        contentHeight > 0 &&
+        headerHeight > 0 &&
+        availableHeight > 0
+          ? [Math.min(1, requiredHeight / availableHeight)]
+          : 'fitToContents'
+      }
     >
-      <View
-        style={styles.content}
-        onLayout={({ nativeEvent }) =>
-          setContentHeight(nativeEvent.layout.height)
-        }
+      <ScrollView
+        automaticallyAdjustKeyboardInsets
+        contentInsetAdjustmentBehavior="never"
+        keyboardShouldPersistTaps="handled"
+        style={{ flexGrow: 0 }}
+        contentContainerStyle={{ paddingBottom: scrollEndSpace }}
       >
-        {children}
-      </View>
-    </ScrollView>
+        <View
+          style={styles.content}
+          onLayout={({ nativeEvent }) =>
+            setContentHeight(nativeEvent.layout.height)
+          }
+        >
+          {children}
+        </View>
+      </ScrollView>
+    </ScreenStackItem>
   );
 }
 
@@ -60,6 +76,7 @@ export function Sheet({
   confirm,
   onClose,
   dismissible = true,
+  measureDetent,
   children,
 }: SheetProps) {
   const id = useId();
@@ -108,11 +125,12 @@ export function Sheet({
         style={StyleSheet.absoluteFill}
       />
       {visible && (
-        <ScreenStackItem
+        <SheetItem
           screenId={id}
+          headerHeight={headerHeight}
+          measureDetent={measureDetent}
           activityState={2}
           stackPresentation="formSheet"
-          sheetAllowedDetents="fitToContents"
           sheetInitialDetentIndex={0}
           sheetGrabberVisible
           sheetExpandsWhenScrolledToEdge={false}
@@ -135,8 +153,8 @@ export function Sheet({
           contentStyle={{ backgroundColor: colors.background }}
           style={StyleSheet.absoluteFill}
         >
-          <SheetContent headerHeight={headerHeight}>{children}</SheetContent>
-        </ScreenStackItem>
+          {children}
+        </SheetItem>
       )}
     </ScreenStack>
   );
