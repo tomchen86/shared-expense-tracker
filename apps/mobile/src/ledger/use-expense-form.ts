@@ -27,9 +27,10 @@ import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { SyncEventTooLargeError } from '../sync/records';
 import {
   ArchivedExpenseError,
-  listExpenses,
+  readExpenseToEdit,
   saveExpense,
   type Expense,
+  type ExpenseUnits,
 } from './expenses';
 import { normalizeAmount } from './list-filter';
 
@@ -39,6 +40,8 @@ export interface LoadedForm {
   formerMembers: GroupMember[];
   initialGroupId?: string;
   expense?: Expense;
+  /** The units the record of a shared ledger's expense held when `expense` was read. */
+  units?: ExpenseUnits;
 }
 
 /** What the form shows from the local data, read again each time it comes back into focus. */
@@ -54,18 +57,19 @@ export function useExpenseFormData(
   const read = useCallback(() => {
     const request = Promise.all([
       listCategories(database),
-      expenseId ? listExpenses(database) : Promise.resolve([] as Expense[]),
+      expenseId ? readExpenseToEdit(database, expenseId) : undefined,
       listGroups(database),
-    ]).then(async ([categories, expenses, groups]) => {
-      const expense = expenses.find(
-        (item) => item.id === expenseId && item.trashOrder === undefined,
-      );
+    ]).then(async ([categories, toEdit, groups]) => {
+      // The form edits no expense that is in the trash.
+      const { expense, units } =
+        toEdit?.expense.trashOrder === undefined ? { ...toEdit } : {};
       const formerMembers = expense
         ? await listFormerMembers(database, expense.spaceId)
         : [];
       return {
         categories,
         expense,
+        units,
         groups,
         formerMembers,
         initialGroupId: groups.find(
@@ -106,6 +110,7 @@ export function defaultCurrency() {
 export function useExpenseForm({
   categories,
   expense,
+  units,
   groups,
   formerMembers,
   initialGroupId,
@@ -143,6 +148,9 @@ export function useExpenseForm({
       note: expense?.note ?? '',
     };
   });
+  // What the form opened with: a save writes what differs from it (SYNC-23.2). The form
+  // reads the expense again each time it comes back into focus, and keeps this.
+  const [opened] = useState({ expense, units });
   type Draft = typeof initial;
   const [form, setForm] = useState(initial);
   // What the form holds now, which Add and Save save. `form` can be older: when the
@@ -330,7 +338,7 @@ export function useExpenseForm({
           categoryId,
           note: draft.note,
         },
-        expense,
+        opened.expense,
         draft.split
           ? {
               groupId: draft.groupId!,
@@ -338,6 +346,7 @@ export function useExpenseForm({
               participants: draft.participants,
             }
           : undefined,
+        opened.units,
       );
       savingRef.current = false;
       closingRef.current = true;

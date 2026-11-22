@@ -1779,6 +1779,65 @@ The mobile app SHALL 讓群組的畫面的大標題放不下時先縮小，最�
 - **WHEN** 打開名稱是 300 個「a」的群組，再按大標題
 - **THEN** 收起時字級是 24 pt，尾端漸層消失；展開時字級不變，顯示完整的名稱
 
+### Requirement: GROUPS-107.1 群組的畫面最上面顯示有幾筆支出需要確認
+
+WHILE 共同帳本有需要確認的支出（sync），the mobile app SHALL 在它的畫面的大標題下面顯示一個按鈕：LEDGER-151.1 的圖示，後面是「1 expense needs review」，不只一筆時是「<筆數> expenses need review」，右邊有「›」；筆數是這個群組全部需要確認的支出，不跟著期間、篩選和搜尋；它在 SYNC-75.1 和 SYNC-83.1 的那兩句話下面，封存的共同帳本顯示在唯讀的提示（GROUPS-55.2）上面；螢幕閱讀器把它讀成一個按鈕，讀出這句話，不讀圖示和「›」，再讀出無障礙提示「Opens the first one」；按一下就照 GROUPS-63.1 推入第一筆的明細，也就是這些支出依 LEDGER-28.1 的順序最前面的那一筆，不管畫面的排序，連按兩次也只推入一個。群組沒有需要確認的支出時，SHALL 不顯示這個按鈕；別的群組的畫面只算自己的。
+
+#### Scenario: 一筆
+
+- **WHEN** Brisbane 是共同帳本，你把 Dinner 的金額改成 120.00，之後套用別支手機的 90.00（sync），打開 Brisbane 的畫面
+- **THEN** 大標題「Brisbane」下面是一個按鈕「1 expense needs review」，前面是 LEDGER-151.1 的圖示，右邊有「›」，再下面是期間列；螢幕閱讀器讀出一個按鈕「1 expense needs review」和提示「Opens the first one」
+
+#### Scenario: 兩筆
+
+- **WHEN** Brisbane 還有日期是 `2026-10-29` 的 Taxi，它也需要確認
+- **THEN** 按鈕是「2 expenses need review」
+
+#### Scenario: 按下
+
+- **WHEN** Dinner（`2026-10-30`）和 Taxi（`2026-10-29`）都需要確認，Brisbane 的畫面的排序是 Oldest First，按「2 expenses need review」
+- **THEN** 仍選中 Groups 分頁，Groups 分頁的堆疊由下而上是「Groups」、「Brisbane」和「Expense」，網址是 `/groups/expenses/` 加上 Dinner 的 ID，明細最上面是標記的區塊（LEDGER-152.1）
+
+#### Scenario: 連按兩次
+
+- **WHEN** 連按兩次這個按鈕
+- **THEN** 只推入一個明細；返回一次就回到 Brisbane 的畫面
+
+#### Scenario: 處理之後
+
+- **WHEN** 在 Dinner 的明細按「Keep Current」再返回；之後在 Taxi 的明細按「Use Mine」再返回
+- **THEN** 第一次返回時按鈕是「1 expense needs review」，按了打開的是 Taxi；第二次返回時沒有這個按鈕
+
+#### Scenario: 不跟著期間、篩選和搜尋
+
+- **WHEN** 今天是 `2026-10-30`，需要確認的只有 `2026-09-15` 的 Hotel，它現在是 $90.00，Brisbane 另有今天的 Taxi（$100.01）；Brisbane 的畫面的期間是這個月，或期間是全部期間而篩選是 Amount 的 Min「95」，或正在搜尋「taxi」
+- **THEN** 畫面上都只有 Taxi 的卡片，仍有「1 expense needs review」；按了打開 Hotel 的明細
+
+#### Scenario: 垃圾桶裡的支出
+
+- **WHEN** 只有 Dinner 需要確認，把它移到垃圾桶，再按 Undo
+- **THEN** 移到垃圾桶之後沒有這個按鈕；Undo 之後又是「1 expense needs review」
+
+#### Scenario: 和同步的那兩句話
+
+- **WHEN** Brisbane 停在格式版本 2 的事件（SYNC-75.1），Dinner 也需要確認
+- **THEN** 大標題下面由上而下是 SYNC-75.1 的那句話和「1 expense needs review」
+
+#### Scenario: 封存的共同帳本
+
+- **WHEN** Dinner 需要確認時封存 Brisbane，從 Archived Groups 打開它的畫面，按「1 expense needs review」
+- **THEN** 由上而下是大標題「Brisbane」、「1 expense needs review」、「Archived group. Expenses and allocations are read-only.」和「Restore Group」；按了之後在 Settings 分頁推入 `/settings/archived-groups/expenses/` 加上 Dinner 的 ID
+
+#### Scenario: 沒有需要確認的支出
+
+- **WHEN** 打開沒有支出被蓋掉過的 Brisbane 的畫面，和不是共同帳本的 Tokyo 的畫面；或 Brisbane 的 Dinner 需要確認時打開 Tokyo 的畫面
+- **THEN** 都沒有這個按鈕
+
+#### Scenario: 重新啟動
+
+- **WHEN** Dinner 需要確認時重新啟動 app，打開 Brisbane 的畫面
+- **THEN** 仍是「1 expense needs review」
+
 ### Requirement: GROUPS-102.1 在 Group actions 打開 Group Categories
 
 WHEN 使用者在 Group actions 選「Categories」，the mobile app SHALL 打開蓋在群組的畫面上的 sheet，網址是 `/manage-categories?scopeKind=group&spaceId=<群組 ID>`，內容是這個群組的 Group Categories（CATEGORIES-23.4）；按「Close」，或 iOS 上往下滑、Android 上按返回鍵時關閉，回到群組的畫面。封存的群組打開時是唯讀的（CATEGORIES-43.1）。

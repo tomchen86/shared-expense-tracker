@@ -1,12 +1,16 @@
 import {
   splitEvenly,
   type Share,
+  type SyncRecord,
   type SyncUnits,
 } from '@shared-expense/domain';
 import { createUuid, type Database, type SqlExecutor } from '../storage';
 import type { LocalIdentity } from '../shell';
+import { moneyToReview } from '../sync/own-money';
 import {
+  changedUnits,
   expenseSyncValues,
+  readSyncRecord,
   sharedGroup,
   writeLocalChange,
   type SharedGroup,
@@ -48,7 +52,12 @@ interface ExpenseRow extends Omit<
   trashOrder: number | null;
   addedOrder: number;
   changedAt: number | null;
+  /** This phone's own money change of the expense, once an event has overridden it. */
+  overriddenMoney: string | null;
 }
+
+/** The units an expense's sync record holds, each with its stamp. */
+export type ExpenseUnits = Extract<SyncRecord, { type: 'expense' }>['units'];
 
 export async function categoryExpenseCounts(
   database: SqlExecutor,
@@ -126,24 +135,57 @@ export async function readExpense(
   return row && expenseOf(row);
 }
 
-/** The same expenses with the local sort keys their cards use. */
-export async function listExpensesForCards(database: SqlExecutor) {
-  const rows = await readExpenseRows(database, '', []);
-  return rows.map((row) => ({
-    ...expenseOf(row),
-    addedOrder: row.addedOrder,
-    changedAt: row.changedAt,
-  }));
+/**
+ * The expense as Edit Expense opens with it and, for a shared ledger's expense, the units
+ * its record holds then. One statement reads both, so no event is applied between them:
+ * a save bases on these stamps (SYNC-23.2).
+ */
+export async function readExpenseToEdit(
+  database: SqlExecutor,
+  id: string,
+): Promise<{ expense: Expense; units?: ExpenseUnits } | undefined> {
+  const [row] = await readExpenseRows<{ record: string | null }>(
+    database,
+    'WHERE e.id = ?',
+    [id],
+    `(SELECT record FROM sync_records
+      WHERE groupId = e.spaceId AND type = 'expense' AND id = e.id) AS record,`,
+  );
+  if (!row) return undefined;
+  const record =
+    row.record === null
+      ? undefined
+      : (JSON.parse(row.record) as { units: ExpenseUnits });
+  return { expense: expenseOf(row), units: record?.units };
 }
 
-function readExpenseRows(
+/**
+ * The same expenses with the local sort keys their cards use and, for each one that needs
+ * review, `yours`: the money the user entered (LEDGER-151.1).
+ */
+export async function listExpensesForCards(database: SqlExecutor) {
+  const rows = await readExpenseRows(database, '', []);
+  return rows.map((row) => {
+    const expense = expenseOf(row);
+    return {
+      ...expense,
+      addedOrder: row.addedOrder,
+      changedAt: row.changedAt,
+      yours: moneyToReview(expense, row.overriddenMoney),
+    };
+  });
+}
+
+function readExpenseRows<More = unknown>(
   database: SqlExecutor,
   where: string,
   parameters: readonly string[],
-): Promise<ExpenseRow[]> {
-  return database.all<ExpenseRow>(
+  /** More columns to read with each expense, each ending in a comma. */
+  more = '',
+): Promise<(ExpenseRow & More)[]> {
+  return database.all<ExpenseRow & More>(
     `
-    SELECT e.*, e.rowid AS addedOrder, c.changedAt,
+    SELECT e.*, e.rowid AS addedOrder, c.changedAt, m.money AS overriddenMoney, ${more}
       (SELECT json_group_array(json_object('participant', participant, 'amountMinor', amountMinor))
         FROM (SELECT participant, amountMinor FROM expense_payments
           WHERE expenseId = e.id ORDER BY position, rowid)) AS payments,
@@ -151,6 +193,7 @@ function readExpenseRows(
         FROM (SELECT participant, amountMinor FROM expense_shares
           WHERE expenseId = e.id ORDER BY position, rowid)) AS shares
     FROM expenses AS e LEFT JOIN expense_changes AS c ON c.expenseId = e.id
+      LEFT JOIN sync_own_money AS m ON m.expenseId = e.id AND m.overridden = 1
     ${where} ORDER BY e.date DESC, e.rowid DESC
   `,
     parameters,
@@ -277,13 +320,20 @@ export async function writeExpenseRows(
   await recordExpenseChanges(transaction, [id], eventMs);
 }
 
-/** Save the expense and its ordered allocations together, or leave all of them unchanged. */
+/**
+ * Save the expense and its ordered allocations together, or leave all of them unchanged.
+ * An edit of a shared ledger's expense saves only the units that differ from `opened`,
+ * the units its record held when its form opened, and leaves the others as they are
+ * stored, whatever was applied meanwhile (SYNC-23.2). Without `opened`, the edit is taken
+ * as made on what the record holds now.
+ */
 export async function saveExpense(
   database: Database,
   identity: LocalIdentity,
   input: ExpenseInput,
   original?: Expense,
   split?: GroupSplit,
+  opened?: ExpenseUnits,
 ): Promise<void> {
   const id = await database.transaction(async (transaction) => {
     const spaceId = split?.groupId ?? identity.personalSpaceId;
@@ -302,6 +352,17 @@ export async function saveExpense(
       existing.spaceId !== spaceId
     )
       throw new Error('A group expense cannot change spaces');
+    const shared = split && (await sharedGroup(transaction, spaceId));
+    const stored =
+      shared && existing?.spaceId === spaceId
+        ? await readSyncRecord(transaction, spaceId, 'expense', existing.id)
+        : undefined;
+    const since = stored && (opened ?? (stored.record.units as ExpenseUnits));
+    // The expense those units belong to: `original` is the one the form opened with.
+    const before = opened ? original : existing;
+    // The group's members, while the save takes the payer and the sharers from the form:
+    // they have to be among them.
+    let currentMembers: ReadonlySet<string> | undefined;
     if (split) {
       const [group] = await transaction.all<{ archived: number }>(
         'SELECT archived FROM groups WHERE id = ?',
@@ -313,40 +374,44 @@ export async function saveExpense(
         'SELECT id, removed FROM group_members WHERE groupId = ?',
         [spaceId],
       );
-      const currentMembers = new Set(
+      const current = new Set(
         members.filter((member) => !member.removed).map((member) => member.id),
       );
       const locked =
         existing?.spaceId === spaceId &&
         [...existing.payments, ...existing.shares].some(
-          (share) => !currentMembers.has(share.participant),
+          (share) => !current.has(share.participant),
         );
       if (locked) {
         amountMinor = existing.amountMinor;
         payments = existing.payments;
         shares = existing.shares;
       } else {
-        if (
-          !currentMembers.has(split.payerId) ||
-          split.participants.some((id) => !currentMembers.has(id))
-        )
-          throw new Error('Member not found');
         const allocations = splitEvenly(amountMinor, split.participants);
         if (!allocations) throw new Error('Invalid split');
         payments = [{ participant: split.payerId, amountMinor }];
         shares = allocations;
+        currentMembers = current;
       }
     }
-    const [selected] = await transaction.all<Expense['category']>(
-      'SELECT id, name, color FROM categories WHERE id = ? AND spaceId = ?',
-      [input.categoryId, spaceId],
-    );
-    if (!selected) throw new Error('Category not found');
-    const shared = split && (await sharedGroup(transaction, spaceId));
-    const keepCategory = shared && existing?.category.id === selected.id;
-    const category = keepCategory ? existing.category : selected;
+    // A shared ledger's expense keeps its category, with the name and color it stores,
+    // unless the form names another: also one that was renamed since, or is gone
+    // (LEDGER-27.2, SYNC-41.1).
+    let category =
+      since && input.categoryId === before?.category.id
+        ? existing?.category
+        : undefined;
+    const keepCategory = category !== undefined;
+    if (!category) {
+      const [selected] = await transaction.all<Expense['category']>(
+        'SELECT id, name, color FROM categories WHERE id = ? AND spaceId = ?',
+        [input.categoryId, spaceId],
+      );
+      if (!selected) throw new Error('Category not found');
+      category = selected;
+    }
     const id = existing?.id ?? (await createUuid(transaction));
-    const expense: Expense = {
+    let expense: Expense = {
       id,
       spaceId,
       title: input.title.trim(),
@@ -354,18 +419,45 @@ export async function saveExpense(
       note: input.note?.trim() || undefined,
       category,
       amountMinor,
-      currency: existing?.currency ?? input.currency,
+      // The form shows the amount in the currency the expense had when it opened.
+      currency:
+        since?.money?.value.currency ?? existing?.currency ?? input.currency,
       payments,
       shares,
       trashOrder: existing?.trashOrder,
     };
-    await writeExpenseRows(transaction, expense, !!existing);
-    if (shared) {
-      const units: Partial<SyncUnits['expense']> = expenseSyncValues(expense);
-      // A displayed fallback category can differ from the synced category until it arrives.
+    const units: Partial<SyncUnits['expense']> = expenseSyncValues(expense);
+    if (existing && since) {
+      // Not changed on the form: whether the expense is in the trash, the category it left
+      // as it was, and the money of an expense with a former member, kept above.
+      delete units.trashed;
       if (keepCategory) delete units.category;
-      await writeLocalChange(transaction, shared, 'expense', id, units);
+      if (!currentMembers) delete units.money;
+      const changed = changedUnits(units, since);
+      // The money stays as it is stored, whoever pays and shares it now.
+      if (!('money' in changed)) currentMembers = undefined;
+      const form = expense;
+      const from = (unit: string) => (unit in changed ? form : existing);
+      expense = {
+        ...existing,
+        title: from('title').title,
+        date: from('date').date,
+        note: from('note').note,
+        category: from('category').category,
+        ...expenseSyncValues(from('money')).money,
+      };
     }
+    if (
+      split &&
+      currentMembers &&
+      [split.payerId, ...split.participants].some(
+        (member) => !currentMembers.has(member),
+      )
+    )
+      throw new Error('Member not found');
+    await writeExpenseRows(transaction, expense, !!existing);
+    if (shared)
+      await writeLocalChange(transaction, shared, 'expense', id, units, since);
     if (!existing) await revealPlacedExpense(transaction, expense);
     return id;
   });

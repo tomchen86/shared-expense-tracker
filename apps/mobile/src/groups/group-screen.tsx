@@ -16,6 +16,7 @@ import { useSyncNotices } from '../sync/use-sync-notices';
 import { groupTotals, yourBalanceLines } from './format-balance';
 import { GroupLargeTitle, useLargeTitleScroll } from './group-large-title';
 import { GroupSummary } from './group-summary';
+import { ReviewButton } from './review-button';
 import { useGroup } from './use-group';
 import { useGroupArchive } from './use-group-archive';
 
@@ -53,6 +54,12 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
     [read.expenses, id],
   );
   const periods = useListPeriod(id, expenses, read);
+  // Every expense of the group that needs review, whatever the list shows of them, in the
+  // order of LEDGER-28.1, which is the order they are read in (GROUPS-107.1).
+  const toReview = useMemo(
+    () => expenses?.filter((expense) => expense.yours) ?? [],
+    [expenses],
+  );
   // Your balance uses every expense (GROUPS-69.4). The total uses every card that passes
   // the dates and the filter (GROUPS-68.6, LEDGER-118.2).
   const amounts = group && expenses ? groupAmounts(expenses, group) : [];
@@ -129,6 +136,14 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                   {notice}
                 </Text>
               ))}
+              {toReview.length > 0 && (
+                <ReviewButton
+                  count={toReview.length}
+                  onPress={() =>
+                    router.navigate(`${base}/expenses/${toReview[0].id}`)
+                  }
+                />
+              )}
               {group?.archived && (
                 <ArchivedBanner
                   restoring={pending.has(id)}
