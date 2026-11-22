@@ -219,8 +219,7 @@ export function isGroupRefusal(value: unknown): value is GroupRefusal {
 export function isSnapshotNeededResponse(
   value: unknown,
 ): value is SnapshotNeededResponse {
-  void value;
-  throw new Error('Not implemented');
+  return hasExactly(value, ['error']) && value.error === 'snapshot-needed';
 }
 
 // The invite API uses the same group IDs, integer cursors and encrypted content limits.

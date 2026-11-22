@@ -1,5 +1,6 @@
 import type { ExecutionContext } from 'hono';
 import { app } from './app';
+import { cleanUp } from './cleanup';
 import { connect, type Sql } from './database/connect';
 import type { AppLinks } from './sharing/app-links';
 
@@ -46,8 +47,12 @@ export default {
     context: ExecutionContext,
   ): Promise<void> {
     void controller;
-    void env;
     void context;
-    throw new Error('Not implemented');
+    const sql = connect(env.HYPERDRIVE.connectionString);
+    try {
+      await cleanUp(sql, Date.now());
+    } finally {
+      await sql.end();
+    }
   },
 };

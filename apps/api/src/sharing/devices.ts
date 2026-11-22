@@ -7,7 +7,7 @@ export const CLOCK_TOLERANCE_MS = 300_000;
 const REQUEST_LIMIT = 60;
 const REQUEST_WINDOW_MS = 60_000;
 const REGISTRATION_LIMIT = 30;
-const REGISTRATION_WINDOW_MS = 3_600_000;
+export const REGISTRATION_WINDOW_MS = 3_600_000;
 // The first key of a transaction-level advisory lock says what its second key stands for.
 const DEVICE_LOCKS = 1;
 const IP_LOCKS = 2;
