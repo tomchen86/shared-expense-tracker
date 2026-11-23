@@ -688,7 +688,7 @@ const groupButtons = (group: string) =>
     .queryAllByRole('button')
     .filter((button) => !inTitleBar(button));
 
-/** The expense cards on the group's screen, top to bottom: its buttons besides its large title, the number of expenses to review (GROUPS-107.1), +, Restore Group and the list's controls, which include the total and your net balance. */
+/** The expense cards on the group's screen, top to bottom: its buttons besides its large title, the number of expenses to review (GROUPS-107.2), +, Restore Group and the list's controls, which include the total and your net balance. */
 export const groupCards = (group: string) =>
   groupButtons(group).filter((button) => {
     const name = nameOf(button);

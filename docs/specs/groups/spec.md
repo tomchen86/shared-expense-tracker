@@ -1789,9 +1789,9 @@ The mobile app SHALL 讓群組的畫面的大標題放不下時先縮小，最�
 - **WHEN** 打開名稱是 300 個「a」的群組，再按大標題
 - **THEN** 收起時字級是 24 pt，尾端漸層消失；展開時字級不變，顯示完整的名稱
 
-### Requirement: GROUPS-107.1 群組的畫面最上面顯示有幾筆支出需要確認
+### Requirement: GROUPS-107.2 群組的畫面最上面顯示有幾筆支出掛著標記
 
-WHILE 共同帳本有需要確認的支出（sync），the mobile app SHALL 在它的畫面的大標題下面顯示一個按鈕：LEDGER-151.1 的圖示，後面是「1 expense needs review」，不只一筆時是「<筆數> expenses need review」，右邊有「›」；筆數是這個群組全部需要確認的支出，不跟著期間、篩選和搜尋；它在 SYNC-75.1 和 SYNC-83.1 的那兩句話下面，封存的共同帳本顯示在唯讀的提示（GROUPS-55.2）上面；螢幕閱讀器把它讀成一個按鈕，讀出這句話，不讀圖示和「›」，再讀出無障礙提示「Opens the first one」；按一下就照 GROUPS-63.1 推入第一筆的明細，也就是這些支出依 LEDGER-28.1 的順序最前面的那一筆，不管畫面的排序，連按兩次也只推入一個。群組沒有需要確認的支出時，SHALL 不顯示這個按鈕；別的群組的畫面只算自己的。
+WHILE 共同帳本有掛著標記的支出，也就是需要確認的支出或可能重複的支出（sync），the mobile app SHALL 在它的畫面的大標題下面顯示一個按鈕：LEDGER-151.1 的圖示，後面是「1 expense needs review」，不只一筆時是「<筆數> expenses need review」，右邊有「›」；筆數是這個群組全部掛著標記的支出，同時需要確認又可能重複的支出只算一筆，可能重複的支出的對象不算，不跟著期間、篩選和搜尋；它在 SYNC-75.1 和 SYNC-83.1 的那兩句話下面，封存的共同帳本顯示在唯讀的提示（GROUPS-55.2）上面；螢幕閱讀器把它讀成一個按鈕，讀出這句話，不讀圖示和「›」，再讀出無障礙提示「Opens the first one」；按一下就照 GROUPS-63.1 推入第一筆的明細，也就是這些支出依 LEDGER-28.1 的順序最前面的那一筆，不管畫面的排序，也不管它掛的是哪一種標記，連按兩次也只推入一個。群組沒有掛著標記的支出時，SHALL 不顯示這個按鈕；別的群組的畫面只算自己的。
 
 #### Scenario: 一筆
 
@@ -1838,10 +1838,40 @@ WHILE 共同帳本有需要確認的支出（sync），the mobile app SHALL 在�
 - **WHEN** Dinner 需要確認時封存 Brisbane，從 Archived Groups 打開它的畫面，按「1 expense needs review」
 - **THEN** 由上而下是大標題「Brisbane」、「1 expense needs review」、「Archived group. Expenses and allocations are read-only.」和「Restore Group」；按了之後在 Settings 分頁推入 `/settings/archived-groups/expenses/` 加上 Dinner 的 ID
 
-#### Scenario: 沒有需要確認的支出
+#### Scenario: 沒有掛著標記的支出
 
-- **WHEN** 打開沒有支出被蓋掉過的 Brisbane 的畫面，和不是共同帳本的 Tokyo 的畫面；或 Brisbane 的 Dinner 需要確認時打開 Tokyo 的畫面
+- **WHEN** 打開沒有支出被蓋掉過、也沒有可能重複的支出的 Brisbane 的畫面，和不是共同帳本的 Tokyo 的畫面；或 Brisbane 的 Dinner 需要確認時打開 Tokyo 的畫面
 - **THEN** 都沒有這個按鈕
+
+#### Scenario: 可能重複的支出
+
+- **WHEN** Brisbane 是共同帳本，新增 Dinner 之後套用別支手機的 Supper 的第一個事件（sync），打開 Brisbane 的畫面，按「1 expense needs review」
+- **THEN** 按鈕是「1 expense needs review」，不是 2：Supper 算，它的對象 Dinner 不算；按了推入 Supper 的明細，最上面是可能重複的區塊（LEDGER-157.1）
+
+#### Scenario: 兩種標記各一筆
+
+- **WHEN** Brisbane 的 Taxi（`2026-10-29`）需要確認，`2026-10-30` 的 Supper 是可能重複的支出，按「2 expenses need review」
+- **THEN** 按鈕是「2 expenses need review」；按了推入 Supper 的明細
+
+#### Scenario: 需要確認的那一筆日期比較新
+
+- **WHEN** `2026-10-29` 的 Supper 是可能重複的支出，`2026-10-30` 的 Taxi 需要確認，按「2 expenses need review」
+- **THEN** 按了推入 Taxi 的明細，最上面是 LEDGER-152.1 的區塊：先後只看 LEDGER-28.1 的順序，不看標記的種類
+
+#### Scenario: 一筆支出掛著兩種標記
+
+- **WHEN** Dinner 同時需要確認，也是可能重複的支出（LEDGER-156.1），Brisbane 沒有別的掛著標記的支出
+- **THEN** 按鈕是「1 expense needs review」；在 Dinner 的明細按「Keep Current」之後仍是「1 expense needs review」，再按「Not a Duplicate」之後沒有這個按鈕
+
+#### Scenario: 處理可能重複的支出之後
+
+- **WHEN** Supper 是 Brisbane 唯一掛著標記的支出，在它的明細按「Not a Duplicate」再返回；或按「Delete This Expense」
+- **THEN** 回到 Brisbane 的畫面時都沒有這個按鈕
+
+#### Scenario: 別支手機說了不是重複
+
+- **WHEN** Brisbane 的畫面開著、顯示「1 expense needs review」時，套用說 Dinner 和 Supper 不是重複的事件（sync）
+- **THEN** 不必重新打開，這個按鈕就消失
 
 #### Scenario: 重新啟動
 
@@ -2009,7 +2039,7 @@ WHILE 本機資料存著申請（sharing），the mobile app SHALL 在 Groups �
 
 ### Requirement: GROUPS-130.1 群組的畫面顯示有幾個人想加入
 
-WHILE 未封存的共同帳本有收到的申請，the mobile app SHALL 在它的畫面的大標題下面顯示一個按鈕：「1 person wants to join」，不只一個時是「<個數> people want to join」，右邊有「›」；它在 GROUPS-107.1 的按鈕下面，沒有那顆按鈕時在 SYNC-75.1 和 SYNC-83.1 的那兩句話下面；螢幕閱讀器把它讀成一個按鈕，讀出這句話，不讀「›」，再讀出無障礙提示「Opens Members」；按一下開啟這個群組的 Members（GROUPS-23.2），連按兩次也只開一個。沒有收到的申請時 SHALL 不顯示這個按鈕；封存的共同帳本和還不是共同帳本的群組都沒有；別的群組的畫面只算自己的。
+WHILE 未封存的共同帳本有收到的申請，the mobile app SHALL 在它的畫面的大標題下面顯示一個按鈕：「1 person wants to join」，不只一個時是「<個數> people want to join」，右邊有「›」；它在 GROUPS-107.2 的按鈕下面，沒有那顆按鈕時在 SYNC-75.1 和 SYNC-83.1 的那兩句話下面；螢幕閱讀器把它讀成一個按鈕，讀出這句話，不讀「›」，再讀出無障礙提示「Opens Members」；按一下開啟這個群組的 Members（GROUPS-23.2），連按兩次也只開一個。沒有收到的申請時 SHALL 不顯示這個按鈕；封存的共同帳本和還不是共同帳本的群組都沒有；別的群組的畫面只算自己的。
 
 #### Scenario: 一個申請
 
@@ -2028,7 +2058,7 @@ WHILE 未封存的共同帳本有收到的申請，the mobile app SHALL 在它�
 
 #### Scenario: 和需要確認的支出一起
 
-- **WHEN** Brisbane 另外有一筆需要確認的支出（GROUPS-107.1）
+- **WHEN** Brisbane 另外有一筆需要確認的支出（GROUPS-107.2）
 - **THEN** 大標題下面依序是「1 expense needs review」和「1 person wants to join」兩個按鈕
 
 #### Scenario: 沒有申請，或別的群組
