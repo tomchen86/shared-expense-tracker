@@ -79,12 +79,12 @@ export function MembersScreen({
     AccessibilityInfo.announceForAccessibility(ALREADY_EXISTS);
   }
 
-  async function add(former?: GroupMember) {
+  async function add(text: string, former?: GroupMember) {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
     try {
-      await addGroupMember(database, id, name, former?.id);
+      await addGroupMember(database, id, text, former?.id);
       const updated = (await listGroups(database)).find(
         (item) => item.id === id,
       )!;
@@ -115,9 +115,12 @@ export function MembersScreen({
     }
   }
 
-  function submit() {
+  // `text` is what the field holds when Return is pressed. The name in state can be older:
+  // keys typed just before Return reach React in the same batch as Return when the phone
+  // is busy, and `name` here is still from the render before them.
+  function submit(text: string) {
     if (busyRef.current || !group) return;
-    if (!name.trim()) {
+    if (!text.trim()) {
       setAdding(false);
       setName('');
       setDuplicate(false);
@@ -125,14 +128,14 @@ export function MembersScreen({
     }
     if (
       group.members.some(
-        (member) => memberNameKey(member.name) === memberNameKey(name),
+        (member) => memberNameKey(member.name) === memberNameKey(text),
       )
     ) {
       showDuplicate();
       return;
     }
     const former = group.formerMembers.find(
-      (member) => memberNameKey(member.name) === memberNameKey(name),
+      (member) => memberNameKey(member.name) === memberNameKey(text),
     );
     if (former) {
       Alert.alert(
@@ -140,11 +143,11 @@ export function MembersScreen({
         `${former.name} was removed from this group before. Adding them back reconnects their past payments and shares.`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Add Back', onPress: () => void add(former) },
+          { text: 'Add Back', onPress: () => void add(text, former) },
         ],
         { cancelable: true },
       );
-    } else void add();
+    } else void add(text);
   }
 
   async function remove(member: GroupMember) {
@@ -325,7 +328,9 @@ export function MembersScreen({
                       setDuplicate(false);
                     }
                   }}
-                  onSubmitEditing={submit}
+                  onSubmitEditing={({ nativeEvent }) =>
+                    submit(nativeEvent.text)
+                  }
                   style={[styles.input, { color: colors.text }]}
                 />
                 {duplicate && (
