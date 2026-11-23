@@ -1735,8 +1735,10 @@ describe('SHARING-142.1', () => {
     await cancelRequest();
     await until(() => cancellations().length === 1, 'the cancellation');
 
+    // A second confirmation is there to press only if the app asks again.
+    const shown = alertsShown().length;
     if (joinButton(CANCEL) !== undefined) await pressInJoin(CANCEL);
-    await pressAlertButton(CANCEL);
+    if (alertsShown().length > shown) await pressAlertButton(CANCEL);
     await settle();
 
     expect(cancellations()).toHaveLength(1);
@@ -1746,6 +1748,29 @@ describe('SHARING-142.1', () => {
 
     expect(cancellations()).toHaveLength(1);
     expect(rowsWith(CODE_A)).toEqual([]);
+  });
+
+  test('[SHARING-142.1] sends nothing on Try Again while a cancellation has no answer', async () => {
+    brisbaneInvites();
+    await startAs();
+    await openLink(BRISBANE_LINK);
+    apiLosesNextAnswer(isSending);
+    await send();
+    const answer = keepAnswersBack(isCancelling);
+    await cancelRequest();
+    await until(() => cancellations().length === 1, 'the cancellation');
+
+    if (joinButton('Try Again') !== undefined) await pressInJoin('Try Again');
+    await settle();
+
+    expect(sendings()).toHaveLength(1);
+
+    await answer();
+    await settle();
+
+    expect(isOpen(TITLE)).toBe(false);
+    expect(rowsWith(CODE_A)).toEqual([]);
+    expect(requestsOnApi(CODE_A)).toEqual([]);
   });
 
   test('[SHARING-142.1] asks the API to cancel a request it may have taken, though the phone holds it as not sent', async () => {
@@ -1850,6 +1875,33 @@ describe('SHARING-143.1', () => {
     expect(rowsWith(CODE_A)).toEqual([]);
     expect(requestsOnApi(CODE_A)).toEqual([]);
   });
+
+  test.each([
+    ['fails', true],
+    ['succeeds', false],
+  ])(
+    "[SHARING-143.1] leaves Join Group on another group's form, with no alert, when a cancellation %s after its link arrived",
+    async (_, fails) => {
+      brisbaneInvites();
+      tokyoInvites();
+      await startAs();
+      await requested();
+      if (fails) apiAnswersNext(isCancelling, 500, 'Internal Server Error');
+      const answer = keepAnswersBack(isCancelling);
+      await cancelRequest();
+      await until(() => cancellations().length === 1, 'the cancellation');
+      await openLink(TOKYO_LINK);
+      const shown = alertsShown().length;
+
+      await answer();
+      await settle();
+
+      expect(alertsShown()).toHaveLength(shown);
+      expect(joinLines()[0]).toBe('Tokyo');
+      expect(joinLines()).toContain(SEND);
+      expect(rowsWith(CODE_A)).toHaveLength(fails ? 1 : 0);
+    },
+  );
 
   test('[SHARING-143.1] removes the request without asking the API on a phone that has lost its authorization', async () => {
     brisbaneInvites();
@@ -2168,6 +2220,7 @@ describe('GROUPS-108.1', () => {
     await closeJoin();
 
     app = await restart(app);
+    setClock(T);
     expect(app).toBeDefined();
     await tapTab('Groups');
 

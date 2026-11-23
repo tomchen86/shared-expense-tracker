@@ -3157,7 +3157,7 @@ IF 使用者按「Send Request」時這支手機授權失效（SHARING-29.1）�
 
 ### Requirement: SHARING-142.1 取消申請
 
-WHEN 使用者在 Join Group 按「Cancel Request」，the mobile app SHALL 先跳出提示框：標題「Cancel Request?」，訊息「You'll need the invite link to ask again.」，按鈕是「Keep Waiting」和破壞性的「Cancel Request」。按提示框的「Cancel Request」才送取消申請的請求（SHARING-117.1），路徑帶著申請的代號；API 回答取消好了之後，刪掉本機資料裡的這個申請，關閉 Join Group。還沒送出的申請也先送取消申請的請求：API 可能已經收下它。按「Keep Waiting」什麼都不做。一個申請同時只取消一次：取消申請的請求還沒有結果時又確認一次取消，就等同一次的結果，不另外發出請求。
+WHEN 使用者在 Join Group 按「Cancel Request」，the mobile app SHALL 先跳出提示框：標題「Cancel Request?」，訊息「You'll need the invite link to ask again.」，按鈕是「Keep Waiting」和破壞性的「Cancel Request」。按提示框的「Cancel Request」才送取消申請的請求（SHARING-117.1），路徑帶著申請的代號；API 回答取消好了之後，刪掉本機資料裡的這個申請，關閉 Join Group。還沒送出的申請也先送取消申請的請求：API 可能已經收下它。按「Keep Waiting」什麼都不做。一個申請同時只有一個請求在路上：取消申請的請求還沒有結果時，又確認一次取消或按「Try Again」，都不另外發出請求，等的是同一次取消的結果。
 
 #### Scenario: 取消
 
@@ -3179,6 +3179,11 @@ WHEN 使用者在 Join Group 按「Cancel Request」，the mobile app SHALL 先�
 - **WHEN** API 還沒回答取消申請的請求時，又確認一次取消；之後 API 才回答取消好了
 - **THEN** API 只收到一個取消申請的請求；Join Group 關閉，本機資料沒有申請
 
+#### Scenario: 還沒有結果時按 Try Again
+
+- **WHEN** API 收下了申請，回應卻沒送到手機；按「Cancel Request」並確認，API 還沒回答取消申請的請求時按「Try Again」；之後 API 才回答取消好了
+- **THEN** API 沒有多收到送出申請的請求；Join Group 關閉，本機資料沒有申請，API 上也沒有這支手機的申請
+
 #### Scenario: 還沒送出的申請
 
 - **WHEN** API 收下了申請，回應卻沒送到手機；在 Join Group 按「Cancel Request」，再按提示框的「Cancel Request」
@@ -3186,7 +3191,7 @@ WHEN 使用者在 Join Group 按「Cancel Request」，the mobile app SHALL 先�
 
 ### Requirement: SHARING-143.1 取消沒成功時申請還在
 
-IF 取消申請的請求沒有得到取消好了的回答，或 API 回答取消好了、本機資料卻存不進去，THEN the mobile app SHALL 留著本機資料裡的申請，Join Group 顯示的不變，並跳出標題是「Unable to Cancel Request」的提示框：沒有得到回應時訊息是「Connect to the internet and try again.」，其他情況是「Something went wrong. Try again later.」。之後可以再取消一次。取消的結果到的時候 Join Group 已經關閉，或已經換成別的連結或別的申請，SHALL 照樣照結果處理本機資料——取消好了就刪掉申請，沒成功就留著——但不跳出提示框，也不打開 Join Group。IF 這支手機授權失效（SHARING-29.1），THEN SHALL 不送請求，直接刪掉本機資料裡的這個申請並關閉 Join Group：它已經不能替那個裝置身分做任何事。
+IF 取消申請的請求沒有得到取消好了的回答，或 API 回答取消好了、本機資料卻存不進去，THEN the mobile app SHALL 留著本機資料裡的申請，Join Group 顯示的不變，並跳出標題是「Unable to Cancel Request」的提示框：沒有得到回應時訊息是「Connect to the internet and try again.」，其他情況是「Something went wrong. Try again later.」。之後可以再取消一次。取消的結果到的時候 Join Group 已經關閉，或已經換成別的連結或別的申請，SHALL 照樣照結果處理本機資料——取消好了就刪掉申請，沒成功就留著——但不跳出提示框，不打開也不關閉 Join Group，不改它顯示的。IF 這支手機授權失效（SHARING-29.1），THEN SHALL 不送請求，直接刪掉本機資料裡的這個申請並關閉 Join Group：它已經不能替那個裝置身分做任何事。
 
 #### Scenario: 沒有網路
 
@@ -3207,6 +3212,11 @@ IF 取消申請的請求沒有得到取消好了的回答，或 API 回答取消
 
 - **WHEN** API 還沒回答取消申請的請求時按「Close」；之後 API 回 500，或回答取消好了
 - **THEN** 兩種都沒有跳出提示框，Join Group 沒有再打開；回 500 時本機資料的申請還在，Groups 根畫面仍有它的卡片；回答取消好了時本機資料沒有申請
+
+#### Scenario: 結果到的時候 Join Group 已經換成別的連結
+
+- **WHEN** API 還沒回答取消 Brisbane 的申請的請求時，系統交來 Tokyo 的連結；之後 API 回 500，或回答取消好了
+- **THEN** 兩種都沒有跳出提示框，Join Group 仍顯示 Tokyo 的表單；回 500 時 Brisbane 的申請還在本機資料裡，回答取消好了時沒有
 
 #### Scenario: 授權失效
 
