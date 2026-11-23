@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-143.2] [LEDGER-162.1] Names the filter that is on in the system prompt on iOS and in a Material dialog over Filters on Android, which the keyboard does not cover, saves nothing at Cancel, and on Android nothing with an empty name, at a press outside or at the back button, then saves it under the name typed'
+name: '[LEDGER-143.3] [LEDGER-162.1] Names the filter that is on in the system prompt on iOS and in a Material dialog over Filters on Android, which the keyboard does not cover, saves nothing at Cancel, and on Android nothing with an empty name, at a press outside or at the back button, then saves it under the name typed'
 tags:
   - android
 # Some of the Android steps hold the phone sideways; this holds it upright again even when one of
@@ -12,7 +12,7 @@ onFlowComplete:
         - setOrientation: PORTRAIT
 ---
 # Also runs on the small Android screen of scripts/e2e-android.sh (ADR-0014), where the name is
-# asked in a dialog over Filters (LEDGER-143.2) instead of a sheet with Cancel and Save in its
+# asked in a dialog over Filters (LEDGER-143.3) instead of a sheet with Cancel and Save in its
 # title bar, and the keyboard covers the lower half of the screen (LEDGER-162.1). One expense of
 # today, which a lowest amount of 1 leaves in the list.
 - runFlow:
@@ -81,8 +81,10 @@ onFlowComplete:
       - waitForAnimationToEnd
       - assertNotVisible: Save Filter
       - assertVisible: Done
-      # Held sideways, the screen has no room for the whole dialog above the keyboard: the name is
-      # in sight, and Cancel and Save are once the keyboard is closed (LEDGER-162.1).
+      # Held sideways, the screen has no room for the whole dialog above the keyboard: Cancel and
+      # Save are in sight once the keyboard is closed (LEDGER-162.1). Maestro finds the field even
+      # when it has no height, so what is in sight of it before that is checked by hand
+      # (LEDGER-163.1).
       - setOrientation: LANDSCAPE_LEFT
       - waitForAnimationToEnd
       - scrollUntilVisible:
