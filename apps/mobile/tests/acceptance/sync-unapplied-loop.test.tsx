@@ -15,7 +15,9 @@ import {
   apiEventIds,
   apiReceivedAt,
   eventRequests,
+  holdAnswers,
   mark,
+  releaseAnswers,
   startEventApi,
   startSynced,
 } from './sync-screens-app';
@@ -26,7 +28,9 @@ import { HOUR, expectNotApplied, unapplied } from './sync-unapplied-app';
 // Brisbane a shared ledger as its first Invite will, as the screen tests of the sync loop
 // do (sync-screens-app): the app then syncs by itself with an event API the tests keep in
 // memory. The tests change when that API says it received the phone's own event, which
-// the real API never does, so that the event comes back as one every phone refuses.
+// the real API never does, so that the event comes back as one every phone refuses. They
+// do so before the API's answer to the upload reaches the phone, because the download
+// that follows a confirmed upload brings the event back in the same sync (SYNC-160.1).
 
 jest.mock('../../src/storage/expo', () => ({
   openPhoneDatabase: async () =>
@@ -94,20 +98,21 @@ test("[SYNC-350.1] [SYNC-351.1] [GROUPS-170.2] takes an expense back when a sync
   goOffline();
   await addDinner();
   const [added] = await unsent();
+  holdAnswers('POST');
   goOnline();
   await leaveAndComeBack();
-  await waitFor(async () => expect(await unsent()).toEqual([]));
-  expect(apiEventIds(brisbane)).toEqual([added.id]);
+  await waitFor(() => expect(apiEventIds(brisbane)).toEqual([added.id]));
   apiReceivedAt(brisbane, added.id, added.content.stamp.ms - HOUR);
   const from = mark();
 
-  await leaveAndComeBack();
+  await releaseAnswers();
 
   await waitFor(async () =>
     expect((await unapplied()).map(({ id, reason }) => [id, reason])).toEqual([
       [added.id, 'clock'],
     ]),
   );
+  expect(await unsent()).toEqual([]);
   await expectCards([]);
   await settle();
   expect(methods(from)).toContain('GET');

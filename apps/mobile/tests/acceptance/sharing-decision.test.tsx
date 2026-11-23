@@ -87,10 +87,13 @@ import {
 import { addDinner } from './sync-conflict-app';
 import {
   OTHER_DEVICE,
+  apiEventIds,
   apiReceivedAt,
+  holdAnswers,
   lastSequence,
   otherPhoneUploads,
   otherStamp,
+  releaseAnswers,
   startEventApi,
   startSynced,
 } from './sync-screens-app';
@@ -238,12 +241,17 @@ test('[GROUPS-170.2] counts the changes that were not applied above the requests
   goOffline();
   await addDinner();
   const added = (await unsent()).at(-1)!;
+  holdAnswers('POST');
   goOnline();
   await syncs();
-  await waitFor(async () => expect(await unsent()).toEqual([]));
+  await waitFor(() => expect(apiEventIds(brisbane)).toContain(added.id));
   // The API now says it received the phone's own event an hour before its stamp, which
-  // the real API never does: the event comes back as one every phone refuses.
+  // the real API never does: the event comes back as one every phone refuses. It says so
+  // before its answer to the upload reaches the phone, because the download that follows
+  // a confirmed upload brings the event back in the same sync (SYNC-160.1).
   apiReceivedAt(brisbane, added.id, added.content.stamp.ms - HOUR);
+  await releaseAnswers();
+  await waitFor(async () => expect(await unsent()).toEqual([]));
   await asks();
   await syncs();
 
