@@ -57,6 +57,11 @@ export function SettingsScreen() {
   const saveAppearance = useSaveAppearanceOption();
   const backup = useBackup();
   const [name, setName] = useState(identity.name);
+  // What the field holds now, which Return and losing focus save. `name` can be older:
+  // when the phone is busy, the keys typed just before Return or a tap elsewhere reach
+  // React in the same batch as it, and `name` is still from the render before them.
+  // The blur event carries no text on Android.
+  const typedName = useRef(identity.name);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingAppearance, setIsSavingAppearance] = useState(false);
   const [needsName, setNeedsName] = useState(false);
@@ -78,13 +83,18 @@ export function SettingsScreen() {
     if (needsName) AccessibilityInfo.announceForAccessibility(ASK_FOR_NAME);
   }, [needsName]);
 
+  function changeName(text: string) {
+    typedName.current = text;
+    setName(text);
+  }
+
   async function finishEditing() {
     // Return and blur can arrive together, before React renders the locked field.
     if (saving.current) return;
-    const trimmed = name.trim();
+    const trimmed = typedName.current.trim();
     if (trimmed) setNeedsName(false);
     if (trimmed === savedName.current) {
-      setName(trimmed);
+      changeName(trimmed);
       return;
     }
     if (!trimmed) {
@@ -97,7 +107,7 @@ export function SettingsScreen() {
     try {
       await saveName(trimmed);
       savedName.current = trimmed;
-      setName(trimmed);
+      changeName(trimmed);
     } catch {
       alertSaveFailed();
     } finally {
@@ -154,7 +164,7 @@ export function SettingsScreen() {
               autoCapitalize="words"
               editable={!isSaving}
               onBlur={() => void finishEditing()}
-              onChangeText={setName}
+              onChangeText={changeName}
               // Brings the rows below into view above the keyboard: the large title collapses,
               // and the name sits just under the header it leaves.
               onFocus={() =>

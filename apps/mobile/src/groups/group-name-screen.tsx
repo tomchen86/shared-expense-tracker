@@ -75,13 +75,18 @@ function NameEditor({
   const isGroup = form === 'Rename Group';
   const initialName = isGroup ? group.name : member!.name;
   const [name, setName] = useState(initialName);
+  // What the field holds now, which Return and Save save. `name` can be older: when the
+  // phone is busy, the keys typed just before Return or Save reach React in the same
+  // batch as it, and `name` is still from the render before them.
+  const typedName = useRef(initialName);
   const [duplicate, setDuplicate] = useState(false);
   const [status, setStatus] = useState<'editing' | 'saving' | 'saved'>(
     'editing',
   );
   const submitting = useRef(false);
   const saving = status === 'saving';
-  const canSave = !!name.trim() && name.trim() !== initialName;
+  const canSave = (text: string) =>
+    !!text.trim() && text.trim() !== initialName;
   usePreventRemove(saving, () => {});
   useEffect(() => {
     if (status === 'saved') navigation.goBack();
@@ -92,13 +97,13 @@ function NameEditor({
     AccessibilityInfo.announceForAccessibility(ALREADY_EXISTS);
   }
 
-  async function save() {
+  async function save(text: string) {
     if (submitting.current) return;
     submitting.current = true;
     setStatus('saving');
     try {
-      if (isGroup) await renameGroup(database, group.id, name);
-      else await renameGroupMember(database, group.id, member!.id, name);
+      if (isGroup) await renameGroup(database, group.id, text);
+      else await renameGroupMember(database, group.id, member!.id, text);
       setStatus('saved');
     } catch (error) {
       submitting.current = false;
@@ -113,19 +118,20 @@ function NameEditor({
   }
 
   function submit() {
-    if (submitting.current || !canSave) return;
+    const text = typedName.current;
+    if (submitting.current || !canSave(text)) return;
     if (
       !isGroup &&
       group.members.some(
         (candidate) =>
           candidate.id !== member?.id &&
-          memberNameKey(candidate.name) === memberNameKey(name),
+          memberNameKey(candidate.name) === memberNameKey(text),
       )
     ) {
       showDuplicate();
       return;
     }
-    void save();
+    void save(text);
   }
 
   return (
@@ -147,7 +153,7 @@ function NameEditor({
         }}
         confirm={{
           label: 'Save',
-          disabled: saving || !canSave,
+          disabled: saving || !canSave(name),
           onPress: submit,
         }}
       />
@@ -181,6 +187,7 @@ function NameEditor({
               editable={!saving}
               onChangeText={(value) => {
                 if (!submitting.current) {
+                  typedName.current = value;
                   setName(value);
                   setDuplicate(false);
                 }

@@ -25,11 +25,9 @@ name: '[GROUPS-20.2] [GROUPS-22.3] [GROUPS-23.2] [GROUPS-24.3] [GROUPS-29.2] [GR
 - pressKey: Enter
 - waitForAnimationToEnd
 - assertVisible: Casey
-# Dragging the sheet down by its title closes it, whatever its height.
-- swipe:
-    from:
-      text: Members
-    direction: DOWN
-- waitForAnimationToEnd
+- runFlow:
+    file: common/swipe-sheet-down.yaml
+    env:
+      TITLE: Members
 - assertNotVisible: Taylor (You)
 - assertVisible: No expenses in this group yet.

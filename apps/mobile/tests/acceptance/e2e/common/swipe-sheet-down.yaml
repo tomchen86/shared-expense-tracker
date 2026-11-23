@@ -1,0 +1,29 @@
+# Drags the sheet titled TITLE down by its title, which closes it, whatever its height. The drag
+# is quick, because from New Group's lowest height, where it sits once the keyboard is down, a
+# slower drag ends too soon and leaves it open; on a busy runner the keyboard can go away during
+# a stall of the app. Such a stall at the touch-down also leaves the sheet open, as the touches
+# queued meanwhile arrive at once. So while TITLE is still there, it drags once more, which is
+# optional in case the sheet closes in the meantime. A sheet that a drag cannot close stays open
+# after both, and the flow's own assertion that it closed fails. A sheet that only the second drag
+# closes passes too, such as one that the first drag only lowers to a shorter height, or to its
+# lowest by putting the keyboard away: the flows that use this do not show that one drag closes it.
+# Not a flow of its own: Maestro runs only the files at the top of a folder.
+appId: com.tomchen.sharedexpensetracker
+---
+- swipe:
+    from:
+      text: ${TITLE}
+    direction: DOWN
+    duration: 200
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: ${TITLE}
+    commands:
+      - swipe:
+          from:
+            text: ${TITLE}
+          direction: DOWN
+          duration: 200
+          optional: true
+      - waitForAnimationToEnd
