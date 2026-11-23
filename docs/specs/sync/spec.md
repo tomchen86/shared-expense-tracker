@@ -1748,7 +1748,7 @@ The mobile app SHALL 讓一個共同帳本裡可能重複的支出和它們的�
 
 ### Requirement: SYNC-203.1 選 Not a Duplicate 時寫一筆「不是重複」紀錄的事件
 
-WHEN 使用者對可能重複的支出選 Not a Duplicate（LEDGER-159.1），the mobile app SHALL 照 SYNC-21.1 寫一個事件，它是一筆新的「不是重複」紀錄的第一個事件：紀錄的 ID 是這支手機新產生的小寫第 4 版 UUID，「兩筆支出」的值依序是這筆支出這時的對象的 ID 和這筆支出的 ID，不帶根據的版本；並在同一個 SQLite transaction 裡存下這筆紀錄。兩筆支出的單位、時間戳記和最後修改時間（LEDGER-120.1）都不改，這支手機自己的金額修改（SYNC-129.1）也不改。存好之後這兩筆不再是一對（SYNC-202.1），重新啟動 app 之後也一樣；這筆支出還有別的對象時，它仍是可能重複的支出，對象是下一筆。寫入失敗時什麼都不留下。IF 要存下的那一刻這筆支出已經不是可能重複的支出，例如它剛被移到垃圾桶，或剛套用了說這兩筆不是重複的事件，THEN the mobile app SHALL 不寫事件，也不存下任何東西。
+WHEN 使用者對可能重複的支出選 Not a Duplicate（LEDGER-159.1），the mobile app SHALL 照 SYNC-21.1 寫一個事件，它是一筆新的「不是重複」紀錄的第一個事件：紀錄的 ID 是這支手機新產生的小寫第 4 版 UUID，「兩筆支出」的值依序是使用者選的時候明細的區塊顯示的那個對象的 ID 和這筆支出的 ID，不帶根據的版本；並在同一個 SQLite transaction 裡存下這筆紀錄。兩筆支出的單位、時間戳記和最後修改時間（LEDGER-120.1）都不改，這支手機自己的金額修改（SYNC-129.1）也不改。存好之後這兩筆不再是一對（SYNC-202.1），重新啟動 app 之後也一樣；這筆支出還有別的對象時，它仍是可能重複的支出，對象是下一筆。寫入失敗時什麼都不留下。IF 要存下的那一刻這筆支出已經不是可能重複的支出，例如它剛被移到垃圾桶，或剛套用了說這兩筆不是重複的事件，或它這時的對象已經不是使用者選的時候區塊顯示的那一筆，THEN the mobile app SHALL 不寫事件，也不存下任何東西；對象換了的時候，區塊改顯示現在的對象，使用者再選一次才記下那一對。
 
 #### Scenario: 寫出的事件
 
@@ -1789,6 +1789,11 @@ WHEN 使用者對可能重複的支出選 Not a Duplicate（LEDGER-159.1），th
 
 - **WHEN** Supper 是可能重複的支出時，使用者按了 Delete This Expense，存好之前又選 Not a Duplicate（LEDGER-160.1）
 - **THEN** 寫出的事件只有把 Supper 移到垃圾桶的那一個，沒有「不是重複」紀錄的事件
+
+#### Scenario: 對象在存下之前換了
+
+- **WHEN** Supper 的對象依序是 Dinner 和 Brunch，區塊顯示 Dinner 時選 Not a Duplicate；存下之前，這支手機套用了說 Dinner 和 Supper 不是重複的事件
+- **THEN** 這一次不寫事件；區塊顯示 Brunch，Supper 仍是可能重複的支出；再選一次，才寫出說 Brunch 和 Supper 不是重複的事件
 
 #### Scenario: 接著同步
 

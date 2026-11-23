@@ -647,8 +647,13 @@ test('[SYNC-130.1] marks only that expense: not one whose change the other phone
     await theirChange(dinner.id, { base: dinner.added }),
     // Had seen it.
     await theirChange(taxi.id, { stamp: at(T120, 1), base: taxi.change }),
-    // Stamped before it: phone-b comes before phone-a's later counters.
-    await theirChange(hotel.id, { stamp: at(LATER), base: null }),
+    // Stamped before it, and after the event that added Hotel: that event's counter,
+    // from phone-b. An earlier stamp would become Hotel's creation stamp, and Hotel
+    // would count as recorded by phone-b (SYNC-202.1).
+    await theirChange(hotel.id, {
+      stamp: at(hotel.added.ms, hotel.added.counter),
+      base: null,
+    }),
     // The same amount group as yours.
     await theirChange(lunch.id, {
       stamp: at(T120, 2),
