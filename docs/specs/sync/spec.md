@@ -3419,6 +3419,11 @@ IF 這支手機的本機資料回到較早的樣子，例如系統還原了備�
 - **WHEN** Taylor 的手機的 cursor 是 0 時留下本機資料的複本；之後 Casey 的手機上傳了 Lunch，Taylor 的手機同步，有了 Lunch，cursor 是 1；再把這份複本當成匯出檔匯入（backup），app 沒有重新啟動，接著同步
 - **THEN** 換完之後 Brisbane 仍是共同帳本，沒有 Lunch；這次同步的下載是 after=0，之後又有 Lunch，只有一份
 
+#### Scenario: 還原之後落後了
+
+- **WHEN** Taylor 的手機的 cursor 是 0 時留下本機資料的複本；Casey 的手機新增 Lunch 和 Taxi 並同步，Taylor 的手機同步，兩筆都有了。31 天之後清除刪掉了這兩個事件；再把 Taylor 的手機的本機資料換回那份複本，Taylor 的手機同步，Casey 的手機同步，Taylor 的手機再同步
+- **THEN** 換回複本之後的第一次同步，下載是 after=0，得到需要快照的回答，Taylor 的手機問 API 有沒有快照；最後 Taylor 的手機的 Brisbane 和 Casey 的手機一模一樣，Lunch 和 Taxi 各一份，不在等快照
+
 ### Requirement: SYNC-93.1 沒有設定 API 的網址時不同步
 
 IF 這個 build 沒有設定 API 的網址，THEN the mobile app SHALL 不同步，不發出任何網路請求，也不產生裝置身分；共同帳本照常記帳，它的事件留著待上傳。

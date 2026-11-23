@@ -15,6 +15,7 @@ import {
   NOW,
   addExpense,
   answerNext,
+  copyOfData,
   deviceId,
   editExpense,
   everythingIn,
@@ -26,6 +27,7 @@ import {
   randomKey,
   renameGroup,
   restart,
+  restoreData,
   saveKey,
   send,
   sentBy,
@@ -576,6 +578,40 @@ describe('SYNC-167.1', () => {
       ).toHaveLength(1);
     },
   );
+});
+
+describe('SYNC-92.2', () => {
+  test('[SYNC-92.2] a phone whose local data went back behind the cleared events is told it needs a snapshot, and catches up from one', async () => {
+    const setup = await twoPhones();
+    const { b, brisbane } = setup;
+    const copy = await copyOfData(setup.a);
+    await addExpense(b, { title: 'Lunch' });
+    await addExpense(b, { title: 'Taxi' });
+    await sync(b);
+    await sync(setup.a);
+    expect(await titles(setup.a)).toEqual(['Lunch', 'Taxi']);
+    everyClockAt(setup, AWAY);
+    await cleanUpAt(AWAY);
+    expect(await storedEvents(brisbane)).toEqual([]);
+    const a = await restoreData(setup.a, copy);
+    expect(await titles(a)).toEqual([]);
+    const from = mark();
+
+    await sync(a);
+
+    expect(await requestsOf(a, from)).toEqual(['download after=0', 'ask']);
+    expect((await sentBy(a, from)).map(({ status }) => status)).toEqual([
+      410, 404,
+    ]);
+    expect(await waits(a)).toBe(true);
+
+    await sync(b);
+    await sync(a);
+
+    expect(await titles(a)).toEqual(['Lunch', 'Taxi']);
+    expect(await ledgerOf(a)).toEqual(await ledgerOf(b));
+    expect(await waits(a)).toBe(false);
+  });
 });
 
 describe('SYNC-169.1', () => {
