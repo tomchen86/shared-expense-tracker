@@ -2,6 +2,7 @@ import {
   nextSyncStamp,
   type SyncEvent,
   type SyncRecordType,
+  type SyncRefusal,
   type SyncUnits,
 } from '@shared-expense/domain';
 import { listCategories } from '../categories/repository';
@@ -111,3 +112,24 @@ export async function listUnsentSyncEvents(
     content: JSON.parse(content) as SyncEvent,
   }));
 }
+
+/** A change this phone uploaded that every phone refused, until its user dismisses it (SYNC-350.1). */
+export interface UnappliedChange {
+  /** The shared ledger the refused event belongs to. */
+  groupId: string;
+  /** The refused event's own ID. */
+  id: string;
+  reason: SyncRefusal;
+  /** What the refused event held, as it was received. */
+  content: unknown;
+}
+
+/**
+ * The changes this phone uploaded that were not applied and that its user has not
+ * dismissed, in the order they were refused (SYNC-350.1, SYNC-352.1).
+ */
+export const listUnappliedChanges: (
+  database: SqlExecutor,
+) => Promise<UnappliedChange[]> = () => {
+  throw new Error('Not implemented: issue 149');
+};

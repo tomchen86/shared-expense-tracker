@@ -253,7 +253,7 @@ async function importOn(on: Phone, file: string, ms = T + 2 * MINUTE) {
 /**
  * Taylor's phone after it applied two events of another phone: Dana's first event,
  * stamped an hour after it was received and so refused (SYNC-9.1), and Lunch, which
- * Dana pays and shares with Taylor, applied all the same (SYNC-31.1). Exported at
+ * Dana pays and shares with Taylor, applied all the same (SYNC-31.2). Exported at
  * 14:34.
  */
 async function exportNamingSomeoneWhoIsNoMember() {

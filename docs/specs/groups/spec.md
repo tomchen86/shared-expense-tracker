@@ -2016,3 +2016,164 @@ WHILE 本機資料存著申請（sharing），the mobile app SHALL 在 Groups �
 
 - **WHEN** 有一個等待中的申請時重新啟動 app，選中 Groups 分頁
 - **THEN** 申請的卡片還在
+
+### Requirement: GROUPS-170.1 群組的畫面最上面顯示有幾個沒有套用的變更
+
+WHILE 共同帳本有沒有套用的變更（sync），the mobile app SHALL 在它的畫面的大標題下面顯示一個按鈕：LEDGER-151.1 的圖示，後面是「1 change wasn't applied」，不只一個時是「<個數> changes weren't applied」，右邊有「›」；個數是這個共同帳本全部沒有套用的變更，不跟著期間、篩選和搜尋，它們不算進 GROUPS-107.2 的筆數；它在 GROUPS-107.2 的按鈕下面，沒有那個按鈕時就在大標題下面、SYNC-75.1 和 SYNC-83.1 的那兩句話下面，封存的共同帳本顯示在唯讀的提示（GROUPS-55.2）上面；螢幕閱讀器把它讀成一個按鈕，讀出這句話，不讀圖示和「›」，再讀出無障礙提示「Opens the list」；按一下就開啟 Changes Not Applied（GROUPS-171.1），連按兩次也只開啟一個。群組的畫面開著時多了或少了沒有套用的變更，不必重新打開，按鈕就跟著出現、改個數或消失。共同帳本沒有沒有套用的變更時，SHALL 不顯示這個按鈕；別的群組的畫面只算自己的。
+
+#### Scenario: 一個
+
+- **WHEN** Brisbane 是共同帳本，新增 Dinner，自己的事件不套用（sync），打開 Brisbane 的畫面
+- **THEN** 大標題「Brisbane」下面是一個按鈕「1 change wasn't applied」，前面是 LEDGER-151.1 的圖示，右邊有「›」；螢幕閱讀器讀出一個按鈕「1 change wasn't applied」和提示「Opens the list」；畫面上沒有 Dinner 的卡片
+
+#### Scenario: 兩個
+
+- **WHEN** 再新增 Taxi，自己的事件不套用
+- **THEN** 按鈕是「2 changes weren't applied」
+
+#### Scenario: 畫面開著時
+
+- **WHEN** Brisbane 的畫面開著，新增 Dinner，自己的事件不套用
+- **THEN** 不必重新打開，大標題下面就有「1 change wasn't applied」
+
+#### Scenario: 和掛著標記的支出
+
+- **WHEN** 你把 Dinner 的金額改成 120.00，之後套用別支手機的 90.00（sync）；再新增 Taxi，自己的事件不套用
+- **THEN** 大標題下面由上而下是「1 expense needs review」和「1 change wasn't applied」
+
+#### Scenario: 搜尋中
+
+- **WHEN** 有「1 change wasn't applied」時，在 Brisbane 的畫面搜尋「taxi」
+- **THEN** 按鈕還在，仍是「1 change wasn't applied」
+
+#### Scenario: 連按兩次
+
+- **WHEN** 連按兩次這個按鈕
+- **THEN** 只開啟一個 Changes Not Applied；按 Close 一次就回到 Brisbane 的畫面
+
+#### Scenario: 封存的共同帳本
+
+- **WHEN** 新增 Dinner，自己的事件不套用之後封存 Brisbane，從 Archived Groups 打開它的畫面，按「1 change wasn't applied」
+- **THEN** 由上而下是大標題「Brisbane」、「1 change wasn't applied」、「Archived group. Expenses and allocations are read-only.」和「Restore Group」；按了之後 Changes Not Applied 蓋在 Brisbane 的畫面上，分頁列仍選中 Settings
+
+#### Scenario: 別的群組和沒有的時候
+
+- **WHEN** 打開沒有沒有套用的變更的 Brisbane 的畫面，和不是共同帳本的 Tokyo 的畫面；或 Brisbane 有一個沒有套用的變更時打開 Tokyo 的畫面
+- **THEN** 都沒有這個按鈕
+
+#### Scenario: 重新啟動
+
+- **WHEN** 新增 Dinner，自己的事件不套用，重新啟動 app，打開 Brisbane 的畫面
+- **THEN** 仍是「1 change wasn't applied」
+
+### Requirement: GROUPS-171.1 Changes Not Applied 列出沒有套用的變更，一個一個按掉
+
+WHEN 使用者按群組的畫面上「<個數> change(s) wasn't/weren't applied」的按鈕（GROUPS-170.1），the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Changes Not Applied，標題是「Changes Not Applied」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.2）；按 Close、把它往下滑或按 Android 的返回鍵，SHALL 關閉它，回到群組的畫面。Changes Not Applied 依記下的先後（SYNC-350.1）由上而下替這個共同帳本每一個沒有套用的變更顯示一個區塊，每個區塊由上而下是：LEDGER-151.1 的圖示和區塊的標題；一句說明；這個變更的內容（LEDGER-230.1、GROUPS-172.1）；和角色為 button、名稱為「Dismiss」的按鈕。說明看不套用的原因：原因是時鐘時是「This phone's clock was too far ahead when you made this change, so the other phones in this group didn't accept it. It was undone on this phone. Check the date and time, then make the change again.」；其他原因都是「The other phones in this group couldn't accept this change, so it was undone on this phone. Make the change again if you still need it.」。WHEN 使用者按一個區塊的「Dismiss」，the mobile app SHALL 按掉那個沒有套用的變更（SYNC-352.1）：存好之後那個區塊消失，其他區塊不變，群組的畫面上的個數跟著少；按掉的是最後一個時，Changes Not Applied 關閉，群組的畫面沒有那個按鈕；存好之前再按「Dismiss」不再做一次；存不進本機資料時，跳出標題「Unable to Dismiss」、內容「Your change could not be saved. Please try again.」的提示框，區塊還在，本機資料和按之前一樣。Changes Not Applied 開著時多了一個沒有套用的變更，不必重新打開就多一個區塊。封存的共同帳本也照樣可以按「Dismiss」。
+
+#### Scenario: 開啟和關閉
+
+- **WHEN** 新增 Dinner，自己的事件不套用，在 Brisbane 的畫面按「1 change wasn't applied」；再按「Close」
+- **THEN** Changes Not Applied 從底部升起，蓋在 Brisbane 的畫面上，標題是「Changes Not Applied」，標題列只有「Close」，仍選中 Groups 分頁；按 Close 之後它關閉，顯示 Brisbane 的畫面，按鈕仍是「1 change wasn't applied」
+
+#### Scenario: 往下滑或按返回鍵
+
+- **WHEN** 在 iOS 上把 Changes Not Applied 往下滑，或在 Android 上按返回鍵
+- **THEN** 它關閉，顯示 Brisbane 的畫面
+
+#### Scenario: 時鐘的說明
+
+- **WHEN** 新增 Dinner，自己的事件不套用，打開 Changes Not Applied
+- **THEN** 只有一個區塊：圖示和「Expense not added」，「This phone's clock was too far ahead when you made this change, so the other phones in this group didn't accept it. It was undone on this phone. Check the date and time, then make the change again.」，變更的內容（LEDGER-230.1），最後是按鈕「Dismiss」
+
+#### Scenario: 其他原因的說明
+
+- **WHEN** 有 Lunch；套用一個上傳的裝置 ID 是 `phone-a`、時間戳記的裝置 ID 是 `phone-b`、把 Lunch 的標題改成「Brunch」的事件，它因為裝置不套用；打開 Changes Not Applied
+- **THEN** 區塊的說明是「The other phones in this group couldn't accept this change, so it was undone on this phone. Make the change again if you still need it.」
+
+#### Scenario: 順序
+
+- **WHEN** 依序新增 Dinner 和 Taxi，先讓新增 Taxi 的事件當成自己的事件不套用，再讓新增 Dinner 的；打開 Changes Not Applied
+- **THEN** 由上而下是 Taxi 的區塊和 Dinner 的區塊，各有一個「Dismiss」
+
+#### Scenario: 按掉一個
+
+- **WHEN** 接著按 Taxi 那個區塊的「Dismiss」，再按「Close」
+- **THEN** 只剩 Dinner 的區塊，Changes Not Applied 仍開著；關閉之後 Brisbane 的畫面是「1 change wasn't applied」
+
+#### Scenario: 按掉最後一個
+
+- **WHEN** 只有一個沒有套用的變更，在 Changes Not Applied 按「Dismiss」
+- **THEN** Changes Not Applied 關閉，Brisbane 的畫面沒有那個按鈕；重新啟動 app 之後也沒有
+
+#### Scenario: 連按兩次 Dismiss
+
+- **WHEN** 有兩個沒有套用的變更，連按兩次第一個區塊的「Dismiss」
+- **THEN** 只按掉第一個，另一個區塊還在
+
+#### Scenario: 存不進去
+
+- **WHEN** 按「Dismiss」時寫入失敗
+- **THEN** 跳出「Unable to Dismiss」和「Your change could not be saved. Please try again.」；區塊還在，Brisbane 仍有一個沒有套用的變更；恢復後再按，區塊消失
+
+#### Scenario: 開著時多一個
+
+- **WHEN** Changes Not Applied 開著、有 Dinner 的區塊時，套用一個上傳的裝置 ID 是 `phone-a`、時間戳記比收到時間晚一小時、新增 Taxi 的事件
+- **THEN** 不必重新打開，Dinner 的區塊下面多了 Taxi 的區塊
+
+#### Scenario: 封存的共同帳本
+
+- **WHEN** 新增 Dinner，自己的事件不套用之後封存 Brisbane，從 Archived Groups 打開它的畫面，打開 Changes Not Applied，按「Dismiss」
+- **THEN** Changes Not Applied 關閉，Brisbane 的畫面沒有那個按鈕，它仍是封存的
+
+### Requirement: GROUPS-172.1 不是支出的變更和讀不出內容的變更的區塊
+
+The mobile app SHALL 在 Changes Not Applied（GROUPS-171.1）替事件指的不是支出、原因不是結構的沒有套用的變更這樣顯示：區塊的標題是「Group change not applied」；內容只有一行，看事件指的紀錄的種類：群組是「Group name: <事件帶的名稱>」；成員是「Member: <名稱>」；分類是「Category: <名稱>」；邀請是「Invite link」；「不是重複」紀錄是「Not a Duplicate」。成員和分類的名稱，是事件帶著名稱這個單位時它的值；沒有帶時，是退回之後（SYNC-351.1）這支手機存著的那位成員或那個分類現在的名稱，前成員和封存的分類也算；這支手機沒有他或它時，那一行只有「Member」或「Category」。原因是結構的沒有套用的變更，不論事件指的是什麼，區塊的標題是「Change not applied」，沒有內容那一行。
+
+#### Scenario: 群組的名稱
+
+- **WHEN** 把 Brisbane 改名為「Brissie」，自己的事件不套用，打開 Changes Not Applied
+- **THEN** 區塊由上而下是「Group change not applied」、時鐘的說明、「Group name: Brissie」和「Dismiss」；群組的畫面的大標題是「Brisbane」
+
+#### Scenario: 成員
+
+- **WHEN** 加入成員「Dana」，自己的事件不套用；把 Blake 移出 Brisbane，自己的事件不套用；再把 Blake 改名為「Blake Chen」，自己的事件不套用
+- **THEN** 三個區塊的內容依序是「Member: Dana」、「Member: Blake」和「Member: Blake Chen」；Brisbane 的成員仍是 Taylor、Casey 和 Blake
+
+#### Scenario: 分類
+
+- **WHEN** 在 Group Categories 移除沒有支出使用的 Shopping，選 Delete，自己的事件不套用；再套用一個上傳的裝置 ID 是 `phone-a`、時間戳記比收到時間晚一小時、把 Other 封存的事件
+- **THEN** 兩個區塊的內容依序是「Category: Shopping」和「Category: Other」；Group Categories 仍有 Shopping，Other 沒有封存
+
+#### Scenario: 邀請和「不是重複」紀錄
+
+- **WHEN** 套用兩個上傳的裝置 ID 是 `phone-a`、時間戳記比收到時間晚一小時、這支手機沒有寫過的事件：一個邀請的第一個事件，和一筆「不是重複」紀錄的第一個事件
+- **THEN** 兩個區塊的內容依序是「Invite link」和「Not a Duplicate」
+
+#### Scenario: 這支手機沒有那位成員
+
+- **WHEN** 套用一個上傳的裝置 ID 是 `phone-a`、時間戳記比收到時間晚一小時、把這支手機沒有的成員 ID 改成被移出群組的事件
+- **THEN** 內容是「Member」
+
+#### Scenario: 原因是結構
+
+- **WHEN** 有 Lunch；套用一個上傳的裝置 ID 是 `phone-a`、把 Lunch 的標題改成空字串的事件，和一個上傳的裝置 ID 是 `phone-a`、內容是空值的事件
+- **THEN** 兩個區塊由上而下都是「Change not applied」、其他原因的說明和「Dismiss」，沒有別的
+
+### Requirement: GROUPS-173.1 (manual) 手機上的沒有套用的變更
+
+The mobile app SHALL 讓群組的畫面上的按鈕和 Changes Not Applied 在手機上看得清楚、讀得出來：圖示是警示的顏色，文字是一般文字的顏色，所以不靠顏色也讀得出意思，淺色和深色外觀都一樣；系統字級最大時，按鈕的文字和區塊裡每一行都顯示完整，一行放不下時換行，不截斷也不重疊，每個「Dismiss」都按得到，區塊多的時候可以捲動；VoiceOver 和 TalkBack 把群組的畫面上的按鈕讀成一個按鈕，在 Changes Not Applied 依序讀出每個區塊的每一行和它的「Dismiss」。
+
+#### Scenario: 兩種外觀
+
+- **WHEN** Brisbane 有一個沒有套用的變更，依序在淺色和深色外觀看 Brisbane 的畫面和 Changes Not Applied
+- **THEN** 圖示和文字都看得清楚，圖示和文字的顏色不同；把手機調成灰階之後仍讀得出這是提示
+
+#### Scenario: 最大的字級
+
+- **WHEN** 把系統字級調到最大，看有三個沒有套用的變更的 Brisbane 的畫面和 Changes Not Applied
+- **THEN** 「3 changes weren't applied」顯示完整；每個區塊的每一行都完整，三個「Dismiss」捲動之後都按得到
+
+#### Scenario: 螢幕閱讀器
+
+- **WHEN** 開著 VoiceOver 或 TalkBack 滑過 Brisbane 的畫面，再打開 Changes Not Applied 一項一項滑
+- **THEN** 按鈕讀成「1 change wasn't applied」和提示「Opens the list」；Changes Not Applied 依序讀出區塊的標題、說明、內容的每一行和「Dismiss」

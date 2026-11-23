@@ -558,7 +558,7 @@ test('[SYNC-129.1] still holds the own change after a restart', async () => {
   });
 });
 
-test("[SYNC-129.1] [SYNC-28.2] changes nothing when the phone's own events come back with the overriding one after Keep Current", async () => {
+test("[SYNC-129.1] [SYNC-28.3] changes nothing when the phone's own events come back with the overriding one after Keep Current", async () => {
   const { brisbane, theirs } = await overridden();
   await choose(KEEP_CURRENT);
   const written = await unsent();
@@ -767,7 +767,7 @@ test('[SYNC-130.1] does not mark it for an event that is not applied, and does f
   await expectToReview('Brisbane', ['Dinner']);
 });
 
-test('[SYNC-130.1] [SYNC-28.2] leaves the local data as it is when the overriding event arrives again', async () => {
+test('[SYNC-130.1] [SYNC-28.3] leaves the local data as it is when the overriding event arrives again', async () => {
   const { brisbane, theirs } = await overridden();
   await expectToReview('Brisbane', ['Dinner']);
   const before = everything();
