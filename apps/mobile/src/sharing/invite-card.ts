@@ -68,21 +68,24 @@ export async function readCard(tx: SqlExecutor, groupId: string) {
 
 export type InviteCard = Awaited<ReturnType<typeof readCard>>;
 
-export function encryptedCard(
-  { code, secret }: InviteCredentials,
-  card: InviteCard,
-) {
+export function cardCipher({ code, secret }: InviteCredentials) {
   // base64-js accepts the URL alphabet and expects padding; a 32-byte secret needs one '='.
   const key = deriveKey({
     secret: toByteArray(secret + '='),
     purpose: PURPOSE,
   });
+  return { key, associatedData: utf8ToBytes(`${PURPOSE}\n${code}`) };
+}
+
+export function encryptedCard(
+  credentials: InviteCredentials,
+  card: InviteCard,
+) {
   return bytesToHex(
     encrypt({
-      key,
+      ...cardCipher(credentials),
       nonce: getRandomValues(new Uint8Array(24)),
       plaintext: card.bytes,
-      associatedData: utf8ToBytes(`${PURPOSE}\n${code}`),
     }),
   );
 }

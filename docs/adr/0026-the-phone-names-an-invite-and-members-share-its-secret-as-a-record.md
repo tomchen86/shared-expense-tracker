@@ -1,7 +1,7 @@
 # ADR-0026: The phone names an invite, and members share its secret as a record
 
 - Date: 2026-11-20
-- Status: Accepted
+- Status: Accepted; parts are superseded by ADR-0032
 
 ## Context
 

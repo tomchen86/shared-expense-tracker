@@ -1,5 +1,6 @@
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js';
 import {
+  boxPublicKey,
   deriveKey,
   sign,
   signingPublicKey,
@@ -118,6 +119,8 @@ export interface SigningDevice {
   deviceId: string;
   /** The Ed25519 public key the API verifies this device with, in hexadecimal. */
   publicKey: string;
+  /** The X25519 public key shared with members when this device asks to join. */
+  readonly boxKey: string;
   /** Whether the API has answered that this device is registered. */
   registered: boolean;
   /** The Ed25519 signature of `message`. */
@@ -133,6 +136,13 @@ function signingDevice(
   return {
     deviceId,
     publicKey: bytesToHex(signingPublicKey(secretKey)),
+    get boxKey() {
+      return bytesToHex(
+        boxPublicKey(
+          deriveKey({ secret: seed, purpose: 'shared-expense/device/box/v1' }),
+        ),
+      );
+    },
     registered,
     sign: (message) => sign({ secretKey, message }),
   };

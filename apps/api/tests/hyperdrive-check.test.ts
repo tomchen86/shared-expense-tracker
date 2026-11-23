@@ -64,6 +64,7 @@ test(
       'group_members',
       'group_snapshots',
       'groups',
+      'invite_join_requests',
       'snapshot_chunks',
     ]);
     for (const { tablename } of tables) {

@@ -4,10 +4,10 @@ import { CLOCK_TOLERANCE_MS, REGISTRATION_WINDOW_MS } from './sharing/devices';
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1_000;
 
 /**
- * Clears event prefixes, expired invite cards and old request and registration records
- * (ADR-0033, SYNC-134.1 to SYNC-144.1). A snapshot goes when the group is cleared past
- * it or it began over 30 days ago (SYNC-147.1, SYNC-148.1). `now` is the API's time
- * in milliseconds since the Unix epoch.
+ * Clears event prefixes, old request and registration records, and the cards and join
+ * requests of expired invites (ADR-0033, SYNC-134.1 to SYNC-144.1, SYNC-151.1).
+ * A snapshot goes when the group is cleared past it or it began over 30 days ago
+ * (SYNC-147.1, SYNC-148.1). `now` is the API's time in milliseconds since the Unix epoch.
  *
  * It runs on Node as on Workers, on whatever client it is given. Only the Workers entry
  * file knows that a Cron trigger starts it (SYNC-145.2).
@@ -53,5 +53,9 @@ export async function cleanUp(sql: Sql, now: number): Promise<void> {
       )`;
     await tx`UPDATE group_invites SET card = NULL, cursor = NULL
       WHERE card IS NOT NULL AND expires_at_ms <= ${now}`;
+    // Clearing the card waits for any applicant holding the invite row. A new
+    // statement sees its committed request, even if putInvite cleared the card earlier.
+    await tx`DELETE FROM invite_join_requests r USING group_invites i
+      WHERE r.code = i.code AND i.expires_at_ms <= ${now}`;
   });
 }

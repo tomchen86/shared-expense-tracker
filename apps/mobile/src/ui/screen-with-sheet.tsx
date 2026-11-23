@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
+import { View } from 'react-native';
 import { PopoverBackdropProvider } from './popover-backdrop';
 import { Sheet } from './sheet';
 
@@ -17,8 +18,11 @@ export function ScreenWithSheet({
 }: ScreenWithSheetProps) {
   return (
     <PopoverBackdropProvider>
-      {children}
+      <View style={{ flex: 1 }} aria-hidden={sheet !== null}>
+        {children}
+      </View>
       <Sheet
+        measureDetent
         visible={sheet !== null}
         title={title}
         cancel={{ label: 'Close', onPress: onClose }}
