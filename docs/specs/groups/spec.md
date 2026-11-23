@@ -1843,6 +1843,11 @@ WHILE 共同帳本有掛著標記的支出，也就是需要確認的支出或�
 - **WHEN** Brisbane 的 Taxi（`2026-10-29`）需要確認，`2026-10-30` 的 Supper 是可能重複的支出，按「2 expenses need review」
 - **THEN** 按鈕是「2 expenses need review」；按了推入 Supper 的明細
 
+#### Scenario: 需要確認的那一筆日期比較新
+
+- **WHEN** `2026-10-29` 的 Supper 是可能重複的支出，`2026-10-30` 的 Taxi 需要確認，按「2 expenses need review」
+- **THEN** 按了推入 Taxi 的明細，最上面是 LEDGER-152.1 的區塊：先後只看 LEDGER-28.1 的順序，不看標記的種類
+
 #### Scenario: 一筆支出掛著兩種標記
 
 - **WHEN** Dinner 同時需要確認，也是可能重複的支出（LEDGER-156.1），Brisbane 沒有別的掛著標記的支出

@@ -5020,7 +5020,7 @@ WHEN 使用者在可能重複的支出的明細按「Not a Duplicate」，the mo
 
 ### Requirement: LEDGER-160.1 按 Delete This Expense 把這筆支出移到垃圾桶
 
-WHEN 使用者在可能重複的支出的明細按「Delete This Expense」，the mobile app SHALL 做和在這個明細的 Expense actions 選「Delete」一樣的事（LEDGER-72.2），只對這個明細的這筆支出：不另外確認，把它移到垃圾桶（LEDGER-71.3），存好後返回推入這個明細的畫面，顯示 Undo 提示（LEDGER-73.2）；它的對象和別的支出都不動。存好之前再按一次、按「Not a Duplicate」或在 Expense actions 選「Delete」，都只移一次、只返回一次；存不進本機資料時照 LEDGER-82.1 提示，支出仍在原處。按 Undo 還原之後，它又是可能重複的支出。WHILE 支出的群組已封存，the mobile app SHALL 停用「Delete This Expense」（LEDGER-67.2）。
+WHEN 使用者在可能重複的支出的明細按「Delete This Expense」，the mobile app SHALL 做和在這個明細的 Expense actions 選「Delete」一樣的事（LEDGER-72.2），只對這個明細的這筆支出：不另外確認，把它移到垃圾桶（LEDGER-71.3），存好後返回推入這個明細的畫面，顯示 Undo 提示（LEDGER-73.2）；它的對象和別的支出都不動。存好之前再按一次，或在 Expense actions 選「Delete」，都只移一次、只返回一次；存好之前按「Not a Duplicate」不記下任何東西（SYNC-203.1）。存不進本機資料時，跳出 LEDGER-82.1 的提示框，明細仍開著，區塊仍在，這筆支出不在垃圾桶裡，本機資料和按之前一樣。按 Undo 還原之後，它又是可能重複的支出。WHILE 支出的群組已封存，the mobile app SHALL 停用「Delete This Expense」（LEDGER-67.2）。
 
 #### Scenario: 按下
 
@@ -5046,6 +5046,16 @@ WHEN 使用者在可能重複的支出的明細按「Delete This Expense」，th
 
 - **WHEN** 按「Delete This Expense」
 - **THEN** 只多一個待上傳的事件：Supper 的，只帶「在不在垃圾桶裡」（SYNC-24.1）
+
+#### Scenario: 先按 Delete This Expense，存好之前按 Not a Duplicate
+
+- **WHEN** 按「Delete This Expense」，存好之前再按「Not a Duplicate」
+- **THEN** 存好後返回 Brisbane 的畫面，Supper 在垃圾桶裡；只多一個待上傳的事件，是把 Supper 移到垃圾桶的那一個；沒有跳出提示框
+
+#### Scenario: 存不進去
+
+- **WHEN** 資料庫無法寫入時按「Delete This Expense」
+- **THEN** 跳出「Unable to Update Trash」和「Your change could not be saved. Please try again.」；明細仍開著，可能重複的區塊仍在，沒有「Moved to Trash」，Supper 不在垃圾桶裡，待上傳的事件沒有變多，本機資料和按之前一樣；恢復後再按一次，Supper 才移到垃圾桶，返回 Brisbane 的畫面
 
 ### Requirement: LEDGER-161.1 (manual) 手機上可能重複的標記
 

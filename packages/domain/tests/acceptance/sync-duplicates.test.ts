@@ -373,6 +373,17 @@ test('[SYNC-201.1] tells two expenses created in one millisecond apart by their 
     expect(pairsOn(device, [supper, DINNER_A])).toEqual([SUPPER_OF_DINNER]);
 });
 
+test('[SYNC-201.1] goes by the counter before the device ID when two expenses were created in one millisecond', () => {
+  // This phone applied Supper, then added Dinner: the same millisecond, the next counter.
+  const supper = { ...SUPPER_B, created: at(1000, 0, 'phone-b') };
+  const dinner = { ...DINNER_A, created: at(1000, 1, 'phone-a') };
+
+  for (const device of ['phone-a', 'phone-b'])
+    expect(pairsOn(device, [dinner, supper])).toEqual([
+      { id: 'dinner', of: 'supper' },
+    ]);
+});
+
 test('[SYNC-201.1] of three alike expenses from three phones, each phone shows the pairs it recorded one expense of, in the order of their creation stamps', () => {
   const three = [DINNER_A, SUPPER_B, SNACK_C];
 

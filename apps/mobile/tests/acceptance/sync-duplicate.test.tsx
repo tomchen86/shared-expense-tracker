@@ -32,11 +32,15 @@ import {
 } from './ledger-group-expense-app';
 import {
   IN_TRASH,
+  TRASH_FAILED,
+  announcements,
   chooseExpenseAction,
   deleteByAction,
   expectTrash,
   expenseLines,
+  fakeScreenReader,
   hasExpenseActions,
+  movedAnnouncement,
   noticeShown,
   openTrash,
   openTrashed,
@@ -1383,6 +1387,7 @@ test('[LEDGER-160.1] marks the expense again once Undo has brought it back', asy
 });
 
 test('[LEDGER-160.1] moves it once and goes back once when the button is pressed twice before the save has finished', async () => {
+  fakeScreenReader(false);
   await withSupper();
   await openDuplicate();
   const events = (await unsent()).length;
@@ -1401,6 +1406,64 @@ test('[LEDGER-160.1] moves it once and goes back once when the button is pressed
   );
   expect(await unsent()).toHaveLength(events + 1);
   expect(await isTrashed('Supper')).toBe(true);
+  expect(announcements()).toEqual([movedAnnouncement('Supper')]);
+});
+
+test('[LEDGER-160.1] [SYNC-203.1] records nothing when Not a Duplicate is pressed before Delete This Expense has been saved', async () => {
+  const { supper } = await withSupper();
+  await openDuplicate();
+  const alerts = alertsShown().length;
+  const remove = blockButtonOn('Groups', DELETE_THIS)!;
+  const not = blockButtonOn('Groups', NOT_A_DUPLICATE)!;
+  const writes = holdWrites();
+
+  const events = await eventsOf(async () => {
+    await fireEvent.press(remove);
+    await fireEvent.press(not);
+    await writes.release();
+    await settle();
+    await waitFor(() =>
+      expect(navigationBarTitles(tab('Groups'))).toEqual([
+        'Groups',
+        'Brisbane',
+      ]),
+    );
+  });
+
+  expect(events).toMatchObject([
+    { type: 'expense', id: supper.id, units: { trashed: { value: true } } },
+  ]);
+  expect(await isTrashed('Supper')).toBe(true);
+  expect(alertsShown()).toHaveLength(alerts);
+});
+
+test('[LEDGER-160.1] says so when the move to the trash cannot be saved, keeps the details and the expense, and moves it once the save works', async () => {
+  await withSupper();
+  await openDuplicate();
+  const before = everything();
+  const events = (await unsent()).length;
+  const shown = alertsShown().length;
+  failWrites();
+
+  await pressInBlockOn('Groups', DELETE_THIS);
+
+  await waitFor(() => expect(alertsShown()).toHaveLength(shown + 1));
+  expect(alertsShown().at(-1)).toEqual(TRASH_FAILED);
+  expect(everything()).toEqual(before);
+  expect(detailBarsOn('Groups')).toHaveLength(1);
+  await expectDuplicateBlockOn('Groups');
+  expect(noticeShown()).toBe(false);
+  expect(await isTrashed('Supper')).toBe(false);
+  expect(await unsent()).toHaveLength(events);
+
+  allowWrites();
+  await pressInBlockOn('Groups', DELETE_THIS);
+
+  await waitFor(() =>
+    expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups', 'Brisbane']),
+  );
+  expect(await isTrashed('Supper')).toBe(true);
+  expect(alertsShown()).toHaveLength(shown + 1);
 });
 
 test('[LEDGER-160.1] writes one event, which moves this expense to the trash', async () => {
@@ -1464,6 +1527,38 @@ test('[GROUPS-107.2] counts an expense that needs review and a possible duplicat
 
   await expectDetailsOn('Groups', 'Supper');
   expect(app.getPathname()).toBe(`/groups/expenses/${supper.id}`);
+});
+
+test('[GROUPS-107.2] opens the expense that needs review first when its date is the later one, whatever kind of mark it carries', async () => {
+  const app = await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner('Dinner', '2026-10-29');
+  await receive(brisbane, await alikeCreated({ date: '2026-10-29' }));
+  await addDinner('Taxi');
+  const taxi = await expenseTitled('Taxi');
+  const [added] = (await unsent()).slice(-1);
+  await editExpense(taxi.id, { amount: '120.00' });
+  await receive(
+    brisbane,
+    changed(
+      'expense',
+      taxi.id,
+      at(T180),
+      { money: await moneyOf(9000) },
+      { money: added.content.stamp },
+    ),
+  );
+
+  await showGroup('Brisbane');
+
+  await waitFor(() => expect(reviewCount('Brisbane')).toBe(needsReview(2)));
+  expect(duplicatesOn('Brisbane')).toEqual(['Supper']);
+
+  await fireEvent.press(reviewButton('Brisbane')!);
+
+  await expectDetailsOn('Groups', 'Taxi');
+  expect(app.getPathname()).toBe(`/groups/expenses/${taxi.id}`);
+  await expectBlockOn('Groups');
 });
 
 test('[GROUPS-107.2] counts an expense with both marks once, until both are settled', async () => {
