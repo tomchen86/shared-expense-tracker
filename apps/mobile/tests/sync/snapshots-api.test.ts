@@ -5,9 +5,16 @@ import {
   shareFile,
 } from '../../src/storage/expo-files';
 import {
+  UPDATE_NOTICE,
+  noticesOf,
+  requestsOf,
+  taylorBehind,
+} from '../acceptance/sync-catch-up-app';
+import {
   NOW,
   Prepared,
   addExpense,
+  answerNext as answerEventRequest,
   apiUrl,
   copyOfData,
   deviceId,
@@ -80,6 +87,88 @@ jest.mock('../../src/storage/expo-files', () => ({
 
 beforeEach(startSnapshotWorld);
 afterEach(endSnapshotWorld);
+
+test.each(['snapshot', 'continue'])(
+  'a sync can use both recovery replies with %s first',
+  async (first) => {
+    const { a, b } = await twoPhones();
+    await addExpense(b, { title: 'Lunch' });
+    await addExpense(b, { title: 'Taxi' });
+    await sync(b);
+    await sentSnapshot(b, a);
+    await addExpense(b, { title: 'Coffee' });
+    await sync(b);
+    await addExpense(a);
+
+    const needsSnapshot = { error: 'snapshot-needed' };
+    if (first === 'snapshot') {
+      answerEventRequest('GET', 410, needsSnapshot);
+      whenAnswered('GET', 0, async () =>
+        answerEventRequest('GET', 410, { error: 'continue', after: 3 }),
+      );
+    } else {
+      answerEventRequest('GET', 410, { error: 'continue', after: 1 });
+      answerEventRequest('GET', 410, needsSnapshot);
+    }
+    const from = mark();
+    await sync(a);
+
+    expect(await requestsOf(a, from)).toEqual([
+      'download after=0',
+      ...(first === 'snapshot'
+        ? ['ask', 'get chunk 0', 'download after=2', 'download after=3']
+        : ['download after=1', 'ask', 'get chunk 0', 'download after=2']),
+      'upload',
+      'download after=3',
+    ]);
+    expect(await unsent(a)).toEqual([]);
+  },
+);
+
+test('a backup restored while fetching a snapshot can already cover it', async () => {
+  const { a, b } = await twoPhones();
+  const before = await copyOfData(a);
+  await addExpense(b, { title: 'Lunch' });
+  await sync(b);
+  await sync(a);
+  await addExpense(a);
+  const waiting = await unsent(a);
+  const after = await copyOfData(a);
+  await importCopy(a, before);
+  await sentSnapshot(b, a);
+
+  answerEventRequest('GET', 410, { error: 'snapshot-needed' });
+  whenAnswered('GET', 0, () => importCopy(a, after));
+  const from = mark();
+  await sync(a);
+
+  expect(await requestsOf(a, from)).toEqual([
+    'download after=0',
+    'ask',
+    'get chunk 0',
+  ]);
+  expect(await unsent(a)).toEqual(waiting);
+});
+
+test('an interrupted snapshot download keeps the update notice only for the same snapshot', async () => {
+  const { a, b, key } = await taylorBehind();
+  const { sequence } = await sentSnapshot(b, a);
+  const content = await contentFor(a, key);
+  await plant(b, a, key, { ...content, version: 2 }, { sequence });
+  await sync(a);
+  expect(await noticesOf(a)).toEqual([UPDATE_NOTICE]);
+
+  noAnswerTo('GET', 'ask');
+  await sync(a);
+  noAnswerTo('GET', 0);
+  await sync(a);
+  expect(await noticesOf(a)).toEqual([UPDATE_NOTICE]);
+
+  await sentSnapshot(b, a);
+  noAnswerTo('GET', 0);
+  await sync(a);
+  expect(await noticesOf(a)).toEqual([]);
+});
 
 test('a backup restores a retained upload alongside a later unsent event', async () => {
   const { a, b } = await twoPhones();

@@ -13,7 +13,7 @@ import { applyMergedExpense } from '../ledger/merged-expense';
 import type { SqlExecutor } from '../storage';
 import { canMergeInGroup } from './apply';
 import { applyMergedInvite } from './invites';
-import { readGroupKey } from './loop';
+import { markSnapshotMoney } from './own-money';
 import { orderSyncedRows } from './positions';
 import {
   UNSENT_EVENTS,
@@ -24,6 +24,7 @@ import {
   snapshotRecords,
   storeSyncRecord,
 } from './records';
+import { readGroupKey } from './transport';
 
 /** Read the outbox, cursor and merged records at one point in the ledger's history. */
 export async function makeSnapshot(tx: SqlExecutor, groupId: string) {
@@ -200,6 +201,8 @@ export async function importSnapshot(
     });
     seen = merged.seen;
     if (foreign.has(incoming)) continue;
+    if (incoming.type === 'expense' && incoming.units.money)
+      await markSnapshotMoney(tx, incoming.id, incoming.units.money);
     const { created, seeded, ...record } = merged.record;
     await storeSyncRecord(tx, groupId, record, created, seeded);
     switch (record.type) {

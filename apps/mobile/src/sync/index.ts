@@ -35,12 +35,18 @@ export {
 /**
  * Whether a shared ledger of this phone waits for a snapshot (SYNC-165.1): the API has
  * cleared events after its cursor, and no download has got a page since. False for a
- * group that is no shared ledger. Not built yet: #156.
+ * group that is no shared ledger.
  */
-export const isWaitingForSnapshot: (
+export async function isWaitingForSnapshot(
   database: SqlExecutor,
   groupId: string,
-) => Promise<boolean> = () => Promise.reject(new Error('Not built yet (#156)'));
+): Promise<boolean> {
+  const waiting = await database.all(
+    'SELECT 1 FROM sync_groups WHERE groupId = ? AND waitsForSnapshot = 1',
+    [groupId],
+  );
+  return waiting.length > 0;
+}
 
 /** An event this phone has queued for upload. */
 export interface UnsentSyncEvent {

@@ -1,7 +1,9 @@
 export const syncMigration = `
   CREATE TABLE sync_groups (
     groupId TEXT PRIMARY KEY NOT NULL REFERENCES groups(id),
-    device TEXT NOT NULL
+    device TEXT NOT NULL,
+    waitsForSnapshot INTEGER NOT NULL DEFAULT 0 CHECK (waitsForSnapshot IN (0, 1)),
+    snapshotNeedingUpdate TEXT
   );
   CREATE TABLE sync_clock (
     singleton INTEGER PRIMARY KEY CHECK (singleton = 1),

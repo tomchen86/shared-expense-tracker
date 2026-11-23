@@ -1,4 +1,5 @@
 import {
+  compareSyncStamps,
   overridesSyncMoney,
   sameSyncUnitValue,
   type SyncEvent,
@@ -8,10 +9,9 @@ import {
 import type { Expense } from '../ledger/expenses';
 import type { SqlExecutor } from '../storage';
 
-// This phone's own money change of each expense of a shared ledger, and the mark that an
-// event has overridden it (ADR-0029). Both stay on this phone: no event carries them, and
-// no event the phone receives sets its own money change, its own events included.
-// Everything here runs inside the caller's transaction.
+// This phone's own money change and the mark that an event or snapshot has overridden
+// it (ADR-0029, ADR-0034). Both stay on this phone. Only a local edit sets its own
+// money change. Everything here runs inside the caller's transaction.
 
 interface OwnMoney {
   stamp: SyncStamp;
@@ -54,22 +54,39 @@ export async function keepOwnMoney(
   );
 }
 
-/**
- * Marks the expense of `event`, an applied event of an expense, as overridden when the
- * event overrode this phone's own money change of it, whether or not the merge keeps the
- * event's money (SYNC-130.1). Resolves with whether it marked one.
- */
-export async function markIfOverridden(
+async function markOwnMoney(
   tx: SqlExecutor,
-  event: SyncEvent,
+  expenseId: string,
+  overridden: (own: OwnMoney) => boolean,
 ): Promise<boolean> {
-  const own = await readOwnMoney(tx, event.id, 'AND overridden = 0');
-  if (!own || !overridesSyncMoney(event, { id: event.id, ...own }))
-    return false;
+  const own = await readOwnMoney(tx, expenseId, 'AND overridden = 0');
+  if (!own || !overridden(own)) return false;
   await tx.run('UPDATE sync_own_money SET overridden = 1 WHERE expenseId = ?', [
-    event.id,
+    expenseId,
   ]);
   return true;
+}
+
+/** Whether an applied expense event newly marked this phone's money as overridden (SYNC-130.1). */
+export function markIfOverridden(tx: SqlExecutor, event: SyncEvent) {
+  return markOwnMoney(tx, event.id, (own) =>
+    overridesSyncMoney(event, { id: event.id, ...own }),
+  );
+}
+
+/** A snapshot carries no base. Compare its incoming money, even when the merge keeps another (SYNC-168.1). */
+export function markSnapshotMoney(
+  tx: SqlExecutor,
+  expenseId: string,
+  incoming: { stamp: SyncStamp; value: SyncMoney },
+) {
+  return markOwnMoney(
+    tx,
+    expenseId,
+    (own) =>
+      compareSyncStamps(incoming.stamp, own.stamp) > 0 &&
+      !sameSyncUnitValue('money', incoming.value, own.money),
+  );
 }
 
 /**
