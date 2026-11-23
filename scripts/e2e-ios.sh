@@ -55,8 +55,15 @@ if [ -z "$udid" ] && [ -z "$built" ]; then
   (cd apps/mobile && npx expo prebuild --platform ios)
   xcodebuild -quiet -workspace "apps/mobile/ios/$app.xcworkspace" -scheme "$app" \
     -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-    -derivedDataPath apps/mobile/ios/build CODE_SIGNING_ALLOWED=NO
+    -derivedDataPath apps/mobile/ios/build
   built=$products/$app.app
+  # Xcode signs the app to run locally, which needs no certificate, and links its entitlements
+  # into the executable as a property list. Without application-identifier among them the
+  # simulator gives the app no keychain, and expo-secure-store cannot write (ADR-0031).
+  if ! grep -qa '<key>application-identifier</key>' "$built/$app"; then
+    echo "The app has no application-identifier entitlement, so it has no keychain" >&2
+    exit 1
+  fi
 fi
 if [ -n "$build_only" ]; then exit 0; fi
 

@@ -29,6 +29,10 @@ export function NewGroupScreen() {
     sheetScroll.scrollProps.contentInsetAdjustmentBehavior,
   );
   const [name, setName] = useState('');
+  // What the field holds now, which Return and Create save. `name` can be older: when the
+  // phone is busy, the keys typed just before Return or Create reach React in the same
+  // batch as it, and `name` is still from the render before them.
+  const typedName = useRef('');
   const [status, setStatus] = useState<'editing' | 'saving' | 'saved'>(
     'editing',
   );
@@ -41,11 +45,12 @@ export function NewGroupScreen() {
   }, [navigation, status]);
 
   async function submit() {
-    if (submitting.current || !name.trim() || requireName()) return;
+    const text = typedName.current;
+    if (submitting.current || !text.trim() || requireName()) return;
     submitting.current = true;
     setStatus('saving');
     try {
-      await createGroup(database, name.trim(), identity);
+      await createGroup(database, text.trim(), identity);
       setStatus('saved');
     } catch {
       submitting.current = false;
@@ -102,7 +107,10 @@ export function NewGroupScreen() {
               autoCorrect={false}
               autoFocus
               editable={!saving}
-              onChangeText={setName}
+              onChangeText={(text) => {
+                typedName.current = text;
+                setName(text);
+              }}
               onSubmitEditing={() => void submit()}
               placeholder="Group name"
               placeholderTextColor={colors.placeholder}

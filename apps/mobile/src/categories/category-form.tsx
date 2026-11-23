@@ -50,6 +50,12 @@ export function CategoryForm({
     }
     return freeColors[0];
   });
+  // What the form holds now, which Add and Save save. `name` and `selectedColor` can be
+  // older: when the phone is busy, the keys typed or the color pressed just before Add
+  // or Save reach React in the same batch as it, and they are still from the render
+  // before them.
+  const typedName = useRef(name);
+  const chosenColor = useRef(selectedColor);
   const [duplicateError, setDuplicateError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
@@ -69,8 +75,9 @@ export function CategoryForm({
 
   async function handleSubmit() {
     if (savingRef.current) return;
-    const trimmed = name.trim();
-    if (!trimmed || !selectedColor) return;
+    const trimmed = typedName.current.trim();
+    const color = chosenColor.current;
+    if (!trimmed || !color) return;
 
     const problem = categoryNameProblem(trimmed, otherCategories);
     if (problem === 'duplicate') {
@@ -83,7 +90,7 @@ export function CategoryForm({
     savingRef.current = true;
     setIsSaving(true);
     try {
-      await onSave({ name: trimmed, color: selectedColor });
+      await onSave({ name: trimmed, color });
     } catch {
       Alert.alert(
         'Unable to Save Category',
@@ -124,6 +131,7 @@ export function CategoryForm({
           editable={!isSaving}
           maxLength={MAX_CATEGORY_NAME_LENGTH}
           onChangeText={(next) => {
+            typedName.current = next;
             setName(next);
             if (duplicateError) setDuplicateError(false);
           }}
@@ -175,6 +183,7 @@ export function CategoryForm({
                 hitSlop={4}
                 onPress={() => {
                   if (!unavailable && !savingRef.current) {
+                    chosenColor.current = color;
                     setSelectedColor(color);
                   }
                 }}

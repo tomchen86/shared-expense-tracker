@@ -1,7 +1,7 @@
 # ADR-0014: Flows tagged android also run on an emulator
 
 - Date: 2026-11-06
-- Status: Accepted
+- Status: Accepted; parts are superseded by ADR-0030
 
 ## Context
 
