@@ -76,8 +76,9 @@ export interface EventsPageResponse {
 
 /**
  * What the API answers to a download whose cursor is before events the group no longer
- * stores and that needs a snapshot (SYNC-136.2, ADR-0033). The API records the cursor
- * as the device's progress.
+ * stores, unless no member device could make the snapshot (SYNC-136.2, ADR-0033): the
+ * phone cannot go on from its cursor and needs a snapshot. It is no refusal: the API
+ * records the cursor as the device's progress.
  */
 export interface SnapshotNeededResponse {
   error: 'snapshot-needed';
