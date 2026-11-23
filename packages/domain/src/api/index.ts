@@ -6,3 +6,4 @@ export * from './health';
 export * from './signed-request';
 export * from './invites';
 export * from './join-requests';
+export * from './join-decisions';
