@@ -34,6 +34,7 @@ import {
   groupCard,
   groupCardTitles,
   isDisabled,
+  isRowDisabled,
   removeFromGroup,
   renameInGroup,
   restoreGroup,
@@ -392,6 +393,45 @@ test('[SYNC-23.2] [LEDGER-56.2] saves an amount changed on the form in the curre
 
 test('[SYNC-23.2] [LEDGER-56.2] leaves the amount in the currency another phone gave it when the form changed only the title', async () => {
   const { dinner, theirs } = await yenWhileTheFormIsOpen();
+
+  const events = await eventsOf(async () => {
+    await fillForm({ title: 'Supper' });
+    await press('Save');
+    await expectFormClosed();
+  });
+
+  expect(events).toEqual([
+    {
+      version: 1,
+      stamp: stamped(1, T120),
+      type: 'expense',
+      id: dinner.id,
+      units: { title: { value: 'Supper', base: stamped(0) } },
+    },
+  ]);
+  expect(await expenseTitled('Supper')).toMatchObject(stored(theirs));
+});
+
+test('[SYNC-23.2] writes only the title of an expense with a former member, whose amount is locked, though another phone changed the amount while the form was open', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  await addDinner();
+  const dinner = await expenseTitled('Dinner');
+  await removeFromGroup('Brisbane', 'Blake');
+  const theirs = await moneyOf(9000);
+  await openEditExpense(dinner.id);
+  // Blake shares Dinner and has left the group, so the form locks its amount (LEDGER-60.1).
+  expect(isRowDisabled('Paid by')).toBe(true);
+  await receive(
+    brisbane,
+    changed(
+      'expense',
+      dinner.id,
+      at(T120),
+      { money: theirs },
+      { money: stamped(0) },
+    ),
+  );
 
   const events = await eventsOf(async () => {
     await fillForm({ title: 'Supper' });
@@ -1477,7 +1517,7 @@ test('[LEDGER-154.1] saves your amount group though one of its sharers has left 
 
 // The number of expenses to review on a group's screen
 
-test("[GROUPS-107.1] counts the expenses to review in a button under the group's title, with the mark's icon and a chevron", async () => {
+test("[GROUPS-107.2] counts the expenses to review in a button under the group's title, with the mark's icon and a chevron", async () => {
   await overridden();
 
   await showGroup('Brisbane');
@@ -1503,7 +1543,7 @@ test("[GROUPS-107.1] counts the expenses to review in a button under the group's
   ).toBe(true);
 });
 
-test('[GROUPS-107.1] counts every expense to review, and opens the first in the order of dates whatever the order of the screen', async () => {
+test('[GROUPS-107.2] counts every expense to review, and opens the first in the order of dates whatever the order of the screen', async () => {
   const { app, brisbane, dinner } = await overridden();
   await addDinner('Taxi', '2026-10-29');
   const taxi = await expenseTitled('Taxi');
@@ -1536,7 +1576,7 @@ test('[GROUPS-107.1] counts every expense to review, and opens the first in the 
   await expectBlockOn('Groups');
 });
 
-test('[GROUPS-107.1] pushes one details when the button is pressed twice', async () => {
+test('[GROUPS-107.2] pushes one details when the button is pressed twice', async () => {
   await overridden();
   await expectToReview('Brisbane', ['Dinner']);
   const button = reviewButton('Brisbane')!;
@@ -1552,7 +1592,7 @@ test('[GROUPS-107.1] pushes one details when the button is pressed twice', async
   );
 });
 
-test('[GROUPS-107.1] counts one fewer after each expense is settled, opens the next one, and goes once none is left', async () => {
+test('[GROUPS-107.2] counts one fewer after each expense is settled, opens the next one, and goes once none is left', async () => {
   const { brisbane } = await overridden();
   await addDinner('Taxi', '2026-10-29');
   const taxi = await expenseTitled('Taxi');
@@ -1580,7 +1620,7 @@ test('[GROUPS-107.1] counts one fewer after each expense is settled, opens the n
   await expectToReview('Brisbane', []);
 });
 
-test('[GROUPS-107.1] counts an expense the screen does not list: outside its period, kept out by its filter, or not matching its search', async () => {
+test('[GROUPS-107.2] counts an expense the screen does not list: outside its period, kept out by its filter, or not matching its search', async () => {
   const app = await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner('Hotel', '2026-09-15');
@@ -1612,7 +1652,7 @@ test('[GROUPS-107.1] counts an expense the screen does not list: outside its per
   expect(app.getPathname()).toBe(`/groups/expenses/${hotel.id}`);
 });
 
-test('[GROUPS-107.1] does not count an expense in the trash, and counts it again once it is back', async () => {
+test('[GROUPS-107.2] does not count an expense in the trash, and counts it again once it is back', async () => {
   await overridden();
   await expectToReview('Brisbane', ['Dinner']);
   await tapTab('Expenses');
@@ -1628,7 +1668,7 @@ test('[GROUPS-107.1] does not count an expense in the trash, and counts it again
   await expectToReview('Brisbane', ['Dinner']);
 });
 
-test('[GROUPS-107.1] shows the button above the read-only line of an archived shared ledger, and opens the details on the Settings tab', async () => {
+test('[GROUPS-107.2] shows the button above the read-only line of an archived shared ledger, and opens the details on the Settings tab', async () => {
   const { app, dinner } = await overridden();
   await archiveGroup('Brisbane');
 
@@ -1653,7 +1693,7 @@ test('[GROUPS-107.1] shows the button above the read-only line of an archived sh
   await expectBlockOn('Settings');
 });
 
-test('[GROUPS-107.1] shows no button on a group with nothing to review, and counts each group by itself', async () => {
+test('[GROUPS-107.2] shows no button on a group with nothing to review, and counts each group by itself', async () => {
   await startShared({ ...BRISBANE, Tokyo: ['Dana'] });
   const brisbane = await groupId('Brisbane');
   await addDinner();
@@ -1679,7 +1719,7 @@ test('[GROUPS-107.1] shows no button on a group with nothing to review, and coun
   expect(reviewCount('Tokyo')).toBeUndefined();
 });
 
-test('[GROUPS-107.1] still counts it after a restart', async () => {
+test('[GROUPS-107.2] still counts it after a restart', async () => {
   const { app } = await overridden();
 
   await restart(app);
