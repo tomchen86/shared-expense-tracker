@@ -43,6 +43,8 @@ import {
   JOIN_AS,
   NEW_MEMBER,
   NOT_SENT,
+  NOT_SENT_OFFLINE,
+  OFFLINE,
   ONLY_MEMBERS,
   S,
   S2,
@@ -283,7 +285,7 @@ describe('SHARING-210.1', () => {
         asked()
           .map(({ path }) => path)
           .sort(),
-      ).toEqual([`/invites/${CODE_B}/request`, `/invites/${CODE_A}/request`]),
+      ).toEqual([`/invites/${CODE_A}/request`, `/invites/${CODE_B}/request`]),
     );
   });
 
@@ -511,6 +513,79 @@ describe('SHARING-212.1', () => {
     expect(joinLines()).not.toContain(NEW_MEMBER);
     expect(joinLines()).toContain(ONLY_MEMBERS);
     expect(joinLines()).toContain('Member 20');
+  });
+
+  test('[SHARING-212.1] has no card to draw the form with after a restart without a network, and shows the form once Try Again reaches the API', async () => {
+    const app = await waiting('Casey');
+    cardBecomes(taken(CASEY_ID));
+    await comesBack();
+    await expectCard(['Brisbane', CHOOSE_CARD]);
+    goOffline();
+    await restart(app);
+    setClock(T);
+    await expectCard(['Brisbane', CHOOSE_CARD]);
+
+    await openRequest('Brisbane');
+
+    await expectJoinLines([OFFLINE, 'Try Again']);
+    goOnline();
+    await pressInJoin('Try Again');
+
+    await waitFor(() => expect(joinLines()[0]).toBe(CHOOSE_AGAIN));
+    expect(nameField().props.value).toBe('Dana');
+    expect(chosen()).toEqual([NEW_MEMBER]);
+    await closeJoin();
+    await expectCard(['Brisbane', CHOOSE_CARD]);
+  });
+
+  test('[SHARING-212.1] keeps the request as it was when the new choice cannot be sent, and sends that choice on Try Again', async () => {
+    await waiting('Casey');
+    cardBecomes(taken(CASEY_ID));
+    await comesBack();
+    await tapTab('Groups');
+    await openRequest('Brisbane');
+    await waitFor(() => expect(joinLines()[0]).toBe(CHOOSE_AGAIN));
+    await pressInJoin('Blake');
+    goOffline();
+
+    await send();
+
+    await expectJoinLines([NOT_SENT, NOT_SENT_OFFLINE, 'Try Again', CANCEL]);
+    // The phone still holds the request it sent: the API may hold nothing newer.
+    expect(rowsWith(CODE_A, CASEY_ID)).toHaveLength(1);
+    expect(rowsWith(CODE_A, BLAKE_ID)).toEqual([]);
+    goOnline();
+    const sent = sendings().length;
+
+    await send('Try Again');
+
+    await expectJoinLines(WAITING_FOR_BRISBANE);
+    expect(sendings()).toHaveLength(sent + 1);
+    expect(lastRequest().memberId).toBe(BLAKE_ID);
+    expect(rowsWith(CODE_A, BLAKE_ID)).toHaveLength(1);
+    await closeJoin();
+    await expectCard(['Brisbane', WAITING_CARD]);
+  });
+
+  test('[SHARING-212.1] shows the form again, under the card that still says Choose again, when a new choice that was not sent is closed and opened', async () => {
+    await waiting('Casey');
+    cardBecomes(taken(CASEY_ID));
+    await comesBack();
+    await tapTab('Groups');
+    await openRequest('Brisbane');
+    await waitFor(() => expect(joinLines()[0]).toBe(CHOOSE_AGAIN));
+    await pressInJoin('Blake');
+    goOffline();
+    await send();
+    await expectJoinLines([NOT_SENT, NOT_SENT_OFFLINE, 'Try Again', CANCEL]);
+
+    await closeJoin();
+
+    await expectCard(['Brisbane', CHOOSE_CARD]);
+    goOnline();
+    await openRequest('Brisbane');
+    await waitFor(() => expect(joinLines()[0]).toBe(CHOOSE_AGAIN));
+    expect(joinLines()).toContain(SEND);
   });
 
   test('[SHARING-212.1] goes back to waiting when the request fits the card again', async () => {
@@ -743,7 +818,7 @@ describe('SHARING-221.1', () => {
     await waitFor(() => expect(isOpen(TITLE)).toBe(false));
   });
 
-  test('[SHARING-221.1] keeps the request as approved when the snapshot does not arrive, and finishes on Try Again', async () => {
+  test('[SHARING-221.1] keeps the request as approved when the snapshot does not arrive, also after a restart, and joins when it is opened again', async () => {
     const app = await waiting();
     memberApproves();
     apiLosesNextAnswer(isChunk);
@@ -761,8 +836,24 @@ describe('SHARING-221.1', () => {
     await expectCard(['Brisbane', APPROVED_CARD]);
     goOnline();
 
-    await openRequest('Brisbane');
+    // Opening it asks again and joins: Join Group may open and close within the press.
+    await fireEvent.press(requestCard('Brisbane')!);
     await waitFor(() => expect(hasBrisbane()).toBe(true));
+  });
+
+  test('[SHARING-221.1] asks again and joins when Try Again is pressed', async () => {
+    await waiting();
+    memberApproves();
+    apiLosesNextAnswer(isChunk);
+    await tapTab('Groups');
+    await openRequest('Brisbane');
+    await expectJoinLines([APPROVED, 'Brisbane', FINISH_OFFLINE, 'Try Again']);
+    const before = asked().length;
+
+    await pressInJoin('Try Again');
+
+    await waitFor(() => expect(hasBrisbane()).toBe(true));
+    expect(asked()).toHaveLength(before + 1);
   });
 
   test('[SHARING-221.1] says something went wrong when the API has no snapshot for it', async () => {
