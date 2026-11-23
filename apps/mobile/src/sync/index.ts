@@ -9,6 +9,7 @@ import { listExpenses } from '../ledger/expenses';
 import { readCorrectedTime } from '../sharing/device-identity';
 import type { Database, SqlExecutor } from '../storage';
 import {
+  UNSENT_EVENTS,
   expenseSyncValues,
   latestStamp,
   saveLatestStamp,
@@ -41,7 +42,7 @@ export const isWaitingForSnapshot: (
   groupId: string,
 ) => Promise<boolean> = () => Promise.reject(new Error('Not built yet (#156)'));
 
-/** An event this phone wrote and has not uploaded yet. */
+/** An event this phone has queued for upload. */
 export interface UnsentSyncEvent {
   /** The event's own ID, the same every time it is uploaded. */
   id: string;
@@ -106,7 +107,7 @@ export async function shareGroup(
   });
 }
 
-/** The events this phone has not uploaded yet, in the order it wrote them. */
+/** This phone's unsent events in upload order, including any requeued after a snapshot. */
 export async function listUnsentSyncEvents(
   database: SqlExecutor,
 ): Promise<UnsentSyncEvent[]> {
@@ -114,7 +115,9 @@ export async function listUnsentSyncEvents(
     id: string;
     groupId: string;
     content: string;
-  }>('SELECT id, groupId, content FROM sync_outbox ORDER BY position');
+  }>(
+    `SELECT id, groupId, content FROM ${UNSENT_EVENTS} ORDER BY sendPosition, position`,
+  );
   return rows.map(({ id, groupId, content }) => ({
     id,
     groupId,

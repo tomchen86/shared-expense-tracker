@@ -1,19 +1,34 @@
+import { dirname } from 'node:path';
+import { exportData } from '../../src/backup/export';
+import {
+  createTemporaryDirectory,
+  shareFile,
+} from '../../src/storage/expo-files';
 import {
   NOW,
+  Prepared,
+  addExpense,
+  apiUrl,
+  copyOfData,
   deviceId,
   everythingIn,
   failSecureStoreReads,
   giveKey,
+  importData as importCopy,
   keyOf,
   loseSeed,
   mark,
+  noAnswerTo as noEventAnswerTo,
   randomKey,
+  sealed,
   secureStoreWorks,
   sent,
   setEpoch,
   sync,
   twoPhones,
+  unsent,
   uploadAs,
+  whenAnswered as whenEventAnswered,
 } from '../acceptance/sync-loop-app';
 import {
   answerNext,
@@ -54,10 +69,93 @@ jest.mock(
   { virtual: true },
 );
 jest.mock('../../src/storage/expo', () => ({}));
-jest.mock('../../src/storage/expo-files', () => ({}));
+jest.mock('../../src/storage/expo-files', () => ({
+  openDatabaseFile: jest.requireActual<typeof import('../../src/storage/node')>(
+    '../../src/storage/node',
+  ).openNodeDatabase,
+  createTemporaryDirectory: jest.fn(),
+  shareFile: jest.fn(),
+  removeTemporaryFiles: async () => undefined,
+}));
 
 beforeEach(startSnapshotWorld);
 afterEach(endSnapshotWorld);
+
+test('a backup restores a retained upload alongside a later unsent event', async () => {
+  const { a, b } = await twoPhones();
+  await addExpense(a);
+  const [retained] = await unsent(a);
+  whenEventAnswered('POST', async () => noEventAnswerTo('GET'));
+  await sync(a);
+  await addExpense(a, { title: 'Lunch' });
+  const [later] = await unsent(a);
+
+  jest.mocked(createTemporaryDirectory).mockResolvedValue(dirname(a.file));
+  await exportData(a.database);
+  const [[file]] = jest.mocked(shareFile).mock.calls;
+  await sync(a);
+  expect(await unsent(a)).toEqual([]);
+  const { importData, readExportFile } = jest.requireActual<
+    typeof import('../../src/backup/import')
+  >('../../src/backup/import');
+  await readExportFile(a.database, file);
+  await importData(a.database, file, a.database.transaction);
+  expect(await unsent(a)).toEqual([later]);
+
+  await sync(b);
+  await sentSnapshot(b, a);
+  expect(await takeSnapshot(a)).toEqual({ outcome: 'imported' });
+  expect(await unsent(a)).toEqual([retained, later]);
+});
+
+test('a signed page response exposes the snapshot recipient header to its caller', async () => {
+  const { a, b, A, brisbane } = await twoPhones();
+  expect(await takeSnapshot(a)).toEqual({ outcome: 'none' });
+  const response = await b.sharing.sendApiRequest(b.database, {
+    apiUrl: apiUrl(),
+    method: 'GET',
+    path: `/groups/${brisbane}/events?after=0`,
+  });
+  expect(response).toMatchObject({
+    outcome: 'answered',
+    status: 200,
+    snapshotNeededBy: A,
+  });
+});
+
+test('a retained upload goes ahead of an older event whose content a backup restored during confirmation', async () => {
+  const { a, b, A, brisbane, key } = await twoPhones();
+  await addExpense(a);
+  await addExpense(a, { title: 'Lunch' });
+  const [older, later] = await unsent(a);
+  const copy = await copyOfData(a);
+  // The API already has the earlier event with a corrected stamp.
+  const envelope = {
+    groupId: brisbane,
+    eventId: older.id,
+    deviceId: A,
+    epoch: 1,
+  };
+  const corrected = {
+    ...older.content,
+    stamp: { ...older.content.stamp, ms: NOW + 1 },
+  };
+  await uploadAs(a, key, [
+    new Prepared(older.id, sealed(key, envelope, corrected)),
+  ]);
+  whenEventAnswered('POST', async () => {
+    await importCopy(a, copy);
+    noEventAnswerTo('POST');
+    noEventAnswerTo('GET');
+  });
+  await sync(a);
+  expect(await unsent(a)).toEqual([older]);
+
+  await sync(b);
+  await sentSnapshot(b, a);
+  expect(await takeSnapshot(a)).toEqual({ outcome: 'imported' });
+  expect(await unsent(a)).toEqual([later, older]);
+});
 
 test('losing access to the seed between chunks leaves the ledger untouched and the download can be retried', async () => {
   const expenses = Array.from({ length: 5 }, (_, i) =>

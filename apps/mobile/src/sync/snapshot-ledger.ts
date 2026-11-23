@@ -16,8 +16,10 @@ import { applyMergedInvite } from './invites';
 import { readGroupKey } from './loop';
 import { orderSyncedRows } from './positions';
 import {
+  UNSENT_EVENTS,
   latestStamp,
   readSyncRecord,
+  requeueConfirmedEvents,
   saveLatestStamp,
   snapshotRecords,
   storeSyncRecord,
@@ -30,7 +32,7 @@ export async function makeSnapshot(tx: SqlExecutor, groupId: string) {
     cursor: number;
     unsent: number;
   }>(
-    `SELECT epoch, cursor, EXISTS(SELECT 1 FROM sync_outbox WHERE groupId = ?) AS unsent
+    `SELECT epoch, cursor, EXISTS(SELECT 1 FROM ${UNSENT_EVENTS} WHERE groupId = ?) AS unsent
      FROM sync_groups WHERE groupId = ?`,
     [groupId, groupId],
   );
@@ -79,6 +81,7 @@ async function openSnapshotGroup(
       'UPDATE sync_groups SET cursor = MAX(cursor, ?), epoch = MAX(epoch, ?) WHERE groupId = ?',
       [sequence, epoch, groupId],
     );
+    await requeueConfirmedEvents(tx, groupId);
     return true;
   }
   // Validation established exactly one group record and a complete reserved category.

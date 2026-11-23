@@ -168,6 +168,34 @@ export function subscribeToUnsentEvents(listener: UnsentListener) {
   };
 }
 
+/** Uploads still waiting for a page that carries them (SYNC-161.1). */
+export const CONFIRMED_EVENT_IDS =
+  'SELECT eventId FROM sync_uploaded_events WHERE resendPosition IS NULL';
+
+/** The unsent queue, with the original write position as the tiebreaker on a resend. */
+export const UNSENT_EVENTS = `(SELECT o.*, COALESCE(u.resendPosition, o.position) AS sendPosition
+  FROM sync_outbox o LEFT JOIN sync_uploaded_events u ON u.eventId = o.id
+  WHERE u.eventId IS NULL OR u.resendPosition IS NOT NULL)`;
+
+/** Put retained uploads ahead of the ledger's unsent events in their original write order (SYNC-161.1). */
+export async function requeueConfirmedEvents(tx: SqlExecutor, groupId: string) {
+  await tx.run(
+    `UPDATE sync_outbox SET checked = 1 WHERE groupId = ? AND checked = 0 AND id IN (${CONFIRMED_EVENT_IDS})`,
+    [groupId],
+  );
+  // A backup imported during an upload can leave an older unsent row. Cap the resend
+  // positions just before the current queue. The original positions break any ties.
+  await tx.run(
+    `WITH head AS MATERIALIZED (
+       SELECT MIN(sendPosition) - 1 AS beforeFirst FROM ${UNSENT_EVENTS} WHERE groupId = ?
+     )
+     UPDATE sync_uploaded_events SET resendPosition = MIN(o.position, COALESCE(head.beforeFirst, o.position))
+     FROM sync_outbox o, head
+     WHERE eventId = o.id AND o.groupId = ? AND resendPosition IS NULL`,
+    [groupId, groupId],
+  );
+}
+
 /** Stamps, checks, measures and stores one event of this phone, with the record it changes. */
 async function writeEvent(
   tx: SqlExecutor,
