@@ -55,9 +55,10 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   );
   const periods = useListPeriod(id, expenses, read);
   // Every expense of the group that needs review, whatever the list shows of them, in the
-  // order of LEDGER-28.1, which is the order they are read in (GROUPS-107.1).
+  // order of LEDGER-28.1, which is the order they are read in (GROUPS-107.2).
   const toReview = useMemo(
-    () => expenses?.filter((expense) => expense.yours) ?? [],
+    () =>
+      expenses?.filter((expense) => expense.yours || expense.duplicateOf) ?? [],
     [expenses],
   );
   // Your balance uses every expense (GROUPS-69.4). The total uses every card that passes

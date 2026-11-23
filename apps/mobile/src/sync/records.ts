@@ -97,7 +97,7 @@ export async function storeSyncRecord(
   created: SyncStamp,
   seeded = false,
 ) {
-  await tx.run(
+  return tx.run(
     `INSERT INTO sync_records (groupId, type, id, created, record, seeded) VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT (groupId, type, id) DO UPDATE SET created = excluded.created, record = excluded.record,
        seeded = MAX(seeded, excluded.seeded)

@@ -11,6 +11,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { formatCurrency } from '@shared-expense/domain';
 import { listGroups } from '../groups';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
+import { markExpensesDistinct } from '../sync/duplicates';
 import { listExpenses } from './expenses';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
@@ -18,7 +19,7 @@ import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
 import { participantName } from './expense-card';
 import { formatExpenseDate } from './format-date';
-import { ReviewBlock } from './review-block';
+import { DuplicateBlock, ReviewBlock } from './review-block';
 import { useExpenses, type ExpenseView } from './use-expenses';
 import { useTrashActions } from './trash-provider';
 
@@ -33,16 +34,34 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   const [leavingExpense, setLeavingExpense] = useState<ExpenseView>();
   const [, showReadError] = useState();
   const expense = leavingExpense ?? expenses?.find((item) => item.id === id);
+  const otherId = expense?.duplicateOf;
+  const other = otherId && expenses?.find((item) => item.id === otherId);
   const { userId, personalSpaceId } = useLocalIdentity();
   const position = expense ? expense.yourPaid - expense.yourShare : 0;
 
-  async function changeAndReturn(change: () => Promise<boolean>) {
-    if (!expense || saving.current) return;
+  async function saveOnce(change: () => Promise<void>) {
+    if (saving.current) return;
     saving.current = true;
-    setLeavingExpense(expense);
-    if (await change()) router.back();
-    else setLeavingExpense(undefined);
-    saving.current = false;
+    try {
+      await change();
+    } finally {
+      saving.current = false;
+    }
+  }
+
+  function changeAndReturn(
+    current: ExpenseView,
+    change: () => Promise<boolean>,
+  ) {
+    return saveOnce(async () => {
+      setLeavingExpense(current);
+      if (await change()) router.back();
+      else setLeavingExpense(undefined);
+    });
+  }
+
+  function moveToTrash(current: ExpenseView) {
+    return changeAndReturn(current, () => actions.move(current));
   }
 
   /** Opens Edit Expense if the expense, read now, is out of the trash and in an unarchived space (SHELL-64.1). */
@@ -65,13 +84,14 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
       router.navigate(`/expenses/${id}/edit`);
   }
 
-  function deletePermanently() {
+  function deletePermanently(current: ExpenseView) {
     Alert.alert('Delete Expense?', 'This permanently deletes the expense.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => void changeAndReturn(() => actions.remove(id)),
+        onPress: () =>
+          void changeAndReturn(current, () => actions.remove(current.id)),
       },
     ]);
   }
@@ -103,8 +123,8 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
                     destructive: true,
                     disabled: !trashed && expense.group?.archived,
                     onPress: trashed
-                      ? deletePermanently
-                      : () => void changeAndReturn(() => actions.move(expense)),
+                      ? () => deletePermanently(expense)
+                      : () => void moveToTrash(expense),
                   },
                 ],
               }
@@ -127,7 +147,9 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
                   accessibilityLabel="Restore"
                   style={styles.restore}
                   onPress={() =>
-                    void changeAndReturn(() => actions.restore(id))
+                    void changeAndReturn(expense, () =>
+                      actions.restore(expense.id),
+                    )
                   }
                 >
                   <Text style={{ color: colors.accent, fontSize: 17 }}>
@@ -138,6 +160,23 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
             )}
             {expense.yours && (
               <ReviewBlock expense={expense} yours={expense.yours} />
+            )}
+            {other && (
+              <DuplicateBlock
+                other={other}
+                archived={expense.group?.archived === true}
+                onDistinct={() =>
+                  saveOnce(() =>
+                    markExpensesDistinct(
+                      database,
+                      expense.spaceId,
+                      expense.id,
+                      other.id,
+                    ),
+                  )
+                }
+                onDelete={() => void moveToTrash(expense)}
+              />
             )}
             <Text style={[styles.title, { color: colors.text }]}>
               {expense.title}

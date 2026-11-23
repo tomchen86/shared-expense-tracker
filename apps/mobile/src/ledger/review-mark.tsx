@@ -4,6 +4,7 @@ import { useThemeColors } from '../ui/theme';
 
 /** What the mark of an expense that needs review says (LEDGER-151.1). */
 export const REPLACED = 'Your change was replaced';
+export const POSSIBLE_DUPLICATE = 'Possible duplicate';
 
 /**
  * The mark's warning icon, `size` points at the standard text size and as much larger as
