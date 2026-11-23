@@ -1,9 +1,11 @@
 import {
   checkSyncEvent,
+  compareSyncStamps,
   MAX_SYNC_PLAINTEXT_BYTES,
   mergeSyncEvent,
   nextSyncStamp,
   sameSyncUnitValue,
+  type SyncEvent,
   type SyncRecord,
   type SyncRecordType,
   type SyncStamp,
@@ -56,8 +58,8 @@ interface RecordRow {
 
 function unpackRecord(row: RecordRow) {
   return {
-    created: JSON.parse(row.created) as SyncStamp,
     record: JSON.parse(row.record) as SyncRecord,
+    created: JSON.parse(row.created) as SyncStamp,
     seeded: row.seeded === 1,
   };
 }
@@ -88,6 +90,61 @@ export async function readSyncRecord(
     [groupId, type, id],
   );
   if (row) return unpackRecord(row);
+}
+
+export type StoredRecord = ReturnType<typeof unpackRecord>;
+
+/** The creation stamp follows the earliest event, except for a record seeded at sharing. */
+export function mergeRecordEvent(
+  previous: StoredRecord | undefined,
+  event: SyncEvent,
+): StoredRecord {
+  return {
+    record: mergeSyncEvent({ record: previous?.record, event }).record,
+    created:
+      previous &&
+      (previous.seeded || compareSyncStamps(previous.created, event.stamp) <= 0)
+        ? previous.created
+        : event.stamp,
+    seeded: previous?.seeded ?? false,
+  };
+}
+
+/** With no row here the merged record itself is the received result (including old backups
+ * and records seeded at sharing). A row with NULL means nothing has been received yet. */
+export async function readReceived(
+  tx: SqlExecutor,
+  groupId: string,
+  key: Pick<SyncRecord, 'type' | 'id'>,
+) {
+  const [row] = await tx.all<{ state: string | null }>(
+    'SELECT state FROM sync_received WHERE groupId = ? AND type = ? AND id = ?',
+    [groupId, key.type, key.id],
+  );
+  if (row)
+    return {
+      state:
+        row.state === null
+          ? undefined
+          : (JSON.parse(row.state) as StoredRecord),
+    };
+}
+
+/** Once a local write has separated the two results, merge each delivery into both. */
+export async function updateReceived(
+  tx: SqlExecutor,
+  groupId: string,
+  key: Pick<SyncRecord, 'type' | 'id'>,
+  merge: (held: StoredRecord | undefined) => StoredRecord,
+) {
+  const received = await readReceived(tx, groupId, key);
+  if (received) {
+    const state = JSON.stringify(merge(received.state));
+    await tx.run(
+      'UPDATE sync_received SET state = ? WHERE groupId = ? AND type = ? AND id = ? AND state IS NOT ?',
+      [state, groupId, key.type, key.id, state],
+    );
+  }
 }
 
 export async function storeSyncRecord(
@@ -147,8 +204,6 @@ export function changedUnits(values: object, stored: SyncRecord['units']) {
   return changes;
 }
 
-type StoredRecord = Awaited<ReturnType<typeof readSyncRecord>>;
-
 type UnsentListener = (
   groupId: string,
   position: number,
@@ -172,7 +227,7 @@ export function subscribeToUnsentEvents(listener: UnsentListener) {
 async function writeEvent(
   tx: SqlExecutor,
   group: SharedGroup,
-  previous: StoredRecord,
+  previous: StoredRecord | undefined,
   change: { type: SyncRecordType; id: string } & (
     { units: object } | { deleted: true }
   ),
@@ -191,6 +246,17 @@ async function writeEvent(
 
   const { record } = mergeSyncEvent({ record: previous?.record, event });
   await storeSyncRecord(tx, group.groupId, record, previous?.created ?? stamp);
+  // Preserve the received result before this phone's first optimistic write to the record.
+  await tx.run(
+    `INSERT INTO sync_received (groupId, type, id, state) VALUES (?, ?, ?, ?)
+     ON CONFLICT (groupId, type, id) DO NOTHING`,
+    [
+      group.groupId,
+      event.type,
+      event.id,
+      previous ? JSON.stringify(previous) : null,
+    ],
+  );
   // The last event of this phone that held the expense's money (SYNC-129.1).
   if (event.type === 'expense' && 'units' in event && event.units.money)
     await keepOwnMoney(tx, event.id, stamp, event.units.money.value);

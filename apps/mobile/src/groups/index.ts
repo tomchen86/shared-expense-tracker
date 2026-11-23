@@ -36,7 +36,13 @@ export async function applyMergedGroup(
     return changes > 0;
   }
   const member = syncRecordValues(record);
-  if (!member) return false;
+  if (!member) {
+    const { changes } = await tx.run(
+      'DELETE FROM group_members WHERE groupId = ? AND id = ?',
+      [groupId, record.id],
+    );
+    return changes > 0;
+  }
   // This phone represents its own linked member. Keep the received removed unit
   // in sync storage, including its stamp for ordering.
   const removed =

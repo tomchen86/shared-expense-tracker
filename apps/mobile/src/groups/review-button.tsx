@@ -4,26 +4,31 @@ import { GroupedSection } from '../ui/grouped-section';
 import { useThemeColors } from '../ui/theme';
 
 /**
- * The button under a group's title that says how many of its expenses need review, and
- * opens the first (GROUPS-107.2). A screen reader reads the sentence and the hint, not
- * the icon or the chevron.
+ * Each count under a group's title has a spoken label and hint (GROUPS-107.2, GROUPS-170.1).
  */
 export function ReviewButton({
   count,
+  unapplied = false,
   onPress,
 }: {
   count: number;
+  unapplied?: boolean;
   onPress: () => void;
 }) {
   const colors = useThemeColors();
-  const label =
-    count === 1 ? '1 expense needs review' : `${count} expenses need review`;
+  const label = unapplied
+    ? count === 1
+      ? "1 change wasn't applied"
+      : `${count} changes weren't applied`
+    : count === 1
+      ? '1 expense needs review'
+      : `${count} expenses need review`;
   return (
     <GroupedSection style={styles.section}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
-        accessibilityHint="Opens the first one"
+        accessibilityHint={unapplied ? 'Opens the list' : 'Opens the first one'}
         onPress={onPress}
         style={({ pressed }) => [
           styles.button,

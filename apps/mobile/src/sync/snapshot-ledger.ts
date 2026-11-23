@@ -21,6 +21,8 @@ import {
   saveLatestStamp,
   snapshotRecords,
   storeSyncRecord,
+  updateReceived,
+  type StoredRecord,
 } from './records';
 
 /** Read the outbox, cursor and merged records at one point in the ledger's history. */
@@ -186,19 +188,25 @@ export async function importSnapshot(
       incoming.type,
       incoming.id,
     );
-    const merged = mergeSyncSnapshotRecord({
-      incoming,
-      held: previous && {
-        ...previous.record,
-        created: previous.created,
-        seeded: previous.seeded,
-      },
-      seen,
-    });
+    const merge = (held: StoredRecord | undefined) =>
+      mergeSyncSnapshotRecord({
+        incoming,
+        held: held && {
+          ...held.record,
+          created: held.created,
+          seeded: held.seeded,
+        },
+        seen,
+      });
+    const merged = merge(previous);
     seen = merged.seen;
     if (foreign.has(incoming)) continue;
     const { created, seeded, ...record } = merged.record;
     await storeSyncRecord(tx, groupId, record, created, seeded);
+    await updateReceived(tx, groupId, incoming, (held) => {
+      const { created, seeded, ...record } = merge(held).record;
+      return { record, created, seeded };
+    });
     switch (record.type) {
       case 'invite':
         invites.push(record);

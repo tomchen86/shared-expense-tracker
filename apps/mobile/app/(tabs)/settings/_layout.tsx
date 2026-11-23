@@ -46,6 +46,10 @@ export default function SettingsLayout() {
         options={{ ...formPresentation, title: 'Balances' }}
       />
       <Stack.Screen
+        name="archived-groups/unapplied"
+        options={{ ...formPresentation, title: 'Changes Not Applied' }}
+      />
+      <Stack.Screen
         name="archived-groups/rename-member"
         options={{ ...formPresentation, title: 'Rename Member' }}
       />

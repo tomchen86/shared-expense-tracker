@@ -129,7 +129,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                   onRename={group.archived ? undefined : rename}
                 />
               )}
-              {notices.map((notice) => (
+              {notices.lines.map((notice) => (
                 <Text
                   key={notice}
                   style={[styles.notice, { color: colors.textMuted }]}
@@ -142,6 +142,18 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                   count={toReview.length}
                   onPress={() =>
                     router.navigate(`${base}/expenses/${toReview[0].id}`)
+                  }
+                />
+              )}
+              {notices.unapplied > 0 && (
+                <ReviewButton
+                  unapplied
+                  count={notices.unapplied}
+                  onPress={() =>
+                    router.navigate({
+                      pathname: `${base}/unapplied`,
+                      params: { id },
+                    })
                   }
                 />
               )}
