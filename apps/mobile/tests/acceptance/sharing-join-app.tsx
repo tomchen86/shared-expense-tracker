@@ -273,12 +273,13 @@ export const announcements = () =>
   ].map(([said]) => said);
 
 /**
- * Starts the app on a phone with no groups, saves `name` as your name unless it is
- * undefined, and leaves the app on the Expenses root with the phone's clock at T.
+ * Starts the app on a phone with no groups, saves `name` as your name, and leaves the
+ * app on the Expenses root with the phone's clock at T. With `null` the phone has no
+ * name: `undefined` would be taken for no argument and become Dana.
  */
-export async function startAs(name: string | undefined = 'Dana') {
+export async function startAs(name: string | null = 'Dana') {
   const app = await startExpenses();
-  if (name !== undefined) await saveName(name);
+  if (name !== null) await saveName(name);
   await tapTab('Expenses');
   setClock(T);
   return app;
