@@ -1,6 +1,7 @@
 import {
   GROUP_REFUSAL_STATUS,
   REFUSAL_STATUS,
+  SNAPSHOT_NEEDED_STATUS,
   SNAPSHOT_REFUSAL_STATUS,
   isSnapshotChunkStoredResponse,
   isUploadSnapshotChunkRequest,
@@ -113,10 +114,12 @@ export const syncRoutes = new Hono<AppEnv>()
       after,
       now: c.env.now(),
     });
-    if ('error' in outcome) return refuse(outcome);
-    // A phone that is up to date asks for the same URL every time (SYNC-57.1).
-    c.header('Cache-Control', 'no-store');
-    return c.json(outcome);
+    if ('error' in outcome && outcome.error !== 'snapshot-needed')
+      return refuse(outcome);
+    // The same cursor can get a page or need a snapshot after cleanup (SYNC-57.2).
+    return c.json(outcome, 'events' in outcome ? 200 : SNAPSHOT_NEEDED_STATUS, {
+      'Cache-Control': 'no-store',
+    });
   })
   .put(chunkPath, async (c) => {
     const { groupId, snapshotId, index } = c.req.param();
@@ -135,6 +138,7 @@ export const syncRoutes = new Hono<AppEnv>()
       c.var.deviceId,
       chunk,
       upload,
+      c.env.now,
     );
     return 'error' in result ? refuse(result) : c.json(result);
   })

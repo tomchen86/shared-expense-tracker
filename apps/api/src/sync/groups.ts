@@ -4,6 +4,7 @@ import {
   PAGE_EVENT_LIMIT,
   type EventsPageResponse,
   type GroupRefusal,
+  type SnapshotNeededResponse,
   type UploadEventsRequest,
   type UploadEventsResponse,
 } from '@shared-expense/domain/api';
@@ -147,33 +148,45 @@ export function storeEvents(
   ) as Promise<UploadEventsResponse | GroupRefusal>;
 }
 
+type DownloadResult =
+  EventsPageResponse | SnapshotNeededResponse | EventApiRefusal;
+
 /**
- * Resolves with the page of the group's events after a cursor, and records the cursor
- * and the API's time as the device's progress in the group. A successful download also
- * discards the recipient's snapshot when the cursor reaches its sequence.
+ * Records the requested cursor for both a page and a snapshot-needed answer. Only a
+ * page discards the recipient's snapshot when the cursor reaches its sequence.
  */
 export function readPage(
   sql: Sql,
   download: { groupId: string; deviceId: string; after: number; now: number },
-): Promise<EventsPageResponse | EventApiRefusal> {
+): Promise<DownloadResult> {
   const { groupId, deviceId, after, now } = download;
-  return sql.begin<EventsPageResponse | EventApiRefusal>(
+  return sql.begin<DownloadResult>(
     'isolation level read committed',
     async (tx) => {
-      // Concurrent downloads can share this lock. A snapshot upload must wait until
-      // the cursor and any deletion of its recipient's snapshot have committed.
-      const [member] = await tx<{ reached: boolean }[]>`
-        SELECT g.last_sequence >= ${after}::bigint AS reached
+      // Downloads share the lock. Uploads and cleanup wait until the page, progress
+      // and any deletion of the recipient's snapshot have committed.
+      const [member] = await tx<{ last_sequence: string }[]>`
+        SELECT g.last_sequence
         FROM groups g
         JOIN group_members m ON m.group_id = g.id
         WHERE g.id = ${groupId} AND m.device_id = ${deviceId}
         FOR SHARE OF g`;
       if (!member) return { error: 'not-a-member' };
-      if (!member.reached) return { error: 'request' };
+      if (after > Number(member.last_sequence)) return { error: 'request' };
 
-      // One statement, so the page is the group's events as they were at one moment: with
-      // an event it has every event before it. It reads one event past a full page to tell
-      // whether more follow, and decodes only the contents the page returns.
+      // The cleared prefix ends just before the first retained event, or at the last
+      // assigned number when none remain. Read it after acquiring the group lock.
+      const [progress] = await tx<{ needs_snapshot: boolean }[]>`
+        UPDATE group_members SET progress_cursor = ${after}, progress_at_ms = ${now}
+        WHERE group_id = ${groupId} AND device_id = ${deviceId}
+        RETURNING progress_cursor < (
+          SELECT coalesce(min(sequence) - 1, ${member.last_sequence}::bigint)
+          FROM group_events WHERE group_id = ${groupId}
+        ) AS needs_snapshot`;
+      if (progress.needs_snapshot) return { error: 'snapshot-needed' };
+
+      // Read one event past a full page to tell whether more follow, and decode only
+      // the contents the page returns (SYNC-57.2).
       const page = await tx<
         {
           id: string;
@@ -185,6 +198,10 @@ export function readPage(
           following: number;
         }[]
       >`
+        WITH discarded AS (
+          DELETE FROM group_snapshots
+          WHERE group_id = ${groupId} AND recipient = ${deviceId} AND sequence <= ${after}
+        )
         SELECT id, sequence, device_id, epoch, received_at_ms,
           encode(content, 'hex') AS content, following
         FROM (
@@ -202,14 +219,6 @@ export function readPage(
         ORDER BY sequence
         LIMIT ${PAGE_EVENT_LIMIT}`;
 
-      await tx`
-        WITH discarded AS (
-          DELETE FROM group_snapshots
-          WHERE group_id = ${groupId} AND recipient = ${deviceId} AND sequence <= ${after}
-        )
-        UPDATE group_members
-        SET progress_cursor = ${after}, progress_at_ms = ${now}
-        WHERE group_id = ${groupId} AND device_id = ${deviceId}`;
       return {
         events: page.map((event) => ({
           id: event.id,
@@ -224,5 +233,5 @@ export function readPage(
         more: page.length > 0 && page[0].following > page.length,
       };
     },
-  ) as Promise<EventsPageResponse | EventApiRefusal>;
+  ) as Promise<DownloadResult>;
 }
