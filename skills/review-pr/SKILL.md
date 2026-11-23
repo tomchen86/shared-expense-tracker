@@ -11,7 +11,7 @@ Take one PR at a time through the final stretch (update, check, report, merge). 
 
 ## Spec review
 
-On a draft PR with no `spec/<branch>`, review once, without running tests or waiting for CI: the rules are clear and contradict neither each other nor the issue, each rule has a test that really checks it, and version bumps are complete and collide with no other open PR. Report in one PR comment, what must change first. The implementation review, in this same session, sees the fixes. When a spec author in delegated mode (`skills/delegated-mode/SKILL.md`) asks you to look at them sooner, or at a commit on top of `spec/<branch>`, read what changed since the commit you reviewed, by the same measures, and when nothing must change, write a PR comment that names the commit to publish by its full SHA.
+On a draft PR with no `spec/<branch>`, review once, without running tests or waiting for CI: the rules are clear and contradict neither each other nor the issue, each rule has a test that really checks it, and version bumps are complete and collide with no other open PR. Report in one PR comment, what must change first. The implementation review, in this same session, sees the fixes. When the spec author says it is in delegated mode (`skills/delegated-mode/SKILL.md`), a report with nothing that must change names the commit to publish by its full SHA. When it asks you to look at its fixes sooner, or at a commit on top of `spec/<branch>`, read what changed since the commit you reviewed, by the same measures, and when nothing must change, write a PR comment that names that commit the same way.
 
 ## Checklist
 
