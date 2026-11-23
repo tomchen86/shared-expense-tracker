@@ -226,8 +226,11 @@ async function sends(
 describe('SHARING-192.1', () => {
   test('[SHARING-192.1] rejects requests it cannot open, each by the content it listed, and lists only the one it can', async () => {
     const { invite, taylor, brisbane, code, D } = await danaAsked();
-    const random = await sends(invite, 'Random', () =>
-      toHex(new Uint8Array(randomBytes(297))),
+    // Random bytes behind the format version the phone knows: a ciphertext that does not open.
+    const random = await sends(
+      invite,
+      'Random',
+      () => `01${toHex(new Uint8Array(randomBytes(296)))}`,
     );
     const otherSecret = await sends(invite, 'Other', async (device, phone) =>
       sealedRequest(

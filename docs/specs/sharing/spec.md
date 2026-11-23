@@ -3785,7 +3785,7 @@ IF 列出的一個申請用那個邀請的字串解不開（SHARING-3.1），或
 
 #### Scenario: 解不開的申請
 
-- **WHEN** API 列出三個申請：D 的是 297 個隨機的 bytes；裝置 ID `11111111-1111-4111-8111-111111111111` 的是用別的字串的申請金鑰加密的；`22222222-2222-4222-8222-222222222222` 的是 Dana 替 D 加密的那一份，被搬到這個裝置 ID 底下
+- **WHEN** API 列出三個申請：D 的是 `0x01` 加上 296 個隨機的 bytes，第一個 byte 是這支手機認得的格式版本；裝置 ID `11111111-1111-4111-8111-111111111111` 的是用別的字串的申請金鑰加密的；`22222222-2222-4222-8222-222222222222` 的是 Dana 替 D 加密的那一份，被搬到這個裝置 ID 底下
 - **THEN** 收到的申請是空的，Brisbane 的畫面沒有申請的按鈕；API 收到三個拒絕的請求，各拒絕其中一支手機；沒有跳出提示框
 
 #### Scenario: 內容不對
@@ -3963,7 +3963,7 @@ WHEN API 回答同意好了，the mobile app SHALL 同步這個共同帳本一�
 
 ### Requirement: SHARING-200.2 同意沒成功時說明原因，申請還在
 
-IF 同意沒有做完，THEN the mobile app SHALL 不因此改本機資料，收到的申請還在，並跳出標題是「Unable to Approve」的提示框，訊息依原因：同步、上傳快照或同意的請求沒有得到回應時，「Connect to the internet and try again.」；API 拒絕同意，原因是沒有這個申請時，「This request has already been answered.」，並再列出申請（SHARING-190.1），別的成員處理過了、申請的手機取消了或換了內容都是這樣；原因是成員手機滿了時，「This group is full. A shared group can have up to 20 members.」；同步之後這個申請變成不能同意時，SHARING-194.1 那個原因的那一句；其他情況——同步之後還有待上傳的事件、沒有群組鑰匙、快照太大或存滿了、別的拒絕和看不懂的回應——「Something went wrong. Try again later.」。IF API 拒絕同意，原因是沒有跟上，THEN the mobile app SHALL 不跳出提示框，再同步，再照 SHARING-195.1 在同一個 transaction 裡看一次能不能同意並記下 cursor，用同一份快照和同樣的事件再送同意的請求，`cursor` 是這次記下的；這時不能同意了就不再送，訊息是 SHARING-194.1 那個原因的那一句。一次同意這樣最多再送兩次，第三次還是沒有跟上，就照其他情況。IF API 拒絕同意，原因是需要換鑰匙（SHARING-256.1）或鑰匙世代，THEN the mobile app SHALL 不跳出提示框：原因是鑰匙世代時先拿新的鑰匙（SHARING-278.1），再同步這個共同帳本；這支手機因此替群組換了鑰匙（SHARING-275.1）或拿到了新的鑰匙之後，照 SHARING-195.1 從頭再做一次：再看能不能同意、重新備事件、上傳新的快照、送同意的請求。一次同意這樣最多重來一次；再被這樣拒絕，或同步之後這支手機的鑰匙世代沒有變，就照其他情況。IF 原因是沒有快照，THEN the mobile app SHALL 重新上傳一份快照再送一次，再被拒絕就照其他情況。
+IF 同意沒有做完，THEN the mobile app SHALL 不因此改本機資料，收到的申請還在，並跳出標題是「Unable to Approve」的提示框，訊息依原因：同步、上傳快照或同意的請求沒有得到回應時，「Connect to the internet and try again.」；API 拒絕同意，原因是沒有這個申請時，「This request has already been answered.」，並再列出申請（SHARING-190.1），別的成員處理過了、申請的手機取消了或換了內容都是這樣；原因是成員手機滿了時，「This group is full. A shared group can have up to 20 members.」；同步之後這支手機已經沒有那個申請的邀請時——同步帶來了撤回，或它照校正後的時間到期了——不上傳快照也不送同意，訊息是「This request has already been answered.」，並再列出申請（SHARING-190.1），所以它不再是收到的申請：邀請不再有效時 API 不再存著它的申請（SHARING-174.1）；同步之後這個申請變成不能同意時，SHARING-194.1 那個原因的那一句；其他情況——同步之後還有待上傳的事件、沒有群組鑰匙、快照太大或存滿了、別的拒絕和看不懂的回應——「Something went wrong. Try again later.」。IF API 拒絕同意，原因是沒有跟上，THEN the mobile app SHALL 不跳出提示框，再同步，再照 SHARING-195.1 在同一個 transaction 裡看一次能不能同意並記下 cursor，用同一份快照和同樣的事件再送同意的請求，`cursor` 是這次記下的；這時不能同意了就不再送，訊息是 SHARING-194.1 那個原因的那一句。一次同意這樣最多再送兩次，第三次還是沒有跟上，就照其他情況。IF API 拒絕同意，原因是需要換鑰匙（SHARING-256.1）或鑰匙世代，THEN the mobile app SHALL 不跳出提示框：原因是鑰匙世代時先拿新的鑰匙（SHARING-278.1），再同步這個共同帳本；這支手機因此替群組換了鑰匙（SHARING-275.1）或拿到了新的鑰匙之後，照 SHARING-195.1 從頭再做一次：再看能不能同意、重新備事件、上傳新的快照、送同意的請求。一次同意這樣最多重來一次；再被這樣拒絕，或同步之後這支手機的鑰匙世代沒有變，就照其他情況。IF 原因是沒有快照，THEN the mobile app SHALL 重新上傳一份快照再送一次，再被拒絕就照其他情況。
 
 #### Scenario: 沒有網路
 
@@ -3984,6 +3984,11 @@ IF 同意沒有做完，THEN the mobile app SHALL 不因此改本機資料，收
 
 - **WHEN** Dana 申請當 Casey；按「Approve」之後的那次同步，下載到代表 Casey 的別支手機的名冊紀錄
 - **THEN** API 沒有收到快照的分塊和同意的請求；訊息是「Casey has already joined from another phone. This request can't be approved.」
+
+#### Scenario: 同步之後邀請已經被撤回
+
+- **WHEN** Dana 申請當新成員；別支手機撤回了邀請，Taylor 的手機還沒同步到；在 Dana 的選單按「Approve」
+- **THEN** API 沒有收到快照的分塊和同意的請求；跳出「Unable to Approve」，訊息是「This request has already been answered.」；Members 沒有申請那一區
 
 #### Scenario: 沒有跟上時再同步、再送
 
@@ -4166,7 +4171,7 @@ WHEN API 回答 `{"state":"waiting"}`，the mobile app SHALL 把還沒送出的�
 
 ### Requirement: SHARING-212.1 申請不合名片時請使用者重選
 
-IF 問結果時讀到的名片上，申請選的成員已經有手機，或不在名片上；或申請要當新成員，而名片上有 20 位以上的成員，或有成員和申請的名字同名，THEN the mobile app SHALL 把申請記成要重選的：成員的手機不會同意這樣的申請（SHARING-194.1）。申請又合名片時，要重選的申請回到等待同意。Join Group 為要重選的申請顯示時，SHALL 是 SHARING-125.1 到 SHARING-129.1 的表單，照那張名片顯示，名字欄位帶入申請的名字，預設選的那一列照 SHARING-126.1 用申請的名字決定，另外最上面多一句「Choose again. Your earlier choice is no longer available.」，「Send Request」下面有「Cancel Request」（SHARING-142.1）；按「Send Request」是用表單上的名字和選擇再送一次這個申請（SHARING-134.1），API 換掉原本的內容（SHARING-113.1），送出了就回到等待同意。
+IF 問結果時讀到的名片上，申請選的成員已經有手機，或不在名片上；或申請要當新成員，而名片上有 20 位以上的成員，或有成員和申請的名字同名，THEN the mobile app SHALL 把申請記成要重選的：成員的手機不會同意這樣的申請（SHARING-194.1）。申請又合名片時，要重選的申請回到等待同意。Join Group 為要重選的申請顯示時，SHALL 是 SHARING-125.1 到 SHARING-129.1 的表單，照那張名片顯示，名字欄位帶入申請的名字，預設選的那一列照 SHARING-126.1 用申請的名字決定，另外最上面多一句「Choose again. Your earlier choice is no longer available.」，「Send Request」下面有「Cancel Request」（SHARING-142.1）。那張名片是這次 app 執行期間問結果時讀到的，不存進本機資料：為要重選的申請打開 Join Group 時還沒有它——例如重新啟動之後——就先問結果（SHARING-210.1），這段時間的內容只有「Loading invite…」，讀到名片才顯示表單；問結果或讀邀請沒有得到回應時，顯示「Connect to the internet to join this group.」和「Try Again」，得到看不懂的回應時顯示「Something went wrong. Try again later.」和「Try Again」（SHARING-133.1 的樣子），按「Try Again」再問一次，申請不變。按「Send Request」是用表單上的名字和選擇再送一次這個申請（SHARING-134.1），API 換掉原本的內容（SHARING-113.1）；API 回答申請送出了，才把本機資料的申請換成表單上的名字和選擇，回到等待同意。IF 這次送出沒有結果（SHARING-139.2 的那幾種情況），THEN the mobile app SHALL 讓本機資料的申請不變，仍是要重選的、原本的名字和選擇：API 存著的可能還是原本那一份，把本機的換成新的，下次 API 說還在等時，這支手機會以為新的選擇送出了。這時 Join Group 照 SHARING-139.2 顯示「Your request hasn't been sent.」、那一句原因、「Try Again」和「Cancel Request」，按「Try Again」再送表單上的那一份；卡片仍是「Choose again」，關閉再打開是要重選的表單。
 
 #### Scenario: 選的成員被別人選走
 
@@ -4187,6 +4192,16 @@ IF 問結果時讀到的名片上，申請選的成員已經有手機，或不�
 
 - **WHEN** 送出的申請要當新成員；之後名片上有 20 位成員，其中兩位沒有手機
 - **THEN** 表單沒有「New Member」，成員的下面是「A shared group can have up to 20 members. You can join as one of the members above.」（SHARING-129.1）
+
+#### Scenario: 重新啟動之後沒有名片
+
+- **WHEN** 申請是要重選的；手機沒有網路，重新啟動 app，按那張卡片；之後有網路，按「Try Again」
+- **THEN** 先是 Join Group 的內容只有「Connect to the internet to join this group.」和「Try Again」，卡片仍是「Choose again」；按了之後是要重選的表單，最上面是「Choose again. Your earlier choice is no longer available.」
+
+#### Scenario: 重選之後送不出去
+
+- **WHEN** 送出的申請選了 Casey，現在是要重選的；在表單按「Blake」，手機沒有網路，按「Send Request」；之後有網路，按「Try Again」
+- **THEN** 先是 Join Group 由上而下是「Your request hasn't been sent.」、「Connect to the internet and try again.」、「Try Again」和「Cancel Request」，卡片仍是「Choose again」，本機資料的申請選的仍是 Casey；按了之後 API 收到的申請選的是 Blake，Join Group 顯示「Waiting for Approval」，本機資料的申請選的是 Blake
 
 #### Scenario: 又合了
 
