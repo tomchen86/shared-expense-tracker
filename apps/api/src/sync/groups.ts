@@ -178,14 +178,9 @@ type DownloadResult =
 const SNAPSHOT_REQUEST_WINDOW_MS = 30 * 24 * 60 * 60 * 1_000;
 
 /**
-<<<<<<< HEAD
- * Records the requested cursor for both a page and a snapshot-needed answer. Only a
- * page discards the recipient's snapshot when the cursor reaches its sequence, and the
- * handover the device was approved with: it has its snapshot in by now (SHARING-185.1).
-=======
  * Records the requested cursor and whether the device is waiting for a snapshot.
- * A page discards the recipient's snapshot when the cursor reaches its sequence.
->>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
+ * A page discards the recipient's snapshot when the cursor reaches its sequence, and the
+ * handover the device was approved with: it has its snapshot in by now (SHARING-185.1).
  */
 export function readPage(
   sql: Sql,

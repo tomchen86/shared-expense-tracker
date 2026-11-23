@@ -62,23 +62,14 @@ module.exports = {
     './packages/domain/src/sync/duplicates.ts': { branches: 91.66 },
     './apps/mobile/src/sync/duplicates.ts': { branches: 100 },
     './apps/mobile/src/ledger/expense-card.tsx': { branches: 87.5 },
-<<<<<<< HEAD
-    // The phone's sync with the API (ADR-0027): the loop, the check of unsent stamps, and
-    // what starts a sync and shows its notices. Measured with the tests against the API
-    // (`*-api.test.*`), which need Docker.
-    './apps/mobile/src/sync/loop.ts': { branches: 98.21 },
-    './apps/mobile/src/sync/stamps.ts': { branches: 96.42 },
-    './apps/mobile/src/sync/use-sync-notices.ts': { branches: 87.5 },
-=======
     // The phone's sync with the API (ADR-0027): the loop, what its requests share, its
     // tables, the check of unsent stamps, and what starts a sync and shows its notices.
     // Measured with the tests against the API (`*-api.test.*`), which need Docker.
-    './apps/mobile/src/sync/loop.ts': { branches: 98.59 },
+    './apps/mobile/src/sync/loop.ts': { branches: 98.61 },
     './apps/mobile/src/sync/transport.ts': { branches: 100 },
     './apps/mobile/src/sync/migrations.ts': { branches: 100 },
-    './apps/mobile/src/sync/stamps.ts': { branches: 96 },
-    './apps/mobile/src/sync/use-sync-notices.ts': { branches: 75 },
->>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
+    './apps/mobile/src/sync/stamps.ts': { branches: 96.42 },
+    './apps/mobile/src/sync/use-sync-notices.ts': { branches: 87.5 },
     './apps/mobile/src/sync/use-sync-triggers.ts': { branches: 93.75 },
     // No acceptance test decodes a character that is cut short; utf8.test.ts reaches every branch.
     './apps/mobile/src/sync/utf8.ts': { branches: 95.83 },
@@ -144,19 +135,14 @@ module.exports = {
     './packages/domain/src/api/group-snapshots.ts': { branches: 100 },
     './packages/domain/src/sync/snapshot.ts': { branches: 100 },
     './apps/api/src/sync/snapshots.ts': { branches: 100 },
-<<<<<<< HEAD
-    './apps/mobile/src/sync/snapshot-ledger.ts': { branches: 97.43 },
-    './apps/mobile/src/sync/snapshots.ts': { branches: 98.59 },
+    './apps/mobile/src/sync/snapshot-ledger.ts': { branches: 97.67 },
+    './apps/mobile/src/sync/snapshots.ts': { branches: 98.83 },
     // A phone's own event that no phone applies (ADR-0043): what keeps the result of what
     // it has received, takes the refused event back and keeps the notices, and the sheet
     // that lists them. No acceptance test dismisses a notice that is gone already.
     './apps/mobile/src/sync/undo-refused.ts': { branches: 85.48 },
     './apps/mobile/src/sync/unapplied.ts': { branches: 50 },
     './apps/mobile/src/groups/unapplied-screen.tsx': { branches: 92.53 },
-=======
-    './apps/mobile/src/sync/snapshot-ledger.ts': { branches: 97.56 },
-    './apps/mobile/src/sync/snapshots.ts': { branches: 98.71 },
->>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
   },
   testTimeout: 15000,
 };

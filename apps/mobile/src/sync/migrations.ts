@@ -7,12 +7,9 @@ export const syncMigration = `
   CREATE TABLE sync_groups (
     groupId TEXT PRIMARY KEY NOT NULL REFERENCES groups(id),
     device TEXT NOT NULL,
-<<<<<<< HEAD
-    ownMemberId TEXT
-=======
+    ownMemberId TEXT,
     waitsForSnapshot INTEGER NOT NULL DEFAULT 0 CHECK (waitsForSnapshot IN (0, 1)),
     snapshotNeedingUpdate TEXT
->>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
   );
   CREATE TABLE sync_clock (
     singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
@@ -94,7 +91,6 @@ export const inviteMigration = `
   );
 `;
 
-<<<<<<< HEAD
 export const unappliedChangesMigration = `
   CREATE TABLE sync_received (
     groupId TEXT NOT NULL,
@@ -109,12 +105,13 @@ export const unappliedChangesMigration = `
   CREATE TABLE sync_unapplied (
     refusal INTEGER PRIMARY KEY REFERENCES sync_refusals(position) ON DELETE CASCADE,
     dismissed INTEGER NOT NULL DEFAULT 0 CHECK (dismissed IN (0, 1))
-=======
+  );
+`;
+
 /** A confirmed outbox row is held until its page arrives, or queued again at resendPosition. */
 export const syncUploadedEventsMigration = `
   CREATE TABLE sync_uploaded_events (
     eventId TEXT PRIMARY KEY NOT NULL REFERENCES sync_outbox(id) ON DELETE CASCADE,
     resendPosition INTEGER
->>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
   );
 `;

@@ -218,7 +218,6 @@ export async function uploadSnapshot(
   }
 }
 
-<<<<<<< HEAD
 /** The result as the callers that do not tell a missing answer from another failure get it. */
 function withoutNoAnswer<Result extends { outcome: string }>(
   result: Result | NoAnswer,
@@ -253,30 +252,6 @@ export interface Joining {
   alsoIn: (tx: SqlExecutor) => Promise<void>;
 }
 
-async function downloadAndImport(
-  database: Database,
-  group: { apiUrl: string; groupId: string },
-  joining?: Joining,
-): Promise<TakeSnapshotResult | NoAnswer> {
-  const { groupId, apiUrl } = group;
-  const get = (path: string) =>
-    request(database, {
-      apiUrl,
-      path,
-      method: 'GET',
-    });
-  const asked = await get(`/groups/${groupId}/snapshot`);
-  if (!asked) return { outcome: 'no-answer' };
-  if (
-    asked.status === SNAPSHOT_REFUSAL_STATUS['no-snapshot'] &&
-    isSnapshotRefusal(asked.body) &&
-    asked.body.error === 'no-snapshot'
-  )
-    return { outcome: 'none' };
-  if (asked.status !== 200 || !isSnapshotResponse(asked.body))
-    return { outcome: 'failed' };
-  const envelope = { groupId, ...asked.body };
-=======
 interface SnapshotGroup {
   apiUrl: string;
   groupId: string;
@@ -289,8 +264,8 @@ async function takeAtSequence(
   tx: SqlExecutor,
   group: SnapshotGroup,
   sequence: number,
-  take: () => Promise<TakeSnapshotResult>,
-): Promise<TakeSnapshotResult> {
+  take: () => Promise<TakeSnapshotResult | NoAnswer>,
+): Promise<TakeSnapshotResult | NoAnswer> {
   if (group.catchUp) {
     const behind = await tx.all(
       'SELECT 1 FROM sync_groups WHERE groupId = ? AND cursor < ?',
@@ -305,26 +280,21 @@ async function downloadChunks(
   database: Database,
   group: SnapshotGroup,
   envelope: Envelope,
-): Promise<TakeSnapshotResult> {
+  joining?: Joining,
+): Promise<TakeSnapshotResult | NoAnswer> {
   const { apiUrl, groupId } = group;
->>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
   const key = await readGroupKey(groupId, envelope.epoch);
   if (!key) return { outcome: 'no-key' };
 
   const pieces: Uint8Array[] = [];
   for (let index = 0; index < envelope.count; index++) {
-<<<<<<< HEAD
-    const answer = await get(chunkPath(envelope, index));
-    if (!answer) return { outcome: 'no-answer' };
-    if (answer.status !== 200 || !isSnapshotChunkResponse(answer.body))
-=======
     const answer = await request(database, {
       apiUrl,
       method: 'GET',
       path: chunkPath(envelope, index),
     });
-    if (answer?.status !== 200 || !isSnapshotChunkResponse(answer.body))
->>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
+    if (!answer) return { outcome: 'no-answer' };
+    if (answer.status !== 200 || !isSnapshotChunkResponse(answer.body))
       return { outcome: 'failed' };
     const opened = decrypt({
       key,
@@ -348,22 +318,12 @@ async function downloadChunks(
     joining?.accepts(verdict.snapshot) === false
   )
     return { outcome: 'unusable' };
-<<<<<<< HEAD
-  const imported = await database.transaction(async (tx) => {
-    const taken = await importSnapshot(tx, verdict.snapshot, envelope.epoch);
-    if (taken) await joining?.alsoIn(tx);
-    return taken;
-  });
-  if (!imported) return { outcome: 'unusable' };
-  notifyApplied(database, groupId);
-  return { outcome: 'imported' };
-=======
   const result = await database.transaction((tx) =>
-    takeAtSequence(tx, group, verdict.snapshot.sequence, async () => ({
-      outcome: (await importSnapshot(tx, verdict.snapshot, envelope.epoch))
-        ? 'imported'
-        : 'unusable',
-    })),
+    takeAtSequence(tx, group, verdict.snapshot.sequence, async () => {
+      const taken = await importSnapshot(tx, verdict.snapshot, envelope.epoch);
+      if (taken) await joining?.alsoIn(tx);
+      return { outcome: taken ? 'imported' : 'unusable' };
+    }),
   );
   if (result.outcome === 'imported') notifyApplied(database, groupId);
   return result;
@@ -372,21 +332,24 @@ async function downloadChunks(
 async function downloadAndImport(
   database: Database,
   group: SnapshotGroup,
-): Promise<TakeSnapshotResult> {
+  joining?: Joining,
+): Promise<TakeSnapshotResult | NoAnswer> {
   const { apiUrl, groupId } = group;
   const asked = await request(database, {
     apiUrl,
     path: `/groups/${groupId}/snapshot`,
     method: 'GET',
   });
-  if (!asked) return { outcome: 'failed' };
+  if (!asked) return { outcome: 'no-answer' };
   let snapshotId: string | null = null;
-  let result: TakeSnapshotResult;
+  let result: TakeSnapshotResult | NoAnswer;
   if (asked.status === 200 && isSnapshotResponse(asked.body)) {
     const envelope = { groupId, ...asked.body };
     snapshotId = envelope.snapshotId;
     result = await takeAtSequence(database, group, envelope.sequence, () =>
-      downloadChunks(database, group, envelope).catch(reportKeyReadError),
+      downloadChunks(database, group, envelope, joining).catch(
+        reportKeyReadError,
+      ),
     );
   } else if (
     asked.status === SNAPSHOT_REFUSAL_STATUS['no-snapshot'] &&
@@ -402,7 +365,10 @@ async function downloadAndImport(
     // An unanswered lookup leaves the previous notice alone. If a chunk could not
     // be read, preserve a known update requirement only for that same snapshot.
     const needsUpdate = result.outcome === 'update-needed' ? snapshotId : null;
-    const unread = result.outcome === 'failed' || result.outcome === 'no-key';
+    const unread =
+      result.outcome === 'failed' ||
+      result.outcome === 'no-answer' ||
+      result.outcome === 'no-key';
     const { changes } = await database.run(
       `UPDATE sync_groups SET snapshotNeedingUpdate = ?
        WHERE groupId = ? AND waitsForSnapshot = 1 AND snapshotNeedingUpdate IS NOT ?
@@ -412,7 +378,6 @@ async function downloadAndImport(
     if (changes) notifyApplied(database, groupId);
   }
   return result;
->>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
 }
 
 /**
@@ -421,7 +386,7 @@ async function downloadAndImport(
  */
 export function fetchSnapshot(
   database: Database,
-  group: { apiUrl: string; groupId: string },
+  group: SnapshotGroup,
   joining?: Joining,
 ): Promise<TakeSnapshotResult | NoAnswer> {
   return downloadAndImport(database, group, joining).catch(reportKeyReadError);

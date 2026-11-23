@@ -10,12 +10,9 @@ import type { SqlExecutor, SqlValue } from '../storage';
 import { renameOwnMoney } from './own-money';
 import { orderSyncedRows } from './positions';
 import {
-<<<<<<< HEAD
-  latestStamp,
-=======
   CONFIRMED_EVENT_IDS,
   UNSENT_EVENTS,
->>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
+  latestStamp,
   readSyncRecord,
   saveLatestStamp,
   storeSyncRecord,
