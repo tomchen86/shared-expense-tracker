@@ -1,5 +1,6 @@
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import {
   formatCurrency,
   type Share,
@@ -12,7 +13,7 @@ import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
 import { participantName } from './expense-card';
 import { keepCurrentMoney, restoreOwnMoney } from './review';
-import { REPLACED, ReviewIcon } from './review-mark';
+import { POSSIBLE_DUPLICATE, REPLACED, ReviewIcon } from './review-mark';
 import type { ExpenseView } from './use-expenses';
 
 /**
@@ -27,10 +28,8 @@ export function ReviewBlock({
   expense: ExpenseView;
   yours: SyncMoney;
 }) {
-  const colors = useThemeColors();
   const locale = useDisplayLocale();
   const database = useLocalDatabase();
-  const { userId } = useLocalIdentity();
   const archived = expense.group?.archived === true;
   // A press while a choice is being saved does nothing (LEDGER-153.1, LEDGER-154.1).
   const saving = useRef(false);
@@ -41,48 +40,146 @@ export function ReviewBlock({
     if (saving.current) return;
     saving.current = true;
     try {
-      await save(database, expense.id);
-    } catch {
-      Alert.alert(
-        'Unable to Save Expense',
-        'Your expense could not be saved. Please try again.',
-      );
+      await saveReviewChoice(() => save(database, expense.id));
     } finally {
       saving.current = false;
     }
   }
 
-  const names = (shares: readonly Share<string>[]) =>
-    shares
+  const side = (heading: string, money: SyncMoney) => (
+    <ReviewSide
+      heading={heading}
+      expense={expense}
+      money={money}
+      summary={formatCurrency(money.amountMinor, money.currency, locale)}
+    />
+  );
+  return (
+    <ReviewPanel
+      title={REPLACED}
+      explanation="This expense was changed on another phone before your change reached it. Choose which version to keep."
+    >
+      {side('CURRENT', expense)}
+      {side('YOURS', yours)}
+      <ReviewAction
+        label="Keep Current"
+        onPress={() => void choose(keepCurrentMoney)}
+      />
+      <ReviewAction
+        label="Use Mine"
+        disabled={archived}
+        onPress={() => void choose(restoreOwnMoney)}
+      />
+    </ReviewPanel>
+  );
+}
+
+export function DuplicateBlock({
+  other,
+  archived,
+  onDistinct,
+  onDelete,
+}: {
+  other: ExpenseView;
+  archived: boolean;
+  onDistinct: () => Promise<void>;
+  onDelete: () => void;
+}) {
+  return (
+    <ReviewPanel
+      title={POSSIBLE_DUPLICATE}
+      explanation="Another expense in this group has the same amount and date. If they are the same expense, delete one of them."
+    >
+      <ReviewSide
+        heading="OTHER EXPENSE"
+        expense={other}
+        money={other}
+        summary={other.title}
+      />
+      <ReviewAction
+        label="View Other Expense"
+        onPress={() =>
+          router.navigate({ pathname: './[id]', params: { id: other.id } })
+        }
+      />
+      <ReviewAction
+        label="Not a Duplicate"
+        disabled={archived}
+        onPress={() => void saveReviewChoice(onDistinct)}
+      />
+      <ReviewAction
+        label="Delete This Expense"
+        destructive
+        disabled={archived}
+        onPress={onDelete}
+      />
+    </ReviewPanel>
+  );
+}
+
+async function saveReviewChoice(save: () => Promise<void>) {
+  try {
+    await save();
+  } catch {
+    Alert.alert(
+      'Unable to Save Expense',
+      'Your expense could not be saved. Please try again.',
+    );
+  }
+}
+
+function ReviewSide({
+  heading,
+  expense,
+  money,
+  summary,
+}: {
+  heading: string;
+  expense: ExpenseView;
+  money: SyncMoney;
+  summary: string;
+}) {
+  const colors = useThemeColors();
+  const { userId } = useLocalIdentity();
+  const names = (allocations: readonly Share<string>[]) =>
+    allocations
       .map(({ participant }) => participantName(expense, participant, userId))
       .join(', ');
-  const side = (heading: string, money: SyncMoney) => (
+  return (
     <View style={[styles.side, { borderTopColor: colors.separator }]}>
       <Text style={[styles.heading, { color: colors.textMuted }]}>
         {heading}
       </Text>
-      <Text style={[styles.amount, { color: colors.text }]}>
-        {formatCurrency(money.amountMinor, money.currency, locale)}
-      </Text>
-      <Text style={[styles.people, { color: colors.textMuted }]}>
-        {`Paid by ${names(money.payments)}`}
-      </Text>
-      <Text style={[styles.people, { color: colors.textMuted }]}>
-        {`Split between ${names(money.shares)}`}
-      </Text>
+      <Text style={[styles.amount, { color: colors.text }]}>{summary}</Text>
+      <Text
+        style={[styles.people, { color: colors.textMuted }]}
+      >{`Paid by ${names(money.payments)}`}</Text>
+      <Text
+        style={[styles.people, { color: colors.textMuted }]}
+      >{`Split between ${names(money.shares)}`}</Text>
     </View>
   );
-  const button = (
-    label: string,
-    save: Parameters<typeof choose>[0],
-    disabled = false,
-  ) => (
+}
+
+function ReviewAction({
+  label,
+  onPress,
+  disabled = false,
+  destructive = false,
+}: {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  destructive?: boolean;
+}) {
+  const colors = useThemeColors();
+  return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
       disabled={disabled}
-      onPress={() => void choose(save)}
+      onPress={onPress}
       style={({ pressed }) => [
         styles.button,
         { borderTopColor: colors.separator },
@@ -92,32 +189,45 @@ export function ReviewBlock({
       <Text
         style={[
           styles.buttonText,
-          { color: disabled ? colors.placeholder : colors.accent },
+          {
+            color: disabled
+              ? colors.placeholder
+              : destructive
+                ? colors.error
+                : colors.accent,
+          },
         ]}
       >
         {label}
       </Text>
     </Pressable>
   );
+}
 
+function ReviewPanel({
+  title,
+  explanation,
+  children,
+}: {
+  title: string;
+  explanation: string;
+  children: ReactNode;
+}) {
+  const colors = useThemeColors();
   return (
     <GroupedSection style={styles.block}>
       <View style={styles.top}>
         <View style={styles.title}>
           <ReviewIcon size={20} />
           <Text style={[styles.titleText, { color: colors.text }]}>
-            {REPLACED}
+            {title}
           </Text>
         </View>
         <Text style={[styles.explanation, { color: colors.textMuted }]}>
-          This expense was changed on another phone before your change reached
-          it. Choose which version to keep.
+          {explanation}
         </Text>
       </View>
-      {side('CURRENT', expense)}
-      {side('YOURS', yours)}
-      {button('Keep Current', keepCurrentMoney)}
-      {button('Use Mine', restoreOwnMoney, archived)}
+      {children}
     </GroupedSection>
   );
 }

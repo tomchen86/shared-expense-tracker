@@ -65,7 +65,7 @@ jest.mock('expo-symbols', () => ({
 
 eachTestGetsAPhone('sync-conflict-android-');
 
-test('[LEDGER-151.1] [LEDGER-152.1] [GROUPS-107.1] draws the mark with the Material warning symbol on Android: on the card, on the number to review and on the details', async () => {
+test('[LEDGER-151.1] [LEDGER-152.1] [GROUPS-107.2] draws the mark with the Material warning symbol on Android: on the card, on the number to review and on the details', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();

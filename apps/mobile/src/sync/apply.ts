@@ -73,6 +73,8 @@ export async function canMergeInGroup(
   event: Pick<SyncEvent, 'type' | 'id'>,
 ) {
   if (event.type === 'group') return event.id === groupId;
+  // A distinct record lives entirely under its ledger's key in sync_records.
+  if (event.type === 'distinct') return true;
   const [table, owner] = recordOwners[event.type];
   // Partial records and tombstones can belong to another group even without a visible row.
   const foreign = await tx.all(
@@ -135,10 +137,13 @@ export async function applyReceivedEvents(
       (previous.seeded || compareSyncStamps(previous.created, event.stamp) <= 0)
         ? previous.created
         : event.stamp;
-    await storeSyncRecord(tx, groupId, record, created);
+    const { changes } = await storeSyncRecord(tx, groupId, record, created);
     if (record.type === 'member' || record.type === 'category')
       toOrder.add(record.type);
     switch (record.type) {
+      case 'distinct':
+        if (changes > 0) visibleChange = true;
+        break;
       case 'invite':
         if (await applyMergedInvite(tx, groupId, record)) visibleChange = true;
         break;
@@ -159,6 +164,8 @@ export async function applyReceivedEvents(
           visibleChange = true;
         break;
       case 'expense':
+        // An earlier event may change who recorded the expense without winning a unit.
+        if (previous && created !== previous.created) visibleChange = true;
         if (await markIfOverridden(tx, event)) visibleChange = true;
         if (
           await applyMergedExpense(
