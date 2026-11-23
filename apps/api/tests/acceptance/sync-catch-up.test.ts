@@ -24,6 +24,7 @@ import {
   eventsPath,
   expectCreated,
   expectUploaded,
+  rowsHolding,
   upload,
   useSyncApi,
 } from './sync-api';
@@ -35,16 +36,20 @@ import {
   store,
 } from './sync-cleanup-api';
 import {
+  NO_SNAPSHOT,
+  ask,
+  expectSnapshotRefused,
   expectStored,
+  expectWaiting,
   snapshotOf,
   uploadAll,
   uploadChunk,
 } from './sync-snapshot-api';
 
 // How a phone that is behind its group's cleared events gets a snapshot (ADR-0034): the
-// API remembers which member devices it told that they need one, and names them to every
-// member device that gets a page, in a header of that page's answer, until the group
-// stores a snapshot such a device can go on from.
+// API remembers which member devices it told that they need one, or that it stores none
+// for them, and names them to every member device that gets a page, in a header of that
+// page's answer, until the group stores a snapshot such a device can go on from.
 
 useSyncApi();
 
@@ -326,5 +331,76 @@ describe('SYNC-162.1', () => {
     expect(await headerOf(sign(`${eventsPath(BRISBANE)}?after=99`))).toBeNull();
     // The page that follows does: the header is the page's alone.
     expect((await downloadFrom(taylor, 5)).neededBy).toBe(casey.deviceId);
+  });
+
+  // A member device that does not hold the ledger yet downloads no events, so it is never
+  // told that it needs a snapshot: it waits from the answer that there is none for it.
+  test('[SYNC-162.1] with [SYNC-108.2] a member device told that the group stores no snapshot for it waits too, until it gets a page', async () => {
+    const [taylor, casey] = await bothInBrisbane();
+    await store(taylor, 3);
+    expectPageNaming(await downloadFrom(taylor, 3), null);
+
+    expectSnapshotRefused(await ask(casey, BRISBANE), NO_SNAPSHOT);
+
+    expectPageNaming(await downloadFrom(taylor, 3), casey.deviceId);
+    expect((await downloadFrom(casey, 3)).status).toBe(200);
+    expectPageNaming(await downloadFrom(taylor, 3), null);
+  });
+
+  test('[SYNC-162.1] with [SYNC-108.2] a device told of a snapshot for it does not wait, also once that snapshot is replaced', async () => {
+    const [taylor, casey] = await bothInBrisbane();
+    await store(taylor, 3);
+    const s = snapshotOf(taylor, casey, { sequence: 3 });
+    await uploadAll(BRISBANE, s);
+
+    expectWaiting(await ask(casey, BRISBANE), s);
+    // Another snapshot for it begins and replaces S: the group stores no complete one now.
+    const s2 = snapshotOf(taylor, casey, { sequence: 3 });
+    expectStored(await uploadChunk(BRISBANE, s2, 0), s2, 0);
+
+    expectPageNaming(await downloadFrom(taylor, 3), null);
+
+    // It waits once it asks and is told there is none.
+    expectSnapshotRefused(await ask(casey, BRISBANE), NO_SNAPSHOT);
+    expectPageNaming(await downloadFrom(taylor, 3), casey.deviceId);
+  });
+
+  test('[SYNC-162.1] with [SYNC-108.2] devices told there is no snapshot are named by the time each was last told, for 30 days', async () => {
+    const [taylor, casey] = await bothInBrisbane();
+    const other = await registered();
+    await addMember(BRISBANE, other);
+    const both = `${casey.deviceId},${other.deviceId}`;
+
+    setTime(T + 1_000);
+    expectSnapshotRefused(await ask(casey, BRISBANE), NO_SNAPSHOT);
+    setTime(T + 2_000);
+    expectSnapshotRefused(await ask(other, BRISBANE), NO_SNAPSHOT);
+
+    expectPageNaming(await downloadFrom(taylor, 0), both);
+    setTime(T + THIRTY_DAYS + 1_000);
+    expectPageNaming(await downloadFrom(taylor, 0), both);
+    setTime(T + THIRTY_DAYS + 1_001);
+    expectPageNaming(await downloadFrom(taylor, 0), other.deviceId);
+
+    // Told again, Casey's phone is named again, now as the later of the two.
+    expectSnapshotRefused(await ask(casey, BRISBANE), NO_SNAPSHOT);
+    expectPageNaming(
+      await downloadFrom(taylor, 0),
+      `${other.deviceId},${casey.deviceId}`,
+    );
+  });
+
+  test('[SYNC-162.1] with [SYNC-108.2] the answer that there is no snapshot leaves the device’s progress as it was', async () => {
+    const [taylor, casey] = await bothInBrisbane();
+    await store(taylor, 3);
+    setTime(T + 1_000);
+    expect((await downloadFrom(casey, 2)).status).toBe(200);
+
+    setTime(T + 2_000);
+    expectSnapshotRefused(await ask(casey, BRISBANE), NO_SNAPSHOT);
+
+    expect(await rowsHolding(BRISBANE, casey.deviceId, 2, T + 1_000)).toBe(1);
+    // And it waits from that answer: the page it got before does not undo it.
+    expectPageNaming(await downloadFrom(taylor, 3), casey.deviceId);
   });
 });
