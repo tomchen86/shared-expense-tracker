@@ -29,6 +29,7 @@ import {
 } from './apply';
 import { checkUnsentStamps, recheckStamps, takeUploadedStamps } from './stamps';
 import { utf8Text } from './utf8';
+import { countGroupUnapplied } from './unapplied';
 
 // A phone's sync of one shared ledger with the API (ADR-0027): it downloads page by page
 // from its cursor, judging and merging what it can decrypt, then uploads its unsent
@@ -252,7 +253,7 @@ async function storePage(
   return stopped || ended ? 'upload' : 'next page';
 }
 
-/** Downloads from the cursor until no events follow (SYNC-69.1). Resolves with whether the sync goes on to upload. */
+/** Downloads from the cursor until no events follow (SYNC-69.2). Resolves with whether the sync goes on to upload. */
 async function download(
   database: Database,
   apiUrl: string,
@@ -528,18 +529,19 @@ export async function saveGroupKey(
 }
 
 /** The lines the screen of the group shows under its title about its sync, top to bottom. */
-export async function readSyncNotices(
-  database: SqlExecutor,
-  groupId: string,
-): Promise<string[]> {
-  const ledgers = await database.all<{
-    waitsForUpdate: number;
-    groupFull: number;
-  }>('SELECT waitsForUpdate, groupFull FROM sync_groups WHERE groupId = ?', [
-    groupId,
+export async function readSyncNotices(database: SqlExecutor, groupId: string) {
+  const [ledgers, unapplied] = await Promise.all([
+    database.all<{ waitsForUpdate: number; groupFull: number }>(
+      'SELECT waitsForUpdate, groupFull FROM sync_groups WHERE groupId = ?',
+      [groupId],
+    ),
+    countGroupUnapplied(database, groupId),
   ]);
-  return ledgers.flatMap(({ waitsForUpdate, groupFull }) => [
-    ...(waitsForUpdate ? [UPDATE_NOTICE] : []),
-    ...(groupFull ? [FULL_NOTICE] : []),
-  ]);
+  return {
+    lines: ledgers.flatMap(({ waitsForUpdate, groupFull }) => [
+      ...(waitsForUpdate ? [UPDATE_NOTICE] : []),
+      ...(groupFull ? [FULL_NOTICE] : []),
+    ]),
+    unapplied,
+  };
 }

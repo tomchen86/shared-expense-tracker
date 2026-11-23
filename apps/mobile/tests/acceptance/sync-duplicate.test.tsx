@@ -80,6 +80,7 @@ import {
   expectUnsentAreValid,
   expenseTitled,
   groupId,
+  merged,
   receive,
   receiveEvents,
   refused,
@@ -475,7 +476,7 @@ test('[SYNC-202.1] pairs no expense of a shared ledger with an expense of anothe
 test('[SYNC-202.1] changes nothing when the same events arrive again, its own among them', async () => {
   const { brisbane, created } = await withSupper();
   await expectDuplicates('Brisbane', ['Supper']);
-  const before = everything();
+  const before = await merged();
   const own = await unsent();
 
   await receiveEvents(
@@ -484,7 +485,7 @@ test('[SYNC-202.1] changes nothing when the same events arrive again, its own am
     ...own.map((event) => relayed(event.content, { id: event.id })),
   );
 
-  expect(everything()).toEqual(before);
+  expect(await merged()).toEqual(before);
   await expectDuplicates('Brisbane', ['Supper']);
 });
 
@@ -718,14 +719,14 @@ test('[SYNC-204.1] ends the same when both phones said so, in records of their o
 
   await expectDuplicates('Brisbane', []);
   expect(await refused()).toEqual([]);
-  const before = everything();
+  const before = await merged();
   const own = await unsent();
   await receiveEvents(
     brisbane,
     theirs,
     ...own.map((event) => relayed(event.content, { id: event.id })),
   );
-  expect(everything()).toEqual(before);
+  expect(await merged()).toEqual(before);
   await expectDuplicates('Brisbane', []);
 });
 

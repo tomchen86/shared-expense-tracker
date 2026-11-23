@@ -24,6 +24,7 @@ export {
 } from './apply';
 
 export { saveGroupKey, syncGroup } from './loop';
+export { listUnappliedChanges, type UnappliedChange } from './unapplied';
 export {
   sendSnapshot,
   takeSnapshot,

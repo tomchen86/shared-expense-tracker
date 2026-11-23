@@ -1,4 +1,5 @@
 import {
+  compareSyncStamps,
   overridesSyncMoney,
   sameSyncUnitValue,
   type SyncEvent,
@@ -88,6 +89,16 @@ export async function renameOwnMoney(
     'UPDATE sync_own_money SET stamp = ? WHERE expenseId = ? AND stamp <> ?',
     [stamp, expenseId, stamp],
   );
+}
+
+export async function forgetRefusedMoney(
+  tx: SqlExecutor,
+  id: string,
+  stamp: SyncStamp,
+) {
+  const own = await readOwnMoney(tx, id);
+  if (own && !compareSyncStamps(own.stamp, stamp))
+    await tx.run('DELETE FROM sync_own_money WHERE expenseId = ?', [id]);
 }
 
 /** The user's own money of an expense marked as overridden: what Use Mine sets it back to (SYNC-132.1). */

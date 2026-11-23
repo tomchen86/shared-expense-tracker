@@ -130,7 +130,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                   onRename={group.archived ? undefined : rename}
                 />
               )}
-              {notices.map((notice) => (
+              {notices.lines.map((notice) => (
                 <Text
                   key={notice}
                   style={[styles.notice, { color: colors.textMuted }]}
@@ -146,10 +146,23 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                   }
                 />
               )}
+<<<<<<< HEAD
               {asking > 0 && group?.shared && !group.archived && (
                 <JoinRequestsButton
                   count={asking}
                   onPress={membersAction.onPress}
+=======
+              {notices.unapplied > 0 && (
+                <ReviewButton
+                  unapplied
+                  count={notices.unapplied}
+                  onPress={() =>
+                    router.navigate({
+                      pathname: `${base}/unapplied`,
+                      params: { id },
+                    })
+                  }
+>>>>>>> b2b5bb7ed7f8216f19bb931fb68a51df19d31bcf
                 />
               )}
               {group?.archived && (

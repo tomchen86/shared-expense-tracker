@@ -458,7 +458,7 @@ IF 匯出檔的內容違反規則，THEN the mobile app SHALL 照 BACKUP-15.1 �
 
 #### Scenario: 共同帳本的支出記在這支手機沒有的成員下
 
-- **WHEN** Taylor 的手機套用 `phone-b` 的兩個事件：加入成員 Dana 的事件，時間戳記比收到時間晚一小時，所以不套用（SYNC-9.1）；和 Dana 付款、Taylor 和 Dana 各分攤 1500 的 Lunch 的第一個事件，照常套用（SYNC-31.1）。這支手機匯出，再在自己身上、或在一支第一次打開 app 的手機上選這個匯出檔
+- **WHEN** Taylor 的手機套用 `phone-b` 的兩個事件：加入成員 Dana 的事件，時間戳記比收到時間晚一小時，所以不套用（SYNC-9.1）；和 Dana 付款、Taylor 和 Dana 各分攤 1500 的 Lunch 的第一個事件，照常套用（SYNC-31.2）。這支手機匯出，再在自己身上、或在一支第一次打開 app 的手機上選這個匯出檔
 - **THEN** 兩支手機都跳出「Replace All Data?」，內容寫的是「has 2 groups and 1 expense」；按「Replace」之後，本機資料和匯出時一樣，Lunch 的付款和 Dana 的那一筆分攤仍記在 Dana 的 ID 下，Brisbane 的成員裡沒有這個 ID
 
 #### Scenario: 手動改過的匯出檔

@@ -88,3 +88,20 @@ export const inviteMigration = `
     secret TEXT NOT NULL
   );
 `;
+
+export const unappliedChangesMigration = `
+  CREATE TABLE sync_received (
+    groupId TEXT NOT NULL,
+    type TEXT NOT NULL,
+    id TEXT NOT NULL,
+    state TEXT,
+    categoryDefault INTEGER,
+    categoryCreator TEXT,
+    PRIMARY KEY (groupId, type, id),
+    FOREIGN KEY (groupId, type, id) REFERENCES sync_records(groupId, type, id) ON DELETE CASCADE
+  );
+  CREATE TABLE sync_unapplied (
+    refusal INTEGER PRIMARY KEY REFERENCES sync_refusals(position) ON DELETE CASCADE,
+    dismissed INTEGER NOT NULL DEFAULT 0 CHECK (dismissed IN (0, 1))
+  );
+`;

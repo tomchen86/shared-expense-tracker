@@ -79,7 +79,9 @@ async function latestStampLeft(
   // ponytail: reads every record of every shared ledger. Only a stamp more than 5 minutes
   // ahead gets here; keep the latest stamp held in a column if that is ever common.
   const records = await tx.all<{ created: string; record: string }>(
-    'SELECT created, record FROM sync_records',
+    `SELECT created, record FROM sync_records
+     UNION ALL SELECT json_extract(state, '$.created'), json_extract(state, '$.record')
+     FROM sync_received WHERE state IS NOT NULL`,
   );
   for (const row of records) {
     const record = JSON.parse(row.record) as SyncRecord;

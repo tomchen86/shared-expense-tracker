@@ -11,7 +11,7 @@ import type { ExpenseView } from './use-expenses';
 
 /** What an expense's details call the participant: by name as it is now, and yours with " (You)" (LEDGER-66.3). */
 export function participantName(
-  expense: ExpenseView,
+  expense: Pick<ExpenseView, 'members'>,
   participant: string,
   userId: string,
 ) {

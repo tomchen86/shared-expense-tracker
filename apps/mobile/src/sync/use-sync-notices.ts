@@ -3,16 +3,20 @@ import type { Database } from '../storage';
 import { readSyncNotices } from './loop';
 import { useSyncedFocusEffect } from './use-synced-focus-effect';
 
+const empty = { lines: [] as string[], unapplied: 0 };
+
 /**
- * The lines the screen of the shared ledger `groupId` shows under its title about its
- * sync (SYNC-75.1, SYNC-83.1), read again when a sync changes them. None, and no read,
- * without a `groupId`.
+ * The sync messages and unapplied count under the shared ledger's title.
+ * Refresh on focus and on changes to this ledger.
  */
 export function useSyncNotices(
   database: Database,
   groupId: string | undefined,
-): string[] {
-  const [notices, setNotices] = useState<string[]>([]);
+) {
+  const [last, setLast] = useState<{
+    groupId: string;
+    notices: typeof empty;
+  }>();
   useSyncedFocusEffect(
     database,
     groupId,
@@ -20,8 +24,8 @@ export function useSyncNotices(
       let active = true;
       if (groupId !== undefined)
         void readSyncNotices(database, groupId).then(
-          (read) => {
-            if (active) setNotices(read);
+          (notices) => {
+            if (active) setLast({ groupId, notices });
           },
           // The group's own read fails with it, and shows that.
           () => undefined,
@@ -31,5 +35,5 @@ export function useSyncNotices(
       };
     }, [database, groupId]),
   );
-  return notices;
+  return last && last.groupId === groupId ? last.notices : empty;
 }

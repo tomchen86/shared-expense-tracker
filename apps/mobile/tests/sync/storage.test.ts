@@ -8,6 +8,8 @@ import {
   type SyncStamp,
 } from '@shared-expense/domain';
 import {
+  createCategory,
+  deleteCategory,
   ensureDefaultCategories,
   listCategories,
   setCategoryArchived,
@@ -39,7 +41,7 @@ import {
   readDuplicateTargets,
 } from '../../src/sync/duplicates';
 import { latestStamp, readSyncRecord } from '../../src/sync/records';
-import { takeUploadedStamps } from '../../src/sync/stamps';
+import { checkUnsentStamps, takeUploadedStamps } from '../../src/sync/stamps';
 import { moveExpenseToTrash } from '../../src/ledger/trash';
 import {
   listExpenses,
@@ -113,6 +115,94 @@ function received<Content extends { stamp: SyncStamp }>(content: Content) {
     content,
   };
 }
+
+test('an unreadable echo of a pending creation removes the expense from Trash but keeps a later trash unit', async () => {
+  await shareTrip();
+  const dinner = await save();
+  await moveExpenseToTrash(database, identity.personalSpaceId, dinner.id);
+  const [added, trashed] = await listUnsentSyncEvents(database);
+  const changed = jest.fn();
+  const unsubscribe = subscribeToExpenses(database, changed);
+
+  await applySyncEvents(database, split.groupId, [
+    { ...received(added.content), id: added.id, content: null },
+  ]);
+
+  expect(await listExpenses(database)).toEqual([]);
+  expect(changed).toHaveBeenCalledWith(new Set([dinner.id]), undefined);
+  expect(await listUnsentSyncEvents(database)).toEqual([trashed]);
+  expect(
+    await readSyncRecord(database, split.groupId, 'expense', dinner.id),
+  ).toEqual({
+    created: trashed.content.stamp,
+    seeded: false,
+    record: {
+      type: 'expense',
+      id: dinner.id,
+      units: { trashed: { value: true, stamp: trashed.content.stamp } },
+    },
+  });
+  unsubscribe();
+});
+
+test('undoing category deletions keeps default status and local authorship as well as the synced units', async () => {
+  const { groupId } = split;
+  const custom = await createCategory(database, {
+    name: 'Local category',
+    color: '#123456',
+    createdByUserId: identity.userId,
+    spaceId: groupId,
+  });
+  await shareTrip();
+  const before = await listCategories(database, groupId);
+  await deleteCategory(database, before[0].id);
+  await deleteCategory(database, custom.id);
+  const removed = await listUnsentSyncEvents(database);
+  await applySyncEvents(
+    database,
+    groupId,
+    removed.map(({ id, content }) => ({
+      ...received(content),
+      id,
+      receivedAtMs: 0,
+    })),
+  );
+  expect(await listCategories(database, groupId)).toEqual(before);
+});
+
+test('a checked stamp stays ahead of a received title hidden by the optimistic title', async () => {
+  const clock = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+  try {
+    const dinner = await save();
+    await shareTrip();
+    clock.mockReturnValue(4_600_000);
+    input.title = 'Supper';
+    await save(dinner);
+    const stamp = { ms: 1_120_000, counter: 0, device: 'remote' };
+    await applySyncEvents(database, split.groupId, [
+      received({
+        version: 1,
+        type: 'expense',
+        id: dinner.id,
+        stamp,
+        units: { title: { value: 'Brunch' } },
+      }),
+    ]);
+    clock.mockReturnValue(1_060_000);
+    await database.transaction(checkUnsentStamps);
+    const [checked] = await listUnsentSyncEvents(database);
+    expect(checked.content.stamp.ms).toBe(stamp.ms + 1);
+    await applySyncEvents(database, split.groupId, [
+      { ...received(checked.content), id: checked.id, receivedAtMs: 0 },
+    ]);
+    expect(await listExpensesForCards(database)).toEqual([
+      expect.objectContaining({ title: 'Brunch', changedAt: 4_600_000 }),
+    ]);
+    expect(await latestStamp(database)).toEqual(checked.content.stamp);
+  } finally {
+    clock.mockRestore();
+  }
+});
 
 test('a stale decision cannot settle the next pair or write after archival or trashing', async () => {
   await shareTrip();
