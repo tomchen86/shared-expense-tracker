@@ -4,7 +4,7 @@ import {
   hexToBytes,
   utf8ToBytes,
 } from '@noble/hashes/utils.js';
-import { checkSyncSnapshot } from '@shared-expense/domain';
+import { checkSyncSnapshot, type SyncSnapshot } from '@shared-expense/domain';
 import {
   GROUP_REFUSAL_STATUS,
   SNAPSHOT_CHUNK_COUNT_LIMIT,
@@ -23,14 +23,15 @@ import { decrypt, encrypt } from '@shared-expense/domain/crypto';
 import { getRandomValues, randomUUID } from 'expo-crypto';
 import { sendApiRequest, type ApiRequest } from '../sharing/api-request';
 import { readDeviceIdentity } from '../sharing/device-identity';
-import type { Database } from '../storage';
+import type { Database, SqlExecutor } from '../storage';
 import { notifyApplied } from './apply';
 import { GIVE_UP_AFTER_MS, jsonIn, readGroupKey } from './loop';
 import { makeSnapshot, importSnapshot } from './snapshot-ledger';
 
 // A phone's side of a snapshot (ADR-0028): making one of a shared ledger and uploading it
 // for one device, and fetching the one a group stores for this phone and taking it in.
-// Nothing here starts either: the features that need a snapshot do (#141, #156).
+// Nothing here starts either: the features that need a snapshot do: approving a join
+// request and joining (sharing), and catching up (#156).
 
 /** What became of an upload of a snapshot (SYNC-115.1 to SYNC-120.1). */
 export type SendSnapshotResult =
@@ -61,6 +62,15 @@ export type TakeSnapshotResult =
   | { outcome: 'unusable' }
   /** A request had no answer, or one that is not what was asked for. */
   | { outcome: 'failed' };
+
+/** A request of the upload or the fetch got no answer: `failed`, to callers that do not ask which. */
+type NoAnswer = { outcome: 'no-answer' };
+
+/** A snapshot as `makeSnapshot` made it, with the key to encrypt it under. */
+export type MadeSnapshot = Extract<
+  Awaited<ReturnType<typeof makeSnapshot>>,
+  { outcome: 'made' }
+>;
 
 const PIECE_BYTES = SNAPSHOT_CHUNK_LIMIT - SNAPSHOT_CHUNK_MINIMUM;
 
@@ -115,7 +125,9 @@ async function uploadChunks(
   envelope: Envelope,
   key: Uint8Array,
   plaintext: Uint8Array,
-): Promise<SendSnapshotResult | { outcome: 'epoch'; epoch: number }> {
+): Promise<
+  SendSnapshotResult | NoAnswer | { outcome: 'epoch'; epoch: number }
+> {
   const { snapshotId, sequence, epoch, count } = envelope;
   for (let index = 0; index < count; index++) {
     const start = index * PIECE_BYTES;
@@ -139,7 +151,7 @@ async function uploadChunks(
       method: 'PUT',
       body: JSON.stringify(chunk),
     });
-    if (!answer) return { outcome: 'failed' };
+    if (!answer) return { outcome: 'no-answer' };
     const { status, body } = answer;
     if (
       index === 0 &&
@@ -165,17 +177,13 @@ async function uploadChunks(
   return { outcome: 'uploaded', snapshotId, sequence };
 }
 
-/**
- * Makes a snapshot of a shared ledger and uploads it for the device `deviceId`. Rejects
- * when the group is no shared ledger on this phone.
- */
-export async function sendSnapshot(
+/** Uploads a snapshot that was made, for the device `deviceId`. */
+export async function uploadSnapshot(
   database: Database,
   snapshot: { apiUrl: string; groupId: string; deviceId: string },
-): Promise<SendSnapshotResult> {
+  made: MadeSnapshot,
+): Promise<SendSnapshotResult | NoAnswer> {
   const { apiUrl, groupId, deviceId: recipient } = snapshot;
-  const made = await database.transaction((tx) => makeSnapshot(tx, groupId));
-  if (made.outcome !== 'made') return made;
   const plaintext = utf8ToBytes(JSON.stringify(made.content));
   const count = Math.ceil(plaintext.length / PIECE_BYTES);
   if (count > SNAPSHOT_CHUNK_COUNT_LIMIT) return { outcome: 'too-large' };
@@ -210,10 +218,45 @@ export async function sendSnapshot(
   }
 }
 
+/** The result as the callers that do not tell a missing answer from another failure get it. */
+function withoutNoAnswer<Result extends { outcome: string }>(
+  result: Result | NoAnswer,
+): Result | { outcome: 'failed' } {
+  return result.outcome === 'no-answer'
+    ? { outcome: 'failed' }
+    : (result as Result);
+}
+
+/**
+ * Makes a snapshot of a shared ledger and uploads it for the device `deviceId`. Rejects
+ * when the group is no shared ledger on this phone.
+ */
+export async function sendSnapshot(
+  database: Database,
+  snapshot: { apiUrl: string; groupId: string; deviceId: string },
+): Promise<SendSnapshotResult> {
+  const made = await database.transaction((tx) =>
+    makeSnapshot(tx, snapshot.groupId),
+  );
+  if (made.outcome !== 'made') return made;
+  return withoutNoAnswer<SendSnapshotResult>(
+    await uploadSnapshot(database, snapshot, made),
+  );
+}
+
+/** What the phone that joins a group checks and does as it takes its snapshot in. */
+export interface Joining {
+  /** Whether the snapshot is one to take in: asked once it is judged, before anything is written. */
+  accepts: (snapshot: SyncSnapshot) => boolean;
+  /** Runs in the transaction that takes the snapshot in, once it is in. */
+  alsoIn: (tx: SqlExecutor) => Promise<void>;
+}
+
 async function downloadAndImport(
   database: Database,
   group: { apiUrl: string; groupId: string },
-): Promise<TakeSnapshotResult> {
+  joining?: Joining,
+): Promise<TakeSnapshotResult | NoAnswer> {
   const { groupId, apiUrl } = group;
   const get = (path: string) =>
     request(database, {
@@ -222,7 +265,7 @@ async function downloadAndImport(
       method: 'GET',
     });
   const asked = await get(`/groups/${groupId}/snapshot`);
-  if (!asked) return { outcome: 'failed' };
+  if (!asked) return { outcome: 'no-answer' };
   if (
     asked.status === SNAPSHOT_REFUSAL_STATUS['no-snapshot'] &&
     isSnapshotRefusal(asked.body) &&
@@ -238,7 +281,8 @@ async function downloadAndImport(
   const pieces: Uint8Array[] = [];
   for (let index = 0; index < envelope.count; index++) {
     const answer = await get(chunkPath(envelope, index));
-    if (answer?.status !== 200 || !isSnapshotChunkResponse(answer.body))
+    if (!answer) return { outcome: 'no-answer' };
+    if (answer.status !== 200 || !isSnapshotChunkResponse(answer.body))
       return { outcome: 'failed' };
     const opened = decrypt({
       key,
@@ -256,20 +300,40 @@ async function downloadAndImport(
   }
   const verdict = checkSyncSnapshot(jsonIn(concatBytes(...pieces)));
   if (verdict.status === 'unsupported') return { outcome: 'update-needed' };
-  if (verdict.status !== 'valid' || verdict.snapshot.groupId !== groupId)
+  if (
+    verdict.status !== 'valid' ||
+    verdict.snapshot.groupId !== groupId ||
+    joining?.accepts(verdict.snapshot) === false
+  )
     return { outcome: 'unusable' };
-  const imported = await database.transaction((tx) =>
-    importSnapshot(tx, verdict.snapshot, envelope.epoch),
-  );
+  const imported = await database.transaction(async (tx) => {
+    const taken = await importSnapshot(tx, verdict.snapshot, envelope.epoch);
+    if (taken) await joining?.alsoIn(tx);
+    return taken;
+  });
   if (!imported) return { outcome: 'unusable' };
   notifyApplied(database, groupId);
   return { outcome: 'imported' };
 }
 
+/**
+ * Fetches the snapshot the group stores for this phone, and merges it into the local
+ * data. A phone that joins the group gives `joining`.
+ */
+export function fetchSnapshot(
+  database: Database,
+  group: { apiUrl: string; groupId: string },
+  joining?: Joining,
+): Promise<TakeSnapshotResult | NoAnswer> {
+  return downloadAndImport(database, group, joining).catch(reportKeyReadError);
+}
+
 /** Fetches the snapshot the group stores for this phone, and merges it into the local data. */
-export function takeSnapshot(
+export async function takeSnapshot(
   database: Database,
   group: { apiUrl: string; groupId: string },
 ): Promise<TakeSnapshotResult> {
-  return downloadAndImport(database, group).catch(reportKeyReadError);
+  return withoutNoAnswer<TakeSnapshotResult>(
+    await fetchSnapshot(database, group),
+  );
 }

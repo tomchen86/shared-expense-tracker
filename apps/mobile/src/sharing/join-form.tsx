@@ -24,11 +24,14 @@ export function JoinForm({
   initialName,
   preparing,
   onSend,
+  onCancel,
 }: {
   card: JoinCard;
   initialName: string;
   preparing?: boolean;
   onSend: (name: string, memberId: string | null) => void;
+  /** Given when the form chooses again for a request that was sent (SHARING-212.1). */
+  onCancel?: () => void;
 }) {
   const colors = useThemeColors();
   const [name, setName] = useState(initialName);
@@ -98,6 +101,11 @@ export function JoinForm({
   }
   return (
     <View style={styles.content}>
+      {onCancel && (
+        <Text style={text}>
+          Choose again. Your earlier choice is no longer available.
+        </Text>
+      )}
       <Text
         accessibilityRole="header"
         style={[styles.title, { color: colors.text }]}
@@ -162,6 +170,9 @@ export function JoinForm({
             onPress={submit}
           />
         </>
+      )}
+      {onCancel && (
+        <InviteAction label="Cancel Request" destructive onPress={onCancel} />
       )}
     </View>
   );

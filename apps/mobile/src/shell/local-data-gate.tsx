@@ -21,6 +21,7 @@ import {
   type SqlExecutor,
 } from '../storage';
 import { useSyncTriggers } from '../sync/use-sync-triggers';
+import { watchReceivedRequests } from '../sharing/received-requests';
 import { watchInviteCards } from '../sharing/refresh-invite-card';
 import { applyAppearanceOption, type AppearanceOption } from '../ui/appearance';
 import {
@@ -167,6 +168,10 @@ export function LocalDataGate({
   useSyncTriggers(readyDatabase);
   useEffect(
     () => readyDatabase && watchInviteCards(readyDatabase),
+    [readyDatabase],
+  );
+  useEffect(
+    () => readyDatabase && watchReceivedRequests(readyDatabase),
     [readyDatabase],
   );
 

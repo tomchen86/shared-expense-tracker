@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[GROUPS-25.2] [GROUPS-26.1] [GROUPS-29.2] [GROUPS-30.2] [GROUPS-34.3] Removes a member from their action sheet with the keyboard up, closes the emptied name field, and adds them back'
+name: '[GROUPS-25.3] [GROUPS-26.1] [GROUPS-29.2] [GROUPS-30.2] [GROUPS-34.3] Removes a member from their action sheet with the keyboard up, closes the emptied name field, and adds them back'
 ---
 - runFlow:
     file: common/launch-with-seed.yaml

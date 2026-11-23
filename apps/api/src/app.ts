@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Sql } from './database/connect';
 import { healthRoutes } from './health/routes';
 import type { AppLinks } from './sharing/app-links';
+import { decisionRoutes } from './sharing/decision-routes';
 import { inviteRoutes, publicInviteRoutes } from './sharing/invite-routes';
 import { appLinkRoutes } from './sharing/routes';
 import { signedRequests } from './sharing/signed-requests';
@@ -41,4 +42,5 @@ export const app = new Hono<AppEnv>()
   .use(signedRequests)
   // The routes that take signed requests: each runs only once its request has passed.
   .route('/', inviteRoutes)
+  .route('/', decisionRoutes)
   .route('/', syncRoutes);

@@ -46,15 +46,45 @@ export function putJoinRequest(
   );
 }
 
-export async function cancelJoinRequest(
+/**
+ * Deletes the device's request under an active invite. A device that was approved under
+ * the code, or that is a member device of the active invite's group, has none to cancel
+ * (SHARING-117.2).
+ */
+export function cancelJoinRequest(
   sql: Sql,
   code: string,
   deviceId: string,
-  now: number,
-): Promise<JoinRequestResponse> {
-  await sql`
-    DELETE FROM invite_join_requests r USING group_invites i
-    WHERE r.code = ${code} AND r.device_id = ${deviceId} AND i.code = r.code
-      AND i.card IS NOT NULL AND i.expires_at_ms > ${now}`;
-  return { code };
+  now: () => number,
+): Promise<JoinRequestResponse | JoinRequestRefusal> {
+  return sql.begin<JoinRequestResponse | JoinRequestRefusal>(
+    'isolation level read committed',
+    async (tx) => {
+      // An approval holds this row until it commits, so a cancellation finds the
+      // device approved or its request still there, never half of each (SHARING-188.1).
+      const [invite] = await tx<
+        { group_id: string; has_card: boolean; expires_at_ms: string }[]
+      >`
+        SELECT group_id, card IS NOT NULL AS has_card, expires_at_ms
+        FROM group_invites WHERE code = ${code}
+        FOR UPDATE`;
+      if (!invite) return { code };
+      const active = invite.has_card && Number(invite.expires_at_ms) > now();
+      const [member] = await tx`
+        SELECT 1 FROM invite_handovers
+        WHERE code = ${code} AND device_id = ${deviceId}
+        UNION ALL
+        SELECT 1 FROM group_members
+        WHERE ${active}::boolean AND group_id = ${invite.group_id}
+          AND device_id = ${deviceId}
+        LIMIT 1`;
+      if (member) return { error: 'already-a-member' };
+      if (active) {
+        await tx`
+          DELETE FROM invite_join_requests
+          WHERE code = ${code} AND device_id = ${deviceId}`;
+      }
+      return { code };
+    },
+  ) as Promise<JoinRequestResponse | JoinRequestRefusal>;
 }

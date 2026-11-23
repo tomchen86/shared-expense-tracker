@@ -37,10 +37,9 @@ export async function applyMergedGroup(
   }
   const member = syncRecordValues(record);
   if (!member) return false;
-  // This phone represents its own linked member. Keep the received removed unit
-  // in sync storage, including its stamp for ordering.
-  const removed =
-    'excluded.removed AND group_members.userId IS NOT (SELECT userId FROM local_identity WHERE singleton = 1)';
+  // A member with a user ID is you or has a phone (SYNC-36.3): a member of the group
+  // whatever this unit says. Sync storage keeps the unit, with its stamp for ordering.
+  const removed = 'excluded.removed AND group_members.userId IS NULL';
   const { changes } = await tx.run(
     `INSERT INTO group_members (id, groupId, name, removed, position)
      VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(position), 0) + 1 FROM group_members WHERE groupId = ?))

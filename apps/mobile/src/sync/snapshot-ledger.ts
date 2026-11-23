@@ -15,6 +15,7 @@ import { canMergeInGroup } from './apply';
 import { applyMergedInvite } from './invites';
 import { readGroupKey } from './loop';
 import { orderSyncedRows } from './positions';
+import { applyRoster } from './roster';
 import {
   latestStamp,
   readSyncRecord,
@@ -23,8 +24,16 @@ import {
   storeSyncRecord,
 } from './records';
 
-/** Read the outbox, cursor and merged records at one point in the ledger's history. */
-export async function makeSnapshot(tx: SqlExecutor, groupId: string) {
+/**
+ * Read the outbox, cursor and merged records at one point in the ledger's history.
+ * `more` are records the local data does not hold yet: those an approval is about to
+ * write (SHARING-197.1).
+ */
+export async function makeSnapshot(
+  tx: SqlExecutor,
+  groupId: string,
+  more: readonly SyncSnapshotRecord[] = [],
+) {
   const [ledger] = await tx.all<{
     epoch: number;
     cursor: number;
@@ -44,7 +53,7 @@ export async function makeSnapshot(tx: SqlExecutor, groupId: string) {
     groupId,
     sequence: ledger.cursor,
     uncategorized: (await groupUncategorized(tx, groupId)).id,
-    records: await snapshotRecords(tx, groupId),
+    records: [...(await snapshotRecords(tx, groupId)), ...more],
   };
   if (checkSyncSnapshot(content).status !== 'valid')
     throw new Error('Invalid snapshot in local data');
@@ -200,6 +209,8 @@ export async function importSnapshot(
     const { created, seeded, ...record } = merged.record;
     await storeSyncRecord(tx, groupId, record, created, seeded);
     switch (record.type) {
+      case 'device':
+        break;
       case 'invite':
         invites.push(record);
         break;
@@ -231,7 +242,8 @@ export async function importSnapshot(
   await applyExpenses(tx, groupId, expenses);
   await orderSyncedRows(tx, groupId, 'category');
   await orderSyncedRows(tx, groupId, 'member');
-  // An invite's card uses the merged group name and ordered members.
+  await applyRoster(tx, groupId);
+  // An invite's card uses the merged group name, the ordered members and who has a phone.
   for (const invite of invites) await applyMergedInvite(tx, groupId, invite);
   await saveLatestStamp(tx, seen!); // A valid snapshot always includes the group itself.
   return true;

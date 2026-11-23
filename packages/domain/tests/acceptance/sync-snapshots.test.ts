@@ -116,7 +116,7 @@ const invite = (
 const REFUSED = { status: 'refused' };
 const UNSUPPORTED = { status: 'unsupported' };
 
-describe('SYNC-98.3', () => {
+describe('SYNC-98.4', () => {
   const EVERY_KIND = [DINNER_RECORD, BLAKE, TAXI, FUEL_GONE, HOTELS_GONE];
 
   test.each<[string, unknown]>([
@@ -136,7 +136,7 @@ describe('SYNC-98.3', () => {
       'an expense and a category that share an ID',
       snapshot([DINNER_RECORD, whole('category', 'dinner', FUEL_CATEGORY)]),
     ],
-  ])('[SYNC-98.3] a snapshot with %s can be imported', (_case, content) => {
+  ])('[SYNC-98.4] a snapshot with %s can be imported', (_case, content) => {
     expect(checkSyncSnapshot(content)).toEqual({
       status: 'valid',
       snapshot: content,
@@ -150,7 +150,7 @@ describe('SYNC-98.3', () => {
       'format version 3, an unknown field and a record that is not valid',
       { ...snapshot([{ type: 'settlement' }], { version: 3 }), extra: true },
     ],
-  ])('[SYNC-98.3] reports %s as a version it does not know', (_c, content) => {
+  ])('[SYNC-98.4] reports %s as a version it does not know', (_c, content) => {
     expect(checkSyncSnapshot(content)).toEqual(UNSUPPORTED);
   });
 
@@ -159,7 +159,7 @@ describe('SYNC-98.3', () => {
     ['a text', 'snapshot'],
     ['a number', 7],
     ['an array', [snapshot()]],
-  ])('[SYNC-98.3] %s is no snapshot', (_case, content) => {
+  ])('[SYNC-98.4] %s is no snapshot', (_case, content) => {
     expect(checkSyncSnapshot(content)).toEqual(REFUSED);
   });
 
@@ -173,7 +173,7 @@ describe('SYNC-98.3', () => {
     ['event version 1.5', snapshot([], { eventVersion: 1.5 })],
     ['event version "1"', snapshot([], { eventVersion: '1' })],
     ['no event version', without(snapshot(), 'eventVersion')],
-  ])('[SYNC-98.3] refuses a snapshot with %s', (_case, content) => {
+  ])('[SYNC-98.4] refuses a snapshot with %s', (_case, content) => {
     expect(checkSyncSnapshot(content)).toEqual(REFUSED);
   });
 
@@ -201,7 +201,7 @@ describe('SYNC-98.3', () => {
         }),
       ]),
     ],
-  ])('[SYNC-98.3] refuses a snapshot with %s', (_case, content) => {
+  ])('[SYNC-98.4] refuses a snapshot with %s', (_case, content) => {
     expect(checkSyncSnapshot(content)).toEqual(REFUSED);
   });
 
@@ -212,7 +212,7 @@ describe('SYNC-98.3', () => {
     ['sequence number 1.5', { sequence: 1.5 }],
     ['sequence number 2^53', { sequence: Number.MAX_SAFE_INTEGER + 1 }],
     ['sequence number "0"', { sequence: '0' }],
-  ])('[SYNC-98.3] refuses a snapshot with %s', (_case, changes) => {
+  ])('[SYNC-98.4] refuses a snapshot with %s', (_case, changes) => {
     expect(
       checkSyncSnapshot(snapshot([], changes as Record<string, unknown>)),
     ).toEqual(REFUSED);
@@ -229,7 +229,7 @@ describe('SYNC-98.3', () => {
         withUnit(DINNER_RECORD, 'title', { value: 'Supper', stamp: at(2000) }),
       ],
     ],
-  ])('[SYNC-98.3] refuses a snapshot with %s', (_case, records) => {
+  ])('[SYNC-98.4] refuses a snapshot with %s', (_case, records) => {
     expect(checkSyncSnapshot(snapshot(records))).toEqual(REFUSED);
   });
 
@@ -242,7 +242,7 @@ describe('SYNC-98.3', () => {
       withUnit(BLAKE, 'archived', { value: false, stamp: CREATED }),
     ],
     ['a seeded flag that is a text', { ...BLAKE, seeded: 'yes' }],
-  ])('[SYNC-98.3] refuses a record with %s', (_case, record) => {
+  ])('[SYNC-98.4] refuses a record with %s', (_case, record) => {
     expect(checkSyncSnapshot(snapshot([record]))).toEqual(REFUSED);
   });
 
@@ -278,11 +278,11 @@ describe('SYNC-98.3', () => {
       'a removed flag that is a text',
       withUnit(BLAKE, 'removed', { value: 'true', stamp: CREATED }),
     ],
-  ])('[SYNC-98.3] refuses a record with %s', (_case, record) => {
+  ])('[SYNC-98.4] refuses a record with %s', (_case, record) => {
     expect(checkSyncSnapshot(snapshot([record]))).toEqual(REFUSED);
   });
 
-  test('[SYNC-98.3] refuses a tombstone on the group record', () => {
+  test('[SYNC-98.4] refuses a tombstone on the group record', () => {
     expect(checkSyncSnapshot(snapshot()).status).toBe('valid');
     expect(
       checkSyncSnapshot(
@@ -293,7 +293,7 @@ describe('SYNC-98.3', () => {
     ).toEqual(REFUSED);
   });
 
-  test('[SYNC-98.3] takes the money of a record that adds up in a supported currency', () => {
+  test('[SYNC-98.4] takes the money of a record that adds up in a supported currency', () => {
     expect(DINNER_MONEY.currency).toBe('USD');
     expect(checkSyncSnapshot(snapshot([DINNER_RECORD])).status).toBe('valid');
   });
@@ -311,7 +311,7 @@ describe('SYNC-98.3', () => {
       "a tombstone's stamp with a fraction",
       { ...FUEL_GONE, deleted: at(1000.5) },
     ],
-  ])('[SYNC-98.3] refuses a record with %s', (_case, record) => {
+  ])('[SYNC-98.4] refuses a record with %s', (_case, record) => {
     expect(checkSyncSnapshot(snapshot([record]))).toEqual(REFUSED);
   });
 
@@ -325,7 +325,7 @@ describe('SYNC-98.3', () => {
       'a group record of another group',
       [whole('group', 'tokyo', { name: 'Tokyo' }), UNCATEGORIZED],
     ],
-  ])('[SYNC-98.3] refuses a snapshot with %s', (_case, records) => {
+  ])('[SYNC-98.4] refuses a snapshot with %s', (_case, records) => {
     expect(checkSyncSnapshot(snapshot([], { records }))).toEqual(REFUSED);
   });
 
@@ -382,19 +382,19 @@ describe('SYNC-98.3', () => {
       },
     ],
   ])(
-    '[SYNC-98.3] refuses a snapshot whose Uncategorized %s',
+    '[SYNC-98.4] refuses a snapshot whose Uncategorized %s',
     (_case, changes) => {
       expect(checkSyncSnapshot(snapshot([], changes))).toEqual(REFUSED);
     },
   );
   test.each([null, 'Dinner', 7, [DINNER_RECORD]])(
-    '[SYNC-98.3] a snapshot cannot be taken in when a record is %p and no object',
+    '[SYNC-98.4] a snapshot cannot be taken in when a record is %p and no object',
     (record) => {
       expect(checkSyncSnapshot(snapshot([record]))).toEqual(REFUSED);
     },
   );
 
-  test('[SYNC-98.3] a snapshot with an invite that is not revoked can be taken in', () => {
+  test('[SYNC-98.4] a snapshot with an invite that is not revoked can be taken in', () => {
     for (const records of [
       [invite()],
       [invite(link(0))],
@@ -438,7 +438,7 @@ describe('SYNC-98.3', () => {
       ),
     ],
   ])(
-    '[SYNC-98.3] a snapshot with an invite cannot be taken in when %s',
+    '[SYNC-98.4] a snapshot with an invite cannot be taken in when %s',
     (_, record) => {
       expect(checkSyncSnapshot(snapshot([record]))).toEqual(REFUSED);
     },

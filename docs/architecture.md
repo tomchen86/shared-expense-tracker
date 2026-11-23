@@ -42,5 +42,6 @@ Name top-level directories only. File paths go stale.
 - Ledger content reaches the server only end-to-end encrypted; the API never holds a key that opens it (ADR-0015).
 - Every phone merges sync events with pure functions in `packages/domain` and reaches the same result, whatever order the events arrive in (ADR-0016).
 - An invite link points at the API's own address. The API serves the files that let it open the app and one static page for a phone without the app; the page loads nothing from elsewhere and sends what follows the link's `#` to no server (ADR-0023).
+- A member's phone admits a phone that asked to join in one request, which the API takes or refuses as one transaction: it stores the approval's events, makes the device a member device, and keeps a box with the group key that only that phone can open. The new phone opens the box with the invite's secret, takes its snapshot in, and is the member its roster entry names. On every phone the roster, a record kind of the shared ledger, says which members have a phone (ADR-0039).
 - Only `apps/mobile/src/ui/` knows which platform it runs on (ADR-0002).
 - Money is an integer in its currency's minor unit, paired with its currency code; each currency's decimal places come from a fixed table in `packages/domain`, never from the device (ADR-0004).

@@ -1,5 +1,6 @@
 import {
   compareSyncStamps,
+  nextSyncStamp,
   type SyncEvent,
   type SyncRecord,
   type SyncStamp,
@@ -8,7 +9,12 @@ import { readCorrectedTime } from '../sharing/device-identity';
 import type { SqlExecutor, SqlValue } from '../storage';
 import { renameOwnMoney } from './own-money';
 import { orderSyncedRows } from './positions';
-import { readSyncRecord, saveLatestStamp, storeSyncRecord } from './records';
+import {
+  latestStamp,
+  readSyncRecord,
+  saveLatestStamp,
+  storeSyncRecord,
+} from './records';
 
 // The checks of an unsent event's stamp (ADR-0016, ADR-0027). A stamp more than 5 minutes
 // ahead of the corrected time is replaced before any other phone sees it, wherever the
@@ -208,6 +214,38 @@ async function replaceStampsAhead(
   );
   await saveLatestStamp(tx, renames.get(replaced.at(-1)!.position)!);
   return rename(tx, unsent, renames);
+}
+
+/**
+ * Takes `count` stamps, one after another, for events of `device` that go to the API
+ * without ever being unsent events: those of an approval (SHARING-196.1). The phone's
+ * latest stamp becomes the last of them at once, so no later change gets one of them.
+ * They are checked as an unsent event's stamp is: when they are more than 5 minutes ahead
+ * of the corrected time, they are replaced as SYNC-85.1 replaces those.
+ */
+export async function takeCheckedStamps(
+  tx: SqlExecutor,
+  device: string,
+  count: number,
+): Promise<SyncStamp[]> {
+  const nowMs = await readCorrectedTime(tx);
+  let stamps: SyncStamp[] = [];
+  let seen = await latestStamp(tx);
+  for (let taken = 0; taken < count; taken += 1) {
+    seen = nextSyncStamp({ seen, nowMs, device });
+    stamps.push(seen);
+  }
+  if (stamps.some(({ ms }) => ms - nowMs > MOST_AHEAD_MS)) {
+    const left = await latestStampLeft(tx, await readUnsent(tx), new Set());
+    const firstMs = left && left.ms >= nowMs ? left.ms + 1 : nowMs;
+    stamps = stamps.map((_, index) => ({
+      ms: firstMs + index,
+      counter: 0,
+      device,
+    }));
+  }
+  await saveLatestStamp(tx, stamps[count - 1]);
+  return stamps;
 }
 
 /**

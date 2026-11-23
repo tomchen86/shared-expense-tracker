@@ -1271,7 +1271,7 @@ WHILE「Split with others」開著，the mobile app SHALL 在開關下面放名�
 
 ### Requirement: LEDGER-48.2 選付款人
 
-WHEN 使用者按「Paid by」，the mobile app SHALL 打開 Who Paid? 清單，依 GROUPS-24.3 的順序列出選的群組的每位成員，你那一項是你的成員名稱加上「 (You)」，別人那一項是他現在的名稱，付款人標示為已選取；按一位成員就選他為付款人並回到表單，關閉清單就回到表單、付款人不變。
+WHEN 使用者按「Paid by」，the mobile app SHALL 打開 Who Paid? 清單，依 GROUPS-24.4 的順序列出選的群組的每位成員，你那一項是你的成員名稱加上「 (You)」，別人那一項是他現在的名稱，付款人標示為已選取；按一位成員就選他為付款人並回到表單，關閉清單就回到表單、付款人不變。
 
 #### Scenario: 列出成員
 
@@ -1295,7 +1295,7 @@ WHEN 使用者按「Paid by」，the mobile app SHALL 打開 Who Paid? 清單，
 
 ### Requirement: LEDGER-49.2 選分攤的人
 
-WHEN 使用者按「Split between」，the mobile app SHALL 打開 Split Between 清單，依 GROUPS-24.3 的順序列出選的群組的每位成員，名稱同 LEDGER-48.2，分攤的人標示為已選取；按一位還不是分攤的人的成員，就把他加在分攤的順序的最後，按一位分攤的人就把他拿掉，兩種情況清單都不關閉；關閉清單就回到表單。
+WHEN 使用者按「Split between」，the mobile app SHALL 打開 Split Between 清單，依 GROUPS-24.4 的順序列出選的群組的每位成員，名稱同 LEDGER-48.2，分攤的人標示為已選取；按一位還不是分攤的人的成員，就把他加在分攤的順序的最後，按一位分攤的人就把他拿掉，兩種情況清單都不關閉；關閉清單就回到表單。
 
 #### Scenario: 選兩位
 

@@ -121,6 +121,8 @@ export interface SigningDevice {
   publicKey: string;
   /** The X25519 public key shared with members when this device asks to join. */
   readonly boxKey: string;
+  /** The X25519 secret key that seals a box for another device and opens one for this. */
+  readonly boxSecretKey: Uint8Array;
   /** Whether the API has answered that this device is registered. */
   registered: boolean;
   /** The Ed25519 signature of `message`. */
@@ -137,11 +139,13 @@ function signingDevice(
     deviceId,
     publicKey: bytesToHex(signingPublicKey(secretKey)),
     get boxKey() {
-      return bytesToHex(
-        boxPublicKey(
-          deriveKey({ secret: seed, purpose: 'shared-expense/device/box/v1' }),
-        ),
-      );
+      return bytesToHex(boxPublicKey(this.boxSecretKey));
+    },
+    get boxSecretKey() {
+      return deriveKey({
+        secret: seed,
+        purpose: 'shared-expense/device/box/v1',
+      });
     },
     registered,
     sign: (message) => sign({ secretKey, message }),
