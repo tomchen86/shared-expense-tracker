@@ -29,3 +29,10 @@ export {
   type ReceivedJoinRequest,
   type RejectResult,
 } from './join-decisions';
+// Removing a member's phones and leaving, for callers outside this folder.
+export {
+  leaveSharedGroup,
+  removeMemberDevices,
+  type LeaveResult,
+  type RemoveResult,
+} from './removal';

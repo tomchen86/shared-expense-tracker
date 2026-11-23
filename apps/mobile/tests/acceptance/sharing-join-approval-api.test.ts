@@ -864,8 +864,8 @@ describe('SHARING-199.1', () => {
   });
 });
 
-describe('SHARING-200.1', () => {
-  test('[SHARING-200.1] reports no answer when the network is gone, and keeps the request', async () => {
+describe('SHARING-200.2', () => {
+  test('[SHARING-200.2] reports no answer when the network is gone, and keeps the request', async () => {
     const { invite, code, D, request } = await danaListed();
     goOffline();
 
@@ -875,7 +875,7 @@ describe('SHARING-200.1', () => {
     expect(await requestOnApi(code, D)).toBeDefined();
   });
 
-  test('[SHARING-200.1] reports a request another member has answered', async () => {
+  test('[SHARING-200.2] reports a request another member has answered', async () => {
     const { invite, taylor, D, request } = await danaListed();
     expect(
       (
@@ -890,7 +890,7 @@ describe('SHARING-200.1', () => {
     expect(await approve(invite, request)).toEqual({ outcome: 'answered' });
   });
 
-  test('[SHARING-200.1] syncs and sends the approval again when the API says it is behind', async () => {
+  test('[SHARING-200.2] syncs and sends the approval again when the API says it is behind', async () => {
     const { invite, taylor, brisbane, request } = await danaListed();
     const from = mark();
     answerNext('POST', 409, { error: 'behind' });
@@ -912,7 +912,7 @@ describe('SHARING-200.1', () => {
     ).toBe(true);
   });
 
-  test('[SHARING-200.1] gives up after three approvals that the API calls behind', async () => {
+  test('[SHARING-200.2] gives up after three approvals that the API calls behind', async () => {
     const { invite, taylor, code, D, request } = await danaListed();
     const from = mark();
     for (let each = 0; each < 3; each += 1) {
@@ -925,7 +925,7 @@ describe('SHARING-200.1', () => {
     expect(await requestOnApi(code, D)).toBeDefined();
   });
 
-  test('[SHARING-200.1] uploads another snapshot once when the API has none for the approval', async () => {
+  test('[SHARING-200.2] uploads another snapshot once when the API has none for the approval', async () => {
     const { invite, taylor, dana, brisbane, request } = await danaListed();
     const from = mark();
     answerNext('POST', 404, { error: 'no-snapshot' });
@@ -937,7 +937,7 @@ describe('SHARING-200.1', () => {
     expect((await fetched(dana, brisbane))!.snapshotId).toBe(second.snapshotId);
   });
 
-  test('[SHARING-200.1] fails when the API has no snapshot a second time, or refuses in another way', async () => {
+  test('[SHARING-200.2] fails when the API has no snapshot a second time, or refuses in another way', async () => {
     const { invite, request } = await danaListed();
     answerNext('POST', 404, { error: 'no-snapshot' });
     answerNext('POST', 404, { error: 'no-snapshot' });

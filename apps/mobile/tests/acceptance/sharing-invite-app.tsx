@@ -439,7 +439,7 @@ export function rejectedOnApi(code: string, deviceId: string) {
 }
 
 /**
- * A member approves the device's request (SHARING-173.1): the device is a member device,
+ * A member approves the device's request (SHARING-173.2): the device is a member device,
  * its request is gone, and the API holds this handover for it and this snapshot of the
  * group.
  */

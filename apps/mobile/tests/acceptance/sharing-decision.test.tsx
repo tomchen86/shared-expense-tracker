@@ -692,8 +692,8 @@ describe('SHARING-199.1', () => {
   });
 });
 
-describe('SHARING-200.1', () => {
-  test('[SHARING-200.1] says to connect when there is no network, and keeps the request', async () => {
+describe('SHARING-200.2', () => {
+  test('[SHARING-200.2] says to connect when there is no network, and keeps the request', async () => {
     await inMembersWithDana();
     goOffline();
 
@@ -708,7 +708,7 @@ describe('SHARING-200.1', () => {
     goOnline();
   });
 
-  test('[SHARING-200.1] says the request was answered when the API no longer has it, and lists again', async () => {
+  test('[SHARING-200.2] says the request was answered when the API no longer has it, and lists again', async () => {
     const { brisbane } = await inMembersWithDana();
     apiAnswersDecision('approve', 404, { error: 'no-request' });
     withdraws(brisbane);
@@ -722,7 +722,7 @@ describe('SHARING-200.1', () => {
     await expectMembers(MEMBERS);
   });
 
-  test('[SHARING-200.1] says the group is full when it has its 20 member devices', async () => {
+  test('[SHARING-200.2] says the group is full when it has its 20 member devices', async () => {
     const { brisbane } = await inMembersWithDana();
     memberDevicesOn(brisbane, 20);
 
@@ -735,7 +735,7 @@ describe('SHARING-200.1', () => {
     await expectMembers([DANA_ROW, ...MEMBERS]);
   });
 
-  test('[SHARING-200.1] says why it cannot approve, and sends nothing, when the sync before it brings the reason', async () => {
+  test('[SHARING-200.2] says why it cannot approve, and sends nothing, when the sync before it brings the reason', async () => {
     const { brisbane } = await startWithInvite();
     const { Casey } = await members('Brisbane');
     await asks({ memberId: Casey });
@@ -760,7 +760,7 @@ describe('SHARING-200.1', () => {
     expect(requestsOn(brisbane)).toEqual([D]);
   });
 
-  test('[SHARING-200.1] says something went wrong for an answer it cannot read', async () => {
+  test('[SHARING-200.2] says something went wrong for an answer it cannot read', async () => {
     await inMembersWithDana();
     apiAnswersDecision('approve', 500, {});
 

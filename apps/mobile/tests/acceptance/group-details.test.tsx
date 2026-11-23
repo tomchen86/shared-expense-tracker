@@ -316,7 +316,7 @@ test('[GROUPS-24.4] lists the members in the order they joined, each other membe
     expect(within(membersButton(name)).getByText('›')).toBeOnTheScreen();
 });
 
-test("[GROUPS-25.3] opens an action sheet titled with the member's name when their row is tapped", async () => {
+test("[GROUPS-25.4] opens an action sheet titled with the member's name when their row is tapped", async () => {
   await startInMembers(['Blake']);
 
   const menu = await tapMember('Blake');
@@ -332,7 +332,7 @@ test("[GROUPS-25.3] opens an action sheet titled with the member's name when the
   expect(alertsShown()).toEqual([]);
 });
 
-test('[GROUPS-25.3] opens your own action sheet, titled with your member name and offering only Rename, when your row is tapped', async () => {
+test('[GROUPS-25.4] opens your own action sheet, titled with your member name and offering only Rename, when your row is tapped', async () => {
   await startInMembers(['Blake']);
 
   const menu = await tapMember('Taylor (You)');
@@ -346,7 +346,7 @@ test('[GROUPS-25.3] opens your own action sheet, titled with your member name an
   expect(menu?.message ?? '').toBe('');
 });
 
-test("[GROUPS-25.3] changes nothing when Cancel is chosen in a member's menu", async () => {
+test("[GROUPS-25.4] changes nothing when Cancel is chosen in a member's menu", async () => {
   await startInMembers(['Blake']);
   const before = localData(file);
 
@@ -358,7 +358,7 @@ test("[GROUPS-25.3] changes nothing when Cancel is chosen in a member's menu", a
   expect(localData(file)).toEqual(before);
 });
 
-test('[GROUPS-26.1] removes a member right away when Remove from Group is chosen', async () => {
+test('[GROUPS-26.2] removes a member right away when Remove from Group is chosen', async () => {
   await startInMembers(['Blake', 'Casey']);
 
   await removeMember('Blake');
@@ -374,7 +374,7 @@ test('[GROUPS-26.1] removes a member right away when Remove from Group is chosen
   ]);
 });
 
-test('[GROUPS-26.1] keeps a removed member out of the group after a restart', async () => {
+test('[GROUPS-26.2] keeps a removed member out of the group after a restart', async () => {
   const app = await startInMembers(['Blake', 'Casey']);
   await removeMember('Blake');
   await waitFor(() => expect(membersShown()).not.toContain('Blake'));

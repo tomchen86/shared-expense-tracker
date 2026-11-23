@@ -54,8 +54,8 @@ async function taylorWithBrisbaneAndCasey(): Promise<[Phone, Phone]> {
   return [taylor, casey];
 }
 
-describe('SYNC-60.1', () => {
-  test('[SYNC-60.1] takes none of the three requests without a signature, or from a device that has not registered', async () => {
+describe('SYNC-60.2', () => {
+  test('[SYNC-60.2] takes none of the three requests without a signature, or from a device that has not registered', async () => {
     const [taylor] = await taylorWithBrisbaneAndCasey();
     const stranger = newPhone();
     const body = new Uint8Array(
@@ -86,7 +86,7 @@ describe('SYNC-60.1', () => {
     });
   });
 
-  test('[SYNC-60.1] refuses a request that is written wrongly for that, whether or not the phone is a member device', async () => {
+  test('[SYNC-60.2] refuses a request that is written wrongly for that, whether or not the phone is a member device', async () => {
     const [taylor, casey] = await taylorWithBrisbaneAndCasey();
 
     for (const phone of [taylor, casey]) {
@@ -106,7 +106,7 @@ describe('SYNC-60.1', () => {
     }
   });
 
-  test('[SYNC-60.1] refuses a phone that is no member device for that, before it looks at the key epoch or at the cursor', async () => {
+  test('[SYNC-60.2] refuses a phone that is no member device for that, before it looks at the key epoch or at the cursor', async () => {
     const [taylor, casey] = await taylorWithBrisbaneAndCasey();
     const stored = events(2);
     expectUploaded(await upload(taylor, BRISBANE, stored), stored, [1, 2]);
@@ -128,7 +128,7 @@ describe('SYNC-60.1', () => {
     expectRefused(await download(taylor, BRISBANE, 3), REQUEST);
   });
 
-  test('[SYNC-60.1] has accepted a request it then refuses: sent again as it was, it is a replay', async () => {
+  test('[SYNC-60.2] has accepted a request it then refuses: sent again as it was, it is a replay', async () => {
     const [, casey] = await taylorWithBrisbaneAndCasey();
     const request = signedBy(casey, {
       path: `${eventsPath(BRISBANE)}?after=0`,
@@ -141,7 +141,7 @@ describe('SYNC-60.1', () => {
     expectRefused(again, REPLAYED);
   });
 
-  test("[SYNC-60.1] counts a request it refuses towards the device's 60 a minute", async () => {
+  test("[SYNC-60.2] counts a request it refuses towards the device's 60 a minute", async () => {
     const [, casey] = await taylorWithBrisbaneAndCasey();
     // With its registration, 59 more make 60 in this minute.
     for (let sent = 0; sent < 59; sent += 1) {

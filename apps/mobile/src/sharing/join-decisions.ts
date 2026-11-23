@@ -16,7 +16,7 @@ export interface ReceivedJoinRequest {
   memberId: string | null;
   /**
    * The SHA-256 of the content the API listed, in lowercase hexadecimal. An approval and a
-   * rejection name the request by it (SHARING-172.1, SHARING-173.1).
+   * rejection name the request by it (SHARING-172.1, SHARING-173.2).
    */
   request: string;
 }

@@ -751,7 +751,7 @@ describe('SYNC-55.1', () => {
 });
 
 describe('SYNC-56.1', () => {
-  test('[SYNC-56.1] stores events until those the group has add up to 10,485,760 bytes, and refuses what would go past it; before that, [SYNC-60.1] it refuses another key epoch', async () => {
+  test('[SYNC-56.1] stores events until those the group has add up to 10,485,760 bytes, and refuses what would go past it; before that, [SYNC-60.2] it refuses another key epoch', async () => {
     const taylor = await taylorWithBrisbane();
     expectCreated(await createGroup(taylor, TOKYO), TOKYO);
     // 159 events of 65,536 bytes, seven to an upload: 10,420,224 bytes.
@@ -802,7 +802,7 @@ describe('SYNC-56.1', () => {
     const againWithOneNew = await leavingGroupsAsTheyWere(() =>
       upload(taylor, BRISBANE, [last[0], ...events(1, SMALLEST)]),
     );
-    // Another key epoch is refused for that, full or not (SYNC-60.1).
+    // Another key epoch is refused for that, full or not (SYNC-60.2).
     const underEpoch2 = await leavingGroupsAsTheyWere(() =>
       upload(taylor, BRISBANE, events(1, SMALLEST), 2),
     );

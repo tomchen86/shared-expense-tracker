@@ -997,3 +997,17 @@ WHILE 分類列露出「Remove」或「Delete」，WHEN 使用者捲動 Manage C
 
 - **WHEN** 把 Shopping 往左滑露出「Remove」，按 Shopping 那一列
 - **THEN** 開啟 Shopping 的 Edit Category；按 Cancel 之後沒有「Remove」，Shopping 還在
+
+### Requirement: CATEGORIES-60.1 唯讀副本的 Group Categories 只能看
+
+WHILE 群組是唯讀副本（sync 的 SYNC-302.1），the mobile app SHALL 不管它有沒有封存，都照封存群組的 Group Categories 顯示它的分類（CATEGORIES-43.1 到 CATEGORIES-45.1），只有最上面那句話不同：是「Read-only copy. Categories are read-only.」。
+
+#### Scenario: 唯讀副本的 Brisbane
+
+- **WHEN** 在 Brisbane 的 Group Categories 新增「Flights」，Brisbane 成為唯讀副本之後，從它的 Group actions 打開「Categories」
+- **THEN** 由上而下是「Read-only copy. Categories are read-only.」、「CATEGORIES」、九個預設分類和 Flights；導覽列沒有「Add category」，畫面上也沒有「About categories」；點 Flights 沒有開啟分類表單，分類那幾列都不是按鈕，也沒有螢幕閱讀器的「Remove」動作
+
+#### Scenario: 封存的唯讀副本
+
+- **WHEN** 封存唯讀副本 Brisbane 之後，打開它的 Group Categories
+- **THEN** 最上面仍是「Read-only copy. Categories are read-only.」，不是「Archived group. Categories are read-only.」

@@ -59,6 +59,8 @@ interface Relayed {
 interface FakeGroup {
   events: Relayed[];
   full: boolean;
+  /** The member devices the API lists while the group needs a rotation (SHARING-256.1). */
+  rotationNeededBy?: string[];
 }
 
 interface World {
@@ -109,8 +111,12 @@ function answerOf(
   }
   const group = state.groups.get(groupIdOf);
   if (!group || !events) return json(403, { error: 'not-a-member' });
+  const rotationNeeded = () =>
+    json(409, { error: 'rotation-needed', devices: group.rotationNeededBy });
   if (method === 'GET') {
     const after = Number(url.searchParams.get('after'));
+    const last = group.events.at(-1)?.sequence ?? 0;
+    if (group.rotationNeededBy && after === last) return rotationNeeded();
     const rest = group.events.filter((event) => event.sequence > after);
     return json(200, { events: rest.slice(0, 100), more: rest.length > 100 });
   }
@@ -122,6 +128,7 @@ function answerOf(
     const fresh = upload.events.filter(
       ({ id }) => !group.events.some((event) => event.id === id),
     );
+    if (fresh.length > 0 && group.rotationNeededBy) return rotationNeeded();
     if (fresh.length > 0 && group.full) {
       return json(413, { error: 'group-full' });
     }
@@ -268,6 +275,24 @@ export function groupIsFull(group: string, full: boolean) {
   world().groups.get(group)!.full = full;
 }
 
+/**
+ * From now on the API counts this phone as no member device of the group: it refuses the
+ * phone's requests for its events, as it does once the phone was removed or has left
+ * (SHARING-257.1).
+ */
+export function apiDropsThisPhone(group: string) {
+  world().groups.delete(group);
+}
+
+/**
+ * From now on the group needs a rotation and has these member devices, so the API refuses
+ * uploads of new events and downloads from its last number (SHARING-256.1); with no
+ * devices, it needs none any more.
+ */
+export function groupNeedsRotation(group: string, devices?: string[]) {
+  world().groups.get(group)!.rotationNeededBy = devices;
+}
+
 /** The most requests for a group that were ever on their way at one moment. */
 export const mostAtOnce = (group: string) => world().mostAtOnce.get(group) ?? 0;
 
@@ -377,7 +402,7 @@ export const lastSequence = (group: string) =>
 
 /**
  * Stores events in the API as `device` uploaded them under key epoch `epoch`, as the
- * approval of a join request does (SHARING-173.1), and gives back their sequence numbers.
+ * approval of a join request does (SHARING-173.2), and gives back their sequence numbers.
  */
 export function apiStores(
   group: string,

@@ -186,7 +186,7 @@ test("[GROUPS-23.2] closes Members with Back, back on the group's screen", async
   expect(exitApp).not.toHaveBeenCalled();
 });
 
-test("[GROUPS-25.3] opens a dialog titled with the member's name when their row is tapped on Android", async () => {
+test("[GROUPS-25.4] opens a dialog titled with the member's name when their row is tapped on Android", async () => {
   await startInMembers(['Blake']);
 
   const menu = await tapMember('Blake');
@@ -200,7 +200,7 @@ test("[GROUPS-25.3] opens a dialog titled with the member's name when their row 
   });
 });
 
-test('[GROUPS-25.3] opens your own dialog, titled with your member name and offering only Rename, when your row is tapped on Android', async () => {
+test('[GROUPS-25.4] opens your own dialog, titled with your member name and offering only Rename, when your row is tapped on Android', async () => {
   await startInMembers(['Blake']);
 
   const menu = await tapMember('Taylor (You)');
@@ -214,7 +214,7 @@ test('[GROUPS-25.3] opens your own dialog, titled with your member name and offe
   expect(menu?.message ?? '').toBe('');
 });
 
-test("[GROUPS-25.3] lets Back or a tap outside close a member's dialog without changing anything", async () => {
+test("[GROUPS-25.4] lets Back or a tap outside close a member's dialog without changing anything", async () => {
   await startInMembers(['Blake']);
   const menu = await tapMember('Blake');
   expect(menu?.cancelable).toBe(true);

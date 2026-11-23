@@ -283,7 +283,7 @@ describe('SYNC-136.1', () => {
     expect(headers.get('cache-control')).toBe('no-store');
   });
 
-  test('[SYNC-136.1] needs a snapshot for every cursor below the number the group is cleared to, and [SYNC-57.2] gives a page from that number on', async () => {
+  test('[SYNC-136.1] needs a snapshot for every cursor below the number the group is cleared to, and [SYNC-57.3] gives a page from that number on', async () => {
     const [taylor, casey] = await bothInBrisbane();
     const sent = await store(taylor, 5);
     const all = relayedFrom(1, sent, { by: taylor, at: T });

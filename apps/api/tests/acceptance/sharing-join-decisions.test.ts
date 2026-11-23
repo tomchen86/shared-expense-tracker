@@ -301,8 +301,8 @@ describe('SHARING-172.1', () => {
   });
 });
 
-describe('SHARING-173.1', () => {
-  test('[SHARING-173.1] approves a request: it answers with the device and the number of each event, and the request is gone', async () => {
+describe('SHARING-173.2', () => {
+  test('[SHARING-173.2] approves a request: it answers with the device and the number of each event, and the request is gone', async () => {
     const { taylor, casey, P, S } = await caseyAsked();
     const approval = approvalOf(P, S);
     setTime(T + 1_000);
@@ -314,7 +314,7 @@ describe('SHARING-173.1', () => {
     expectRequests(await listRequests(taylor, BRISBANE), []);
   });
 
-  test('[SHARING-173.1] makes the device a member device that gets its snapshot and the events of the approval', async () => {
+  test('[SHARING-173.2] makes the device a member device that gets its snapshot and the events of the approval', async () => {
     const { taylor, casey, P, S } = await caseyAsked();
     const approval = approvalOf(P, S);
     expect(await isMemberDevice(BRISBANE, casey)).toBe(false);
@@ -335,7 +335,7 @@ describe('SHARING-173.1', () => {
     });
   });
 
-  test("[SHARING-173.1] records the device's progress at the number the snapshot covers", async () => {
+  test("[SHARING-173.2] records the device's progress at the number the snapshot covers", async () => {
     const { taylor, casey, P, S } = await caseyAsked({
       events: 3,
       sequence: 2,
@@ -363,7 +363,7 @@ describe('SHARING-173.1', () => {
     } as never);
   });
 
-  test('[SHARING-173.1] stores every event of an approval that carries several, in its order', async () => {
+  test('[SHARING-173.2] stores every event of an approval that carries several, in its order', async () => {
     const { taylor, casey, P, S } = await caseyAsked();
     const approval = approvalOf(P, S, { events: events(3) });
 
@@ -379,7 +379,7 @@ describe('SHARING-173.1', () => {
     );
   });
 
-  test('[SHARING-173.1] lets a device that was approved approve another', async () => {
+  test('[SHARING-173.2] lets a device that was approved approve another', async () => {
     const { taylor, casey, P, S } = await caseyAsked();
     expect(
       (await approve(taylor, BRISBANE, casey, approvalOf(P, S))).status,
@@ -1002,8 +1002,8 @@ describe('SHARING-181.1', () => {
   });
 });
 
-describe('SHARING-182.1', () => {
-  test('[SHARING-182.1] refuses a request that is not signed, or signed by a device that has not registered, for its signature', async () => {
+describe('SHARING-182.2', () => {
+  test('[SHARING-182.2] refuses a request that is not signed, or signed by a device that has not registered, for its signature', async () => {
     const { casey, P, S } = await caseyAsked();
     const stranger = newPhone();
     const inputs = [
@@ -1029,7 +1029,7 @@ describe('SHARING-182.1', () => {
     expect(await databaseContents()).toEqual(before);
   });
 
-  test('[SHARING-182.1] names how a request is written before whether its sender is a member device', async () => {
+  test('[SHARING-182.2] names how a request is written before whether its sender is a member device', async () => {
     const { casey } = await caseyAsked();
     const outsider = await registered();
 
@@ -1043,7 +1043,7 @@ describe('SHARING-182.1', () => {
     );
   });
 
-  test('[SHARING-182.1] names that the sender is no member device before whether the request exists', async () => {
+  test('[SHARING-182.2] names that the sender is no member device before whether the request exists', async () => {
     const { P, S } = await caseyAsked();
     const outsider = await registered();
     const idle = await registered();
@@ -1054,7 +1054,7 @@ describe('SHARING-182.1', () => {
     );
   });
 
-  test('[SHARING-182.1] names a missing request first, then a phone that is behind, the key epoch, the snapshot, and the member devices', async () => {
+  test('[SHARING-182.2] names a missing request first, then a phone that is behind, the key epoch, the snapshot, and the member devices', async () => {
     const { taylor, casey, P, S } = await caseyAsked({ events: 3 });
     await memberDevices(MOST_MEMBER_DEVICES);
     const unknown = { id: randomUUID() };
@@ -1084,7 +1084,7 @@ describe('SHARING-182.1', () => {
     expect(await timesStored(P)).toBe(1);
   });
 
-  test('[SHARING-182.1] names a cursor past the last sequence number before a missing request', async () => {
+  test('[SHARING-182.2] names a cursor past the last sequence number before a missing request', async () => {
     const { taylor, casey, P, S } = await caseyAsked({ events: 3 });
     expectRejected(await reject(taylor, BRISBANE, casey, P), casey);
 
@@ -1094,7 +1094,7 @@ describe('SHARING-182.1', () => {
     );
   });
 
-  test('[SHARING-182.1] names the member devices before the room for events', async () => {
+  test('[SHARING-182.2] names the member devices before the room for events', async () => {
     const { taylor, casey, P, S, cursor } = await almostFull();
     await memberDevices(MOST_MEMBER_DEVICES);
 
@@ -1111,7 +1111,7 @@ describe('SHARING-182.1', () => {
     expect(await timesStored(P)).toBe(1);
   });
 
-  test('[SHARING-182.1] has taken a request it refuses: sent again as it is, it is a replay', async () => {
+  test('[SHARING-182.2] has taken a request it refuses: sent again as it is, it is a replay', async () => {
     const { taylor, P } = await caseyAsked({ sequence: false });
     const idle = await registered();
     const request = signedBy(taylor, {

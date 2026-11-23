@@ -5080,3 +5080,55 @@ The mobile app SHALL 讓可能重複的標記在手機上看得清楚、讀得�
 
 - **WHEN** 一筆支出同時需要確認，也是可能重複的支出，把系統字級調到最大看它的卡片和明細
 - **THEN** 卡片上兩行標記都完整；明細的兩個區塊都完整，五個按鈕都按得到，捲動之後看得到明細原本的內容
+
+### Requirement: LEDGER-220.1 唯讀副本的支出只能看
+
+WHILE 支出的群組是唯讀副本（sync 的 SYNC-302.1），the mobile app SHALL 不管群組有沒有封存，都照封存群組的支出顯示它（LEDGER-67.2），只有文字不同：明細的金額下面是「Shared history」和「Payments and shares are preserved as read-only history.」，「Group」後面的「Status」是「Read-only copy」；「Edit」和「Expense actions」裡的「Delete」停用，它的卡片沒有 Delete：往左滑不露出「Delete」，也沒有「Delete expense」的輔助功能動作。它照常出現在支出清單、群組的畫面、Insights 和搜尋的結果裡。
+
+#### Scenario: 明細
+
+- **WHEN** Brisbane 成為唯讀副本之後，打開 Dinner 的明細
+- **THEN** 金額下面是「Shared history」和「Payments and shares are preserved as read-only history.」，「Group」「Brisbane」後面是「Status」「Read-only copy」，Edit 停用；iOS 上 Expense actions 的「Delete」是停用的，Android 上 Expense actions 的 `more_vert` 停用
+
+#### Scenario: 卡片
+
+- **WHEN** Brisbane 成為唯讀副本
+- **THEN** 支出清單和 Brisbane 的畫面上仍有 Dinner 的卡片，都沒有「Delete expense」的輔助功能動作
+
+#### Scenario: 封存的唯讀副本
+
+- **WHEN** 封存唯讀副本 Brisbane 之後，打開 Dinner 的明細
+- **THEN** 「Status」仍是「Read-only copy」，那句話裡沒有「Restore this group before editing.」
+
+### Requirement: LEDGER-221.1 修改唯讀副本的支出時擋下
+
+IF 使用者在唯讀副本的支出的 Edit Expense 按 Save，THEN the mobile app SHALL 不儲存，跳出標題「Read-only Copy」、內容「This group is a read-only copy. Its expenses can't be changed.」的提示框，表單保持開啟並保留輸入；群組同時是封存的也一樣，不是 LEDGER-61.1 的那個提示框。
+
+#### Scenario: 表單開著時成為唯讀副本
+
+- **WHEN** Dinner 的 Edit Expense 開著時，Brisbane 成為唯讀副本；把標題改成「Supper」後按 Save
+- **THEN** 跳出這個提示框，表單仍開著，標題是「Supper」；存著的 Dinner 沒有改變，沒有多的待上傳的事件
+
+#### Scenario: 以網址打開
+
+- **WHEN** Brisbane 成為唯讀副本之後，以 `/expenses/<Dinner 的 ID>/edit` 打開，把金額改成「120.00」後按 Save
+- **THEN** 跳出這個提示框；存著的 Dinner 沒有改變
+
+### Requirement: LEDGER-222.1 唯讀副本不能選來記帳，它在垃圾桶裡的支出不能還原
+
+WHILE 群組是唯讀副本，the mobile app SHALL 不讓它出現在 Select Group（LEDGER-46.2）；以 `/expenses/new?groupId=<它的群組 ID>` 打開 New Expense 時，照封存群組的群組 ID 處理（LEDGER-52.1）；垃圾桶裡它的支出的唯讀明細上「Restore」停用（LEDGER-79.5），Trash 仍列出那筆支出。
+
+#### Scenario: Select Group
+
+- **WHEN** 依序建立 Brisbane、Tokyo 和 Paris，Tokyo 成為唯讀副本；在 New Expense 打開 Select Group
+- **THEN** 清單只有 Brisbane 和 Paris
+
+#### Scenario: 以網址打開 New Expense
+
+- **WHEN** 以 `/expenses/new?groupId=` 加上唯讀副本 Tokyo 的群組 ID 打開
+- **THEN** 表單和封存 Tokyo 之後用同一個網址打開時一樣，沒有選著 Tokyo
+
+#### Scenario: 垃圾桶
+
+- **WHEN** Dinner 在垃圾桶裡時 Brisbane 成為唯讀副本；在 Trash 點 Dinner 的卡片
+- **THEN** 唯讀明細上「Restore」是停用的；Dinner 仍在垃圾桶裡，沒有多的待上傳的事件

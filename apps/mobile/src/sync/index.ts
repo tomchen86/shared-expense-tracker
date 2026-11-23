@@ -25,6 +25,11 @@ export {
 
 export { saveGroupKey, syncGroup } from './loop';
 export {
+  readOnlyCopyOf,
+  type ReadOnlyCopy,
+  type ReadOnlyCopyReason,
+} from './read-only-copy';
+export {
   sendSnapshot,
   takeSnapshot,
   type SendSnapshotResult,

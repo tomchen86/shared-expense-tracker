@@ -688,7 +688,7 @@ test('[GROUPS-71.1] leaves out a former member who is only in expenses in the tr
 
 // The member count on the group's card
 
-test("[GROUPS-72.3] shows 1 member at the right of the name on a new group's card at the default text size", async () => {
+test("[GROUPS-72.4] shows 1 member at the right of the name on a new group's card at the default text size", async () => {
   await setTextSize(IOS_TEXT_SIZE.default);
   await startWithGroups({ Brisbane: [] });
 
@@ -709,7 +709,7 @@ test("[GROUPS-72.3] shows 1 member at the right of the name on a new group's car
   );
 });
 
-test("[GROUPS-72.3] counts the group's members on its card, but not former members", async () => {
+test("[GROUPS-72.4] counts the group's members on its card, but not former members", async () => {
   await startWithGroups(BRISBANE);
   await tapTab('Groups');
   await waitFor(() =>
