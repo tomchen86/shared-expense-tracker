@@ -4,14 +4,19 @@ import {
   CODE_B,
   NO_INVITE,
   WEEK,
+  brisbaneInvitesCasey,
+  cancelRequest,
   card,
   expectCard,
   expectInvite,
   expectInviteRefused,
+  expectRequestAnswered,
   expectRevoked,
+  joinRequest,
   putInvite,
   readInvite,
   revokeInvite,
+  sendRequest,
   taylorWithBrisbaneAndCasey,
 } from '../acceptance/sharing-invites-api';
 import {
@@ -96,4 +101,29 @@ test('a replaced expired card stays unreadable on a server whose clock is a mill
   expect(
     await sql()`SELECT revoked, card, cursor FROM group_invites WHERE code = ${CODE_A}`,
   ).toEqual([{ revoked: false, card: null, cursor: null }]);
+});
+
+test('replacing a request keeps its first receipt time, and cancelling after expiry leaves it alone', async () => {
+  const [, applicant] = await brisbaneInvitesCasey();
+  const replacement = joinRequest();
+  setTime(T + 1);
+  expectRequestAnswered(
+    await sendRequest(applicant, CODE_A, joinRequest()),
+    CODE_A,
+  );
+  setTime(T + 2);
+  expectRequestAnswered(
+    await sendRequest(applicant, CODE_A, replacement),
+    CODE_A,
+  );
+
+  const stored = () => sql()`
+    SELECT received_at_ms, encode(content, 'hex') AS content FROM invite_join_requests
+    WHERE code = ${CODE_A} AND device_id = ${applicant.deviceId}`;
+  const row = { received_at_ms: String(T + 1), content: hexOf(replacement) };
+  expect(await stored()).toEqual([row]);
+
+  setTime(T + WEEK);
+  expectRequestAnswered(await cancelRequest(applicant, CODE_A), CODE_A);
+  expect(await stored()).toEqual([row]);
 });

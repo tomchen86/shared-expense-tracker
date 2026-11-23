@@ -132,7 +132,7 @@ const expenseTitlesIn = (phone: Phone) =>
     (row) => (JSON.parse(row) as { title: string }).title,
   );
 
-test('[SHARING-19.1] a new phone on which the app records a personal expense has no device identity and has made no request', async () => {
+test('[SHARING-19.2] a new phone on which the app records a personal expense has no device identity and has made no request', async () => {
   const phone = newPhone();
   const requests = goOffline();
 

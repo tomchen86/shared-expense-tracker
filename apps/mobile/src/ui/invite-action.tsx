@@ -4,12 +4,15 @@ import { useThemeColors } from './theme';
 export interface InviteActionProps {
   label: string;
   destructive?: boolean;
+  inline?: boolean;
+  disabled?: boolean;
   onPress: () => void;
 }
 
 export function InviteAction({
   label,
   destructive,
+  disabled,
   onPress,
 }: InviteActionProps) {
   const colors = useThemeColors();
@@ -18,6 +21,7 @@ export function InviteAction({
       title={label}
       accessibilityLabel={label}
       onPress={onPress}
+      disabled={disabled}
       color={destructive ? colors.error : colors.accent}
     />
   );

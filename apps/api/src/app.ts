@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import type { Sql } from './database/connect';
 import { healthRoutes } from './health/routes';
 import type { AppLinks } from './sharing/app-links';
-import { inviteRoutes } from './sharing/invite-routes';
+import { inviteRoutes, publicInviteRoutes } from './sharing/invite-routes';
 import { appLinkRoutes } from './sharing/routes';
 import { signedRequests } from './sharing/signed-requests';
 import { syncRoutes } from './sync/routes';
@@ -36,6 +36,7 @@ export const app = new Hono<AppEnv>()
   // when its requirement says so (SHARING-31.2).
   .route('/', healthRoutes)
   .route('/', appLinkRoutes)
+  .route('/', publicInviteRoutes)
   // Every other request passes the checks first, whether its path has a route or not.
   .use(signedRequests)
   // The routes that take signed requests: each runs only once its request has passed.
