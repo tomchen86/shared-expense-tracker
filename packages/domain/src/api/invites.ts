@@ -27,7 +27,7 @@ export interface ReadInviteResponse {
   card: string;
 }
 
-/** Refusals after the signed request has passed the device checks. */
+/** The invite routes' own refusals. */
 export const INVITE_REFUSAL_STATUS = {
   request: REFUSAL_STATUS.request,
   'not-a-member': GROUP_REFUSAL_STATUS['not-a-member'],
@@ -65,6 +65,16 @@ export function isRevokeInviteResponse(
   value: unknown,
 ): value is RevokeInviteResponse {
   return hasExactly(value, ['code']) && isInviteCode(value.code);
+}
+
+export function isReadInviteResponse(
+  value: unknown,
+): value is ReadInviteResponse {
+  return (
+    hasExactly(value, ['expiresAtMs', 'card']) &&
+    isWhole(value.expiresAtMs, 0) &&
+    isContent(value.card)
+  );
 }
 
 export function isInviteRefusal(value: unknown): value is InviteRefusal {

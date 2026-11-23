@@ -15,7 +15,7 @@ flowchart LR
 | Part | Responsibility | Where |
 |---|---|---|
 | Mobile app | What a member does on the phone, including offline; syncs with the API | `apps/mobile` |
-| API | Authorizes members and devices, and stores and exchanges each shared ledger's sync events; applies no bookkeeping rules. Serves what lets an invite link open the app, and the page for a phone without it | `apps/api` |
+| API | Authorizes members and devices. Stores and exchanges each shared ledger's encrypted events and snapshots and applies no bookkeeping rules. Serves what lets an invite link open the app, and the page for a phone without it | `apps/api` |
 | Domain | Rules every client applies identically, and the API's request and response types with the functions that check them | `packages/domain` |
 
 Name top-level directories only. File paths go stale.
@@ -24,13 +24,14 @@ Name top-level directories only. File paths go stale.
 
 - Each capability's code lives in one directory per app, named after its spec (ADR-0002).
 - A rule every client applies lives once, in `packages/domain`; no client redefines it (ADR-0002).
-- The API only authorizes members and devices and exchanges sync events; it never applies bookkeeping rules, and each client checks the events it receives (ADR-0003).
+- The API never applies bookkeeping rules. Each client validates the events and snapshots it receives (ADR-0003).
 - The API stores data only in PostgreSQL, in tests too (ADR-0002).
 - The API's code runs unchanged on Node and on Cloudflare Workers; only one entry file per runtime knows which (ADR-0007).
 - The API runs in a staging and a production environment, each with its own Worker, Hyperdrive configuration, and database; a deploy runs the migrations before it uploads the Worker, and no request runs them (ADR-0019).
 - The API checks every request's signature before routing, unless the route is public; a refused request changes nothing in its database (ADR-0022).
 - The phone sends every request to the API through one function, which signs it with the phone's own key (ADR-0015, ADR-0022).
-- A phone creates a shared ledger's group on the API under the group's own ID. The API stores each event once, numbers a group's events in the order it stores them, hands them out in small pages by cursor, and refuses an upload that would take a group's events past 10 MiB (ADR-0016, ADR-0024).
+- A phone creates a shared ledger's group on the API under the group's own ID. The API numbers events in upload order and reuses an event's number while it still stores that event. Daily cleanup clears the prefix acknowledged by every member device or covered by an event older than 30 days, whichever reaches further. A phone downloads small pages by cursor and needs a snapshot when its cursor falls behind that prefix. The 10 MiB limit counts the events the group still stores (ADR-0016, ADR-0024, ADR-0033).
+- A phone can send a shared ledger's merged records as an encrypted snapshot for one device. The API deletes the snapshot and its chunks when the recipient downloads an event page with a cursor at or beyond the snapshot's sequence. Daily cleanup also deletes snapshots the group has cleared past and snapshots that began more than 30 days ago. The recipient validates the complete snapshot and merges it into SQLite in one transaction, preserving its unsent changes (ADR-0028, ADR-0033).
 - On the phone, data lives in SQLite; zustand holds only screen state (ADR-0002).
 - The phone keeps all its data in one SQLite database; every capability's migrations run in one app-wide order and never change once a release tag contains them (ADR-0006).
 - Only `apps/mobile/src/storage/` imports `expo-sqlite`; tests run the same migrations and queries on SQLite in Node (ADR-0006).

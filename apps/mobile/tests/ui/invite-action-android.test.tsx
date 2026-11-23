@@ -6,6 +6,15 @@ import {
 } from '@testing-library/react-native';
 import { InviteAction } from '../../src/ui/invite-action';
 
+test('the inline retry label is itself the named button that handles the press', async () => {
+  const onPress = jest.fn();
+  await render(<InviteAction label="Try Again" inline onPress={onPress} />);
+  const retry = screen.getByRole('button', { name: 'Try Again' });
+  expect(screen.getByText('Try Again')).toBe(retry);
+  await fireEvent.press(retry);
+  expect(onPress).toHaveBeenCalledTimes(1);
+});
+
 test.each(['Share Link', 'Revoke Link', 'Try Again'])(
   '%s exposes one focusable button and handles a press once',
   async (label) => {

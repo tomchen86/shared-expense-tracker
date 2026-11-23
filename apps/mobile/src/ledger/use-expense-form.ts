@@ -151,7 +151,16 @@ export function useExpenseForm({
   // What the form opened with: a save writes what differs from it (SYNC-23.2). The form
   // reads the expense again each time it comes back into focus, and keeps this.
   const [opened] = useState({ expense, units });
+  type Draft = typeof initial;
   const [form, setForm] = useState(initial);
+  // What the form holds now, which Add and Save save. `form` can be older: when the
+  // phone is busy, the keys typed or the choice made just before Add or Save reach
+  // React in the same batch as it, and `form` is still from the render before them.
+  const latestForm = useRef(initial);
+  function update(next: (previous: Draft) => Draft) {
+    latestForm.current = next(latestForm.current);
+    setForm(latestForm.current);
+  }
   const [saving, setSaving] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const savingRef = useRef(false);
@@ -164,11 +173,40 @@ export function useExpenseForm({
     };
   }, []);
 
-  const spaceId = form.groupId ?? identity.personalSpaceId;
-  const spaceCategories = categories.filter((item) => item.spaceId === spaceId);
-  const category =
-    spaceCategories.find((item) => item.id === form.categoryId) ??
-    spaceCategories.find(isUncategorizedCategory)!;
+  /** What `draft` makes of the form: its space and category, whether it changed, and whether it can be saved. */
+  function derive(draft: Draft) {
+    const spaceId = draft.groupId ?? identity.personalSpaceId;
+    const spaceCategories = categories.filter(
+      (item) => item.spaceId === spaceId,
+    );
+    const category =
+      spaceCategories.find((item) => item.id === draft.categoryId) ??
+      spaceCategories.find(isUncategorizedCategory)!;
+    const dirty =
+      draft.amount.trim() !== initial.amount.trim() ||
+      draft.title.trim() !== initial.title.trim() ||
+      draft.note.trim() !== initial.note.trim() ||
+      category.id !== initial.categoryId ||
+      draft.date !== initial.date ||
+      draft.split !== initial.split ||
+      draft.groupId !== initial.groupId ||
+      draft.payerId !== initial.payerId ||
+      draft.participants.length !== initial.participants.length ||
+      draft.participants.some((id) => !initial.participants.includes(id));
+    const amountMinor = parseAmount(
+      normalizeAmount(draft.amount),
+      initial.currency,
+    );
+    const canSave =
+      dirty &&
+      !!draft.title.trim() &&
+      amountMinor !== undefined &&
+      (!draft.split ||
+        (!!draft.groupId && !!draft.payerId && draft.participants.length > 0));
+    return { spaceId, spaceCategories, category, dirty, amountMinor, canSave };
+  }
+
+  const { spaceId, spaceCategories, category, dirty, canSave } = derive(form);
   const group = groups.find((item) => item.id === form.groupId);
   const members = group?.members ?? [];
   const financialLocked =
@@ -176,34 +214,13 @@ export function useExpenseForm({
     [...expense.payments, ...expense.shares].some(
       (share) => !members.some((member) => member.id === share.participant),
     );
-  const dirty =
-    form.amount.trim() !== initial.amount.trim() ||
-    form.title.trim() !== initial.title.trim() ||
-    form.note.trim() !== initial.note.trim() ||
-    category.id !== initial.categoryId ||
-    form.date !== initial.date ||
-    form.split !== initial.split ||
-    form.groupId !== initial.groupId ||
-    form.payerId !== initial.payerId ||
-    form.participants.length !== initial.participants.length ||
-    form.participants.some((id) => !initial.participants.includes(id));
-  const amountMinor = parseAmount(
-    normalizeAmount(form.amount),
-    initial.currency,
-  );
-  const canSave =
-    dirty &&
-    !!form.title.trim() &&
-    amountMinor !== undefined &&
-    (!form.split ||
-      (!!form.groupId && !!form.payerId && form.participants.length > 0));
 
   function change(
     key: 'amount' | 'title' | 'note' | 'categoryId' | 'date',
     value: string,
   ) {
     if (!savingRef.current)
-      setForm((previous) => ({ ...previous, [key]: value }));
+      update((previous) => ({ ...previous, [key]: value }));
   }
 
   function changeDate(date: string) {
@@ -221,7 +238,7 @@ export function useExpenseForm({
           !item.isArchived &&
           categoryNameKey(item.name) === categoryNameKey(category.name),
       ) ?? target.find(isUncategorizedCategory)!;
-    setForm((previous) => ({
+    update((previous) => ({
       ...previous,
       groupId,
       categoryId: matching.id,
@@ -232,18 +249,18 @@ export function useExpenseForm({
 
   function changeSplit(enabled: boolean) {
     if (savingRef.current || groupLocked) return;
-    setForm((previous) => ({ ...previous, split: enabled }));
+    update((previous) => ({ ...previous, split: enabled }));
     if (!enabled) chooseGroup();
   }
 
   function choosePayer(payerId: string) {
     if (savingRef.current || financialLocked) return;
-    setForm((previous) => ({ ...previous, payerId }));
+    update((previous) => ({ ...previous, payerId }));
   }
 
   function toggleParticipant(id: string) {
     if (savingRef.current || financialLocked) return;
-    setForm((previous) => ({
+    update((previous) => ({
       ...previous,
       participants: previous.participants.includes(id)
         ? previous.participants.filter((item) => item !== id)
@@ -287,11 +304,13 @@ export function useExpenseForm({
   }
 
   async function save() {
+    const draft = latestForm.current;
+    const latest = derive(draft);
     if (
       closingRef.current ||
       savingRef.current ||
-      !canSave ||
-      amountMinor === undefined
+      !latest.canSave ||
+      latest.amountMinor === undefined
     )
       return;
     savingRef.current = true;
@@ -302,29 +321,29 @@ export function useExpenseForm({
       const read = await latestRead().catch(() => undefined);
       if (!read) return;
       const inSpace = read.categories.filter(
-        (item) => item.spaceId === spaceId,
+        (item) => item.spaceId === latest.spaceId,
       );
       const categoryId = (
-        inSpace.find((item) => item.id === category.id) ??
+        inSpace.find((item) => item.id === latest.category.id) ??
         inSpace.find(isUncategorizedCategory)!
       ).id;
       await saveExpense(
         database,
         identity,
         {
-          title: form.title,
-          amountMinor,
+          title: draft.title,
+          amountMinor: latest.amountMinor,
           currency: initial.currency,
-          date: form.date,
+          date: draft.date,
           categoryId,
-          note: form.note,
+          note: draft.note,
         },
         opened.expense,
-        form.split
+        draft.split
           ? {
-              groupId: form.groupId!,
-              payerId: form.payerId!,
-              participants: form.participants,
+              groupId: draft.groupId!,
+              payerId: draft.payerId!,
+              participants: draft.participants,
             }
           : undefined,
         opened.units,

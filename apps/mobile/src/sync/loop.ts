@@ -52,13 +52,15 @@ const eventsPath = (groupId: string) => `/groups/${groupId}/events`;
 
 /**
  * The group key of one key epoch (SYNC-66.1): undefined when this phone has none, and
- * when it cannot read its secure store now, which leaves it without one too (SYNC-95.1).
+ * when it cannot read its secure store now (SYNC-95.1). A caller that distinguishes a
+ * failed read from an absent key can throw from `onReadError`.
  */
-async function readGroupKey(
+export async function readGroupKey(
   groupId: string,
   epoch: number,
+  onReadError: (cause: unknown) => null = () => null,
 ): Promise<Uint8Array | undefined> {
-  const value = await readGroupKeyEntry(groupId, epoch).catch(() => null);
+  const value = await readGroupKeyEntry(groupId, epoch).catch(onReadError);
   return value !== null && GROUP_KEY_HEX.test(value)
     ? hexToBytes(value)
     : undefined;
@@ -210,11 +212,11 @@ async function storePage(
         [cursor, waitsForUpdate, groupId],
       );
     // This ledger's screens are told once, with the expenses that left the trash.
-    moved.delete(groupId);
+    const reordered = moved.delete(groupId);
     return {
       moved,
       leftTrash,
-      changed: changed || waitsForUpdate !== ledger.waitsForUpdate,
+      changed: changed || reordered || waitsForUpdate !== ledger.waitsForUpdate,
     };
   });
   if (!stored) return 'end';

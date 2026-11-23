@@ -1,3 +1,4 @@
+import { possibleSyncDuplicates } from './duplicates';
 import {
   checkSyncEvent,
   mergeSyncEvent,
@@ -19,6 +20,32 @@ const event = {
 
 // Exercise the objects produced by JSON.parse, including an own __proto__ key.
 const parsed = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
+
+test('orders matching expenses with identical creation stamps by ID, regardless of input order', () => {
+  const common = {
+    date: '2026-10-30',
+    amountMinor: 1000,
+    currency: 'USD',
+    trashed: false,
+  };
+  const mine = { ...common, id: 'mine', created: { ...stamp, ms: 2000 } };
+  const first = {
+    ...common,
+    id: 'a,b',
+    created: { ...stamp, device: 'other' },
+  };
+  const next = { ...first, id: 'b' };
+  for (const expenses of [
+    [mine, next, first],
+    [first, next, mine],
+  ])
+    expect(
+      possibleSyncDuplicates({ device: stamp.device, expenses, distinct: [] }),
+    ).toEqual([
+      { id: mine.id, of: first.id },
+      { id: mine.id, of: next.id },
+    ]);
+});
 
 test.each(['__proto__', 'constructor', 'toString'])(
   'does not accept the inherited object key %s as a record type or unit',

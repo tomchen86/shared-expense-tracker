@@ -1,12 +1,16 @@
 import {
+  BODY_LIMIT,
   CASEY,
   T,
   TAYLOR,
   expectPassed,
   expectRefused,
+  leavingTheDatabaseAsItWas,
   newPhone,
   registered,
   send,
+  sendPartly,
+  serverUrl,
   setTime,
   signedBy,
   timesStored,
@@ -42,7 +46,6 @@ import {
   BRISBANE,
   TOKYO,
   addMember,
-  answerHeaders,
   call,
   callOn,
   createGroup,
@@ -55,7 +58,7 @@ import {
 
 // A shared ledger's invite on the API (ADR-0015, ADR-0026): a code the phone picks, when
 // it expires, and a card the API cannot read. A group has one active invite at a time,
-// any member device creates or revokes it, and any registered device reads it by its code.
+// any member device creates or revokes it, and anyone reads it by its code, signed or not.
 
 useSyncApi();
 
@@ -451,12 +454,14 @@ describe('SHARING-82.1', () => {
   });
 });
 
-describe('SHARING-83.1', () => {
-  test('[SHARING-83.1] gives a device that is no member device the expiry and the card, and no group ID', async () => {
-    const [taylor, casey] = await taylorWithBrisbaneAndCasey();
+describe('SHARING-83.2', () => {
+  const unsigned = (code: string) => send({ path: readPath(code) });
+
+  test('[SHARING-83.2] gives the expiry and the card, and no group ID, to a request with no signature', async () => {
+    const [taylor] = await taylorWithBrisbaneAndCasey();
     expectInvite(await putInvite(taylor, BRISBANE, CODE_A, X), CODE_A, EXPIRES);
 
-    const answer = await readInvite(casey, CODE_A);
+    const answer = await unsigned(CODE_A);
 
     expect(answer).toEqual({
       status: 200,
@@ -465,35 +470,80 @@ describe('SHARING-83.1', () => {
     expect(JSON.stringify(answer.body)).not.toContain(BRISBANE);
   });
 
-  test('[SHARING-83.1] gives a member device the same answer', async () => {
+  test('[SHARING-83.2] gives the same answer to a device that has not registered, to a member device and to any other device', async () => {
     const [taylor, casey] = await taylorWithBrisbaneAndCasey();
     expectInvite(await putInvite(taylor, BRISBANE, CODE_A, X), CODE_A, EXPIRES);
+    const plain = await unsigned(CODE_A);
 
-    expect(await readInvite(taylor, CODE_A)).toEqual(
-      await readInvite(casey, CODE_A),
+    const stranger = await send(
+      signedBy(newPhone(), { path: readPath(CODE_A) }),
     );
+
+    expectCard(plain, EXPIRES, X);
+    expect(stranger).toEqual(plain);
+    expect(await readInvite(taylor, CODE_A)).toEqual(plain);
+    expect(await readInvite(casey, CODE_A)).toEqual(plain);
   });
 
-  test('[SHARING-83.1] tells the phone not to store the answer', async () => {
+  test('[SHARING-83.2] does not check a signature it is sent: the same signed request is answered twice', async () => {
+    const [taylor, casey] = await taylorWithBrisbaneAndCasey();
+    expectInvite(await putInvite(taylor, BRISBANE, CODE_A, X), CODE_A, EXPIRES);
+    const request = signedBy(casey, { path: readPath(CODE_A) });
+
+    const first = await send(request);
+    const again = await send(request);
+
+    expectCard(first, EXPIRES, X);
+    expect(again).toEqual(first);
+  });
+
+  test("[SHARING-83.2] counts no read towards a device's 60 requests a minute", async () => {
+    const [taylor, casey] = await taylorWithBrisbaneAndCasey();
+    expectInvite(await putInvite(taylor, BRISBANE, CODE_A, X), CODE_A, EXPIRES);
+    for (let sent = 0; sent < 60; sent += 1) {
+      expectCard(await readInvite(casey, CODE_A), EXPIRES, X);
+    }
+
+    const next = await revokeInvite(casey, BRISBANE, CODE_B);
+
+    expectInviteRefused(next, NOT_A_MEMBER);
+  });
+
+  test('[SHARING-83.2] tells the phone not to store the answer', async () => {
+    const [taylor] = await taylorWithBrisbaneAndCasey();
+    expectInvite(await putInvite(taylor, BRISBANE, CODE_A, X), CODE_A, EXPIRES);
+
+    const response = await fetch(`${serverUrl()}${readPath(CODE_A)}`);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+
+  test('[SHARING-83.2] leaves the database exactly as it was when an invite is read, signed or not', async () => {
     const [taylor, casey] = await taylorWithBrisbaneAndCasey();
     expectInvite(await putInvite(taylor, BRISBANE, CODE_A, X), CODE_A, EXPIRES);
 
-    const headers = await answerHeaders(casey, { path: readPath(CODE_A) });
-
-    expect(headers.get('cache-control')).toBe('no-store');
-  });
-
-  test('[SHARING-83.1] changes nothing when an invite is read', async () => {
-    const [taylor, casey] = await taylorWithBrisbaneAndCasey();
-    expectInvite(await putInvite(taylor, BRISBANE, CODE_A, X), CODE_A, EXPIRES);
-
-    const answers = await leavingGroupsAsTheyWere(async () => [
+    const answers = await leavingTheDatabaseAsItWas(async () => [
+      await unsigned(CODE_A),
       await readInvite(casey, CODE_A),
-      await readInvite(casey, CODE_A),
-      await readInvite(casey, CODE_A),
+      await unsigned(CODE_A),
     ]);
 
     for (const answer of answers) expectCard(answer, EXPIRES, X);
+  });
+
+  test('[SHARING-83.2] answers as it does without a body, whatever body the request declares', async () => {
+    const [taylor] = await taylorWithBrisbaneAndCasey();
+    expectInvite(await putInvite(taylor, BRISBANE, CODE_A, X), CODE_A, EXPIRES);
+    const plain = await unsigned(CODE_A);
+
+    const declared = await sendPartly(
+      { path: readPath(CODE_A) },
+      { declaredLength: BODY_LIMIT + 1 },
+    );
+
+    expect(plain.status).toBe(200);
+    expect(declared).toEqual(plain);
   });
 });
 
@@ -712,10 +762,10 @@ describe('SHARING-86.1', () => {
   });
 });
 
-describe('SHARING-87.1', () => {
+describe('SHARING-87.2', () => {
   const SIGNATURE = { error: 'signature' } as const;
 
-  test('[SHARING-87.1] takes none of the three requests without a signature, or from a device that has not registered', async () => {
+  test('[SHARING-87.2] takes neither a creation nor a revocation without a signature, or from a device that has not registered', async () => {
     const [taylor] = await taylorWithBrisbaneAndCasey();
     const stranger = newPhone();
     const requests = [
@@ -725,7 +775,6 @@ describe('SHARING-87.1', () => {
         body: new Uint8Array(Buffer.from(inviteBody(X))),
       },
       { method: 'DELETE', path: invitePath(BRISBANE, CODE_A) },
-      { method: 'GET', path: readPath(CODE_A) },
     ];
 
     for (const request of requests) {
@@ -740,7 +789,19 @@ describe('SHARING-87.1', () => {
     expectInviteRefused(await readInvite(taylor, CODE_A), NO_INVITE);
   });
 
-  test('[SHARING-87.1] says how a request is written before whether the device is a member device', async () => {
+  test('[SHARING-87.2] refuses a read with no signature for how it is written or for its code, never for its signature', async () => {
+    await taylorWithBrisbaneAndCasey();
+
+    const answers = await leavingTheDatabaseAsItWas(async () => [
+      await send({ path: readPath('invite') }),
+      await send({ path: readPath(CODE_C) }),
+    ]);
+
+    expectInviteRefused(answers[0], REQUEST);
+    expectInviteRefused(answers[1], NO_INVITE);
+  });
+
+  test('[SHARING-87.2] says how a request is written before whether the device is a member device', async () => {
     const [, casey] = await taylorWithBrisbaneAndCasey();
 
     const wrongBody = await putInviteBody(casey, BRISBANE, CODE_A, '{}');
@@ -753,7 +814,7 @@ describe('SHARING-87.1', () => {
     expectInviteRefused(withQuery, REQUEST);
   });
 
-  test("[SHARING-87.1] says a device is no member device before the cursor's size and the invite's state", async () => {
+  test("[SHARING-87.2] says a device is no member device before the cursor's size and the invite's state", async () => {
     const [taylor, casey] = await taylorWithBrisbaneAndCasey();
     expectInvite(await putInvite(taylor, BRISBANE, CODE_A, X), CODE_A, EXPIRES);
 
@@ -764,7 +825,7 @@ describe('SHARING-87.1', () => {
     expectInviteRefused(byTaylor, REQUEST);
   });
 
-  test("[SHARING-87.1] says a cursor is too large before the invite's state", async () => {
+  test("[SHARING-87.2] says a cursor is too large before the invite's state", async () => {
     const [taylor] = await taylorWithBrisbaneAndCasey();
     expectInvite(await putInvite(taylor, BRISBANE, CODE_A, X), CODE_A, EXPIRES);
     expectRevoked(await revokeInvite(taylor, BRISBANE, CODE_A), CODE_A);
@@ -779,7 +840,7 @@ describe('SHARING-87.1', () => {
     );
   });
 
-  test('[SHARING-87.1] says a code was used before it says the group already has an invite', async () => {
+  test('[SHARING-87.2] says a code was used before it says the group already has an invite', async () => {
     const [taylor] = await taylorWithBrisbaneAndCasey();
     expectInvite(await putInvite(taylor, BRISBANE, CODE_A, X), CODE_A, EXPIRES);
     expectRevoked(await revokeInvite(taylor, BRISBANE, CODE_A), CODE_A);
@@ -791,9 +852,15 @@ describe('SHARING-87.1', () => {
     );
   });
 
-  test('[SHARING-87.1] has accepted a request it then refuses: sent again as it was, it is a replay', async () => {
-    const [, casey] = await taylorWithBrisbaneAndCasey();
-    const request = signedBy(casey, { path: readPath(CODE_C) });
+  test('[SHARING-87.2] has accepted a request it then refuses: sent again as it was, it is a replay', async () => {
+    const [taylor] = await taylorWithBrisbaneAndCasey();
+    expectInvite(await putInvite(taylor, BRISBANE, CODE_A, X), CODE_A, EXPIRES);
+    expectRevoked(await revokeInvite(taylor, BRISBANE, CODE_A), CODE_A);
+    const request = signedBy(taylor, {
+      method: 'PUT',
+      path: invitePath(BRISBANE, CODE_A),
+      body: inviteBody(Y),
+    });
 
     const first = await send(request);
     const again = await send(request);
@@ -802,14 +869,17 @@ describe('SHARING-87.1', () => {
     expectRefused(again, { error: 'replayed' });
   });
 
-  test("[SHARING-87.1] counts a request it refuses towards the device's 60 a minute", async () => {
+  test("[SHARING-87.2] counts a request it refuses towards the device's 60 a minute", async () => {
     const [, casey] = await taylorWithBrisbaneAndCasey();
     // With its registration, 59 more make 60 in this minute.
     for (let sent = 0; sent < 59; sent += 1) {
-      expectInviteRefused(await readInvite(casey, CODE_C), NO_INVITE);
+      expectInviteRefused(
+        await revokeInvite(casey, BRISBANE, CODE_A),
+        NOT_A_MEMBER,
+      );
     }
 
-    const next = await readInvite(casey, CODE_C);
+    const next = await revokeInvite(casey, BRISBANE, CODE_A);
 
     expectRefused(next, { error: 'too-many-requests', retryAfterMs: 60_000 });
   });

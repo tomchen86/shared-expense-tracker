@@ -29,7 +29,8 @@ module.exports = {
     // Checks imported amounts and keeps the latest sync stamp across an import.
     './apps/mobile/src/backup/import.ts': { branches: 100 },
     './apps/mobile/src/groups/group-card.tsx': { branches: 83.33 },
-    './apps/mobile/src/groups/group-screen.tsx': { branches: 96.92 },
+    './apps/mobile/src/groups/join-request-cards.tsx': { branches: 75 },
+    './apps/mobile/src/groups/group-screen.tsx': { branches: 97.01 },
     './apps/mobile/src/groups/group-summary.tsx': { branches: 50 },
     './apps/mobile/src/groups/groups-screen.tsx': { branches: 100 },
     './apps/mobile/src/groups/balances-screen.tsx': { branches: 100 },
@@ -54,14 +55,18 @@ module.exports = {
     // review.ts leaves alone, nor holds a button down, which draws it pressed.
     './apps/mobile/src/sync/own-money.ts': { branches: 100 },
     './apps/mobile/src/ledger/review.ts': { branches: 50 },
-    './apps/mobile/src/ledger/review-block.tsx': { branches: 85.71 },
+    './apps/mobile/src/ledger/review-block.tsx': { branches: 90 },
     './apps/mobile/src/ledger/review-mark.tsx': { branches: 100 },
     './apps/mobile/src/groups/review-button.tsx': { branches: 75 },
+    // Possible duplicates (ADR-0035): the pairing rule, the ledger read and save, and the card.
+    './packages/domain/src/sync/duplicates.ts': { branches: 91.66 },
+    './apps/mobile/src/sync/duplicates.ts': { branches: 100 },
+    './apps/mobile/src/ledger/expense-card.tsx': { branches: 87.5 },
     // The phone's sync with the API (ADR-0027): the loop, the check of unsent stamps, and
     // what starts a sync and shows its notices. Measured with the tests against the API
     // (`*-api.test.*`), which need Docker.
-    './apps/mobile/src/sync/loop.ts': { branches: 98.18 },
-    './apps/mobile/src/sync/stamps.ts': { branches: 95.83 },
+    './apps/mobile/src/sync/loop.ts': { branches: 98.21 },
+    './apps/mobile/src/sync/stamps.ts': { branches: 96 },
     './apps/mobile/src/sync/use-sync-notices.ts': { branches: 75 },
     './apps/mobile/src/sync/use-sync-triggers.ts': { branches: 93.75 },
     // No acceptance test decodes a character that is cut short; utf8.test.ts reaches every branch.
@@ -75,22 +80,30 @@ module.exports = {
     // ledger syncs through, and what the API checks before it takes anything (ADR-0015,
     // ADR-0022).
     './packages/domain/src/api/signed-request.ts': { branches: 100 },
+    './packages/domain/src/api/join-requests.ts': { branches: 100 },
     './apps/api/src/node.ts': { branches: 63.63 },
     // What every run reaches. The branch left needs two registrations of one device ID to
     // race, so a run that measures 100 reached it by its timing: leave this where it is.
     './apps/api/src/sharing/devices.ts': { branches: 92.85 },
+    './apps/api/src/sharing/invite-routes.ts': { branches: 100 },
     './apps/api/src/sharing/ip.ts': { branches: 93.33 },
+    './apps/api/src/sharing/join-requests.ts': { branches: 100 },
     './apps/api/src/sharing/request-body.ts': { branches: 100 },
     './apps/api/src/sharing/signed-requests.ts': { branches: 100 },
     './apps/mobile/src/sharing/api-request.ts': { branches: 100 },
     './apps/mobile/src/sharing/device-identity.ts': { branches: 100 },
-    // Invite creation, card updates and the sync records that carry links between phones.
+    // Invite links, join requests and the sync records that carry links between phones.
     './apps/mobile/src/sharing/group-key.ts': { branches: 100 },
     './apps/mobile/src/sharing/invite-api.ts': { branches: 86.2 },
     './apps/mobile/src/sharing/invite-card.ts': { branches: 100 },
+    './apps/mobile/src/sharing/invite-link-sheet.tsx': { branches: 100 },
     './apps/mobile/src/sharing/invite-sheet.tsx': { branches: 80 },
     './apps/mobile/src/sharing/invites.ts': { branches: 94.73 },
+    './apps/mobile/src/sharing/join-form.tsx': { branches: 92.1 },
+    './apps/mobile/src/sharing/join-invite.ts': { branches: 100 },
+    './apps/mobile/src/sharing/join-requests.ts': { branches: 91.66 },
     './apps/mobile/src/sharing/refresh-invite-card.ts': { branches: 96.77 },
+    './apps/mobile/src/sharing/use-join-group.ts': { branches: 88.09 },
     './apps/mobile/src/sync/invites.ts': { branches: 75 },
     // The event API: what stores a shared ledger's events, numbers them and hands them
     // out, and the checks of its bodies that the phone and the API share (ADR-0016,
@@ -98,6 +111,19 @@ module.exports = {
     './packages/domain/src/api/group-events.ts': { branches: 100 },
     './apps/api/src/sync/groups.ts': { branches: 100 },
     './apps/api/src/sync/routes.ts': { branches: 100 },
+    './apps/api/src/cleanup.ts': { branches: 100 },
+    './apps/api/src/migrations.ts': { branches: 100 },
+    './apps/api/src/sync/migrations.ts': { branches: 100 },
+    // The traced Cron test calls scheduled. The branches in this entry file are in fetch.
+    './apps/api/src/workers.ts': { branches: 0 },
+    // Encrypted ledger snapshots (ADR-0028). The non-acceptance tests also exercise
+    // damaged local records and an uploader that has lost its signing identity.
+    './packages/domain/src/api/wire.ts': { branches: 100 },
+    './packages/domain/src/api/group-snapshots.ts': { branches: 100 },
+    './packages/domain/src/sync/snapshot.ts': { branches: 100 },
+    './apps/api/src/sync/snapshots.ts': { branches: 100 },
+    './apps/mobile/src/sync/snapshot-ledger.ts': { branches: 97.29 },
+    './apps/mobile/src/sync/snapshots.ts': { branches: 98.43 },
   },
   testTimeout: 15000,
 };

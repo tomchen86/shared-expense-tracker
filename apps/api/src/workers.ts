@@ -1,5 +1,6 @@
 import type { ExecutionContext } from 'hono';
 import { app } from './app';
+import { cleanUp } from './cleanup';
 import { connect, type Sql } from './database/connect';
 import type { AppLinks } from './sharing/app-links';
 
@@ -34,5 +35,24 @@ export default {
       },
       context,
     );
+  },
+  /**
+   * What Cloudflare calls when the Worker's Cron trigger fires: runs the cleanup once on
+   * this environment's database, at invocation time (SYNC-145.2). It resolves once the
+   * cleanup has finished.
+   */
+  async scheduled(
+    controller: { readonly cron: string; readonly scheduledTime: number },
+    env: WorkersEnv,
+    context: ExecutionContext,
+  ): Promise<void> {
+    void controller;
+    void context;
+    const sql = connect(env.HYPERDRIVE.connectionString);
+    try {
+      await cleanUp(sql, Date.now());
+    } finally {
+      await sql.end();
+    }
   },
 };

@@ -7,7 +7,7 @@ import {
   expenseMigrations,
   expenseTrashMigration,
 } from '../ledger/migrations';
-import { sharingMigrations } from '../sharing/migrations';
+import { joinRequestMigration, sharingMigrations } from '../sharing/migrations';
 import {
   inviteMigration,
   syncLoopMigration,
@@ -46,4 +46,5 @@ export const appMigrations: readonly string[] = [
   syncLoopMigration,
   syncOwnMoneyMigration,
   inviteMigration,
+  joinRequestMigration,
 ];

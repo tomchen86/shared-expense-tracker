@@ -82,7 +82,10 @@ export function ScreenWithSheet({
             ),
           }}
         >
-          <ScrollView contentContainerStyle={{ padding: 20 }}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ padding: 20 }}
+          >
             {sheet}
           </ScrollView>
         </ScreenStackItem>

@@ -4,6 +4,7 @@ import {
   syncRecordValues,
   type SyncEvent,
   type SyncRecord,
+  type SyncSnapshot,
   type SyncStamp,
 } from '@shared-expense/domain';
 import {
@@ -17,6 +18,7 @@ import {
   createGroup,
   listGroups,
   removeGroupMember,
+  setGroupArchived,
 } from '../../src/groups';
 import {
   ensureLocalIdentity,
@@ -31,7 +33,13 @@ import {
   listUnsentSyncEvents,
   shareGroup,
 } from '../../src/sync';
+import { importSnapshot } from '../../src/sync/snapshot-ledger';
+import {
+  markExpensesDistinct,
+  readDuplicateTargets,
+} from '../../src/sync/duplicates';
 import { latestStamp, readSyncRecord } from '../../src/sync/records';
+import { takeUploadedStamps } from '../../src/sync/stamps';
 import { moveExpenseToTrash } from '../../src/ledger/trash';
 import {
   listExpenses,
@@ -105,6 +113,102 @@ function received<Content extends { stamp: SyncStamp }>(content: Content) {
     content,
   };
 }
+
+test('a stale decision cannot settle the next pair or write after archival or trashing', async () => {
+  await shareTrip();
+  const { groupId } = split;
+  const first = await save();
+  const second = await save();
+  const [creation] = await listUnsentSyncEvents(database);
+  const stamp = {
+    ms: (await latestStamp(database))!.ms + 1,
+    counter: 0,
+    device: 'remote',
+  };
+  const id = 'remote-expense';
+  await applySyncEvents(database, groupId, [
+    received({ ...creation.content, id, stamp }),
+  ]);
+  const decide = (of: string) =>
+    markExpensesDistinct(database, groupId, id, of);
+  expect((await readDuplicateTargets(database)).get(id)).toBe(first.id);
+
+  const settlement = received({
+    version: 1,
+    type: 'distinct',
+    id: randomUUID(),
+    stamp,
+    units: { expenses: { value: [first.id, id] } },
+  });
+  // The remote decision gets the connection before the press from the old screen.
+  await Promise.all([
+    applySyncEvents(database, groupId, [settlement]),
+    decide(first.id),
+  ]);
+  expect((await readDuplicateTargets(database)).get(id)).toBe(second.id);
+  const outbox = await listUnsentSyncEvents(database);
+  expect(outbox).toHaveLength(2);
+  await setGroupArchived(database, groupId, true);
+  await decide(second.id);
+  expect(await listUnsentSyncEvents(database)).toEqual(outbox);
+  expect((await readDuplicateTargets(database)).get(id)).toBe(second.id);
+
+  await setGroupArchived(database, groupId, false);
+  await moveExpenseToTrash(database, identity.personalSpaceId, id);
+  const trashed = await listUnsentSyncEvents(database);
+  await decide(second.id);
+  expect(await listUnsentSyncEvents(database)).toEqual(trashed);
+  expect(
+    await database.all("SELECT id FROM sync_records WHERE type = 'distinct'"),
+  ).toEqual([{ id: settlement.content.id }]);
+});
+
+test('refreshes duplicate marks when only an expense creation stamp changes', async () => {
+  await shareTrip();
+  const { groupId } = split;
+  const local = await save();
+  const [creation] = await listUnsentSyncEvents(database);
+  const { ms } = creation.content.stamp;
+  const id = 'remote-expense';
+  const stamp = { ms: ms + 1, device: 'remote', counter: 0 };
+  await applySyncEvents(database, groupId, [
+    received({ ...creation.content, id, stamp }),
+  ]);
+  expect(await readDuplicateTargets(database)).toEqual(
+    new Map([[id, local.id]]),
+  );
+  const expenses = await listExpenses(database);
+  const changed = jest.fn();
+  const unsubscribe = subscribeToExpenses(database, changed);
+
+  await applySyncEvents(database, groupId, [
+    received({
+      version: 1,
+      type: 'expense',
+      id,
+      stamp: { ...stamp, ms: ms - 1 },
+      units: { title: { value: 'Earlier title' } },
+    }),
+  ]);
+  expect(changed).toHaveBeenCalledTimes(1);
+  expect(await readDuplicateTargets(database)).toEqual(
+    new Map([[local.id, id]]),
+  );
+
+  const moved = await database.transaction((tx) =>
+    takeUploadedStamps(
+      tx,
+      groupId,
+      new Map([[creation.id, { ...creation.content.stamp, ms: ms - 2 }]]),
+    ),
+  );
+  expect(moved).toEqual(new Set([groupId]));
+  expect(await readDuplicateTargets(database)).toEqual(
+    new Map([[id, local.id]]),
+  );
+  expect(await listExpenses(database)).toEqual(expenses);
+  unsubscribe();
+});
 
 test.each(['group', 'member', 'category'] as const)(
   'merges %s units out of order, retaining the creation stamp and the winning unit stamp',
@@ -616,4 +720,50 @@ test('rejects a local event with unsupported money in the expense transaction', 
   await expect(save()).rejects.toThrow('Invalid local sync event');
   expect(await listExpenses(database)).toEqual([]);
   expect(await listUnsentSyncEvents(database)).toEqual([]);
+});
+
+test('importing a ledger cannot claim the personal space or its rows', async () => {
+  // A successful signed lookup has already established the receiving device's identity.
+  await database.run(
+    'INSERT INTO device_identity (singleton, deviceId, registered) VALUES (1, ?, 1)',
+    [randomUUID()],
+  );
+  const groupId = identity.personalSpaceId;
+  const categories = await listCategories(database, groupId);
+  const groups = await listGroups(database);
+  const reserved = categories.find((category) => category.isUncategorized)!;
+  const stamp = { ms: 1, counter: 0, device: 'phone' };
+  const content: SyncSnapshot = {
+    version: 1,
+    eventVersion: 1,
+    groupId,
+    sequence: 0,
+    uncategorized: reserved.id,
+    records: [
+      {
+        type: 'group',
+        id: groupId,
+        created: stamp,
+        seeded: true,
+        units: { name: { value: 'Trip', stamp } },
+      },
+      {
+        type: 'category',
+        id: reserved.id,
+        created: stamp,
+        seeded: true,
+        units: {
+          name: { value: reserved.name, stamp },
+          color: { value: reserved.color, stamp },
+          archived: { value: false, stamp },
+        },
+      },
+    ],
+  };
+  const imported = await database.transaction((tx) =>
+    importSnapshot(tx, content, 1),
+  );
+  expect(imported).toBe(false);
+  expect(await listGroups(database)).toEqual(groups);
+  expect(await listCategories(database, groupId)).toEqual(categories);
 });

@@ -43,19 +43,19 @@ import {
   textsOn,
 } from './group-details-app';
 import {
+  APP_SCHEME_HALF_LINK,
   APP_SCHEME_LINK,
-  LONG_LINK,
+  CANNOT_USE,
+  CONNECT,
+  HALF_LINK,
   NOT_INVITE_LINKS,
   OTHER_SPELLINGS,
-  SECOND_LINK,
   TITLE,
   WHOLE_LINK,
   forgetLinks,
   inviteLinksOpen,
   launchAppFromLink,
   receiveLink,
-  showsEveryLine,
-  shownLink,
   startAppFromLink,
 } from './sharing-invite-link-app';
 
@@ -118,8 +118,8 @@ function holdOpening() {
 function expectOnlyLoading() {
   expect(screen.getByLabelText('Restoring local data')).toBeOnTheScreen();
   expect(inviteLinksOpen()).toBe(0);
-  expect(screen.queryByText(WHOLE_LINK)).toBeNull();
-  expect(screen.queryByText(SECOND_LINK)).toBeNull();
+  expect(screen.queryByText(CONNECT[0])).toBeNull();
+  expect(screen.queryByText(CANNOT_USE[0])).toBeNull();
 }
 
 async function expectOnlyLoadError() {
@@ -128,8 +128,8 @@ async function expectOnlyLoadError() {
   ).toBeOnTheScreen();
   expect(screen.getByText('Your data was not changed.')).toBeOnTheScreen();
   expect(inviteLinksOpen()).toBe(0);
-  expect(screen.queryByText(WHOLE_LINK)).toBeNull();
-  expect(screen.queryByText(SECOND_LINK)).toBeNull();
+  expect(screen.queryByText(CONNECT[0])).toBeNull();
+  expect(screen.queryByText(CANNOT_USE[0])).toBeNull();
 }
 
 async function expectOnSettingsRoot() {
@@ -138,14 +138,14 @@ async function expectOnSettingsRoot() {
   expect(navigationBarTitles(tab('Settings'))).toEqual(['Settings']);
 }
 
-test('[SHARING-71.1] opens Invite Link over Settings, with only Close and the whole link, when the link arrives while the app runs', async () => {
+test('[SHARING-71.2] opens Join Group over Settings, with only Close, when the link arrives while the app runs', async () => {
   await startApp('/settings');
 
   await receiveLink(WHOLE_LINK);
 
   await expectOpen(TITLE);
   expect(SHEETS).toContain(screenOf(TITLE).props.stackPresentation);
-  expect(textsOn(TITLE)).toEqual([WHOLE_LINK]);
+  expect(textsOn(TITLE)).toEqual(CONNECT);
   expect(barItems(TITLE)).toEqual({ left: ['Close (plain)'], right: [] });
   expect(barTitled(TITLE)?.props.headerLeftBarButtonItems[0].icon?.name).toBe(
     'xmark',
@@ -154,53 +154,50 @@ test('[SHARING-71.1] opens Invite Link over Settings, with only Close and the wh
   expect(isOpen('Settings')).toBe(true);
 });
 
-test("[SHARING-71.1] shows a link on the app's own scheme exactly as it arrived", async () => {
+test("[SHARING-71.2] opens Join Group for a link on the app's own scheme, with what follows its # taken in", async () => {
   await receiveOnSettings(APP_SCHEME_LINK);
 
-  expect(textsOn(TITLE)).toEqual([APP_SCHEME_LINK]);
+  expect(textsOn(TITLE)).toEqual(CONNECT);
+
+  await receiveLink(APP_SCHEME_HALF_LINK);
+
+  await waitFor(() => expect(textsOn(TITLE)).toEqual(CANNOT_USE));
 });
 
 test.each([WHOLE_LINK, APP_SCHEME_LINK])(
-  '[SHARING-71.1] opens Invite Link over the Expenses root, with that link, when %s starts the app',
+  '[SHARING-71.2] opens Join Group over the Expenses root when %s starts the app',
   async (link) => {
     await startAppFromLink(link);
 
     await expectOpen(TITLE);
     expect(SHEETS).toContain(screenOf(TITLE).props.stackPresentation);
-    expect(textsOn(TITLE)).toEqual([link]);
+    expect(textsOn(TITLE)).toEqual(CONNECT);
     expect(selectedTab()).toBe('Expenses');
     expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses']);
   },
 );
 
 test.each(OTHER_SPELLINGS)(
-  '[SHARING-71.1] shows %s exactly as it arrived while the app runs',
+  '[SHARING-71.2] opens Join Group for %s while the app runs',
   async (link) => {
     await receiveOnSettings(link);
 
-    expect(textsOn(TITLE)).toEqual([link]);
+    expect(inviteLinksOpen()).toBe(1);
   },
 );
 
 test.each(OTHER_SPELLINGS)(
-  '[SHARING-71.1] shows %s exactly as it was when it starts the app',
+  '[SHARING-71.2] opens Join Group when %s starts the app',
   async (link) => {
     await startAppFromLink(link);
 
     await expectOpen(TITLE);
-    expect(textsOn(TITLE)).toEqual([link]);
+    expect(inviteLinksOpen()).toBe(1);
     expect(selectedTab()).toBe('Expenses');
   },
 );
 
-test('[SHARING-71.1] shows every line of a link with 2,000 characters after the #', async () => {
-  await receiveOnSettings(LONG_LINK);
-
-  expect(textsOn(TITLE)).toEqual([LONG_LINK]);
-  expect(showsEveryLine(shownLink(LONG_LINK))).toBe(true);
-});
-
-test('[SHARING-71.1] opens Invite Link over a pushed screen', async () => {
+test('[SHARING-71.2] opens Join Group over a pushed screen', async () => {
   await startApp('/settings');
   await push('/settings/archived-groups');
   await expectOpen('Archived Groups');
@@ -209,11 +206,11 @@ test('[SHARING-71.1] opens Invite Link over a pushed screen', async () => {
 
   await expectOpen(TITLE);
   expect(SHEETS).toContain(screenOf(TITLE).props.stackPresentation);
-  expect(textsOn(TITLE)).toEqual([WHOLE_LINK]);
+  expect(textsOn(TITLE)).toEqual(CONNECT);
   expect(isOpen('Archived Groups')).toBe(true);
 });
 
-test('[SHARING-71.1] opens Invite Link over an open form', async () => {
+test('[SHARING-71.2] opens Join Group over an open form', async () => {
   await startGroupsApp();
   await saveName('Taylor');
   await pressAddGroup();
@@ -222,11 +219,11 @@ test('[SHARING-71.1] opens Invite Link over an open form', async () => {
   await receiveLink(WHOLE_LINK);
 
   await expectOpen(TITLE);
-  expect(textsOn(TITLE)).toEqual([WHOLE_LINK]);
+  expect(textsOn(TITLE)).toEqual(CONNECT);
   expect(newGroupIsOpen()).toBe(true);
 });
 
-test('[SHARING-71.1] shows only the loading indicator while the local data opens, then Invite Link over the Expenses root, when a link starts the app', async () => {
+test('[SHARING-71.2] shows only the loading indicator while the local data opens, then Join Group over the Expenses root, when a link starts the app', async () => {
   const finishOpening = holdOpening();
 
   await launchAppFromLink(WHOLE_LINK);
@@ -234,29 +231,29 @@ test('[SHARING-71.1] shows only the loading indicator while the local data opens
   expectOnlyLoading();
   await finishOpening();
   await expectOpen(TITLE);
-  expect(textsOn(TITLE)).toEqual([WHOLE_LINK]);
+  expect(textsOn(TITLE)).toEqual(CONNECT);
   expect(selectedTab()).toBe('Expenses');
   expect(navigationBarTitles(tab('Expenses'))).toEqual(['Expenses']);
 });
 
-test('[SHARING-71.1] opens one Invite Link once the local data has opened, with the last of the links that arrived while it was opening', async () => {
+test('[SHARING-71.2] opens one Join Group once the local data has opened, with the last of the links that arrived while it was opening', async () => {
   const finishOpening = holdOpening();
   await openApp('/settings');
   expect(screen.getByLabelText('Restoring local data')).toBeOnTheScreen();
 
   await receiveLink(WHOLE_LINK);
-  await receiveLink(SECOND_LINK);
+  await receiveLink(HALF_LINK);
 
   expectOnlyLoading();
   await finishOpening();
   await expectOpen(TITLE);
-  expect(textsOn(TITLE)).toEqual([SECOND_LINK]);
+  expect(textsOn(TITLE)).toEqual(CANNOT_USE);
   expect(inviteLinksOpen()).toBe(1);
   await pressOnBar(TITLE, 'Close');
   await expectOnSettingsRoot();
 });
 
-test('[SHARING-71.1] shows only the load error, without Invite Link, when a link starts the app and its local data cannot open, and opens Invite Link for that link once the data can', async () => {
+test('[SHARING-71.2] shows only the load error, without Join Group, when a link starts the app and its local data cannot open, and opens Join Group for that link once the data can', async () => {
   mockOpen = async () => {
     throw new Error('disk unavailable');
   };
@@ -264,17 +261,17 @@ test('[SHARING-71.1] shows only the load error, without Invite Link, when a link
   const app = await launchAppFromLink(WHOLE_LINK);
 
   await expectOnlyLoadError();
-  await receiveLink(SECOND_LINK);
+  await receiveLink(HALF_LINK);
   await expectOnlyLoadError();
 
   await endAppProcess(app);
   mockOpen = async () => testDatabaseWithReads(file);
   await startAppFromLink(WHOLE_LINK);
   await expectOpen(TITLE);
-  expect(textsOn(TITLE)).toEqual([WHOLE_LINK]);
+  expect(textsOn(TITLE)).toEqual(CONNECT);
 });
 
-test('[SHARING-72.1] closes Invite Link with Close and is back on the Settings root', async () => {
+test('[SHARING-72.1] closes Join Group with Close and is back on the Settings root', async () => {
   await receiveOnSettings(WHOLE_LINK);
 
   await pressOnBar(TITLE, 'Close');
@@ -282,7 +279,7 @@ test('[SHARING-72.1] closes Invite Link with Close and is back on the Settings r
   await expectOnSettingsRoot();
 });
 
-test('[SHARING-72.1] closes Invite Link when it is swiped down', async () => {
+test('[SHARING-72.1] closes Join Group when it is swiped down', async () => {
   await receiveOnSettings(WHOLE_LINK);
 
   await swipeDown(TITLE);
@@ -290,7 +287,7 @@ test('[SHARING-72.1] closes Invite Link when it is swiped down', async () => {
   await expectOnSettingsRoot();
 });
 
-test('[SHARING-72.1] is on the Expenses root, with working tabs, after closing the Invite Link that a link started the app with', async () => {
+test('[SHARING-72.1] is on the Expenses root, with working tabs, after closing the Join Group that a link started the app with', async () => {
   await startAppFromLink(WHOLE_LINK);
   await expectOpen(TITLE);
 
@@ -336,46 +333,46 @@ test('[SHARING-72.1] goes back to the pushed screen it covered', async () => {
   ]);
 });
 
-test('[SHARING-73.1] shows the second link in the one Invite Link when another arrives while it is open, and closes with one Close', async () => {
+test('[SHARING-73.2] shows what the second link gets in the one Join Group when another arrives while it is open, and closes with one Close', async () => {
   await receiveOnSettings(WHOLE_LINK);
 
-  await receiveLink(SECOND_LINK);
+  await receiveLink(HALF_LINK);
 
-  await waitFor(() => expect(textsOn(TITLE)).toEqual([SECOND_LINK]));
+  await waitFor(() => expect(textsOn(TITLE)).toEqual(CANNOT_USE));
   expect(inviteLinksOpen()).toBe(1);
   await pressOnBar(TITLE, 'Close');
   await expectOnSettingsRoot();
 });
 
-test('[SHARING-73.1] keeps one Invite Link when the same link arrives again, and closes with one Close', async () => {
+test('[SHARING-73.2] keeps one Join Group when the same link arrives again, and closes with one Close', async () => {
   await receiveOnSettings(WHOLE_LINK);
 
   await receiveLink(WHOLE_LINK);
 
   expect(inviteLinksOpen()).toBe(1);
-  expect(textsOn(TITLE)).toEqual([WHOLE_LINK]);
+  expect(textsOn(TITLE)).toEqual(CONNECT);
   await pressOnBar(TITLE, 'Close');
   await expectOnSettingsRoot();
 });
 
-test('[SHARING-73.1] opens Invite Link again for a link that arrives after it was closed, the same link included', async () => {
+test('[SHARING-73.2] opens Join Group again for a link that arrives after it was closed, the same link included', async () => {
   await receiveOnSettings(WHOLE_LINK);
   await pressOnBar(TITLE, 'Close');
   await expectClosed(TITLE);
 
-  await receiveLink(SECOND_LINK);
+  await receiveLink(HALF_LINK);
 
   await expectOpen(TITLE);
-  expect(textsOn(TITLE)).toEqual([SECOND_LINK]);
+  expect(textsOn(TITLE)).toEqual(CANNOT_USE);
   await pressOnBar(TITLE, 'Close');
   await expectClosed(TITLE);
-  await receiveLink(SECOND_LINK);
+  await receiveLink(HALF_LINK);
   await expectOpen(TITLE);
-  expect(textsOn(TITLE)).toEqual([SECOND_LINK]);
+  expect(textsOn(TITLE)).toEqual(CANNOT_USE);
   expect(inviteLinksOpen()).toBe(1);
 });
 
-test('[SHARING-74.1] opens Insights for shared-expense-tracker://insights, not Invite Link, which an invite link on the same scheme does open', async () => {
+test('[SHARING-74.1] opens Insights for shared-expense-tracker://insights, not Join Group, which an invite link on the same scheme does open', async () => {
   await startApp('/');
   await receiveLink(APP_SCHEME_LINK);
   await expectOpen(TITLE);
@@ -391,7 +388,7 @@ test('[SHARING-74.1] opens Insights for shared-expense-tracker://insights, not I
   expect(selectedTab()).toBe('Expenses');
 });
 
-test('[SHARING-74.1] opens Manage Categories for its deep link, not Invite Link, which an invite link on the same scheme does open', async () => {
+test('[SHARING-74.1] opens Manage Categories for its deep link, not Join Group, which an invite link on the same scheme does open', async () => {
   await receiveOnSettings(APP_SCHEME_LINK);
   await pressOnBar(TITLE, 'Close');
   await expectClosed(TITLE);
@@ -406,7 +403,7 @@ test('[SHARING-74.1] opens Manage Categories for its deep link, not Invite Link,
   expect(isOpen(TITLE)).toBe(false);
 });
 
-test('[SHARING-74.1] selects Groups, without Invite Link, when shared-expense-tracker://groups starts the app', async () => {
+test('[SHARING-74.1] selects Groups, without Join Group, when shared-expense-tracker://groups starts the app', async () => {
   await startAppFromLink('shared-expense-tracker://groups');
 
   await waitFor(() => expect(selectedTab()).toBe('Groups'));
@@ -414,7 +411,7 @@ test('[SHARING-74.1] selects Groups, without Invite Link, when shared-expense-tr
 });
 
 test.each(NOT_INVITE_LINKS)(
-  '[SHARING-74.1] does not open Invite Link again for %s, which is not an invite link, after an invite link opened it',
+  '[SHARING-74.1] does not open Join Group again for %s, which is not an invite link, after an invite link opened it',
   async (link) => {
     await receiveOnSettings(APP_SCHEME_LINK);
     await pressOnBar(TITLE, 'Close');
@@ -427,7 +424,7 @@ test.each(NOT_INVITE_LINKS)(
 );
 
 test.each(NOT_INVITE_LINKS)(
-  '[SHARING-74.1] does not open Invite Link when %s, which is not an invite link, starts the app',
+  '[SHARING-74.1] does not open Join Group when %s, which is not an invite link, starts the app',
   async (link) => {
     await startAppFromLink(link);
 

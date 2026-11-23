@@ -54,8 +54,8 @@ async function taylorWithEvents(sent: UploadedEvent[]): Promise<Phone> {
   return taylor;
 }
 
-describe('SYNC-57.1', () => {
-  test('[SYNC-57.1] returns the events after the cursor, in order, and says there are no more', async () => {
+describe('SYNC-57.2', () => {
+  test('[SYNC-57.2] returns the events after the cursor, in order, and says there are no more', async () => {
     const sent = events(5);
     const taylor = await taylorWithEvents(sent);
     const all = relayedFrom(1, sent, { by: taylor, at: T });
@@ -72,13 +72,13 @@ describe('SYNC-57.1', () => {
     expectPage(afterAll, EMPTY_PAGE);
   });
 
-  test('[SYNC-57.1] returns an empty page for a group with no events', async () => {
+  test('[SYNC-57.2] returns an empty page for a group with no events', async () => {
     const taylor = await taylorWithEvents([]);
 
     expectPage(await download(taylor, BRISBANE, 0), EMPTY_PAGE);
   });
 
-  test('[SYNC-57.1] returns at most 100 events, and says whether more follow', async () => {
+  test('[SYNC-57.2] returns at most 100 events, and says whether more follow', async () => {
     const sent = events(250, 50);
     const taylor = await taylorWithEvents(sent);
     const all = relayedFrom(1, sent, { by: taylor, at: T });
@@ -96,7 +96,7 @@ describe('SYNC-57.1', () => {
     expectPage(lastHundredAndOne, { events: all.slice(149, 249), more: true });
   });
 
-  test('[SYNC-57.1] ends a page before the event that would take its contents past 262,144 bytes', async () => {
+  test('[SYNC-57.2] ends a page before the event that would take its contents past 262,144 bytes', async () => {
     const sent = events(5, LARGEST);
     const taylor = await taylorWithEvents(sent);
     const all = relayedFrom(1, sent, { by: taylor, at: T });
@@ -109,7 +109,7 @@ describe('SYNC-57.1', () => {
     expectPage(second, { events: all.slice(4), more: false });
   });
 
-  test('[SYNC-57.1] counts the bytes of the contents from the cursor on, whatever came before it', async () => {
+  test('[SYNC-57.2] counts the bytes of the contents from the cursor on, whatever came before it', async () => {
     const sent = [
       event(SMALLEST),
       ...events(3, LARGEST),
@@ -131,7 +131,7 @@ describe('SYNC-57.1', () => {
     expectPage(afterFive, { events: all.slice(5), more: false });
   });
 
-  test("[SYNC-57.1] returns only the group's own events", async () => {
+  test("[SYNC-57.2] returns only the group's own events", async () => {
     const inBrisbane = events(2);
     const taylor = await taylorWithEvents(inBrisbane);
     expectCreated(await createGroup(taylor, TOKYO), TOKYO);
@@ -148,7 +148,7 @@ describe('SYNC-57.1', () => {
     });
   });
 
-  test('[SYNC-57.1] returns to each member device the events every member device uploaded, its own too', async () => {
+  test('[SYNC-57.2] returns to each member device the events every member device uploaded, its own too', async () => {
     const fromTaylor = events(2);
     const taylor = await taylorWithEvents(fromTaylor);
     const casey = await registered(CASEY);
@@ -168,7 +168,7 @@ describe('SYNC-57.1', () => {
     expectPage(await download(casey, BRISBANE, 0), page);
   });
 
-  test('[SYNC-57.1] answers the same cursor with what the group has by then, and marks the answer as not to be stored', async () => {
+  test('[SYNC-57.2] answers the same cursor with what the group has by then, and marks the answer as not to be stored', async () => {
     const sent = events(2);
     const taylor = await taylorWithEvents(sent);
     expectPage(await download(taylor, BRISBANE, 2), EMPTY_PAGE);

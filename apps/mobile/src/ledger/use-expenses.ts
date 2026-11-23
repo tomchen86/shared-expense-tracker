@@ -9,6 +9,7 @@ import {
   type GroupMember,
 } from '../groups';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
+import { readDuplicateTargets } from '../sync/duplicates';
 import {
   listExpensesForCards,
   subscribeToExpenses,
@@ -23,6 +24,8 @@ export interface ExpenseView extends Expense {
   changedAt: number | null;
   /** The money the user entered, while the expense needs review (LEDGER-151.1). */
   yours?: SyncMoney;
+  /** The earlier expense shown in the possible duplicate block, while this one is marked. */
+  duplicateOf?: string;
   /** The assignment as stored, even after the category used for display changes. */
   categorySnapshot: Expense['category'];
   categoryLabel: string;
@@ -68,6 +71,7 @@ export function useReadExpenses(trashed = false, { throwOnError = true } = {}) {
       const isCurrent = () => active && request === version;
       void Promise.all([
         listExpensesForCards(database),
+        readDuplicateTargets(database),
         listCategories(database),
         listGroups(database).then(async (groups) =>
           Promise.all(
@@ -78,7 +82,7 @@ export function useReadExpenses(trashed = false, { throwOnError = true } = {}) {
           ),
         ),
       ]).then(
-        ([rows, categories, groups]) => {
+        ([rows, duplicates, categories, groups]) => {
           if (!isCurrent()) return;
           setError(undefined);
           const current = new Map(categories.map((item) => [item.id, item]));
@@ -106,6 +110,7 @@ export function useReadExpenses(trashed = false, { throwOnError = true } = {}) {
               ]);
               return {
                 ...expense,
+                duplicateOf: duplicates.get(expense.id),
                 categorySnapshot: expense.category,
                 category: cardCategory,
                 categoryLabel: category?.isArchived

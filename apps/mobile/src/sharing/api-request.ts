@@ -45,6 +45,10 @@ export interface ApiRequest {
    * is part of it. Without it, a request waits as long as the platform does.
    */
   giveUpAfterMs?: number;
+  /** Lets a caller distinguish a secure-store read failure from other request errors. */
+  onSeedReadError?: (cause: unknown) => never;
+  /** Check that the identity is still the one an operation belongs to before registering or signing. */
+  checkDevice?: (deviceId: string) => void;
 }
 
 /** What became of a request. */
@@ -155,6 +159,24 @@ async function sendSigned(
   };
   // Said outright: left to itself, iOS calls a body with no type a submitted form.
   if (body.length > 0) headers['content-type'] = contentType;
+  return fetchAnswer(
+    `${apiUrl}${path}`,
+    {
+      method,
+      headers,
+      credentials: 'omit',
+      ...(body.length > 0 ? { body } : {}),
+    },
+    giveUpAfterMs,
+  );
+}
+
+/** One HTTP exchange, including receipt of the entire body, for signed or public requests. */
+export async function fetchAnswer(
+  url: string,
+  init: RequestInit,
+  giveUpAfterMs?: number,
+) {
   // Raced, not only aborted: what arrives after the limit is not used, whether or not
   // the platform's fetch stops at the signal.
   const givingUp =
@@ -169,12 +191,8 @@ async function sendSigned(
   });
   try {
     return await Promise.race([
-      fetch(`${apiUrl}${path}`, {
-        method,
-        headers,
-        // The signature is all that says who is asking.
-        credentials: 'omit',
-        ...(body.length > 0 ? { body } : {}),
+      fetch(url, {
+        ...init,
         ...(givingUp && { signal: givingUp.signal }),
       }).then(async (response) => ({
         status: response.status,
@@ -282,6 +300,14 @@ function inTurn<T>(work: () => Promise<T>): Promise<T> {
   return turn;
 }
 
+/** Prepares a device for an encrypted request without registering it before the draft is saved. */
+export function prepareSigningDevice(
+  database: Database,
+  onSeedReadError: (cause: unknown) => never,
+) {
+  return inTurn(() => ensureDevice(database, onSeedReadError));
+}
+
 /**
  * Sends a signed request to the API, making and registering this phone's device identity
  * first when it has none. Rejects when the method or the path cannot be signed, and when
@@ -299,8 +325,9 @@ export async function sendApiRequest(
   }
 
   const device = await inTurn(async (): Promise<SigningDevice | ApiResult> => {
-    const ready = await ensureDevice(database);
+    const ready = await ensureDevice(database, request.onSeedReadError);
     if (ready === 'lost') return { outcome: 'authorization-lost' };
+    request.checkDevice?.(ready.deviceId);
     if (ready.registered) return ready;
     return (await register(database, ready, request)) ?? ready;
   });
