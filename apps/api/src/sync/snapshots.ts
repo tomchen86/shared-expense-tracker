@@ -6,6 +6,7 @@ import {
   type SnapshotResponse,
   type UploadSnapshotChunkRequest,
 } from '@shared-expense/domain/api';
+import type { ISql } from 'postgres';
 import type { Sql } from '../database/connect';
 import type { EventApiRefusal } from './groups';
 
@@ -68,13 +69,40 @@ export function storeChunk(
   ) as Promise<SnapshotChunkStoredResponse | Refusal>;
 }
 
-/** Reads membership, completeness and the requested content at the same database snapshot. */
+/** Each member device and, when all its chunks are stored, the snapshot for it. */
+export function membersWithSnapshots(sql: ISql, groupId: string) {
+  return sql`
+    SELECT m.device_id, m.progress_cursor, m.snapshot_needed_at_ms,
+      s.id, s.uploader, s.epoch, s.sequence, s.chunk_count
+    FROM group_members m
+    LEFT JOIN group_snapshots s ON s.group_id = m.group_id AND s.recipient = m.device_id
+      AND s.chunk_count = (SELECT count(*) FROM snapshot_chunks c
+        WHERE c.group_id = s.group_id AND c.snapshot_id = s.id)
+    WHERE m.group_id = ${groupId}`;
+}
+
+/** A question for the snapshot carries the API's time. A chunk read has no side effects. */
 export async function readSnapshot(
   sql: Sql,
   groupId: string,
   recipient: string,
-  chunk?: SnapshotChunkStoredResponse,
+  request: number | SnapshotChunkStoredResponse,
 ): Promise<SnapshotResponse | SnapshotChunkResponse | Refusal> {
+  const member = sql`
+    SELECT * FROM (${membersWithSnapshots(sql, groupId)}) m
+    WHERE m.device_id = ${recipient}`;
+  if (typeof request !== 'number') {
+    const [row] = await sql<{ id: string | null; content: string | null }[]>`
+      SELECT m.id, encode(c.content, 'hex') AS content FROM (${member}) m
+      LEFT JOIN snapshot_chunks c ON c.group_id = ${groupId} AND c.snapshot_id = m.id
+        AND c.snapshot_id = ${request.snapshotId} AND c.chunk_index = ${request.index}`;
+    if (!row) return { error: 'not-a-member' };
+    if (row.id !== request.snapshotId) return { error: 'no-snapshot' };
+    return row.content === null
+      ? { error: 'request' }
+      : { content: row.content };
+  }
+
   const [row] = await sql<
     {
       id: string | null;
@@ -82,24 +110,16 @@ export async function readSnapshot(
       epoch: string;
       sequence: string;
       chunk_count: number;
-      content: string | null;
     }[]
   >`
-    SELECT s.id, s.uploader, s.epoch, s.sequence, s.chunk_count, encode(c.content, 'hex') AS content
-    FROM group_members m
-    LEFT JOIN group_snapshots s ON s.group_id = m.group_id AND s.recipient = m.device_id
-      AND s.chunk_count = (SELECT count(*) FROM snapshot_chunks
-        WHERE group_id = s.group_id AND snapshot_id = s.id)
-    LEFT JOIN snapshot_chunks c ON c.group_id = s.group_id AND c.snapshot_id = s.id
-      AND c.snapshot_id = ${chunk?.snapshotId ?? null} AND c.chunk_index = ${chunk?.index ?? null}
-    WHERE m.group_id = ${groupId} AND m.device_id = ${recipient}`;
+    WITH member AS (${member}), marked AS (
+      UPDATE group_members m SET snapshot_needed_at_ms = ${request}
+      FROM member WHERE m.group_id = ${groupId} AND m.device_id = member.device_id
+        AND member.id IS NULL
+    )
+    SELECT id, uploader, epoch, sequence, chunk_count FROM member`;
   if (!row) return { error: 'not-a-member' };
-  if (!row.id || (chunk && chunk.snapshotId !== row.id))
-    return { error: 'no-snapshot' };
-  if (chunk)
-    return row.content === null
-      ? { error: 'request' }
-      : { content: row.content };
+  if (!row.id) return { error: 'no-snapshot' };
   return {
     snapshotId: row.id,
     deviceId: row.uploader,

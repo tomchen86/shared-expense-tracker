@@ -76,8 +76,8 @@ export interface EventsPageResponse {
 
 /**
  * What the API answers to a download whose cursor is before events the group no longer
- * stores (SYNC-136.1, ADR-0033): the phone cannot go on from its cursor and needs a
- * snapshot. It is no refusal: the API records the cursor as the device's progress.
+ * stores and that needs a snapshot (SYNC-136.2, ADR-0033). The API records the cursor
+ * as the device's progress.
  */
 export interface SnapshotNeededResponse {
   error: 'snapshot-needed';
@@ -228,16 +228,26 @@ export function isSnapshotNeededResponse(
  */
 export const SNAPSHOT_NEEDED_BY_HEADER = 'x-snapshot-needed-by';
 
-/** Writes that header's value for these device IDs, in their order (SYNC-163.1). Not built yet: #156. */
-export const writeSnapshotNeededBy: (
-  deviceIds: readonly string[],
-) => string = () => {
-  throw new Error('Not built yet (#156)');
+function areSnapshotRecipients(deviceIds: readonly string[]): boolean {
+  return (
+    deviceIds.length > 0 &&
+    everyItem(deviceIds, isId) &&
+    new Set(deviceIds).size === deviceIds.length
+  );
+}
+
+/** Writes that header's value for these device IDs, in their order (SYNC-163.1). */
+export const writeSnapshotNeededBy = (deviceIds: readonly string[]): string => {
+  if (!areSnapshotRecipients(deviceIds))
+    throw new Error('Expected one or more distinct device IDs');
+  return deviceIds.join(',');
 };
 
-/** The device IDs that header's value lists, none when it is absent or written any other way (SYNC-163.1). Not built yet: #156. */
-export const readSnapshotNeededBy: (value: unknown) => string[] = () => {
-  throw new Error('Not built yet (#156)');
+/** The device IDs that header's value lists, none when it is absent or malformed (SYNC-163.1). */
+export const readSnapshotNeededBy = (value: unknown): string[] => {
+  if (typeof value !== 'string') return [];
+  const deviceIds = value.split(',');
+  return areSnapshotRecipients(deviceIds) ? deviceIds : [];
 };
 
 /**
@@ -254,9 +264,13 @@ export interface ContinueResponse {
 /** The HTTP status of that answer. */
 export const CONTINUE_STATUS = 410;
 
-/** Whether `value` is exactly the body of the answer that a phone goes on from a number (SYNC-172.1). Not built yet: #156. */
+/** Whether `value` is exactly the body of the answer that a phone goes on from a number (SYNC-172.1). */
 export function isContinueResponse(value: unknown): value is ContinueResponse {
-  throw new Error(`Not built yet (#156): ${typeof value}`);
+  return (
+    hasExactly(value, ['error', 'after']) &&
+    value.error === 'continue' &&
+    isWhole(value.after, 1)
+  );
 }
 
 // The invite API uses the same group IDs, integer cursors and encrypted content limits.
