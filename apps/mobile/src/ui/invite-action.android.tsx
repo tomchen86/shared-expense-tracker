@@ -12,6 +12,25 @@ export function InviteAction({
   onPress,
 }: InviteActionProps) {
   const colors = useThemeColors();
+  if (inline) {
+    return (
+      <NativeText
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={onPress}
+        style={[
+          styles.button,
+          styles.inline,
+          { color: colors.accent },
+          disabled && styles.disabled,
+        ]}
+      >
+        {label}
+      </NativeText>
+    );
+  }
   const Action = destructive ? TextButton : Button;
   return (
     <Pressable
@@ -20,32 +39,19 @@ export function InviteAction({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      android_ripple={inline ? { color: colors.pressedSurface } : undefined}
-      style={[styles.button, inline && styles.inline]}
+      style={styles.button}
     >
-      {inline ? (
-        <NativeText
-          style={[
-            styles.label,
-            { color: colors.accent },
-            disabled && styles.disabled,
-          ]}
-        >
-          {label}
-        </NativeText>
-      ) : (
-        <View importantForAccessibility="no-hide-descendants">
-          <MaterialHost matchContents>
-            <Action
-              onClick={onPress}
-              enabled={!disabled}
-              colors={destructive ? { contentColor: colors.error } : undefined}
-            >
-              <Text style={{ typography: 'labelLarge' }}>{label}</Text>
-            </Action>
-          </MaterialHost>
-        </View>
-      )}
+      <View importantForAccessibility="no-hide-descendants">
+        <MaterialHost matchContents>
+          <Action
+            onClick={onPress}
+            enabled={!disabled}
+            colors={destructive ? { contentColor: colors.error } : undefined}
+          >
+            <Text style={{ typography: 'labelLarge' }}>{label}</Text>
+          </Action>
+        </MaterialHost>
+      </View>
     </Pressable>
   );
 }
@@ -55,11 +61,7 @@ const styles = StyleSheet.create({
   inline: {
     minHeight: 48,
     paddingHorizontal: 12,
-    justifyContent: 'center',
-    borderRadius: 24,
-    overflow: 'hidden',
-  },
-  label: {
+    textAlignVertical: 'center',
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '500',

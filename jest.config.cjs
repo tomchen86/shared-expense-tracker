@@ -29,6 +29,7 @@ module.exports = {
     // Checks imported amounts and keeps the latest sync stamp across an import.
     './apps/mobile/src/backup/import.ts': { branches: 100 },
     './apps/mobile/src/groups/group-card.tsx': { branches: 83.33 },
+    './apps/mobile/src/groups/join-request-cards.tsx': { branches: 75 },
     './apps/mobile/src/groups/group-screen.tsx': { branches: 96.92 },
     './apps/mobile/src/groups/group-summary.tsx': { branches: 50 },
     './apps/mobile/src/groups/groups-screen.tsx': { branches: 100 },
@@ -75,22 +76,30 @@ module.exports = {
     // ledger syncs through, and what the API checks before it takes anything (ADR-0015,
     // ADR-0022).
     './packages/domain/src/api/signed-request.ts': { branches: 100 },
+    './packages/domain/src/api/join-requests.ts': { branches: 100 },
     './apps/api/src/node.ts': { branches: 63.63 },
     // What every run reaches. The branch left needs two registrations of one device ID to
     // race, so a run that measures 100 reached it by its timing: leave this where it is.
     './apps/api/src/sharing/devices.ts': { branches: 92.85 },
+    './apps/api/src/sharing/invite-routes.ts': { branches: 100 },
     './apps/api/src/sharing/ip.ts': { branches: 93.33 },
+    './apps/api/src/sharing/join-requests.ts': { branches: 100 },
     './apps/api/src/sharing/request-body.ts': { branches: 100 },
     './apps/api/src/sharing/signed-requests.ts': { branches: 100 },
     './apps/mobile/src/sharing/api-request.ts': { branches: 100 },
     './apps/mobile/src/sharing/device-identity.ts': { branches: 100 },
-    // Invite creation, card updates and the sync records that carry links between phones.
+    // Invite links, join requests and the sync records that carry links between phones.
     './apps/mobile/src/sharing/group-key.ts': { branches: 100 },
     './apps/mobile/src/sharing/invite-api.ts': { branches: 86.2 },
     './apps/mobile/src/sharing/invite-card.ts': { branches: 100 },
+    './apps/mobile/src/sharing/invite-link-sheet.tsx': { branches: 100 },
     './apps/mobile/src/sharing/invite-sheet.tsx': { branches: 80 },
     './apps/mobile/src/sharing/invites.ts': { branches: 94.73 },
+    './apps/mobile/src/sharing/join-form.tsx': { branches: 92.1 },
+    './apps/mobile/src/sharing/join-invite.ts': { branches: 100 },
+    './apps/mobile/src/sharing/join-requests.ts': { branches: 91.66 },
     './apps/mobile/src/sharing/refresh-invite-card.ts': { branches: 96.77 },
+    './apps/mobile/src/sharing/use-join-group.ts': { branches: 88.09 },
     './apps/mobile/src/sync/invites.ts': { branches: 75 },
     // The event API: what stores a shared ledger's events, numbers them and hands them
     // out, and the checks of its bodies that the phone and the API share (ADR-0016,
