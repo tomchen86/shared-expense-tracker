@@ -1,4 +1,4 @@
-import type { SyncStamp } from './sync';
+import { compareSyncStamps, type SyncStamp } from './sync';
 
 /** What the rule for possible duplicates reads of one expense of a shared ledger (SYNC-201.1). */
 export interface SyncDuplicateCandidate {
@@ -26,12 +26,45 @@ export interface SyncPossibleDuplicate {
  * duplicates (SYNC-201.1). `distinct` holds the two expense IDs of each "not a duplicate"
  * record of the ledger.
  */
-export function possibleSyncDuplicates(input: {
+export function possibleSyncDuplicates({
+  device,
+  expenses,
+  distinct,
+}: {
   device: string;
   expenses: readonly SyncDuplicateCandidate[];
   distinct: readonly (readonly [string, string])[];
 }): SyncPossibleDuplicate[] {
-  throw new Error(
-    `Not implemented: the possible duplicates among ${input.expenses.length} expenses`,
-  );
+  const pairKey = (a: string, b: string) =>
+    JSON.stringify(a < b ? [a, b] : [b, a]);
+  const settled = new Set(distinct.map(([a, b]) => pairKey(a, b)));
+  const ordered = expenses
+    .filter((expense) => !expense.trashed)
+    .sort(
+      (a, b) =>
+        compareSyncStamps(a.created, b.created) ||
+        Number(a.id > b.id) - Number(a.id < b.id),
+    );
+  // Only earlier expenses with the same values and the opposite recorder can pair.
+  const earlier = new Map<string, { mine: string[]; others: string[] }>();
+  const pairs: SyncPossibleDuplicate[] = [];
+  for (const expense of ordered) {
+    const key = JSON.stringify([
+      expense.date,
+      expense.amountMinor,
+      expense.currency,
+    ]);
+    let alike = earlier.get(key);
+    if (!alike) {
+      alike = { mine: [], others: [] };
+      earlier.set(key, alike);
+    }
+    const mine = expense.created.device === device;
+    for (const otherId of mine ? alike.others : alike.mine) {
+      if (!settled.has(pairKey(expense.id, otherId)))
+        pairs.push({ id: expense.id, of: otherId });
+    }
+    (mine ? alike.mine : alike.others).push(expense.id);
+  }
+  return pairs;
 }

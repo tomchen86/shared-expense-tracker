@@ -5,7 +5,7 @@ import { useThemeColors } from '../ui/theme';
 
 /**
  * The button under a group's title that says how many of its expenses need review, and
- * opens the first (GROUPS-107.1). A screen reader reads the sentence and the hint, not
+ * opens the first (GROUPS-107.2). A screen reader reads the sentence and the hint, not
  * the icon or the chevron.
  */
 export function ReviewButton({

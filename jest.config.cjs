@@ -30,7 +30,7 @@ module.exports = {
     './apps/mobile/src/backup/import.ts': { branches: 100 },
     './apps/mobile/src/groups/group-card.tsx': { branches: 83.33 },
     './apps/mobile/src/groups/join-request-cards.tsx': { branches: 75 },
-    './apps/mobile/src/groups/group-screen.tsx': { branches: 96.92 },
+    './apps/mobile/src/groups/group-screen.tsx': { branches: 97.01 },
     './apps/mobile/src/groups/group-summary.tsx': { branches: 50 },
     './apps/mobile/src/groups/groups-screen.tsx': { branches: 100 },
     './apps/mobile/src/groups/balances-screen.tsx': { branches: 100 },
@@ -55,14 +55,18 @@ module.exports = {
     // review.ts leaves alone, nor holds a button down, which draws it pressed.
     './apps/mobile/src/sync/own-money.ts': { branches: 100 },
     './apps/mobile/src/ledger/review.ts': { branches: 50 },
-    './apps/mobile/src/ledger/review-block.tsx': { branches: 85.71 },
+    './apps/mobile/src/ledger/review-block.tsx': { branches: 90 },
     './apps/mobile/src/ledger/review-mark.tsx': { branches: 100 },
     './apps/mobile/src/groups/review-button.tsx': { branches: 75 },
+    // Possible duplicates (ADR-0035): the pairing rule, the ledger read and save, and the card.
+    './packages/domain/src/sync/duplicates.ts': { branches: 91.66 },
+    './apps/mobile/src/sync/duplicates.ts': { branches: 90 },
+    './apps/mobile/src/ledger/expense-card.tsx': { branches: 87.5 },
     // The phone's sync with the API (ADR-0027): the loop, the check of unsent stamps, and
     // what starts a sync and shows its notices. Measured with the tests against the API
     // (`*-api.test.*`), which need Docker.
-    './apps/mobile/src/sync/loop.ts': { branches: 98.19 },
-    './apps/mobile/src/sync/stamps.ts': { branches: 95.83 },
+    './apps/mobile/src/sync/loop.ts': { branches: 98.21 },
+    './apps/mobile/src/sync/stamps.ts': { branches: 96 },
     './apps/mobile/src/sync/use-sync-notices.ts': { branches: 75 },
     './apps/mobile/src/sync/use-sync-triggers.ts': { branches: 93.75 },
     // No acceptance test decodes a character that is cut short; utf8.test.ts reaches every branch.
