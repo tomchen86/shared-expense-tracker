@@ -730,8 +730,8 @@ describe('SYNC-107.1', () => {
   }, 120_000);
 });
 
-describe('SYNC-108.1', () => {
-  test('[SYNC-108.1] tells the device a complete snapshot is for what it is, as often as it asks', async () => {
+describe('SYNC-108.2', () => {
+  test('[SYNC-108.2] tells the device a complete snapshot is for what it is, as often as it asks', async () => {
     const [taylor, casey] = await brisbane();
     await withEvents(taylor, 2);
     const s = snapshotOf(taylor, casey, { sequence: 2 });
@@ -757,7 +757,7 @@ describe('SYNC-108.1', () => {
     expect(headers.get('cache-control')).toBe('no-store');
   });
 
-  test('[SYNC-108.1] says there is none while a chunk is missing', async () => {
+  test('[SYNC-108.2] says there is none while a chunk is missing', async () => {
     const [taylor, casey] = await brisbane();
     const s = snapshotOf(taylor, casey);
     expectStored(await uploadChunk(BRISBANE, s, 0), s, 0);
@@ -766,7 +766,7 @@ describe('SYNC-108.1', () => {
     expectSnapshotRefused(await ask(casey, BRISBANE), NO_SNAPSHOT);
   });
 
-  test('[SYNC-108.1] says there is none to a member device the snapshot is not for', async () => {
+  test('[SYNC-108.2] says there is none to a member device the snapshot is not for', async () => {
     const [taylor, casey] = await brisbane();
     const blake = await anotherMember();
     await uploadAll(BRISBANE, snapshotOf(taylor, casey));
@@ -775,7 +775,7 @@ describe('SYNC-108.1', () => {
     expectSnapshotRefused(await ask(blake, BRISBANE), NO_SNAPSHOT);
   });
 
-  test('[SYNC-108.1] says there is none in a group with no snapshot', async () => {
+  test('[SYNC-108.2] says there is none in a group with no snapshot', async () => {
     const [, casey] = await brisbane();
 
     expectSnapshotRefused(await ask(casey, BRISBANE), NO_SNAPSHOT);
@@ -1145,8 +1145,8 @@ describe('SYNC-113.1', () => {
   });
 });
 
-describe('SYNC-61.3', () => {
-  test("[SYNC-61.3] keeps each chunk's content once, and nothing else a request carries or a refused or repeated chunk brings", async () => {
+describe('SYNC-61.4', () => {
+  test("[SYNC-61.4] keeps each chunk's content once, and nothing else a request carries or a refused or repeated chunk brings", async () => {
     const [taylor, casey] = await brisbane(false);
     const s = snapshotOf(taylor, casey);
     const headers = { 'X-Group-Name': 'Brisbane-Trip' };

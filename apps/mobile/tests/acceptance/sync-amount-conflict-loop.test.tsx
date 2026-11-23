@@ -173,7 +173,7 @@ test("[SYNC-133.1] compares a downloaded event with the stamp a check gave this 
   });
 });
 
-test('[SYNC-132.1] [SYNC-88.1] syncs the ledger once Use Mine is saved: a download, then the upload of its event', async () => {
+test('[SYNC-132.1] [SYNC-88.1] syncs the ledger once Use Mine is saved: a download, the upload of its event, and the download after it', async () => {
   const { brisbane } = await overriddenBySync();
   await expectToReview('Brisbane', ['Dinner']);
   await openFromGroup('Brisbane', 'Dinner');
@@ -184,7 +184,7 @@ test('[SYNC-132.1] [SYNC-88.1] syncs the ledger once Use Mine is saved: a downlo
 
   await waitFor(() =>
     expect(eventRequests(from).map((request) => request.split(' ')[0])).toEqual(
-      ['GET', 'POST'],
+      ['GET', 'POST', 'GET'],
     ),
   );
   await expectAllUploaded();

@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import { apiUrl } from '../sharing/api-address';
 import type { Database } from '../storage';
 import { syncGroup } from './loop';
-import { subscribeToUnsentEvents } from './records';
+import { UNSENT_EVENTS, subscribeToUnsentEvents } from './records';
 
 /**
  * Starts every sync the app starts by itself (ADR-0027): each shared ledger once when the
@@ -47,7 +47,7 @@ export function useSyncTriggers(database: Database | undefined) {
       // only if the change was saved.
       void database
         .all(
-          'SELECT 1 FROM sync_outbox WHERE groupId = ? AND position >= ? LIMIT 1',
+          `SELECT 1 FROM ${UNSENT_EVENTS} WHERE groupId = ? AND position >= ? LIMIT 1`,
           [groupId, position],
         )
         .then(

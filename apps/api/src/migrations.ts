@@ -14,5 +14,9 @@ export const migrations: readonly Migration[] = [
   syncMigrations[1],
   syncMigrations[2],
   sharingMigrations[2],
+<<<<<<< HEAD
   sharingMigrations[3],
+=======
+  syncMigrations[3],
+>>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
 ];

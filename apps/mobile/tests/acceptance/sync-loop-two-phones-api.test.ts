@@ -271,8 +271,8 @@ describe('SYNC-91.1', () => {
   });
 });
 
-describe('SYNC-92.1', () => {
-  test('[SYNC-92.1] a phone whose local data went back downloads again from the cursor it now holds, and ends up like the other phone', async () => {
+describe('SYNC-92.2', () => {
+  test('[SYNC-92.2] a phone whose local data went back downloads again from the cursor it now holds, and ends up like the other phone', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { b } = setup;
     await addExpense(b, { title: 'Lunch' });
@@ -304,7 +304,7 @@ describe('SYNC-92.1', () => {
     expect(await refusals(a)).toEqual([]);
   });
 
-  test('[SYNC-92.1] uploads again the unsent events that came back with the data, and the API stores none twice', async () => {
+  test('[SYNC-92.2] uploads again the unsent events that came back with the data, and the API stores none twice', async () => {
     const setup = await twoPhones();
     const { brisbane } = setup;
     await addExpense(setup.a, { title: 'Taxi' });
@@ -329,7 +329,7 @@ describe('SYNC-92.1', () => {
     expect(await titles(a)).toEqual(['Taxi']);
   });
 
-  test('[SYNC-92.1] after an import the running app syncs from the cursor the imported data holds', async () => {
+  test('[SYNC-92.2] after an import the running app syncs from the cursor the imported data holds', async () => {
     const { a, b, brisbane, key } = await twoPhones();
     const copy = await copyOfData(a);
     await uploadAs(b, key, [await created(b, 'Lunch', await stampOf(b, NOW))]);
@@ -349,8 +349,8 @@ describe('SYNC-92.1', () => {
   });
 });
 
-describe('SYNC-71.1', () => {
-  test('[SYNC-71.1] does not store a page when an import took the cursor back while the page was on its way', async () => {
+describe('SYNC-71.2', () => {
+  test('[SYNC-71.2] does not store a page when an import took the cursor back while the page was on its way', async () => {
     const { a, b, key } = await twoPhones();
     const copy = await copyOfData(a);
     await uploadAs(b, key, [await created(b, 'Lunch', await stampOf(b, NOW))]);

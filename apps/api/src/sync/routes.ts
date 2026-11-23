@@ -1,12 +1,15 @@
 import {
+  CONTINUE_STATUS,
   GROUP_REFUSAL_STATUS,
   REFUSAL_STATUS,
+  SNAPSHOT_NEEDED_BY_HEADER,
   SNAPSHOT_NEEDED_STATUS,
   SNAPSHOT_REFUSAL_STATUS,
   isSnapshotChunkStoredResponse,
   isUploadSnapshotChunkRequest,
   isCreateGroupResponse,
   isUploadEventsRequest,
+  writeSnapshotNeededBy,
   type CreateGroupResponse,
   type SnapshotRefusal,
 } from '@shared-expense/domain/api';
@@ -26,6 +29,7 @@ const STATUS = {
   ...GROUP_REFUSAL_STATUS,
   ...SNAPSHOT_REFUSAL_STATUS,
 };
+const NO_STORE = { 'Cache-Control': 'no-store' };
 
 const refuse = (refusal: EventApiRefusal | SnapshotRefusal) =>
   Response.json(refusal, { status: STATUS[refusal.error] });
@@ -57,7 +61,7 @@ function snapshotDownloadResponse(
 ) {
   return Response.json(result, {
     status: 'error' in result ? STATUS[result.error] : 200,
-    headers: { 'Cache-Control': 'no-store' },
+    headers: NO_STORE,
   });
 }
 
@@ -114,12 +118,19 @@ export const syncRoutes = new Hono<AppEnv>()
       after,
       now: c.env.now(),
     });
-    if ('error' in outcome && outcome.error !== 'snapshot-needed')
+    if ('error' in outcome) {
+      if (outcome.error === 'snapshot-needed')
+        return c.json(outcome, SNAPSHOT_NEEDED_STATUS, NO_STORE);
+      if (outcome.error === 'continue')
+        return c.json(outcome, CONTINUE_STATUS, NO_STORE);
       return refuse(outcome);
-    // The same cursor can get a page or need a snapshot after cleanup (SYNC-57.2).
-    return c.json(outcome, 'events' in outcome ? 200 : SNAPSHOT_NEEDED_STATUS, {
-      'Cache-Control': 'no-store',
-    });
+    }
+    if (outcome.snapshotNeededBy.length > 0)
+      c.header(
+        SNAPSHOT_NEEDED_BY_HEADER,
+        writeSnapshotNeededBy(outcome.snapshotNeededBy),
+      );
+    return c.json(outcome.page, 200, NO_STORE);
   })
   .put(chunkPath, async (c) => {
     const { groupId, snapshotId, index } = c.req.param();
@@ -147,7 +158,12 @@ export const syncRoutes = new Hono<AppEnv>()
     const groupId = c.req.param('groupId');
     if (!validSnapshotPath(c.req.url, groupId))
       return snapshotDownloadResponse({ error: 'request' });
-    const result = await readSnapshot(c.env.sql, groupId, c.var.deviceId);
+    const result = await readSnapshot(
+      c.env.sql,
+      groupId,
+      c.var.deviceId,
+      c.env.now(),
+    );
     return snapshotDownloadResponse(result);
   })
   .get(chunkPath, async (c, next) => {

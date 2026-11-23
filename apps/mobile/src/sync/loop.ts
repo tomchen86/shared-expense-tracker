@@ -1,12 +1,17 @@
 import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils.js';
 import { checkSyncEvent, type SyncStamp } from '@shared-expense/domain';
 import {
+  CONTINUE_STATUS,
   EVENT_CONTENT_MINIMUM,
   GROUP_REFUSAL_STATUS,
+  SNAPSHOT_NEEDED_STATUS,
   UPLOAD_EVENT_LIMIT,
+  isContinueResponse,
   isEventsPageResponse,
   isGroupRefusal,
+  isSnapshotNeededResponse,
   isUploadEventsResponse,
+  readSnapshotNeededBy,
   type EventsPageResponse,
   type GroupRefusal,
   type UploadedEvent,
@@ -16,30 +21,35 @@ import { decrypt, encrypt } from '@shared-expense/domain/crypto';
 import { getRandomValues } from 'expo-crypto';
 import { sendApiRequest, type ApiResult } from '../sharing/api-request';
 import { readDeviceIdentity } from '../sharing/device-identity';
-import {
-  GROUP_KEY_HEX,
-  readGroupKeyEntry,
-  storeGroupKey,
-} from '../sharing/group-key';
+import { storeGroupKey } from '../sharing/group-key';
 import type { Database, SqlExecutor } from '../storage';
 import {
   applyReceivedEvents,
   notifyApplied,
   type ReceivedSyncEvent,
 } from './apply';
+import {
+  CONFIRMED_EVENT_IDS,
+  UNSENT_EVENTS,
+  requeueConfirmedEvents,
+} from './records';
+import { sendSnapshot, takeSnapshot } from './snapshots';
 import { checkUnsentStamps, recheckStamps, takeUploadedStamps } from './stamps';
+<<<<<<< HEAD
 import { utf8Text } from './utf8';
 import { countGroupUnapplied } from './unapplied';
+=======
+import { GIVE_UP_AFTER_MS, jsonIn, readGroupKey } from './transport';
+>>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
 
-// A phone's sync of one shared ledger with the API (ADR-0027): it downloads page by page
-// from its cursor, judging and merging what it can decrypt, then uploads its unsent
-// events, encrypted under the group key. Nothing here repeats a sync or starts one: a sync
-// that cannot go on ends, and the next one carries on from the local data.
+export { GIVE_UP_AFTER_MS, jsonIn, readGroupKey } from './transport';
+
+// A phone syncs one shared ledger with the API (ADR-0027, ADR-0034). It downloads
+// from its cursor, uploads its unsent events under the group key, and downloads once
+// more if the API confirmed any upload.
 
 /** The most bytes a request's body may have (SHARING-48.2). */
 const BODY_LIMIT = 1_048_576;
-/** How long a request of a sync may take to be answered in full (SYNC-97.1). */
-export const GIVE_UP_AFTER_MS = 60_000;
 const NONCE_LENGTH = 24;
 const KEY_LENGTH = 32;
 /** Stands in for a key the phone lacks, where only a ciphertext's format version is asked. */
@@ -51,22 +61,6 @@ const FULL_NOTICE =
   'This group has reached its storage limit. New changes stay on this phone until there is room.';
 
 const eventsPath = (groupId: string) => `/groups/${groupId}/events`;
-
-/**
- * The group key of one key epoch (SYNC-66.1): undefined when this phone has none, and
- * when it cannot read its secure store now (SYNC-95.1). A caller that distinguishes a
- * failed read from an absent key can throw from `onReadError`.
- */
-export async function readGroupKey(
-  groupId: string,
-  epoch: number,
-  onReadError: (cause: unknown) => null = () => null,
-): Promise<Uint8Array | undefined> {
-  const value = await readGroupKeyEntry(groupId, epoch).catch(onReadError);
-  return value !== null && GROUP_KEY_HEX.test(value)
-    ? hexToBytes(value)
-    : undefined;
-}
 
 /** What an event is encrypted with besides its key: five lines of ASCII (SYNC-67.1). */
 const associatedData = (
@@ -80,15 +74,6 @@ const associatedData = (
       '\n',
     ),
   );
-
-/** What the bytes say as JSON in UTF-8; null when they are not that. */
-export function jsonIn(bytes: Uint8Array): unknown {
-  try {
-    return JSON.parse(utf8Text(bytes));
-  } catch {
-    return null;
-  }
-}
 
 /** The event API's own refusal that an answer is, when its status and its body both say so. */
 function groupRefusalIn(answer: ApiResult): GroupRefusal | undefined {
@@ -104,6 +89,12 @@ interface Ledger {
   device: string;
   cursor: number;
   waitsForUpdate: number;
+  waitsForSnapshot: number;
+}
+
+interface SyncTarget {
+  apiUrl: string;
+  groupId: string;
 }
 
 async function readLedger(
@@ -111,7 +102,7 @@ async function readLedger(
   groupId: string,
 ): Promise<Ledger | undefined> {
   const [ledger] = await database.all<Ledger>(
-    'SELECT device, cursor, waitsForUpdate FROM sync_groups WHERE groupId = ?',
+    'SELECT device, cursor, waitsForUpdate, waitsForSnapshot FROM sync_groups WHERE groupId = ?',
     [groupId],
   );
   return ledger;
@@ -200,15 +191,14 @@ async function openPage(
 /**
  * Stores a page in one transaction (SYNC-70.1, SYNC-84.1): the stamps the API holds for
  * unsent events of this phone, the check of the unsent events' stamps, the page's events
- * and the cursor. Resolves with whether the sync goes on: to the next page, to the upload,
- * or nowhere, when the page does not start right after the cursor (SYNC-71.1).
+ * and the cursor. A page that does not start right after the cursor ends the sync (SYNC-71.2).
  */
 async function storePage(
   database: Database,
   groupId: string,
   page: EventsPageResponse,
   { events, stamps, stopped }: OpenedPage,
-): Promise<'next page' | 'upload' | 'end'> {
+): Promise<'next page' | 'downloaded' | 'end'> {
   // An empty page ends the download whatever it says: the cursor would not move.
   const ended = !page.more || page.events.length === 0;
   const stored = await database.transaction(async (tx) => {
@@ -230,13 +220,26 @@ async function storePage(
     for (const other of await checkUnsentStamps(tx)) moved.add(other);
     const leftTrash = new Set<string>();
     const changed = await applyReceivedEvents(tx, groupId, events, leftTrash);
+    // A refused event also advances the cursor. Forget our uploads in the stored prefix (SYNC-161.1).
+    const ownIds = events
+      .filter(({ device }) => device === ledger.device)
+      .map(({ id }) => id);
+    if (ownIds.length > 0)
+      await tx.run(
+        `DELETE FROM sync_outbox WHERE groupId = ? AND id IN (${CONFIRMED_EVENT_IDS})
+         AND id IN (${ownIds.map(() => '?').join(', ')})`,
+        [groupId, ...ownIds],
+      );
     const cursor = ledger.cursor + events.length;
     // The notice goes once a sync has downloaded to the end without stopping (SYNC-75.1).
     const waitsForUpdate =
       stopped === 'version' ? 1 : stopped || !ended ? ledger.waitsForUpdate : 0;
-    if (cursor !== ledger.cursor || waitsForUpdate !== ledger.waitsForUpdate)
+    const waitChanged =
+      waitsForUpdate !== ledger.waitsForUpdate || ledger.waitsForSnapshot === 1;
+    if (cursor !== ledger.cursor || waitChanged)
       await tx.run(
-        'UPDATE sync_groups SET cursor = ?, waitsForUpdate = ? WHERE groupId = ?',
+        `UPDATE sync_groups SET cursor = ?, waitsForUpdate = ?,
+         waitsForSnapshot = 0, snapshotNeedingUpdate = NULL WHERE groupId = ?`,
         [cursor, waitsForUpdate, groupId],
       );
     // This ledger's screens are told once, with the expenses that left the trash.
@@ -244,15 +247,16 @@ async function storePage(
     return {
       moved,
       leftTrash,
-      changed: changed || reordered || waitsForUpdate !== ledger.waitsForUpdate,
+      changed: changed || reordered || waitChanged,
     };
   });
   if (!stored) return 'end';
   notify(database, stored.moved);
   if (stored.changed) notifyApplied(database, groupId, stored.leftTrash);
-  return stopped || ended ? 'upload' : 'next page';
+  return stopped || ended ? 'downloaded' : 'next page';
 }
 
+<<<<<<< HEAD
 /** Downloads from the cursor until no events follow (SYNC-69.2). Resolves with whether the sync goes on to upload. */
 async function download(
   database: Database,
@@ -260,27 +264,86 @@ async function download(
   groupId: string,
   end: SyncEnd,
 ): Promise<boolean> {
+=======
+/** Move only from a smaller cursor in the live ledger, including after a backup restore (SYNC-173.1). */
+async function continueFrom(
+  database: Database,
+  groupId: string,
+  after: number,
+) {
+  await database.transaction(async (tx) => {
+    const { changes } = await tx.run(
+      'UPDATE sync_groups SET cursor = ? WHERE groupId = ? AND cursor < ?',
+      [after, groupId, after],
+    );
+    if (changes) await requeueConfirmedEvents(tx, groupId);
+  });
+}
+
+/** Downloads to the last page and returns its snapshot recipients, or nothing on an early end. */
+async function download(
+  database: Database,
+  target: SyncTarget,
+  phase: 'before upload' | 'after upload',
+): Promise<string[] | undefined> {
+  const { apiUrl, groupId } = target;
+>>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
   const keys = new Map<number, Uint8Array | undefined>();
+  let tookSnapshot = false;
+  let continued = false;
   for (;;) {
     const ledger = await readLedger(database, groupId);
-    if (!ledger) return false;
+    if (!ledger) return;
     const answer = await sendApiRequest(database, {
       apiUrl,
       method: 'GET',
       path: `${eventsPath(groupId)}?after=${ledger.cursor}`,
       giveUpAfterMs: GIVE_UP_AFTER_MS,
     });
+<<<<<<< HEAD
     end.noAnswer = answer.outcome === 'no-answer';
     if (answer.outcome !== 'answered' || answer.status !== 200) return false;
     const page = jsonIn(answer.body);
     if (!isEventsPageResponse(page)) return false;
+=======
+    if (answer.outcome !== 'answered') return;
+    const body = jsonIn(answer.body);
+    if (phase === 'before upload') {
+      if (
+        answer.status === SNAPSHOT_NEEDED_STATUS &&
+        isSnapshotNeededResponse(body)
+      ) {
+        await database.run(
+          'UPDATE sync_groups SET waitsForSnapshot = 1 WHERE groupId = ? AND waitsForSnapshot = 0',
+          [groupId],
+        );
+        if (tookSnapshot) return;
+        const snapshot = await takeSnapshot(database, {
+          ...target,
+          catchUp: true,
+        });
+        if (snapshot.outcome !== 'imported') return;
+        tookSnapshot = true;
+        continue;
+      }
+      if (answer.status === CONTINUE_STATUS && isContinueResponse(body)) {
+        if (continued) return;
+        await continueFrom(database, groupId, body.after);
+        continued = true;
+        continue;
+      }
+    }
+    if (answer.status !== 200 || !isEventsPageResponse(body)) return;
+>>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
     const next = await storePage(
       database,
       groupId,
-      page,
-      await openPage(groupId, page, keys),
+      body,
+      await openPage(groupId, body, keys),
     );
-    if (next !== 'next page') return next === 'upload';
+    if (next === 'end') return;
+    if (next === 'downloaded')
+      return readSnapshotNeededBy(answer.snapshotNeededBy);
   }
 }
 
@@ -349,46 +412,78 @@ function firstUploadOf(rows: readonly UnsentRow[], epoch: number): UnsentRow[] {
   return rows.slice(0, count);
 }
 
-/** Whether the API confirmed the upload of `events`: each of them, in order, and no other (SYNC-77.1). */
-function confirms(answer: ApiResult, events: readonly UnsentRow[]): boolean {
-  if (answer.outcome !== 'answered' || answer.status !== 200) return false;
+/** Pair the sent content with its sequence only when the whole upload was confirmed (SYNC-77.1). */
+function confirmedEvents(answer: ApiResult, events: readonly UnsentRow[]) {
+  if (answer.outcome !== 'answered' || answer.status !== 200) return;
   const said = jsonIn(answer.body);
-  return (
+  if (
     isUploadEventsResponse(said) &&
+    said.events.length > 0 &&
     said.events.length === events.length &&
     said.events.every(({ id }, index) => id === events[index].id)
-  );
+  )
+    return said.events.map(({ sequence }, index) => ({
+      ...events[index],
+      sequence,
+    }));
 }
 
-/** Uploads the ledger's unsent events in the order the phone wrote them, a request at a time (SYNC-76.1). */
-async function upload(
-  database: Database,
-  apiUrl: string,
+/** Keep each confirmed event whose sequence is ahead of the cursor (SYNC-161.1). */
+async function storeConfirmation(
+  tx: SqlExecutor,
   groupId: string,
+<<<<<<< HEAD
   end: SyncEnd,
 ): Promise<void> {
+=======
+  events: readonly (UnsentRow & { sequence: number })[],
+) {
+  // Match the sent content too. A backup restored in flight can hold an earlier stamp.
+  const retained = await tx.run(
+    `WITH sent(id, content, sequence) AS (VALUES ${events.map(() => '(?, ?, ?)').join(', ')})
+     INSERT INTO sync_uploaded_events (eventId)
+     SELECT o.id FROM sent JOIN ${UNSENT_EVENTS} o ON o.id = sent.id AND o.content = sent.content
+     JOIN sync_groups g ON g.groupId = o.groupId
+     WHERE o.groupId = ? AND sent.sequence > g.cursor
+     ON CONFLICT (eventId) DO UPDATE SET resendPosition = NULL`,
+    [
+      ...events.flatMap(({ id, content, sequence }) => [id, content, sequence]),
+      groupId,
+    ],
+  );
+  const covered = await tx.run(
+    `DELETE FROM sync_outbox WHERE groupId = ? AND id NOT IN (${CONFIRMED_EVENT_IDS})
+     AND (id, content) IN (VALUES ${events.map(() => '(?, ?)').join(', ')})`,
+    [groupId, ...events.flatMap(({ id, content }) => [id, content])],
+  );
+  return retained.changes + covered.changes;
+}
+
+/** Even a partial upload can require a second download, but only a completed one can send snapshots. */
+async function upload(database: Database, { apiUrl, groupId }: SyncTarget) {
+  let anyConfirmed = false;
+>>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
   for (;;) {
     // An event saved since the last page was stored has not been checked (SYNC-84.1).
     const unsent = await database.transaction(async (tx) => ({
       moved: await checkUnsentStamps(tx),
       rows: await tx.all<UnsentRow & { epoch: number }>(
-        `SELECT o.id, o.content, g.epoch FROM sync_outbox o
+        `SELECT o.id, o.content, g.epoch FROM ${UNSENT_EVENTS} o
          JOIN sync_groups g ON g.groupId = o.groupId
-         WHERE o.groupId = ? ORDER BY o.position LIMIT ?`,
+         WHERE o.groupId = ? ORDER BY o.sendPosition, o.position LIMIT ?`,
         [groupId, UPLOAD_EVENT_LIMIT],
       ),
     }));
     notify(database, unsent.moved);
-    if (unsent.rows.length === 0) return;
+    if (unsent.rows.length === 0) return { anyConfirmed, complete: true };
     const [{ epoch }] = unsent.rows;
     let events = firstUploadOf(unsent.rows, epoch);
 
     const identity = await readDeviceIdentity(database);
     const key = await readGroupKey(groupId, epoch);
-    if (identity.status !== 'ready' || !key) return;
+    if (identity.status !== 'ready' || !key) break;
     const { deviceId } = identity;
     const ids = events.map(({ id }) => id);
-    const marks = ids.map(() => '?').join(', ');
     const send = (underEpoch: number, underKey: Uint8Array) =>
       sendApiRequest(database, {
         apiUrl,
@@ -401,8 +496,9 @@ async function upload(
           const checked = await database.transaction(async (tx) => ({
             moved: await recheckStamps(tx, ids),
             rows: await tx.all<UnsentRow>(
-              `SELECT id, content FROM sync_outbox WHERE id IN (${marks}) ORDER BY position`,
-              ids,
+              `SELECT o.id, o.content FROM json_each(?) sent
+               JOIN ${UNSENT_EVENTS} o ON o.id = sent.value ORDER BY sent.key`,
+              [JSON.stringify(ids)],
             ),
           }));
           notify(database, checked.moved);
@@ -416,38 +512,37 @@ async function upload(
     if (refusal?.error === 'epoch') {
       // Once for a request, and only with the key of the epoch the API names (SYNC-79.1).
       const named = await readGroupKey(groupId, refusal.epoch);
-      if (!named) return;
+      if (!named) break;
       answer = await send(refusal.epoch, named);
       refusal = groupRefusalIn(answer);
     }
     end.noAnswer = answer.outcome === 'no-answer';
     const full = refusal?.error === 'group-full';
-    const confirmed = confirms(answer, events);
-    if (!confirmed && !full) return;
+    const confirmed = confirmedEvents(answer, events);
+    if (!confirmed && !full) break;
+    anyConfirmed ||= confirmed !== undefined;
 
-    // Only what the API has confirmed leaves the unsent events, and only as it was sent:
-    // an import meanwhile can have brought an event back with another stamp (SYNC-96.1).
     const after = await database.transaction(async (tx) => {
-      const left = confirmed
-        ? await tx.run(
-            `DELETE FROM sync_outbox WHERE groupId = ? AND (id, content) IN (VALUES ${events
-              .map(() => '(?, ?)')
-              .join(', ')})`,
-            [groupId, ...events.flatMap(({ id, content }) => [id, content])],
-          )
-        : { changes: 0 };
+      const uploaded = confirmed
+        ? await storeConfirmation(tx, groupId, confirmed)
+        : 0;
       // The notice stays until an upload of the ledger is confirmed (SYNC-83.1).
       const notice = await tx.run(
         'UPDATE sync_groups SET groupFull = ? WHERE groupId = ? AND groupFull <> ?',
         [Number(full), groupId, Number(full)],
       );
-      return { uploaded: left.changes, noticeChanged: notice.changes > 0 };
+      return { uploaded, noticeChanged: notice.changes > 0 };
     });
     if (after.noticeChanged) notify(database, [groupId]);
     // With nothing gone from the unsent events, the next request would be this one again.
+<<<<<<< HEAD
     if (after.uploaded === 0) return;
     end.uploaded = true;
+=======
+    if (after.uploaded === 0) break;
+>>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
   }
+  return { anyConfirmed, complete: false };
 }
 
 // One sync at a time
@@ -460,19 +555,31 @@ interface Turn {
 const turns = new WeakMap<Database, Map<string, Turn>>();
 
 /**
+<<<<<<< HEAD
  * Syncs one shared ledger once with the API at `apiUrl`: downloads until no events
  * follow, then uploads the ledger's unsent events (SYNC-68.1). Resolves once the sync has
  * ended, whether it finished or stopped on the way, with how it ended; what it did shows
  * in the local data. Rejects when the local data cannot be read or written.
+=======
+ * Syncs one shared ledger with the API at `apiUrl`. It downloads, uploads the ledger's
+ * unsent events and downloads again after a confirmed upload (SYNC-68.2, SYNC-160.1).
+ * Resolves when the sync ends and rejects when the local data cannot be read or written.
+>>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
  *
  * A ledger has one sync at a time (SYNC-90.1): asked while one runs, however often, this
  * starts one more when that one has ended, and resolves once that one has ended too.
  */
 export function syncGroup(
   database: Database,
+<<<<<<< HEAD
   ledger: { apiUrl: string; groupId: string },
 ): Promise<SyncEnd> {
   const { apiUrl, groupId } = ledger;
+=======
+  ledger: SyncTarget,
+): Promise<void> {
+  const { groupId } = ledger;
+>>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
   const byGroup = turns.get(database) ?? new Map<string, Turn>();
   turns.set(database, byGroup);
   const current = byGroup.get(groupId);
@@ -483,6 +590,7 @@ export function syncGroup(
   }
   const turn: Turn = {
     running: (async () => {
+<<<<<<< HEAD
       const end = { downloaded: false, uploaded: false, noAnswer: false };
       end.downloaded = await download(database, apiUrl, groupId, end);
       if (end.downloaded) await upload(database, apiUrl, groupId, end);
@@ -497,6 +605,21 @@ export function syncGroup(
         }
         return end;
       }),
+=======
+      let recipients = await download(database, ledger, 'before upload');
+      if (!recipients) return;
+      const { anyConfirmed, complete } = await upload(database, ledger);
+      if (anyConfirmed) {
+        recipients = await download(database, ledger, 'after upload');
+        if (!recipients) return;
+      }
+      if (!complete) return;
+      for (const deviceId of recipients) {
+        const snapshot = await sendSnapshot(database, { ...ledger, deviceId });
+        if (snapshot.outcome !== 'uploaded') break;
+      }
+    })().finally(() => byGroup.delete(groupId)),
+>>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
   };
   byGroup.set(groupId, turn);
   return turn.running;
@@ -529,6 +652,7 @@ export async function saveGroupKey(
 }
 
 /** The lines the screen of the group shows under its title about its sync, top to bottom. */
+<<<<<<< HEAD
 export async function readSyncNotices(database: SqlExecutor, groupId: string) {
   const [ledgers, unapplied] = await Promise.all([
     database.all<{ waitsForUpdate: number; groupFull: number }>(
@@ -536,6 +660,23 @@ export async function readSyncNotices(database: SqlExecutor, groupId: string) {
       [groupId],
     ),
     countGroupUnapplied(database, groupId),
+=======
+export async function readSyncNotices(
+  database: SqlExecutor,
+  groupId: string,
+): Promise<string[]> {
+  const ledgers = await database.all<{
+    waitsForUpdate: number;
+    groupFull: number;
+  }>(
+    `SELECT waitsForUpdate OR (waitsForSnapshot AND snapshotNeedingUpdate IS NOT NULL) AS waitsForUpdate,
+            groupFull FROM sync_groups WHERE groupId = ?`,
+    [groupId],
+  );
+  return ledgers.flatMap(({ waitsForUpdate, groupFull }) => [
+    ...(waitsForUpdate ? [UPDATE_NOTICE] : []),
+    ...(groupFull ? [FULL_NOTICE] : []),
+>>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
   ]);
   return {
     lines: ledgers.flatMap(({ waitsForUpdate, groupFull }) => [

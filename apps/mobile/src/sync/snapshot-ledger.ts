@@ -13,18 +13,21 @@ import { applyMergedExpense } from '../ledger/merged-expense';
 import type { SqlExecutor } from '../storage';
 import { canMergeInGroup } from './apply';
 import { applyMergedInvite } from './invites';
-import { readGroupKey } from './loop';
+import { markSnapshotMoney } from './own-money';
 import { orderSyncedRows } from './positions';
 import { applyRoster } from './roster';
 import {
+  UNSENT_EVENTS,
   latestStamp,
   readSyncRecord,
+  requeueConfirmedEvents,
   saveLatestStamp,
   snapshotRecords,
   storeSyncRecord,
   updateReceived,
   type StoredRecord,
 } from './records';
+import { readGroupKey } from './transport';
 
 /**
  * Read the outbox, cursor and merged records at one point in the ledger's history.
@@ -41,7 +44,7 @@ export async function makeSnapshot(
     cursor: number;
     unsent: number;
   }>(
-    `SELECT epoch, cursor, EXISTS(SELECT 1 FROM sync_outbox WHERE groupId = ?) AS unsent
+    `SELECT epoch, cursor, EXISTS(SELECT 1 FROM ${UNSENT_EVENTS} WHERE groupId = ?) AS unsent
      FROM sync_groups WHERE groupId = ?`,
     [groupId, groupId],
   );
@@ -90,6 +93,7 @@ async function openSnapshotGroup(
       'UPDATE sync_groups SET cursor = MAX(cursor, ?), epoch = MAX(epoch, ?) WHERE groupId = ?',
       [sequence, epoch, groupId],
     );
+    await requeueConfirmedEvents(tx, groupId);
     return true;
   }
   // Validation established exactly one group record and a complete reserved category.
@@ -210,6 +214,8 @@ export async function importSnapshot(
     const merged = merge(previous);
     seen = merged.seen;
     if (foreign.has(incoming)) continue;
+    if (incoming.type === 'expense' && incoming.units.money)
+      await markSnapshotMoney(tx, incoming.id, incoming.units.money);
     const { created, seeded, ...record } = merged.record;
     await storeSyncRecord(tx, groupId, record, created, seeded);
     await updateReceived(tx, groupId, incoming, (held) => {

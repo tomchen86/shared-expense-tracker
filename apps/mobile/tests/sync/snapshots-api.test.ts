@@ -1,19 +1,41 @@
+import { dirname } from 'node:path';
+import { exportData } from '../../src/backup/export';
+import {
+  createTemporaryDirectory,
+  shareFile,
+} from '../../src/storage/expo-files';
+import {
+  UPDATE_NOTICE,
+  noticesOf,
+  requestsOf,
+  taylorBehind,
+} from '../acceptance/sync-catch-up-app';
 import {
   NOW,
+  Prepared,
+  addExpense,
+  answerNext as answerEventRequest,
+  apiUrl,
+  copyOfData,
   deviceId,
   everythingIn,
   failSecureStoreReads,
   giveKey,
+  importData as importCopy,
   keyOf,
   loseSeed,
   mark,
+  noAnswerTo as noEventAnswerTo,
   randomKey,
+  sealed,
   secureStoreWorks,
   sent,
   setEpoch,
   sync,
   twoPhones,
+  unsent,
   uploadAs,
+  whenAnswered as whenEventAnswered,
 } from '../acceptance/sync-loop-app';
 import {
   answerNext,
@@ -54,10 +76,175 @@ jest.mock(
   { virtual: true },
 );
 jest.mock('../../src/storage/expo', () => ({}));
-jest.mock('../../src/storage/expo-files', () => ({}));
+jest.mock('../../src/storage/expo-files', () => ({
+  openDatabaseFile: jest.requireActual<typeof import('../../src/storage/node')>(
+    '../../src/storage/node',
+  ).openNodeDatabase,
+  createTemporaryDirectory: jest.fn(),
+  shareFile: jest.fn(),
+  removeTemporaryFiles: async () => undefined,
+}));
 
 beforeEach(startSnapshotWorld);
 afterEach(endSnapshotWorld);
+
+test.each(['snapshot', 'continue'])(
+  'a sync can use both recovery replies with %s first',
+  async (first) => {
+    const { a, b } = await twoPhones();
+    await addExpense(b, { title: 'Lunch' });
+    await addExpense(b, { title: 'Taxi' });
+    await sync(b);
+    await sentSnapshot(b, a);
+    await addExpense(b, { title: 'Coffee' });
+    await sync(b);
+    await addExpense(a);
+
+    const needsSnapshot = { error: 'snapshot-needed' };
+    if (first === 'snapshot') {
+      answerEventRequest('GET', 410, needsSnapshot);
+      whenAnswered('GET', 0, async () =>
+        answerEventRequest('GET', 410, { error: 'continue', after: 3 }),
+      );
+    } else {
+      answerEventRequest('GET', 410, { error: 'continue', after: 1 });
+      answerEventRequest('GET', 410, needsSnapshot);
+    }
+    const from = mark();
+    await sync(a);
+
+    expect(await requestsOf(a, from)).toEqual([
+      'download after=0',
+      ...(first === 'snapshot'
+        ? ['ask', 'get chunk 0', 'download after=2', 'download after=3']
+        : ['download after=1', 'ask', 'get chunk 0', 'download after=2']),
+      'upload',
+      'download after=3',
+    ]);
+    expect(await unsent(a)).toEqual([]);
+  },
+);
+
+test('a backup restored while fetching a snapshot can already cover it', async () => {
+  const { a, b } = await twoPhones();
+  const before = await copyOfData(a);
+  await addExpense(b, { title: 'Lunch' });
+  await sync(b);
+  await sync(a);
+  await addExpense(a);
+  const waiting = await unsent(a);
+  const after = await copyOfData(a);
+  await importCopy(a, before);
+  await sentSnapshot(b, a);
+
+  answerEventRequest('GET', 410, { error: 'snapshot-needed' });
+  whenAnswered('GET', 0, () => importCopy(a, after));
+  const from = mark();
+  await sync(a);
+
+  expect(await requestsOf(a, from)).toEqual([
+    'download after=0',
+    'ask',
+    'get chunk 0',
+  ]);
+  expect(await unsent(a)).toEqual(waiting);
+});
+
+test('an interrupted snapshot download keeps the update notice only for the same snapshot', async () => {
+  const { a, b, key } = await taylorBehind();
+  const { sequence } = await sentSnapshot(b, a);
+  const content = await contentFor(a, key);
+  await plant(b, a, key, { ...content, version: 2 }, { sequence });
+  await sync(a);
+  expect(await noticesOf(a)).toEqual([UPDATE_NOTICE]);
+
+  noAnswerTo('GET', 'ask');
+  await sync(a);
+  noAnswerTo('GET', 0);
+  await sync(a);
+  expect(await noticesOf(a)).toEqual([UPDATE_NOTICE]);
+
+  await sentSnapshot(b, a);
+  noAnswerTo('GET', 0);
+  await sync(a);
+  expect(await noticesOf(a)).toEqual([]);
+});
+
+test('a backup restores a retained upload alongside a later unsent event', async () => {
+  const { a, b } = await twoPhones();
+  await addExpense(a);
+  const [retained] = await unsent(a);
+  whenEventAnswered('POST', async () => noEventAnswerTo('GET'));
+  await sync(a);
+  await addExpense(a, { title: 'Lunch' });
+  const [later] = await unsent(a);
+
+  jest.mocked(createTemporaryDirectory).mockResolvedValue(dirname(a.file));
+  await exportData(a.database);
+  const [[file]] = jest.mocked(shareFile).mock.calls;
+  await sync(a);
+  expect(await unsent(a)).toEqual([]);
+  const { importData, readExportFile } = jest.requireActual<
+    typeof import('../../src/backup/import')
+  >('../../src/backup/import');
+  await readExportFile(a.database, file);
+  await importData(a.database, file, a.database.transaction);
+  expect(await unsent(a)).toEqual([later]);
+
+  await sync(b);
+  await sentSnapshot(b, a);
+  expect(await takeSnapshot(a)).toEqual({ outcome: 'imported' });
+  expect(await unsent(a)).toEqual([retained, later]);
+});
+
+test('a signed page response exposes the snapshot recipient header to its caller', async () => {
+  const { a, b, A, brisbane } = await twoPhones();
+  expect(await takeSnapshot(a)).toEqual({ outcome: 'none' });
+  const response = await b.sharing.sendApiRequest(b.database, {
+    apiUrl: apiUrl(),
+    method: 'GET',
+    path: `/groups/${brisbane}/events?after=0`,
+  });
+  expect(response).toMatchObject({
+    outcome: 'answered',
+    status: 200,
+    snapshotNeededBy: A,
+  });
+});
+
+test('a retained upload goes ahead of an older event whose content a backup restored during confirmation', async () => {
+  const { a, b, A, brisbane, key } = await twoPhones();
+  await addExpense(a);
+  await addExpense(a, { title: 'Lunch' });
+  const [older, later] = await unsent(a);
+  const copy = await copyOfData(a);
+  // The API already has the earlier event with a corrected stamp.
+  const envelope = {
+    groupId: brisbane,
+    eventId: older.id,
+    deviceId: A,
+    epoch: 1,
+  };
+  const corrected = {
+    ...older.content,
+    stamp: { ...older.content.stamp, ms: NOW + 1 },
+  };
+  await uploadAs(a, key, [
+    new Prepared(older.id, sealed(key, envelope, corrected)),
+  ]);
+  whenEventAnswered('POST', async () => {
+    await importCopy(a, copy);
+    noEventAnswerTo('POST');
+    noEventAnswerTo('GET');
+  });
+  await sync(a);
+  expect(await unsent(a)).toEqual([older]);
+
+  await sync(b);
+  await sentSnapshot(b, a);
+  expect(await takeSnapshot(a)).toEqual({ outcome: 'imported' });
+  expect(await unsent(a)).toEqual([later, older]);
+});
 
 test('losing access to the seed between chunks leaves the ledger untouched and the download can be retried', async () => {
   const expenses = Array.from({ length: 5 }, (_, i) =>

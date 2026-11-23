@@ -12,6 +12,10 @@ test('the migrations that have merged keep their names and their order', () => {
     'sync/0002-create-snapshots',
     'sync/0003-add-snapshot-start-time',
     'sharing/0003-create-join-requests',
+<<<<<<< HEAD
     'sharing/0004-create-handovers',
+=======
+    'sync/0004-add-snapshot-needed-time',
+>>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
   ]);
 });

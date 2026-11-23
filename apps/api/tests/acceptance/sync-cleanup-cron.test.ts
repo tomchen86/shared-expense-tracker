@@ -1,6 +1,6 @@
 import worker from '../../src/workers';
 import { databaseUrl, setTime } from './sharing-api';
-import { taylorWithBrisbaneAndCasey } from './sharing-invites-api';
+import { bothInBrisbane } from './sharing-invites-api';
 import {
   BRISBANE,
   download,
@@ -30,7 +30,8 @@ const NO_DATABASE = 'postgres://postgres:postgres@127.0.0.1:1/postgres';
 
 describe('SYNC-145.2', () => {
   test('[SYNC-145.2] runs the cleanup once, on the database of its environment and at the time it is then, not the time the trigger was scheduled for, has finished it when the call ends, and ends with an error when it cannot', async () => {
-    const [taylor] = await taylorWithBrisbaneAndCasey();
+    // Casey's phone is a member device too, and has never downloaded (SYNC-171.1).
+    const [taylor] = await bothInBrisbane();
     const today = Date.now();
     setTime(today - 31 * DAY);
     const [a] = await store(taylor, 1);

@@ -13,7 +13,11 @@ import {
   syncLoopMigration,
   syncMigration,
   syncOwnMoneyMigration,
+<<<<<<< HEAD
   unappliedChangesMigration,
+=======
+  syncUploadedEventsMigration,
+>>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
 } from '../sync/migrations';
 
 /** Every capability's SQL migrations, in the order they run (ADR-0006). */
@@ -48,5 +52,9 @@ export const appMigrations: readonly string[] = [
   syncOwnMoneyMigration,
   inviteMigration,
   joinRequestMigration,
+<<<<<<< HEAD
   unappliedChangesMigration,
+=======
+  syncUploadedEventsMigration,
+>>>>>>> ede771979593bf3eed8a78b64844c619097f5e05
 ];

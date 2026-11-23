@@ -1,14 +1,15 @@
 import type { Migration } from '../database/migrate';
 
 /**
- * What the API keeps about a group (SYNC-61.3), and nothing else:
+ * What the API keeps about a group (SYNC-61.4), and nothing else:
  *
  * - `groups`: a group under the ID it has on its phones, with its key epoch, the last
  *   sequence number it has given an event, and how many bytes the contents of the events
  *   it has stored add up to. An upload locks this row, so the uploads of one group take
  *   turns (ADR-0016).
  * - `group_members`: a member device of a group, with its progress: the cursor of its
- *   latest download and the API's time then, both empty until it has downloaded.
+ *   latest download and the API's time then, both empty until it has downloaded. While
+ *   it waits for a snapshot, it also has the time it was last marked as waiting.
  * - `group_events`: an event as it was uploaded, with what the API recorded about it. A
  *   group has each event ID once and each sequence number once.
  * - `group_snapshots` and `snapshot_chunks`: the envelope for one recipient, the time
@@ -85,6 +86,12 @@ export const syncMigrations: readonly Migration[] = [
     sql: `
       ALTER TABLE group_snapshots ADD COLUMN started_at_ms bigint NOT NULL
         DEFAULT floor(extract(epoch FROM statement_timestamp()) * 1000)::bigint;
+    `,
+  },
+  {
+    name: 'sync/0004-add-snapshot-needed-time',
+    sql: `
+      ALTER TABLE group_members ADD COLUMN snapshot_needed_at_ms bigint DEFAULT NULL;
     `,
   },
 ];
