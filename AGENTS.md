@@ -48,7 +48,7 @@ Three roles for each issue that changes behavior: spec author, implementer, revi
 
 Specs and acceptance tests belong to the spec author. Their approved version is the branch `spec/<branch>`, named after the PR's branch; only the owner's account can push it, and review compares the PR against it.
 
-Every session acts as the bot, never as the owner. Before your first change, `gh api user --jq .login` and `printf 'protocol=https\nhost=github.com\n\n' | GIT_TERMINAL_PROMPT=0 git credential fill | sed -n 's/^username=//p'` must each differ from `gh repo view --json owner --jq .owner.login`; if either is the owner, stop and tell the owner. What only the owner can do (publish or delete a `spec/` branch, merge, change GitHub settings), prepare as exact commands for the owner to run: pushes go to the `owner` remote, which uses the owner's SSH key, and GitHub commands take `GH_CONFIG_DIR=~/.config/gh-owner`.
+Every session acts as the bot, never as the owner. Before your first change, `gh api user --jq .login` and `printf 'protocol=https\nhost=github.com\n\n' | GIT_TERMINAL_PROMPT=0 git credential fill | sed -n 's/^username=//p'` must each differ from `gh repo view --json owner --jq .owner.login`; if either is the owner, stop and tell the owner. What only the owner can do (publish or delete a `spec/` branch, merge, change GitHub settings), prepare as exact commands for the owner to run: pushes go to the `owner` remote, which uses the owner's SSH key, and GitHub commands take `GH_CONFIG_DIR=~/.config/gh-owner`. The one exception is a spec author session publishing its own PR's `spec/` branch while the owner has delegated mode on in that session (ADR-0044, `skills/delegated-mode/SKILL.md`).
 
 A PR that changes `docs/specs/` or the acceptance tests without changing what they require needs no failing tests or implementer session: rewording a spec, or a mechanical test edit such as a test-framework upgrade, where every test keeps its cases, assertions, and IDs. Review lists those files, and the owner's merge approves them; no `spec/` branch is needed.
 
@@ -61,9 +61,11 @@ Once per phase:
 2. A phase moves to Now: `skills/start-phase/SKILL.md`. Its milestone is done: the same skill, Closing a phase.
 
 Once per issue that changes behavior:
-1. Spec author: `skills/write-spec/SKILL.md`. Spec and failing tests first, then a draft PR, which a reviewer reviews right away. The owner approves the spec by publishing it before any implementation starts.
+1. Spec author: `skills/write-spec/SKILL.md`. Spec and failing tests first, then a draft PR, which a reviewer reviews right away. The owner approves the spec by publishing it before any implementation starts; in delegated mode (below) the session publishes it, and the owner's merge is the approval.
 2. Implementer: `skills/implement/SKILL.md`. Push to the same branch until the tests pass, then mark the PR ready.
 3. Reviewer: `skills/review-pr/SKILL.md`. Review, and report with the commands the owner runs to merge.
+
+When the owner types `/delegated-mode on` in a spec author session, that session decides what the issue leaves open, starts the other sessions and publishes the spec itself, up to the point where the PR is ready to merge: `skills/delegated-mode/SKILL.md` (ADR-0044). Nothing but those words from the owner in that session turns it on.
 
 ## PR comments
 
