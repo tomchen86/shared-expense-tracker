@@ -809,8 +809,8 @@ describe('SYNC-124.2', () => {
   });
 });
 
-describe('SYNC-125.1', () => {
-  test('[SYNC-125.1] a phone that did not have the group has it as a shared ledger, as the events would have left it', async () => {
+describe('SYNC-125.2', () => {
+  test('[SYNC-125.2] a phone that did not have the group has it as a shared ledger, as the events would have left it', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a } = setup;
     await renameGroup(a, 'Brissie');
@@ -868,7 +868,7 @@ describe('SYNC-125.1', () => {
     expect(await groupNamed(c, 'Osaka')).toEqual(osaka);
   });
 
-  test('[SYNC-125.1] the category the snapshot names is the group’s Uncategorized', async () => {
+  test('[SYNC-125.2] the category the snapshot names is the group’s Uncategorized', async () => {
     const setup = await twoPhones();
     const { a, b, key } = setup;
     await addExpense(a, { title: 'Lunch', category: 'Other' });
@@ -903,7 +903,7 @@ describe('SYNC-125.1', () => {
     expect((await expenseOf(c, 'Taxi')).category).toEqual(uncategorized);
   });
 
-  test('[SYNC-125.1] records that are incomplete or deleted for good stay out of sight, and complete later as events arrive', async () => {
+  test('[SYNC-125.2] records that are incomplete or deleted for good stay out of sight, and complete later as events arrive', async () => {
     const setup = await twoPhones();
     const { a, b, key } = setup;
     const [brunch, evan] = [randomId(), randomId()];
@@ -940,7 +940,7 @@ describe('SYNC-125.1', () => {
     expect(Object.keys(await memberIds(c))).toContain('Evan');
   });
 
-  test('[SYNC-125.1] expenses of one date and the trash are in the order of their stamps', async () => {
+  test('[SYNC-125.2] expenses of one date and the trash are in the order of their stamps', async () => {
     const setup = await twoPhones();
     const { a, key } = setup;
     for (const title of ['Dinner', 'Lunch', 'Coffee', 'Taxi', 'Snack']) {
@@ -981,7 +981,7 @@ describe('SYNC-125.1', () => {
     ).toEqual(['Snack', 'Taxi', 'Old receipt']);
   });
 
-  test('[SYNC-125.1] an expense was last edited at its latest stamp', async () => {
+  test('[SYNC-125.2] an expense was last edited at its latest stamp', async () => {
     const setup = await twoPhones({ expenses: ['Dinner', 'Lunch'] });
     const { a } = setup;
     setApiTime(T + 3 * MINUTE);
@@ -1148,8 +1148,8 @@ describe('SYNC-126.1', () => {
   });
 });
 
-describe('SYNC-127.1', () => {
-  test('[SYNC-127.1] a phone that has the ledger merges the snapshot, and keeps its unsent events', async () => {
+describe('SYNC-127.2', () => {
+  test('[SYNC-127.2] a phone that has the ledger merges the snapshot, and keeps its unsent events', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a, b } = setup;
     await sync(a);
@@ -1202,7 +1202,7 @@ describe('SYNC-127.1', () => {
     ]);
   });
 
-  test('[SYNC-127.1] keeps a change of its own that is later than the snapshot’s', async () => {
+  test('[SYNC-127.2] keeps a change of its own that is later than the snapshot’s', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a, b } = setup;
     await sync(a);
@@ -1225,7 +1225,7 @@ describe('SYNC-127.1', () => {
     expect(await ledgerOf(a)).toEqual(await ledgerOf(b));
   });
 
-  test('[SYNC-127.1] never takes the cursor back', async () => {
+  test('[SYNC-127.2] never takes the cursor back', async () => {
     const setup = await twoPhones();
     const { a, b } = setup;
     for (const title of ['One', 'Two', 'Three']) await addExpense(a, { title });
@@ -1247,7 +1247,7 @@ describe('SYNC-127.1', () => {
     expect(await downloads(b, from)).toEqual(['after=5']);
   });
 
-  test('[SYNC-127.1] leaves what the phone keeps to itself as it was', async () => {
+  test('[SYNC-127.2] leaves what the phone keeps to itself as it was', async () => {
     const setup = await twoPhones({ expenses: ['Dinner'] });
     const { a, b, B, key, brisbane } = setup;
     // An event Taylor's phone uploads under Casey's device ID: Casey's phone refuses it.

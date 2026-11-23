@@ -208,6 +208,10 @@ const UNSENT = [NOT_SENT, 'Try Again', CANCEL];
 
 const json = (body: unknown) => JSON.stringify(body);
 
+/** A request that asks what became of a join request (SHARING-183.1). */
+const isAsking = ({ method, path }: { method: string; path: string }) =>
+  method === 'GET' && /^\/invites\/[^/?]+\/request$/.test(path);
+
 /** Closes Join Group with Close. */
 async function closeJoin() {
   await pressOnBar(TITLE, 'Close');
@@ -786,22 +790,23 @@ describe('SHARING-130.1', () => {
   });
 });
 
-describe('SHARING-131.1', () => {
-  test('[SHARING-131.1] shows the request the phone holds, without reading the invite, when its link is opened again', async () => {
+describe('SHARING-131.2', () => {
+  test('[SHARING-131.2] shows the request the phone holds, with no form, and asks once what became of it, when its link is opened again', async () => {
     brisbaneInvites();
     await startAs();
     await requested();
     await closeJoin();
-    const sent = received().length;
+    const sent = sendings().length;
 
     await openLink(BRISBANE_LINK);
 
     expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
-    expect(received()).toHaveLength(sent);
+    expect(sendings()).toHaveLength(sent);
+    expect(received().filter(isAsking)).toHaveLength(1);
   });
 
   test.each(['its link', 'its card'])(
-    '[SHARING-131.1] shows only Sending request…, with nothing to press, when a request on its way is opened again from %s',
+    '[SHARING-131.2] shows only Sending request…, with nothing to press, when a request on its way is opened again from %s',
     async (from) => {
       brisbaneInvites();
       await startAs();
@@ -824,6 +829,7 @@ describe('SHARING-131.1', () => {
       expect(joinButton('Try Again')).toBeUndefined();
       expect(joinButton(CANCEL)).toBeUndefined();
       expect(sendings()).toHaveLength(1);
+      expect(received().filter(isAsking)).toEqual([]);
 
       await answer();
       await joinSettles();
@@ -833,7 +839,7 @@ describe('SHARING-131.1', () => {
     },
   );
 
-  test('[SHARING-131.1] shows it with no network', async () => {
+  test('[SHARING-131.2] shows it with no network', async () => {
     brisbaneInvites();
     await startAs();
     await requested();
@@ -1349,8 +1355,8 @@ test('[SHARING-138.1] shows Waiting for Approval, the group, what happens next a
   expect(isOpen(TITLE)).toBe(true);
 });
 
-describe('SHARING-139.1', () => {
-  test('[SHARING-139.1] keeps the request as not sent, and says to connect, when there is no network', async () => {
+describe('SHARING-139.2', () => {
+  test('[SHARING-139.2] keeps the request as not sent, and says to connect, when there is no network', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1368,7 +1374,7 @@ describe('SHARING-139.1', () => {
     expect(requestsOnApi(CODE_A)).toEqual([]);
   });
 
-  test('[SHARING-139.1] sends the same request on Try Again once there is a network', async () => {
+  test('[SHARING-139.2] sends the same request on Try Again once there is a network', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1385,7 +1391,7 @@ describe('SHARING-139.1', () => {
     expect(rowsWith(CODE_A)).toHaveLength(1);
   });
 
-  test('[SHARING-139.1] sends the request again under the same path when only the answer was lost', async () => {
+  test('[SHARING-139.2] sends the request again under the same path when only the answer was lost', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1409,7 +1415,7 @@ describe('SHARING-139.1', () => {
     expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
   });
 
-  test('[SHARING-139.1] says something went wrong when the request is refused for too many requests twice', async () => {
+  test('[SHARING-139.2] says something went wrong when the request is refused for too many requests twice', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1436,7 +1442,7 @@ describe('SHARING-139.1', () => {
     ['a 404 with no reason', 404, '404 Not Found'],
     ['a 200 that does not name the code', 200, '{}'],
   ])(
-    '[SHARING-139.1] says something went wrong, and keeps the request, when the API answers it with %s',
+    '[SHARING-139.2] says something went wrong, and keeps the request, when the API answers it with %s',
     async (_, status, body) => {
       brisbaneInvites();
       await startAs();
@@ -1450,7 +1456,7 @@ describe('SHARING-139.1', () => {
     },
   );
 
-  test('[SHARING-139.1] says something went wrong, and keeps the request, when the phone cannot register', async () => {
+  test('[SHARING-139.2] says something went wrong, and keeps the request, when the phone cannot register', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1463,7 +1469,7 @@ describe('SHARING-139.1', () => {
     expect(rowsWith(CODE_A)).toHaveLength(1);
   });
 
-  test('[SHARING-139.1] keeps the request as not sent when the secure store cannot be read, and sends it on Try Again once it can', async () => {
+  test('[SHARING-139.2] keeps the request as not sent when the secure store cannot be read, and sends it on Try Again once it can', async () => {
     brisbaneInvites();
     tokyoInvites();
     await startAs();
@@ -1485,7 +1491,7 @@ describe('SHARING-139.1', () => {
     expect(sendings()).toHaveLength(2);
   });
 
-  test('[SHARING-139.1] keeps the request as not sent when the API took it and the phone could not record that, and sends it again on Try Again', async () => {
+  test('[SHARING-139.2] keeps the request as not sent when the API took it and the phone could not record that, and sends it again on Try Again', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1504,7 +1510,7 @@ describe('SHARING-139.1', () => {
     expect(requestsOnApi(CODE_A)).toHaveLength(1);
   });
 
-  test('[SHARING-139.1] shows a request that was not sent without the reason, and sends nothing by itself, after a restart', async () => {
+  test('[SHARING-139.2] shows a request that was not sent without the reason, and does not send it by itself, after a restart', async () => {
     brisbaneInvites();
     let app = await startAs();
     await openLink(BRISBANE_LINK);
@@ -1512,22 +1518,22 @@ describe('SHARING-139.1', () => {
     await send();
     await closeJoin();
     goOnline();
-    const sent = fetchCalls();
+    const sent = sendings().length;
 
     app = await restart(app);
     setClock(T);
     expect(app).toBeDefined();
-    expect(fetchCalls()).toBe(sent);
+    expect(sendings()).toHaveLength(sent);
 
     await openLink(BRISBANE_LINK);
 
     expect(joinLines()).toEqual(UNSENT);
-    expect(fetchCalls()).toBe(sent);
+    expect(sendings()).toHaveLength(sent);
   });
 });
 
-describe('SHARING-140.1', () => {
-  test('[SHARING-140.1] says the link cannot be used, and keeps no request, when the invite was revoked before the request was sent', async () => {
+describe('SHARING-140.2', () => {
+  test('[SHARING-140.2] says the link cannot be used, and keeps no request, when the invite was revoked before the request was sent', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1542,7 +1548,7 @@ describe('SHARING-140.1', () => {
     expect(requestCard('Brisbane')).toBeUndefined();
   });
 
-  test('[SHARING-140.1] says too many people are waiting, and keeps no request, when the invite is full', async () => {
+  test('[SHARING-140.2] says too many people are waiting, and keeps no request, when the invite is full', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1554,14 +1560,16 @@ describe('SHARING-140.1', () => {
     expect(rowsWith(CODE_A)).toEqual([]);
   });
 
-  test('[SHARING-140.1] says the phone is already in the group, and keeps no request, when the API says it is a member', async () => {
+  test('[SHARING-140.2] asks what became of the request, then says the phone is already in the group and keeps no request, when the API says it is a member both times', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
     apiAnswersNext(isSending, 409, json({ error: 'already-a-member' }));
+    apiAnswersNext(isAsking, 409, json({ error: 'already-a-member' }));
 
     await send();
 
+    expect(received().filter(isAsking)).toHaveLength(1);
     expect(joinLines()).toEqual([ALREADY_IN]);
     expect(rowsWith(CODE_A)).toEqual([]);
   });
@@ -1570,7 +1578,7 @@ describe('SHARING-140.1', () => {
     ['written wrongly', 400, { error: 'request' }],
     ['too large', 413, { error: 'too-large' }],
   ])(
-    '[SHARING-140.1] says something went wrong, and keeps no request, when the API refuses it as %s',
+    '[SHARING-140.2] says something went wrong, and keeps no request, when the API refuses it as %s',
     async (_, status, refusal) => {
       brisbaneInvites();
       await startAs();
@@ -1985,8 +1993,8 @@ describe('SHARING-143.1', () => {
 
 // Waiting
 
-describe('SHARING-144.1', () => {
-  test('[SHARING-144.1] records as usual while a request waits, and asks the API nothing for it', async () => {
+describe('SHARING-144.2', () => {
+  test('[SHARING-144.2] records as usual while a request waits, and asks the API nothing for it', async () => {
     brisbaneInvites();
     await startAs();
     await requested();
@@ -2012,12 +2020,12 @@ describe('SHARING-144.1', () => {
     expect(rowsWith(CODE_A)).toHaveLength(1);
   });
 
-  test('[SHARING-144.1] still holds the request after a restart, and sends nothing as it starts', async () => {
+  test('[SHARING-144.2] still holds the request after a restart, and neither sends nor cancels it as it starts', async () => {
     brisbaneInvites();
     let app = await startAs();
     await requested();
     await closeJoin();
-    const sent = fetchCalls();
+    const sent = sendings().length;
 
     app = await restart(app);
     setClock(T);
@@ -2026,10 +2034,11 @@ describe('SHARING-144.1', () => {
     await openRequest('Brisbane');
 
     expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
-    expect(fetchCalls()).toBe(sent);
+    expect(sendings()).toHaveLength(sent);
+    expect(cancellations()).toEqual([]);
   });
 
-  test('[SHARING-144.1] holds a request for each of two groups, and shows each under its own link', async () => {
+  test('[SHARING-144.2] holds a request for each of two groups, and shows each under its own link', async () => {
     brisbaneInvites();
     tokyoInvites();
     await startAs();
@@ -2186,8 +2195,8 @@ describe('SHARING-73.2', () => {
 
 // The Groups root
 
-describe('GROUPS-108.1', () => {
-  test('[GROUPS-108.1] shows a card for a request that waits, above the sentence about having no groups', async () => {
+describe('GROUPS-108.2', () => {
+  test('[GROUPS-108.2] shows a card for a request that waits, above the sentence about having no groups', async () => {
     brisbaneInvites();
     await startAs();
     await requested();
@@ -2205,24 +2214,24 @@ describe('GROUPS-108.1', () => {
     expect(inTreeOrder(card, sentence)).toBe(true);
   });
 
-  test('[GROUPS-108.1] opens Join Group on the request when its card is pressed, over the Groups root', async () => {
+  test('[GROUPS-108.2] opens Join Group on the request when its card is pressed, over the Groups root', async () => {
     brisbaneInvites();
     await startAs();
     await requested();
     await closeJoin();
     await tapTab('Groups');
-    const sent = received().length;
+    const sent = sendings().length;
 
     await openRequest('Brisbane');
 
     expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
-    expect(received()).toHaveLength(sent);
+    expect(sendings()).toHaveLength(sent);
 
     await closeJoin();
     expect(selectedTab()).toBe('Groups');
   });
 
-  test('[GROUPS-108.1] marks a request that was not sent, and opens it with Try Again and Cancel Request', async () => {
+  test('[GROUPS-108.2] marks a request that was not sent, and opens it with Try Again and Cancel Request', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -2241,7 +2250,7 @@ describe('GROUPS-108.1', () => {
     expect(joinLines()).toEqual(UNSENT);
   });
 
-  test('[GROUPS-108.1] lists the requests in the order they were stored, above the groups', async () => {
+  test('[GROUPS-108.2] lists the requests in the order they were stored, above the groups', async () => {
     brisbaneInvites();
     tokyoInvites();
     await startAs();
@@ -2263,7 +2272,7 @@ describe('GROUPS-108.1', () => {
     expect(cardsAmong(names)).toEqual(names);
   });
 
-  test('[GROUPS-108.1] has no card for a request that was cancelled, and none on a phone with no request', async () => {
+  test('[GROUPS-108.2] has no card for a request that was cancelled, and none on a phone with no request', async () => {
     brisbaneInvites();
     await startAs();
     await tapTab('Groups');
@@ -2279,7 +2288,7 @@ describe('GROUPS-108.1', () => {
     expect(screen.queryByText('Waiting for approval')).toBeNull();
   });
 
-  test('[GROUPS-108.1] still shows the card after a restart', async () => {
+  test('[GROUPS-108.2] still shows the card after a restart', async () => {
     brisbaneInvites();
     let app = await startAs();
     await requested();

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。共同帳本是在這支手機上已經變成共同帳本的群組（sync）。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；Members 的成員清單是成員那幾列，加上最後的「Add Member」或名稱欄位，和清單下面關於人數上限的那句話（GROUPS-105.1）；「Invite with Link」在成員清單的上面，自成一區，不是清單的一列（GROUPS-106.1），它打開的 Invite 見 sharing；手機上的申請是這支手機用邀請連結申請加入別人的群組的申請，送出了的和還沒送出的都算（sharing），申請的卡片是 Groups 根畫面上替它顯示的卡片（GROUPS-108.1）；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡、日期在群組的畫面的期間裡、通過這個畫面的篩選的支出（GROUPS-61.6），支出的卡片、明細、垃圾桶、期間、期間列、篩選和膠囊列見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上清單上方的總額（GROUPS-68.6）和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
+群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。共同帳本是在這支手機上已經變成共同帳本的群組（sync）。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；Members 的成員清單是成員那幾列，加上最後的「Add Member」或名稱欄位，和清單下面關於人數上限的那句話（GROUPS-105.1）；「Invite with Link」在成員清單的上面，自成一區，不是清單的一列（GROUPS-106.1），它打開的 Invite 見 sharing；手機上的申請是這支手機用邀請連結申請加入別人的群組的申請，六種狀態的都算（sharing），申請的卡片是 Groups 根畫面上替它顯示的卡片（GROUPS-108.2）；收到的申請是別的手機申請加入這支手機上的共同帳本、這支手機讀得懂的申請（sharing 的 SHARING-190.1、SHARING-191.1），它們顯示在群組的畫面上的按鈕（GROUPS-130.1）和 Members 的申請那一區（GROUPS-131.1），點了跳出申請的選單（GROUPS-132.1）；有手機的成員是共同帳本的名冊裡有紀錄代表的成員（sync 的 SYNC-251.1），也就是存著使用者 ID 的成員；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡、日期在群組的畫面的期間裡、通過這個畫面的篩選的支出（GROUPS-61.6），支出的卡片、明細、垃圾桶、期間、期間列、篩選和膠囊列見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上清單上方的總額（GROUPS-68.6）和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
 
 ## Requirements
 
@@ -408,9 +408,9 @@ WHEN 使用者在 Group actions 選「Members」，the mobile app SHALL 開啟�
 - **WHEN** 在 iOS 上把 Members 往下滑，或在 Android 上按返回鍵
 - **THEN** Members 關閉，顯示 Brisbane 的畫面
 
-### Requirement: GROUPS-24.3 未封存群組的 Members 列出成員
+### Requirement: GROUPS-24.4 未封存群組的 Members 列出成員
 
-The mobile app SHALL 在未封存群組的 Members 依加入的先後，由上而下列出群組的每位成員，被移出後再加回來的排在最後；每位成員那一列都是角色為 button 的按鈕，右邊有「›」：你那一列是你的成員名稱加上「 (You)」，無障礙名稱也是這樣；別人那一列是他的名稱，無障礙名稱是他的名稱；最後一列是角色為 button、名稱為「Add Member」的按鈕，共同帳本有 20 位以上的成員時沒有這一列（GROUPS-105.1）。
+The mobile app SHALL 在未封存群組的 Members 依加入的先後，由上而下列出群組的每位成員，被移出後再加回來的排在最後；每位成員那一列都是角色為 button 的按鈕，右邊有「›」：你那一列是你的成員名稱加上「 (You)」，無障礙名稱也是這樣；別人那一列是他的名稱，無障礙名稱是他的名稱；共同帳本裡有手機的別人，那一列另外顯示「Joined」，無障礙名稱是他的名稱、逗號、空格和「Joined」，例如「Casey, Joined」，所以每位成員都看得出誰已經用自己的手機加入；最後一列是角色為 button、名稱為「Add Member」的按鈕，共同帳本有 20 位以上的成員時沒有這一列（GROUPS-105.1）。
 
 #### Scenario: 只有你
 
@@ -422,9 +422,14 @@ The mobile app SHALL 在未封存群組的 Members 依加入的先後，由上�
 - **WHEN** 在 Brisbane 依序加入「Casey」和「Blake」
 - **THEN** 由上而下是「Taylor (You)」、「Casey」、「Blake」和「Add Member」；Casey 和 Blake 那兩列右邊有「›」，是名稱分別為「Casey」和「Blake」的按鈕
 
-### Requirement: GROUPS-25.2 在未封存群組的 Members 點成員那一列跳出他的選單
+#### Scenario: 有手機的成員
 
-WHEN 使用者在未封存群組的 Members 點成員那一列，the mobile app SHALL 跳出標題是這位成員的名稱的選單：別人的選單內容是「If removed, their historical payments and shares will be retained.」，依序是「Rename」、「Remove from Group」和「Cancel」；你的選單沒有內容，依序是「Rename」和「Cancel」。iOS 上選單是動作表（action sheet），「Remove from Group」是破壞性的樣式；Android 上選單是對話框。按 Cancel 時關閉選單，什麼都不改；Android 上按返回鍵或點對話框外面也一樣。
+- **WHEN** Brisbane 是共同帳本，名冊裡有別支手機代表 Casey 的紀錄（sync 的 SYNC-251.1），開啟它的 Members
+- **THEN** Casey 那一列顯示「Casey」和「Joined」，是名稱為「Casey, Joined」的按鈕；Blake 那一列沒有「Joined」；你那一列仍是「Taylor (You)」，沒有「Joined」
+
+### Requirement: GROUPS-25.3 在未封存群組的 Members 點成員那一列跳出他的選單
+
+WHEN 使用者在未封存群組的 Members 點成員那一列，the mobile app SHALL 跳出標題是這位成員的名稱的選單：別人的選單內容是「If removed, their historical payments and shares will be retained.」，依序是「Rename」、「Remove from Group」和「Cancel」；你的選單沒有內容，依序是「Rename」和「Cancel」；有手機的別人的選單也沒有內容，依序是「Rename」和「Cancel」：他的手機還在這個共同帳本裡，把它移出不在這裡（sharing）。iOS 上選單是動作表（action sheet），「Remove from Group」是破壞性的樣式；Android 上選單是對話框。按 Cancel 時關閉選單，什麼都不改；Android 上按返回鍵或點對話框外面也一樣。
 
 #### Scenario: iOS
 
@@ -440,6 +445,11 @@ WHEN 使用者在未封存群組的 Members 點成員那一列，the mobile app 
 
 - **WHEN** 名字是「Taylor」，在 Members 點「Taylor (You)」
 - **THEN** 跳出標題「Taylor」、沒有內容的選單，依序是「Rename」和「Cancel」
+
+#### Scenario: 有手機的成員的選單
+
+- **WHEN** Brisbane 是共同帳本，名冊裡有別支手機代表 Casey 的紀錄，在 Members 點 Casey 那一列
+- **THEN** 跳出標題「Casey」、沒有內容的選單，依序是「Rename」和「Cancel」，沒有「Remove from Group」
 
 #### Scenario: 按 Cancel
 
@@ -510,7 +520,7 @@ IF 移除存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable
 
 ### Requirement: GROUPS-29.2 按 Add Member 時多一列名稱欄位
 
-WHEN 使用者在未封存群組的 Members 按「Add Member」，the mobile app SHALL 不開新的畫面，把「Add Member」那一列換成名稱欄位，讓它取得焦點並打開鍵盤：名稱欄位的無障礙名稱是「Member name」，開啟時是空的、顯示「Enter member name」；名稱欄位失去焦點時，例如收起鍵盤或點了成員那一列，名稱欄位和裡面的名稱都留著，名稱欄位開著時點成員那一列，第一下就跳出他的選單（GROUPS-25.2）；Members 關閉時，名稱欄位裡還沒加入的名稱不會存下。
+WHEN 使用者在未封存群組的 Members 按「Add Member」，the mobile app SHALL 不開新的畫面，把「Add Member」那一列換成名稱欄位，讓它取得焦點並打開鍵盤：名稱欄位的無障礙名稱是「Member name」，開啟時是空的、顯示「Enter member name」；名稱欄位失去焦點時，例如收起鍵盤或點了成員那一列，名稱欄位和裡面的名稱都留著，名稱欄位開著時點成員那一列，第一下就跳出他的選單（GROUPS-25.3）；Members 關閉時，名稱欄位裡還沒加入的名稱不會存下。
 
 #### Scenario: 按 Add Member
 
@@ -1098,7 +1108,7 @@ WHILE 群組已封存，the mobile app SHALL 在它的 Members 依加入的先�
 #### Scenario: 還原之後
 
 - **WHEN** 還原 Brisbane 之後打開它的 Members
-- **THEN** 成員列又是按鈕，最後一列是「Add Member」（GROUPS-24.3）
+- **THEN** 成員列又是按鈕，最後一列是「Add Member」（GROUPS-24.4）
 
 ### Requirement: GROUPS-57.1 按 Restore 或 Restore Group 時還原群組
 
@@ -1518,7 +1528,7 @@ WHEN 使用者按群組的畫面上你的淨額（GROUPS-69.4），the mobile ap
 
 ### Requirement: GROUPS-71.1 Balances 列出每個人的已付、份額和淨額
 
-The mobile app SHALL 在 Balances 依幣別代碼排序，為群組不在垃圾桶裡的支出用到的每個幣別各放一個區塊，用到兩個以上幣別時每個區塊的標題是幣別代碼，只有一個幣別時沒有標題，區塊裡由上而下先依 GROUPS-24.3 的順序列出群組的每位成員，再依被移出的先後列出這個幣別不在垃圾桶裡的支出的付款或分攤裡的前成員；每個人一列，依序是他的名稱（你的成員是你的成員名稱加上「 (You)」，前成員是他存著的名稱）、淨額大於 0 時的「Is Owed <淨額>」、小於 0 時的「Owes <淨額的絕對值>」或等於 0 時的「Settled up」，以及「Paid <已付> · Share <份額>」，所以每個幣別所有人的淨額加總是 0。
+The mobile app SHALL 在 Balances 依幣別代碼排序，為群組不在垃圾桶裡的支出用到的每個幣別各放一個區塊，用到兩個以上幣別時每個區塊的標題是幣別代碼，只有一個幣別時沒有標題，區塊裡由上而下先依 GROUPS-24.4 的順序列出群組的每位成員，再依被移出的先後列出這個幣別不在垃圾桶裡的支出的付款或分攤裡的前成員；每個人一列，依序是他的名稱（你的成員是你的成員名稱加上「 (You)」，前成員是他存著的名稱）、淨額大於 0 時的「Is Owed <淨額>」、小於 0 時的「Owes <淨額的絕對值>」或等於 0 時的「Settled up」，以及「Paid <已付> · Share <份額>」，所以每個幣別所有人的淨額加總是 0。
 
 #### Scenario: 一個人付了全部
 
@@ -1953,9 +1963,9 @@ WHILE 群組沒有封存，the mobile app SHALL 在它的 Members 的成員清�
 - **WHEN** 封存 Brisbane 之後打開它的 Members
 - **THEN** 沒有「Invite with Link」（GROUPS-56.1）；還原之後又有
 
-### Requirement: GROUPS-108.1 Groups 根畫面列出這支手機的申請
+### Requirement: GROUPS-108.2 Groups 根畫面列出這支手機的申請
 
-WHILE 本機資料存著申請（sharing），the mobile app SHALL 在 Groups 根畫面群組的卡片上面，依存下的先後由上而下各顯示一張申請的卡片：卡片顯示申請的群組名稱，送出了的申請另外顯示「Waiting for approval」，還沒送出的顯示「Not sent」；卡片是角色為 button、無障礙名稱為「Open request to join <群組名稱>」的按鈕，按了打開 Join Group，顯示這個申請（SHARING-138.1、SHARING-139.1）。沒有申請時沒有這些卡片；沒有未封存的群組時，申請的卡片下面仍是 GROUPS-1.2 的那句話。
+WHILE 本機資料存著申請（sharing），the mobile app SHALL 在 Groups 根畫面群組的卡片上面，依存下的先後由上而下各顯示一張申請的卡片：卡片顯示申請的群組名稱，下面一行照申請的狀態（sharing）：等待同意的是「Waiting for approval」，還沒送出的是「Not sent」，要重選的是「Choose again」，同意了還沒加入好的是「Approved」，被拒絕的是「Request declined」，邀請不再有效的是「Invite no longer valid」；狀態變了，卡片不必重新啟動就跟著換。卡片是角色為 button、無障礙名稱為「Open request to join <群組名稱>」的按鈕，按了打開 Join Group，顯示這個申請（SHARING-225.1）。沒有申請時沒有這些卡片；沒有未封存的群組時，申請的卡片下面仍是 GROUPS-1.2 的那句話。
 
 #### Scenario: 一個等待中的申請
 
@@ -1972,6 +1982,16 @@ WHILE 本機資料存著申請（sharing），the mobile app SHALL 在 Groups �
 - **WHEN** 沒有網路時按了「Send Request」，關閉 Join Group 之後選中 Groups 分頁
 - **THEN** 申請的卡片上有「Brisbane」和「Not sent」；按了之後 Join Group 顯示「Your request hasn't been sent.」、「Try Again」和「Cancel Request」
 
+#### Scenario: 其他的狀態
+
+- **WHEN** Brisbane 的申請是要重選的；是同意了還沒加入好的；是被拒絕的；或是邀請不再有效的
+- **THEN** 卡片上「Brisbane」的下面依序是「Choose again」、「Approved」、「Request declined」和「Invite no longer valid」；四種的無障礙名稱都是「Open request to join Brisbane」
+
+#### Scenario: 加入好了之後
+
+- **WHEN** 成員同意了 Brisbane 的申請，這支手機加入好了（sharing 的 SHARING-219.1）
+- **THEN** 沒有申請的卡片，群組的卡片裡有「Open Brisbane」
+
 #### Scenario: 排在群組的卡片上面
 
 - **WHEN** 有群組 Paris 的手機，依序申請加入 Brisbane 和 Tokyo
@@ -1986,3 +2006,80 @@ WHILE 本機資料存著申請（sharing），the mobile app SHALL 在 Groups �
 
 - **WHEN** 有一個等待中的申請時重新啟動 app，選中 Groups 分頁
 - **THEN** 申請的卡片還在
+
+### Requirement: GROUPS-130.1 群組的畫面顯示有幾個人想加入
+
+WHILE 未封存的共同帳本有收到的申請，the mobile app SHALL 在它的畫面的大標題下面顯示一個按鈕：「1 person wants to join」，不只一個時是「<個數> people want to join」，右邊有「›」；它在 GROUPS-107.1 的按鈕下面，沒有那顆按鈕時在 SYNC-75.1 和 SYNC-83.1 的那兩句話下面；螢幕閱讀器把它讀成一個按鈕，讀出這句話，不讀「›」，再讀出無障礙提示「Opens Members」；按一下開啟這個群組的 Members（GROUPS-23.2），連按兩次也只開一個。沒有收到的申請時 SHALL 不顯示這個按鈕；封存的共同帳本和還不是共同帳本的群組都沒有；別的群組的畫面只算自己的。
+
+#### Scenario: 一個申請
+
+- **WHEN** Brisbane 是共同帳本，收到的申請有 Dana 的（sharing 的 SHARING-190.1），打開 Brisbane 的畫面
+- **THEN** 大標題「Brisbane」下面是一個按鈕「1 person wants to join」，右邊有「›」；螢幕閱讀器讀出一個按鈕「1 person wants to join」和提示「Opens Members」
+
+#### Scenario: 兩個申請
+
+- **WHEN** 收到的申請另外有一個
+- **THEN** 按鈕是「2 people want to join」
+
+#### Scenario: 按下
+
+- **WHEN** 按這個按鈕
+- **THEN** Members 蓋在 Brisbane 的畫面上，申請那一區有 Dana 那一列（GROUPS-131.1）
+
+#### Scenario: 和需要確認的支出一起
+
+- **WHEN** Brisbane 另外有一筆需要確認的支出（GROUPS-107.1）
+- **THEN** 大標題下面依序是「1 expense needs review」和「1 person wants to join」兩個按鈕
+
+#### Scenario: 沒有申請，或別的群組
+
+- **WHEN** Brisbane 沒有收到的申請；或另一個共同帳本 Tokyo 有收到的申請，打開 Brisbane 的畫面
+- **THEN** Brisbane 的畫面沒有這個按鈕
+
+### Requirement: GROUPS-131.1 Members 列出收到的申請
+
+WHILE 未封存的共同帳本有收到的申請，the mobile app SHALL 在它的 Members，「Invite with Link」那一區和成員清單之間另外顯示一區，最上面是「Requests」，下面照 API 列出的順序（sharing 的 SHARING-170.1）一個申請一列：每一列是角色為 button 的按鈕，右邊有「›」，上面一行是申請的名字，下面一行在要當新成員時是「Wants to join as a new member」，選了成員時是「Wants to join as <那位成員現在的名稱>」，選的成員不是這個共同帳本的成員時是「Wants to join as a member who left」，正在處理時是「Approving…」或「Declining…」（SHARING-202.1）；無障礙名稱是這兩行以逗號和空格相連。收到的申請變了，這一區不必關閉再打開就跟著換；沒有收到的申請時沒有這一區，封存群組的 Members 也沒有。
+
+#### Scenario: 兩個申請
+
+- **WHEN** 收到的申請依序是 Dana 當新成員的，和名字是「Evan」、選了 Casey 的；打開 Brisbane 的 Members
+- **THEN** 由上而下是「Invite with Link」、「Requests」、名稱為「Dana, Wants to join as a new member」的按鈕、名稱為「Evan, Wants to join as Casey」的按鈕，再來才是「Taylor (You)」、「Casey」、「Blake」和「Add Member」
+
+#### Scenario: 選的成員改了名，或被移出了
+
+- **WHEN** Members 開著時把 Casey 改名為「Casey Lee」；之後把他移出群組
+- **THEN** Evan 那一列的第二行先是「Wants to join as Casey Lee」，之後是「Wants to join as a member who left」
+
+#### Scenario: 沒有申請
+
+- **WHEN** 沒有收到的申請
+- **THEN** Members 沒有「Requests」，由上而下是「Invite with Link」和成員清單
+
+#### Scenario: 封存的群組
+
+- **WHEN** 封存 Brisbane 之後打開它的 Members
+- **THEN** 沒有「Requests」那一區（GROUPS-56.1）
+
+### Requirement: GROUPS-132.1 點申請那一列跳出同意或拒絕的選單
+
+WHEN 使用者在 Members 點一個申請的那一列，the mobile app SHALL 跳出標題是申請的名字的選單，iOS 上是動作表（action sheet），Android 上是對話框：可以同意的申請，內容是「They'll see this group's expenses and can add and change them.」，依序是「Approve」、「Decline」和「Cancel」；不能同意的申請，內容是 sharing 的 SHARING-194.1 那個原因的那一句，依序是「Decline」和「Cancel」。iOS 上「Decline」是破壞性的樣式。按「Approve」照 SHARING-195.1 同意，按「Decline」照 SHARING-201.1 拒絕，選單都先關閉；按「Cancel」關閉選單，什麼都不做，Android 上按返回鍵或點對話框外面也一樣。
+
+#### Scenario: iOS
+
+- **WHEN** iOS 上在 Members 點 Dana 當新成員的那一列
+- **THEN** 跳出標題「Dana」、內容是「They'll see this group's expenses and can add and change them.」的動作表，依序是「Approve」、破壞性的「Decline」和「Cancel」
+
+#### Scenario: Android
+
+- **WHEN** Android 上點同一列
+- **THEN** 跳出標題「Dana」、內容是這句話的對話框，依序是「Approve」、「Decline」和「Cancel」
+
+#### Scenario: 不能同意的申請
+
+- **WHEN** Evan 的申請選了 Casey，而 Casey 已經有手機；點 Evan 那一列
+- **THEN** 選單的內容是「Casey has already joined from another phone. This request can't be approved.」，依序是「Decline」和「Cancel」，沒有「Approve」
+
+#### Scenario: 按 Cancel
+
+- **WHEN** 在 Dana 的選單按「Cancel」；或 Android 上按返回鍵，或點對話框外面
+- **THEN** 選單關閉，Dana 那一列還在；API 沒有收到同意和拒絕的請求

@@ -579,13 +579,12 @@ describe('SHARING-121.1', () => {
   });
 });
 
-describe('SHARING-122.1', () => {
-  test('[SHARING-122.1] answers "not found" to every other method on the path, and changes no request', async () => {
+describe('SHARING-122.2', () => {
+  test('[SHARING-122.2] answers "not found" to every other method on the path, and changes no request', async () => {
     const [, casey] = await brisbaneInvitesCasey();
     expectRequestAnswered(await sendRequest(casey, CODE_A, P), CODE_A);
 
     const answers = await leavingGroupsAsTheyWere(async () => [
-      await call(casey, { method: 'GET', path: requestPath(CODE_A) }),
       await call(casey, { method: 'HEAD', path: requestPath(CODE_A) }),
       await call(casey, {
         method: 'POST',
