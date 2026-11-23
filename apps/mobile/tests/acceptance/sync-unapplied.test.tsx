@@ -1110,8 +1110,9 @@ test('[GROUPS-172.1] names the category: the one whose deletion was refused, and
   );
 });
 
-test('[GROUPS-172.1] names an invite and a "not a duplicate" record by their kind', async () => {
+test('[GROUPS-172.1] names an invite, a "not a duplicate" record and a roster entry by their kind', async () => {
   const { brisbane } = await start();
+  const { Casey } = await members('Brisbane');
 
   await receiveEvents(
     brisbane,
@@ -1127,8 +1128,16 @@ test('[GROUPS-172.1] names an invite and a "not a duplicate" record by their kin
       }),
       LATER,
     ),
+    // The entry an approval writes for the phone that asked (SHARING-196.1).
+    uploadedHere(
+      created('device', 'phone-c', ahead(2), {
+        member: { memberId: Casey, userId: 'user-c', boxKey: 'bc'.repeat(32) },
+      }),
+      LATER,
+    ),
   );
   expect((await unapplied()).map(({ reason }) => reason)).toEqual([
+    'clock',
     'clock',
     'clock',
   ]);
@@ -1138,6 +1147,7 @@ test('[GROUPS-172.1] names an invite and a "not a duplicate" record by their kin
   await expectBlocks([
     [GROUP_CHANGE, CLOCK_TEXT, 'Invite link', DISMISS],
     [GROUP_CHANGE, CLOCK_TEXT, 'Not a Duplicate', DISMISS],
+    [GROUP_CHANGE, CLOCK_TEXT, 'Join approval', DISMISS],
   ]);
 });
 

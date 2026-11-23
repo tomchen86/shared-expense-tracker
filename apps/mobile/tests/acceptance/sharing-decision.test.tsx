@@ -8,7 +8,9 @@ import {
   renameMember,
   screenOf,
   tapMember,
+  textsOn,
 } from './group-details-app';
+import { showGroup } from './group-balances-app';
 import { restart } from './ledger-expense-app';
 import { linesIn } from './ledger-expense-list-app';
 import { archiveGroup } from './ledger-group-expense-app';
@@ -82,14 +84,17 @@ import {
   showMembers,
   unsent,
 } from './sync-app';
+import { addDinner } from './sync-conflict-app';
 import {
   OTHER_DEVICE,
+  apiReceivedAt,
   lastSequence,
   otherPhoneUploads,
   otherStamp,
   startEventApi,
   startSynced,
 } from './sync-screens-app';
+import { HOUR, notApplied } from './sync-unapplied-app';
 
 // Runs on iOS. Each test starts the whole app with Taylor saved as your name and Brisbane's
 // members Taylor, Casey and Blake, a shared ledger that syncs and holds an invite another
@@ -225,6 +230,30 @@ describe('GROUPS-130.1', () => {
 
     expect(joinButton('Brisbane')).toBeUndefined();
   });
+});
+
+test('[GROUPS-170.1] counts the changes that were not applied under the requests to join', async () => {
+  const { brisbane } = await startWithInvite();
+  // Offline, so that the event can be read before it is uploaded.
+  goOffline();
+  await addDinner();
+  const added = (await unsent()).at(-1)!;
+  goOnline();
+  await syncs();
+  await waitFor(async () => expect(await unsent()).toEqual([]));
+  // The API now says it received the phone's own event an hour before its stamp, which
+  // the real API never does: the event comes back as one every phone refuses.
+  apiReceivedAt(brisbane, added.id, added.content.stamp.ms - HOUR);
+  await asks();
+  await syncs();
+
+  await showGroup('Brisbane');
+
+  await waitFor(() =>
+    expect(
+      textsOn('Brisbane').filter((text) => /( to join| applied)$/.test(text)),
+    ).toEqual(['1 person wants to join', notApplied(1)]),
+  );
 });
 
 describe('GROUPS-131.1', () => {

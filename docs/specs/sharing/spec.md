@@ -3705,7 +3705,7 @@ WHEN 一支手機重送申請（SHARING-113.1）或取消申請（SHARING-117.2�
 
 ### Requirement: SHARING-190.1 同步之後和打開 Members 時列出申請
 
-WHEN 一個未封存的共同帳本的一次同步結束，而這次同步的下載做完了（SYNC-69.1），或使用者打開它的 Members，the mobile app SHALL 列出它的申請：送列出申請的請求（SHARING-170.1），API 說之後還有時，帶著那一頁最後一個申請的裝置 ID 接著列（SHARING-171.1），到 API 說之後沒有為止；列完之後，收到的申請就是這一次讀得懂的那些（SHARING-191.1），取代上一次的。IF 這支手機沒有存著這個共同帳本還沒到期的邀請，也就是校正後的時間比到期時間早的邀請，THEN the mobile app SHALL 不送列出的請求，收到的申請是空的：沒有邀請的字串，它解不開任何申請。IF 列出的請求沒有得到回應、被拒絕，或回應看不懂，THEN the mobile app SHALL 讓收到的申請和列出之前一樣，不顯示任何提示。封存的共同帳本不列出，收到的申請是空的。有申請正在處理的共同帳本（SHARING-202.1）也不列出，同步之後和打開 Members 時都一樣，所以處理到一半時收到的申請不會被換掉；處理完之後照 SHARING-199.1 到 SHARING-201.1，之後的同步和打開 Members 照常列出。
+WHEN 一個未封存的共同帳本的一次同步結束，而這次同步的下載做完了（SYNC-69.2），或使用者打開它的 Members，the mobile app SHALL 列出它的申請：送列出申請的請求（SHARING-170.1），API 說之後還有時，帶著那一頁最後一個申請的裝置 ID 接著列（SHARING-171.1），到 API 說之後沒有為止；列完之後，收到的申請就是這一次讀得懂的那些（SHARING-191.1），取代上一次的。IF 這支手機沒有存著這個共同帳本還沒到期的邀請，也就是校正後的時間比到期時間早的邀請，THEN the mobile app SHALL 不送列出的請求，收到的申請是空的：沒有邀請的字串，它解不開任何申請。IF 列出的請求沒有得到回應、被拒絕，或回應看不懂，THEN the mobile app SHALL 讓收到的申請和列出之前一樣，不顯示任何提示。封存的共同帳本不列出，收到的申請是空的。有申請正在處理的共同帳本（SHARING-202.1）也不列出，同步之後和打開 Members 時都一樣，所以處理到一半時收到的申請不會被換掉；處理完之後照 SHARING-199.1 到 SHARING-201.1，之後的同步和打開 Members 照常列出。
 
 #### Scenario: app 打開之後
 
@@ -3936,7 +3936,7 @@ WHEN 送同意的請求，the mobile app SHALL 讓 `box` 是這樣裝的 box（S
 
 ### Requirement: SHARING-199.1 API 回答同意好了之後同步，新成員才進到本機資料
 
-WHEN API 回答同意好了，the mobile app SHALL 同步這個共同帳本一次，下載到自己剛才送出的事件並照常套用（SYNC-28.2），新成員和名冊紀錄是這時才存進本機資料的；再列出申請（SHARING-190.1）。之後 Members 列出新成員，有手機的成員顯示「Joined」（GROUPS-24.4），名片也照新的成員更新（SHARING-109.1）。
+WHEN API 回答同意好了，the mobile app SHALL 同步這個共同帳本一次，下載到自己剛才送出的事件並照常套用（SYNC-28.3），新成員和名冊紀錄是這時才存進本機資料的；再列出申請（SHARING-190.1）。之後 Members 列出新成員，有手機的成員顯示「Joined」（GROUPS-24.4），名片也照新的成員更新（SHARING-109.1）。
 
 #### Scenario: 同意 Dana 之後
 
