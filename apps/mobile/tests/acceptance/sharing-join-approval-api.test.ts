@@ -26,6 +26,7 @@ import {
   type Inviting,
 } from './sharing-approval-app';
 import {
+  HOUR,
   MINUTE,
   NOW,
   addExpense,
@@ -44,6 +45,7 @@ import {
   memberIds,
   noAnswerTo,
   randomId,
+  refusals,
   renameGroup,
   requestHolds,
   restoreData,
@@ -58,7 +60,9 @@ import {
   titles,
   toHex,
   unsent,
+  uploadAs,
   utf8,
+  whenAnswered,
   type Phone,
 } from './sync-loop-app';
 import { contentFor, fetched, sentSnapshot } from './sync-snapshot-app';
@@ -107,13 +111,22 @@ const list = ({ taylor, brisbane }: Inviting) =>
   on(taylor, () =>
     taylor.sharing.listReceivedJoinRequests(taylor.database, brisbane),
   );
-const approve = ({ taylor, brisbane }: Inviting, device: string) =>
+type Listed = Awaited<ReturnType<typeof list>>[number];
+
+/** The request Taylor's phone lists for the device now: the row its Members would show. */
+async function listed(invite: Inviting, device: string): Promise<Listed> {
+  const found = (await list(invite)).find(({ deviceId: by }) => by === device);
+  if (!found) throw new Error('The phone lists no request of that device');
+  return found;
+}
+
+const approve = ({ taylor, brisbane }: Inviting, request: Listed) =>
   on(taylor, () =>
-    taylor.sharing.approveJoinRequest(taylor.database, brisbane, device),
+    taylor.sharing.approveJoinRequest(taylor.database, brisbane, request),
   );
-const reject = ({ taylor, brisbane }: Inviting, device: string) =>
+const reject = ({ taylor, brisbane }: Inviting, request: Listed) =>
   on(taylor, () =>
-    taylor.sharing.rejectJoinRequest(taylor.database, brisbane, device),
+    taylor.sharing.rejectJoinRequest(taylor.database, brisbane, request),
   );
 const ask = (phone: Phone, { code }: Inviting) =>
   on(phone, () => phone.sharing.askJoinResult(phone.database, code));
@@ -137,11 +150,17 @@ async function danaAsked(choice: { name?: string; memberId?: string } = {}) {
   return { invite, ...invite, dana, D, ids };
 }
 
+/** The same, once Taylor's phone has listed Dana's request: `request` is what it listed. */
+async function danaListed(choice: { name?: string; memberId?: string } = {}) {
+  const world = await danaAsked(choice);
+  return { ...world, request: await listed(world.invite, world.D) };
+}
+
 /** The same, once Taylor's phone has approved Dana's request. */
 async function danaApproved(choice: { name?: string; memberId?: string } = {}) {
-  const world = await danaAsked(choice);
+  const world = await danaListed(choice);
   const from = mark();
-  expect(await approve(world.invite, world.D)).toEqual(APPROVED);
+  expect(await approve(world.invite, world.request)).toEqual(APPROVED);
   const [approval] = await approvalsBy(world.taylor, from);
   return { ...world, approval };
 }
@@ -151,7 +170,13 @@ describe('SHARING-191.1', () => {
     const { invite, code, D } = await danaAsked();
 
     expect(await list(invite)).toEqual([
-      { code, deviceId: D, name: 'Dana', memberId: null },
+      {
+        code,
+        deviceId: D,
+        name: 'Dana',
+        memberId: null,
+        request: sha256Of((await requestOnApi(code, D))!),
+      },
     ]);
   });
 
@@ -172,7 +197,13 @@ describe('SHARING-191.1', () => {
     expect(answer.status).toBe(200);
 
     expect(await list(invite)).toEqual([
-      { code: invite.code, deviceId: D, name: 'Dana K.', memberId: Casey },
+      {
+        code: invite.code,
+        deviceId: D,
+        name: 'Dana K.',
+        memberId: Casey,
+        request: sha256Of((await requestOnApi(invite.code, D))!),
+      },
     ]);
   });
 });
@@ -193,8 +224,8 @@ async function sends(
 }
 
 describe('SHARING-192.1', () => {
-  test('[SHARING-192.1] rejects requests it cannot open, and lists only the one it can', async () => {
-    const { invite, code, D } = await danaAsked();
+  test('[SHARING-192.1] rejects requests it cannot open, each by the content it listed, and lists only the one it can', async () => {
+    const { invite, taylor, brisbane, code, D } = await danaAsked();
     const random = await sends(invite, 'Random', () =>
       toHex(new Uint8Array(randomBytes(297))),
     );
@@ -220,11 +251,25 @@ describe('SHARING-192.1', () => {
       }),
     );
 
+    const unreadable = [random, otherSecret, moved];
+    const rejections: string[] = [];
+    for (const device of unreadable) {
+      const hash = sha256Of((await requestOnApi(code, device))!);
+      rejections.push(`/groups/${brisbane}/requests/${device}?request=${hash}`);
+    }
+    const from = mark();
+
     expect(await list(invite)).toEqual([
-      { code, deviceId: D, name: 'Dana', memberId: null },
+      expect.objectContaining({ deviceId: D, name: 'Dana', memberId: null }),
     ]);
 
-    for (const device of [random, otherSecret, moved]) {
+    expect(
+      (await sentBy(taylor, from))
+        .filter(({ method }) => method === 'DELETE')
+        .map(({ path }) => path)
+        .sort(),
+    ).toEqual(rejections.sort());
+    for (const device of unreadable) {
       expect(await requestOnApi(code, device)).toBeUndefined();
     }
     expect(await requestOnApi(code, D)).toBeDefined();
@@ -313,15 +358,40 @@ describe('SHARING-194.1', () => {
     const evan = await phoneOf('Evan', invite);
     const { Casey } = await memberIds(taylor);
     const E = await asks(evan, invite, { memberId: Casey });
+    const asked = await listed(invite, E);
     const from = mark();
 
-    expect(await approve(invite, E)).toEqual({
+    expect(await approve(invite, asked)).toEqual({
       outcome: 'cannot-approve',
       reason: 'has-a-phone',
     });
 
     expect(await approvalsBy(taylor, from)).toEqual([]);
     expect(await requestOnApi(invite.code, E)).toBeDefined();
+  });
+
+  test('[SHARING-194.1] does not approve a request for its own member, which no roster entry names yet', async () => {
+    const invite = await taylorInvites();
+    const { taylor, brisbane } = invite;
+    const { Taylor } = await memberIds(taylor);
+    const evan = await phoneOf('Evan', invite);
+    const E = await asks(evan, invite, { memberId: Taylor });
+    await sync(taylor);
+    await sync(taylor);
+    aMinuteOn(taylor);
+    const asked = await listed(invite, E);
+    const from = mark();
+
+    expect(await approve(invite, asked)).toEqual({
+      outcome: 'cannot-approve',
+      reason: 'is-you',
+    });
+
+    expect(await approvalsBy(taylor, from)).toEqual([]);
+    expect(await isMemberDevice(brisbane, E)).toBe(false);
+    expect(everythingIn(taylor).sync_records.join('\n')).not.toContain(
+      '"device"',
+    );
   });
 
   test.each<[string, string | undefined, string]>([
@@ -349,7 +419,7 @@ describe('SHARING-194.1', () => {
       }
       aMinuteOn(taylor);
 
-      expect(await approve(invite, E)).toEqual({
+      expect(await approve(invite, await listed(invite, E))).toEqual({
         outcome: 'cannot-approve',
         reason,
       });
@@ -360,11 +430,12 @@ describe('SHARING-194.1', () => {
 
 describe('SHARING-195.1', () => {
   test('[SHARING-195.1] syncs, uploads a snapshot for the device, and then sends one approval that names it', async () => {
-    const { invite, taylor, dana, brisbane, code, D } = await danaAsked();
+    const { invite, taylor, dana, brisbane, code, D, request } =
+      await danaListed();
     const content = (await requestOnApi(code, D))!;
     const from = mark();
 
-    expect(await approve(invite, D)).toEqual(APPROVED);
+    expect(await approve(invite, request)).toEqual(APPROVED);
 
     const lines = await linesBy(taylor, from);
     const approvals = await approvalsBy(taylor, from);
@@ -388,12 +459,12 @@ describe('SHARING-195.1', () => {
   });
 
   test('[SHARING-195.1] uploads its own unsent changes before it approves, and the snapshot holds them', async () => {
-    const { invite, taylor, dana, brisbane, key, D } = await danaAsked();
+    const { invite, taylor, dana, brisbane, key, request } = await danaListed();
     goOffline();
     await addExpense(taylor, { title: 'Lunch' });
     goOnline();
 
-    expect(await approve(invite, D)).toEqual(APPROVED);
+    expect(await approve(invite, request)).toEqual(APPROVED);
 
     expect(await unsent(taylor)).toEqual([]);
     const titlesIn = (await contentFor(dana, key, brisbane)).records.flatMap(
@@ -404,17 +475,88 @@ describe('SHARING-195.1', () => {
   });
 
   test('[SHARING-195.1] changes nothing on the phone until the API has approved', async () => {
-    const { invite, taylor, D } = await danaAsked();
+    const { invite, taylor, request } = await danaListed();
     const before = await ledgerOf(taylor);
     noAnswerTo('POST');
 
-    expect(await approve(invite, D)).toEqual({ outcome: 'no-answer' });
+    expect(await approve(invite, request)).toEqual({ outcome: 'no-answer' });
 
     expect(await ledgerOf(taylor)).toEqual(before);
     expect(await unsent(taylor)).toEqual([]);
     expect(everythingIn(taylor).sync_records.join('\n')).not.toContain(
       '"device"',
     );
+  });
+
+  test('[SHARING-195.1] sends the cursor it checked at though a sync has moved on since, and does not approve what it could not have checked', async () => {
+    const { invite, taylor, dana, brisbane, code, key, D, ids } =
+      await danaApproved();
+    expect((await ask(dana, invite)).outcome).toBe('joined');
+    await sync(taylor);
+    const evan = await phoneOf('Evan', invite);
+    setClock(evan, LATER);
+    const E = await asks(evan, invite, { memberId: ids.Casey });
+    const asked = await listed(invite, E);
+    const last = (await storedEvents(brisbane)).length;
+    const from = mark();
+    // While the snapshot is on its way, another member's phone writes that a device is
+    // Casey, and Taylor's phone syncs, as it does when the app comes back to the front.
+    whenAnswered('PUT', async () => {
+      await uploadAs(dana, key, [
+        {
+          version: 1,
+          stamp: { ms: LATER + 1_000, counter: 0, device: D },
+          type: 'device',
+          id: randomId(),
+          units: {
+            member: {
+              value: {
+                memberId: ids.Casey,
+                userId: randomId(),
+                boxKey: await boxKeyOf(evan),
+              },
+            },
+          },
+        },
+      ]);
+      await sync(taylor);
+    });
+
+    expect(await approve(invite, asked)).toEqual({
+      outcome: 'cannot-approve',
+      reason: 'has-a-phone',
+    });
+
+    const approvals = await approvalsBy(taylor, from);
+    expect(approvals.map(({ cursor }) => cursor)).toEqual([last]);
+    expect((await storedEvents(brisbane)).length).toBe(last + 1);
+    expect(await isMemberDevice(brisbane, E)).toBe(false);
+    expect(await requestOnApi(code, E)).toBeDefined();
+  });
+
+  test('[SHARING-195.1] names the content it listed: a request that was replaced since is answered as gone, and stays', async () => {
+    const { invite, taylor, dana, brisbane, code, D, ids, request } =
+      await danaListed();
+    const old = sha256Of((await requestOnApi(code, D))!);
+    const replaced = await send(dana, 'PUT', requestPath(code), {
+      request: sealedRequest(invite, D, {
+        name: 'Dana',
+        memberId: ids.Casey,
+        userId: dana.identity.userId,
+        boxKey: await boxKeyOf(dana),
+      }),
+    });
+    expect(replaced.status).toBe(200);
+    const from = mark();
+
+    expect(await approve(invite, request)).toEqual({ outcome: 'answered' });
+
+    expect(request.request).toBe(old);
+    expect(
+      (await approvalsBy(taylor, from)).map(({ request: named }) => named),
+    ).toEqual([old]);
+    expect(sha256Of((await requestOnApi(code, D))!)).not.toBe(old);
+    expect(await isMemberDevice(brisbane, D)).toBe(false);
   });
 });
 
@@ -487,9 +629,10 @@ describe('SHARING-196.1', () => {
     const evan = await phoneOf('Evan', invite);
     setClock(evan, LATER);
     const E = await asks(evan, invite, { memberId: ids.Blake });
+    const asked = await listed(invite, E);
     const from = mark();
 
-    expect(await approve(invite, E)).toEqual(APPROVED);
+    expect(await approve(invite, asked)).toEqual(APPROVED);
 
     const [approval] = await approvalsBy(taylor, from);
     expect(
@@ -498,10 +641,10 @@ describe('SHARING-196.1', () => {
   });
 
   test('[SHARING-196.1] does not give the stamps of an approval that failed to a later change', async () => {
-    const { invite, taylor, D } = await danaAsked();
+    const { invite, taylor, request } = await danaListed();
     const from = mark();
     noAnswerTo('POST');
-    expect(await approve(invite, D)).toEqual({ outcome: 'no-answer' });
+    expect(await approve(invite, request)).toEqual({ outcome: 'no-answer' });
     const [approval] = await approvalsBy(taylor, from);
     const taken = eventsOf(approval, invite).map(({ stamp }) => stamp.counter);
     goOffline();
@@ -512,14 +655,102 @@ describe('SHARING-196.1', () => {
     expect(renamed.content.stamp.ms).toBe(LATER);
     expect(renamed.content.stamp.counter).toBeGreaterThan(Math.max(...taken));
   });
+
+  test('[SHARING-196.1] checks the stamps before they go into the snapshot and the approval: a latest stamp nine minutes ahead that no record holds is not carried on', async () => {
+    const { invite, taylor, dana, brisbane, key, A, D, ids } =
+      await danaApproved();
+    expect((await ask(dana, invite)).outcome).toBe('joined');
+    const gone = randomId();
+    // An expense deleted for good, and then a change to it stamped 9 minutes ahead: the
+    // change merges and changes no unit, so only the phone's latest stamp remembers it.
+    await uploadAs(dana, key, [
+      {
+        version: 1,
+        stamp: { ms: LATER, counter: 5, device: D },
+        type: 'expense',
+        id: gone,
+        deleted: true,
+      },
+      {
+        version: 1,
+        stamp: { ms: LATER + 9 * MINUTE, counter: 0, device: D },
+        type: 'expense',
+        id: gone,
+        units: { title: { value: 'Late' } },
+      },
+    ]);
+    const evan = await phoneOf('Evan', invite);
+    setClock(evan, LATER);
+    const E = await asks(evan, invite, { memberId: ids.Blake });
+    await sync(taylor);
+    expect(await refusals(taylor)).toEqual([]);
+    const asked = await listed(invite, E);
+    const from = mark();
+
+    expect(await approve(invite, asked)).toEqual(APPROVED);
+
+    const [approval] = await approvalsBy(taylor, from);
+    const [entry] = eventsOf(approval, invite);
+    // The latest stamp left is in the millisecond of the corrected time, so the new one is the next.
+    expect(entry.stamp).toEqual({ ms: LATER + 1, counter: 0, device: A });
+    const { records } = await contentFor(evan, key, brisbane);
+    expect(records.find(({ id }) => id === E)).toMatchObject({
+      type: 'device',
+      created: entry.stamp,
+      units: { member: { stamp: entry.stamp } },
+    });
+  });
+
+  test('[SHARING-196.1] does not send events an hour ahead when the phone stored a latest stamp that nothing holds any more: every phone applies them', async () => {
+    const invite = await taylorInvites();
+    const FAST = NOW + HOUR;
+    setClock(invite.taylor, FAST);
+    await addExpense(invite.taylor, { title: 'Late' });
+    const copy = await copyOfData(invite.taylor);
+    await sync(invite.taylor);
+    // Three minutes later the phone, still an hour ahead, is back at the copy: Late takes
+    // the stamp the API holds (SYNC-96.1), and nothing holds the stamp it had stored.
+    const THEN = NOW + 3 * MINUTE;
+    setApiTime(THEN);
+    const taylor = await restoreData(invite.taylor, copy);
+    setClock(taylor, FAST + 3 * MINUTE);
+    const restored = { ...invite, taylor };
+    await sync(taylor);
+    await sync(taylor);
+    expect(await unsent(taylor)).toEqual([]);
+    const dana = await phoneOf('Dana', restored);
+    setClock(dana, THEN);
+    const D = await asks(dana, restored);
+    const asked = await listed(restored, D);
+    const from = mark();
+
+    expect(await approve(restored, asked)).toEqual(APPROVED);
+
+    const [approval] = await approvalsBy(taylor, from);
+    const stamps = eventsOf(approval, restored).map(({ stamp }) => stamp.ms);
+    expect(stamps).toHaveLength(3);
+    for (const ms of stamps) expect(ms - THEN).toBeLessThanOrEqual(5 * MINUTE);
+    expect((await ask(dana, restored)).outcome).toBe('joined');
+    await sync(taylor);
+    await sync(dana);
+    expect(await refusals(taylor)).toEqual([]);
+    expect(await refusals(dana)).toEqual([]);
+    expect((await membersOn(taylor)).map(({ name }) => name)).toEqual([
+      'Taylor',
+      'Casey',
+      'Blake',
+      'Dana',
+    ]);
+    expect(await ledgerOf(dana)).toEqual(await ledgerOf(taylor));
+  });
 });
 
 describe('SHARING-197.1', () => {
   test("[SHARING-197.1] the snapshot holds the approval's records beside every record the phone had", async () => {
-    const { invite, taylor, dana, brisbane, key, D } = await danaAsked();
+    const { invite, taylor, dana, brisbane, key, request } = await danaListed();
     const had = everythingIn(taylor).sync_records.length;
     const from = mark();
-    expect(await approve(invite, D)).toEqual(APPROVED);
+    expect(await approve(invite, request)).toEqual(APPROVED);
     const [approval] = await approvalsBy(taylor, from);
     const sent = eventsOf(approval, invite);
 
@@ -543,11 +774,11 @@ describe('SHARING-197.1', () => {
   });
 
   test('[SHARING-197.1] sends no approval when the snapshot cannot be uploaded', async () => {
-    const { invite, taylor, D } = await danaAsked();
+    const { invite, taylor, request } = await danaListed();
     const from = mark();
     answerNext('PUT', 413, { error: 'snapshots-full' });
 
-    expect(await approve(invite, D)).toEqual({ outcome: 'failed' });
+    expect(await approve(invite, request)).toEqual({ outcome: 'failed' });
 
     expect(await approvalsBy(taylor, from)).toEqual([]);
   });
@@ -635,30 +866,36 @@ describe('SHARING-199.1', () => {
 
 describe('SHARING-200.1', () => {
   test('[SHARING-200.1] reports no answer when the network is gone, and keeps the request', async () => {
-    const { invite, code, D } = await danaAsked();
+    const { invite, code, D, request } = await danaListed();
     goOffline();
 
-    expect(await approve(invite, D)).toEqual({ outcome: 'no-answer' });
+    expect(await approve(invite, request)).toEqual({ outcome: 'no-answer' });
 
     goOnline();
     expect(await requestOnApi(code, D)).toBeDefined();
   });
 
   test('[SHARING-200.1] reports a request another member has answered', async () => {
-    const { invite, taylor, D } = await danaAsked();
+    const { invite, taylor, D, request } = await danaListed();
     expect(
-      (await sendAs(taylor, 'DELETE', decisionPath(invite, D))).status,
+      (
+        await sendAs(
+          taylor,
+          'DELETE',
+          `${decisionPath(invite, D)}?request=${request.request}`,
+        )
+      ).status,
     ).toBe(200);
 
-    expect(await approve(invite, D)).toEqual({ outcome: 'answered' });
+    expect(await approve(invite, request)).toEqual({ outcome: 'answered' });
   });
 
   test('[SHARING-200.1] syncs and sends the approval again when the API says it is behind', async () => {
-    const { invite, taylor, brisbane, D } = await danaAsked();
+    const { invite, taylor, brisbane, request } = await danaListed();
     const from = mark();
     answerNext('POST', 409, { error: 'behind' });
 
-    expect(await approve(invite, D)).toEqual(APPROVED);
+    expect(await approve(invite, request)).toEqual(APPROVED);
 
     const [first, second] = await approvalsBy(taylor, from);
     expect(second.snapshotId).toBe(first.snapshotId);
@@ -676,24 +913,24 @@ describe('SHARING-200.1', () => {
   });
 
   test('[SHARING-200.1] gives up after three approvals that the API calls behind', async () => {
-    const { invite, taylor, code, D } = await danaAsked();
+    const { invite, taylor, code, D, request } = await danaListed();
     const from = mark();
     for (let each = 0; each < 3; each += 1) {
       answerNext('POST', 409, { error: 'behind' });
     }
 
-    expect(await approve(invite, D)).toEqual({ outcome: 'failed' });
+    expect(await approve(invite, request)).toEqual({ outcome: 'failed' });
 
     expect(await approvalsBy(taylor, from)).toHaveLength(3);
     expect(await requestOnApi(code, D)).toBeDefined();
   });
 
   test('[SHARING-200.1] uploads another snapshot once when the API has none for the approval', async () => {
-    const { invite, taylor, dana, brisbane, D } = await danaAsked();
+    const { invite, taylor, dana, brisbane, request } = await danaListed();
     const from = mark();
     answerNext('POST', 404, { error: 'no-snapshot' });
 
-    expect(await approve(invite, D)).toEqual(APPROVED);
+    expect(await approve(invite, request)).toEqual(APPROVED);
 
     const [first, second] = await approvalsBy(taylor, from);
     expect(second.snapshotId).not.toBe(first.snapshotId);
@@ -701,29 +938,34 @@ describe('SHARING-200.1', () => {
   });
 
   test('[SHARING-200.1] fails when the API has no snapshot a second time, or refuses in another way', async () => {
-    const { invite, D } = await danaAsked();
+    const { invite, request } = await danaListed();
     answerNext('POST', 404, { error: 'no-snapshot' });
     answerNext('POST', 404, { error: 'no-snapshot' });
 
-    expect(await approve(invite, D)).toEqual({ outcome: 'failed' });
+    expect(await approve(invite, request)).toEqual({ outcome: 'failed' });
 
     answerNext('POST', 409, { error: 'epoch', epoch: 2 });
-    expect(await approve(invite, D)).toEqual({ outcome: 'failed' });
+    expect(await approve(invite, request)).toEqual({ outcome: 'failed' });
     answerNext('POST', 409, { error: 'members-full' });
-    expect(await approve(invite, D)).toEqual({ outcome: 'members-full' });
+    expect(await approve(invite, request)).toEqual({ outcome: 'members-full' });
   });
 });
 
 describe('SHARING-201.1', () => {
   test('[SHARING-201.1] rejects a request on the API, and changes nothing on the phone', async () => {
-    const { invite, taylor, brisbane, code, D } = await danaAsked();
+    const { invite, taylor, brisbane, code, D, request } = await danaListed();
+    const content = (await requestOnApi(code, D))!;
     const before = everythingIn(taylor);
     const from = mark();
 
-    expect(await reject(invite, D)).toEqual({ outcome: 'rejected' });
+    expect(await reject(invite, request)).toEqual({ outcome: 'rejected' });
 
-    expect(await linesBy(taylor, from)).toEqual([
-      `DELETE /groups/${brisbane}/requests/${D}`,
+    expect(
+      (await sentBy(taylor, from)).map(
+        ({ method, path, body }) => `${method} ${path} ${body.length}`,
+      ),
+    ).toEqual([
+      `DELETE /groups/${brisbane}/requests/${D}?request=${sha256Of(content)} 0`,
     ]);
     expect(await requestOnApi(code, D)).toBeUndefined();
     expect(await isMemberDevice(brisbane, D)).toBe(false);
@@ -731,13 +973,36 @@ describe('SHARING-201.1', () => {
   });
 
   test('[SHARING-201.1] reports no answer, and a request that was answered', async () => {
-    const { invite, D } = await danaAsked();
+    const { invite, request } = await danaListed();
     goOffline();
-    expect(await reject(invite, D)).toEqual({ outcome: 'no-answer' });
+    expect(await reject(invite, request)).toEqual({ outcome: 'no-answer' });
     goOnline();
-    expect(await reject(invite, D)).toEqual({ outcome: 'rejected' });
+    expect(await reject(invite, request)).toEqual({ outcome: 'rejected' });
 
-    expect(await reject(invite, D)).toEqual({ outcome: 'answered' });
+    expect(await reject(invite, request)).toEqual({ outcome: 'answered' });
+  });
+
+  test('[SHARING-201.1] names the content it listed: a request that was replaced since is not rejected', async () => {
+    const { invite, dana, code, D, request } = await danaListed({
+      memberId: 'Casey',
+    });
+    const replaced = await send(dana, 'PUT', requestPath(code), {
+      request: sealedRequest(invite, D, {
+        name: 'Dana',
+        memberId: null,
+        userId: dana.identity.userId,
+        boxKey: await boxKeyOf(dana),
+      }),
+    });
+    expect(replaced.status).toBe(200);
+    const now = (await requestOnApi(code, D))!;
+
+    expect(await reject(invite, request)).toEqual({ outcome: 'answered' });
+
+    expect(await requestOnApi(code, D)).toEqual(now);
+    expect(await list(invite)).toEqual([
+      expect.objectContaining({ deviceId: D, memberId: null }),
+    ]);
   });
 });
 
@@ -777,8 +1042,9 @@ describe('SHARING-211.1', () => {
 
 describe('SHARING-213.1', () => {
   test('[SHARING-213.1] learns it was rejected, and keeps nothing of the group but its name', async () => {
-    const { invite, dana, brisbane, code, secret, D } = await danaAsked();
-    expect(await reject(invite, D)).toEqual({ outcome: 'rejected' });
+    const { invite, dana, brisbane, code, secret, request } =
+      await danaListed();
+    expect(await reject(invite, request)).toEqual({ outcome: 'rejected' });
 
     expect(await ask(dana, invite)).toEqual({ outcome: 'declined' });
 
@@ -938,6 +1204,32 @@ describe('SHARING-216.1', () => {
       ({ taylor, dana, invite }, key) =>
         boxFor(taylor, dana, invite, { keys: [{ epoch: 2, key: toHex(key) }] }),
     ],
+    [
+      'an object with no keys',
+      ({ taylor, dana, invite }) => boxFor(taylor, dana, invite, {}),
+    ],
+    [
+      'keys whose epochs go down',
+      ({ taylor, dana, invite }, key) =>
+        boxFor(taylor, dana, invite, {
+          keys: [
+            { epoch: 2, key: toHex(key) },
+            { epoch: 1, key: toHex(key) },
+          ],
+        }),
+    ],
+    [
+      'one bit changed',
+      async ({ taylor, dana, invite }, key) => {
+        const box = fromHex(
+          await boxFor(taylor, dana, invite, {
+            keys: [{ epoch: 1, key: toHex(key) }],
+          }),
+        );
+        box[box.length - 1] ^= 1;
+        return toHex(box);
+      },
+    ],
   ])(
     '[SHARING-216.1] does not join, and saves no key, when the box has %s',
     async (_case, box) => {
@@ -1048,7 +1340,7 @@ describe('SHARING-222.1', () => {
     const { invite, brisbane, D } = world;
     // The phone's data as it is while the request waits.
     const waiting = await copyOfData(world.dana);
-    expect(await approve(invite, D)).toEqual(APPROVED);
+    expect(await approve(invite, await listed(invite, D))).toEqual(APPROVED);
     expect((await ask(world.dana, invite)).outcome).toBe('joined');
     // It has downloaded the group's events since, so the API holds no handover for it.
     const dana = await restoreData(world.dana, waiting);

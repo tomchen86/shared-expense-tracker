@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { act, fireEvent, screen } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import {
   alertsShown,
   expectClosed,
@@ -62,6 +62,7 @@ import {
 import { receiveLink, startAppFromLink } from './sharing-invite-link-app';
 import {
   ALREADY_IN,
+  HAS_A_COPY,
   ALREADY_JOINED,
   APPROVAL,
   BLAKE_ID,
@@ -787,6 +788,60 @@ describe('SHARING-130.1', () => {
     expect(isOpen(TITLE)).toBe(false);
     expect(selectedTab()).toBe('Settings');
     expect(screen.getByText('Restore Group')).toBeOnTheScreen();
+  });
+});
+
+describe('SHARING-226.1', () => {
+  test('[SHARING-226.1] shows no form, and says the phone has its own copy, when the card names a member of a group of the phone that is no shared ledger', async () => {
+    await startAt({ Brisbane: ['Casey', 'Blake'] });
+    const ids = await members('Brisbane');
+    invites(
+      CODE_B,
+      S2,
+      {
+        name: 'Brisbane',
+        members: [
+          { id: ids.Taylor, name: 'Taylor', hasDevice: true },
+          { id: ids.Casey, name: 'Casey', hasDevice: false },
+        ],
+      },
+      await groupId('Brisbane'),
+    );
+    await tapTab('Settings');
+    const before = everything();
+
+    await openLink(linkOf(CODE_B, S2));
+
+    await waitFor(() => expect(joinLines()).toEqual([HAS_A_COPY]));
+    expect(isOpen(TITLE)).toBe(true);
+    expect(reads()).toHaveLength(1);
+    expect(received()).toHaveLength(1);
+    expect(secureStoreEntries()).toEqual([]);
+    expect(everything()).toEqual(before);
+  });
+
+  test('[SHARING-226.1] says the same when the only member it knows on the card is a former member of that group', async () => {
+    await startAt({ Brisbane: ['Casey', 'Blake'] });
+    await removeFromGroup('Brisbane', 'Blake');
+    const ids = await members('Brisbane');
+    invites(
+      CODE_B,
+      S2,
+      {
+        name: 'Brisbane',
+        members: [
+          { id: TAYLOR_ID, name: 'Someone', hasDevice: true },
+          { id: ids.Blake, name: 'Blake', hasDevice: false },
+        ],
+      },
+      await groupId('Brisbane'),
+    );
+    await tapTab('Settings');
+
+    await openLink(linkOf(CODE_B, S2));
+
+    await waitFor(() => expect(joinLines()).toEqual([HAS_A_COPY]));
+    expect(sendings()).toEqual([]);
   });
 });
 
@@ -1574,6 +1629,34 @@ describe('SHARING-140.2', () => {
     expect(rowsWith(CODE_A)).toEqual([]);
   });
 
+  test.each<[string, () => void, string]>([
+    ['gets no answer', () => apiLosesNextAnswer(isAsking), NOT_SENT_OFFLINE],
+    [
+      'is answered with an error',
+      () => apiAnswersNext(isAsking, 500, ''),
+      WENT_WRONG,
+    ],
+  ])(
+    '[SHARING-140.2] keeps the request as not sent when the question that follows a refusal as a member %s: it may have been approved',
+    async (_case, fail, why) => {
+      brisbaneInvites();
+      await startAs();
+      await openLink(BRISBANE_LINK);
+      apiAnswersNext(isSending, 409, json({ error: 'already-a-member' }));
+      fail();
+
+      await send();
+
+      await waitFor(() =>
+        expect(joinLines()).toEqual([NOT_SENT, why, 'Try Again', CANCEL]),
+      );
+      expect(rowsWith(CODE_A)).toHaveLength(1);
+      await closeJoin();
+      await tapTab('Groups');
+      expect(requestCard('Brisbane')).toBeDefined();
+    },
+  );
+
   test.each([
     ['written wrongly', 400, { error: 'request' }],
     ['too large', 413, { error: 'too-large' }],
@@ -1832,8 +1915,8 @@ describe('SHARING-142.1', () => {
   });
 });
 
-describe('SHARING-143.1', () => {
-  test('[SHARING-143.1] keeps the request and says to connect when there is no network', async () => {
+describe('SHARING-143.2', () => {
+  test('[SHARING-143.2] keeps the request and says to connect when there is no network', async () => {
     brisbaneInvites();
     await startAs();
     await requested();
@@ -1846,7 +1929,7 @@ describe('SHARING-143.1', () => {
     expect(rowsWith(CODE_A)).toHaveLength(1);
   });
 
-  test('[SHARING-143.1] keeps the request and says something went wrong when the API answers with a 500', async () => {
+  test('[SHARING-143.2] keeps the request and says something went wrong when the API answers with a 500', async () => {
     brisbaneInvites();
     await startAs();
     await requested();
@@ -1859,7 +1942,7 @@ describe('SHARING-143.1', () => {
     expect(rowsWith(CODE_A)).toHaveLength(1);
   });
 
-  test('[SHARING-143.1] keeps the request when the API cancelled it and the phone could not remove it, and removes it on the next try', async () => {
+  test('[SHARING-143.2] keeps the request when the API cancelled it and the phone could not remove it, and removes it on the next try', async () => {
     brisbaneInvites();
     await startAs();
     await requested();
@@ -1878,7 +1961,7 @@ describe('SHARING-143.1', () => {
     expect(rowsWith(CODE_A)).toEqual([]);
   });
 
-  test('[SHARING-143.1] shows no alert, and keeps the request, when a cancellation fails after Join Group was closed', async () => {
+  test('[SHARING-143.2] shows no alert, and keeps the request, when a cancellation fails after Join Group was closed', async () => {
     brisbaneInvites();
     await startAs();
     await requested();
@@ -1899,7 +1982,7 @@ describe('SHARING-143.1', () => {
     expect(requestCard('Brisbane')).toBeOnTheScreen();
   });
 
-  test('[SHARING-143.1] removes the request, and does not open Join Group again, when a cancellation succeeds after it was closed', async () => {
+  test('[SHARING-143.2] removes the request, and does not open Join Group again, when a cancellation succeeds after it was closed', async () => {
     brisbaneInvites();
     await startAs();
     await requested();
@@ -1919,7 +2002,7 @@ describe('SHARING-143.1', () => {
   });
 
   test.each(['its link', 'its card'])(
-    '[SHARING-143.1] shows the alert, and keeps the request, when a cancellation fails after the request was closed and opened again from %s',
+    '[SHARING-143.2] shows the alert, and keeps the request, when a cancellation fails after the request was closed and opened again from %s',
     async (from) => {
       brisbaneInvites();
       await startAs();
@@ -1954,7 +2037,7 @@ describe('SHARING-143.1', () => {
     ['fails', true],
     ['succeeds', false],
   ])(
-    "[SHARING-143.1] leaves Join Group on another group's form, with no alert, when a cancellation %s after its link arrived",
+    "[SHARING-143.2] leaves Join Group on another group's form, with no alert, when a cancellation %s after its link arrived",
     async (_, fails) => {
       brisbaneInvites();
       tokyoInvites();
@@ -1977,7 +2060,7 @@ describe('SHARING-143.1', () => {
     },
   );
 
-  test('[SHARING-143.1] removes the request without asking the API on a phone that has lost its authorization', async () => {
+  test('[SHARING-143.2] removes the request without asking the API on a phone that has lost its authorization', async () => {
     brisbaneInvites();
     await startAs();
     await requested();

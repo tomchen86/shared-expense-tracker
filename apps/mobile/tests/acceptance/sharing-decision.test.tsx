@@ -35,6 +35,7 @@ import {
   EVAN_USER,
   GROUP_FULL,
   HAS_A_PHONE,
+  IS_YOU,
   LEFT,
   MAY_SEE,
   NEW_MEMBER,
@@ -47,6 +48,7 @@ import {
   WENT_WRONG,
   apiAnswersDecision,
   apiHolds,
+  approvalOf,
   approvals,
   asks,
   chunks,
@@ -59,6 +61,7 @@ import {
   pagesOf,
   rejections,
   releaseDecisions,
+  requestHash,
   requestsOn,
   someBoxKey,
   startDecisionApi,
@@ -82,6 +85,7 @@ import {
 } from './sync-app';
 import {
   OTHER_DEVICE,
+  lastSequence,
   otherPhoneUploads,
   otherStamp,
   startEventApi,
@@ -154,12 +158,15 @@ afterEach(async () => {
 const DANA_ROW = `Dana, ${NEW_MEMBER}`;
 const MEMBERS = [YOU, 'Casey', 'Blake', 'Add Member'];
 
-/** Dana has asked, the app has synced since, and Brisbane's Members is open. */
+/** Dana has asked, the app has synced since, and Brisbane's Members is open and shows her request. */
 async function inMembersWithDana(choice: Parameters<typeof asks>[0] = {}) {
   const started = await startWithInvite();
   await asks(choice);
   await syncs();
   await showMembers('Brisbane');
+  await waitFor(() =>
+    expect(membersShown()[0]).toContain(', Wants to join as '),
+  );
   return started;
 }
 
@@ -168,6 +175,9 @@ const secondsPass = (seconds: number) =>
   act(async () => {
     await jest.advanceTimersByTimeAsync(seconds * 1_000);
   });
+
+/** Lets an hour pass with the app open: whatever the app was going to send, it has sent. */
+const anHourPasses = () => secondsPass(60 * 60);
 
 /** A roster entry another phone wrote: its own device represents `memberId`. */
 const otherPhoneRepresents = (memberId: string) =>
@@ -313,14 +323,16 @@ describe('SHARING-190.1', () => {
 
     await syncs();
 
-    const sent = groupRequests(from);
-    const download = sent.findIndex((line) =>
-      line.startsWith(`GET /groups/${brisbane}/events`),
-    );
-    expect(download).toBeGreaterThanOrEqual(0);
-    expect(sent.indexOf(`GET /groups/${brisbane}/requests`)).toBeGreaterThan(
-      download,
-    );
+    await waitFor(() => {
+      const sent = groupRequests(from);
+      const download = sent.findIndex((line) =>
+        line.startsWith(`GET /groups/${brisbane}/events`),
+      );
+      expect(download).toBeGreaterThanOrEqual(0);
+      expect(sent.indexOf(`GET /groups/${brisbane}/requests`)).toBeGreaterThan(
+        download,
+      );
+    });
     await tapTab('Groups');
     await openGroup('Brisbane');
     await expectJoinCount('Brisbane', 1);
@@ -346,27 +358,31 @@ describe('SHARING-190.1', () => {
 
     await syncs();
 
-    expect(lists(from).map(({ path }) => path)).toEqual([
-      `/groups/${brisbane}/requests`,
-      `/groups/${brisbane}/requests?after=${D}`,
-    ]);
+    await waitFor(() =>
+      expect(lists(from).map(({ path }) => path)).toEqual([
+        `/groups/${brisbane}/requests`,
+        `/groups/${brisbane}/requests?after=${D}`,
+      ]),
+    );
     await showMembers('Brisbane');
     await expectMembers([DANA_ROW, `Evan, ${NEW_MEMBER}`, ...MEMBERS]);
   });
 
-  test('[SHARING-190.1] asks for no requests while the phone holds no invite that has not expired', async () => {
+  test('[SHARING-190.1] asks for no requests while the phone holds no invite that has not expired, and shows none', async () => {
     await startWithInvite();
     await asks();
+    await syncs();
+    await tapTab('Groups');
+    await openGroup('Brisbane');
+    await expectJoinCount('Brisbane', 1);
     setClock(LATER + WEEK);
     const expired = received().length;
 
     await syncs();
+    await anHourPasses();
 
     expect(lists(expired)).toEqual([]);
-    await tapTab('Groups');
-    await openGroup('Brisbane');
-    await settle();
-    expect(joinButton('Brisbane')).toBeUndefined();
+    await expectJoinCount('Brisbane', 0);
   });
 
   test('[SHARING-190.1] asks for no requests of a shared ledger that never had an invite', async () => {
@@ -375,6 +391,7 @@ describe('SHARING-190.1', () => {
 
     await syncs();
     await showMembers('Brisbane');
+    await anHourPasses();
 
     expect(lists(from)).toEqual([]);
   });
@@ -418,8 +435,28 @@ describe('SHARING-190.1', () => {
     const from = received().length;
 
     await syncs();
+    await anHourPasses();
 
     expect(lists(from)).toEqual([]);
+  });
+
+  test('[SHARING-190.1] lists nothing while it is approving a request, and lists again once the API has answered', async () => {
+    await inMembersWithDana();
+    holdDecisions('approve');
+    const pressed = received().length;
+    const menu = await tapMember(DANA_ROW);
+    await menu!.choose(APPROVE);
+    await waitFor(() => expect(approvals(pressed)).toHaveLength(1));
+
+    await syncs();
+    await secondsPass(30);
+
+    expect(lists(pressed)).toEqual([]);
+    await releaseDecisions();
+    await waitFor(() =>
+      expect(lists(pressed).length).toBeGreaterThanOrEqual(1),
+    );
+    await expectMembers([YOU, 'Casey', 'Blake', 'Dana, Joined', 'Add Member']);
   });
 });
 
@@ -428,6 +465,7 @@ describe('SHARING-192.1', () => {
     const { brisbane } = await startWithInvite();
     await asks();
     apiHolds(brisbane, E, '00'.repeat(297));
+    const unreadable = requestHash(brisbane, E);
     const from = received().length;
 
     await syncs();
@@ -435,7 +473,7 @@ describe('SHARING-192.1', () => {
 
     await expectMembers([DANA_ROW, ...MEMBERS]);
     expect(rejections(from).map(({ path }) => path)).toEqual([
-      `/groups/${brisbane}/requests/${E}`,
+      `/groups/${brisbane}/requests/${E}?request=${unreadable}`,
     ]);
     expect(requestsOn(brisbane)).toEqual([D]);
     expect(alertsShown()).toEqual([]);
@@ -465,12 +503,36 @@ describe('SHARING-194.1', () => {
     otherPhoneUploads(brisbane, otherPhoneRepresents(Casey));
     await syncs();
     await showMembers('Brisbane');
+    await expectMembers([
+      `Dana, ${wantsToBe('Casey')}`,
+      YOU,
+      'Casey, Joined',
+      'Blake',
+      'Add Member',
+    ]);
 
     const menu = await tapMember(`Dana, ${wantsToBe('Casey')}`);
 
     expect(menu).toMatchObject({
       title: 'Dana',
       message: HAS_A_PHONE('Casey'),
+      items: [DECLINE, CANCEL],
+    });
+  });
+
+  test('[SHARING-194.1] offers no Approve for a request that picked your own member, which no roster entry names yet', async () => {
+    await startWithInvite();
+    const { Taylor } = await members('Brisbane');
+    await asks({ memberId: Taylor });
+    await syncs();
+    await showMembers('Brisbane');
+    await expectMembers([`Dana, ${wantsToBe('Taylor')}`, ...MEMBERS]);
+
+    const menu = await tapMember(`Dana, ${wantsToBe('Taylor')}`);
+
+    expect(menu).toMatchObject({
+      title: 'Dana',
+      message: IS_YOU('Taylor'),
       items: [DECLINE, CANCEL],
     });
   });
@@ -519,6 +581,12 @@ describe('SHARING-194.1', () => {
     });
     await syncs();
     await showMembers('Brisbane');
+    await waitFor(() =>
+      expect(membersShown().slice(0, 2)).toEqual([
+        DANA_ROW,
+        `Evan, ${wantsToBe('Member 1')}`,
+      ]),
+    );
 
     const full = await tapMember(DANA_ROW);
     const member = await tapMember(`Evan, ${wantsToBe('Member 1')}`);
@@ -531,6 +599,66 @@ describe('SHARING-194.1', () => {
       message: MAY_SEE,
       items: [APPROVE, DECLINE, CANCEL],
     });
+  });
+});
+
+describe('SHARING-195.1', () => {
+  test('[SHARING-195.1] sends the cursor it checked at when the app synced meanwhile, and says why it cannot approve once the API calls it behind', async () => {
+    const { brisbane } = await startWithInvite();
+    const { Casey } = await members('Brisbane');
+    await asks({ memberId: Casey });
+    await syncs();
+    await showMembers('Brisbane');
+    const row = `Dana, ${wantsToBe('Casey')}`;
+    await expectMembers([row, ...MEMBERS]);
+    holdDecisions('chunk');
+    const from = received().length;
+    const menu = await tapMember(row);
+    await menu!.choose(APPROVE);
+    await waitFor(() => expect(chunks(from).length).toBeGreaterThanOrEqual(1));
+    const checkedAt = lastSequence(brisbane);
+
+    // While the snapshot is on its way, another phone is approved as Casey, and the app
+    // comes back to the front and syncs.
+    otherPhoneUploads(brisbane, otherPhoneRepresents(Casey));
+    await syncs();
+    await releaseDecisions();
+
+    await waitFor(() =>
+      expect(alertsShown().at(-1)).toEqual([
+        UNABLE_TO_APPROVE,
+        HAS_A_PHONE('Casey'),
+      ]),
+    );
+    expect(approvals(from).map((sent) => approvalOf(sent).cursor)).toEqual([
+      checkedAt,
+    ]);
+    expect(lastSequence(brisbane)).toBe(checkedAt + 1);
+    expect(requestsOn(brisbane)).toEqual([D]);
+    expect(await unsent()).toEqual([]);
+  });
+
+  test('[SHARING-195.1] approves the content its menu was opened for: a request replaced since is answered as gone, and the new one is shown', async () => {
+    const { brisbane } = await inMembersWithDana();
+    const { Casey } = await members('Brisbane');
+    const menu = await tapMember(DANA_ROW);
+    const shown = requestHash(brisbane);
+    await asks({ memberId: Casey });
+    await syncs();
+    const replaced = `Dana, ${wantsToBe('Casey')}`;
+    await expectMembers([replaced, ...MEMBERS]);
+    const from = received().length;
+
+    await menu!.choose(APPROVE);
+
+    await waitFor(() =>
+      expect(alertsShown().at(-1)).toEqual([UNABLE_TO_APPROVE, ANSWERED]),
+    );
+    expect(approvals(from).map((sent) => approvalOf(sent).request)).toEqual([
+      shown,
+    ]);
+    expect(requestHash(brisbane)).not.toBe(shown);
+    await expectMembers([replaced, ...MEMBERS]);
   });
 });
 
@@ -555,6 +683,7 @@ describe('SHARING-199.1', () => {
     await asks({ memberId: Casey });
     await syncs();
     await showMembers('Brisbane');
+    await expectMembers([`Dana, ${wantsToBe('Casey')}`, ...MEMBERS]);
 
     const menu = await tapMember(`Dana, ${wantsToBe('Casey')}`);
     await menu!.choose(APPROVE);
@@ -606,6 +735,31 @@ describe('SHARING-200.1', () => {
     await expectMembers([DANA_ROW, ...MEMBERS]);
   });
 
+  test('[SHARING-200.1] says why it cannot approve, and sends nothing, when the sync before it brings the reason', async () => {
+    const { brisbane } = await startWithInvite();
+    const { Casey } = await members('Brisbane');
+    await asks({ memberId: Casey });
+    await syncs();
+    await showMembers('Brisbane');
+    const row = `Dana, ${wantsToBe('Casey')}`;
+    await expectMembers([row, ...MEMBERS]);
+    const menu = await tapMember(row);
+    otherPhoneUploads(brisbane, otherPhoneRepresents(Casey));
+    const from = received().length;
+
+    await menu!.choose(APPROVE);
+
+    await waitFor(() =>
+      expect(alertsShown().at(-1)).toEqual([
+        UNABLE_TO_APPROVE,
+        HAS_A_PHONE('Casey'),
+      ]),
+    );
+    expect(chunks(from)).toEqual([]);
+    expect(approvals(from)).toEqual([]);
+    expect(requestsOn(brisbane)).toEqual([D]);
+  });
+
   test('[SHARING-200.1] says something went wrong for an answer it cannot read', async () => {
     await inMembersWithDana();
     apiAnswersDecision('approve', 500, {});
@@ -623,6 +777,7 @@ describe('SHARING-200.1', () => {
 describe('SHARING-201.1', () => {
   test('[SHARING-201.1] rejects the request on the API when Decline is chosen, and writes nothing', async () => {
     const { brisbane } = await inMembersWithDana();
+    const shown = requestHash(brisbane);
     const from = received().length;
 
     const menu = await tapMember(DANA_ROW);
@@ -631,7 +786,7 @@ describe('SHARING-201.1', () => {
     await expectMembers(MEMBERS);
     expect(
       rejections(from).map(({ path, body }) => [path, body.length]),
-    ).toEqual([[`/groups/${brisbane}/requests/${D}`, 0]]);
+    ).toEqual([[`/groups/${brisbane}/requests/${D}?request=${shown}`, 0]]);
     expect(requestsOn(brisbane)).toEqual([]);
     expect(await unsent()).toEqual([]);
     expect(alertsShown()).toEqual([]);
@@ -666,6 +821,28 @@ describe('SHARING-201.1', () => {
   );
 });
 
+describe('SHARING-201.1', () => {
+  test('[SHARING-201.1] declines the content its menu was opened for: a request replaced since stays, and is shown', async () => {
+    const started = await startWithInvite();
+    const { Casey } = await members('Brisbane');
+    await asks({ memberId: Casey });
+    await syncs();
+    await showMembers('Brisbane');
+    const row = `Dana, ${wantsToBe('Casey')}`;
+    await expectMembers([row, ...MEMBERS]);
+    const menu = await tapMember(row);
+    await asks();
+
+    await menu!.choose(DECLINE);
+
+    await waitFor(() =>
+      expect(alertsShown().at(-1)).toEqual([UNABLE_TO_DECLINE, ANSWERED]),
+    );
+    expect(requestsOn(started.brisbane)).toEqual([D]);
+    await expectMembers([DANA_ROW, ...MEMBERS]);
+  });
+});
+
 describe('SHARING-202.1', () => {
   test('[SHARING-202.1] shows Approving… on the row, and opens no menu for any request, while it approves', async () => {
     await startWithInvite();
@@ -673,6 +850,7 @@ describe('SHARING-202.1', () => {
     await asks({ name: 'Evan', deviceId: E, userId: EVAN_USER });
     await syncs();
     await showMembers('Brisbane');
+    await expectMembers([DANA_ROW, `Evan, ${NEW_MEMBER}`, ...MEMBERS]);
     holdDecisions('approve');
 
     const menu = await tapMember(DANA_ROW);
@@ -741,6 +919,24 @@ describe('SHARING-204.1', () => {
     );
     await releaseDecisions();
     expect(alertsShown()).toHaveLength(1);
+  });
+
+  test('[SHARING-204.1] gives a list up after 60 seconds without an answer: Members sends a new one when it opens again, and says nothing', async () => {
+    await startWithInvite();
+    await asks();
+    holdDecisions('list');
+    const from = received().length;
+    await showMembers('Brisbane');
+    await waitFor(() => expect(lists(from)).toHaveLength(1));
+
+    await secondsPass(65);
+    await leaveMembers('Brisbane');
+    await showMembers('Brisbane');
+
+    await waitFor(() => expect(lists(from)).toHaveLength(2));
+    expect(alertsShown()).toEqual([]);
+    await releaseDecisions();
+    await expectMembers([DANA_ROW, ...MEMBERS]);
   });
 
   test('[SHARING-204.1] gives a rejection up after 60 seconds without an answer', async () => {

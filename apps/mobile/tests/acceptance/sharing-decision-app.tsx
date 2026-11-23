@@ -61,6 +61,8 @@ export const DEVICES_FULL =
 const CANNOT = "This request can't be approved.";
 export const HAS_A_PHONE = (member: string) =>
   `${member} has already joined from another phone. ${CANNOT}`;
+export const IS_YOU = (member: string) =>
+  `You're already in this group as ${member}. ${CANNOT}`;
 export const NO_MEMBER = `The member this request chose is no longer in this group. ${CANNOT}`;
 export const GROUP_FULL = `A shared group can have up to 20 members. ${CANNOT}`;
 export const SAME_NAME = (member: string) =>
@@ -137,7 +139,13 @@ function answerOf(
   }
   const index = requests.findIndex((each) => each.deviceId === applicant);
   if (kind === 'reject') {
-    if (index < 0) return json(404, { error: 'no-request' });
+    // A rejection names the content it rejects, as an approval does (SHARING-172.1).
+    if (
+      index < 0 ||
+      sha256(requests[index].request) !== url.searchParams.get('request')
+    ) {
+      return json(404, { error: 'no-request' });
+    }
     requests.splice(index, 1);
     return json(200, { deviceId: applicant });
   }
@@ -284,6 +292,24 @@ export function memberDevicesOn(group: string, count: number) {
 /** The requests the API holds for a group, by device ID. */
 export const requestsOn = (group: string) =>
   (world().requests.get(group) ?? []).map(({ deviceId }) => deviceId);
+
+/** The SHA-256 of the content the API holds for a device's request, as an approval and a rejection name it. */
+export function requestHash(group: string, deviceId = D) {
+  const held = (world().requests.get(group) ?? []).find(
+    (each) => each.deviceId === deviceId,
+  );
+  if (!held) throw new Error('The API holds no request of that device');
+  return sha256(held.request);
+}
+
+/** What an approval the app sent says, as its body reads. */
+export const approvalOf = ({ body }: Received) =>
+  JSON.parse(Buffer.from(body).toString('utf8')) as {
+    request: string;
+    cursor: number;
+    snapshotId: string;
+    events: { id: string; content: string }[];
+  };
 
 // Requests other phones sent
 

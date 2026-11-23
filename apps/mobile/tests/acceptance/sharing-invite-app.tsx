@@ -282,7 +282,7 @@ function putRequest(request: Received, code: string) {
   return json(200, { code });
 }
 
-/** `DELETE /invites/<code>/request` (SHARING-117.1, 118.1). */
+/** `DELETE /invites/<code>/request` (SHARING-117.2, 118.1). */
 function deleteRequest(request: Received, code: string) {
   if (
     !CODE.test(code) ||
@@ -291,7 +291,15 @@ function deleteRequest(request: Received, code: string) {
   ) {
     return json(400, { error: 'request' });
   }
-  if (isActive(api().invites.get(code))) {
+  const invite = api().invites.get(code);
+  if (
+    api().handovers.has(`${code} ${request.deviceId}`) ||
+    (isActive(invite) &&
+      api().groups.get(invite!.groupId)?.has(request.deviceId!))
+  ) {
+    return json(409, { error: 'already-a-member' });
+  }
+  if (isActive(invite)) {
     api().requests.get(code)?.delete(request.deviceId!);
   }
   return json(200, { code });

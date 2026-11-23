@@ -49,20 +49,30 @@ export const listAfter = (
   applicant: Phone | string,
 ) => listRequests(phone, groupId, `?after=${deviceIdOf(applicant)}`);
 
+export const sha256Of = (content: Uint8Array) =>
+  createHash('sha256').update(content).digest('hex');
+
+/** What follows the path of a rejection: the content it names, by its SHA-256. */
+export const naming = (content: Uint8Array) => `?request=${sha256Of(content)}`;
+
+/**
+ * Rejects the request of `applicant` that holds `content`; a string in its place is what
+ * follows the path, as it is given.
+ */
 export const reject = (
   phone: Phone,
   groupId: string,
   applicant: Phone | string,
+  content: Uint8Array | string,
   body?: Uint8Array | string,
 ) =>
   call(phone, {
     method: 'DELETE',
-    path: decisionPath(groupId, applicant),
+    path: `${decisionPath(groupId, applicant)}${
+      typeof content === 'string' ? content : naming(content)
+    }`,
     body,
   });
-
-export const sha256Of = (content: Uint8Array) =>
-  createHash('sha256').update(content).digest('hex');
 
 /** What an approval carries: random bytes for the key, the box and one event, unless given. */
 export interface Approval {

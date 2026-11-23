@@ -147,6 +147,110 @@ test('[SYNC-251.1] leaves you as you when your own roster entry arrives', async 
   expect((await groupNamed('Brisbane')).members[0]).toEqual(before);
 });
 
+test.each(['no roster entry of its own', 'a roster entry of its own'])(
+  "[SYNC-251.1] leaves you as you when another phone's later entry names your member, on a phone with %s",
+  async (own) => {
+    await startShared();
+    const brisbane = await groupId('Brisbane');
+    const { Casey } = await members('Brisbane');
+    const you = (await groupNamed('Brisbane')).members[0];
+    if (own === 'a roster entry of its own') {
+      await receive(
+        brisbane,
+        entry('phone-a', you.id, you.userId!, at(LATER + 1_000, 0, 'phone-a')),
+      );
+    }
+    await showMembers('Brisbane');
+
+    await receive(
+      brisbane,
+      entry('phone-b', you.id, 'user-b', at(LATER + 60_000, 0, 'phone-b')),
+      entry('phone-c', Casey, 'user-c', at(LATER + 60_000, 0, 'phone-c')),
+    );
+
+    // Casey's entry shows that both were applied; yours did not make you somebody else.
+    await expectMembers([YOU, 'Casey, Joined', 'Blake', 'Add Member']);
+    expect(await userIds()).toEqual({
+      Taylor: you.userId,
+      Casey: 'user-c',
+      Blake: null,
+    });
+  },
+);
+
+test('[SYNC-251.1] gives no user ID to a member that another phone names with your own user ID', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  const { Casey, Blake } = await members('Brisbane');
+  const you = (await userIds()).Taylor!;
+  await showMembers('Brisbane');
+
+  await receive(
+    brisbane,
+    entry('phone-b', Casey, you),
+    entry('phone-c', Blake, 'user-c'),
+  );
+
+  await expectMembers([YOU, 'Casey', 'Blake, Joined', 'Add Member']);
+  expect(await userIds()).toEqual({
+    Taylor: you,
+    Casey: null,
+    Blake: 'user-c',
+  });
+});
+
+test('[SYNC-251.1] moves the user ID when a roster entry is changed to name another member', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  const { Casey, Blake } = await members('Brisbane');
+  await showMembers('Brisbane');
+  await receive(brisbane, entry('phone-b', Casey, 'user-b'));
+  await expectMembers([YOU, 'Casey, Joined', 'Blake', 'Add Member']);
+
+  await receive(
+    brisbane,
+    changed(
+      'device' as SyncEvent['type'],
+      'phone-b',
+      at(LATER + 60_000, 0, 'phone-b'),
+      { member: { memberId: Blake, userId: 'user-b', boxKey: BOX_KEY } },
+    ),
+  );
+
+  await expectMembers([YOU, 'Casey', 'Blake, Joined', 'Add Member']);
+  expect(await userIds()).toMatchObject({ Casey: null, Blake: 'user-b' });
+});
+
+test('[SYNC-251.1] makes you the member your own roster entry is changed to name, and leaves you as you when it names nobody in the group', async () => {
+  await startShared();
+  const brisbane = await groupId('Brisbane');
+  const { Casey } = await members('Brisbane');
+  const you = (await groupNamed('Brisbane')).members[0];
+  const own = (memberId: string, ms: number) =>
+    changed('device' as SyncEvent['type'], 'phone-a', at(ms, 0, 'phone-b'), {
+      member: { memberId, userId: you.userId, boxKey: BOX_KEY },
+    });
+  await receive(
+    brisbane,
+    entry('phone-a', you.id, you.userId!, at(LATER + 1_000, 0, 'phone-a')),
+  );
+  await showMembers('Brisbane');
+
+  await receive(brisbane, own(DANA, LATER + 60_000));
+
+  await expectMembers([YOU, 'Casey', 'Blake', 'Add Member']);
+  expect((await userIds()).Taylor).toBe(you.userId);
+
+  await receive(brisbane, own(Casey, LATER + 120_000));
+
+  await expectMembers(['Taylor', 'Casey (You)', 'Blake', 'Add Member']);
+  expect(await userIds()).toEqual({
+    Taylor: null,
+    Casey: you.userId,
+    Blake: null,
+  });
+});
+
 test('[SYNC-251.1] still has the user ID after a restart', async () => {
   const app = await startShared();
   const brisbane = await groupId('Brisbane');

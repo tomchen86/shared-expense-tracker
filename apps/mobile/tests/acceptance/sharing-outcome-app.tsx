@@ -147,6 +147,12 @@ export interface ApprovalChanges {
   without?: string[];
   /** Changes to the roster entry of the phone itself. */
   ownEntry?: Record<string, unknown>;
+  /** Changes to the roster entry of the phone that approves. */
+  approverEntry?: Record<string, unknown>;
+  /** Whether the member the phone is to be was removed from the group. */
+  memberRemoved?: boolean;
+  /** Whether one bit of the box is changed after it was sealed. */
+  boxChanged?: boolean;
   /** Whether the API stores a snapshot at all. */
   snapshot?: boolean;
 }
@@ -187,7 +193,12 @@ export function memberApproves(changes: ApprovalChanges = {}) {
       'device',
       TAYLORS_PHONE,
       {
-        member: { memberId: TAYLOR_ID, userId: TAYLOR_USER, boxKey: senderKey },
+        member: {
+          memberId: TAYLOR_ID,
+          userId: TAYLOR_USER,
+          boxKey: senderKey,
+          ...changes.approverEntry,
+        },
       },
       5,
       false,
@@ -206,7 +217,19 @@ export function memberApproves(changes: ApprovalChanges = {}) {
       7,
       false,
     ),
-  ].filter(({ type, id }) => !changes.without?.includes(`${type} ${id}`));
+  ]
+    .filter(({ type, id }) => !changes.without?.includes(`${type} ${id}`))
+    .map((record) =>
+      changes.memberRemoved && record.type === 'member' && record.id === mine
+        ? {
+            ...record,
+            units: {
+              ...record.units,
+              removed: { ...record.units.removed, value: true },
+            },
+          }
+        : record,
+    );
   const snapshotId = randomUUID();
   const chunk = toHex(
     encrypt({
@@ -229,7 +252,7 @@ export function memberApproves(changes: ApprovalChanges = {}) {
       ),
     }),
   );
-  const box = toHex(
+  const sealedBox = toHex(
     sealBox({
       senderSecretKey: TAYLOR_BOX,
       recipientPublicKey: fromHex(request.boxKey),
@@ -250,6 +273,11 @@ export function memberApproves(changes: ApprovalChanges = {}) {
       ),
     }),
   );
+  // The last byte with its lowest bit turned over, when the box is to be a changed one.
+  const box = changes.boxChanged
+    ? sealedBox.slice(0, -2) +
+      (parseInt(sealedBox.slice(-2), 16) ^ 1).toString(16).padStart(2, '0')
+    : sealedBox;
   const snapshot: StoredSnapshot = {
     snapshotId,
     deviceId: TAYLORS_PHONE,

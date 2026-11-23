@@ -14,11 +14,16 @@ export interface ReceivedJoinRequest {
   name: string;
   /** The member the applicant picked, or null for a new member. */
   memberId: string | null;
+  /**
+   * The SHA-256 of the content the API listed, in lowercase hexadecimal. An approval and a
+   * rejection name the request by it (SHARING-172.1, SHARING-173.1).
+   */
+  request: string;
 }
 
 /** Why a request cannot be approved as it is (SHARING-194.1). */
 export type CannotApprove =
-  'not-a-member' | 'has-a-phone' | 'group-full' | 'same-name';
+  'not-a-member' | 'is-you' | 'has-a-phone' | 'group-full' | 'same-name';
 
 /** How approving a request ended (SHARING-195.1 to 200.1). */
 export type ApproveResult =
@@ -67,18 +72,21 @@ export const listReceivedJoinRequests: (
   groupId: string,
 ) => Promise<ReceivedJoinRequest[]> = notBuilt;
 
-/** Approves the request of `deviceId`, as pressing Approve does (SHARING-195.1). */
+/**
+ * Approves `request`, as pressing Approve in the menu that was opened for it does
+ * (SHARING-195.1): the approval names the content the request held when it was listed.
+ */
 export const approveJoinRequest: (
   database: Database,
   groupId: string,
-  deviceId: string,
+  request: ReceivedJoinRequest,
 ) => Promise<ApproveResult> = notBuilt;
 
-/** Rejects the request of `deviceId`, as pressing Decline does (SHARING-201.1). */
+/** Rejects `request`, as pressing Decline in its menu does (SHARING-201.1). */
 export const rejectJoinRequest: (
   database: Database,
   groupId: string,
-  deviceId: string,
+  request: ReceivedJoinRequest,
 ) => Promise<RejectResult> = notBuilt;
 
 /**

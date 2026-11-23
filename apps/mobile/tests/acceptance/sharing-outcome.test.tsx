@@ -4,6 +4,7 @@ import {
   expectMembers,
   expectOpen,
   isOpen,
+  pressAlertButton,
 } from './group-details-app';
 import { cardNames } from './groups-app';
 import { restart } from './ledger-expense-app';
@@ -12,15 +13,21 @@ import {
   T,
   apiAnswersNext,
   apiLosesNextAnswer,
+  failSecureStoreWrites,
   goOffline,
   goOnline,
   removeSecureStoreEntry,
+  requestsReceived,
   secureStoreEntries,
+  secureStoreWorks,
+  toHex,
 } from './sharing-app';
 import {
+  afterTheAnswerTo,
   keepAnswersBack,
   requestsOnApi,
   revokedByAnotherPhone,
+  secondsPass,
 } from './sharing-invite-app';
 import {
   ALREADY_JOINED,
@@ -36,6 +43,7 @@ import {
   JOIN_AS,
   NEW_MEMBER,
   NOT_SENT,
+  ONLY_MEMBERS,
   S,
   S2,
   SEND,
@@ -47,6 +55,7 @@ import {
   WENT_WRONG,
   brisbaneInvites,
   cancellations,
+  cardOf,
   chosen,
   eachTestGetsAJoiningPhone,
   hasSignedFields,
@@ -79,6 +88,7 @@ import {
   FINISHING,
   FINISH_OFFLINE,
   FINISH_UPDATE,
+  GROUP_KEY,
   INVALID,
   INVALID_CARD,
   NOT_SENT_CARD,
@@ -91,7 +101,7 @@ import {
   memberRejects,
   phoneDevice,
 } from './sharing-outcome-app';
-import { settle } from './shell-appearance-app';
+import { allowWrites, failWrites, settle } from './shell-appearance-app';
 import { navigationBarTitles, tab, tapTab } from './shell-tabs-app';
 import { everything, setClock, showMembers } from './sync-app';
 
@@ -150,13 +160,40 @@ const WAITING_FOR_BRISBANE = [WAITING, 'Brisbane', WAITING_TEXT, CANCEL];
 const UNSENT = [NOT_SENT, 'Try Again', CANCEL];
 const json = (body: unknown) => JSON.stringify(body);
 
-/** The two lines of the request's card on the Groups root. */
-async function cardLines(group = 'Brisbane') {
+const isSnapshotQuestion = ({ method, path }: Sent) =>
+  method === 'GET' && /^\/groups\/[^/]+\/snapshot$/.test(path);
+
+/** The lines of the request's card on the Groups root as they are now, with no waiting. */
+async function shownCard(group = 'Brisbane') {
   await tapTab('Groups');
   await settle();
   const card = requestCard(group);
   return card ? linesIn(card) : undefined;
 }
+
+/** Waits until Join Group says that the phone was approved and is finishing. */
+const expectFinishing = () =>
+  waitFor(() => expect(joinLines()).toEqual([APPROVED, 'Brisbane', FINISHING]));
+
+/** Waits until Join Group shows exactly these lines. */
+const expectJoinLines = (lines: string[]) =>
+  waitFor(() => expect(joinLines()).toEqual(lines));
+
+/** Waits until the request's card on the Groups root reads so: no card at all for undefined. */
+async function expectCard(lines: string[] | undefined, group = 'Brisbane') {
+  await tapTab('Groups');
+  await waitFor(() => {
+    const card = requestCard(group);
+    expect(card ? linesIn(card) : undefined).toEqual(lines);
+  });
+}
+
+/** Waits until the phone has asked about its requests `count` times in all. */
+const expectAsked = (count: number) =>
+  waitFor(() => expect(asked()).toHaveLength(count));
+
+/** Lets a few seconds pass with the app open: what it was going to do with an answer, it has done. */
+const aMomentPasses = () => secondsPass(5);
 
 /** Dana's phone has sent its request for Brisbane, and Join Group is closed. */
 async function waiting(choose?: string) {
@@ -194,6 +231,7 @@ describe('SHARING-210.1', () => {
     setClock(T);
     await settle();
 
+    await expectAsked(1);
     expect(asked().map(({ path }) => path)).toEqual([
       `/invites/${CODE_A}/request`,
     ]);
@@ -208,9 +246,10 @@ describe('SHARING-210.1', () => {
     await waiting();
 
     await comesBack();
+    await expectAsked(1);
     await comesBack();
 
-    expect(asked()).toHaveLength(2);
+    await expectAsked(2);
   });
 
   test('[SHARING-210.1] asks when the request is opened from its card and from its link, and shows it as it was meanwhile', async () => {
@@ -219,13 +258,13 @@ describe('SHARING-210.1', () => {
 
     await tapTab('Groups');
     await openRequest('Brisbane');
-    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+    await expectJoinLines(WAITING_FOR_BRISBANE);
     await answer();
     await closeJoin();
     await openLink(BRISBANE_LINK);
 
-    expect(asked()).toHaveLength(2);
-    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+    await expectAsked(2);
+    await expectJoinLines(WAITING_FOR_BRISBANE);
   });
 
   test('[SHARING-210.1] asks about each request it holds', async () => {
@@ -239,11 +278,13 @@ describe('SHARING-210.1', () => {
 
     await comesBack();
 
-    expect(
-      asked()
-        .map(({ path }) => path)
-        .sort(),
-    ).toEqual([`/invites/${CODE_B}/request`, `/invites/${CODE_A}/request`]);
+    await waitFor(() =>
+      expect(
+        asked()
+          .map(({ path }) => path)
+          .sort(),
+      ).toEqual([`/invites/${CODE_B}/request`, `/invites/${CODE_A}/request`]),
+    );
   });
 
   test('[SHARING-210.1] asks about a request it holds as not sent, without sending it', async () => {
@@ -252,7 +293,8 @@ describe('SHARING-210.1', () => {
 
     await comesBack();
 
-    expect(asked()).toHaveLength(1);
+    await expectAsked(1);
+    await aMomentPasses();
     expect(sendings()).toHaveLength(sent);
   });
 
@@ -263,6 +305,7 @@ describe('SHARING-210.1', () => {
     await comesBack();
     await tapTab('Groups');
     await openRequest('Brisbane');
+    await aMomentPasses();
 
     expect(asked()).toEqual([]);
   });
@@ -276,6 +319,7 @@ describe('SHARING-210.1', () => {
     await closeJoin();
 
     await comesBack();
+    await aMomentPasses();
 
     expect(asked()).toEqual([]);
     await sending();
@@ -284,6 +328,8 @@ describe('SHARING-210.1', () => {
     await openRequest('Brisbane');
     await closeJoin();
     await openRequest('Brisbane');
+    await expectAsked(1);
+    await aMomentPasses();
     expect(asked()).toHaveLength(1);
     await asking();
   });
@@ -297,12 +343,12 @@ describe('SHARING-211.1', () => {
     await tapTab('Groups');
     await openRequest('Brisbane');
 
-    expect(asked()).toHaveLength(1);
-    expect(reads()).toHaveLength(readBefore + 1);
+    await expectAsked(1);
+    await waitFor(() => expect(reads()).toHaveLength(readBefore + 1));
     expect(hasSignedFields(reads().at(-1)!)).toBe(false);
-    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+    await expectJoinLines(WAITING_FOR_BRISBANE);
     await closeJoin();
-    expect(await cardLines()).toEqual(['Brisbane', WAITING_CARD]);
+    await expectCard(['Brisbane', WAITING_CARD]);
   });
 
   test('[SHARING-211.1] learns that the API took a request the phone holds as not sent', async () => {
@@ -312,12 +358,12 @@ describe('SHARING-211.1', () => {
     apiLosesNextAnswer(isSending);
     await send();
     await closeJoin();
-    expect(await cardLines()).toEqual(['Brisbane', NOT_SENT_CARD]);
+    await expectCard(['Brisbane', NOT_SENT_CARD]);
     const sent = sendings().length;
 
     await comesBack();
 
-    expect(await cardLines()).toEqual(['Brisbane', WAITING_CARD]);
+    await expectCard(['Brisbane', WAITING_CARD]);
     expect(sendings()).toHaveLength(sent);
   });
 
@@ -326,28 +372,61 @@ describe('SHARING-211.1', () => {
     const sent = sendings().length;
 
     await comesBack();
+    await expectAsked(1);
+    await aMomentPasses();
 
-    expect(await cardLines()).toEqual(['Brisbane', NOT_SENT_CARD]);
+    expect(await shownCard()).toEqual(['Brisbane', NOT_SENT_CARD]);
     expect(sendings()).toHaveLength(sent);
     await openRequest('Brisbane');
-    expect(joinLines()).toEqual(UNSENT);
+    await expectJoinLines(UNSENT);
   });
 
   test.each([
     ['is answered with an error', () => apiAnswersNext(isRead, 500, '')],
     ['gets no answer', () => apiLosesNextAnswer(isRead)],
+    [
+      'is refused because the invite is gone',
+      () => apiAnswersNext(isRead, 404, json({ error: 'no-invite' })),
+    ],
   ])(
     '[SHARING-211.1] leaves the request waiting when reading the invite again %s',
     async (_case, fail) => {
       await waiting();
+      const readBefore = reads().length;
       fail();
 
       await comesBack();
+      await waitFor(() => expect(reads()).toHaveLength(readBefore + 1));
+      await aMomentPasses();
 
-      expect(await cardLines()).toEqual(['Brisbane', WAITING_CARD]);
+      expect(await shownCard()).toEqual(['Brisbane', WAITING_CARD]);
+      expect(rowsWith(S).length).toBeGreaterThan(0);
       expect(alertsShown()).toEqual([]);
     },
   );
+
+  test('[SHARING-211.1] keeps a request that a member approved, and whose invite was revoked, between its two questions: it joins the next time it asks', async () => {
+    const app = await waiting();
+    // The API has just said that the request waits when a member approves it and turns the link off.
+    afterTheAnswerTo(isAsking, () => {
+      memberApproves();
+      revokedByAnotherPhone(CODE_A);
+    });
+    const readBefore = reads().length;
+
+    await comesBack();
+    await waitFor(() => expect(reads()).toHaveLength(readBefore + 1));
+    await aMomentPasses();
+
+    expect(await shownCard()).toEqual(['Brisbane', WAITING_CARD]);
+    expect(rowsWith(S).length).toBeGreaterThan(0);
+
+    await restart(app);
+    setClock(T);
+
+    await waitFor(() => expect(hasBrisbane()).toBe(true));
+    await expectCard(undefined);
+  });
 });
 
 const taken = (id: string) =>
@@ -362,9 +441,9 @@ describe('SHARING-212.1', () => {
 
     await comesBack();
 
-    expect(await cardLines()).toEqual(['Brisbane', CHOOSE_CARD]);
+    await expectCard(['Brisbane', CHOOSE_CARD]);
     await openRequest('Brisbane');
-    expect(joinLines()).toEqual([
+    await expectJoinLines([
       CHOOSE_AGAIN,
       'Brisbane',
       JOIN_AS,
@@ -389,7 +468,7 @@ describe('SHARING-212.1', () => {
     await tapTab('Groups');
     await openRequest('Brisbane');
     const first = sendings()[0].path;
-    expect(joinLines()[0]).toBe(CHOOSE_AGAIN);
+    await waitFor(() => expect(joinLines()[0]).toBe(CHOOSE_AGAIN));
 
     await pressInJoin('Blake');
     await send();
@@ -397,7 +476,7 @@ describe('SHARING-212.1', () => {
     expect(sendings()).toHaveLength(2);
     expect(sendings()[1].path).toBe(first);
     expect(lastRequest().memberId).toBe(BLAKE_ID);
-    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+    await expectJoinLines(WAITING_FOR_BRISBANE);
     expect(requestsOnApi(CODE_A)).toHaveLength(1);
   });
 
@@ -416,20 +495,34 @@ describe('SHARING-212.1', () => {
     await tapTab('Groups');
     await openRequest('Brisbane');
 
-    expect(joinLines()[0]).toBe(CHOOSE_AGAIN);
+    await waitFor(() => expect(joinLines()[0]).toBe(CHOOSE_AGAIN));
     expect(chosen()).toEqual(['dana']);
+  });
+
+  test('[SHARING-212.1] asks a new member to choose again when the group has its 20 members by now, and offers only its members', async () => {
+    await waiting();
+    cardBecomes(cardOf(20, 18).members);
+
+    await comesBack();
+    await expectCard(['Brisbane', CHOOSE_CARD]);
+    await openRequest('Brisbane');
+
+    await waitFor(() => expect(joinLines()[0]).toBe(CHOOSE_AGAIN));
+    expect(joinLines()).not.toContain(NEW_MEMBER);
+    expect(joinLines()).toContain(ONLY_MEMBERS);
+    expect(joinLines()).toContain('Member 20');
   });
 
   test('[SHARING-212.1] goes back to waiting when the request fits the card again', async () => {
     await waiting('Casey');
     cardBecomes(taken(CASEY_ID));
     await comesBack();
-    expect(await cardLines()).toEqual(['Brisbane', CHOOSE_CARD]);
+    await expectCard(['Brisbane', CHOOSE_CARD]);
     cardBecomes(BRISBANE_CARD.members);
 
     await comesBack();
 
-    expect(await cardLines()).toEqual(['Brisbane', WAITING_CARD]);
+    await expectCard(['Brisbane', WAITING_CARD]);
   });
 });
 
@@ -440,7 +533,7 @@ describe('SHARING-213.1', () => {
 
     await comesBack();
 
-    expect(await cardLines()).toEqual(['Brisbane', DECLINED_CARD]);
+    await expectCard(['Brisbane', DECLINED_CARD]);
     expect(rowsWith(S)).toEqual([]);
     expect(rowsWith(CODE_A)).toEqual([]);
     expect(hasBrisbane()).toBe(false);
@@ -455,11 +548,11 @@ describe('SHARING-213.1', () => {
 
     await openRequest('Brisbane');
 
-    expect(joinLines()).toEqual(DECLINED);
+    await expectJoinLines(DECLINED);
     const before = asked().length;
     await pressInJoin('OK');
-    expect(isOpen(TITLE)).toBe(false);
-    expect(await cardLines()).toBeUndefined();
+    await waitFor(() => expect(isOpen(TITLE)).toBe(false));
+    await expectCard(undefined);
     expect(rowsWith('Brisbane')).toEqual([]);
     expect(asked()).toHaveLength(before);
     expect(cancellations()).toEqual([]);
@@ -472,7 +565,7 @@ describe('SHARING-213.1', () => {
 
     await openLink(BRISBANE_LINK);
 
-    expect(joinLines()).toContain(SEND);
+    await waitFor(() => expect(joinLines()).toContain(SEND));
     expect(joinLines()).not.toContain(DECLINED[0]);
   });
 });
@@ -484,13 +577,13 @@ describe('SHARING-214.1', () => {
 
     await comesBack();
 
-    expect(await cardLines()).toEqual(['Brisbane', INVALID_CARD]);
+    await expectCard(['Brisbane', INVALID_CARD]);
     expect(rowsWith(S)).toEqual([]);
     await openRequest('Brisbane');
-    expect(joinLines()).toEqual(INVALID);
+    await expectJoinLines(INVALID);
     await pressInJoin('OK');
-    expect(isOpen(TITLE)).toBe(false);
-    expect(await cardLines()).toBeUndefined();
+    await waitFor(() => expect(isOpen(TITLE)).toBe(false));
+    await expectCard(undefined);
   });
 
   test('[SHARING-214.1] says the same of a request that was never sent', async () => {
@@ -500,7 +593,7 @@ describe('SHARING-214.1', () => {
     await tapTab('Groups');
     await openRequest('Brisbane');
 
-    expect(joinLines()).toEqual(INVALID);
+    await expectJoinLines(INVALID);
   });
 });
 
@@ -524,10 +617,12 @@ describe('SHARING-215.1', () => {
       fail();
 
       await comesBack();
+      await aMomentPasses();
       await tapTab('Groups');
       await openRequest('Brisbane');
+      await aMomentPasses();
 
-      expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+      await expectJoinLines(WAITING_FOR_BRISBANE);
       expect(alertsShown()).toEqual([]);
       goOnline();
       await closeJoin();
@@ -560,10 +655,12 @@ describe('SHARING-220.1', () => {
     memberApproves();
 
     await comesBack();
+    await waitFor(() => expect(hasBrisbane()).toBe(true));
+    await aMomentPasses();
 
     expect(isOpen(TITLE)).toBe(false);
     expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups']);
-    expect(await cardLines()).toBeUndefined();
+    await expectCard(undefined);
     expect(cardNames()).toEqual(['Open Brisbane']);
   });
 });
@@ -575,7 +672,7 @@ describe('SHARING-219.1', () => {
     await comesBack();
 
     await tapTab('Groups');
-    expect(cardNames()).toEqual(['Open Brisbane']);
+    await waitFor(() => expect(cardNames()).toEqual(['Open Brisbane']));
     await showMembers('Brisbane');
 
     await expectMembers([
@@ -597,7 +694,7 @@ describe('SHARING-219.1', () => {
     await comesBack();
 
     await tapTab('Groups');
-    expect(cardNames()).toEqual(['Open Brisbane']);
+    await waitFor(() => expect(cardNames()).toEqual(['Open Brisbane']));
     await showMembers('Brisbane');
 
     await expectMembers([
@@ -606,6 +703,27 @@ describe('SHARING-219.1', () => {
       'Blake',
       'Add Member',
     ]);
+  });
+});
+
+describe('SHARING-219.1', () => {
+  test('[SHARING-219.1] keeps the request and no group when the snapshot cannot be written, and joins on Try Again once it can', async () => {
+    await waiting();
+    memberApproves();
+    afterTheAnswerTo(isChunk, failWrites);
+
+    await tapTab('Groups');
+    await openRequest('Brisbane');
+
+    await expectJoinLines([APPROVED, 'Brisbane', WENT_WRONG, 'Try Again']);
+    allowWrites();
+    expect(hasBrisbane()).toBe(false);
+    expect(rowsWith(CODE_A).length).toBeGreaterThan(0);
+
+    await pressInJoin('Try Again');
+
+    await waitFor(() => expect(hasBrisbane()).toBe(true));
+    await waitFor(() => expect(rowsWith(CODE_A, S)).toEqual([]));
   });
 });
 
@@ -618,9 +736,7 @@ describe('SHARING-221.1', () => {
     await tapTab('Groups');
     await fireEvent.press(requestCard('Brisbane')!);
     await expectOpen(TITLE);
-    await waitFor(() =>
-      expect(joinLines()).toEqual([APPROVED, 'Brisbane', FINISHING]),
-    );
+    await expectFinishing();
 
     expect(joinButton(CANCEL)).toBeUndefined();
     await chunk();
@@ -635,19 +751,14 @@ describe('SHARING-221.1', () => {
     await tapTab('Groups');
     await openRequest('Brisbane');
 
-    expect(joinLines()).toEqual([
-      APPROVED,
-      'Brisbane',
-      FINISH_OFFLINE,
-      'Try Again',
-    ]);
+    await expectJoinLines([APPROVED, 'Brisbane', FINISH_OFFLINE, 'Try Again']);
     expect(hasBrisbane()).toBe(false);
     await closeJoin();
-    expect(await cardLines()).toEqual(['Brisbane', APPROVED_CARD]);
+    await expectCard(['Brisbane', APPROVED_CARD]);
     goOffline();
     await restart(app);
     setClock(T);
-    expect(await cardLines()).toEqual(['Brisbane', APPROVED_CARD]);
+    await expectCard(['Brisbane', APPROVED_CARD]);
     goOnline();
 
     await openRequest('Brisbane');
@@ -661,12 +772,7 @@ describe('SHARING-221.1', () => {
     await tapTab('Groups');
     await openRequest('Brisbane');
 
-    expect(joinLines()).toEqual([
-      APPROVED,
-      'Brisbane',
-      WENT_WRONG,
-      'Try Again',
-    ]);
+    await expectJoinLines([APPROVED, 'Brisbane', WENT_WRONG, 'Try Again']);
     expect(hasBrisbane()).toBe(false);
   });
 
@@ -682,7 +788,7 @@ describe('SHARING-221.1', () => {
       await tapTab('Groups');
       await openRequest('Brisbane');
 
-      expect(joinLines()).toEqual([APPROVED, 'Brisbane', FINISH_UPDATE]);
+      await expectJoinLines([APPROVED, 'Brisbane', FINISH_UPDATE]);
       expect(hasBrisbane()).toBe(false);
     },
   );
@@ -704,6 +810,19 @@ describe('SHARING-216.1', () => {
       { handover: { epoch: 2 } },
     ],
     ['a box with no key', { boxContent: { keys: [] } }],
+    ['a box that holds an object with no keys', { boxContent: {} }],
+    [
+      'a box whose keys go down in epoch',
+      {
+        boxContent: {
+          keys: [
+            { epoch: 2, key: toHex(GROUP_KEY) },
+            { epoch: 1, key: toHex(GROUP_KEY) },
+          ],
+        },
+      },
+    ],
+    ['a box with one bit changed', { boxChanged: true }],
   ])(
     '[SHARING-216.1] does not join, and saves no key, when the API hands it %s',
     async (_case, changes) => {
@@ -713,12 +832,7 @@ describe('SHARING-216.1', () => {
       await tapTab('Groups');
       await openRequest('Brisbane');
 
-      expect(joinLines()).toEqual([
-        APPROVED,
-        'Brisbane',
-        WENT_WRONG,
-        'Try Again',
-      ]);
+      await expectJoinLines([APPROVED, 'Brisbane', WENT_WRONG, 'Try Again']);
       expect(groupKeys()).toEqual([]);
       expect(hasBrisbane()).toBe(false);
     },
@@ -733,13 +847,32 @@ describe('SHARING-217.1', () => {
     await tapTab('Groups');
     await openRequest('Brisbane');
 
-    expect(joinLines()).toEqual([
-      APPROVED,
-      'Brisbane',
-      WENT_WRONG,
-      'Try Again',
-    ]);
+    await expectJoinLines([APPROVED, 'Brisbane', WENT_WRONG, 'Try Again']);
     expect(hasBrisbane()).toBe(false);
+  });
+});
+
+describe('SHARING-217.1', () => {
+  test('[SHARING-217.1] does not ask for the snapshot when the key cannot be saved, and joins on Try Again once it can', async () => {
+    await waiting();
+    memberApproves();
+    failSecureStoreWrites();
+
+    await tapTab('Groups');
+    await openRequest('Brisbane');
+
+    await expectJoinLines([APPROVED, 'Brisbane', WENT_WRONG, 'Try Again']);
+    expect(requestsReceived().filter(isSnapshotQuestion)).toEqual([]);
+    expect(groupKeys()).toEqual([]);
+    expect(hasBrisbane()).toBe(false);
+    secureStoreWorks();
+
+    await pressInJoin('Try Again');
+
+    await waitFor(() => expect(hasBrisbane()).toBe(true));
+    expect(groupKeys().map(({ key }) => key)).toEqual([
+      `group-key.${BRISBANE_ID}.1`,
+    ]);
   });
 });
 
@@ -761,6 +894,14 @@ describe('SHARING-218.1', () => {
       'an entry of its own for a member the snapshot does not hold',
       { ownEntry: { memberId: '00000000-0000-4000-8000-000000000002' } },
     ],
+    [
+      'another box key for the phone that approved than the box was opened with',
+      { approverEntry: { boxKey: 'cd'.repeat(32) } },
+    ],
+    [
+      'an entry of its own for a member that was removed from the group',
+      { memberRemoved: true },
+    ],
   ])(
     '[SHARING-218.1] does not take in a snapshot whose roster has %s',
     async (_case, changes) => {
@@ -770,15 +911,57 @@ describe('SHARING-218.1', () => {
       await tapTab('Groups');
       await openRequest('Brisbane');
 
-      expect(joinLines()).toEqual([
-        APPROVED,
-        'Brisbane',
-        WENT_WRONG,
-        'Try Again',
-      ]);
+      await expectJoinLines([APPROVED, 'Brisbane', WENT_WRONG, 'Try Again']);
       expect(hasBrisbane()).toBe(false);
     },
   );
+});
+
+describe('SHARING-143.2', () => {
+  test('[SHARING-143.2] asks what became of a request the API will not cancel because the phone is a member by now, and joins', async () => {
+    await waiting();
+    await tapTab('Groups');
+    await openRequest('Brisbane');
+    await expectAsked(1);
+    await expectJoinLines(WAITING_FOR_BRISBANE);
+    // A member approves it while the person looks at Join Group, which has asked already.
+    memberApproves();
+
+    await pressInJoin(CANCEL);
+    await pressAlertButton(CANCEL);
+
+    await waitFor(() =>
+      expect(navigationBarTitles(tab('Groups'))).toEqual([
+        'Groups',
+        'Brisbane',
+      ]),
+    );
+    expect(cancellations()).toHaveLength(1);
+    expect(asked()).toHaveLength(2);
+    expect(isOpen(TITLE)).toBe(false);
+    expect(hasBrisbane()).toBe(true);
+    // The only alert is the one that asked whether to cancel.
+    expect(alertsShown()).toHaveLength(1);
+  });
+});
+
+describe('SHARING-204.1', () => {
+  test('[SHARING-204.1] gives a question about its request up after 60 seconds without an answer: opening the request asks again, and says nothing', async () => {
+    await waiting();
+    const answer = keepAnswersBack(isAsking);
+    await tapTab('Groups');
+    await openRequest('Brisbane');
+    await expectAsked(1);
+
+    await secondsPass(65);
+    await closeJoin();
+    await openRequest('Brisbane');
+
+    await expectAsked(2);
+    expect(alertsShown()).toEqual([]);
+    await expectJoinLines(WAITING_FOR_BRISBANE);
+    await answer();
+  });
 });
 
 describe('SHARING-222.1', () => {
@@ -789,10 +972,10 @@ describe('SHARING-222.1', () => {
     await tapTab('Groups');
     await openRequest('Brisbane');
 
-    expect(joinLines()).toEqual([ALREADY_IN]);
-    expect(rowsWith(CODE_A)).toEqual([]);
+    await expectJoinLines([ALREADY_IN]);
+    await waitFor(() => expect(rowsWith(CODE_A)).toEqual([]));
     await closeJoin();
-    expect(await cardLines()).toBeUndefined();
+    await expectCard(undefined);
   });
 });
 
@@ -801,12 +984,12 @@ describe('SHARING-225.1', () => {
     await waiting();
     await tapTab('Groups');
     await openRequest('Brisbane');
-    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+    await expectJoinLines(WAITING_FOR_BRISBANE);
     memberRejects();
 
     await comesBack();
 
-    expect(joinLines()).toEqual(DECLINED);
+    await expectJoinLines(DECLINED);
     expect(isOpen(TITLE)).toBe(true);
   });
 
@@ -816,11 +999,11 @@ describe('SHARING-225.1', () => {
     await openLink(BRISBANE_LINK);
     apiLosesNextAnswer(isSending);
     await send();
-    expect(joinLines()[0]).toBe(NOT_SENT);
+    await waitFor(() => expect(joinLines()[0]).toBe(NOT_SENT));
 
     await comesBack();
 
-    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+    await expectJoinLines(WAITING_FOR_BRISBANE);
   });
 });
 
@@ -829,13 +1012,13 @@ describe('GROUPS-108.2', () => {
     await waiting('Casey');
     cardBecomes(taken(CASEY_ID));
     await comesBack();
-    expect(await cardLines()).toEqual(['Brisbane', CHOOSE_CARD]);
+    await expectCard(['Brisbane', CHOOSE_CARD]);
     expect(requestCard('Brisbane')).toBeDefined();
 
     memberRejects();
     await comesBack();
 
-    expect(await cardLines()).toEqual(['Brisbane', DECLINED_CARD]);
+    await expectCard(['Brisbane', DECLINED_CARD]);
     expect(requestCard('Brisbane')).toBeDefined();
   });
 
@@ -845,8 +1028,8 @@ describe('GROUPS-108.2', () => {
 
     await comesBack();
 
-    expect(await cardLines()).toBeUndefined();
-    expect(cardNames()).toEqual(['Open Brisbane']);
+    await expectCard(undefined);
+    await waitFor(() => expect(cardNames()).toEqual(['Open Brisbane']));
   });
 });
 
@@ -857,16 +1040,19 @@ describe('SHARING-140.2', () => {
     await openLink(BRISBANE_LINK);
     apiLosesNextAnswer(isSending);
     await send();
-    expect(joinLines()[0]).toBe(NOT_SENT);
+    await waitFor(() => expect(joinLines()[0]).toBe(NOT_SENT));
     memberApproves();
-    // The answer to this question is held back, so that Try Again is what finds out.
+    const sent = sendings().length;
     const before = asked().length;
 
     await pressInJoin('Try Again');
     await joinSettles();
     await waitFor(() => expect(hasBrisbane()).toBe(true));
 
+    // Sending found the phone a member, and the question that followed found the approval.
+    expect(sendings()).toHaveLength(sent + 1);
     expect(asked().length).toBeGreaterThan(before);
-    expect(joinLines).toBeDefined();
+    expect(rowsWith(CODE_A, S)).toEqual([]);
+    await waitFor(() => expect(isOpen(TITLE)).toBe(false));
   });
 });

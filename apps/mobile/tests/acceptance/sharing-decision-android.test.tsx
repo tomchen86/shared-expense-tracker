@@ -1,4 +1,4 @@
-import { alertsShown, tapMember } from './group-details-app';
+import { alertsShown, expectMembers, tapMember } from './group-details-app';
 import { mistakes, removeWorld, resetWorld } from './sharing-app';
 import {
   APPROVE,
@@ -13,7 +13,7 @@ import {
   startWithInvite,
   syncs,
 } from './sharing-decision-app';
-import { eachTestGetsAPhone, showMembers } from './sync-app';
+import { YOU, eachTestGetsAPhone, showMembers } from './sync-app';
 import { startEventApi } from './sync-screens-app';
 
 // Runs on Android only (apps/mobile/jest.config.cjs), as sharing-decision.test.tsx does on
@@ -93,6 +93,7 @@ async function inMembersWithDana() {
   await asks();
   await syncs();
   await showMembers('Brisbane');
+  await expectMembers([DANA_ROW, YOU, 'Casey', 'Blake', 'Add Member']);
 }
 
 test("[GROUPS-132.1] opens a dialog titled with the applicant's name on Android, with Approve, Decline and Cancel", async () => {

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-共同帳本靠金鑰認手機，內容加密之後才離開手機（ADR-0015、ADR-0022）。這裡有十塊：`packages/domain` 的加密工具（SHARING-1.1 到 16.1）；手機 app 的裝置身分，和它怎麼替送給 API 的每個請求簽名（SHARING-19.2 到 30.1、43.1、45.1、46.1）；API 怎麼替手機註冊、檢查簽名和限制請求（SHARING-31.2 到 42.1、44.1、47.1 到 51.1）；邀請連結的基礎（SHARING-60.1 到 76.1）；API 怎麼替共同帳本存下邀請和它的名片（SHARING-77.1 到 89.1）；手機 app 怎麼讓群組變成共同帳本、建立和撤回邀請（SHARING-90.1 到 111.1）；API 怎麼替邀請存下加入的申請（SHARING-112.1 到 122.1）；手機 app 怎麼讓拿到邀請連結的人看到群組、選自己是誰、送出申請並等待同意（SHARING-123.1 到 145.1）；API 怎麼讓成員手機列出、同意和拒絕申請，並告訴申請的手機結果（SHARING-170.1 到 187.1）；和手機 app 怎麼讓成員同意或拒絕申請、讓申請的手機得知結果並加入（SHARING-190.1 到 229.1）。手機 app 和 API 用 `packages/domain` 的同一個函式組出要簽的 bytes（SHARING-17.1、18.1）。裝置身分和簽名沒有畫面：授權失效的手機除了不能邀請（SHARING-106.1）之外畫面上顯示什麼，不在這裡。
+共同帳本靠金鑰認手機，內容加密之後才離開手機（ADR-0015、ADR-0022）。這裡有十塊：`packages/domain` 的加密工具（SHARING-1.1 到 16.1）；手機 app 的裝置身分，和它怎麼替送給 API 的每個請求簽名（SHARING-19.2 到 30.1、43.1、45.1、46.1）；API 怎麼替手機註冊、檢查簽名和限制請求（SHARING-31.2 到 42.1、44.1、47.1 到 51.1）；邀請連結的基礎（SHARING-60.1 到 76.1）；API 怎麼替共同帳本存下邀請和它的名片（SHARING-77.1 到 89.1）；手機 app 怎麼讓群組變成共同帳本、建立和撤回邀請（SHARING-90.1 到 111.1）；API 怎麼替邀請存下加入的申請（SHARING-112.1 到 122.1）；手機 app 怎麼讓拿到邀請連結的人看到群組、選自己是誰、送出申請並等待同意（SHARING-123.1 到 145.1）；API 怎麼讓成員手機列出、同意和拒絕申請，並告訴申請的手機結果（SHARING-170.1 到 188.1）；和手機 app 怎麼讓成員同意或拒絕申請、讓申請的手機得知結果並加入（SHARING-190.1 到 229.1）。手機 app 和 API 用 `packages/domain` 的同一個函式組出要簽的 bytes（SHARING-17.1、18.1）。裝置身分和簽名沒有畫面：授權失效的手機除了不能邀請（SHARING-106.1）之外畫面上顯示什麼，不在這裡。
 
 加密工具：用鑰匙加密和解密內容、用私鑰簽名、把內容裝成只有另一支手機打得開的 box，以及從密鑰材料導出金鑰。工具放在 `packages/domain` 自己的入口，給手機 app 用；它不存任何東西、不連網路，也不自己產生鑰匙、私鑰、nonce 或 salt（SHARING-14.1）。演算法是 XChaCha20-Poly1305（draft-irtf-cfrg-xchacha-03）、Ed25519（RFC 8032）、X25519（RFC 7748）和 HKDF-SHA-256（RFC 5869）。bytes 是一個 `Uint8Array`，以十六進位寫出：`0x01` 是一個 byte，沒有 `0x` 的一串是依序的 bytes，`…` 是省略的部分。鑰匙是 32 bytes 的對稱金鑰。nonce 是呼叫者給的 24 bytes，每次加密或裝 box 都要是新的隨機值。附加資料是一段不加密、但解密時要給出一模一樣的 bytes，可以是空的。密文是 SHARING-1.1 的格式，它的第一個 byte 是格式版本。簽名私鑰是 32 bytes 的 Ed25519 私鑰，box 私鑰是 32 bytes 的 X25519 私鑰，各有一把 32 bytes 的公開金鑰（SHARING-5.1、7.1）。共享密鑰是 X25519 用一把 box 私鑰和另一把 box 公開金鑰算出的 32 bytes。box 是交出方裝給收受方的密文（SHARING-8.1）：情境是裝 box 時給的一段 bytes，可以是空的；salt 是裝 box 時可以再給的 32 bytes；打開時兩者都要和裝的時候一樣。密鑰材料是導出金鑰的來源，用途是用來區分金鑰的一段 bytes，兩者都可以是字串（SHARING-12.1）。解密密文或打開 box 有兩種失敗：解不開（SHARING-3.1、10.1、11.1）和不認得格式版本（SHARING-4.2），兩種都不回傳任何內容。`packages/domain` 拒絕，是丟出錯誤，不產出任何結果。不是 bytes 的輸入一律先被拒絕（SHARING-16.1），只有導出金鑰的密鑰材料和用途也可以是字串；其他的規則說的都是這樣的輸入。沒給一個輸入，是指沒有它，或它是 `undefined`；只有 salt 可以不給。SHARING-15.1 列出的輸入（鑰匙、私鑰、nonce、box 的 salt 和裝 box 時收受方的公開金鑰）長度不對時也一律先被拒絕；要解密的 bytes、要打開的 box 和交出方的公開金鑰不管多長，都照其他的規則回報。
 
@@ -38,9 +38,9 @@ API 的情境（SHARING-77.1 到 89.1）沿用 sync 的 API 情境：T、Taylor 
 
 同意或拒絕（ADR-0015、ADR-0039）：共同帳本的任何一位成員都能在自己的手機上看到加入的申請，同意或拒絕；同意之後，新手機拿到群組鑰匙和全部資料，它在群組裡就是申請時選的那位成員，每位成員都看得到。兩位成員同時處理同一個申請時，API 以先到的為準。申請的通知、移除手機和接手已經有手機的成員都不在這裡。
 
-同意的 API（SHARING-170.1 到 187.1）是四個簽名的請求，先通過對簽名的請求的檢查。前三個只有群組的成員手機能用：列出申請是 `GET /groups/<群組 ID>/requests`，接著列時是 `GET /groups/<群組 ID>/requests?after=<裝置 ID>`；拒絕是 `DELETE /groups/<群組 ID>/requests/<裝置 ID>`，沒有內容；同意是 `POST /groups/<群組 ID>/requests/<裝置 ID>/approval`，內容是 JSON。路徑裡的裝置 ID 是申請的那支手機的。第四個是申請的手機問結果：`GET /invites/<代號>/request`。群組的申請，是這個群組有效的邀請底下的申請；群組沒有有效的邀請時一個都沒有。同意的內容有七個欄位：`request` 是那個申請的內容的 SHA-256，寫成 64 個小寫十六進位字元，讓 API 認出同意的是不是它現在存著的那一份；`cursor` 是同意的手機在這個群組的 cursor；`snapshotId` 是它替申請的手機上傳的快照的快照 ID（sync）；`senderKey` 是它的 box 公開金鑰，32 bytes 的小寫十六進位寫法；`epoch` 是鑰匙世代；`box` 是裝著群組鑰匙、只有申請的手機打得開的 box（SHARING-198.1），41 到 65,536 bytes 的小寫十六進位寫法，API 不解讀它；`events` 是照上傳的寫法寫的事件（SYNC-53.1），API 也不解讀。交接是 API 替一支被同意的手機記的東西：邀請的代號、申請的裝置 ID、同意的裝置 ID、交出方的 box 公開金鑰、鑰匙世代和 box。API 回答列出的一頁、拒絕好了、同意好了和問到的結果，指的都是狀態碼 200。同意的 API 拒絕一個請求，是回應一個帶著原因的拒絕，不做這個請求要做的事：原因是內容不對（400）、不是成員（403）、沒有這個申請（404，`no-request`）、沒有跟上（409，`behind`）、鑰匙世代（409，sync 的同一個原因）、沒有快照（404，sync 的同一個原因）、成員手機滿了（409，`members-full`）或群組滿了（413，sync 的同一個原因）；問結果另外有沒有這個邀請（404）和已經是成員（409）。請求的內容和每種回應有哪些欄位、各是什麼型別，定義在 `packages/domain` 的程式裡，手機 app 和 API 用同一份。
+同意的 API（SHARING-170.1 到 188.1）是四個簽名的請求，先通過對簽名的請求的檢查。前三個只有群組的成員手機能用：列出申請是 `GET /groups/<群組 ID>/requests`，接著列時是 `GET /groups/<群組 ID>/requests?after=<裝置 ID>`；拒絕是 `DELETE /groups/<群組 ID>/requests/<裝置 ID>?request=<那個申請的內容的 SHA-256>`，沒有內容；同意是 `POST /groups/<群組 ID>/requests/<裝置 ID>/approval`，內容是 JSON。路徑裡的裝置 ID 是申請的那支手機的。第四個是申請的手機問結果：`GET /invites/<代號>/request`。群組的申請，是這個群組有效的邀請底下的申請；群組沒有有效的邀請時一個都沒有。同意的內容有七個欄位：`request` 是那個申請的內容的 SHA-256，寫成 64 個小寫十六進位字元，讓 API 認出同意的是不是它現在存著的那一份，拒絕的網址帶的 `request` 也是它；`cursor` 是同意的手機在這個群組的 cursor；`snapshotId` 是它替申請的手機上傳的快照的快照 ID（sync）；`senderKey` 是它的 box 公開金鑰，32 bytes 的小寫十六進位寫法；`epoch` 是鑰匙世代；`box` 是裝著群組鑰匙、只有申請的手機打得開的 box（SHARING-198.1），41 到 65,536 bytes 的小寫十六進位寫法，API 不解讀它；`events` 是照上傳的寫法寫的事件（SYNC-53.1），API 也不解讀。交接是 API 替一支被同意的手機記的東西：邀請的代號、申請的裝置 ID、同意的裝置 ID、交出方的 box 公開金鑰、鑰匙世代和 box。API 回答列出的一頁、拒絕好了、同意好了和問到的結果，指的都是狀態碼 200。同意的 API 拒絕一個請求，是回應一個帶著原因的拒絕，不做這個請求要做的事：原因是內容不對（400）、不是成員（403）、沒有這個申請（404，`no-request`）、沒有跟上（409，`behind`）、鑰匙世代（409，sync 的同一個原因）、沒有快照（404，sync 的同一個原因）、成員手機滿了（409，`members-full`）或群組滿了（413，sync 的同一個原因）；問結果另外有沒有這個邀請（404）和已經是成員（409）。請求的內容和每種回應有哪些欄位、各是什麼型別，定義在 `packages/domain` 的程式裡，手機 app 和 API 用同一份。
 
-同意的 API 的情境沿用申請 API 的情境和 sync 的 API 的快照情境。除非另外說明：Brisbane 有代號 A 的有效邀請，沒有事件；Casey 的手機在代號 A 送出了申請 P，它不是成員手機；S 是 Taylor 的手機給 Casey 的手機的完整快照，涵蓋的序號是 0。K 是 32 bytes、B 是 200 bytes 的隨機 bytes，E 是一個 200 bytes 的事件。「同意 Casey」是 Taylor 的手機送 `POST /groups/9b2f6c1e-8d47-4f3a-b1c5-2e7d90a4f6b8/requests/7c9e6679-7425-40de-944b-e07fc1f90ae7/approval`，內容是 `{"request":"<P 的 SHA-256>","cursor":0,"snapshotId":"<S 的快照 ID>","senderKey":"<K 的十六進位>","epoch":1,"box":"<B 的十六進位>","events":[{"id":"<E 的事件 ID>","content":"<E 的內容的十六進位>"}]}`；「拒絕 Casey」是它送 `DELETE /groups/9b2f6c1e-8d47-4f3a-b1c5-2e7d90a4f6b8/requests/7c9e6679-7425-40de-944b-e07fc1f90ae7`，沒有內容。
+同意的 API 的情境沿用申請 API 的情境和 sync 的 API 的快照情境。除非另外說明：Brisbane 有代號 A 的有效邀請，沒有事件；Casey 的手機在代號 A 送出了申請 P，它不是成員手機；S 是 Taylor 的手機給 Casey 的手機的完整快照，涵蓋的序號是 0。K 是 32 bytes、B 是 200 bytes 的隨機 bytes，E 是一個 200 bytes 的事件。「同意 Casey」是 Taylor 的手機送 `POST /groups/9b2f6c1e-8d47-4f3a-b1c5-2e7d90a4f6b8/requests/7c9e6679-7425-40de-944b-e07fc1f90ae7/approval`，內容是 `{"request":"<P 的 SHA-256>","cursor":0,"snapshotId":"<S 的快照 ID>","senderKey":"<K 的十六進位>","epoch":1,"box":"<B 的十六進位>","events":[{"id":"<E 的事件 ID>","content":"<E 的內容的十六進位>"}]}`；「拒絕 Casey」是它送 `DELETE /groups/9b2f6c1e-8d47-4f3a-b1c5-2e7d90a4f6b8/requests/7c9e6679-7425-40de-944b-e07fc1f90ae7?request=<P 的 SHA-256>`，沒有內容。
 
 手機 app 同意或拒絕（SHARING-190.1 到 204.1）：收到的申請是成員的手機從 API 列出、用邀請的字串解開的申請（SHARING-191.1），只留在記憶體裡，不存進本機資料。申請的名字是申請的明文的 `name`，選的成員是 `memberId` 指的成員，`memberId` 是 `null` 的是要當新成員的申請（SHARING-135.1）。名冊、名冊紀錄和有手機的成員見 sync（SYNC-250.1、SYNC-251.1）。處理一個申請，是替它送同意或拒絕到有結果為止。它的畫面在 groups：群組的畫面上的按鈕（GROUPS-130.1）、Members 的申請那一區（GROUPS-131.1）和申請的選單（GROUPS-132.1）。這裡的情境沿用 SHARING-90.1 的手機 app 情境：這支手機是 Taylor 的手機，Brisbane 的成員依序是 Taylor、Casey 和 Blake，已經邀請過，所以是共同帳本，有有效的邀請，它的代號是 A、字串是 S；除非另外說明，Brisbane 沒有待上傳的事件，API 上它只有 Taylor 的手機一支成員手機。Dana 的手機是另一支註冊過的手機，裝置 ID 是 D，使用者 ID 是 `c9bf9e57-1685-4c89-bafb-ff5af830be8a`，有自己的 seed；「Dana 申請當新成員」是 API 上代號 A 底下有 D 的申請，內容是用 S 的申請金鑰加密的 `{"name":"Dana","memberId":null,"userId":"c9bf9e57-1685-4c89-bafb-ff5af830be8a","boxKey":"<Dana 的手機的 box 公開金鑰>"}`，照 SHARING-135.1 補了空格；「Dana 申請當 Casey」的 `memberId` 是 Casey 的成員 ID。「列出申請」是這支手機同步 Brisbane 之後照 SHARING-190.1 做的事。
 
@@ -2570,9 +2570,9 @@ IF 送出申請的請求來自在這個邀請還沒有申請的手機，而這�
 - **WHEN** 代號 A 已經有 20 個申請；Taylor 的手機另外建立了 Tokyo 和它代號 B 的邀請，Casey 的手機在代號 B 送申請 P
 - **THEN** 回答申請送出了
 
-### Requirement: SHARING-117.1 取消申請
+### Requirement: SHARING-117.2 取消申請
 
-WHEN 註冊過的手機送取消申請的請求，the API SHALL 不再存著這支手機在這個邀請的申請，並回答取消好了，回應帶著代號；別支手機的申請不變。這支手機在這個邀請沒有申請時——沒有申請過、已經取消、邀請已經過期或撤回，或 API 沒見過這個代號——只回答取消好了，什麼都不改。
+WHEN 註冊過的手機送取消申請的請求，the API SHALL 不再存著這支手機在這個邀請的申請，並回答取消好了，回應帶著代號；別支手機的申請不變。這支手機在這個邀請沒有申請時——沒有申請過、已經取消、邀請已經過期或撤回，或 API 沒見過這個代號——只回答取消好了，什麼都不改。IF API 存著這支手機用這個代號被同意的交接（SHARING-173.1），邀請過期或被撤回之後也一樣，或這個代號是有效的邀請的代號、而這支手機是那個邀請的群組的成員手機，THEN the API SHALL 拒絕，原因是已經是成員，什麼都不改：它的申請已經被同意了，沒有可以取消的，手機 app 改問結果（SHARING-143.2）。寫得不對的取消先照 SHARING-118.1 被拒絕。
 
 #### Scenario: 取消
 
@@ -2597,6 +2597,16 @@ WHEN 註冊過的手機送取消申請的請求，the API SHALL 不再存著這�
 #### Scenario: 成員手機
 
 - **WHEN** Taylor 的手機送取消代號 A 的申請的請求
+- **THEN** 被拒絕，原因是已經是成員（409），回應是 `{"error":"already-a-member"}`，什麼都不改
+
+#### Scenario: 同意之後才取消
+
+- **WHEN** Taylor 的手機同意 Casey 之後（SHARING-173.1），Casey 的手機送取消代號 A 的申請的請求；之後代號 A 被撤回，或 API 的時間到了 T+604,800,000，再送一次
+- **THEN** 都被拒絕，原因是已經是成員；Casey 的手機仍是成員手機，它問結果仍得到同意了（SHARING-183.1）
+
+#### Scenario: 成員手機取消過期的代號
+
+- **WHEN** 代號 A 過期之後，Taylor 的手機送取消代號 A 的申請的請求
 - **THEN** 回答取消好了，什麼都不改
 
 ### Requirement: SHARING-118.1 申請 API 的請求寫得不對
@@ -3119,7 +3129,7 @@ IF 送出申請的請求沒有得到 API 的回答，被對簽名的請求的檢
 
 ### Requirement: SHARING-140.2 申請被拒絕時不留下申請
 
-IF 送出申請的請求被申請 API 拒絕，或因為內容太大被拒絕（SHARING-48.2）：這是對簽名的請求的檢查裡，唯一一種原樣再送也不會過的，THEN the mobile app SHALL 刪掉本機資料裡的這個申請，讓 Join Group 的內容只有一句話：原因是沒有這個邀請時，「This invite link can't be used. Ask the person who sent it to send it again.」；申請太多時，「Too many people are waiting to join this group. Try again later.」；內容不對或內容太大時，「Something went wrong. Try again later.」。原因是已經是成員時不先刪：這支手機可能剛被同意，所以先問一次結果（SHARING-210.1），API 回答同意了就照 SHARING-216.1 加入，其他的回答、沒有得到回應和看不懂的回應才刪掉申請，Join Group 的內容只有「This phone is already in this group.」。只有帶著原因的拒絕才算：沒有帶原因的 404 是看不懂的回應（SHARING-139.2）。
+IF 送出申請的請求被申請 API 拒絕，或因為內容太大被拒絕（SHARING-48.2）：這是對簽名的請求的檢查裡，唯一一種原樣再送也不會過的，THEN the mobile app SHALL 刪掉本機資料裡的這個申請，讓 Join Group 的內容只有一句話：原因是沒有這個邀請時，「This invite link can't be used. Ask the person who sent it to send it again.」；申請太多時，「Too many people are waiting to join this group. Try again later.」；內容不對或內容太大時，「Something went wrong. Try again later.」。原因是已經是成員時不刪：這支手機可能剛被同意，所以問一次結果（SHARING-210.1），照問到的處理：API 回答同意了就加入（SHARING-216.1）；仍說已經是成員就刪掉申請，Join Group 的內容只有「This phone is already in this group.」（SHARING-222.1）；問不到時申請留著，仍是還沒送出的，下次再問（SHARING-215.1），因為它可能已經被同意了；這時 Join Group 照 SHARING-139.2 顯示，中間那一句在問結果的請求沒有得到回應時是「Connect to the internet and try again.」，其他情況是「Something went wrong. Try again later.」。只有帶著原因的拒絕才算：沒有帶原因的 404 是看不懂的回應（SHARING-139.2）。
 
 #### Scenario: 邀請在送出之前被撤回
 
@@ -3137,8 +3147,14 @@ IF 送出申請的請求被申請 API 拒絕，或因為內容太大被拒絕（
 - **THEN** API 在送出申請之後收到一個問結果的請求；Join Group 的內容只有「This phone is already in this group.」；本機資料沒有申請
 
 #### Scenario: 剛被同意
+
 - **WHEN** API 收下了申請，回應卻沒送到手機；成員同意了它；之後按「Try Again」，API 拒絕送出申請的請求，原因是已經是成員
 - **THEN** 手機問結果，API 回答同意了，手機照 SHARING-216.1 加入；本機資料的申請沒有被當成被拒絕的刪掉
+
+#### Scenario: 問不到結果
+
+- **WHEN** API 拒絕送出申請的請求，原因是已經是成員；接著問結果的請求沒有得到回應，或 API 回 500
+- **THEN** 本機資料的申請還在，是還沒送出的，Groups 根畫面仍有它的卡片；Join Group 由上而下是「Your request hasn't been sent.」、「Connect to the internet and try again.」（回 500 時是「Something went wrong. Try again later.」）、「Try Again」和「Cancel Request」，沒有「This phone is already in this group.」
 
 #### Scenario: 內容不對或內容太大
 
@@ -3147,7 +3163,7 @@ IF 送出申請的請求被申請 API 拒絕，或因為內容太大被拒絕（
 
 ### Requirement: SHARING-141.1 送不出申請時留在表單
 
-IF 使用者按「Send Request」時這支手機授權失效（SHARING-29.1），裝置身分產生不了（SHARING-24.1），或申請存不進本機資料，THEN the mobile app SHALL 不發出網路請求，不留下申請，Join Group 仍顯示表單，名字欄位和選著的那一列都不變，並跳出標題是「Unable to Send Request」的提示框：授權失效時訊息是「This phone can't join a group.」，其他情況是「Something went wrong. Try again later.」。IF 使用者替還沒送出的申請按「Try Again」時這支手機授權失效，THEN SHALL 不發出網路請求，跳出同一個「This phone can't join a group.」的提示框，申請留著，Join Group 顯示的不變；這個申請之後只能取消（SHARING-143.1）。
+IF 使用者按「Send Request」時這支手機授權失效（SHARING-29.1），裝置身分產生不了（SHARING-24.1），或申請存不進本機資料，THEN the mobile app SHALL 不發出網路請求，不留下申請，Join Group 仍顯示表單，名字欄位和選著的那一列都不變，並跳出標題是「Unable to Send Request」的提示框：授權失效時訊息是「This phone can't join a group.」，其他情況是「Something went wrong. Try again later.」。IF 使用者替還沒送出的申請按「Try Again」時這支手機授權失效，THEN SHALL 不發出網路請求，跳出同一個「This phone can't join a group.」的提示框，申請留著，Join Group 顯示的不變；這個申請之後只能取消（SHARING-143.2）。
 
 #### Scenario: 授權失效
 
@@ -3171,7 +3187,7 @@ IF 使用者按「Send Request」時這支手機授權失效（SHARING-29.1）�
 
 ### Requirement: SHARING-142.1 取消申請
 
-WHEN 使用者在 Join Group 按「Cancel Request」，the mobile app SHALL 先跳出提示框：標題「Cancel Request?」，訊息「You'll need the invite link to ask again.」，按鈕是「Keep Waiting」和破壞性的「Cancel Request」。按提示框的「Cancel Request」才送取消申請的請求（SHARING-117.1），路徑帶著申請的代號；API 回答取消好了之後，刪掉本機資料裡的這個申請，關閉 Join Group。還沒送出的申請也先送取消申請的請求：API 可能已經收下它。按「Keep Waiting」什麼都不做。一個申請同時只有一個請求在路上：取消申請的請求還沒有結果時，又確認一次取消或按「Try Again」，都不另外發出請求，等的是同一次取消的結果。取消申請的請求還沒有結果時關閉了 Join Group，再為同一個申請打開它（從連結，或從申請的卡片，GROUPS-108.2），Join Group SHALL 顯示那個申請，等的仍是同一次取消的結果；結果到了，和 Join Group 沒有關過一樣：取消好了就刪掉申請、關閉 Join Group，沒成功就照 SHARING-143.1 跳出提示框。
+WHEN 使用者在 Join Group 按「Cancel Request」，the mobile app SHALL 先跳出提示框：標題「Cancel Request?」，訊息「You'll need the invite link to ask again.」，按鈕是「Keep Waiting」和破壞性的「Cancel Request」。按提示框的「Cancel Request」才送取消申請的請求（SHARING-117.2），路徑帶著申請的代號；API 回答取消好了之後，刪掉本機資料裡的這個申請，關閉 Join Group。還沒送出的申請也先送取消申請的請求：API 可能已經收下它。按「Keep Waiting」什麼都不做。一個申請同時只有一個請求在路上：取消申請的請求還沒有結果時，又確認一次取消或按「Try Again」，都不另外發出請求，等的是同一次取消的結果。取消申請的請求還沒有結果時關閉了 Join Group，再為同一個申請打開它（從連結，或從申請的卡片，GROUPS-108.2），Join Group SHALL 顯示那個申請，等的仍是同一次取消的結果；結果到了，和 Join Group 沒有關過一樣：取消好了就刪掉申請、關閉 Join Group，沒成功就照 SHARING-143.2 跳出提示框。
 
 #### Scenario: 取消
 
@@ -3208,9 +3224,9 @@ WHEN 使用者在 Join Group 按「Cancel Request」，the mobile app SHALL 先�
 - **WHEN** API 收下了申請，回應卻沒送到手機；在 Join Group 按「Cancel Request」，再按提示框的「Cancel Request」
 - **THEN** API 收到取消申請的請求，API 上不再有這支手機的申請；Join Group 關閉，本機資料沒有申請
 
-### Requirement: SHARING-143.1 取消沒成功時申請還在
+### Requirement: SHARING-143.2 取消沒成功時申請還在
 
-IF 取消申請的請求沒有得到取消好了的回答，或 API 回答取消好了、本機資料卻存不進去，THEN the mobile app SHALL 留著本機資料裡的申請，Join Group 顯示的不變，並跳出標題是「Unable to Cancel Request」的提示框：沒有得到回應時訊息是「Connect to the internet and try again.」，其他情況是「Something went wrong. Try again later.」。之後可以再取消一次。取消的結果到的時候 Join Group 關著，或顯示的是別的連結或別的申請，SHALL 照樣照結果處理本機資料——取消好了就刪掉申請，沒成功就留著——但不跳出提示框，不打開也不關閉 Join Group，不改它顯示的；關過又為同一個申請打開了的 Join Group 不在這裡面，它照 SHARING-142.1 等同一次取消的結果。IF 這支手機授權失效（SHARING-29.1），THEN SHALL 不送請求，直接刪掉本機資料裡的這個申請並關閉 Join Group：它已經不能替那個裝置身分做任何事。
+IF 取消申請的請求沒有得到取消好了的回答，或 API 回答取消好了、本機資料卻存不進去，THEN the mobile app SHALL 留著本機資料裡的申請，Join Group 顯示的不變，並跳出標題是「Unable to Cancel Request」的提示框：沒有得到回應時訊息是「Connect to the internet and try again.」，其他情況是「Something went wrong. Try again later.」。之後可以再取消一次。IF 取消申請的請求被拒絕，原因是已經是成員（SHARING-117.2），THEN the mobile app SHALL 不跳出提示框，留著申請，替它問一次結果（SHARING-210.1），照問到的處理：成員在這之前同意了它，所以這支手機會加入（SHARING-216.1）；Join Group 關著時也一樣。取消的結果到的時候 Join Group 關著，或顯示的是別的連結或別的申請，SHALL 照樣照結果處理本機資料——取消好了就刪掉申請，沒成功就留著——但不跳出提示框，不打開也不關閉 Join Group，不改它顯示的；關過又為同一個申請打開了的 Join Group 不在這裡面，它照 SHARING-142.1 等同一次取消的結果。IF 這支手機授權失效（SHARING-29.1），THEN SHALL 不送請求，直接刪掉本機資料裡的這個申請並關閉 Join Group：它已經不能替那個裝置身分做任何事。
 
 #### Scenario: 沒有網路
 
@@ -3247,6 +3263,11 @@ IF 取消申請的請求沒有得到取消好了的回答，或 API 回答取消
 - **WHEN** 送出申請之後，這支手機的 secure store 裡沒有了它的 seed；按「Cancel Request」，再按提示框的「Cancel Request」
 - **THEN** API 沒有收到取消申請的請求；Join Group 關閉，本機資料沒有申請
 
+#### Scenario: 取消遇上同意
+
+- **WHEN** Join Group 顯示「Waiting for Approval」時成員同意了這個申請；這支手機還沒問到，按「Cancel Request」，再按提示框的「Cancel Request」
+- **THEN** API 拒絕取消申請的請求，原因是已經是成員；沒有跳出提示框；API 接著收到問結果的請求，回答同意了；這支手機加入好了，Join Group 關閉，顯示 Brisbane 的畫面（SHARING-220.1）
+
 ### Requirement: SHARING-144.2 等待期間照常記帳，重新啟動之後申請還在
 
 WHILE 本機資料存著申請，the mobile app SHALL 照常讓使用者新增和修改個人和群組的資料，不因此發出網路請求；關閉 Join Group 不取消申請；重新啟動 app 之後申請還在，app 打開時只替它問結果（SHARING-210.1），不重送，也不取消。
@@ -3268,7 +3289,7 @@ WHILE 本機資料存著申請，the mobile app SHALL 照常讓使用者新增�
 
 ### Requirement: SHARING-145.1 申請加入的請求等不到回應時在 60 秒後放棄
 
-IF 讀邀請、送出申請或取消申請時送出的一個請求——註冊這支手機的請求也算——送出 60 秒之後還沒有收完回應，THEN the mobile app SHALL 放棄這個請求，把它當成沒有得到回應：讀邀請照 SHARING-133.1，送出申請照 SHARING-139.2，取消申請照 SHARING-143.1。放棄之後才到的回應不算數：Join Group 顯示的和本機資料都不因為它而變。這支手機之後送的請求不等被放棄的那一個。每個送出的請求各自算 60 秒：API 要求等待的時間（SHARING-28.1）不算在內，等過之後或校正時鐘之後再送的那一次重新算。
+IF 讀邀請、送出申請或取消申請時送出的一個請求——註冊這支手機的請求也算——送出 60 秒之後還沒有收完回應，THEN the mobile app SHALL 放棄這個請求，把它當成沒有得到回應：讀邀請照 SHARING-133.1，送出申請照 SHARING-139.2，取消申請照 SHARING-143.2。放棄之後才到的回應不算數：Join Group 顯示的和本機資料都不因為它而變。這支手機之後送的請求不等被放棄的那一個。每個送出的請求各自算 60 秒：API 要求等待的時間（SHARING-28.1）不算在內，等過之後或校正時鐘之後再送的那一次重新算。
 
 #### Scenario: 讀邀請一直沒有回應
 
@@ -3345,7 +3366,7 @@ WHEN 列出申請，the API SHALL 讓一頁的申請的內容加起來不超過 
 
 ### Requirement: SHARING-172.1 成員手機拒絕申請
 
-WHEN 成員手機送拒絕的請求，而路徑裡的那支手機在這個群組有申請，the API SHALL 不再存著那個申請，並回答拒絕好了，回應帶著那支手機的裝置 ID；別的申請不變。API 不留下它被拒絕過的紀錄：它的位置空出來（SHARING-116.1），那支手機之後可以再送申請（SHARING-112.1）。群組的每一支成員手機都可以拒絕。
+WHEN 成員手機送拒絕的請求，路徑裡的那支手機在這個群組有申請，而網址帶的 `request` 是那個申請現在的內容的 SHA-256，the API SHALL 不再存著那個申請，並回答拒絕好了，回應帶著那支手機的裝置 ID；別的申請不變。拒絕和同意一樣指名內容：成員拒絕的是他的手機列出的那一份，申請的手機在這之後換上的另一份不會被它刪掉（SHARING-174.1）。API 不留下它被拒絕過的紀錄：它的位置空出來（SHARING-116.1），那支手機之後可以再送申請（SHARING-112.1）。群組的每一支成員手機都可以拒絕。
 
 #### Scenario: 拒絕 Casey
 
@@ -3388,7 +3409,7 @@ WHEN 成員手機送同意的請求，而它沒有被 SHARING-174.1 到 SHARING-
 
 ### Requirement: SHARING-174.1 沒有這個申請時不能同意和拒絕
 
-IF 同意或拒絕的請求的路徑裡的那支手機在這個群組沒有申請——它沒有申請過、取消了、已經被同意或拒絕，或邀請已經過期或被撤回——或同意的請求帶的 `request` 不是那個申請現在的內容的 SHA-256，THEN the API SHALL 拒絕，原因是沒有這個申請，什麼都不改。
+IF 同意或拒絕的請求的路徑裡的那支手機在這個群組沒有申請——它沒有申請過、取消了、已經被同意或拒絕，或邀請已經過期或被撤回——或同意或拒絕的請求帶的 `request` 不是那個申請現在的內容的 SHA-256，THEN the API SHALL 拒絕，原因是沒有這個申請，什麼都不改。
 
 #### Scenario: 已經被拒絕
 
@@ -3402,8 +3423,8 @@ IF 同意或拒絕的請求的路徑裡的那支手機在這個群組沒有申�
 
 #### Scenario: 申請換了內容
 
-- **WHEN** Casey 的手機在代號 A 再送申請 Q，Taylor 的手機用 P 的 SHA-256 同意 Casey
-- **THEN** 被拒絕，原因是沒有這個申請；申請 Q 還在，Casey 的手機不是成員手機；改用 Q 的 SHA-256 之後同意好了
+- **WHEN** Casey 的手機在代號 A 再送申請 Q，Taylor 的手機用 P 的 SHA-256 同意 Casey，再用 P 的 SHA-256 拒絕 Casey
+- **THEN** 都被拒絕，原因是沒有這個申請；申請 Q 還在，Casey 的手機不是成員手機；改用 Q 的 SHA-256 之後同意好了
 
 #### Scenario: 邀請過期或被撤回
 
@@ -3506,7 +3527,7 @@ IF 列出、同意或拒絕的請求打的群組沒有把這支手機記成成�
 
 ### Requirement: SHARING-181.1 同意的 API 的請求寫得不對
 
-IF 同意的 API 的請求寫得不對，THEN the API SHALL 拒絕，原因是內容不對：群組 ID 或路徑裡的裝置 ID 不是小寫的第 4 版 UUID；問結果的代號不是 16 bytes 的 base64url 寫法；列出的網址帶的查詢不是剛好 `?after=` 加上一個小寫的第 4 版 UUID，拒絕、同意和問結果的網址帶了查詢；拒絕的請求帶了內容；同意的內容不是剛好有 `request`、`cursor`、`snapshotId`、`senderKey`、`epoch`、`box` 和 `events` 七個欄位的 JSON 物件，`request` 或 `senderKey` 不是 32 bytes 的小寫十六進位寫法，`cursor` 不是 0 到 9,007,199,254,740,991 之間的整數，`snapshotId` 不是小寫的第 4 版 UUID，`epoch` 不是 1 到 9,007,199,254,740,991 之間的整數，`box` 不是 41 到 65,536 bytes 的小寫十六進位寫法，或 `events` 不合上傳的事件的規定（SYNC-53.1：1 到 100 個，各有不重複的事件 ID 和 41 到 65,536 bytes 的內容）；或同意帶的 `cursor` 比群組最新的序號大。
+IF 同意的 API 的請求寫得不對，THEN the API SHALL 拒絕，原因是內容不對：群組 ID 或路徑裡的裝置 ID 不是小寫的第 4 版 UUID；問結果的代號不是 16 bytes 的 base64url 寫法；列出的網址帶的查詢不是剛好 `?after=` 加上一個小寫的第 4 版 UUID；拒絕的網址帶的查詢不是剛好 `?request=` 加上 64 個小寫十六進位字元；同意和問結果的網址帶了查詢；拒絕的請求帶了內容；同意的內容不是剛好有 `request`、`cursor`、`snapshotId`、`senderKey`、`epoch`、`box` 和 `events` 七個欄位的 JSON 物件，`request` 或 `senderKey` 不是 32 bytes 的小寫十六進位寫法，`cursor` 不是 0 到 9,007,199,254,740,991 之間的整數，`snapshotId` 不是小寫的第 4 版 UUID，`epoch` 不是 1 到 9,007,199,254,740,991 之間的整數，`box` 不是 41 到 65,536 bytes 的小寫十六進位寫法，或 `events` 不合上傳的事件的規定（SYNC-53.1：1 到 100 個，各有不重複的事件 ID 和 41 到 65,536 bytes 的內容）；或同意帶的 `cursor` 比群組最新的序號大。
 
 #### Scenario: 路徑的寫法
 
@@ -3515,8 +3536,8 @@ IF 同意的 API 的請求寫得不對，THEN the API SHALL 拒絕，原因是�
 
 #### Scenario: 查詢
 
-- **WHEN** 列出的網址後面是 `?after=casey`、`?after=`、`?x=1`，或 `?after=7c9e6679-7425-40de-944b-e07fc1f90ae7&x=1`；同意、拒絕和問結果的網址後面各帶 `?x=1`
-- **THEN** 都被拒絕，原因是內容不對
+- **WHEN** 列出的網址後面是 `?after=casey`、`?after=`、`?x=1`，或 `?after=7c9e6679-7425-40de-944b-e07fc1f90ae7&x=1`；拒絕的網址沒有查詢，或後面是 `?request=`、`?request=` 加上 63 個十六進位字元、`?request=` 加上 P 的 SHA-256 的大寫寫法、`?x=1`，或 `?request=<P 的 SHA-256>&x=1`；同意和問結果的網址後面各帶 `?x=1`
+- **THEN** 都被拒絕，原因是內容不對；申請 P 還在
 
 #### Scenario: 同意的內容
 
@@ -3525,7 +3546,7 @@ IF 同意的 API 的請求寫得不對，THEN the API SHALL 拒絕，原因是�
 
 #### Scenario: 拒絕帶了內容
 
-- **WHEN** Taylor 的手機拒絕 Casey 的請求帶著內容 `{}`
+- **WHEN** Taylor 的手機拒絕 Casey 的請求，網址帶著 P 的 SHA-256，另外帶著內容 `{}`
 - **THEN** 被拒絕，原因是內容不對；申請 P 還在
 
 #### Scenario: cursor 比群組最新的序號大
@@ -3561,6 +3582,16 @@ IF 同意的 API 的請求有不只一個會讓它被拒絕的問題，THEN the 
 
 - **WHEN** Brisbane 有三個事件、20 支成員手機，申請 P 還在；Taylor 的手機用 cursor 2、`epoch` 2 和沒有上傳過的快照 ID 同意 Casey；把 cursor 改成 3 再送；再把 `epoch` 改成 1；再把快照 ID 改成 S 的
 - **THEN** 四次的原因依序是沒有跟上、鑰匙世代、沒有快照、成員手機滿了
+
+#### Scenario: cursor 太大先於沒有這個申請
+
+- **WHEN** Brisbane 有三個事件；Taylor 的手機拒絕 Casey 之後，用 cursor 4 同意 Casey
+- **THEN** 被拒絕，原因是內容不對，不是沒有這個申請
+
+#### Scenario: 成員手機滿了先於群組滿了
+
+- **WHEN** Brisbane 有 20 支成員手機，存著的事件的大小離上限只剩 199 bytes；Taylor 的手機帶著 200 bytes 的 E 同意 Casey
+- **THEN** 被拒絕，原因是成員手機滿了，不是群組滿了
 
 #### Scenario: 被拒絕的請求用掉了 nonce，也算進請求數
 
@@ -3601,6 +3632,11 @@ WHEN 註冊過的手機送問結果的請求，the API SHALL 照這個順序回�
 - **WHEN** Taylor 的手機問代號 A 的結果
 - **THEN** 被拒絕，原因是已經是成員（409），回應是 `{"error":"already-a-member"}`
 
+#### Scenario: 成員手機問不再有效的代號
+
+- **WHEN** Taylor 的手機撤回了代號 A，或 API 的時間到了 T+604,800,000；Taylor 的手機問代號 A 的結果
+- **THEN** 被拒絕，原因是沒有這個邀請，不是已經是成員
+
 #### Scenario: 別的邀請的結果
 
 - **WHEN** Taylor 的手機另外建立了 Tokyo 和它代號 B 的邀請；Casey 的手機在代號 A 被同意之後，問代號 B 的結果
@@ -3619,6 +3655,11 @@ WHEN 被同意的手機下載那個群組的事件並得到一頁（SYNC-58.1）
 
 - **WHEN** Taylor 的手機同意 Casey 之後：Taylor 的手機下載 Brisbane 的事件；Casey 的手機上傳一個事件；Casey 的手機送一個沒有帶 cursor 的下載
 - **THEN** 資料庫裡 B 仍剛好一份；Casey 的手機問結果仍得到同意了
+
+#### Scenario: 需要快照的回答
+
+- **WHEN** Taylor 的手機同意 Casey 之後，Brisbane 的事件在清除裡都刪了，群組清到的序號比 0 大；Casey 的手機從 cursor 0 下載 Brisbane 的事件
+- **THEN** 得到需要快照的回答（SYNC-136.1）；資料庫裡 B 仍剛好一份，Casey 的手機問結果仍得到同意了
 
 ### Requirement: SHARING-186.1 關於同意和拒絕，API 只存交接
 
@@ -3648,9 +3689,23 @@ IF 簽名的請求打 `/groups/<群組 ID>/requests` 而方法不是 `GET`，打
 - **WHEN** Taylor 的手機對 `/groups/9b2f6c1e-8d47-4f3a-b1c5-2e7d90a4f6b8/requests` 送 `HEAD`、`POST` 和 `DELETE`；對 `/groups/9b2f6c1e-8d47-4f3a-b1c5-2e7d90a4f6b8/requests/7c9e6679-7425-40de-944b-e07fc1f90ae7` 送 `GET`、`HEAD`、`PUT` 和帶著同意的內容的 `POST`；對它後面加上 `/approval` 的路徑送 `GET`、`HEAD`、`DELETE` 和帶著同意的內容的 `PUT`
 - **THEN** 十一個請求都得到找不到（404），不是任何一種拒絕；申請 P 還在，Casey 的手機不是成員手機
 
+### Requirement: SHARING-188.1 申請的手機換內容或取消，和成員的同意同時到時，只有一邊成功
+
+WHEN 一支手機重送申請（SHARING-113.1）或取消申請（SHARING-117.2）的請求，和成員手機同意它的請求同時送到，the API SHALL 只讓其中一邊成功。同意成功時，另一個請求被拒絕，原因是已經是成員：那支手機是成員手機，API 沒有存著它的申請。另一個請求成功時，同意被拒絕，原因是沒有這個申請：那支手機不是成員手機，重送的新內容還在，取消的話它沒有申請。所以 API 不會照成員沒看過的內容同意，也不會有成員手機還留著申請。
+
+#### Scenario: 重送和同意同時
+
+- **WHEN** 五個群組各有一個申請 P 和給申請的手機的完整快照；申請的手機重送內容 Q，Taylor 的手機同時用 P 的 SHA-256 同意它
+- **THEN** 每個群組都是這兩種之一：同意好了，重送被拒絕，原因是已經是成員，那支手機是成員手機，資料庫裡找不到 P 和 Q；或重送送出了，同意被拒絕，原因是沒有這個申請，那支手機不是成員手機，列出申請得到 Q
+
+#### Scenario: 取消和同意同時
+
+- **WHEN** 五個群組各有一個申請 P 和它的完整快照；申請的手機取消申請，Taylor 的手機同時同意它
+- **THEN** 每個群組都是這兩種之一：同意好了，取消被拒絕，原因是已經是成員，那支手機是成員手機；或取消好了，同意被拒絕，原因是沒有這個申請，那支手機不是成員手機，沒有申請
+
 ### Requirement: SHARING-190.1 同步之後和打開 Members 時列出申請
 
-WHEN 一個未封存的共同帳本的一次同步結束，而這次同步的下載做完了（SYNC-69.1），或使用者打開它的 Members，the mobile app SHALL 列出它的申請：送列出申請的請求（SHARING-170.1），API 說之後還有時，帶著那一頁最後一個申請的裝置 ID 接著列（SHARING-171.1），到 API 說之後沒有為止；列完之後，收到的申請就是這一次讀得懂的那些（SHARING-191.1），取代上一次的。IF 這支手機沒有存著這個共同帳本還沒到期的邀請，也就是校正後的時間比到期時間早的邀請，THEN the mobile app SHALL 不送列出的請求，收到的申請是空的：沒有邀請的字串，它解不開任何申請。IF 列出的請求沒有得到回應、被拒絕，或回應看不懂，THEN the mobile app SHALL 讓收到的申請和列出之前一樣，不顯示任何提示。封存的共同帳本不列出，收到的申請是空的。
+WHEN 一個未封存的共同帳本的一次同步結束，而這次同步的下載做完了（SYNC-69.1），或使用者打開它的 Members，the mobile app SHALL 列出它的申請：送列出申請的請求（SHARING-170.1），API 說之後還有時，帶著那一頁最後一個申請的裝置 ID 接著列（SHARING-171.1），到 API 說之後沒有為止；列完之後，收到的申請就是這一次讀得懂的那些（SHARING-191.1），取代上一次的。IF 這支手機沒有存著這個共同帳本還沒到期的邀請，也就是校正後的時間比到期時間早的邀請，THEN the mobile app SHALL 不送列出的請求，收到的申請是空的：沒有邀請的字串，它解不開任何申請。IF 列出的請求沒有得到回應、被拒絕，或回應看不懂，THEN the mobile app SHALL 讓收到的申請和列出之前一樣，不顯示任何提示。封存的共同帳本不列出，收到的申請是空的。有申請正在處理的共同帳本（SHARING-202.1）也不列出，同步之後和打開 Members 時都一樣，所以處理到一半時收到的申請不會被換掉；處理完之後照 SHARING-199.1 到 SHARING-201.1，之後的同步和打開 Members 照常列出。
 
 #### Scenario: app 打開之後
 
@@ -3687,6 +3742,11 @@ WHEN 一個未封存的共同帳本的一次同步結束，而這次同步的下
 - **WHEN** Taylor 的手機封存了 Brisbane，Dana 申請當新成員，Taylor 的手機重新啟動 app
 - **THEN** API 沒有收到列出 Brisbane 的申請的請求；還原 Brisbane 之後打開它的 Members，才收到
 
+#### Scenario: 處理到一半
+
+- **WHEN** 收到的申請有 Dana 的；在她的選單按「Approve」，API 還沒回答同意的請求時，app 從背景回到前景並同步
+- **THEN** 從按下去到 API 回答之前，API 沒有收到列出申請的請求；回答同意好了之後才收到一個
+
 ### Requirement: SHARING-191.1 用邀請的字串解開申請
 
 WHEN 列出申請，the mobile app SHALL 用這支手機替這個共同帳本存著的、代號和那個申請相同的邀請的字串解開它：申請金鑰和附加資料照 SHARING-135.1，附加資料裡的裝置 ID 是 API 說的那個申請的裝置 ID。解開的明文去掉結尾的空格之後是一個 JSON 物件，`name` 是去掉頭尾空白後不是空的字串，`memberId` 是 `null` 或小寫的第 4 版 UUID，`userId` 是小寫的第 4 版 UUID，`boxKey` 是 64 個小寫十六進位字元、不是低階的 box 公開金鑰（SHARING-11.1），多出來的欄位不看：這樣的是讀得懂的申請，成為收到的申請，申請的名字是 `name` 去掉頭尾空白後的文字。
@@ -3708,7 +3768,7 @@ WHEN 列出申請，the mobile app SHALL 用這支手機替這個共同帳本存
 
 ### Requirement: SHARING-192.1 讀不懂的申請不顯示，並替它送拒絕
 
-IF 列出的一個申請用那個邀請的字串解不開（SHARING-3.1），或解開的不是 SHARING-191.1 說的內容，THEN the mobile app SHALL 不把它當成收到的申請，並替它送拒絕的請求（SHARING-172.1），不問使用者，也不顯示任何提示：只知道代號、沒有連結的字串的人塞進來的申請，才不會一直佔著邀請的 20 個位置。拒絕沒成功時不再試，下次列出時它還在就再送。IF 申請的密文是這支手機不認得的格式版本（SHARING-4.2），或這支手機沒有存著那個代號的邀請，THEN the mobile app SHALL 不顯示它，也不替它送拒絕：別的成員的手機可能讀得懂。
+IF 列出的一個申請用那個邀請的字串解不開（SHARING-3.1），或解開的不是 SHARING-191.1 說的內容，THEN the mobile app SHALL 不把它當成收到的申請，並替它送拒絕的請求（SHARING-172.1），網址的 `request` 是列出的那一份內容的 SHA-256，不問使用者，也不顯示任何提示：只知道代號、沒有連結的字串的人塞進來的申請，才不會一直佔著邀請的 20 個位置。拒絕沒成功時不再試，下次列出時它還在就再送。IF 申請的密文是這支手機不認得的格式版本（SHARING-4.2），或這支手機沒有存著那個代號的邀請，THEN the mobile app SHALL 不顯示它，也不替它送拒絕：別的成員的手機可能讀得懂。
 
 #### Scenario: 解不開的申請
 
@@ -3751,12 +3811,17 @@ The mobile app SHALL 不把收到的申請寫進本機資料：申請的名字�
 
 ### Requirement: SHARING-194.1 不能同意的申請
 
-WHILE 收到的申請是下面任何一種，the mobile app SHALL 不讓它被同意：它的選單沒有「Approve」，內容是那個原因的那一句（GROUPS-132.1），照本機資料現在的樣子判斷，依序看最前面符合的。選的成員不是這個共同帳本的成員，例如被移出了：「The member this request chose is no longer in this group. This request can't be approved.」。選的成員已經有手機（SYNC-251.1）：「<成員名稱> has already joined from another phone. This request can't be approved.」。要當新成員，而共同帳本已經有 20 位以上的成員（GROUPS-105.1）：「A shared group can have up to 20 members. This request can't be approved.」。要當新成員，而申請的名字和一位成員同名（groups），有沒有手機的都算：「This group already has a member named <成員名稱>. This request can't be approved.」。同意的人不能替它改選：申請的手機問結果時會發現，並請使用者重選（SHARING-212.1）。
+WHILE 收到的申請是下面任何一種，the mobile app SHALL 不讓它被同意：它的選單沒有「Approve」，內容是那個原因的那一句（GROUPS-132.1），照本機資料現在的樣子判斷，依序看最前面符合的。選的成員不是這個共同帳本的成員，例如被移出了：「The member this request chose is no longer in this group. This request can't be approved.」。選的成員是你自己：「You're already in this group as <成員名稱>. This request can't be approved.」。選的成員已經有手機，也就是存著使用者 ID（SYNC-251.1）：「<成員名稱> has already joined from another phone. This request can't be approved.」。要當新成員，而共同帳本已經有 20 位以上的成員（GROUPS-105.1）：「A shared group can have up to 20 members. This request can't be approved.」。要當新成員，而申請的名字和一位成員同名（groups），有沒有手機的都算：「This group already has a member named <成員名稱>. This request can't be approved.」。你自己的成員從建立群組或加入起就存著你的使用者 ID，名冊裡還沒有這支手機的紀錄時也一樣，所以選了一位有手機的成員的申請，在每一支成員手機上都不能同意。同意的人不能替它改選：申請的手機問結果時會發現，並請使用者重選（SHARING-212.1）。
 
 #### Scenario: 選的成員已經有手機
 
 - **WHEN** Dana 申請當 Casey；之後這支手機套用代表 Casey 的別支手機的名冊紀錄，再點 Dana 那一列
 - **THEN** 選單的內容是「Casey has already joined from another phone. This request can't be approved.」，按鈕只有「Decline」和「Cancel」
+
+#### Scenario: 選的成員是你自己
+
+- **WHEN** Taylor 的手機還沒有同意過任何人，Brisbane 沒有名冊紀錄；Dana 的申請的 `memberId` 是 Taylor 的成員 ID；點 Dana 那一列
+- **THEN** 那一列是「Dana」和「Wants to join as Taylor」；選單的內容是「You're already in this group as Taylor. This request can't be approved.」，按鈕只有「Decline」和「Cancel」
 
 #### Scenario: 選的成員被移出了
 
@@ -3780,7 +3845,7 @@ WHILE 收到的申請是下面任何一種，the mobile app SHALL 不讓它被�
 
 ### Requirement: SHARING-195.1 按 Approve 時同步、上傳快照，再送同意
 
-WHEN 使用者在申請的選單按「Approve」，the mobile app SHALL 依序做這些事，前一步沒做成就不做下一步：同步這個共同帳本（SYNC-68.1），這次同步上傳了事件時再同步一次，讓這支手機的 cursor 到自己剛上傳的事件之後；照同步之後的本機資料再看一次這個申請能不能同意（SHARING-194.1）；備好同意要寫下的事件（SHARING-196.1）；替申請的手機上傳快照（SHARING-197.1）；送同意的請求（SHARING-173.1），路徑帶著群組 ID 和申請的裝置 ID，`request` 是列出時那個申請的內容的 SHA-256，`cursor` 是這支手機在這個共同帳本的 cursor，`snapshotId` 是剛上傳的那份快照的，`epoch` 是這支手機在這個共同帳本的鑰匙世代，`senderKey` 和 `box` 照 SHARING-198.1。API 回答同意好了之前，本機資料不因為這次同意而變：沒有多的成員、名冊紀錄和待上傳的事件。
+WHEN 使用者在申請的選單按「Approve」，the mobile app SHALL 依序做這些事，前一步沒做成就不做下一步：同步這個共同帳本（SYNC-68.1），這次同步上傳了事件時再同步一次，讓這支手機的 cursor 到自己剛上傳的事件之後；然後在同一個 SQLite transaction 裡，照那一刻的本機資料再看一次這個申請能不能同意（SHARING-194.1）、記下這支手機在這個共同帳本的 cursor、備好同意要寫下的事件（SHARING-196.1），並讀出快照的內容（SHARING-197.1、SYNC-114.3）；替申請的手機上傳那份快照；送同意的請求（SHARING-173.1），路徑帶著群組 ID 和申請的裝置 ID，`request` 是選單打開時那一列的申請的內容的 SHA-256，`cursor` 是那個 transaction 裡記下的 cursor，也就是那份快照涵蓋的序號，`snapshotId` 是剛上傳的那份快照的，`epoch` 是這支手機在這個共同帳本的鑰匙世代，`senderKey` 和 `box` 照 SHARING-198.1。所以檢查、事件、快照和 `cursor` 是同一刻的：這之後別的同步——app 回到前景，或存下變更——讓這支手機的 cursor 往前了，送出的仍是記下的那一個，API 就說沒有跟上（SHARING-176.1），這支手機照 SHARING-200.1 再看一次，不會照它沒有檢查過的資料同意。`request` 指名的是成員看到的那一份：申請的手機在選單打開之後換了內容，API 就說沒有這個申請（SHARING-174.1）。上傳快照和送同意的請求的這段時間，這個共同帳本照常同步（SYNC-88.1、SYNC-89.1），不等同意做完。API 回答同意好了之前，本機資料不因為這次同意而變：沒有多的成員、名冊紀錄和待上傳的事件。
 
 #### Scenario: 同意 Dana
 
@@ -3797,9 +3862,19 @@ WHEN 使用者在申請的選單按「Approve」，the mobile app SHALL 依序�
 - **WHEN** API 還沒回答同意的請求
 - **THEN** Members 的成員仍是 Taylor、Casey 和 Blake；本機資料沒有 Dana，沒有名冊紀錄，沒有待上傳的事件
 
+#### Scenario: 檢查之後別的同步下載到新的事件
+
+- **WHEN** Dana 申請當 Casey；按「Approve」之後，API 還沒回答上傳快照的請求時，別支手機上傳了代表 Casey 的名冊紀錄，app 從背景回到前景並同步；之後 API 才回答上傳快照的請求
+- **THEN** 同意的請求的 `cursor` 等於那份快照涵蓋的序號，比群組最新的序號小 1，API 拒絕它，原因是沒有跟上；這支手機沒有再送同意的請求，跳出「Unable to Approve」，訊息是「Casey has already joined from another phone. This request can't be approved.」；Dana 的手機不是成員手機
+
+#### Scenario: 選單打開之後申請換了內容
+
+- **WHEN** Dana 申請當新成員，Taylor 的手機打開她的選單；這時 Dana 的手機把申請換成當 Casey，Taylor 的手機的 app 從背景回到前景，同步並列出申請；之後在還開著的選單按「Approve」
+- **THEN** 同意的請求的 `request` 是原本那一份內容的 SHA-256，API 拒絕它，原因是沒有這個申請；跳出「Unable to Approve」，訊息是「This request has already been answered.」；Members 的申請那一區是「Dana」和「Wants to join as Casey」那一列，Dana 的手機不是成員手機
+
 ### Requirement: SHARING-196.1 同意帶著新成員和名冊紀錄的事件
 
-WHEN 送同意的請求，the mobile app SHALL 讓 `events` 依序是這些紀錄的第一個事件，各照 SYNC-67.1 用群組鑰匙加密，各有新的事件 ID：這支手機自己的名冊紀錄，本機資料的名冊裡還沒有它時才有，代表的是你的成員 ID、你的使用者 ID 和這支手機的 box 公開金鑰；新成員的成員紀錄，要當新成員的申請才有，成員 ID 是新的小寫第 4 版 UUID，名稱是申請的名字，沒有被移出群組（SYNC-34.1）；申請的手機的名冊紀錄，紀錄的 ID 是申請的裝置 ID，代表的是選的成員或那位新成員的成員 ID，和申請的 `userId` 和 `boxKey`（SYNC-250.1）。每個事件的格式版本是 1，判定為可以套用，時間戳記是用校正後的時間和這支手機的裝置 ID 取的新時間戳記（SYNC-2.1），一個接一個；取的時候就記下手機看過的最新時間戳記，所以同意沒成功時，這些時間戳記也不會再給別的變更。它們和待上傳的事件一樣，檢查過才送出（SYNC-84.1、SYNC-85.1）。
+WHEN 送同意的請求，the mobile app SHALL 讓 `events` 依序是這些紀錄的第一個事件，各照 SYNC-67.1 用群組鑰匙加密，各有新的事件 ID：這支手機自己的名冊紀錄，本機資料的名冊裡還沒有它時才有，代表的是你的成員 ID、你的使用者 ID 和這支手機的 box 公開金鑰；新成員的成員紀錄，要當新成員的申請才有，成員 ID 是新的小寫第 4 版 UUID，名稱是申請的名字，沒有被移出群組（SYNC-34.1）；申請的手機的名冊紀錄，紀錄的 ID 是申請的裝置 ID，代表的是選的成員或那位新成員的成員 ID，和申請的 `userId` 和 `boxKey`（SYNC-250.1）。每個事件的格式版本是 1，判定為可以套用，時間戳記是用校正後的時間和這支手機的裝置 ID 取的新時間戳記（SYNC-2.1），一個接一個；取的時候就記下手機看過的最新時間戳記，所以同意沒成功時，這些時間戳記也不會再給別的變更。它們和待上傳的事件一樣，檢查過才放進快照和同意的請求（SYNC-84.1、SYNC-85.1）：比取的那一刻校正後的時間超前超過 300,000 毫秒的，照 SYNC-85.1 換成新的時間戳記，換完之後手機看過的最新時間戳記是最後換上的那一個。手機看過的最新時間戳記超前、卻沒有紀錄記著它時才會這樣；不換的話，時間戳記比收到時間晚超過 10 分鐘的事件每支手機都不套用（SYNC-9.1），API 卻已經把申請的手機記成成員手機，名冊裡沒有它。
 
 #### Scenario: 第一次同意，當新成員
 
@@ -3820,6 +3895,16 @@ WHEN 送同意的請求，the mobile app SHALL 讓 `events` 依序是這些紀�
 
 - **WHEN** 同意 Dana 的請求沒有得到回應；之後在同一個毫秒把 Brisbane 改名
 - **THEN** 改名的事件的時間戳記比那三個事件的都晚
+
+#### Scenario: 看過的最新時間戳記超前 9 分鐘
+
+- **WHEN** Taylor 的手機同意過 Dana，Dana 的手機加入了；Dana 的手機上傳了兩個事件：永久刪除一筆 Taylor 的手機沒有的支出的，和時間戳記比 API 的時間晚 9 分鐘、改那筆支出的標題的（SYNC-85.1 的同一個情境）；Taylor 的手機同步之後，同意另一支手機當 Blake 的申請
+- **THEN** 同意的請求只有一個事件，它的時間戳記的毫秒是這時校正後的時間加 1，計數器是 0，不是晚 9 分鐘的那一毫秒；快照裡那筆名冊紀錄的時間戳記和它一樣
+
+#### Scenario: 看過的最新時間戳記超前一小時
+
+- **WHEN** Taylor 的手機的時鐘被調成 T+3,660,000 之後新增 Dinner，這時留下本機資料的複本；同步之後本機資料換回那份複本，再同步到沒有待上傳的事件；API 的時間是 T+240,000 時同意 Dana 當新成員的申請，Dana 的手機加入，兩支手機都同步
+- **THEN** 同意的請求的三個事件，時間戳記的毫秒都不比 T+240,000 晚超過 300,000；兩支手機上 Brisbane 的成員都有 Dana，兩支手機的 Brisbane 一模一樣，都沒有不套用的事件的紀錄
 
 ### Requirement: SHARING-197.1 同意時上傳的快照帶著同意要寫下的紀錄
 
@@ -3865,7 +3950,7 @@ WHEN API 回答同意好了，the mobile app SHALL 同步這個共同帳本一�
 
 ### Requirement: SHARING-200.1 同意沒成功時說明原因，申請還在
 
-IF 同意沒有做完，THEN the mobile app SHALL 不因此改本機資料，收到的申請還在，並跳出標題是「Unable to Approve」的提示框，訊息依原因：同步、上傳快照或同意的請求沒有得到回應時，「Connect to the internet and try again.」；API 拒絕同意，原因是沒有這個申請時，「This request has already been answered.」，並再列出申請（SHARING-190.1）；原因是成員手機滿了時，「This group is full. A shared group can have up to 20 members.」；同步之後這個申請變成不能同意時，SHARING-194.1 那個原因的那一句；其他情況——同步之後還有待上傳的事件、沒有群組鑰匙、快照太大或存滿了、別的拒絕和看不懂的回應——「Something went wrong. Try again later.」。IF API 拒絕同意，原因是沒有跟上，THEN the mobile app SHALL 不跳出提示框，再同步、再看一次能不能同意，用同一份快照和同樣的事件再送同意的請求，`cursor` 是這時的；一次同意這樣最多再送兩次，第三次還是沒有跟上，就照其他情況。IF 原因是沒有快照，THEN the mobile app SHALL 重新上傳一份快照再送一次，再被拒絕就照其他情況。
+IF 同意沒有做完，THEN the mobile app SHALL 不因此改本機資料，收到的申請還在，並跳出標題是「Unable to Approve」的提示框，訊息依原因：同步、上傳快照或同意的請求沒有得到回應時，「Connect to the internet and try again.」；API 拒絕同意，原因是沒有這個申請時，「This request has already been answered.」，並再列出申請（SHARING-190.1），別的成員處理過了、申請的手機取消了或換了內容都是這樣；原因是成員手機滿了時，「This group is full. A shared group can have up to 20 members.」；同步之後這個申請變成不能同意時，SHARING-194.1 那個原因的那一句；其他情況——同步之後還有待上傳的事件、沒有群組鑰匙、快照太大或存滿了、別的拒絕和看不懂的回應——「Something went wrong. Try again later.」。IF API 拒絕同意，原因是沒有跟上，THEN the mobile app SHALL 不跳出提示框，再同步，再照 SHARING-195.1 在同一個 transaction 裡看一次能不能同意並記下 cursor，用同一份快照和同樣的事件再送同意的請求，`cursor` 是這次記下的；這時不能同意了就不再送，訊息是 SHARING-194.1 那個原因的那一句。一次同意這樣最多再送兩次，第三次還是沒有跟上，就照其他情況。IF 原因是沒有快照，THEN the mobile app SHALL 重新上傳一份快照再送一次，再被拒絕就照其他情況。
 
 #### Scenario: 沒有網路
 
@@ -3909,12 +3994,12 @@ IF 同意沒有做完，THEN the mobile app SHALL 不因此改本機資料，收
 
 ### Requirement: SHARING-201.1 按 Decline 時送拒絕
 
-WHEN 使用者在申請的選單按「Decline」，the mobile app SHALL 送拒絕的請求（SHARING-172.1），路徑帶著群組 ID 和申請的裝置 ID；API 回答拒絕好了之後，那個申請不再是收到的申請。拒絕不同步，不改本機資料，也不寫事件。IF 拒絕沒成功，THEN the mobile app SHALL 讓申請還在，並跳出標題是「Unable to Decline」的提示框：沒有得到回應時訊息是「Connect to the internet and try again.」；原因是沒有這個申請時是「This request has already been answered.」，並再列出申請；其他情況是「Something went wrong. Try again later.」。
+WHEN 使用者在申請的選單按「Decline」，the mobile app SHALL 送拒絕的請求（SHARING-172.1），路徑帶著群組 ID 和申請的裝置 ID，網址的 `request` 是選單打開時那一列的申請的內容的 SHA-256；API 回答拒絕好了之後，那個申請不再是收到的申請。拒絕不同步，不改本機資料，也不寫事件。IF 拒絕沒成功，THEN the mobile app SHALL 讓申請還在，並跳出標題是「Unable to Decline」的提示框：沒有得到回應時訊息是「Connect to the internet and try again.」；原因是沒有這個申請時是「This request has already been answered.」，並再列出申請，申請的手機換了內容時新的那一份因此還在；其他情況是「Something went wrong. Try again later.」。
 
 #### Scenario: 拒絕 Dana
 
 - **WHEN** 在 Dana 的選單按「Decline」
-- **THEN** API 收到沒有內容的 `DELETE /groups/<Brisbane 的群組 ID>/requests/<D>`；Members 沒有申請那一區，Brisbane 的畫面沒有申請的按鈕；本機資料不變，沒有待上傳的事件
+- **THEN** API 收到沒有內容的 `DELETE /groups/<Brisbane 的群組 ID>/requests/<D>?request=<Dana 的申請的內容的 SHA-256>`；Members 沒有申請那一區，Brisbane 的畫面沒有申請的按鈕；本機資料不變，沒有待上傳的事件
 
 #### Scenario: 沒有網路
 
@@ -3930,6 +4015,11 @@ WHEN 使用者在申請的選單按「Decline」，the mobile app SHALL 送拒�
 
 - **WHEN** API 對拒絕的請求回 500
 - **THEN** 訊息是「Something went wrong. Try again later.」；Dana 那一列還在
+
+#### Scenario: 選單打開之後申請換了內容
+
+- **WHEN** Dana 申請當 Casey，Taylor 的手機打開她的選單；這時 Dana 的手機把申請換成當新成員；之後在選單按「Decline」
+- **THEN** API 拒絕這個請求，原因是沒有這個申請，新的那一份還在；跳出「Unable to Decline」，訊息是「This request has already been answered.」；Members 的申請那一區是「Dana」和「Wants to join as a new member」那一列
 
 ### Requirement: SHARING-202.1 一個共同帳本一次處理一個申請
 
@@ -4019,7 +4109,7 @@ WHEN app 打開（sync：啟動，或從背景回到前景），the mobile app S
 
 ### Requirement: SHARING-211.1 API 說還在等，或沒有這個申請
 
-WHEN API 回答 `{"state":"waiting"}`，the mobile app SHALL 把還沒送出的申請記成等待同意的：API 已經收下它；並讀一次邀請（SHARING-124.1 的同一個請求），照名片看這個申請還合不合（SHARING-212.1）。讀邀請沒有得到回應、得到看不懂的回應或名片解不開時，申請不變；讀邀請被拒絕、原因是沒有這個邀請時，照 SHARING-214.1。WHEN API 回答 `{"state":"none"}`，等待同意和要重選的申請是被拒絕了（SHARING-213.1）；還沒送出的申請不變：API 沒有收到它，手機 app 也不替它重送（SHARING-139.2）。
+WHEN API 回答 `{"state":"waiting"}`，the mobile app SHALL 把還沒送出的申請記成等待同意的：API 已經收下它；並讀一次邀請（SHARING-124.1 的同一個請求），照名片看這個申請還合不合（SHARING-212.1）。讀邀請沒有得到回應、被拒絕、得到看不懂的回應或名片解不開時，申請不變。讀邀請被拒絕、原因是沒有這個邀請時也一樣，不照 SHARING-214.1 收掉申請：成員可能在這兩個請求之間同意了它，再撤回邀請，這時 API 存著它的交接，下次問結果就得到同意了（SHARING-183.1）；邀請真的不再有效而它沒有被同意時，下次問結果才得到沒有這個邀請。WHEN API 回答 `{"state":"none"}`，等待同意和要重選的申請是被拒絕了（SHARING-213.1）；還沒送出的申請不變：API 沒有收到它，手機 app 也不替它重送（SHARING-139.2）。
 
 #### Scenario: 還在等
 
@@ -4038,8 +4128,13 @@ WHEN API 回答 `{"state":"waiting"}`，the mobile app SHALL 把還沒送出的�
 
 #### Scenario: 讀不到名片
 
-- **WHEN** API 回答 `{"state":"waiting"}`，接著的讀邀請回 500，或沒有得到回應
-- **THEN** 申請仍是等待同意的，沒有跳出提示框
+- **WHEN** API 回答 `{"state":"waiting"}`，接著的讀邀請回 500，沒有得到回應，或被拒絕、原因是沒有這個邀請
+- **THEN** 申請仍是等待同意的，本機資料仍存著連結的字串，沒有跳出提示框
+
+#### Scenario: 兩個請求之間被同意、邀請被撤回
+
+- **WHEN** API 回答 `{"state":"waiting"}` 之後，成員同意了這個申請並撤回邀請，所以接著的讀邀請被拒絕，原因是沒有這個邀請；之後重新啟動 app
+- **THEN** 先是卡片仍是「Waiting for approval」；重新啟動之後問結果得到同意了，這支手機加入好了
 
 ### Requirement: SHARING-212.1 申請不合名片時請使用者重選
 
@@ -4096,7 +4191,7 @@ WHEN 手機 app 得知申請被拒絕（SHARING-211.1），the mobile app SHALL 
 
 ### Requirement: SHARING-214.1 邀請不再有效時說明，不留下群組的資料
 
-WHEN 問結果的請求，或問結果之後的讀邀請（SHARING-211.1），被拒絕，原因是沒有這個邀請，the mobile app SHALL 和被拒絕一樣只留下群組名稱（SHARING-213.1），記成邀請不再有效：這個邀請過期或被撤回了，API 不說是哪一種。Join Group 正顯示這個申請，或為它打開時，內容由上而下是「Invite No Longer Valid」、群組名稱、「This invite has expired or was turned off. Ask a member for a new link.」，和「OK」；按「OK」刪掉它，關閉 Join Group。還沒送出的申請也一樣。只有帶著這個原因的拒絕才算：沒有帶原因的 404 是看不懂的回應（SHARING-215.1）。
+WHEN 問結果的請求被拒絕，原因是沒有這個邀請，the mobile app SHALL 和被拒絕一樣只留下群組名稱（SHARING-213.1），記成邀請不再有效：這個邀請過期或被撤回了，API 不說是哪一種。Join Group 正顯示這個申請，或為它打開時，內容由上而下是「Invite No Longer Valid」、群組名稱、「This invite has expired or was turned off. Ask a member for a new link.」，和「OK」；按「OK」刪掉它，關閉 Join Group。還沒送出的申請也一樣。只有問結果的請求帶著這個原因的拒絕才算：沒有帶原因的 404 是看不懂的回應（SHARING-215.1），問結果之後的讀邀請被拒絕也不算（SHARING-211.1）。
 
 #### Scenario: 邀請被撤回
 
@@ -4278,6 +4373,20 @@ WHILE Join Group 顯示手機上的一個申請，the mobile app SHALL 照它的
 
 - **WHEN** Join Group 顯示「Your request hasn't been sent.」；問結果的回答是 `{"state":"waiting"}`
 - **THEN** Join Group 換成「Waiting for Approval」那幾行
+
+### Requirement: SHARING-226.1 手機上有這個群組的副本時不能申請
+
+IF 讀到邀請、解開名片之後，名片上有一位成員的成員 ID 是這支手機上一個不是共同帳本的群組的成員或前成員的成員 ID，THEN the mobile app SHALL 不顯示表單，Join Group 的內容只有「This phone already has its own copy of this group, so it can't join it.」；不產生裝置身分，不存申請，本機資料和 secure store 都和收到連結之前一樣。這樣的手機有邀請的那個群組的副本，群組 ID 和成員 ID 都一樣，例如匯入過那個群組變成共同帳本之前的匯出檔（backup）：快照匯不進這樣的手機（SYNC-128.3），所以不讓它申請，免得它被同意之後成了什麼都沒有的成員手機。名片上的成員是這支手機上一個共同帳本的成員或前成員時，照 SHARING-130.1 打開那個群組。
+
+#### Scenario: 手機上有同一個群組的副本
+
+- **WHEN** 這支手機有一個不是共同帳本的群組 Brisbane，它的成員 Taylor 的成員 ID 就是名片上 Taylor 的成員 ID；打開 Brisbane 的連結
+- **THEN** Join Group 的內容只有「This phone already has its own copy of this group, so it can't join it.」，沒有表單和「Send Request」；API 只收到讀邀請的請求；這支手機沒有裝置身分，本機資料沒有申請
+
+#### Scenario: 只有前成員對得上
+
+- **WHEN** 這支手機上那個群組把 Blake 移出了，名片上只有 Blake 的成員 ID 是這支手機上的；打開 Brisbane 的連結
+- **THEN** Join Group 的內容一樣只有這句話
 
 ### Requirement: SHARING-229.1 (manual) 兩支真的手機：申請、同意、加入
 

@@ -36,6 +36,7 @@ import {
   isMemberDevice,
   listAfter,
   listRequests,
+  naming,
   reject,
   requestsPath,
   sha256Of,
@@ -57,6 +58,7 @@ import {
   expectRevoked,
   joinRequest,
   putInvite,
+  requestBody,
   requestPath,
   revokeInvite,
   sendRequest,
@@ -90,7 +92,13 @@ import {
   useSyncApi,
   wrongEpoch,
 } from './sync-api';
-import { cleanUpAt, reach, valuesAddedSince } from './sync-cleanup-api';
+import {
+  THIRTY_DAYS,
+  cleanUpAt,
+  expectSnapshotNeeded,
+  reach,
+  valuesAddedSince,
+} from './sync-cleanup-api';
 import {
   NO_SNAPSHOT,
   ask,
@@ -119,6 +127,18 @@ async function tokyoInvites(taylor: Phone) {
 
 /** A 16-byte code of its own, as base64url without padding. */
 const newCode = () => randomBytes(16).toString('base64url');
+
+/** The content of the request Brisbane holds for `applicant`, as a member device lists it. */
+async function contentOf(member: Phone, applicant: Phone) {
+  const { status, body } = await listRequests(member, BRISBANE);
+  expect(status).toBe(200);
+  const { requests } = body as {
+    requests: { deviceId: string; request: string }[];
+  };
+  const held = requests.find(({ deviceId }) => deviceId === applicant.deviceId);
+  if (!held) throw new Error('Brisbane holds no request of that device');
+  return bytesOf(held.request);
+}
 
 describe('SHARING-170.1', () => {
   test('[SHARING-170.1] lists the requests of the group in the order of their device IDs, each with its code, device and content', async () => {
@@ -247,7 +267,7 @@ describe('SHARING-172.1', () => {
     const Q = joinRequest();
     expectRequestAnswered(await sendRequest(other, CODE_A, Q), CODE_A);
 
-    const answer = await reject(taylor, BRISBANE, casey);
+    const answer = await reject(taylor, BRISBANE, casey, P);
 
     expectRejected(answer, casey);
     expect(await timesStored(P)).toBe(0);
@@ -260,8 +280,9 @@ describe('SHARING-172.1', () => {
     const [taylor] = await brisbaneInvitesCasey();
     const [first] = await applicants(CODE_A, MOST_REQUESTS);
     const late = await registered();
+    const held = await contentOf(taylor, first);
 
-    expectRejected(await reject(taylor, BRISBANE, first), first);
+    expectRejected(await reject(taylor, BRISBANE, first, held), first);
 
     expectRequestAnswered(
       await sendRequest(late, CODE_A, joinRequest()),
@@ -270,8 +291,8 @@ describe('SHARING-172.1', () => {
   });
 
   test('[SHARING-172.1] lets a rejected device ask again', async () => {
-    const { taylor, casey } = await caseyAsked({ sequence: false });
-    expectRejected(await reject(taylor, BRISBANE, casey), casey);
+    const { taylor, casey, P } = await caseyAsked({ sequence: false });
+    expectRejected(await reject(taylor, BRISBANE, casey, P), casey);
     const Q = joinRequest();
 
     expectRequestAnswered(await sendRequest(casey, CODE_A, Q), CODE_A);
@@ -383,11 +404,11 @@ describe('SHARING-173.1', () => {
 describe('SHARING-174.1', () => {
   test('[SHARING-174.1] refuses to approve or reject a request that was rejected', async () => {
     const { taylor, casey, P, S } = await caseyAsked();
-    expectRejected(await reject(taylor, BRISBANE, casey), casey);
+    expectRejected(await reject(taylor, BRISBANE, casey, P), casey);
 
     const answers = await leavingGroupsAsTheyWere(async () => [
       await approve(taylor, BRISBANE, casey, approvalOf(P, S)),
-      await reject(taylor, BRISBANE, casey),
+      await reject(taylor, BRISBANE, casey, P),
     ]);
 
     for (const answer of answers) {
@@ -408,7 +429,7 @@ describe('SHARING-174.1', () => {
 
     const answers = await leavingGroupsAsTheyWere(async () => [
       await approve(taylor, BRISBANE, casey, { ...approval, cursor: 1 }),
-      await reject(taylor, BRISBANE, casey),
+      await reject(taylor, BRISBANE, casey, P),
     ]);
 
     for (const answer of answers) expectDecisionRefused(answer, NO_REQUEST);
@@ -416,16 +437,17 @@ describe('SHARING-174.1', () => {
     expect(await everyEvent(taylor, BRISBANE)).toHaveLength(1);
   });
 
-  test('[SHARING-174.1] refuses an approval that names content the request no longer has', async () => {
+  test('[SHARING-174.1] refuses an approval and a rejection that name content the request no longer has', async () => {
     const { taylor, casey, P, S } = await caseyAsked();
     const Q = joinRequest();
     expectRequestAnswered(await sendRequest(casey, CODE_A, Q), CODE_A);
 
-    const stale = await leavingGroupsAsTheyWere(() =>
-      approve(taylor, BRISBANE, casey, approvalOf(P, S)),
-    );
+    const stale = await leavingGroupsAsTheyWere(async () => [
+      await approve(taylor, BRISBANE, casey, approvalOf(P, S)),
+      await reject(taylor, BRISBANE, casey, P),
+    ]);
 
-    expectDecisionRefused(stale, NO_REQUEST);
+    for (const answer of stale) expectDecisionRefused(answer, NO_REQUEST);
     expect(await timesStored(Q)).toBe(1);
     expect(await isMemberDevice(BRISBANE, casey)).toBe(false);
     expect(
@@ -444,7 +466,10 @@ describe('SHARING-174.1', () => {
         await approve(taylor, BRISBANE, casey, approvalOf(P, S)),
         NO_REQUEST,
       );
-      expectDecisionRefused(await reject(taylor, BRISBANE, casey), NO_REQUEST);
+      expectDecisionRefused(
+        await reject(taylor, BRISBANE, casey, P),
+        NO_REQUEST,
+      );
       expect(await isMemberDevice(BRISBANE, casey)).toBe(false);
     },
   );
@@ -459,7 +484,7 @@ describe('SHARING-174.1', () => {
         NO_REQUEST,
       );
       expectDecisionRefused(
-        await reject(taylor, BRISBANE, applicant),
+        await reject(taylor, BRISBANE, applicant, P),
         NO_REQUEST,
       );
     }
@@ -489,7 +514,7 @@ async function fiveGroups(asking: number) {
       await uploadAll(groupId, snapshot);
       asked.push({ phone, content, snapshot });
     }
-    rounds.push({ groupId, asked });
+    rounds.push({ groupId, code, asked });
     aMinuteLater();
   }
   return {
@@ -544,7 +569,7 @@ describe('SHARING-175.1', () => {
         callOn(servers[0], taylor, approvalRequest(groupId, phone, approval)),
         callOn(servers[1], member, {
           method: 'DELETE',
-          path: decisionPath(groupId, phone),
+          path: `${decisionPath(groupId, phone)}${naming(content)}`,
         }),
       ]);
 
@@ -705,6 +730,32 @@ describe('SHARING-178.1', () => {
   });
 });
 
+/**
+ * Brisbane's events leave 199 bytes of room: 159 events of 65,536 bytes and one more.
+ * Casey's phone has its request P, and Taylor's complete snapshot S covers `cursor`.
+ */
+async function almostFull() {
+  const [taylor, casey] = await brisbaneInvitesCasey();
+  let stored = 0;
+  for (const count of [...Array.from({ length: 22 }, () => 7), 5]) {
+    const sent = events(count, LARGEST);
+    expectUploaded(
+      await upload(taylor, BRISBANE, sent),
+      sent,
+      sent.map((_, index) => stored + index + 1),
+    );
+    stored += count;
+  }
+  aMinuteLater();
+  const last = [event(GROUP_LIMIT - stored * LARGEST - 199)];
+  expectUploaded(await upload(taylor, BRISBANE, last), last, [stored + 1]);
+  const P = joinRequest();
+  expectRequestAnswered(await sendRequest(casey, CODE_A, P), CODE_A);
+  const S = snapshotOf(taylor, casey, { sequence: stored + 1 });
+  await uploadAll(BRISBANE, S);
+  return { taylor, casey, P, S, cursor: stored + 1 };
+}
+
 describe('SHARING-179.1', () => {
   test("[SHARING-179.1] refuses an approval under another key epoch than the group's, and says which it is", async () => {
     const { taylor, casey, P, S } = await caseyAsked();
@@ -721,32 +772,14 @@ describe('SHARING-179.1', () => {
   });
 
   test('[SHARING-179.1] refuses an approval whose events the group has no room for', async () => {
-    const [taylor, casey] = await brisbaneInvitesCasey();
-    // 159 events of 65,536 bytes and one that leaves 199 bytes of room.
-    let stored = 0;
-    for (const count of [...Array.from({ length: 22 }, () => 7), 5]) {
-      const sent = events(count, LARGEST);
-      expectUploaded(
-        await upload(taylor, BRISBANE, sent),
-        sent,
-        sent.map((_, index) => stored + index + 1),
-      );
-      stored += count;
-    }
-    aMinuteLater();
-    const last = [event(GROUP_LIMIT - stored * LARGEST - 199)];
-    expectUploaded(await upload(taylor, BRISBANE, last), last, [stored + 1]);
-    const P = joinRequest();
-    expectRequestAnswered(await sendRequest(casey, CODE_A, P), CODE_A);
-    const S = snapshotOf(taylor, casey, { sequence: stored + 1 });
-    await uploadAll(BRISBANE, S);
+    const { taylor, casey, P, S, cursor } = await almostFull();
 
     const answer = await leavingGroupsAsTheyWere(() =>
       approve(
         taylor,
         BRISBANE,
         casey,
-        approvalOf(P, S, { cursor: stored + 1, events: [event(200)] }),
+        approvalOf(P, S, { cursor, events: [event(200)] }),
       ),
     );
 
@@ -767,7 +800,7 @@ describe('SHARING-180.1', () => {
         all.push(
           await listRequests(outsider, groupId),
           await approve(outsider, groupId, casey, approvalOf(P, S)),
-          await reject(outsider, groupId, casey),
+          await reject(outsider, groupId, casey, P),
         );
       }
       return all;
@@ -800,7 +833,7 @@ describe('SHARING-181.1', () => {
       for (const answer of [
         await listRequests(taylor, groupId),
         await approve(taylor, groupId, casey, approvalOf(P, S)),
-        await reject(taylor, groupId, casey),
+        await reject(taylor, groupId, casey, P),
       ]) {
         expectRefused(answer, REQUEST);
       }
@@ -816,7 +849,7 @@ describe('SHARING-181.1', () => {
         await approve(taylor, BRISBANE, deviceId, approvalOf(P, S)),
         REQUEST,
       );
-      expectRefused(await reject(taylor, BRISBANE, deviceId), REQUEST);
+      expectRefused(await reject(taylor, BRISBANE, deviceId, P), REQUEST);
     },
   );
 
@@ -832,7 +865,7 @@ describe('SHARING-181.1', () => {
     expectRefused(await listRequests(taylor, BRISBANE, query), REQUEST);
   });
 
-  test('[SHARING-181.1] refuses a query on an approval, a rejection and a question about the answer', async () => {
+  test('[SHARING-181.1] refuses a query on an approval and on a question about the answer', async () => {
     const { taylor, casey, P, S } = await caseyAsked();
 
     for (const answer of [
@@ -840,16 +873,35 @@ describe('SHARING-181.1', () => {
         ...approvalRequest(BRISBANE, casey, approvalOf(P, S)),
         path: `${approvalPath(BRISBANE, casey)}?x=1`,
       }),
-      await call(taylor, {
-        method: 'DELETE',
-        path: `${decisionPath(BRISBANE, casey)}?x=1`,
-      }),
       await askResult(casey, CODE_A, '?x=1'),
     ]) {
       expectRefused(answer, REQUEST);
     }
     expect(await timesStored(P)).toBe(1);
   });
+
+  test.each<[string, (hash: string) => string]>([
+    ['no query', () => ''],
+    ['a query that names nothing', () => '?request='],
+    ['a hash of 63 characters', (hash) => `?request=${hash.slice(1)}`],
+    ['a hash in capitals', (hash) => `?request=${hash.toUpperCase()}`],
+    ['another query', () => '?x=1'],
+    ['a second field', (hash) => `?request=${hash}&x=1`],
+  ])(
+    '[SHARING-181.1] refuses a rejection with %s as written wrongly',
+    async (_case, query) => {
+      const { taylor, casey, P } = await caseyAsked({ sequence: false });
+
+      expectRefused(
+        await reject(taylor, BRISBANE, casey, query(sha256Of(P))),
+        REQUEST,
+      );
+
+      expect(await timesStored(P)).toBe(1);
+      // The rejection itself is one the API takes.
+      expectRejected(await reject(taylor, BRISBANE, casey, P), casey);
+    },
+  );
 
   test("[SHARING-181.1] refuses a question about an invite's answer whose code is written wrongly", async () => {
     const { casey } = await caseyAsked({ sequence: false });
@@ -935,7 +987,7 @@ describe('SHARING-181.1', () => {
   test('[SHARING-181.1] refuses a rejection that carries a body', async () => {
     const { taylor, casey, P } = await caseyAsked({ sequence: false });
 
-    expectRefused(await reject(taylor, BRISBANE, casey, '{}'), REQUEST);
+    expectRefused(await reject(taylor, BRISBANE, casey, P, '{}'), REQUEST);
 
     expect(await timesStored(P)).toBe(1);
   });
@@ -957,7 +1009,10 @@ describe('SHARING-182.1', () => {
     const inputs = [
       { path: requestsPath(BRISBANE) },
       approvalRequest(BRISBANE, casey, approvalOf(P, S)),
-      { method: 'DELETE', path: decisionPath(BRISBANE, casey) },
+      {
+        method: 'DELETE',
+        path: `${decisionPath(BRISBANE, casey)}${naming(P)}`,
+      },
       { path: requestPath(CODE_A) },
     ];
     const before = await databaseContents();
@@ -1029,17 +1084,147 @@ describe('SHARING-182.1', () => {
     expect(await timesStored(P)).toBe(1);
   });
 
+  test('[SHARING-182.1] names a cursor past the last sequence number before a missing request', async () => {
+    const { taylor, casey, P, S } = await caseyAsked({ events: 3 });
+    expectRejected(await reject(taylor, BRISBANE, casey, P), casey);
+
+    expectRefused(
+      await approve(taylor, BRISBANE, casey, approvalOf(P, S, { cursor: 4 })),
+      REQUEST,
+    );
+  });
+
+  test('[SHARING-182.1] names the member devices before the room for events', async () => {
+    const { taylor, casey, P, S, cursor } = await almostFull();
+    await memberDevices(MOST_MEMBER_DEVICES);
+
+    const answer = await leavingGroupsAsTheyWere(() =>
+      approve(
+        taylor,
+        BRISBANE,
+        casey,
+        approvalOf(P, S, { cursor, events: [event(200)] }),
+      ),
+    );
+
+    expectDecisionRefused(answer, MEMBERS_FULL);
+    expect(await timesStored(P)).toBe(1);
+  });
+
   test('[SHARING-182.1] has taken a request it refuses: sent again as it is, it is a replay', async () => {
-    const { taylor } = await caseyAsked({ sequence: false });
+    const { taylor, P } = await caseyAsked({ sequence: false });
     const idle = await registered();
     const request = signedBy(taylor, {
       method: 'DELETE',
-      path: decisionPath(BRISBANE, idle),
+      path: `${decisionPath(BRISBANE, idle)}${naming(P)}`,
     });
 
     expectDecisionRefused(await send(request), NO_REQUEST);
 
     expectRefused(await send(request), { error: 'replayed' });
+  });
+});
+
+describe('SHARING-117.2', () => {
+  test.each([
+    '',
+    ', once the invite is revoked',
+    ', once the invite has expired',
+  ])(
+    '[SHARING-117.2] refuses the cancellation of a device that was approved%s: it is a member already',
+    async (how) => {
+      const { taylor, casey, P, S } = await caseyAsked();
+      const approval = approvalOf(P, S);
+      expect((await approve(taylor, BRISBANE, casey, approval)).status).toBe(
+        200,
+      );
+      if (how.includes('revoked')) {
+        expectRevoked(await revokeInvite(taylor, BRISBANE, CODE_A), CODE_A);
+      }
+      if (how.includes('expired')) setTime(T + WEEK);
+
+      const answer = await leavingGroupsAsTheyWere(() =>
+        cancelRequest(casey, CODE_A),
+      );
+
+      expect(answer).toEqual({ status: 409, body: ALREADY_A_MEMBER });
+      expect(await isMemberDevice(BRISBANE, casey)).toBe(true);
+      expectHandover(
+        await askResult(casey, CODE_A),
+        BRISBANE,
+        taylor,
+        approval,
+      );
+    },
+  );
+});
+
+describe('SHARING-188.1', () => {
+  test('[SHARING-188.1] lets exactly one of an approval and a new content for the same request through', async () => {
+    const { taylor, rounds, servers } = await fiveGroups(1);
+
+    for (const { groupId, code, asked } of rounds) {
+      const [{ phone, content, snapshot }] = asked;
+      const Q = joinRequest();
+
+      const [approved, resent] = await Promise.all([
+        callOn(
+          servers[0],
+          taylor,
+          approvalRequest(groupId, phone, approvalOf(content, snapshot)),
+        ),
+        callOn(servers[1], phone, {
+          method: 'PUT',
+          path: requestPath(code),
+          body: requestBody(Q),
+        }),
+      ]);
+
+      const joined = approved.status === 200;
+      if (joined) {
+        expect(resent).toEqual({ status: 409, body: ALREADY_A_MEMBER });
+        expect(await timesStored(Q)).toBe(0);
+      } else {
+        expectDecisionRefused(approved, NO_REQUEST);
+        expectRequestAnswered(resent, code);
+        expect(await timesStored(Q)).toBe(1);
+      }
+      expect(await timesStored(content)).toBe(0);
+      expect(await isMemberDevice(groupId, phone)).toBe(joined);
+      expect(await everyEvent(taylor, groupId)).toHaveLength(joined ? 1 : 0);
+      aMinuteLater();
+    }
+  });
+
+  test('[SHARING-188.1] lets exactly one of an approval and a cancellation of the same request through', async () => {
+    const { taylor, rounds, servers } = await fiveGroups(1);
+
+    for (const { groupId, code, asked } of rounds) {
+      const [{ phone, content, snapshot }] = asked;
+
+      const [approved, cancelled] = await Promise.all([
+        callOn(
+          servers[0],
+          taylor,
+          approvalRequest(groupId, phone, approvalOf(content, snapshot)),
+        ),
+        callOn(servers[1], phone, {
+          method: 'DELETE',
+          path: requestPath(code),
+        }),
+      ]);
+
+      const joined = approved.status === 200;
+      if (joined) {
+        expect(cancelled).toEqual({ status: 409, body: ALREADY_A_MEMBER });
+      } else {
+        expectDecisionRefused(approved, NO_REQUEST);
+        expectRequestAnswered(cancelled, code);
+      }
+      expect(await timesStored(content)).toBe(0);
+      expect(await isMemberDevice(groupId, phone)).toBe(joined);
+      aMinuteLater();
+    }
   });
 });
 
@@ -1059,7 +1244,7 @@ describe('SHARING-183.1', () => {
   });
 
   test('[SHARING-183.1] answers a device that never asked, one that cancelled and one that was rejected in one way', async () => {
-    const { taylor, casey } = await caseyAsked({ sequence: false });
+    const { taylor, casey, P } = await caseyAsked({ sequence: false });
     const idle = await registered();
     const cancelled = await registered();
     expectRequestAnswered(
@@ -1067,7 +1252,7 @@ describe('SHARING-183.1', () => {
       CODE_A,
     );
     expectRequestAnswered(await cancelRequest(cancelled, CODE_A), CODE_A);
-    expectRejected(await reject(taylor, BRISBANE, casey), casey);
+    expectRejected(await reject(taylor, BRISBANE, casey, P), casey);
 
     const answers = [
       await askResult(idle, CODE_A),
@@ -1155,6 +1340,20 @@ describe('SHARING-183.1', () => {
     });
   });
 
+  test.each(['is revoked', 'expires'])(
+    '[SHARING-183.1] tells a member device that an invite that %s names no invite, not that it is a member',
+    async (how) => {
+      const { taylor } = await caseyAsked({ sequence: false });
+      if (how === 'expires') setTime(T + WEEK);
+      else expectRevoked(await revokeInvite(taylor, BRISBANE, CODE_A), CODE_A);
+
+      expect(await askResult(taylor, CODE_A)).toEqual({
+        status: 404,
+        body: NO_INVITE,
+      });
+    },
+  );
+
   test("[SHARING-183.1] answers for each invite by itself: approved under one, nothing under another group's", async () => {
     const { taylor, casey, P, S } = await caseyAsked();
     expect(
@@ -1194,6 +1393,26 @@ describe('SHARING-185.1', () => {
       await call(casey, { path: `/groups/${BRISBANE}/events` }),
       REQUEST,
     );
+
+    expect(await timesStored(bytesOf(approval.box))).toBe(1);
+    expectHandover(await askResult(casey, CODE_A), BRISBANE, taylor, approval);
+  });
+});
+
+describe('SHARING-185.1', () => {
+  test('[SHARING-185.1] keeps the handover when the device is told that it needs a snapshot', async () => {
+    const { taylor, casey, P, S } = await caseyAsked();
+    const approval = approvalOf(P, S);
+    expectApproved(
+      await approve(taylor, BRISBANE, casey, approval),
+      casey,
+      approval,
+      [1],
+    );
+    await reach(taylor, 1);
+    await cleanUpAt(T + THIRTY_DAYS + 1);
+
+    expectSnapshotNeeded(await download(casey, BRISBANE, 0));
 
     expect(await timesStored(bytesOf(approval.box))).toBe(1);
     expectHandover(await askResult(casey, CODE_A), BRISBANE, taylor, approval);
@@ -1247,7 +1466,7 @@ describe('SHARING-186.1', () => {
     const before = await databaseContents();
     const request = signedBy(taylor, {
       method: 'DELETE',
-      path: decisionPath(BRISBANE, casey),
+      path: `${decisionPath(BRISBANE, casey)}${naming(P)}`,
     });
 
     expectRejected(await send(request), casey);
@@ -1260,6 +1479,8 @@ describe('SHARING-186.1', () => {
       true,
     );
     expect(await timesStored(P)).toBe(0);
+    expect(await timesStored(bytesOf(sha256Of(P)))).toBe(0);
+    expect(await timesStored(sha256Of(P))).toBe(0);
   });
 });
 
