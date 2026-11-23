@@ -30,12 +30,12 @@ module.exports = {
     './apps/mobile/src/backup/import.ts': { branches: 100 },
     './apps/mobile/src/groups/group-card.tsx': { branches: 83.33 },
     './apps/mobile/src/groups/join-request-cards.tsx': { branches: 75 },
-    './apps/mobile/src/groups/group-screen.tsx': { branches: 97.01 },
+    './apps/mobile/src/groups/group-screen.tsx': { branches: 97.1 },
     './apps/mobile/src/groups/group-summary.tsx': { branches: 50 },
     './apps/mobile/src/groups/groups-screen.tsx': { branches: 100 },
     './apps/mobile/src/groups/balances-screen.tsx': { branches: 100 },
     './apps/mobile/src/groups/format-balance.ts': { branches: 100 },
-    './apps/mobile/src/ledger/expenses.ts': { branches: 93.2 },
+    './apps/mobile/src/ledger/expenses.ts': { branches: 94.28 },
     './apps/mobile/src/ledger/list-filter.ts': { branches: 100 },
     './apps/mobile/src/ledger/expense-form-screen.tsx': { branches: 97.91 },
     './apps/mobile/src/ledger/use-expense-form.ts': { branches: 92.36 },
@@ -47,7 +47,7 @@ module.exports = {
     './apps/mobile/src/sync/apply.ts': { branches: 100 },
     './apps/mobile/src/sync/index.ts': { branches: 75 },
     './apps/mobile/src/sync/positions.ts': { branches: 75 },
-    './apps/mobile/src/sync/records.ts': { branches: 96 },
+    './apps/mobile/src/sync/records.ts': { branches: 97.5 },
     './apps/mobile/src/sync/use-synced-focus-effect.ts': { branches: 83.33 },
     // The mark of an expense whose money another phone replaced (ADR-0029): what keeps the
     // phone's own money change and raises the mark, what settles it, and what shows it.
@@ -57,7 +57,7 @@ module.exports = {
     './apps/mobile/src/ledger/review.ts': { branches: 50 },
     './apps/mobile/src/ledger/review-block.tsx': { branches: 90 },
     './apps/mobile/src/ledger/review-mark.tsx': { branches: 100 },
-    './apps/mobile/src/groups/review-button.tsx': { branches: 75 },
+    './apps/mobile/src/groups/review-button.tsx': { branches: 90.9 },
     // Possible duplicates (ADR-0035): the pairing rule, the ledger read and save, and the card.
     './packages/domain/src/sync/duplicates.ts': { branches: 91.66 },
     './apps/mobile/src/sync/duplicates.ts': { branches: 100 },
@@ -67,7 +67,7 @@ module.exports = {
     // (`*-api.test.*`), which need Docker.
     './apps/mobile/src/sync/loop.ts': { branches: 98.21 },
     './apps/mobile/src/sync/stamps.ts': { branches: 96 },
-    './apps/mobile/src/sync/use-sync-notices.ts': { branches: 75 },
+    './apps/mobile/src/sync/use-sync-notices.ts': { branches: 87.5 },
     './apps/mobile/src/sync/use-sync-triggers.ts': { branches: 93.75 },
     // No acceptance test decodes a character that is cut short; utf8.test.ts reaches every branch.
     './apps/mobile/src/sync/utf8.ts': { branches: 95.83 },
@@ -124,6 +124,12 @@ module.exports = {
     './apps/api/src/sync/snapshots.ts': { branches: 100 },
     './apps/mobile/src/sync/snapshot-ledger.ts': { branches: 97.29 },
     './apps/mobile/src/sync/snapshots.ts': { branches: 98.43 },
+    // A phone's own event that no phone applies (ADR-0043): what keeps the result of what
+    // it has received, takes the refused event back and keeps the notices, and the sheet
+    // that lists them. No acceptance test dismisses a notice that is gone already.
+    './apps/mobile/src/sync/undo-refused.ts': { branches: 85.48 },
+    './apps/mobile/src/sync/unapplied.ts': { branches: 50 },
+    './apps/mobile/src/groups/unapplied-screen.tsx': { branches: 92.42 },
   },
   testTimeout: 15000,
 };
