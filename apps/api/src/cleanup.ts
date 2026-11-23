@@ -15,6 +15,8 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1_000;
 export async function cleanUp(sql: Sql, now: number): Promise<void> {
   const retainFromMs = now - THIRTY_DAYS_MS;
   await sql.begin('isolation level read committed', async (tx) => {
+    // A waiting EXCLUSIVE lock queues other groups' uploads and downloads behind it.
+    await tx`SET LOCAL lock_timeout = '3s'`;
     await tx`DELETE FROM device_requests
       WHERE accepted_at_ms < ${now - 2 * CLOCK_TOLERANCE_MS}`;
     await tx`DELETE FROM device_registrations
