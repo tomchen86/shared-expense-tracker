@@ -15,7 +15,7 @@ import { readSyncRecord, saveLatestStamp, storeSyncRecord } from './records';
 // local data holds it: in the event, in the record it changed, as the base of later
 // unsent events, and in the phone's own money change of the expense (ADR-0029).
 // Everything here runs inside the caller's transaction, and resolves with
-// the shared ledgers whose members or categories a replaced stamp put in another order.
+// the shared ledgers whose member order, category order or duplicate marks may have changed.
 
 /** How far ahead of the corrected time a checked stamp may be, in milliseconds (SYNC-84.1). */
 const MOST_AHEAD_MS = 300_000;
@@ -111,12 +111,14 @@ async function rename(
   }
   const renamed = (stamp: SyncStamp) => to.get(keyOf(stamp)) ?? stamp;
 
+  const moved = new Set<string>();
   const toOrder = new Map<string, [string, 'member' | 'category']>();
   for (const { groupId, event } of records.values()) {
     const stored = await readSyncRecord(tx, groupId, event.type, event.id);
     // An event's record is stored with it.
     if (!stored) continue;
     const { record } = stored;
+    const created = renamed(stored.created);
     const units = Object.fromEntries(
       Object.entries<{ stamp: SyncStamp }>(record.units).map(([name, unit]) => [
         name,
@@ -131,10 +133,13 @@ async function rename(
         ...(record.deleted && { deleted: renamed(record.deleted) }),
         units,
       } as SyncRecord,
-      renamed(stored.created),
+      created,
     );
-    // So that an event applied later is compared with the stamp the change has now (SYNC-133.1).
-    if (event.type === 'expense') await renameOwnMoney(tx, event.id, renamed);
+    if (event.type === 'expense') {
+      await renameOwnMoney(tx, event.id, renamed);
+      // Duplicate marks depend on creation order, even if every expense value stayed the same.
+      if (compareSyncStamps(created, stored.created) !== 0) moved.add(groupId);
+    }
     if (event.type === 'member' || event.type === 'category')
       toOrder.set(`${groupId}/${event.type}`, [groupId, event.type]);
   }
@@ -162,7 +167,6 @@ async function rename(
 
   // A category's place follows the stamp it was created with, and a member's the stamp
   // of its last removal or return.
-  const moved = new Set<string>();
   for (const [groupId, type] of toOrder.values())
     if (await orderSyncedRows(tx, groupId, type)) moved.add(groupId);
   return moved;

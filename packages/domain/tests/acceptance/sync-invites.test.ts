@@ -52,7 +52,7 @@ const VALID = (content: unknown) => ({ status: 'valid', event: content });
 test.each<[string, unknown]>([
   ["an invite's first event", invite()],
   ['the deletion of an invite', revoked()],
-])('[SYNC-4.2] accepts %s', (_case, content) => {
+])('[SYNC-4.3] accepts %s', (_case, content) => {
   expect(judge(content)).toEqual(VALID(content));
 });
 
@@ -65,7 +65,7 @@ test.each<[string, unknown]>([
     },
   ],
   ['an invite that changes no unit', { ...invite(), units: {} }],
-])('[SYNC-4.2] refuses %s for its structure', (_case, content) => {
+])('[SYNC-4.3] refuses %s for its structure', (_case, content) => {
   expect(judge(invite())).toEqual(VALID(invite()));
   expect(judge(content)).toEqual(refused('structure'));
 });
