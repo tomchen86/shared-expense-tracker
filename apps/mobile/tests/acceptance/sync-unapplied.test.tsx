@@ -11,6 +11,7 @@ import {
   addGroupExpense,
   addToGroup,
   archiveGroup,
+  groupCard,
   groupCardTitles,
   removeFromGroup,
   renameInGroup,
@@ -739,7 +740,8 @@ test('[SYNC-352.1] [GROUPS-171.1] dismisses one change and leaves the others: th
 // The button under a group's title
 
 test("[GROUPS-170.1] counts the changes that were not applied in a button under the group's title, with the mark's icon and a chevron", async () => {
-  const { brisbane } = await start();
+  // Lunch stays in the group, so that its screen shows the period row and a card.
+  const { brisbane } = await startWithLunch();
   await addDinner();
   await refuseOwn(brisbane);
 
@@ -751,11 +753,18 @@ test("[GROUPS-170.1] counts the changes that were not applied in a button under 
   expect(iconNames(button, 'ios')).toEqual([MARK_ICON.ios]);
   const shown = [notApplied(1), '›'];
   expect(shownInOrder(linesIn(button), shown)).toEqual(shown);
-  // Right under the large title, above the period row; the expense itself is gone.
+  // Right under the large title, above the period row and the cards; Dinner itself is gone.
   expect(textsOn('Brisbane')[0]).toBe(notApplied(1));
-  expect(groupCardTitles('Brisbane')).toEqual([]);
+  expect(groupCardTitles('Brisbane')).toEqual(['Lunch']);
   const [period] = drawnTexts(screenOf('Brisbane'), 'Group Total');
-  expect(inTreeOrder(largeTitle('Brisbane')!, button, period)).toBe(true);
+  expect(
+    inTreeOrder(
+      largeTitle('Brisbane')!,
+      button,
+      period,
+      groupCard('Brisbane', 'Lunch'),
+    ),
+  ).toBe(true);
 });
 
 test("[GROUPS-170.1] follows the changes while the group's screen stays open: one, then two", async () => {
@@ -1302,6 +1311,55 @@ test('[LEDGER-230.1] leaves the amount group out for an event refused for its cu
     [
       EXPENSE_CHANGE,
       OTHER_TEXT,
+      'EXPENSE',
+      'Lunch',
+      'YOU ENTERED',
+      'Brunch',
+      DISMISS,
+    ],
+    [
+      EXPENSE_CHANGE,
+      OTHER_TEXT,
+      'EXPENSE',
+      'Lunch',
+      'YOU ENTERED',
+      'Late lunch',
+      DISMISS,
+    ],
+  ]);
+});
+
+test('[LEDGER-230.1] leaves the amount group out when its currency or its sums are wrong, though the event was refused for its clock or its device', async () => {
+  const { brisbane } = await startWithLunch();
+  const { money } = await lunchUnits();
+
+  await receiveEvents(
+    brisbane,
+    uploadedHere(
+      changed('expense', LUNCH, ahead(), {
+        title: 'Brunch',
+        money: { ...money, currency: 'XYZ' },
+      }),
+      LATER,
+    ),
+    uploadedHere(
+      changed('expense', LUNCH, at(LATER, 1), {
+        title: 'Late lunch',
+        money: { ...money, amountMinor: 3100 },
+      }),
+    ),
+  );
+  expect((await unapplied()).map(({ reason }) => reason)).toEqual([
+    'clock',
+    'device',
+  ]);
+
+  await showSheet();
+
+  await expectBlocks([
+    [
+      EXPENSE_CHANGE,
+      CLOCK_TEXT,
       'EXPENSE',
       'Lunch',
       'YOU ENTERED',

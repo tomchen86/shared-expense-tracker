@@ -5083,7 +5083,7 @@ The mobile app SHALL 讓可能重複的標記在手機上看得清楚、讀得�
 
 ### Requirement: LEDGER-230.1 支出的沒有套用的變更的區塊
 
-The mobile app SHALL 在 Changes Not Applied（GROUPS-171.1）替事件指的是支出、原因不是結構的沒有套用的變更（sync）這樣顯示。事件帶著支出的六個單位時，區塊的標題是「Expense not added」，內容是「YOU ENTERED」和事件帶的值。其他時候區塊的標題是「Expense change not applied」，內容先是「EXPENSE」和退回之後（SYNC-351.1）這支手機存著的這筆支出現在的標題，垃圾桶裡的也算，這支手機沒有這筆支出時沒有這兩行；再是「YOU ENTERED」和事件帶的值。事件帶的值只列事件改的單位，依這個順序：標題；金額那一組的三行，寫法和 LEDGER-152.1 的一組一樣；日期，用手機地區的日期格式（LEDGER-30.2）；分類，是事件帶著的名稱；備註，沒有備註時是「No note」；在不在垃圾桶裡，是的時候是「Moved to Trash」，否的時候是「Restored from Trash」，帶著六個單位的事件不列這一行。原因是幣別或加總時不列金額那一組的三行。永久刪除支出的事件沒有「YOU ENTERED」和它下面的值。成員改了名之後，「Paid by」和「Split between」跟著用現在的名稱。
+The mobile app SHALL 在 Changes Not Applied（GROUPS-171.1）替事件指的是支出、原因不是結構的沒有套用的變更（sync）這樣顯示。事件帶著支出的六個單位時，區塊的標題是「Expense not added」，內容是「YOU ENTERED」和事件帶的值。其他時候區塊的標題是「Expense change not applied」，內容先是「EXPENSE」和退回之後（SYNC-351.1）這支手機存著的這筆支出現在的標題，垃圾桶裡的也算，這支手機沒有這筆支出時沒有這兩行；再是「YOU ENTERED」和事件帶的值。事件帶的值只列事件改的單位，依這個順序：標題；金額那一組的三行，寫法和 LEDGER-152.1 的一組一樣；日期，用手機地區的日期格式（LEDGER-30.2）；分類，是事件帶著的名稱；備註，沒有備註時是「No note」；在不在垃圾桶裡，是的時候是「Moved to Trash」，否的時候是「Restored from Trash」，帶著六個單位的事件不列這一行。事件帶的金額那一組的幣別不支援（SYNC-7.1）或加總不對（SYNC-8.1）時，不列金額那一組的三行：原因是幣別或加總時是這樣，原因是裝置或時鐘、而那一組另外有這兩種問題時也一樣（SYNC-10.2）。永久刪除支出的事件沒有「YOU ENTERED」和它下面的值。成員改了名之後，「Paid by」和「Split between」跟著用現在的名稱。
 
 #### Scenario: 新增的支出
 
@@ -5124,6 +5124,11 @@ The mobile app SHALL 在 Changes Not Applied（GROUPS-171.1）替事件指的是
 
 - **WHEN** 有 Lunch；套用兩個上傳的裝置 ID 是 `phone-a`、這支手機沒有寫過、改 Lunch 的標題和金額那一組的事件：一個標題是「Brunch」、幣別是 `XYZ`，另一個標題是「Late lunch」、金額是 3100 而分攤加總仍是 3000
 - **THEN** 兩個區塊的「YOU ENTERED」下面各只有「Brunch」和「Late lunch」，沒有金額、「Paid by」和「Split between」；說明都是其他原因的那一句
+
+#### Scenario: 原因是時鐘或裝置，金額那一組另外有問題
+
+- **WHEN** 有 Lunch；套用兩個上傳的裝置 ID 是 `phone-a`、這支手機沒有寫過、改 Lunch 的標題和金額那一組的事件：一個標題是「Brunch」、幣別是 `XYZ`、時間戳記比收到時間晚一小時，原因是時鐘；另一個標題是「Late lunch」、金額是 3100 而分攤加總仍是 3000、時間戳記的裝置 ID 是 `phone-b`，原因是裝置
+- **THEN** 兩個區塊的「YOU ENTERED」下面各只有「Brunch」和「Late lunch」，沒有金額、「Paid by」和「Split between」；前一個的說明是時鐘的那一句，後一個是其他原因的那一句
 
 #### Scenario: 這支手機沒有這筆支出
 

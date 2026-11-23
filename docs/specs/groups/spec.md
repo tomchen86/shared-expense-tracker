@@ -2023,8 +2023,8 @@ WHILE 共同帳本有沒有套用的變更（sync），the mobile app SHALL 在�
 
 #### Scenario: 一個
 
-- **WHEN** Brisbane 是共同帳本，新增 Dinner，自己的事件不套用（sync），打開 Brisbane 的畫面
-- **THEN** 大標題「Brisbane」下面是一個按鈕「1 change wasn't applied」，前面是 LEDGER-151.1 的圖示，右邊有「›」；螢幕閱讀器讀出一個按鈕「1 change wasn't applied」和提示「Opens the list」；畫面上沒有 Dinner 的卡片
+- **WHEN** Brisbane 是共同帳本，有 Lunch（sync）；新增 Dinner，自己的事件不套用，打開 Brisbane 的畫面
+- **THEN** 大標題「Brisbane」下面是一個按鈕「1 change wasn't applied」，前面是 LEDGER-151.1 的圖示，右邊有「›」，再下面是期間列和 Lunch 的卡片；螢幕閱讀器讀出一個按鈕「1 change wasn't applied」和提示「Opens the list」；畫面上沒有 Dinner 的卡片
 
 #### Scenario: 兩個
 
