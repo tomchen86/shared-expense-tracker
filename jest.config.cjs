@@ -62,10 +62,12 @@ module.exports = {
     './packages/domain/src/sync/duplicates.ts': { branches: 91.66 },
     './apps/mobile/src/sync/duplicates.ts': { branches: 100 },
     './apps/mobile/src/ledger/expense-card.tsx': { branches: 87.5 },
-    // The phone's sync with the API (ADR-0027): the loop, the check of unsent stamps, and
-    // what starts a sync and shows its notices. Measured with the tests against the API
-    // (`*-api.test.*`), which need Docker.
-    './apps/mobile/src/sync/loop.ts': { branches: 98.21 },
+    // The phone's sync with the API (ADR-0027): the loop, what its requests share, its
+    // tables, the check of unsent stamps, and what starts a sync and shows its notices.
+    // Measured with the tests against the API (`*-api.test.*`), which need Docker.
+    './apps/mobile/src/sync/loop.ts': { branches: 98.59 },
+    './apps/mobile/src/sync/transport.ts': { branches: 100 },
+    './apps/mobile/src/sync/migrations.ts': { branches: 100 },
     './apps/mobile/src/sync/stamps.ts': { branches: 96 },
     './apps/mobile/src/sync/use-sync-notices.ts': { branches: 75 },
     './apps/mobile/src/sync/use-sync-triggers.ts': { branches: 93.75 },
@@ -122,8 +124,8 @@ module.exports = {
     './packages/domain/src/api/group-snapshots.ts': { branches: 100 },
     './packages/domain/src/sync/snapshot.ts': { branches: 100 },
     './apps/api/src/sync/snapshots.ts': { branches: 100 },
-    './apps/mobile/src/sync/snapshot-ledger.ts': { branches: 97.29 },
-    './apps/mobile/src/sync/snapshots.ts': { branches: 98.43 },
+    './apps/mobile/src/sync/snapshot-ledger.ts': { branches: 97.56 },
+    './apps/mobile/src/sync/snapshots.ts': { branches: 98.71 },
   },
   testTimeout: 15000,
 };
