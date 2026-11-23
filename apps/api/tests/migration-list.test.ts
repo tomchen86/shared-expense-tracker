@@ -10,5 +10,6 @@ test('the migrations that have merged keep their names and their order', () => {
     'sync/0001-create-groups',
     'sharing/0002-create-invites',
     'sync/0002-create-snapshots',
+    'sharing/0003-create-join-requests',
   ]);
 });

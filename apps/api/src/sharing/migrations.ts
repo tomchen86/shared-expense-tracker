@@ -59,4 +59,30 @@ export const sharingMigrations: readonly Migration[] = [
         ON group_invites (group_id) WHERE card IS NOT NULL;
     `,
   },
+  {
+    name: 'sharing/0003-create-join-requests',
+    sql: `
+      CREATE TABLE invite_join_requests (
+        code text NOT NULL REFERENCES group_invites (code) ON DELETE CASCADE,
+        device_id uuid NOT NULL REFERENCES devices (id),
+        received_at_ms bigint NOT NULL,
+        content bytea NOT NULL,
+        PRIMARY KEY (code, device_id)
+      );
+
+      -- Revocation keeps the invite row so its code cannot be reused. Remove its
+      -- requests in the same transaction, including when the previous Worker revokes it.
+      CREATE FUNCTION delete_revoked_invite_requests() RETURNS trigger
+        LANGUAGE plpgsql AS $$
+        BEGIN
+          DELETE FROM invite_join_requests WHERE code = NEW.code;
+          RETURN NULL;
+        END;
+        $$;
+      CREATE TRIGGER delete_revoked_invite_requests
+        AFTER UPDATE OF revoked ON group_invites
+        FOR EACH ROW WHEN (NEW.revoked AND NOT OLD.revoked)
+        EXECUTE FUNCTION delete_revoked_invite_requests();
+    `,
+  },
 ];
