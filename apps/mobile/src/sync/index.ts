@@ -31,6 +31,16 @@ export {
   type TakeSnapshotResult,
 } from './snapshots';
 
+/**
+ * Whether a shared ledger of this phone waits for a snapshot (SYNC-165.1): the API has
+ * cleared events after its cursor, and no download has got a page since. False for a
+ * group that is no shared ledger. Not built yet: #156.
+ */
+export const isWaitingForSnapshot: (
+  database: SqlExecutor,
+  groupId: string,
+) => Promise<boolean> = () => Promise.reject(new Error('Not built yet (#156)'));
+
 /** An event this phone wrote and has not uploaded yet. */
 export interface UnsentSyncEvent {
   /** The event's own ID, the same every time it is uploaded. */

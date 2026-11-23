@@ -1145,8 +1145,8 @@ describe('SYNC-113.1', () => {
   });
 });
 
-describe('SYNC-61.3', () => {
-  test("[SYNC-61.3] keeps each chunk's content once, and nothing else a request carries or a refused or repeated chunk brings", async () => {
+describe('SYNC-61.4', () => {
+  test("[SYNC-61.4] keeps each chunk's content once, and nothing else a request carries or a refused or repeated chunk brings", async () => {
     const [taylor, casey] = await brisbane(false);
     const s = snapshotOf(taylor, casey);
     const headers = { 'X-Group-Name': 'Brisbane-Trip' };

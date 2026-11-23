@@ -222,5 +222,23 @@ export function isSnapshotNeededResponse(
   return hasExactly(value, ['error']) && value.error === 'snapshot-needed';
 }
 
+/**
+ * The header of a page's answer that lists the member devices a snapshot is needed by
+ * (SYNC-162.1): their device IDs on one line, joined by commas.
+ */
+export const SNAPSHOT_NEEDED_BY_HEADER = 'x-snapshot-needed-by';
+
+/** Writes that header's value for these device IDs, in their order (SYNC-163.1). Not built yet: #156. */
+export const writeSnapshotNeededBy: (
+  deviceIds: readonly string[],
+) => string = () => {
+  throw new Error('Not built yet (#156)');
+};
+
+/** The device IDs that header's value lists, none when it is absent or written any other way (SYNC-163.1). Not built yet: #156. */
+export const readSnapshotNeededBy: (value: unknown) => string[] = () => {
+  throw new Error('Not built yet (#156)');
+};
+
 // The invite API uses the same group IDs, integer cursors and encrypted content limits.
 export { hasExactly, isContent, isId as isGroupId, isWhole };

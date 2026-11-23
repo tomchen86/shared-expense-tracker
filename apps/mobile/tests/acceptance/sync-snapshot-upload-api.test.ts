@@ -36,6 +36,8 @@ import {
   uploadAs,
   uploads,
   utf8,
+  noAnswerTo as noAnswerToEvents,
+  whenAnswered as whenEventsAnswered,
 } from './sync-loop-app';
 import {
   PIECE,
@@ -298,6 +300,8 @@ describe('SYNC-114.2', () => {
     const setup = await twoPhones();
     const { a, key } = setup;
     await addExpense(a);
+    // The download after the upload gets no answer, so the cursor stays before the event (SYNC-160.1).
+    whenEventsAnswered('POST', async () => noAnswerToEvents('GET'));
     await sync(a);
     const c = await newcomer(setup);
 
