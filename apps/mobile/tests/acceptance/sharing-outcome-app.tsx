@@ -36,7 +36,7 @@ import { settle } from './shell-appearance-app';
 // The screen tests of learning the answer start the whole app on Dana's phone, as the
 // join tests do (sharing-join-app), with a request it has sent. They stand in for the
 // member's phone that answers it: the request is taken off the API, or the API is given
-// the handover and the snapshot an approving phone uploads (SHARING-195.1 to 198.1), put
+// the handover and the snapshot an approving phone uploads (SHARING-195.2 to 198.1), put
 // together here as docs/specs/sharing/spec.md words them.
 
 export const WAITING_CARD = 'Waiting for approval';
@@ -158,7 +158,7 @@ export interface ApprovalChanges {
 }
 
 /**
- * A member's phone approves the phone's last request, as SHARING-195.1 to 198.1 have it:
+ * A member's phone approves the phone's last request, as SHARING-195.2 to 198.1 have it:
  * the API holds a box for the phone and a snapshot of Brisbane whose roster names the
  * approving phone and this one. `changes` make it an approval a working app never sends.
  */

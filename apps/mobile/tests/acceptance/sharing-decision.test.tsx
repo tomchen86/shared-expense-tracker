@@ -351,8 +351,8 @@ describe('GROUPS-132.1', () => {
   });
 });
 
-describe('SHARING-190.1', () => {
-  test('[SHARING-190.1] lists the requests after the download of a sync, when the app is opened again', async () => {
+describe('SHARING-190.2', () => {
+  test('[SHARING-190.2] lists the requests after the download of a sync, when the app is opened again', async () => {
     const { brisbane } = await startWithInvite();
     await asks();
     const from = received().length;
@@ -374,7 +374,38 @@ describe('SHARING-190.1', () => {
     await expectJoinCount('Brisbane', 1);
   });
 
-  test('[SHARING-190.1] lists them again when Members opens, without a sync', async () => {
+  test('[SHARING-190.2] lists the requests once the download that begins a sync is done, though the download after its upload gets no answer', async () => {
+    const { brisbane } = await startWithInvite();
+    goOffline();
+    await addDinner();
+    const added = (await unsent()).at(-1)!;
+    await asks();
+    const from = received().length;
+    holdAnswers('POST');
+    goOnline();
+    await syncs();
+    await waitFor(() => expect(apiEventIds(brisbane)).toContain(added.id));
+    // The answer to the upload goes to the phone. The answer to the download that follows
+    // it (SYNC-160.1) never comes: the two calls leave no moment between them in which
+    // the phone could send that download and have it answered.
+    const released = releaseAnswers();
+    holdAnswers('GET');
+    await released;
+    await waitFor(async () => expect(await unsent()).toEqual([]));
+    await settle();
+    expect(lists(from)).toEqual([]);
+
+    // The phone gives the download up (SYNC-97.1), and the sync ends.
+    await secondsPass(60);
+
+    await waitFor(() => expect(lists(from)).toHaveLength(1));
+    await releaseAnswers();
+    await tapTab('Groups');
+    await openGroup('Brisbane');
+    await expectJoinCount('Brisbane', 1);
+  });
+
+  test('[SHARING-190.2] lists them again when Members opens, without a sync', async () => {
     await startWithInvite();
     await asks();
     const from = received().length;
@@ -385,7 +416,7 @@ describe('SHARING-190.1', () => {
     expect(lists(from)).toHaveLength(1);
   });
 
-  test('[SHARING-190.1] goes on after the last device of a page while the API says more follow', async () => {
+  test('[SHARING-190.2] goes on after the last device of a page while the API says more follow', async () => {
     const { brisbane } = await startWithInvite();
     await asks();
     await asks({ name: 'Evan', deviceId: E, userId: EVAN_USER });
@@ -404,7 +435,7 @@ describe('SHARING-190.1', () => {
     await expectMembers([DANA_ROW, `Evan, ${NEW_MEMBER}`, ...MEMBERS]);
   });
 
-  test('[SHARING-190.1] asks for no requests while the phone holds no invite that has not expired, and shows none', async () => {
+  test('[SHARING-190.2] asks for no requests while the phone holds no invite that has not expired, and shows none', async () => {
     await startWithInvite();
     await asks();
     await syncs();
@@ -421,7 +452,7 @@ describe('SHARING-190.1', () => {
     await expectJoinCount('Brisbane', 0);
   });
 
-  test('[SHARING-190.1] asks for no requests of a shared ledger that never had an invite', async () => {
+  test('[SHARING-190.2] asks for no requests of a shared ledger that never had an invite', async () => {
     await startSynced();
     const from = received().length;
 
@@ -439,7 +470,7 @@ describe('SHARING-190.1', () => {
       () => apiAnswersDecision('list', 500, {}),
     ],
   ])(
-    '[SHARING-190.1] keeps the requests it had, and says nothing, when %s',
+    '[SHARING-190.2] keeps the requests it had, and says nothing, when %s',
     async (_case, fail) => {
       await inMembersWithDana();
       await leaveMembers('Brisbane');
@@ -453,7 +484,7 @@ describe('SHARING-190.1', () => {
     },
   );
 
-  test('[SHARING-190.1] drops a request the API no longer lists', async () => {
+  test('[SHARING-190.2] drops a request the API no longer lists', async () => {
     const { brisbane } = await inMembersWithDana();
     await leaveMembers('Brisbane');
     withdraws(brisbane);
@@ -464,7 +495,7 @@ describe('SHARING-190.1', () => {
     await expectMembers(MEMBERS);
   });
 
-  test('[SHARING-190.1] lists nothing for a shared ledger that is archived', async () => {
+  test('[SHARING-190.2] lists nothing for a shared ledger that is archived', async () => {
     await startWithInvite();
     await asks();
     await archiveGroup('Brisbane');
@@ -476,7 +507,7 @@ describe('SHARING-190.1', () => {
     expect(lists(from)).toEqual([]);
   });
 
-  test('[SHARING-190.1] lists nothing while it is approving a request, and lists again once the API has answered', async () => {
+  test('[SHARING-190.2] lists nothing while it is approving a request, and lists again once the API has answered', async () => {
     await inMembersWithDana();
     holdDecisions('approve');
     const pressed = received().length;
@@ -639,8 +670,8 @@ describe('SHARING-194.1', () => {
   });
 });
 
-describe('SHARING-195.1', () => {
-  test('[SHARING-195.1] sends the cursor it checked at when the app synced meanwhile, and says why it cannot approve once the API calls it behind', async () => {
+describe('SHARING-195.2', () => {
+  test('[SHARING-195.2] sends the cursor it checked at when the app synced meanwhile, and says why it cannot approve once the API calls it behind', async () => {
     const { brisbane } = await startWithInvite();
     const { Casey } = await members('Brisbane');
     await asks({ memberId: Casey });
@@ -675,7 +706,7 @@ describe('SHARING-195.1', () => {
     expect(await unsent()).toEqual([]);
   });
 
-  test('[SHARING-195.1] approves the content its menu was opened for: a request replaced since is answered as gone, and the new one is shown', async () => {
+  test('[SHARING-195.2] approves the content its menu was opened for: a request replaced since is answered as gone, and the new one is shown', async () => {
     const { brisbane } = await inMembersWithDana();
     const { Casey } = await members('Brisbane');
     const menu = await tapMember(DANA_ROW);
@@ -729,8 +760,8 @@ describe('SHARING-199.1', () => {
   });
 });
 
-describe('SHARING-200.1', () => {
-  test('[SHARING-200.1] says to connect when there is no network, and keeps the request', async () => {
+describe('SHARING-200.2', () => {
+  test('[SHARING-200.2] says to connect when there is no network, and keeps the request', async () => {
     await inMembersWithDana();
     goOffline();
 
@@ -745,7 +776,7 @@ describe('SHARING-200.1', () => {
     goOnline();
   });
 
-  test('[SHARING-200.1] says the request was answered when the API no longer has it, and lists again', async () => {
+  test('[SHARING-200.2] says the request was answered when the API no longer has it, and lists again', async () => {
     const { brisbane } = await inMembersWithDana();
     apiAnswersDecision('approve', 404, { error: 'no-request' });
     withdraws(brisbane);
@@ -759,7 +790,7 @@ describe('SHARING-200.1', () => {
     await expectMembers(MEMBERS);
   });
 
-  test('[SHARING-200.1] says the group is full when it has its 20 member devices', async () => {
+  test('[SHARING-200.2] says the group is full when it has its 20 member devices', async () => {
     const { brisbane } = await inMembersWithDana();
     memberDevicesOn(brisbane, 20);
 
@@ -772,7 +803,7 @@ describe('SHARING-200.1', () => {
     await expectMembers([DANA_ROW, ...MEMBERS]);
   });
 
-  test('[SHARING-200.1] says why it cannot approve, and sends nothing, when the sync before it brings the reason', async () => {
+  test('[SHARING-200.2] says why it cannot approve, and sends nothing, when the sync before it brings the reason', async () => {
     const { brisbane } = await startWithInvite();
     const { Casey } = await members('Brisbane');
     await asks({ memberId: Casey });
@@ -797,7 +828,7 @@ describe('SHARING-200.1', () => {
     expect(requestsOn(brisbane)).toEqual([D]);
   });
 
-  test('[SHARING-200.1] says the request was answered, and sends nothing, when the sync before it brings the news that the invite was revoked', async () => {
+  test('[SHARING-200.2] says the request was answered, and sends nothing, when the sync before it brings the news that the invite was revoked', async () => {
     const { brisbane } = await inMembersWithDana();
     const menu = await tapMember(DANA_ROW);
     // Another member's phone has revoked the invite; the API holds no request of it any more.
@@ -821,7 +852,7 @@ describe('SHARING-200.1', () => {
     await expectMembers(MEMBERS);
   });
 
-  test('[SHARING-200.1] says something went wrong for an answer it cannot read', async () => {
+  test('[SHARING-200.2] says something went wrong for an answer it cannot read', async () => {
     await inMembersWithDana();
     apiAnswersDecision('approve', 500, {});
 
