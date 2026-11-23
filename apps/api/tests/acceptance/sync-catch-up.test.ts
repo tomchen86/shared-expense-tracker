@@ -32,7 +32,9 @@ import {
   eventsPath,
   expectCreated,
   expectGroupRefused,
+  expectPage,
   expectUploaded,
+  relayedFrom,
   rowsHolding,
   upload,
   useSyncApi,
@@ -200,10 +202,15 @@ describe('SYNC-162.1', () => {
     expectPageNaming(await downloadFrom(taylor, 6), null);
   });
 
-  test('[SYNC-162.1] a device stays named while its snapshot covers less than the group is cleared to', async () => {
+  test('[SYNC-162.1] a device stays named while its snapshot covers less than the group is cleared to, also once it has been told of that snapshot', async () => {
     const [taylor, casey] = await caseyWaits();
-    await uploadAll(BRISBANE, snapshotOf(taylor, casey, { sequence: 4 }));
+    const s = snapshotOf(taylor, casey, { sequence: 4 });
+    await uploadAll(BRISBANE, s);
 
+    expectPageNaming(await downloadFrom(taylor, 5), casey.deviceId);
+
+    // The answer that there is a snapshot for it does not end its waiting.
+    expectWaiting(await ask(casey, BRISBANE), s);
     expectPageNaming(await downloadFrom(taylor, 5), casey.deviceId);
   });
 
@@ -566,6 +573,33 @@ describe('SYNC-171.1', () => {
     await addMember(BRISBANE, casey);
     setTime(LATER + 10_000);
     expectPageNaming(await downloadFrom(casey, 5), taylor.deviceId);
+  });
+
+  test('[SYNC-171.1] the number is the one the group is cleared to, not its last: the events after it are still there to download', async () => {
+    const [taylor] = await taylorWithBrisbaneAndCasey();
+    await store(taylor, 3);
+    setTime(T + 2 * DAY);
+    const kept = await store(taylor, 2, 4);
+    // The first three are over 30 days old, the other two are not.
+    await cleanUpAt(T + THIRTY_DAYS + 1);
+    setTime(LATER);
+
+    expectContinue(await downloadFrom(taylor, 1), 3);
+
+    expectPage(await download(taylor, BRISBANE, 3), {
+      events: relayedFrom(4, kept, { by: taylor, at: T + 2 * DAY }),
+      more: false,
+    });
+  });
+
+  test('[SYNC-171.1] a device counts as waiting for as long as it is marked, also once it is named no longer', async () => {
+    const [taylor] = await caseyWaits();
+
+    // 30 days and a millisecond after Casey's phone was told, and it has not come back.
+    setTime(LATER + THIRTY_DAYS + 1);
+
+    expectContinue(await downloadFrom(taylor, 3), 5);
+    expectPageNaming(await downloadFrom(taylor, 5), null);
   });
 
   test('[SYNC-171.1] refuses a cursor past the group’s last number, and a device that is no member device, as before', async () => {

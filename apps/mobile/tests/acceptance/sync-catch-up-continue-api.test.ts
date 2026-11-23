@@ -8,6 +8,7 @@ import {
   waits,
 } from './sync-catch-up-app';
 import {
+  MINUTE,
   NOW,
   addExpense,
   answerNext,
@@ -17,9 +18,11 @@ import {
   ledgerOf,
   mark,
   noAnswerTo,
+  renameGroup,
   restart,
   restoreData,
   sentBy,
+  setClock,
   stampOf,
   storedEvents,
   sync,
@@ -70,6 +73,9 @@ beforeEach(startSnapshotWorld);
 afterEach(endSnapshotWorld);
 
 const IMPORTED = { outcome: 'imported' };
+
+/** How far ahead of the corrected time a stamp may be and stay (SYNC-84.1). */
+const FIVE_MINUTES = 5 * MINUTE;
 
 /** A sync that uploads from cursor 0: the download, the upload, and the download after it. */
 const DOWN_UP_DOWN = ['download after=0', 'upload', 'download after=0'];
@@ -165,6 +171,43 @@ describe('SYNC-173.1', () => {
     expect(await unsent(a, tokyo)).toEqual([]);
     expect(await numbersOf(tokyo)).toEqual([3]);
     expect(await waits(a, tokyo)).toBe(false);
+  });
+
+  test('[SYNC-173.1] with [SYNC-171.1] goes on from the number the group is cleared to, and downloads the events the group still stores after it', async () => {
+    const setup = await twoPhones();
+    const { tokyo } = setup;
+    await tokyoAlone(setup);
+    const copy = await copyOfData(setup.a);
+    await addExpense(setup.a, { group: tokyo });
+    await sync(setup.a, tokyo);
+    await sync(setup.a, tokyo);
+    // Lunch is uploaded, and the API never learns of a cursor past Dinner.
+    await addExpense(setup.a, { title: 'Lunch', group: tokyo });
+    whenAnswered('POST', async () => noAnswerTo('GET'));
+    await sync(setup.a, tokyo);
+    // Every member device has Dinner's event, by the progress recorded: the cleanup takes it alone.
+    await cleanUpAt(NOW + 1_000);
+    expect(await numbersOf(tokyo)).toEqual([2]);
+    const a = {
+      ...(await restoreData(setup.a, copy)),
+      identity: setup.a.identity,
+    };
+    expect(await titles(a, tokyo)).toEqual([]);
+    await addExpense(a, { title: 'Coffee', group: tokyo });
+    const from = mark();
+
+    await sync(a, tokyo);
+
+    expect(await answersTo(a, from)).toEqual([
+      [`/groups/${tokyo}/events?after=0`, 410],
+      [`/groups/${tokyo}/events?after=1`, 200],
+      [`/groups/${tokyo}/events`, 200],
+      [`/groups/${tokyo}/events?after=2`, 200],
+    ]);
+    // Lunch's event was still there, after the number the phone went on from.
+    expect(await titles(a, tokyo)).toEqual(['Coffee', 'Lunch']);
+    expect(await numbersOf(tokyo)).toEqual([2, 3]);
+    expect(await unsent(a, tokyo)).toEqual([]);
   });
 
   test('[SYNC-173.1] with [SYNC-161.1] uploads again the event the API confirmed and cleared before the phone’s cursor covered it', async () => {
@@ -474,6 +517,81 @@ describe('SYNC-161.1', () => {
     await sentSnapshot(b, a);
     expect(await takeSnapshot(a)).toEqual(IMPORTED);
     expect(await unsent(a)).toEqual([written]);
+  });
+
+  test('[SYNC-161.1] keeps the events no page has brought back yet, and puts them back ahead of what was unsent, in the order written', async () => {
+    const setup = await twoPhones();
+    const { a, b, brisbane } = setup;
+    for (let index = 0; index < 250; index += 1) {
+      await renameGroup(a, `Trip ${index + 1}`);
+    }
+    const written = (await unsent(a)).map(({ id }) => id);
+    // Every upload is confirmed. Of the download after them the first page arrives, and
+    // the request for the second gets no answer.
+    whenAnswered('POST', async () =>
+      whenAnswered('POST', async () =>
+        whenAnswered('POST', async () =>
+          whenAnswered('GET', async () => noAnswerTo('GET')),
+        ),
+      ),
+    );
+    const first = mark();
+    await sync(a);
+    expect(await requestsOf(a, first)).toEqual([
+      'download after=0',
+      'upload',
+      'upload',
+      'upload',
+      'download after=0',
+      'download after=100',
+    ]);
+    expect(await unsent(a)).toEqual([]);
+    await renameGroup(a, 'Later');
+    const [later] = await unsent(a);
+    await sync(b);
+    await sentSnapshot(b, a);
+
+    expect(await takeSnapshot(a)).toEqual(IMPORTED);
+
+    // The first hundred came back in a page; the rest are unsent again, before the new one.
+    expect((await unsent(a)).map(({ id }) => id)).toEqual([
+      ...written.slice(100),
+      later.id,
+    ]);
+
+    await sync(a);
+    expect(await numbersOf(brisbane)).toHaveLength(251);
+    expect(await unsent(a)).toEqual([]);
+    await sync(b);
+    expect((await ledgerOf(b)).name).toBe('Later');
+  });
+
+  test('[SYNC-161.1] with [SYNC-84.1] the event is unsent again as checked: its stamp stays, however far ahead it now is', async () => {
+    const setup = await twoPhones();
+    const { a, b, key } = setup;
+    // Saved with the clock five minutes ahead: the furthest a stamp may be ahead and stay.
+    setClock(a, NOW + FIVE_MINUTES);
+    await addExpense(a);
+    setClock(a, NOW);
+    const [written] = await unsent(a);
+    whenAnswered('POST', async () => noAnswerTo('GET'));
+    const first = mark();
+    await sync(a);
+    expect(await requestsOf(a, first)).toEqual(DOWN_UP_DOWN);
+    await expectUploadedAgain(a, key, first, written);
+    await sync(b);
+    await sentSnapshot(b, a);
+    // A millisecond earlier, that stamp is more than five minutes ahead.
+    setClock(a, NOW - 1);
+    expect(await takeSnapshot(a)).toEqual(IMPORTED);
+    expect(await unsent(a)).toEqual([written]);
+    const from = mark();
+
+    await sync(a);
+
+    // Checked again, it would have got a new stamp (SYNC-85.1).
+    await expectUploadedAgain(a, key, from, written);
+    expect(await unsent(a)).toEqual([]);
   });
 
   test('[SYNC-161.1] with [SYNC-139.1] an event the cleanup took before the phone’s cursor covered it goes up again as a new event once the phone has caught up', async () => {

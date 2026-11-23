@@ -24,6 +24,7 @@ import {
   ledgerOf,
   mark,
   mostRequestsAtOnce,
+  noAnswerTo as noAnswerToEvents,
   randomKey,
   renameGroup,
   restart,
@@ -416,6 +417,35 @@ describe('SYNC-166.1', () => {
       'put chunk 0',
     ]);
     expect(uploadedChunks(from)).toEqual([
+      expect.objectContaining({ deviceId: A, sequence: 2 }),
+    ]);
+  });
+
+  test('[SYNC-166.1] a sync that ends early uploads no snapshot, and the next one that gets through does', async () => {
+    const setup = await taylorBehind();
+    const { a, b, A } = setup;
+    await sync(a);
+    await addExpense(b, { title: 'Coffee' });
+    // The page that begins the sync names Taylor's phone; the download after the upload gets no answer.
+    whenAnswered('POST', async () => noAnswerToEvents('GET'));
+    const from = mark();
+
+    await sync(b);
+
+    expect(await requestsOf(b, from)).toEqual([
+      'download after=1',
+      'upload',
+      'download after=1',
+    ]);
+    expect(uploadedChunks(from)).toEqual([]);
+
+    const next = mark();
+    await sync(b);
+    expect(await requestsOf(b, next)).toEqual([
+      'download after=1',
+      'put chunk 0',
+    ]);
+    expect(uploadedChunks(next)).toEqual([
       expect.objectContaining({ deviceId: A, sequence: 2 }),
     ]);
   });

@@ -43,7 +43,7 @@ Also considered:
 A sync, once it has uploaded:
 
 - A sync whose upload the API confirmed downloads again from the cursor, page by page to the end, before it ends. The pages are stored like any others, so the cursor passes the phone's own events, and the next sync starts after them. A sync that uploaded nothing, or had no upload confirmed, sends no second download.
-- The second download is the sync's last step. A change saved meanwhile waits for the next sync. An answer that is no page ends the sync, and the confirmed upload stands.
+- After the second download the sync downloads no more and uploads no more events. All that can follow is the snapshots it makes for the devices its last page names (below), and it ends once they are uploaded. A change saved meanwhile waits for the next sync. An answer that is no page ends the sync at once, with no snapshot made, and the confirmed upload stands.
 
 A phone's own events until its cursor covers them:
 
@@ -61,7 +61,7 @@ Who needs a snapshot:
 
 The phone that keeps up:
 
-- A phone whose sync got a page that names devices makes a snapshot of the ledger for each of them, in the order named, once its downloads and uploads are done, and uploads it as ADR-0028 says. It goes by the last page of the sync. A snapshot that does not upload ends this for the sync; the next sync is told again who still needs one.
+- A phone whose sync got a page that names devices makes a snapshot of the ledger for each of them, in the order named, once its downloads and uploads are done, and uploads it as ADR-0028 says. It goes by the last page of the sync. A sync that ended early, at a download or an upload that failed, makes none. A snapshot that does not upload ends this for the sync; the next sync is told again who still needs one.
 - The first phone to sync after a device was told makes the snapshot. Two phones that sync at once both upload, and the later chunk 0 replaces the other (ADR-0028). Once a complete snapshot is stored the device is no longer named, so no third follows.
 
 The phone that is behind:
@@ -81,8 +81,9 @@ When no phone can make the snapshot:
 
 - The API answers a download whose cursor is behind the cleared events with "continue" instead of "snapshot needed" when three things hold. Every other member device of the group is marked as waiting. Each of them has no recorded progress, or a recorded cursor no larger than the one this download carries. And the group stores no complete snapshot, for any member device, that covers more than this cursor.
 - Then no other member device holds an event from the API that this phone lacks, and none can make a snapshot that would bring this phone what it lacks. A device that does not wait may hold more, also one that has never downloaded. A stored snapshot may already be in its recipient's hands, and one for this phone is to be taken in first.
-- "Continue" is status 410 with the number the group is cleared to, and no page. Like "snapshot needed" it records the device's progress and marks it as waiting, and `packages/domain` decides what is that answer (ADR-0007).
-- A phone that gets it when a sync begins moves its cursor to that number, in one transaction with making its confirmed events unsent again, and syncs on: it downloads from there, uploads, and downloads again. It moves once a sync, and never back. It is then a phone that keeps up, and makes the snapshots the others wait for.
+- The API reads the three from one moment of the group, in the transaction that records the device's progress and mark.
+- "Continue" is status 410 with the number the group is cleared to, and no page. That number is not the group's last: the phone still downloads what the group stores after it. Like "snapshot needed" it records the device's progress and marks it as waiting, and `packages/domain` decides what is that answer (ADR-0007).
+- A phone that gets it when a sync begins moves its cursor to that number, in one transaction with making its confirmed events unsent again, and syncs on: it downloads from there, uploads, and downloads again. It moves once a sync, and never back; a sync may take one snapshot in and move once, in either order. It is then a phone that keeps up, and makes the snapshots the others wait for.
 - A ledger with one member device is the same rule with no other device.
 - No person decides this, and the phone shows nothing for it. A member device that was not told it needs a snapshot keeps the others waiting, however long it stays away: it may hold what they lack. Removing it (#143) is how a person says it will not come back.
 
@@ -101,8 +102,9 @@ When no phone can make the snapshot:
 - A returning phone gets a flag on every expense whose money it last changed itself and another phone changed after, also where that phone had seen its change (ADR-0016).
 - An unsent event that the API had stored and cleared is uploaded again as a new event under the stamp it has (ADR-0033). The gap ADR-0027 accepts for local data that went back stays as it is.
 - A group whose phones were all behind goes on from the phone with the largest cursor. What only a phone that never comes back held past that cursor is lost, as it was the moment the API cleared it. What a phone's restored backup no longer holds, and no other phone has, is lost the same way.
-- A phone that was not told it needs a snapshot and never comes back keeps its group waiting until #143 removes it. #143 has to let a phone that is itself behind remove a device, and #144 has to let it approve a takeover once it has gone on.
-- The API knows a waiting phone by the cursor it sent last. Two things move a phone's cursor without a download: an import of a backup file that holds a larger one (ADR-0025), and a snapshot it took in whose next download did not reach the API. Until that phone's next sync, another phone can be told to go on though this one holds more, and the two then differ with nobody told. The first takes an import on a waiting phone and a sync of another phone before its own. The second takes the phone that made the snapshot to fall behind as well, and the snapshot to be gone, which the cleanup sees to after 30 days.
+- A phone that never comes back keeps its group waiting until #143 removes it, in two cases: it was not told it needs a snapshot, or it was told and holds the largest recorded cursor, so that the others wait for a snapshot only it could make. #143 has to let a phone that is itself behind remove a device, and #144 has to let it approve a takeover once it has gone on.
+- The API knows a waiting phone by the cursor it sent last. Two things move a phone's cursor without a download: an import of a backup file that holds a larger one (ADR-0025), and a snapshot it took in whose next download did not reach the API, also on a phone that held no ledger before. Until that phone's next sync, another phone can be told to go on though this one holds more, and the two then differ with nobody told. The first takes an import on a waiting phone and a sync of another phone before its own. The second takes more: the phone that made the snapshot holds all the other took in, so its own local data has to go back behind the snapshot's number, and the snapshot has to be gone, which the cleanup sees to after 30 days.
+- Requests can reach the API out of order. A download the phone gave up after 60 seconds can arrive after a later one, within the five minutes the clock check allows, and leave an older cursor and a mark recorded until the phone's next download. It is the same kind of gap, and far less likely.
 - A member device that holds no ledger and whose local data went back to before it joined asks for nothing: the API tells it that it is a member already (#141), and it has neither the ledger nor the key. Nothing here brings it back; #143 can remove it, and #144 hands a ledger to another phone.
 - Once #141 records a new device's progress at its snapshot's number, a device that was approved and never joined counts with that number. Where it is larger than every other phone's cursor and all of them are behind, nobody is told to go on until #143 removes it.
 - A phone built from main ignores the header and makes no snapshot, takes "continue" for no page, drops its events when they are confirmed, and uploads and stops as before. No release exists yet.
