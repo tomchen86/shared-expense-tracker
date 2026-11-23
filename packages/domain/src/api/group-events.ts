@@ -75,6 +75,18 @@ export interface EventsPageResponse {
 }
 
 /**
+ * What the API answers to a download whose cursor is before events the group no longer
+ * stores (SYNC-136.1, ADR-0033): the phone cannot go on from its cursor and needs a
+ * snapshot. It is no refusal: the API records the cursor as the device's progress.
+ */
+export interface SnapshotNeededResponse {
+  error: 'snapshot-needed';
+}
+
+/** The HTTP status of that answer. */
+export const SNAPSHOT_NEEDED_STATUS = 410;
+
+/**
  * Why the API refused a request of the event API, besides the reasons of `Refusal`. The
  * body of such a refusal is one of these, as JSON.
  */
@@ -201,6 +213,13 @@ export function isGroupRefusal(value: unknown): value is GroupRefusal {
     hasExactly(value, ['error']) &&
     (value.error === 'not-a-member' || value.error === 'group-full')
   );
+}
+
+/** Whether `value` is exactly the body of the answer that a phone needs a snapshot (SYNC-137.1). */
+export function isSnapshotNeededResponse(
+  value: unknown,
+): value is SnapshotNeededResponse {
+  return hasExactly(value, ['error']) && value.error === 'snapshot-needed';
 }
 
 // The invite API uses the same group IDs, integer cursors and encrypted content limits.

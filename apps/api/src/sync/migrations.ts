@@ -1,7 +1,7 @@
 import type { Migration } from '../database/migrate';
 
 /**
- * What the API keeps about a group (SYNC-61.2), and nothing else:
+ * What the API keeps about a group (SYNC-61.3), and nothing else:
  *
  * - `groups`: a group under the ID it has on its phones, with its key epoch, the last
  *   sequence number it has given an event, and how many bytes the contents of the events
@@ -11,8 +11,8 @@ import type { Migration } from '../database/migrate';
  *   latest download and the API's time then, both empty until it has downloaded.
  * - `group_events`: an event as it was uploaded, with what the API recorded about it. A
  *   group has each event ID once and each sequence number once.
- * - `group_snapshots` and `snapshot_chunks`: the envelope for one recipient and its
- *   encrypted chunks. A recipient can be named before its device is registered.
+ * - `group_snapshots` and `snapshot_chunks`: the envelope for one recipient, the time
+ *   the snapshot began, and its encrypted chunks. The recipient can still be unregistered.
  *
  * The limits on an event, a page and a group are not written here: they are the ones in
  * `packages/domain`, which the routes check (ADR-0007, ADR-0024).
@@ -76,6 +76,15 @@ export const syncMigrations: readonly Migration[] = [
         FOREIGN KEY (group_id, snapshot_id) REFERENCES group_snapshots (group_id, id)
           ON DELETE CASCADE
       );
+    `,
+  },
+  {
+    name: 'sync/0003-add-snapshot-start-time',
+    // Existing snapshots take the migration statement's time. The previous Worker
+    // omits this column, so its inserts take their own statement's time (ADR-0033).
+    sql: `
+      ALTER TABLE group_snapshots ADD COLUMN started_at_ms bigint NOT NULL
+        DEFAULT floor(extract(epoch FROM statement_timestamp()) * 1000)::bigint;
     `,
   },
 ];

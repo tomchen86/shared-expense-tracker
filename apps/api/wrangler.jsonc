@@ -34,6 +34,7 @@
   // while its Worker has none.
   "env": {
     "staging": {
+      "triggers": { "crons": ["10 17 * * *"] },
       "vars": {
         "APP_LINKS": {
           "iosAppIds": ["493B2XZLZD.com.tomchen.sharedexpensetracker"],
@@ -53,6 +54,7 @@
       "secrets": { "required": ["IP_HASH_KEY"] },
     },
     "production": {
+      "triggers": { "crons": ["40 17 * * *"] },
       "vars": {
         "APP_LINKS": {
           "iosAppIds": ["493B2XZLZD.com.tomchen.sharedexpensetracker"],

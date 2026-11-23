@@ -154,13 +154,13 @@ describe('SYNC-60.1', () => {
   });
 });
 
-describe('SYNC-61.2', () => {
+describe('SYNC-61.3', () => {
   const HEADERS = {
     'User-Agent': 'TaylorsPhone/1.0',
     'X-Group-Name': 'Brisbane-Trip',
   };
 
-  test("[SYNC-61.2] keeps each event's content once, and nothing a request carries beside what the event API takes", async () => {
+  test("[SYNC-61.3] keeps each event's content once, and nothing a request carries beside what the event API takes", async () => {
     const taylor = await registered(TAYLOR);
     const content = new Uint8Array(randomBytes(64));
     const other = new Uint8Array(randomBytes(64));
@@ -199,7 +199,7 @@ describe('SYNC-61.2', () => {
     expect(await timesStored('Brisbane-Trip')).toBe(0);
   });
 
-  test('[SYNC-61.2] keeps nothing of an event that comes again with other content, or of an upload it refused', async () => {
+  test('[SYNC-61.3] keeps nothing of an event that comes again with other content, or of an upload it refused', async () => {
     const [taylor, casey] = await taylorWithBrisbaneAndCasey();
     const content = new Uint8Array(randomBytes(64));
     const [sent] = [event(content)];

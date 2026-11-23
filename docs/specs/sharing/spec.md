@@ -1129,7 +1129,7 @@ IF 同一個 IP 已經有 30 支新的裝置，在 API 的時間過去不到 3,6
 
 ### Requirement: SHARING-42.1 關於一支手機，API 只存裝置 ID 和公開金鑰，不存 IP
 
-The API SHALL 為了註冊和檢查，關於一支手機只存它的裝置 ID 和公開金鑰，以及檢查要用的東西：它通過檢查的請求的 nonce 和時間，和它註冊時 IP 加了金鑰的雜湊；IP 本身、IP 不加金鑰的雜湊，和請求的其他標頭都不存。它在群組裡的東西另外照 SYNC-61.2。
+The API SHALL 為了註冊和檢查，關於一支手機只存它的裝置 ID 和公開金鑰，以及檢查要用的東西：它通過檢查的請求的 nonce 和時間，和它註冊時 IP 加了金鑰的雜湊；IP 本身、IP 不加金鑰的雜湊，和請求的其他標頭都不存。它在群組裡的東西另外照 SYNC-61.3。
 
 #### Scenario: 註冊之後的資料庫
 
@@ -1976,7 +1976,7 @@ IF 邀請 API 的請求有不只一個會讓它被拒絕的問題，THEN the API
 
 ### Requirement: SHARING-88.1 關於一個邀請，API 只存代號、群組、時間、名片和 cursor
 
-The API SHALL 關於一個邀請只存：代號、它的群組、建立和到期的時間、有沒有被撤回，以及名片和名片的 cursor；被拒絕的請求帶的名片、被換掉的名片、撤回的邀請的名片，和請求的其他標頭都不存。過期的邀請的名片留到什麼時候不在這裡。`#` 後面的字串和從它導出的金鑰不在任何請求裡，所以 API 沒有它們。
+The API SHALL 關於一個邀請只存：代號、它的群組、建立和到期的時間、有沒有被撤回，以及名片和名片的 cursor；被拒絕的請求帶的名片、被換掉的名片、撤回的邀請的名片，和請求的其他標頭都不存。過期的邀請的名片留到 API 的清除刪掉它為止（SYNC-142.1）。`#` 後面的字串和從它導出的金鑰不在任何請求裡，所以 API 沒有它們。
 
 #### Scenario: 建立之後的資料庫
 
@@ -2658,7 +2658,7 @@ The API SHALL 關於一個申請只存：邀請的代號、申請的手機的裝
 
 ### Requirement: SHARING-121.1 撤回邀請時不再存著它的申請
 
-WHEN 成員手機撤回一個有效的邀請（SHARING-82.1），the API SHALL 不再存著這個邀請的申請。過期的邀請的申請不再算數：這個群組之後的邀請，不管前一個是撤回還是過期，都從沒有申請開始；過期的邀請的申請留到什麼時候不在這裡。
+WHEN 成員手機撤回一個有效的邀請（SHARING-82.1），the API SHALL 不再存著這個邀請的申請。過期的邀請的申請不再算數：這個群組之後的邀請，不管前一個是撤回還是過期，都從沒有申請開始；過期的邀請的申請由清除刪掉（sync 的 SYNC-151.1）。
 
 #### Scenario: 撤回
 
@@ -3157,7 +3157,7 @@ IF 使用者按「Send Request」時這支手機授權失效（SHARING-29.1）�
 
 ### Requirement: SHARING-142.1 取消申請
 
-WHEN 使用者在 Join Group 按「Cancel Request」，the mobile app SHALL 先跳出提示框：標題「Cancel Request?」，訊息「You'll need the invite link to ask again.」，按鈕是「Keep Waiting」和破壞性的「Cancel Request」。按提示框的「Cancel Request」才送取消申請的請求（SHARING-117.1），路徑帶著申請的代號；API 回答取消好了之後，刪掉本機資料裡的這個申請，關閉 Join Group。還沒送出的申請也先送取消申請的請求：API 可能已經收下它。按「Keep Waiting」什麼都不做。一個申請同時只有一個請求在路上：取消申請的請求還沒有結果時，又確認一次取消或按「Try Again」，都不另外發出請求，等的是同一次取消的結果。
+WHEN 使用者在 Join Group 按「Cancel Request」，the mobile app SHALL 先跳出提示框：標題「Cancel Request?」，訊息「You'll need the invite link to ask again.」，按鈕是「Keep Waiting」和破壞性的「Cancel Request」。按提示框的「Cancel Request」才送取消申請的請求（SHARING-117.1），路徑帶著申請的代號；API 回答取消好了之後，刪掉本機資料裡的這個申請，關閉 Join Group。還沒送出的申請也先送取消申請的請求：API 可能已經收下它。按「Keep Waiting」什麼都不做。一個申請同時只有一個請求在路上：取消申請的請求還沒有結果時，又確認一次取消或按「Try Again」，都不另外發出請求，等的是同一次取消的結果。取消申請的請求還沒有結果時關閉了 Join Group，再為同一個申請打開它（從連結，或從申請的卡片，GROUPS-108.1），Join Group SHALL 顯示那個申請，等的仍是同一次取消的結果；結果到了，和 Join Group 沒有關過一樣：取消好了就刪掉申請、關閉 Join Group，沒成功就照 SHARING-143.1 跳出提示框。
 
 #### Scenario: 取消
 
@@ -3179,6 +3179,11 @@ WHEN 使用者在 Join Group 按「Cancel Request」，the mobile app SHALL 先�
 - **WHEN** API 還沒回答取消申請的請求時，又確認一次取消；之後 API 才回答取消好了
 - **THEN** API 只收到一個取消申請的請求；Join Group 關閉，本機資料沒有申請
 
+#### Scenario: 還沒有結果時關閉再打開
+
+- **WHEN** API 還沒回答取消申請的請求時按「Close」，再打開 Brisbane 的連結，或在 Groups 根畫面按申請的卡片；之後 API 才回答取消好了
+- **THEN** 回答到之前，Join Group 顯示「Waiting for Approval」和「Brisbane」，API 沒有多收到取消申請的請求；回答到了之後 Join Group 關閉，本機資料沒有申請，Groups 根畫面沒有申請的卡片
+
 #### Scenario: 還沒有結果時按 Try Again
 
 - **WHEN** API 收下了申請，回應卻沒送到手機；按「Cancel Request」並確認，API 還沒回答取消申請的請求時按「Try Again」；之後 API 才回答取消好了
@@ -3191,7 +3196,7 @@ WHEN 使用者在 Join Group 按「Cancel Request」，the mobile app SHALL 先�
 
 ### Requirement: SHARING-143.1 取消沒成功時申請還在
 
-IF 取消申請的請求沒有得到取消好了的回答，或 API 回答取消好了、本機資料卻存不進去，THEN the mobile app SHALL 留著本機資料裡的申請，Join Group 顯示的不變，並跳出標題是「Unable to Cancel Request」的提示框：沒有得到回應時訊息是「Connect to the internet and try again.」，其他情況是「Something went wrong. Try again later.」。之後可以再取消一次。取消的結果到的時候 Join Group 已經關閉，或已經換成別的連結或別的申請，SHALL 照樣照結果處理本機資料——取消好了就刪掉申請，沒成功就留著——但不跳出提示框，不打開也不關閉 Join Group，不改它顯示的。IF 這支手機授權失效（SHARING-29.1），THEN SHALL 不送請求，直接刪掉本機資料裡的這個申請並關閉 Join Group：它已經不能替那個裝置身分做任何事。
+IF 取消申請的請求沒有得到取消好了的回答，或 API 回答取消好了、本機資料卻存不進去，THEN the mobile app SHALL 留著本機資料裡的申請，Join Group 顯示的不變，並跳出標題是「Unable to Cancel Request」的提示框：沒有得到回應時訊息是「Connect to the internet and try again.」，其他情況是「Something went wrong. Try again later.」。之後可以再取消一次。取消的結果到的時候 Join Group 關著，或顯示的是別的連結或別的申請，SHALL 照樣照結果處理本機資料——取消好了就刪掉申請，沒成功就留著——但不跳出提示框，不打開也不關閉 Join Group，不改它顯示的；關過又為同一個申請打開了的 Join Group 不在這裡面，它照 SHARING-142.1 等同一次取消的結果。IF 這支手機授權失效（SHARING-29.1），THEN SHALL 不送請求，直接刪掉本機資料裡的這個申請並關閉 Join Group：它已經不能替那個裝置身分做任何事。
 
 #### Scenario: 沒有網路
 
@@ -3212,6 +3217,11 @@ IF 取消申請的請求沒有得到取消好了的回答，或 API 回答取消
 
 - **WHEN** API 還沒回答取消申請的請求時按「Close」；之後 API 回 500，或回答取消好了
 - **THEN** 兩種都沒有跳出提示框，Join Group 沒有再打開；回 500 時本機資料的申請還在，Groups 根畫面仍有它的卡片；回答取消好了時本機資料沒有申請
+
+#### Scenario: 關閉再打開同一個申請之後才沒成功
+
+- **WHEN** API 還沒回答取消申請的請求時按「Close」，再打開 Brisbane 的連結，或在 Groups 根畫面按申請的卡片；之後 API 回 500
+- **THEN** 跳出「Unable to Cancel Request」，訊息是「Something went wrong. Try again later.」；Join Group 仍顯示「Waiting for Approval」，本機資料的申請還在
 
 #### Scenario: 結果到的時候 Join Group 已經換成別的連結
 
