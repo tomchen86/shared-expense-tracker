@@ -106,7 +106,7 @@ export async function noticesOf(
   const { readSyncNotices } = jest.requireActual<
     typeof import('../../src/sync/loop')
   >('../../src/sync/loop');
-  return readSyncNotices(phone.database, groupId);
+  return (await readSyncNotices(phone.database, groupId)).lines;
 }
 
 /** The line a shared ledger's screen shows while it waits for an app update (SYNC-75.1). */
