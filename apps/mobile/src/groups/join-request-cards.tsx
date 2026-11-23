@@ -2,17 +2,34 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { useIsFocused } from 'expo-router/react-navigation';
 import { useLocalDatabase } from '../shell';
-import { listJoinRequests, type JoinRequest } from '../sharing/join-requests';
+import {
+  listJoinRequests,
+  type EndedJoinRequest,
+  type JoinRequest,
+} from '../sharing/join-requests';
 import { useRequestCards } from '../sharing/use-join-group';
 import { GroupedSection } from '../ui/grouped-section';
 import { useThemeColors } from '../ui/theme';
+
+/** The line under the group's name, by the request's state (GROUPS-108.2). */
+function statusOf(request: JoinRequest | EndedJoinRequest) {
+  if (request.code === null)
+    return request.outcome === 'declined'
+      ? 'Request declined'
+      : 'Invite no longer valid';
+  if (request.outcome === 'choose-again') return 'Choose again';
+  if (request.outcome === 'approved') return 'Approved';
+  return request.sent ? 'Waiting for approval' : 'Not sent';
+}
 
 export function JoinRequestCards() {
   const db = useLocalDatabase();
   const colors = useThemeColors();
   const { revision, openRequest } = useRequestCards();
   const focused = useIsFocused();
-  const [requests, setRequests] = useState<JoinRequest[]>([]);
+  const [requests, setRequests] = useState<(JoinRequest | EndedJoinRequest)[]>(
+    [],
+  );
   const [error, setError] = useState<unknown>();
   useEffect(() => {
     if (!focused) return;
@@ -30,10 +47,10 @@ export function JoinRequestCards() {
     };
   }, [focused, db, revision]);
   if (error) throw error;
-  return requests.map((request) => {
-    const status = request.sent ? 'Waiting for approval' : 'Not sent';
+  return requests.map((request, index) => {
+    const status = statusOf(request);
     return (
-      <GroupedSection key={request.code} style={styles.card}>
+      <GroupedSection key={request.code ?? index} style={styles.card}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Open request to join ${request.groupName}`}

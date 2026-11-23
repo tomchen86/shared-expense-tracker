@@ -34,6 +34,7 @@ import {
   removeGroupMember,
   type GroupMember,
 } from './index';
+import { JoinRequests } from './join-requests';
 import { nameSaveErrorMessage } from './name-save-error';
 import { useGroup } from './use-group';
 
@@ -179,7 +180,9 @@ export function MembersScreen({
 
   function openMenu(member: GroupMember) {
     if (busyRef.current) return;
-    const own = member.userId === identity.userId;
+    // You, or a member whose phone is in the shared ledger: removing a phone is not
+    // done from here (GROUPS-25.3).
+    const own = member.userId !== null;
     showActionMenu({
       title: member.name,
       message: own
@@ -273,10 +276,15 @@ export function MembersScreen({
             </Pressable>
           </GroupedSection>
         )}
+        {editable && group.shared && (
+          <JoinRequests groupId={id} members={group.members} />
+        )}
         <GroupedSection>
           {group?.members.map((member) => {
-            const label =
-              member.name + (member.userId === identity.userId ? ' (You)' : '');
+            const you = member.userId === identity.userId;
+            const label = member.name + (you ? ' (You)' : '');
+            // Someone else whose own phone is in the shared ledger (GROUPS-24.4).
+            const joined = !you && member.userId !== null;
             if (group.archived)
               return (
                 <View key={member.id} style={styles.row}>
@@ -289,7 +297,7 @@ export function MembersScreen({
               <Pressable
                 key={member.id}
                 accessibilityRole="button"
-                accessibilityLabel={label}
+                accessibilityLabel={joined ? `${label}, Joined` : label}
                 accessibilityState={{ disabled: busy }}
                 disabled={busy}
                 onPress={() => openMenu(member)}
@@ -301,6 +309,11 @@ export function MembersScreen({
                 <Text style={[styles.name, { color: colors.text }]}>
                   {label}
                 </Text>
+                {joined && (
+                  <Text style={[styles.joined, { color: colors.textMuted }]}>
+                    Joined
+                  </Text>
+                )}
                 <Text accessible={false} style={{ color: colors.textMuted }}>
                   ›
                 </Text>
@@ -388,6 +401,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   name: { flex: 1, fontSize: 17 },
+  joined: { fontSize: 15, marginRight: 8 },
   input: { minHeight: 54, paddingHorizontal: 16, fontSize: 17 },
   error: { fontSize: 15, marginHorizontal: 16, marginBottom: 12 },
   footer: { fontSize: 13, marginHorizontal: 16, marginTop: 8 },

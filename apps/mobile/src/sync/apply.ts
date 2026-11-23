@@ -14,6 +14,7 @@ import type { Database, SqlExecutor } from '../storage';
 import { applyMergedInvite } from './invites';
 import { markIfOverridden } from './own-money';
 import { orderSyncedRows } from './positions';
+import { applyRoster } from './roster';
 import {
   latestStamp,
   readSyncRecord,
@@ -73,6 +74,8 @@ export async function canMergeInGroup(
   event: Pick<SyncEvent, 'type' | 'id'>,
 ) {
   if (event.type === 'group') return event.id === groupId;
+  // A roster entry belongs to its ledger: one device has one in each ledger it is in.
+  if (event.type === 'device') return true;
   const [table, owner] = recordOwners[event.type];
   // Partial records and tombstones can belong to another group even without a visible row.
   const foreign = await tx.all(
@@ -103,6 +106,7 @@ export async function applyReceivedEvents(
   let seen = initial;
   let visibleChange = false;
   const toOrder = new Set<'member' | 'category'>();
+  let rosterChanged = false;
   for (const received of events) {
     const verdict = checkSyncEvent(received.content, received);
     if (verdict.status === 'unsupported')
@@ -139,6 +143,9 @@ export async function applyReceivedEvents(
     if (record.type === 'member' || record.type === 'category')
       toOrder.add(record.type);
     switch (record.type) {
+      case 'device':
+        rosterChanged = true;
+        break;
       case 'invite':
         if (await applyMergedInvite(tx, groupId, record)) visibleChange = true;
         break;
@@ -180,6 +187,12 @@ export async function applyReceivedEvents(
         break;
     }
   }
+  // Whichever arrived first, a member or the roster entry that names it (SYNC-251.1).
+  if (
+    (rosterChanged || toOrder.has('member')) &&
+    (await applyRoster(tx, groupId))
+  )
+    visibleChange = true;
   for (const type of toOrder)
     if (await orderSyncedRows(tx, groupId, type)) visibleChange = true;
   if (compareSyncStamps(seen, initial) > 0) await saveLatestStamp(tx, seen);

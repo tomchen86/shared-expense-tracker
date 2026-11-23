@@ -9,6 +9,7 @@ import {
   isUploadEventsResponse,
   type EventsPageResponse,
   type GroupRefusal,
+  type UploadedEvent,
   type UploadEventsRequest,
 } from '@shared-expense/domain/api';
 import { decrypt, encrypt } from '@shared-expense/domain/crypto';
@@ -113,6 +114,32 @@ async function readLedger(
     [groupId],
   );
   return ledger;
+}
+
+/** How a sync ended, for what follows one: listing join requests, and approving one. */
+export interface SyncEnd {
+  /** The download ran to its end, so the sync went on to upload (SYNC-68.1). */
+  downloaded: boolean;
+  /** The API confirmed an upload of this sync. */
+  uploaded: boolean;
+  /** The last request of this sync got no answer. */
+  noAnswer: boolean;
+}
+
+type SyncEndListener = (groupId: string, end: SyncEnd) => void;
+// ponytail: one listener a database, which is all the app has. Keep a set of them, as
+// `subscribeToAppliedEvents` does, when a second one wants to hear.
+const endListeners = new WeakMap<Database, SyncEndListener>();
+
+/** Calls `listener` each time a sync of a shared ledger has ended. Returns the function that ends it. */
+export function subscribeToSyncEnds(
+  database: Database,
+  listener: SyncEndListener,
+) {
+  endListeners.set(database, listener);
+  return () => {
+    endListeners.delete(database);
+  };
 }
 
 /** Tells the screens of each of these shared ledgers that what they read has changed. */
@@ -230,6 +257,7 @@ async function download(
   database: Database,
   apiUrl: string,
   groupId: string,
+  end: SyncEnd,
 ): Promise<boolean> {
   const keys = new Map<number, Uint8Array | undefined>();
   for (;;) {
@@ -241,6 +269,7 @@ async function download(
       path: `${eventsPath(groupId)}?after=${ledger.cursor}`,
       giveUpAfterMs: GIVE_UP_AFTER_MS,
     });
+    end.noAnswer = answer.outcome === 'no-answer';
     if (answer.outcome !== 'answered' || answer.status !== 200) return false;
     const page = jsonIn(answer.body);
     if (!isEventsPageResponse(page)) return false;
@@ -261,7 +290,28 @@ interface UnsentRow {
   content: string;
 }
 
-/** The body of an upload of `events`, each encrypted under `key` with a nonce of its own (SYNC-67.1). */
+/** `events` as an upload carries them, each encrypted under `key` with a nonce of its own (SYNC-67.1). */
+export function encryptEvents(
+  groupId: string,
+  deviceId: string,
+  epoch: number,
+  key: Uint8Array,
+  events: readonly UnsentRow[],
+): UploadedEvent[] {
+  return events.map(({ id, content }) => ({
+    id,
+    content: bytesToHex(
+      encrypt({
+        key,
+        nonce: getRandomValues(new Uint8Array(NONCE_LENGTH)),
+        plaintext: utf8ToBytes(content),
+        associatedData: associatedData(groupId, id, deviceId, epoch),
+      }),
+    ),
+  }));
+}
+
+/** The body of an upload of `events`. */
 function uploadBody(
   groupId: string,
   deviceId: string,
@@ -271,17 +321,7 @@ function uploadBody(
 ): string {
   const request: UploadEventsRequest = {
     epoch,
-    events: events.map(({ id, content }) => ({
-      id,
-      content: bytesToHex(
-        encrypt({
-          key,
-          nonce: getRandomValues(new Uint8Array(NONCE_LENGTH)),
-          plaintext: utf8ToBytes(content),
-          associatedData: associatedData(groupId, id, deviceId, epoch),
-        }),
-      ),
-    })),
+    events: encryptEvents(groupId, deviceId, epoch, key, events),
   };
   return JSON.stringify(request);
 }
@@ -324,6 +364,7 @@ async function upload(
   database: Database,
   apiUrl: string,
   groupId: string,
+  end: SyncEnd,
 ): Promise<void> {
   for (;;) {
     // An event saved since the last page was stored has not been checked (SYNC-84.1).
@@ -378,6 +419,7 @@ async function upload(
       answer = await send(refusal.epoch, named);
       refusal = groupRefusalIn(answer);
     }
+    end.noAnswer = answer.outcome === 'no-answer';
     const full = refusal?.error === 'group-full';
     const confirmed = confirms(answer, events);
     if (!confirmed && !full) return;
@@ -403,14 +445,15 @@ async function upload(
     if (after.noticeChanged) notify(database, [groupId]);
     // With nothing gone from the unsent events, the next request would be this one again.
     if (after.uploaded === 0) return;
+    end.uploaded = true;
   }
 }
 
 // One sync at a time
 
 interface Turn {
-  running: Promise<void>;
-  next?: Promise<void>;
+  running: Promise<SyncEnd>;
+  next?: Promise<SyncEnd>;
 }
 
 const turns = new WeakMap<Database, Map<string, Turn>>();
@@ -418,8 +461,8 @@ const turns = new WeakMap<Database, Map<string, Turn>>();
 /**
  * Syncs one shared ledger once with the API at `apiUrl`: downloads until no events
  * follow, then uploads the ledger's unsent events (SYNC-68.1). Resolves once the sync has
- * ended, whether it finished or stopped on the way; what it did shows in the local data.
- * Rejects when the local data cannot be read or written.
+ * ended, whether it finished or stopped on the way, with how it ended; what it did shows
+ * in the local data. Rejects when the local data cannot be read or written.
  *
  * A ledger has one sync at a time (SYNC-90.1): asked while one runs, however often, this
  * starts one more when that one has ended, and resolves once that one has ended too.
@@ -427,7 +470,7 @@ const turns = new WeakMap<Database, Map<string, Turn>>();
 export function syncGroup(
   database: Database,
   ledger: { apiUrl: string; groupId: string },
-): Promise<void> {
+): Promise<SyncEnd> {
   const { apiUrl, groupId } = ledger;
   const byGroup = turns.get(database) ?? new Map<string, Turn>();
   turns.set(database, byGroup);
@@ -439,9 +482,20 @@ export function syncGroup(
   }
   const turn: Turn = {
     running: (async () => {
-      if (await download(database, apiUrl, groupId))
-        await upload(database, apiUrl, groupId);
-    })().finally(() => byGroup.delete(groupId)),
+      const end = { downloaded: false, uploaded: false, noAnswer: false };
+      end.downloaded = await download(database, apiUrl, groupId, end);
+      if (end.downloaded) await upload(database, apiUrl, groupId, end);
+      return end;
+    })()
+      .finally(() => byGroup.delete(groupId))
+      .then((end) => {
+        try {
+          endListeners.get(database)?.(groupId, end);
+        } catch {
+          // The sync has ended whatever its listener does about it.
+        }
+        return end;
+      }),
   };
   byGroup.set(groupId, turn);
   return turn.running;

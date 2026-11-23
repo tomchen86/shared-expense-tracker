@@ -16,6 +16,8 @@ import { cardCipher, type InviteCredentials } from './invite-card';
 export const cannotUse =
   "This invite link can't be used. Ask the person who sent it to send it again.";
 export const wentWrong = 'Something went wrong. Try again later.';
+const hasACopy =
+  "This phone already has its own copy of this group, so it can't join it.";
 
 export interface JoinCard {
   name: string;
@@ -82,14 +84,10 @@ function isCard(value: unknown): value is JoinCard {
   );
 }
 
-export async function readJoinInvite(
-  db: SqlExecutor,
+/** The invite's card as the API holds it now, or the notice that says why it cannot be read. */
+async function fetchCard(
   link: InviteCredentials,
-): Promise<
-  | InviteNotice
-  | { kind: 'form'; card: JoinCard }
-  | { kind: 'group'; group: LocalGroup }
-> {
+): Promise<JoinCard | InviteNotice> {
   const url = apiUrl();
   const answer =
     url &&
@@ -127,7 +125,27 @@ export async function readJoinInvite(
           : cannotUse,
     };
   const card = jsonIn(opened.plaintext);
-  if (!isCard(card)) return { kind: 'notice', message: cannotUse };
+  return isCard(card) ? card : { kind: 'notice', message: cannotUse };
+}
+
+/** The invite's card as the API holds it now; nothing when it cannot be read. */
+export async function readInviteCard(
+  link: InviteCredentials,
+): Promise<JoinCard | undefined> {
+  const card = await fetchCard(link);
+  return 'kind' in card ? undefined : card;
+}
+
+export async function readJoinInvite(
+  db: SqlExecutor,
+  link: InviteCredentials,
+): Promise<
+  | InviteNotice
+  | { kind: 'form'; card: JoinCard }
+  | { kind: 'group'; group: LocalGroup }
+> {
+  const card = await fetchCard(link);
+  if ('kind' in card) return card;
   // Former members still identify their shared ledger. A personal, unshared group cannot.
   const [group] = await db.all<LocalGroup>(
     `SELECT g.id, g.archived FROM json_each(?) c
@@ -135,5 +153,15 @@ export async function readJoinInvite(
      JOIN groups g ON g.id = s.groupId ORDER BY c.key LIMIT 1`,
     [JSON.stringify(card.members.map(({ id }) => id))],
   );
-  return group ? { kind: 'group', group } : { kind: 'form', card };
+  if (group) return { kind: 'group', group };
+  // A group of this phone that is no shared ledger and has one of these members is a
+  // copy of the invite's group: no snapshot fits into it (SHARING-226.1).
+  const copy = await db.all(
+    `SELECT 1 FROM json_each(?) c JOIN group_members m ON m.id = c.value
+     WHERE m.groupId NOT IN (SELECT groupId FROM sync_groups) LIMIT 1`,
+    [JSON.stringify(card.members.map(({ id }) => id))],
+  );
+  return copy.length > 0
+    ? { kind: 'notice', message: hasACopy }
+    : { kind: 'form', card };
 }

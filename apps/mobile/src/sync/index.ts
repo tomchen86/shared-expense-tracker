@@ -54,10 +54,12 @@ export async function shareGroup(
       [groupId],
     );
     if (!group) throw new Error('Group not found');
-    await tx.run('INSERT INTO sync_groups (groupId, device) VALUES (?, ?)', [
-      groupId,
-      device,
-    ]);
+    await tx.run(
+      `INSERT INTO sync_groups (groupId, device, ownMemberId)
+       SELECT ?, ?, (SELECT m.id FROM group_members m, local_identity i
+                     WHERE m.groupId = ? AND m.userId = i.userId)`,
+      [groupId, device, groupId],
+    );
 
     let seen = await latestStamp(tx);
     const nowMs = await readCorrectedTime(tx);

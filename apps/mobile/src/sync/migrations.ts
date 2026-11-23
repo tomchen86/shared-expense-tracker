@@ -1,7 +1,13 @@
+/**
+ * What a phone keeps of a shared ledger. `ownMemberId` is the member this phone is while
+ * its own roster entry names none of the ledger's (SYNC-251.1): the one it created the
+ * group as, or the one it joined as.
+ */
 export const syncMigration = `
   CREATE TABLE sync_groups (
     groupId TEXT PRIMARY KEY NOT NULL REFERENCES groups(id),
-    device TEXT NOT NULL
+    device TEXT NOT NULL,
+    ownMemberId TEXT
   );
   CREATE TABLE sync_clock (
     singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
