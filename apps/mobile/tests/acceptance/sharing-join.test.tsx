@@ -1750,6 +1750,40 @@ describe('SHARING-142.1', () => {
     expect(rowsWith(CODE_A)).toEqual([]);
   });
 
+  test.each(['its link', 'its card'])(
+    '[SHARING-142.1] waits for the same cancellation, and closes Join Group when it succeeds, after the request was closed and opened again from %s',
+    async (from) => {
+      brisbaneInvites();
+      await startAs();
+      await requested();
+      const answer = keepAnswersBack(isCancelling);
+      await cancelRequest();
+      await until(() => cancellations().length === 1, 'the cancellation');
+      await closeJoin();
+
+      if (from === 'its link') {
+        await receiveLink(BRISBANE_LINK);
+      } else {
+        await tapTab('Groups');
+        await fireEvent.press(requestCard('Brisbane')!);
+      }
+      await expectOpen(TITLE);
+      await settle();
+
+      expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+      expect(cancellations()).toHaveLength(1);
+
+      await answer();
+      await expectClosed(TITLE);
+
+      expect(cancellations()).toHaveLength(1);
+      expect(rowsWith(CODE_A)).toEqual([]);
+      expect(requestsOnApi(CODE_A)).toEqual([]);
+      await tapTab('Groups');
+      expect(requestCard('Brisbane')).toBeUndefined();
+    },
+  );
+
   test('[SHARING-142.1] sends nothing on Try Again while a cancellation has no answer', async () => {
     brisbaneInvites();
     await startAs();
@@ -1875,6 +1909,38 @@ describe('SHARING-143.1', () => {
     expect(rowsWith(CODE_A)).toEqual([]);
     expect(requestsOnApi(CODE_A)).toEqual([]);
   });
+
+  test.each(['its link', 'its card'])(
+    '[SHARING-143.1] shows the alert, and keeps the request, when a cancellation fails after the request was closed and opened again from %s',
+    async (from) => {
+      brisbaneInvites();
+      await startAs();
+      await requested();
+      apiAnswersNext(isCancelling, 500, 'Internal Server Error');
+      const answer = keepAnswersBack(isCancelling);
+      await cancelRequest();
+      await until(() => cancellations().length === 1, 'the cancellation');
+      await closeJoin();
+
+      if (from === 'its link') {
+        await receiveLink(BRISBANE_LINK);
+      } else {
+        await tapTab('Groups');
+        await fireEvent.press(requestCard('Brisbane')!);
+      }
+      await expectOpen(TITLE);
+      await settle();
+      const shown = alertsShown().length;
+
+      await answer();
+      await settle();
+
+      expect(alertsShown()).toHaveLength(shown + 1);
+      expect(alertsShown().at(-1)).toEqual([UNABLE_TO_CANCEL, WENT_WRONG]);
+      expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+      expect(rowsWith(CODE_A)).toHaveLength(1);
+    },
+  );
 
   test.each([
     ['fails', true],

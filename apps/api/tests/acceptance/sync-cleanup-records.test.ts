@@ -150,6 +150,25 @@ describe('SYNC-151.1', () => {
     expect(await timesStored(p)).toBe(0);
     expect(await timesStored(q)).toBe(1);
   });
+
+  test('[SYNC-151.1] deletes the join requests of an expired invite after its group made another invite, and leaves those of the new one', async () => {
+    const [taylor, casey] = await brisbaneInvitesCasey();
+    const p = joinRequest();
+    const q = joinRequest();
+    expectRequestAnswered(await sendRequest(casey, CODE_A, p), CODE_A);
+    setTime(T + WEEK);
+    expectInvite(
+      await putInvite(taylor, BRISBANE, CODE_B, card()),
+      CODE_B,
+      T + 2 * WEEK,
+    );
+    expectRequestAnswered(await sendRequest(casey, CODE_B, q), CODE_B);
+
+    await cleanUpAt(T + WEEK);
+
+    expect(await timesStored(p)).toBe(0);
+    expect(await timesStored(q)).toBe(1);
+  });
 });
 
 describe('SYNC-143.1', () => {
