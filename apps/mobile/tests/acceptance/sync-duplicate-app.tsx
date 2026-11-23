@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import type { SyncStamp } from '@shared-expense/domain';
+import { applySyncEvents } from '../../src/sync';
 import { linesIn, shownInOrder } from './ledger-expense-list-app';
 import {
   detailBarsOn,
@@ -10,7 +11,15 @@ import {
 } from './ledger-group-expense-app';
 import { showGroup } from './group-balances-app';
 import { settle } from './shell-appearance-app';
-import { LATER, MINUTE, at, categoryOf, members } from './sync-app';
+import {
+  LATER,
+  MINUTE,
+  appDatabase,
+  at,
+  categoryOf,
+  members,
+  relayed,
+} from './sync-app';
 import { needsReview, reviewCount } from './sync-conflict-app';
 
 // What the app shows of a possible duplicate (sync spec, ADR-0035): an expense of a shared
@@ -104,6 +113,27 @@ export const distinctCreated = (
   id,
   units: { expenses: { value: [first, second] } },
 });
+
+/**
+ * Starts handing the app these contents as received events and does not wait: while the
+ * test holds the writes (holdWrites), the app is inside the transaction that stores them
+ * and stops at its first write, so whatever saves next waits behind it. Returns what
+ * waits until the app has stored them, for after the writes are released.
+ */
+export function startReceiving(id: string, ...contents: unknown[]) {
+  const stored = applySyncEvents(
+    appDatabase(),
+    id,
+    contents.map((content) => relayed(content)),
+  );
+  stored.catch(() => undefined);
+  return async () => {
+    await act(async () => {
+      await stored;
+    });
+    await settle();
+  };
+}
 
 // Cards and the number under a group's title
 

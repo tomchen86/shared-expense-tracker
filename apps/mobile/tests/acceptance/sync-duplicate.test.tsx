@@ -126,6 +126,7 @@ import {
   expectNoDuplicateBlockOn,
   goBackFromDetailsOn,
   otherOn,
+  startReceiving,
 } from './sync-duplicate-app';
 
 // Runs on iOS. Each test starts the app as the other sync tests do (sync-app): Taylor is
@@ -590,6 +591,49 @@ test('[SYNC-203.1] [LEDGER-159.1] settles one pair at a time: an expense alike t
   expect(second[0].id).not.toBe(first[0].id);
   await goBackFrom('Expense');
   await expectDuplicates('Brisbane', []);
+});
+
+test('[SYNC-203.1] writes nothing when the expense the block showed is settled by another phone before the save: the block shows the next one, and only a second press settles that pair', async () => {
+  const { brisbane, dinner } = await withDinner();
+  await addDinner('Brunch');
+  const brunch = await expenseTitled('Brunch');
+  await receive(brisbane, await alikeCreated());
+  const supper = await expenseTitled('Supper');
+  await openDuplicate();
+  expect(otherOn('Groups')?.[0]).toBe('Dinner');
+  const events = (await unsent()).length;
+  const alerts = alertsShown().length;
+  const button = blockButtonOn('Groups', NOT_A_DUPLICATE)!;
+  const writes = holdWrites();
+
+  // The other phone's "not a duplicate" for Dinner and Supper is being stored, and the
+  // block still shows Dinner, when you press.
+  const stored = startReceiving(
+    brisbane,
+    distinctCreated(dinner.id, supper.id),
+  );
+  await fireEvent.press(button);
+  await writes.release();
+  await stored();
+
+  await waitFor(() => expect(otherOn('Groups')?.[0]).toBe('Brunch'));
+  await expectDuplicateBlockOn('Groups');
+  // Neither the pair you saw, which is settled, nor the one you had not seen.
+  expect(await unsent()).toHaveLength(events);
+  expect(alertsShown()).toHaveLength(alerts);
+  expect(await refused()).toEqual([]);
+
+  const second = await eventsOf(() =>
+    pressInBlockOn('Groups', NOT_A_DUPLICATE),
+  );
+
+  expect(second).toMatchObject([
+    {
+      type: 'distinct',
+      units: { expenses: { value: [brunch.id, supper.id] } },
+    },
+  ]);
+  await expectNoDuplicateBlockOn('Groups');
 });
 
 test('[SYNC-203.1] [LEDGER-159.1] shows no mark after Not a Duplicate and a restart', async () => {

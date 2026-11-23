@@ -1793,7 +1793,7 @@ WHEN 使用者對可能重複的支出選 Not a Duplicate（LEDGER-159.1），th
 #### Scenario: 對象在存下之前換了
 
 - **WHEN** Supper 的對象依序是 Dinner 和 Brunch，區塊顯示 Dinner 時選 Not a Duplicate；存下之前，這支手機套用了說 Dinner 和 Supper 不是重複的事件
-- **THEN** 這一次不寫事件；區塊顯示 Brunch，Supper 仍是可能重複的支出；再選一次，才寫出說 Brunch 和 Supper 不是重複的事件
+- **THEN** 這一次不寫事件，沒有跳出提示框；區塊顯示 Brunch，Supper 仍是可能重複的支出；再選一次，才寫出說 Brunch 和 Supper 不是重複的事件
 
 #### Scenario: 接著同步
 
