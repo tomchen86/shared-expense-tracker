@@ -11,6 +11,7 @@ import {
   isMemberDevice,
   on,
   phoneOf,
+  requestOnApi,
   sendAs,
   startApprovalWorld,
   taylorInvites,
@@ -102,6 +103,20 @@ interface Joined {
   ids: Record<string, string>;
 }
 
+/** The request of `device` as Taylor's phone lists it, once that phone can approve. */
+async function listedFor({ taylor, brisbane }: Inviting, device: string) {
+  // Nothing unsent, and the cursor at the group's last number: an approval needs both.
+  await sync(taylor);
+  await sync(taylor);
+  const request = (
+    await on(taylor, () =>
+      taylor.sharing.listReceivedJoinRequests(taylor.database, brisbane),
+    )
+  ).find(({ deviceId }) => deviceId === device);
+  if (!request) throw new Error('Taylor’s phone lists no such request');
+  return request;
+}
+
 /**
  * Asks to join through Taylor's invite as `name`, a new member unless `memberId` names one,
  * and has Taylor's phone approve it. With `join` false the phone does not ask for the
@@ -115,15 +130,7 @@ async function joins(
   const { taylor, brisbane, code } = invite;
   const phone = await phoneOf(name, invite);
   const device = await asks(phone, invite, { memberId });
-  // Nothing unsent, and the cursor at the group's last number: an approval needs both.
-  await sync(taylor);
-  await sync(taylor);
-  const request = (
-    await on(taylor, () =>
-      taylor.sharing.listReceivedJoinRequests(taylor.database, brisbane),
-    )
-  ).find(({ deviceId }) => deviceId === device);
-  if (!request) throw new Error('Taylor’s phone lists no such request');
+  const request = await listedFor(invite, device);
   expect(
     await on(taylor, () =>
       taylor.sharing.approveJoinRequest(taylor.database, brisbane, request),
@@ -927,6 +934,32 @@ describe('SHARING-284.1', () => {
       (await lines(taylor, later)).filter((line) => line.startsWith('DELETE ')),
     ).toEqual([]);
   });
+
+  test('[SHARING-284.1] leaves no request to approve under the invite it revokes: an approval after a phone has left rotates, revokes, and reports the request answered', async () => {
+    const { invite, taylor, dana, brisbane } = await danaIn();
+    const evan = await phoneOf('Evan', invite);
+    const E = await asks(evan, invite);
+    const request = await listedFor(invite, E);
+    expect(await leave(dana, brisbane)).toEqual({ outcome: 'left' });
+    const from = mark();
+
+    expect(
+      await on(taylor, () =>
+        taylor.sharing.approveJoinRequest(taylor.database, brisbane, request),
+      ),
+    ).toEqual({ outcome: 'answered' });
+
+    expect(await approvalsBy(taylor, from)).toEqual([]);
+    const sentLines = await lines(taylor, from);
+    const rotation = sentLines.indexOf(`POST /groups/${brisbane}/rotation`);
+    expect(sentLines[0]).toBe(`GET /groups/${brisbane}/events`);
+    expect(rotation).toBeGreaterThan(0);
+    expect(
+      sentLines.indexOf(`DELETE /groups/${brisbane}/invites/${invite.code}`),
+    ).toBeGreaterThan(rotation);
+    expect(await requestOnApi(invite.code, E)).toBeUndefined();
+    expect(await isMemberDevice(brisbane, E)).toBe(false);
+  });
 });
 
 describe('SHARING-285.1', () => {
@@ -1083,14 +1116,7 @@ async function danaIsApprovedAgain() {
   await sync(taylor);
   const invite = await invitesAgain(world);
   await asks(dana, invite);
-  await sync(taylor);
-  await sync(taylor);
-  const request = (
-    await on(taylor, () =>
-      taylor.sharing.listReceivedJoinRequests(taylor.database, brisbane),
-    )
-  ).find(({ deviceId }) => deviceId === D);
-  if (!request) throw new Error('Taylor’s phone lists no such request');
+  const request = await listedFor(invite, D);
   const from = mark();
   expect(
     await on(taylor, () =>

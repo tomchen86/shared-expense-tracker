@@ -100,6 +100,7 @@ A phone that lost access:
 - A phone that holds a wrong key for an epoch it did not stop at, because it fetched the key after an upload was refused, is not caught by the check. It takes a sender that sealed a key it did not use.
 - An invite created after a device left and stamped before the event that says so is revoked with the older ones. The person who shared it makes another.
 - Between a device leaving and a phone's next sync the invite still works: the device that left can read its card and ask to join, and a member would have to approve.
+- A request that waits under an invite when a device leaves is never approved: the revocation takes it off the API, and an approval sent meanwhile is refused while the group needs a rotation. The member is told the request was answered, and the person asks again through a new invite. A device that was approved already keeps its handover and joins (ADR-0039).
 - A phone learns that it was removed at its next sync. Until then it shows the ledger as it was and records changes that will never be sent; the copy keeps them and says how many.
 - A phone whose authorization lapsed, such as one that imported another phone's export file (ADR-0025), shows every shared ledger as a copy. It is still a member device on the API, which cannot know; another member removes it.
 - ADR-0042 decides how a copy is deleted, how its phone joins the group again, and what an import does with a shared ledger.

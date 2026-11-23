@@ -3868,7 +3868,7 @@ WHILE 收到的申請是下面任何一種，the mobile app SHALL 不讓它被�
 
 ### Requirement: SHARING-195.1 按 Approve 時同步、上傳快照，再送同意
 
-WHEN 使用者在申請的選單按「Approve」，the mobile app SHALL 依序做這些事，前一步沒做成就不做下一步：同步這個共同帳本（SYNC-68.1），這次同步上傳了事件時再同步一次，讓這支手機的 cursor 到自己剛上傳的事件之後；然後在同一個 SQLite transaction 裡，照那一刻的本機資料再看一次這個申請能不能同意（SHARING-194.1）、記下這支手機在這個共同帳本的 cursor、備好同意要寫下的事件（SHARING-196.2），並讀出快照的內容（SHARING-197.1、SYNC-114.3）；替申請的手機上傳那份快照；送同意的請求（SHARING-173.2），路徑帶著群組 ID 和申請的裝置 ID，`request` 是選單打開時那一列的申請的內容的 SHA-256，`cursor` 是那個 transaction 裡記下的 cursor，也就是那份快照涵蓋的序號，`snapshotId` 是剛上傳的那份快照的，`epoch` 是這支手機在這個共同帳本的鑰匙世代，`senderKey` 和 `box` 照 SHARING-198.1。所以檢查、事件、快照和 `cursor` 是同一刻的：這之後別的同步——app 回到前景，或存下變更——讓這支手機的 cursor 往前了，送出的仍是記下的那一個，API 就說沒有跟上（SHARING-176.1），這支手機照 SHARING-200.2 再看一次，不會照它沒有檢查過的資料同意。`request` 指名的是成員看到的那一份：申請的手機在選單打開之後換了內容，API 就說沒有這個申請（SHARING-174.1）。上傳快照和送同意的請求的這段時間，這個共同帳本照常同步（SYNC-88.1、SYNC-89.1），不等同意做完。API 回答同意好了之前，本機資料不因為這次同意而變：沒有多的成員、名冊紀錄和待上傳的事件。
+WHEN 使用者在申請的選單按「Approve」，the mobile app SHALL 依序做這些事，前一步沒做成就不做下一步：同步這個共同帳本（SYNC-68.1），這次同步上傳了事件時再同步一次，讓這支手機的 cursor 到自己剛上傳的事件之後；然後在同一個 SQLite transaction 裡，照那一刻的本機資料再看一次這個申請能不能同意（SHARING-194.1）、記下這支手機在這個共同帳本的 cursor、備好同意要寫下的事件（SHARING-196.2），並讀出快照的內容（SHARING-197.1、SYNC-114.3）；替申請的手機上傳那份快照；送同意的請求（SHARING-173.2），路徑帶著群組 ID 和申請的裝置 ID，`request` 是選單打開時那一列的申請的內容的 SHA-256，`cursor` 是那個 transaction 裡記下的 cursor，也就是那份快照涵蓋的序號，`snapshotId` 是剛上傳的那份快照的，`epoch` 是這支手機在這個共同帳本的鑰匙世代，`senderKey` 和 `box` 照 SHARING-198.1。所以檢查、事件、快照和 `cursor` 是同一刻的：這之後別的同步——app 回到前景，或存下變更——讓這支手機的 cursor 往前了，送出的仍是記下的那一個，API 就說沒有跟上（SHARING-176.1），這支手機照 SHARING-200.1 再看一次，不會照它沒有檢查過的資料同意。`request` 指名的是成員看到的那一份：申請的手機在選單打開之後換了內容，API 就說沒有這個申請（SHARING-174.1）。上傳快照和送同意的請求的這段時間，這個共同帳本照常同步（SYNC-88.1、SYNC-89.1），不等同意做完。API 回答同意好了之前，本機資料不因為這次同意而變：沒有多的成員、名冊紀錄和待上傳的事件。
 
 #### Scenario: 同意 Dana
 
@@ -3936,7 +3936,7 @@ WHEN 送同意的請求，the mobile app SHALL 讓 `events` 依序是這些紀�
 
 ### Requirement: SHARING-197.1 同意時上傳的快照帶著同意要寫下的紀錄
 
-WHEN 同意時替申請的手機上傳快照，the mobile app SHALL 照 SYNC-114.3 到 SYNC-120.1 上傳，收件的裝置 ID 是申請的裝置 ID；快照的紀錄除了本機資料替這個共同帳本記著的每一筆，另外有 SHARING-196.2 那些事件的紀錄：每個單位的值和時間戳記、建立的時間戳記都是那個事件的，不是群組變成共同帳本時就有的紀錄。所以新手機匯入快照就有自己的名冊紀錄和它代表的成員，之後下載到那些事件時什麼都不變（SYNC-126.1）。IF 上傳快照回報有待上傳的事件、沒有鑰匙、快照太大、快照存滿了或失敗（SYNC-115.1、SYNC-118.1、SYNC-120.1），THEN the mobile app SHALL 不送同意的請求（SHARING-200.2）。
+WHEN 同意時替申請的手機上傳快照，the mobile app SHALL 照 SYNC-114.3 到 SYNC-120.1 上傳，收件的裝置 ID 是申請的裝置 ID；快照的紀錄除了本機資料替這個共同帳本記著的每一筆，另外有 SHARING-196.2 那些事件的紀錄：每個單位的值和時間戳記、建立的時間戳記都是那個事件的，不是群組變成共同帳本時就有的紀錄。所以新手機匯入快照就有自己的名冊紀錄和它代表的成員，之後下載到那些事件時什麼都不變（SYNC-126.1）。IF 上傳快照回報有待上傳的事件、沒有鑰匙、快照太大、快照存滿了或失敗（SYNC-115.1、SYNC-118.1、SYNC-120.1），THEN the mobile app SHALL 不送同意的請求（SHARING-200.1）。
 
 #### Scenario: 快照有新成員和兩筆名冊紀錄
 
@@ -3946,7 +3946,7 @@ WHEN 同意時替申請的手機上傳快照，the mobile app SHALL 照 SYNC-114
 #### Scenario: 快照傳不上去
 
 - **WHEN** 上傳快照的第 0 塊被拒絕，原因是快照存滿了
-- **THEN** API 沒有收到同意的請求；跳出「Unable to Approve」（SHARING-200.2）
+- **THEN** API 沒有收到同意的請求；跳出「Unable to Approve」（SHARING-200.1）
 
 ### Requirement: SHARING-198.1 群組鑰匙裝在只有申請的手機打得開的 box 裡
 
@@ -3976,9 +3976,9 @@ WHEN API 回答同意好了，the mobile app SHALL 同步這個共同帳本一�
 - **WHEN** Taylor 的手機同意 Dana 當 Casey 的申請
 - **THEN** Members 的成員仍是三位，Casey 那一列有「Joined」；新的名片上 Casey 的 `hasDevice` 是 `true`
 
-### Requirement: SHARING-200.2 同意沒成功時說明原因，申請還在
+### Requirement: SHARING-200.1 同意沒成功時說明原因，申請還在
 
-IF 同意沒有做完，THEN the mobile app SHALL 不因此改本機資料，收到的申請還在，並跳出標題是「Unable to Approve」的提示框，訊息依原因：同步、上傳快照或同意的請求沒有得到回應時，「Connect to the internet and try again.」；API 拒絕同意，原因是沒有這個申請時，「This request has already been answered.」，並再列出申請（SHARING-190.1），別的成員處理過了、申請的手機取消了或換了內容都是這樣；原因是成員手機滿了時，「This group is full. A shared group can have up to 20 members.」；同步之後這支手機已經沒有那個申請的邀請時——同步帶來了撤回，或它照校正後的時間到期了——不上傳快照也不送同意，訊息是「This request has already been answered.」，並再列出申請（SHARING-190.1），所以它不再是收到的申請：邀請不再有效時 API 不再存著它的申請（SHARING-174.1）；同步之後這個申請變成不能同意時，SHARING-194.1 那個原因的那一句；其他情況——同步之後還有待上傳的事件、沒有群組鑰匙、快照太大或存滿了、別的拒絕和看不懂的回應——「Something went wrong. Try again later.」。IF API 拒絕同意，原因是沒有跟上，THEN the mobile app SHALL 不跳出提示框，再同步，再照 SHARING-195.1 在同一個 transaction 裡看一次能不能同意並記下 cursor，用同一份快照和同樣的事件再送同意的請求，`cursor` 是這次記下的；這時不能同意了就不再送，訊息是 SHARING-194.1 那個原因的那一句。一次同意這樣最多再送兩次，第三次還是沒有跟上，就照其他情況。IF API 拒絕同意，原因是需要換鑰匙（SHARING-256.1）或鑰匙世代，THEN the mobile app SHALL 不跳出提示框：原因是鑰匙世代時先拿新的鑰匙（SHARING-278.1），再同步這個共同帳本；這支手機因此替群組換了鑰匙（SHARING-275.1）或拿到了新的鑰匙之後，照 SHARING-195.1 從頭再做一次：再看能不能同意、重新備事件、上傳新的快照、送同意的請求。一次同意這樣最多重來一次；再被這樣拒絕，或同步之後這支手機的鑰匙世代沒有變，就照其他情況。IF 原因是沒有快照，THEN the mobile app SHALL 重新上傳一份快照再送一次，再被拒絕就照其他情況。
+IF 同意沒有做完，THEN the mobile app SHALL 不因此改本機資料，收到的申請還在，並跳出標題是「Unable to Approve」的提示框，訊息依原因：同步、上傳快照或同意的請求沒有得到回應時，「Connect to the internet and try again.」；API 拒絕同意，原因是沒有這個申請時，「This request has already been answered.」，並再列出申請（SHARING-190.1），別的成員處理過了、申請的手機取消了或換了內容都是這樣；原因是成員手機滿了時，「This group is full. A shared group can have up to 20 members.」；同步之後這支手機已經沒有那個申請的邀請時——同步帶來了撤回，或它照校正後的時間到期了——不上傳快照也不送同意，訊息是「This request has already been answered.」，並再列出申請（SHARING-190.1），所以它不再是收到的申請：邀請不再有效時 API 不再存著它的申請（SHARING-174.1）；同步之後這個申請變成不能同意時，SHARING-194.1 那個原因的那一句；其他情況——同步之後還有待上傳的事件、沒有群組鑰匙、快照太大或存滿了、別的拒絕和看不懂的回應——「Something went wrong. Try again later.」。IF API 拒絕同意，原因是沒有跟上，THEN the mobile app SHALL 不跳出提示框，再同步，再照 SHARING-195.1 在同一個 transaction 裡看一次能不能同意並記下 cursor，用同一份快照和同樣的事件再送同意的請求，`cursor` 是這次記下的；這時不能同意了就不再送，訊息是 SHARING-194.1 那個原因的那一句。一次同意這樣最多再送兩次，第三次還是沒有跟上，就照其他情況。IF 原因是沒有快照，THEN the mobile app SHALL 重新上傳一份快照再送一次，再被拒絕就照其他情況。
 
 #### Scenario: 沒有網路
 
@@ -4022,23 +4022,8 @@ IF 同意沒有做完，THEN the mobile app SHALL 不因此改本機資料，收
 
 #### Scenario: 其他情況
 
-- **WHEN** Brisbane 有傳不上去的待上傳事件（群組滿了，SYNC-82.1）；或 API 拒絕同意，原因是鑰匙世代，而 API 沒有給這支手機的 box；或回 500
+- **WHEN** Brisbane 有傳不上去的待上傳事件（群組滿了，SYNC-82.1）；或 API 拒絕同意，原因是鑰匙世代；或回 500
 - **THEN** 都跳出「Unable to Approve」，訊息是「Something went wrong. Try again later.」；Dana 那一列還在
-
-#### Scenario: 需要換鑰匙時先換再同意
-
-- **WHEN** 在 Dana 的選單按「Approve」之後、同意的請求送到之前，另一支成員手機退出了；API 拒絕第一個同意的請求，原因是需要換鑰匙
-- **THEN** 沒有跳出提示框；API 接著收到 Brisbane 的下載、換鑰匙的請求、另一份快照的每一塊和第二個同意的請求，它的 `epoch` 是 2，`snapshotId` 是新的那一份的，box 裡只有鑰匙世代 2 的群組鑰匙；API 回答同意好了之後，Dana 是成員
-
-#### Scenario: 別人剛換過鑰匙
-
-- **WHEN** 同意的請求送到之前，另一支成員手機移除了別的手機，Brisbane 的鑰匙世代是 2，API 存著給這支手機的 box；API 拒絕第一個同意的請求，原因是鑰匙世代
-- **THEN** 沒有跳出提示框；這支手機拿到鑰匙世代 2 的群組鑰匙之後，API 收到第二個同意的請求，它的 `epoch` 是 2；同意好了
-
-#### Scenario: 重來之後還是被拒絕
-
-- **WHEN** 重來的那一次，API 又拒絕同意的請求，原因是需要換鑰匙
-- **THEN** 沒有第三個同意的請求；跳出「Unable to Approve」，訊息是「Something went wrong. Try again later.」
 
 ### Requirement: SHARING-201.1 按 Decline 時送拒絕
 
@@ -4099,7 +4084,7 @@ The mobile app SHALL 不把申請的名字、選的成員的成員 ID、申請�
 
 ### Requirement: SHARING-204.1 同意和問結果的請求等不到回應時在 60 秒後放棄
 
-IF 列出申請、同意、拒絕或問結果時送出的一個請求送出 60 秒之後還沒有收完回應，THEN the mobile app SHALL 放棄這個請求，把它當成沒有得到回應：列出照 SHARING-190.1，同意照 SHARING-200.2，拒絕照 SHARING-201.1，問結果照 SHARING-215.1；同步、上傳快照和匯入快照送的請求照 SYNC-97.1。放棄之後才到的回應不算數。這支手機之後送的請求不等被放棄的那一個。每個送出的請求各自算 60 秒：API 要求等待的時間（SHARING-28.1）不算在內，等過之後或校正時鐘之後再送的那一次重新算。
+IF 列出申請、同意、拒絕或問結果時送出的一個請求送出 60 秒之後還沒有收完回應，THEN the mobile app SHALL 放棄這個請求，把它當成沒有得到回應：列出照 SHARING-190.1，同意照 SHARING-200.1，拒絕照 SHARING-201.1，問結果照 SHARING-215.1；同步、上傳快照和匯入快照送的請求照 SYNC-97.1。放棄之後才到的回應不算數。這支手機之後送的請求不等被放棄的那一個。每個送出的請求各自算 60 秒：API 要求等待的時間（SHARING-28.1）不算在內，等過之後或校正時鐘之後再送的那一次重新算。
 
 #### Scenario: 同意一直沒有回應
 
@@ -5074,7 +5059,7 @@ IF 退出的請求沒有得到回應，被原因不是「不是成員」的拒�
 
 ### Requirement: SHARING-278.1 沒有那個鑰匙世代的群組鑰匙時向 API 拿
 
-WHEN 一個共同帳本的一次同步結束，而它的下載停在一個鑰匙世代這支手機沒有群組鑰匙的事件前（SYNC-73.1），或它的上傳被拒絕、原因是鑰匙世代、這支手機又沒有回應說的那個世代的群組鑰匙（SYNC-79.1）；或換鑰匙或同意的請求被拒絕，原因是鑰匙世代（SHARING-200.2、SHARING-274.1、SHARING-275.1），the mobile app SHALL 送拿鑰匙的請求（SHARING-259.1），`after` 是這支手機在這個共同帳本的鑰匙世代（SYNC-94.1）；把回應的 box 依鑰匙世代由小到大一個一個打開、驗證（SHARING-279.1、SHARING-280.1），每驗證過一把就照 SYNC-94.1 存下；API 說之後還有時，帶著這時的鑰匙世代接著拿。打開一個 box（SHARING-9.1）用的是：這支手機的 box 私鑰、回應裡那個 box 的 `senderKey`、從這支手機存著的上一個世代——box 的鑰匙世代減 1——的群組鑰匙導出的 salt，和 SHARING-272.1 的情境，其中裝置 ID 是這支手機的，鑰匙世代是那個 box 的。至少存下一把之後，再同步這個共同帳本一次（SYNC-68.1）：下載從 cursor 接著收，上傳用新的鑰匙世代送；一把都沒有存下時不再同步，等下一次同步。都不顯示任何提示。
+WHEN 一個共同帳本的一次同步結束，而它的下載停在一個鑰匙世代這支手機沒有群組鑰匙的事件前（SYNC-73.1），或它的上傳被拒絕、原因是鑰匙世代、這支手機又沒有回應說的那個世代的群組鑰匙（SYNC-79.1）；或換鑰匙的請求被拒絕，原因是鑰匙世代（SHARING-274.1、SHARING-275.1），the mobile app SHALL 送拿鑰匙的請求（SHARING-259.1），`after` 是這支手機在這個共同帳本的鑰匙世代（SYNC-94.1）；把回應的 box 依鑰匙世代由小到大一個一個打開、驗證（SHARING-279.1、SHARING-280.1），每驗證過一把就照 SYNC-94.1 存下；API 說之後還有時，帶著這時的鑰匙世代接著拿。打開一個 box（SHARING-9.1）用的是：這支手機的 box 私鑰、回應裡那個 box 的 `senderKey`、從這支手機存著的上一個世代——box 的鑰匙世代減 1——的群組鑰匙導出的 salt，和 SHARING-272.1 的情境，其中裝置 ID 是這支手機的，鑰匙世代是那個 box 的。至少存下一把之後，再同步這個共同帳本一次（SYNC-68.1）：下載從 cursor 接著收，上傳用新的鑰匙世代送；一把都沒有存下時不再同步，等下一次同步。都不顯示任何提示。
 
 #### Scenario: 下載停在新的鑰匙世代
 
@@ -5174,7 +5159,7 @@ WHEN 手機上的申請是同意了還沒加入好的（SHARING-221.1），而�
 
 ### Requirement: SHARING-284.1 有人離開之後，撤回比那次離開早的邀請
 
-WHEN 一個共同帳本的一次同步結束，而這次同步的下載做完了（SYNC-69.1），這支手機又替它存著一個還沒到期的邀請，那個邀請建立的時間戳記（sync）比這個共同帳本的名冊裡某一筆不代表任何人的紀錄的「代表」的時間戳記早（SYNC-1.1），the mobile app SHALL 送撤回那個邀請的請求（SHARING-82.1），不問使用者，也不顯示任何提示：離開的手機知道那條連結。WHEN API 回答撤回好了，或拒絕、原因是沒有這個邀請——別支成員手機先撤回了——the mobile app SHALL 在同一個 SQLite transaction 裡刪掉存著的這個邀請並寫下永久刪除它的事件（SYNC-80.2）；Invite 正顯示它時關閉，回到 Members。其他情況邀請不變，下一次同步之後再試。建立的時間戳記比每一次離開都晚的邀請不撤回；成員要邀人時照常建立新的（SHARING-91.1）。
+WHEN 一個共同帳本的一次同步結束，而這次同步的下載做完了（SYNC-69.1），這支手機又替它存著一個還沒到期的邀請，那個邀請建立的時間戳記（sync）比這個共同帳本的名冊裡某一筆不代表任何人的紀錄的「代表」的時間戳記早（SYNC-1.1），the mobile app SHALL 送撤回那個邀請的請求（SHARING-82.1），不問使用者，也不顯示任何提示：離開的手機知道那條連結。WHEN API 回答撤回好了，或拒絕、原因是沒有這個邀請——別支成員手機先撤回了——the mobile app SHALL 在同一個 SQLite transaction 裡刪掉存著的這個邀請並寫下永久刪除它的事件（SYNC-80.2）；Invite 正顯示它時關閉，回到 Members。其他情況邀請不變，下一次同步之後再試。建立的時間戳記比每一次離開都晚的邀請不撤回；成員要邀人時照常建立新的（SHARING-91.1）。撤回之後，那個邀請收到、還沒有被同意的申請 API 不再存著（SHARING-174.1），所以有手機離開之後才送的同意不會成功：同意之前的那次同步（SHARING-195.1）替群組換了鑰匙、套用了那些事件的話，同意等撤回有了結果才看邀請還在不在，邀請不在了就照 SHARING-200.1 說明申請已經處理過。申請的人要用新的邀請再申請一次；已經被同意、還沒有加入好的手機不受影響（SHARING-183.1）。
 
 #### Scenario: 移除之後
 
@@ -5200,6 +5185,11 @@ WHEN 一個共同帳本的一次同步結束，而這次同步的下載做完了
 
 - **WHEN** Invite 正顯示代號 A 的邀請時，這支手機同步並套用了別支手機移除 E 的事件
 - **THEN** 撤回好了之後 Invite 關閉，顯示 Members
+
+#### Scenario: 還沒有被同意的申請
+
+- **WHEN** Evan 用代號 A 的邀請送了申請，還沒有被同意；Dana 的手機退出之後，Taylor 的手機還沒有同步，就在 Evan 的選單按「Approve」
+- **THEN** API 依序收到 Brisbane 的下載、換鑰匙的請求和撤回代號 A 的請求，沒有收到同意的請求；跳出「Unable to Approve」，訊息是「This request has already been answered.」；API 上沒有 Evan 的申請，Evan 的手機不是成員手機
 
 #### Scenario: 沒有人離開過
 
@@ -5240,7 +5230,7 @@ WHEN 一支真的手機的成員移除另一支真的手機的成員，或一支
 
 ### Requirement: SHARING-288.1 同意和前成員同名的新成員之前，問要不要把他加回來
 
-WHEN 使用者在申請的選單按「Approve」，而那個申請要當新成員，名字和這個共同帳本的一位前成員同名（groups），the mobile app SHALL 在同步和送任何請求之前，先跳出和 Members 加回前成員時一樣的提示框（groups 的 GROUPS-34.4）：標題「Add <前成員的名稱> Back?」，內容「<前成員的名稱> was in this group before. Adding them back reconnects their past payments and shares.」，選項是「Cancel」和「Add Back」；同名的前成員不只一位時，問的是最近被移出的那一位。按「Add Back」才照 SHARING-195.1 同意，這次同意把提示框問的那一位前成員加回來，不新增成員（SHARING-196.2）：申請的手機加入之後就是他（SHARING-219.2），成員 ID 和名稱都是原本的，他以前的付款和分攤接在同一個人底下。按「Cancel」關閉提示框，不同步也不送請求，申請還在，Android 上按返回鍵或點提示框外面也一樣。退出過或被移除過的人回來時，在名片上找不到自己，只能當新成員申請；由按同意的成員認出是不是同一個人。真的是另一位同名的人時，成員按「Cancel」，請他換個名字再申請：Members 也不讓人新增和前成員同名的成員（GROUPS-34.4）。IF 照 SHARING-195.1 在 transaction 裡再看一次時，提示框問的那一位已經不是前成員——別人先把他加回來了——THEN the mobile app SHALL 不同意，照 SHARING-200.2 說明：這個申請和一位成員同名（SHARING-194.1）。名字和每一位前成員都不同名的申請，照常同意成新成員，不問。
+WHEN 使用者在申請的選單按「Approve」，而那個申請要當新成員，名字和這個共同帳本的一位前成員同名（groups），the mobile app SHALL 在同步和送任何請求之前，先跳出和 Members 加回前成員時一樣的提示框（groups 的 GROUPS-34.4）：標題「Add <前成員的名稱> Back?」，內容「<前成員的名稱> was in this group before. Adding them back reconnects their past payments and shares.」，選項是「Cancel」和「Add Back」；同名的前成員不只一位時，問的是最近被移出的那一位。按「Add Back」才照 SHARING-195.1 同意，這次同意把提示框問的那一位前成員加回來，不新增成員（SHARING-196.2）：申請的手機加入之後就是他（SHARING-219.2），成員 ID 和名稱都是原本的，他以前的付款和分攤接在同一個人底下。按「Cancel」關閉提示框，不同步也不送請求，申請還在，Android 上按返回鍵或點提示框外面也一樣。退出過或被移除過的人回來時，在名片上找不到自己，只能當新成員申請；由按同意的成員認出是不是同一個人。真的是另一位同名的人時，成員按「Cancel」，請他換個名字再申請：Members 也不讓人新增和前成員同名的成員（GROUPS-34.4）。IF 照 SHARING-195.1 在 transaction 裡再看一次時，提示框問的那一位已經不是前成員——別人先把他加回來了——THEN the mobile app SHALL 不同意，照 SHARING-200.1 說明：這個申請和一位成員同名（SHARING-194.1）。名字和每一位前成員都不同名的申請，照常同意成新成員，不問。
 
 #### Scenario: 回來的人
 
