@@ -4512,7 +4512,7 @@ WHEN 使用者在 New Expense 存下一筆支出（LEDGER-21.2、LEDGER-54.1）�
 
 ### Requirement: LEDGER-143.2 把目前的篩選取名存起來
 
-The mobile app SHALL 在 Filters 的條件下面、「Clear Filters」上面放名稱是「Save Current Filter…」的按鈕，這個畫面沒有篩選時停用；這個畫面的篩選和它的一個存起來的篩選條件一樣時，這個按鈕是停用的「Filter Saved」；沒有篩選時它都是停用的「Save Current Filter…」，就算有一個存起來的篩選已經沒有條件（LEDGER-141.1）。條件一樣是指：Category、Ledger 或 Paid by 選的是同樣的幾項，不看選的先後；Paid by Me 一樣；Currency 一樣；Min 和 Max 各自都沒有數字，或是同一個數值，所以「10」和「10.0」一樣。WHEN 使用者按「Save Current Filter…」，the mobile app SHALL 請使用者取名稱：iOS 上是系統的提示框，標題「Save Filter」、內容「Name this filter to use it again later.」，有一個文字欄位，選項是「Cancel」和「Save」；Android 上是蓋在 Filters 上的 Material 3 對話框，標題「Save Filter」，裡面是名稱是「Filter name」的欄位，下面是「Cancel」和「Save」兩個按鈕，和 Android 內建的 Settings 改裝置名稱的對話框一樣：對話框一打開，欄位就取得焦點，游標在建議的名稱後面，鍵盤打開（手動檢查見 LEDGER-145.2）；欄位去掉頭尾空白後是空的時 Save 停用；按對話框外面或按返回鍵就關閉對話框，和按 Cancel 一樣，鍵盤開著時按返回鍵先收起鍵盤。欄位裡先帶著建議的名稱：膠囊列上開著的膠囊的文字（LEDGER-133.2），由左而右以「, 」隔開。WHEN 使用者按 Save 而名稱去掉頭尾空白後不是空的，the mobile app SHALL 把這個畫面現在的條件用去掉頭尾空白的名稱存成這個畫面的一個存起來的篩選，存在本機資料（LEDGER-140.1）；這個畫面已經有名稱一模一樣的，就取代它。存的只有條件：Category、Ledger 或 Paid by、Paid by Me、Amount 和 Currency；期間、排序和搜尋都不存。名稱是空的時不存，按 Cancel 也不存。IF 存起來的篩選存不進本機資料，THEN the mobile app SHALL 跳出 LEDGER-140.1 的那個提示框，SAVED FILTERS 沒有多出它，這個畫面的篩選不變，按鈕仍是「Save Current Filter…」。支出清單和每個群組的畫面各有自己的存起來的篩選；存和刪都不寫成同步的事件（SYNC-26.1）。
+The mobile app SHALL 在 Filters 的條件下面、「Clear Filters」上面放名稱是「Save Current Filter…」的按鈕，這個畫面沒有篩選時停用；這個畫面的篩選和它的一個存起來的篩選條件一樣時，這個按鈕是停用的「Filter Saved」；沒有篩選時它都是停用的「Save Current Filter…」，就算有一個存起來的篩選已經沒有條件（LEDGER-141.1）。條件一樣是指：Category、Ledger 或 Paid by 選的是同樣的幾項，不看選的先後；Paid by Me 一樣；Currency 一樣；Min 和 Max 各自都沒有數字，或是同一個數值，所以「10」和「10.0」一樣。WHEN 使用者按「Save Current Filter…」，the mobile app SHALL 請使用者取名稱：iOS 上是系統的提示框，標題「Save Filter」、內容「Name this filter to use it again later.」，有一個文字欄位，選項是「Cancel」和「Save」；Android 上是蓋在 Filters 上的 Material 3 對話框，標題「Save Filter」，裡面是名稱是「Filter name」的欄位，下面是「Cancel」和「Save」兩個按鈕，和 Android 內建的 Settings 改裝置名稱的對話框一樣：對話框一打開，欄位就取得焦點，游標在建議的名稱後面，鍵盤打開（手動檢查見 LEDGER-145.2；對話框和鍵盤的位置見 LEDGER-162.1）；欄位去掉頭尾空白後是空的時 Save 停用；按對話框外面或按返回鍵就關閉對話框，和按 Cancel 一樣，鍵盤開著時按返回鍵先收起鍵盤。欄位裡先帶著建議的名稱：膠囊列上開著的膠囊的文字（LEDGER-133.2），由左而右以「, 」隔開。WHEN 使用者按 Save 而名稱去掉頭尾空白後不是空的，the mobile app SHALL 把這個畫面現在的條件用去掉頭尾空白的名稱存成這個畫面的一個存起來的篩選，存在本機資料（LEDGER-140.1）；這個畫面已經有名稱一模一樣的，就取代它。存的只有條件：Category、Ledger 或 Paid by、Paid by Me、Amount 和 Currency；期間、排序和搜尋都不存。名稱是空的時不存，按 Cancel 也不存。IF 存起來的篩選存不進本機資料，THEN the mobile app SHALL 跳出 LEDGER-140.1 的那個提示框，SAVED FILTERS 沒有多出它，這個畫面的篩選不變，按鈕仍是「Save Current Filter…」。支出清單和每個群組的畫面各有自己的存起來的篩選；存和刪都不寫成同步的事件（SYNC-26.1）。
 
 #### Scenario: 沒有篩選
 
@@ -4568,6 +4568,44 @@ The mobile app SHALL 在 Filters 的條件下面、「Clear Filters」上面放�
 
 - **WHEN** Android 上 Paid by Me 開著，在 Filters 按「Save Current Filter…」，把「Filter name」改成「Mine」，按「Save」
 - **THEN** 按了之後跳出標題「Save Filter」的對話框，Filters 仍在它後面，欄位裡是「Paid by Me」，下面是「Cancel」和「Save」；按 Save 之後對話框關閉，Filters 的 SAVED FILTERS 有「Mine」
+
+### Requirement: LEDGER-162.1 (e2e android) Android 上鍵盤不擋住取名的對話框
+
+WHERE Android，WHILE 取名的對話框（LEDGER-143.2）和鍵盤都開著，the mobile app SHALL 讓整個對話框在狀態列和鍵盤之間，沒有一部分被鍵盤擋住（空隙和系統最大的字級見 LEDGER-163.1）：標題「Save Filter」、「Filter name」、「Cancel」和「Save」都看得到，按一次「Cancel」或「Save」就照 LEDGER-143.2 有作用，不用先收起鍵盤。IF 狀態列和鍵盤之間放不下整個對話框，例如手機橫放，THEN the mobile app SHALL 改成讓「Filter name」和裡面的文字看得到；收起鍵盤之後，「Cancel」和「Save」看得到、按得到。
+
+#### Scenario: 小螢幕
+
+- **WHEN** 在 360×640 dp 的 Android 手機上 Min 是「1」，在 Filters 按「Save Current Filter…」
+- **THEN** 鍵盤打開之後，「Save Filter」、「Filter name」裡的「1 or more」、「Cancel」和「Save」都在鍵盤上方，看得到
+
+#### Scenario: 鍵盤開著時按 Cancel
+
+- **WHEN** 接著鍵盤還開著，按一次「Cancel」
+- **THEN** 對話框關閉，Filters 沒有存起來的篩選
+
+#### Scenario: 鍵盤開著時按 Save
+
+- **WHEN** 再按「Save Current Filter…」，把「Filter name」改成「Mine」，鍵盤還開著，按一次「Save」
+- **THEN** 對話框關閉，Filters 的 SAVED FILTERS 有「Mine」
+
+#### Scenario: 橫放
+
+- **WHEN** 把 360×640 dp 的 Android 手機橫放，Min 是「1」，在 Filters 按「Save Current Filter…」，再按返回鍵收起鍵盤
+- **THEN** 鍵盤開著時看得到「Filter name」裡的「1 or more」；鍵盤收起之後對話框還在，看得到「Cancel」和「Save」，按一次「Cancel」對話框就關閉
+
+### Requirement: LEDGER-163.1 (manual) Android 手機上取名的對話框和鍵盤之間有空隙
+
+WHERE Android 手機，WHILE 取名的對話框（LEDGER-143.2）和手機自己的鍵盤都開著，而狀態列和鍵盤之間放得下整個對話框，the mobile app SHALL 在系統的每一種字級下都讓整個對話框在狀態列和鍵盤之間（LEDGER-162.1），文字不被切掉；預設的字級下，對話框的下緣和鍵盤之間 SHALL 看得到空隙，不貼在一起。
+
+#### Scenario: 空隙
+
+- **WHEN** 在直放的 Android 手機上 Min 是「1」，在 Filters 按「Save Current Filter…」
+- **THEN** 鍵盤打開之後，看得到對話框的四個圓角，它的下緣和鍵盤之間有空隙
+
+#### Scenario: 最大的字級
+
+- **WHEN** 把直放的 360×640 dp 的 Android 手機的系統字級調到最大，Min 是「1」，在 Filters 按「Save Current Filter…」
+- **THEN** 鍵盤開著時看得到「Save Filter」、「Filter name」裡的「1 or more」、「Cancel」和「Save」，文字沒有被切掉
 
 ### Requirement: LEDGER-144.1 套用和刪除存起來的篩選
 

@@ -1,11 +1,20 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[LEDGER-143.2] Names the filter that is on in the system prompt on iOS and in a Material dialog over Filters on Android, saves nothing at Cancel, and on Android nothing with an empty name, at a press outside or at the back button, then saves it under the name typed'
+name: '[LEDGER-143.2] [LEDGER-162.1] Names the filter that is on in the system prompt on iOS and in a Material dialog over Filters on Android, which the keyboard does not cover, saves nothing at Cancel, and on Android nothing with an empty name, at a press outside or at the back button, then saves it under the name typed'
 tags:
   - android
+# Some of the Android steps hold the phone sideways; this holds it upright again even when one of
+# them fails, so the next flow starts upright.
+onFlowComplete:
+  - runFlow:
+      when:
+        platform: Android
+      commands:
+        - setOrientation: PORTRAIT
 ---
 # Also runs on the small Android screen of scripts/e2e-android.sh (ADR-0014), where the name is
 # asked in a dialog over Filters (LEDGER-143.2) instead of a sheet with Cancel and Save in its
-# title bar. One expense of today, which a lowest amount of 1 leaves in the list.
+# title bar, and the keyboard covers the lower half of the screen (LEDGER-162.1). One expense of
+# today, which a lowest amount of 1 leaves in the list.
 - runFlow:
     file: common/launch-with-seed.yaml
     env:
@@ -34,16 +43,16 @@ tags:
       platform: Android
     commands:
       # A dialog: the field Filter name, with the suggested name and the caret, and Cancel and
-      # Save under it.
+      # Save under it, all above the keyboard (LEDGER-162.1).
+      - assertVisible:
+          text: 1 or more
+          focused: true
       - assertVisible:
           text: Cancel
           below: Filter name
       - assertVisible:
           text: Save
           below: Filter name
-      - assertVisible:
-          text: 1 or more
-          focused: true
       # Save is disabled while the name is empty.
       - eraseText
       - assertVisible:
@@ -58,10 +67,13 @@ tags:
       - assertNotVisible: Save Filter
       - assertVisible: Done
       - assertNotVisible: Apply saved filter .*
-      # So does the back button, once the keyboard it opened is closed.
+      # So does the back button, once the keyboard is closed. Its first press closes only the
+      # keyboard, so the keyboard was open while Cancel and Save were in sight (LEDGER-162.1).
       - tapOn: Save Current Filter…
       - waitForAnimationToEnd
       - assertVisible: Save Filter
+      - assertVisible: Cancel
+      - assertVisible: Save
       - pressKey: back
       - waitForAnimationToEnd
       - assertVisible: Save Filter
@@ -69,14 +81,39 @@ tags:
       - waitForAnimationToEnd
       - assertNotVisible: Save Filter
       - assertVisible: Done
+      # Held sideways, the screen has no room for the whole dialog above the keyboard: the name is
+      # in sight, and Cancel and Save are once the keyboard is closed (LEDGER-162.1).
+      - setOrientation: LANDSCAPE_LEFT
+      - waitForAnimationToEnd
+      - scrollUntilVisible:
+          element: Save Current Filter…
       - tapOn: Save Current Filter…
       - waitForAnimationToEnd
-# Cancel saves nothing.
+      - assertVisible:
+          text: 1 or more
+          focused: true
+      - pressKey: back
+      - waitForAnimationToEnd
+      - assertVisible:
+          text: Cancel
+          below: Filter name
+      - assertVisible:
+          text: Save
+          below: Filter name
+      - tapOn: Cancel
+      - waitForAnimationToEnd
+      - assertNotVisible: Save Filter
+      - setOrientation: PORTRAIT
+      - waitForAnimationToEnd
+      - tapOn: Save Current Filter…
+      - waitForAnimationToEnd
+# Cancel saves nothing. On Android the keyboard is still open, and one press is enough
+# (LEDGER-162.1).
 - tapOn: Cancel
 - waitForAnimationToEnd
 - assertNotVisible: Save Filter
 - assertNotVisible: Apply saved filter .*
-# Save saves the filter under the name typed, and Filters lists it.
+# Save, at one press too, saves the filter under the name typed, and Filters lists it.
 - tapOn: Save Current Filter…
 - waitForAnimationToEnd
 - eraseText
