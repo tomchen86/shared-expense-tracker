@@ -1,14 +1,21 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import postgres from 'postgres';
 import { cleanUp } from '../../src/cleanup';
+import { putInvite } from '../../src/sharing/invites';
 import {
   CASEY,
   T,
+  TAYLOR,
   databaseContents,
   databaseUrl,
+  registered,
   sql,
 } from '../acceptance/sharing-api';
-import { bothInBrisbane } from '../acceptance/sharing-invites-api';
+import {
+  CODE_A,
+  WEEK,
+  bothInBrisbane,
+} from '../acceptance/sharing-invites-api';
 import { BRISBANE, useSyncApi } from '../acceptance/sync-api';
 import { DAY, reach, store } from '../acceptance/sync-cleanup-api';
 
@@ -33,33 +40,59 @@ beforeEach(async () => {
 const cleanupSession = () => cleaner<{ pid: number; timeout: string }[]>`
   SELECT pg_backend_pid() AS pid, current_setting('lock_timeout') AS timeout`;
 
-test('cleanup waits for a download that lowers its cursor before deciding which events to delete', async () => {
+/** Return the pending cleanup once this transaction holds a lock it needs. */
+async function blockedCleanup(locker: postgres.TransactionSql, now: number) {
   const [{ pid }] = await cleanupSession();
+  const cleanup = cleanUp(cleaner, now);
+  const endedEarly = cleanup.then(() => {
+    throw new Error('Cleanup finished before waiting for the lock');
+  });
+  for (;;) {
+    const [lock] = await Promise.race([
+      locker<{ blocked: boolean }[]>`
+        SELECT pg_backend_pid() = ANY(pg_blocking_pids(${pid})) AS blocked`,
+      endedEarly,
+    ]);
+    if (lock.blocked) return { cleanup };
+    await delay(10);
+  }
+}
+
+test('cleanup waits for a download that lowers its cursor before deciding which events to delete', async () => {
   const { cleanup } = await sql().begin(async (download) => {
     await download`SELECT id FROM groups WHERE id = ${BRISBANE} FOR SHARE`;
     await download`UPDATE group_members SET progress_cursor = 2, progress_at_ms = ${T + 1}
       WHERE group_id = ${BRISBANE} AND device_id = ${CASEY}`;
-
-    const cleanup = cleanUp(cleaner, T + 1_000);
-    const endedEarly = cleanup.then(() => {
-      throw new Error('Cleanup finished before waiting for the download');
-    });
-    for (;;) {
-      const [lock] = await Promise.race([
-        download<{ blocked: boolean }[]>`
-          SELECT pg_backend_pid() = ANY(pg_blocking_pids(${pid})) AS blocked`,
-        endedEarly,
-      ]);
-      // Commit the lower cursor before awaiting the cleanup it blocked.
-      if (lock.blocked) return { cleanup };
-      await delay(10);
-    }
+    return blockedCleanup(download, T + 1_000);
   });
   await cleanup;
 
   const events = await sql()<{ sequence: number }[]>`
     SELECT sequence::int FROM group_events WHERE group_id = ${BRISBANE} ORDER BY sequence`;
   expect(events.map(({ sequence }) => sequence)).toEqual([3, 4, 5]);
+});
+
+test('cleanup deletes a join request committed while it waits for the expired invite', async () => {
+  const expires = T + WEEK;
+  const phone = await registered();
+  await putInvite(
+    sql(),
+    BRISBANE,
+    TAYLOR,
+    CODE_A,
+    { cursor: 0, card: 'ab' },
+    () => T,
+  );
+  const { cleanup } = await sql().begin(async (applicant) => {
+    // Hold the locks and the insert of a request accepted just before expiry.
+    await applicant`SELECT code FROM group_invites WHERE code = ${CODE_A} FOR UPDATE`;
+    await applicant`INSERT INTO invite_join_requests (code, device_id, received_at_ms, content)
+      VALUES (${CODE_A}, ${phone.deviceId}, ${expires - 1}, decode('cd', 'hex'))`;
+    return blockedCleanup(applicant, expires);
+  });
+  await cleanup;
+
+  expect(await sql()`SELECT code FROM invite_join_requests`).toEqual([]);
 });
 
 test('cleanup times out on a held lock, rolls back and succeeds on the next run', async () => {

@@ -175,8 +175,8 @@ async function expectSignedBy(
   expect(await verifies(request, publicKey)).toBe(true);
 }
 
-describe('SHARING-19.1', () => {
-  test('[SHARING-19.1] reading the device identity and the clock offset on a new phone makes no identity and no request', async () => {
+describe('SHARING-19.2', () => {
+  test('[SHARING-19.2] reading the device identity and the clock offset on a new phone makes no identity and no request', async () => {
     const app = await startOn(newPhone());
 
     const identity = await identityOf(app);

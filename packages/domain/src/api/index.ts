@@ -5,3 +5,4 @@ export * from './group-snapshots';
 export * from './health';
 export * from './signed-request';
 export * from './invites';
+export * from './join-requests';

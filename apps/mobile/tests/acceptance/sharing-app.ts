@@ -109,6 +109,7 @@ interface World {
   queue: { when: When; behavior: Behavior }[];
   answers: Map<string, { status: number; body: string | Uint8Array }>;
   routes: Route[];
+  publicRoutes: Route[];
   mistakes: string[];
   fetchBefore: typeof fetch | undefined;
   root: string;
@@ -132,6 +133,7 @@ const newWorld = (): World => ({
   queue: [],
   answers: new Map(),
   routes: [],
+  publicRoutes: [],
   mistakes: [],
   fetchBefore: undefined,
   root: '',
@@ -532,12 +534,20 @@ const refusalAnswer = (refusal: Refusal) => ({
 /** The API's time now. */
 export const apiTime = () => Date.now() + world().aheadMs;
 
-/** What the API answers when no test has told it otherwise: SHARING-31.2 to 38.1, without the limits. */
+/**
+ * What the API answers when no test has told it otherwise: a public route's answer,
+ * whatever the request's four fields say, and for every other request SHARING-31.2 to
+ * 38.1, without the limits.
+ */
 function answerOf(request: Received): {
   status: number;
   body: string | Uint8Array;
 } {
   const state = world();
+  for (const route of state.publicRoutes) {
+    const answer = route(request);
+    if (answer) return answer;
+  }
   if (
     !UUID.test(request.deviceId ?? '') ||
     !TIME.test(request.timestamp ?? '') ||
@@ -686,6 +696,14 @@ export function apiAnswers(
 /** Gives the API a route: what it answers to the requests the route takes, once they have passed its checks. */
 export function apiRoutes(route: Route) {
   world().routes.push(route);
+}
+
+/**
+ * Gives the API a public route (SHARING-31.2): what it answers to the requests the route
+ * takes, signed or not, before any check.
+ */
+export function apiPublicRoutes(route: Route) {
+  world().publicRoutes.push(route);
 }
 
 /** The API answers the next such request with this status and body, whatever the request is. */

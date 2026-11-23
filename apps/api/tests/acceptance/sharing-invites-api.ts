@@ -157,3 +157,90 @@ export async function withEvents(phone: Phone, groupId: string, count: number) {
     stored.map((_, index) => index + 1),
   );
 }
+
+// Join requests (ADR-0032)
+
+/** The most requests an invite holds. */
+export const MOST_REQUESTS = 20;
+
+export const ALREADY_A_MEMBER = { error: 'already-a-member' } as const;
+export const REQUESTS_FULL = { error: 'requests-full' } as const;
+
+/** A join request's content: `size` random bytes, which the API never reads. */
+export const joinRequest = (size = 200) => new Uint8Array(randomBytes(size));
+
+export const requestPath = (code: string) => `/invites/${code}/request`;
+
+/** The body of a request that sends a join request. */
+export const requestBody = (content: Uint8Array) =>
+  JSON.stringify({ request: hexOf(content) });
+
+/** Sends `phone`'s join request for the invite, or replaces the one it has. */
+export const sendRequest = (phone: Phone, code: string, content: Uint8Array) =>
+  call(phone, {
+    method: 'PUT',
+    path: requestPath(code),
+    body: requestBody(content),
+  });
+
+/** The same with a body as it is given. */
+export const sendRequestBody = (
+  phone: Phone,
+  code: string,
+  body?: Uint8Array | string,
+) => call(phone, { method: 'PUT', path: requestPath(code), body });
+
+export const cancelRequest = (
+  phone: Phone,
+  code: string,
+  body?: Uint8Array | string,
+) => call(phone, { method: 'DELETE', path: requestPath(code), body });
+
+/** The API took the request, or cancelled it: either answer names the invite's code. */
+export function expectRequestAnswered(answer: Answer, code: string) {
+  expect(answer).toEqual({ status: 200, body: { code } });
+}
+
+const REQUEST_STATUS = {
+  request: REFUSAL_STATUS.request,
+  'no-invite': 404,
+  'already-a-member': 409,
+  'requests-full': 409,
+};
+
+/** The answer is this refusal of the request API, under its status. */
+export function expectRequestRefused(
+  answer: Answer,
+  refusal: { error: keyof typeof REQUEST_STATUS },
+) {
+  expect(answer).toEqual({
+    status: REQUEST_STATUS[refusal.error],
+    body: refusal,
+  });
+}
+
+/**
+ * Taylor's phone with Brisbane and its invite under code A, made at the API's time, and
+ * Casey's phone, registered and no member device.
+ */
+export async function brisbaneInvitesCasey(): Promise<[Phone, Phone]> {
+  const phones = await taylorWithBrisbaneAndCasey();
+  expect((await putInvite(phones[0], BRISBANE, CODE_A, card())).status).toBe(
+    200,
+  );
+  return phones;
+}
+
+/** `count` other phones, each registered and with a request of its own for the invite. */
+export async function applicants(
+  code: string,
+  count: number,
+): Promise<Phone[]> {
+  const phones: Phone[] = [];
+  for (let each = 0; each < count; each += 1) {
+    const phone = await registered();
+    expectRequestAnswered(await sendRequest(phone, code, joinRequest()), code);
+    phones.push(phone);
+  }
+  return phones;
+}

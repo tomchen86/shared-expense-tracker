@@ -187,6 +187,7 @@ test('development reset clears views, triggers, quoted names, and foreign-key cy
     { name: 'group_invites' },
     { name: 'group_members' },
     { name: 'groups' },
+    { name: 'join_requests' },
     { name: 'local_identity' },
     { name: 'pending_invites' },
     { name: 'sync_clock' },
