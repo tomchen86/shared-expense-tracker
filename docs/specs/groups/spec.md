@@ -2116,7 +2116,7 @@ WHEN 使用者在 Members 點一個申請的那一列，the mobile app SHALL 跳
 
 ### Requirement: GROUPS-170.1 群組的畫面最上面顯示有幾個沒有套用的變更
 
-WHILE 共同帳本有沒有套用的變更（sync），the mobile app SHALL 在它的畫面的大標題下面顯示一個按鈕：LEDGER-151.1 的圖示，後面是「1 change wasn't applied」，不只一個時是「<個數> changes weren't applied」，右邊有「›」；個數是這個共同帳本全部沒有套用的變更，不跟著期間、篩選和搜尋，它們不算進 GROUPS-107.2 的筆數；它在 GROUPS-107.2 和 GROUPS-130.1 的按鈕下面，所以三個都有時由上而下是掛著標記的支出、想加入的人和沒有套用的變更；那兩個按鈕都沒有時就在大標題下面、SYNC-75.1 和 SYNC-83.1 的那兩句話下面，封存的共同帳本顯示在唯讀的提示（GROUPS-55.2）上面；螢幕閱讀器把它讀成一個按鈕，讀出這句話，不讀圖示和「›」，再讀出無障礙提示「Opens the list」；按一下就開啟 Changes Not Applied（GROUPS-171.1），連按兩次也只開啟一個。群組的畫面開著時多了或少了沒有套用的變更，不必重新打開，按鈕就跟著出現、改個數或消失。共同帳本沒有沒有套用的變更時，SHALL 不顯示這個按鈕；別的群組的畫面只算自己的。
+WHILE 共同帳本有沒有套用的變更（sync），the mobile app SHALL 在它的畫面的大標題下面顯示一個按鈕：LEDGER-151.1 的圖示，後面是「1 change wasn't applied」，不只一個時是「<個數> changes weren't applied」，右邊有「›」；個數是這個共同帳本全部沒有套用的變更，不跟著期間、篩選和搜尋，它們不算進 GROUPS-107.2 的筆數；它在 GROUPS-107.2 的按鈕下面、GROUPS-130.1 的按鈕上面，所以三個都有時由上而下是掛著標記的支出、沒有套用的變更和想加入的人；沒有 GROUPS-107.2 的按鈕時就在大標題下面、SYNC-75.1 和 SYNC-83.1 的那兩句話下面，封存的共同帳本顯示在唯讀的提示（GROUPS-55.2）上面；螢幕閱讀器把它讀成一個按鈕，讀出這句話，不讀圖示和「›」，再讀出無障礙提示「Opens the list」；按一下就開啟 Changes Not Applied（GROUPS-171.1），連按兩次也只開啟一個。群組的畫面開著時多了或少了沒有套用的變更，不必重新打開，按鈕就跟著出現、改個數或消失。共同帳本沒有沒有套用的變更時，SHALL 不顯示這個按鈕；別的群組的畫面只算自己的。
 
 #### Scenario: 一個
 
@@ -2141,7 +2141,7 @@ WHILE 共同帳本有沒有套用的變更（sync），the mobile app SHALL 在�
 #### Scenario: 和想加入的人
 
 - **WHEN** Brisbane 收到的申請有 Dana 的（GROUPS-130.1），又有一個沒有套用的變更
-- **THEN** 大標題下面由上而下是「1 person wants to join」和「1 change wasn't applied」；另外有一筆需要確認的支出時，「1 expense needs review」在這兩個上面
+- **THEN** 大標題下面由上而下是「1 change wasn't applied」和「1 person wants to join」；另外有一筆需要確認的支出時，「1 expense needs review」在這兩個上面
 
 #### Scenario: 搜尋中
 
