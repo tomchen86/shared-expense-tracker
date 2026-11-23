@@ -98,6 +98,7 @@ import {
   expectUnsentAreValid,
   expenseTitled,
   groupId,
+  merged,
   receive,
   receiveEvents,
   refused,
@@ -562,7 +563,7 @@ test("[SYNC-129.1] [SYNC-28.3] changes nothing when the phone's own events come 
   const { brisbane, theirs } = await overridden();
   await choose(KEEP_CURRENT);
   const written = await unsent();
-  const before = everything();
+  const before = await merged();
 
   await receiveEvents(
     brisbane,
@@ -572,7 +573,7 @@ test("[SYNC-129.1] [SYNC-28.3] changes nothing when the phone's own events come 
     theirs,
   );
 
-  expect(everything()).toEqual(before);
+  expect(await merged()).toEqual(before);
   await expectToReview('Brisbane', []);
 });
 

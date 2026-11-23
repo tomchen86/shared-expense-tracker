@@ -424,6 +424,20 @@ export async function tryReceive(
 /** The received events the app did not apply, in the order they were received. */
 export const refused = () => read(listRefusedSyncEvents);
 
+/**
+ * What stays the same when an event the phone wrote itself, and has merged, comes back
+ * and applies (SYNC-28.3): the stored expenses, Brisbane with its members, the
+ * categories, the unsent events and the events that were not applied. The result of what
+ * the phone has received takes the event in, so the whole database does not stay the same.
+ */
+export const merged = async () => ({
+  expenses: await storedExpenses(),
+  brisbane: await groupNamed('Brisbane'),
+  categories: await allCategories(),
+  unsent: await unsent(),
+  refused: await refused(),
+});
+
 // Changing a shared ledger as a person would
 
 /** Deletes the expense in the trash titled `title` for good, from its read-only details on Trash. */

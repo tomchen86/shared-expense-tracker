@@ -249,7 +249,7 @@ describe('SYNC-68.1', () => {
   });
 });
 
-describe('SYNC-69.1', () => {
+describe('SYNC-69.2', () => {
   /** Casey has uploaded Lunch and its change to Brunch; Taylor's phone has synced once. */
   async function withBrunch() {
     const setup = await twoPhones();
@@ -268,7 +268,7 @@ describe('SYNC-69.1', () => {
     return { ...setup, from };
   }
 
-  test('[SYNC-69.1] downloads from its cursor, applies the page and moves the cursor to its last event', async () => {
+  test('[SYNC-69.2] downloads from its cursor, applies the page and moves the cursor to its last event', async () => {
     const { a, from } = await withBrunch();
 
     expect(await downloads(a, from)).toEqual(['after=0']);
@@ -280,7 +280,7 @@ describe('SYNC-69.1', () => {
     expect(await downloads(a, next)).toEqual(['after=2']);
   });
 
-  test('[SYNC-69.1] downloads page after page until one says no events follow', async () => {
+  test('[SYNC-69.2] downloads page after page until one says no events follow', async () => {
     const setup = await twoPhones();
     const { a, b, key } = setup;
     await uploadAs(b, key, await manyExpenses(setup, 250));
@@ -303,7 +303,7 @@ describe('SYNC-69.1', () => {
     expect(await downloads(a, next)).toEqual(['after=250']);
   });
 
-  test('[SYNC-69.1] asks for no third page when the second says no events follow', async () => {
+  test('[SYNC-69.2] asks for no third page when the second says no events follow', async () => {
     const setup = await twoPhones();
     const { a, b, key } = setup;
     await uploadAs(b, key, await manyExpenses(setup, 200));
@@ -315,7 +315,7 @@ describe('SYNC-69.1', () => {
     expect((await ledgerOf(a)).expenses).toHaveLength(200);
   });
 
-  test('[SYNC-69.1] downloads the events it uploaded itself, which change nothing', async () => {
+  test('[SYNC-69.2] downloads the events it uploaded itself, which change nothing', async () => {
     const { a } = await twoPhones();
     await addExpense(a);
     await sync(a);
@@ -335,7 +335,7 @@ describe('SYNC-69.1', () => {
     expect(await downloads(a, next)).toEqual(['after=1']);
   });
 
-  test('[SYNC-69.1] keeps its cursor while the group has nothing new', async () => {
+  test('[SYNC-69.2] keeps its cursor while the group has nothing new', async () => {
     const { a } = await withBrunch();
     const from = mark();
 
@@ -346,7 +346,7 @@ describe('SYNC-69.1', () => {
     expect(await downloads(a, from)).toEqual(['after=2', 'after=2', 'after=2']);
   });
 
-  test('[SYNC-69.1] takes a page with no events for the last one, though it says more follow, and goes on to upload', async () => {
+  test('[SYNC-69.2] takes a page with no events for the last one, though it says more follow, and goes on to upload', async () => {
     const { a, brisbane } = await twoPhones();
     await addExpense(a);
     answerNext('GET', 200, { events: [], more: true });
@@ -359,7 +359,7 @@ describe('SYNC-69.1', () => {
     expect(await storedEvents(brisbane)).toHaveLength(1);
   });
 
-  test('[SYNC-69.1] judges an event by the device the API says uploaded it', async () => {
+  test('[SYNC-69.2] judges an event by the device the API says uploaded it', async () => {
     const setup = await twoPhones();
     const { a, b, B, key } = setup;
     // Casey's phone uploads an event whose stamp names Taylor's phone.
@@ -379,7 +379,7 @@ describe('SYNC-69.1', () => {
     ).toEqual([[id, B, 'device']]);
   });
 
-  test('[SYNC-69.1] judges an event by the time the API received it, whenever the phone downloads it', async () => {
+  test('[SYNC-69.2] judges an event by the time the API received it, whenever the phone downloads it', async () => {
     const setup = await twoPhones();
     const { a, b, key } = setup;
     // Stamped 11 minutes after the API receives it.

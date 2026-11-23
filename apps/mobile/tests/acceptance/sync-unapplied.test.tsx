@@ -6,7 +6,7 @@ import {
   storedExpenses,
 } from './ledger-expense-app';
 import { drawnTexts, linesIn, shownInOrder } from './ledger-expense-list-app';
-import { typeSearch } from './ledger-list-find-app';
+import { chooseSort, typeSearch } from './ledger-list-find-app';
 import {
   addGroupExpense,
   addToGroup,
@@ -392,6 +392,22 @@ test("[SYNC-351.1] keeps the phone's own later change of the same unit, and take
   expect(await unsent()).toEqual([]);
 });
 
+test("[SYNC-351.1] keeps what the phone's own earlier event holds while that event is still unsent: an expense stays when the change of its title is refused first", async () => {
+  const { brisbane } = await start();
+  await addDinner();
+  const dinner = (await storedExpenses())[0];
+  await editExpense(dinner.id, { title: 'Supper' });
+  const [added, retitled] = await unsent();
+
+  await refuseOwn(brisbane, retitled);
+
+  await expectCards(['Dinner']);
+  expect((await storedExpenses()).map(({ id, title }) => [id, title])).toEqual([
+    [dinner.id, 'Dinner'],
+  ]);
+  expect((await unsent()).map(({ id }) => id)).toEqual([added.id]);
+});
+
 test('[SYNC-351.1] takes back only the units the refused event changed', async () => {
   const { brisbane } = await startWithLunch();
   await editExpense(LUNCH, { title: 'Brunch' });
@@ -491,6 +507,70 @@ test("[SYNC-351.1] puts the amount group back, and forgets it as the phone's own
 
   expect((await lunch()).amountMinor).toBe(9000);
   await expectToReview('Brisbane', []);
+});
+
+test('[SYNC-351.1] no longer asks to review an expense when the amount change that was overridden is refused', async () => {
+  const { brisbane } = await start();
+  await addDinner();
+  const dinner = (await storedExpenses())[0];
+  await editExpense(dinner.id, { amount: '120.00' });
+  const [, changedAmount] = await unsent();
+  await receive(
+    brisbane,
+    changed(
+      'expense',
+      dinner.id,
+      at(T120),
+      { money: await moneyOf(9000) },
+      { money: stamped(0) },
+    ),
+  );
+  await expectToReview('Brisbane', ['Dinner']);
+
+  await refuseOwn(brisbane, changedAmount);
+
+  await expectToReview('Brisbane', []);
+  expect((await storedExpenses())[0].amountMinor).toBe(9000);
+});
+
+test("[SYNC-351.1] finds the units by the stamp the unsent event has now, when the API's copy of it holds another", async () => {
+  const { brisbane } = await startWithLunch();
+  await editExpense(LUNCH, { title: 'Brunch' });
+  const { id, content } = await lastUnsent();
+
+  await receiveEvents(
+    brisbane,
+    relayed(
+      { ...content, stamp: ahead() },
+      { id, device: PHONE, receivedAtMs: LATER },
+    ),
+  );
+
+  expect((await unapplied()).map((change) => change.reason)).toEqual(['clock']);
+  expect((await lunch()).title).toBe('Lunch');
+  expect(await unsent()).toEqual([]);
+});
+
+test('[SYNC-351.1] leaves the time an expense was last changed, seen in the Recently Edited order', async () => {
+  const { brisbane } = await startWithLunch();
+  await receive(brisbane, await taxiCreated());
+  await showGroup('Brisbane');
+  await chooseSort(screenOf('Brisbane'), 'Recently Edited');
+  await waitFor(() =>
+    expect(groupCardTitles('Brisbane')).toEqual(['Taxi', 'Lunch']),
+  );
+  await tapTab('Expenses');
+  await editExpense(LUNCH, { title: 'Brunch' });
+  await showGroup('Brisbane');
+  await waitFor(() =>
+    expect(groupCardTitles('Brisbane')).toEqual(['Brunch', 'Taxi']),
+  );
+
+  await refuseOwn(brisbane);
+
+  await waitFor(() =>
+    expect(groupCardTitles('Brisbane')).toEqual(['Lunch', 'Taxi']),
+  );
 });
 
 test("[SYNC-351.1] puts back a group's name, and removes a member whose first event is refused", async () => {
