@@ -4,6 +4,10 @@ import {
   NOW,
   addExpense,
   apiSql,
+  deviceId,
+  giveKey,
+  randomKey,
+  send,
   sentBy,
   setApiTime,
   setClock,
@@ -48,6 +52,23 @@ export async function taylorBehind(options: SetupOptions = {}): Promise<Setup> {
   everyClockAt(setup, AWAY);
   await cleanUpAt(AWAY);
   return setup;
+}
+
+/**
+ * Makes Tokyo a shared ledger of Taylor's phone alone: on the API that phone is Tokyo's
+ * only member device, as in a ledger nobody else has joined. Resolves with Tokyo's key of
+ * key epoch 1, which the phone has.
+ */
+export async function tokyoAlone({ a, tokyo }: Setup): Promise<Uint8Array> {
+  await send(a, 'PUT', `/groups/${tokyo}`);
+  const key = randomKey();
+  giveKey(a, tokyo, 1, key);
+  setClock(a, a.state.clockMs);
+  await a.sync.shareGroup(a.database, {
+    groupId: tokyo,
+    device: await deviceId(a),
+  });
+  return key;
 }
 
 /**

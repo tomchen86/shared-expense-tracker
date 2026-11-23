@@ -1,5 +1,7 @@
 import {
+  CONTINUE_STATUS,
   SNAPSHOT_NEEDED_BY_HEADER,
+  isContinueResponse,
   type EventsPageResponse,
 } from '@shared-expense/domain/api';
 import {
@@ -11,18 +13,25 @@ import {
   signedBy,
   type Phone,
 } from './sharing-api';
-import { bothInBrisbane } from './sharing-invites-api';
+import {
+  bothInBrisbane,
+  taylorWithBrisbaneAndCasey,
+} from './sharing-invites-api';
 import {
   BRISBANE,
   EMPTY_PAGE,
+  NOT_A_MEMBER,
   REQUEST,
   TOKYO,
   addMember,
+  answerHeaders,
   createGroup,
   download,
   event,
+  events,
   eventsPath,
   expectCreated,
+  expectGroupRefused,
   expectUploaded,
   rowsHolding,
   upload,
@@ -49,7 +58,9 @@ import {
 // How a phone that is behind its group's cleared events gets a snapshot (ADR-0034): the
 // API remembers which member devices it told that they need one, or that it stores none
 // for them, and names them to every member device that gets a page, in a header of that
-// page's answer, until the group stores a snapshot such a device can go on from.
+// page's answer, until the group stores a snapshot such a device can go on from. Where no
+// member device could make that snapshot, the API tells the phone that holds the most to
+// go on from the number the group is cleared to.
 
 useSyncApi();
 
@@ -402,5 +413,182 @@ describe('SYNC-162.1', () => {
     expect(await rowsHolding(BRISBANE, casey.deviceId, 2, T + 1_000)).toBe(1);
     // And it waits from that answer: the page it got before does not undo it.
     expectPageNaming(await downloadFrom(taylor, 3), casey.deviceId);
+  });
+});
+
+/** The answer tells the phone to go on from `after`: status 410, exactly that body, and it names no device. */
+function expectContinue(answer: Downloaded, after: number) {
+  expect(answer).toEqual({
+    status: 410,
+    body: { error: 'continue', after },
+    neededBy: null,
+  });
+  expect(CONTINUE_STATUS).toBe(410);
+  expect(isContinueResponse(answer.body)).toBe(true);
+}
+
+/**
+ * Brisbane with Taylor's phone as its only member device, its five events cleared for
+ * their age, at LATER. Casey's phone is registered and no member device.
+ */
+async function aloneClearedToFive(): Promise<[Phone, Phone]> {
+  const phones = await taylorWithBrisbaneAndCasey();
+  await store(phones[0], 5);
+  await cleanUpAt(T + THIRTY_DAYS + 1);
+  setTime(LATER);
+  return phones;
+}
+
+describe('SYNC-171.1', () => {
+  test('[SYNC-171.1] tells the only member device of a group to go on from the number the group is cleared to: status 410, not to be stored, and a page from that number', async () => {
+    const [taylor] = await aloneClearedToFive();
+
+    const behind = await downloadFrom(taylor, 2);
+    const headers = await answerHeaders(taylor, {
+      path: `${eventsPath(BRISBANE)}?after=2`,
+    });
+
+    expectContinue(behind, 5);
+    expect(headers.get('cache-control')).toBe('no-store');
+    for (const cursor of [0, 4]) {
+      expectContinue(await downloadFrom(taylor, cursor), 5);
+    }
+    expectPageNaming(await downloadFrom(taylor, 5), null);
+  });
+
+  test('[SYNC-171.1] answers that a snapshot is needed while another member device does not wait for one, whether it has never downloaded or got a page', async () => {
+    const [taylor, casey] = await clearedToFive();
+
+    // Casey's phone has never downloaded.
+    expectSnapshotNeeded(await download(taylor, BRISBANE, 2));
+    // It gets a page: it may hold what Taylor's phone lacks.
+    expect((await downloadFrom(casey, 5)).status).toBe(200);
+    expectSnapshotNeeded(await download(taylor, BRISBANE, 2));
+
+    // Once it waits too, with the larger cursor, it is the one told to go on.
+    expectContinue(await downloadFrom(casey, 4), 5);
+    expectSnapshotNeeded(await download(taylor, BRISBANE, 2));
+  });
+
+  test('[SYNC-171.1] when every member device waits, tells the one whose cursor no other’s is above to go on, and the others that they need a snapshot', async () => {
+    const [taylor, casey] = await clearedToFive();
+
+    expectSnapshotNeeded(await download(casey, BRISBANE, 2));
+    expectContinue(await downloadFrom(taylor, 3), 5);
+    expectSnapshotNeeded(await download(casey, BRISBANE, 2));
+  });
+
+  test('[SYNC-171.1] tells each of two phones with the same cursor to go on, once the other waits', async () => {
+    const [taylor, casey] = await clearedToFive();
+
+    // Taylor's phone does not wait yet.
+    expectSnapshotNeeded(await download(casey, BRISBANE, 3));
+
+    expectContinue(await downloadFrom(taylor, 3), 5);
+    expectContinue(await downloadFrom(casey, 3), 5);
+    expectContinue(await downloadFrom(taylor, 3), 5);
+  });
+
+  test('[SYNC-171.1] a phone that went on gets a page that names the phone still waiting, and no longer waits itself', async () => {
+    const [taylor, casey] = await clearedToFive();
+    expectSnapshotNeeded(await download(casey, BRISBANE, 2));
+    expectContinue(await downloadFrom(taylor, 3), 5);
+
+    expectPageNaming(await downloadFrom(taylor, 5), casey.deviceId);
+
+    expectSnapshotNeeded(await download(casey, BRISBANE, 2));
+  });
+
+  test('[SYNC-171.1] goes by every other member device of the group: one that does not wait is enough for snapshot-needed', async () => {
+    const [taylor, casey] = await clearedToFive();
+    const other = await registered();
+    await addMember(BRISBANE, other);
+    expectSnapshotNeeded(await download(casey, BRISBANE, 2));
+
+    expectSnapshotNeeded(await download(taylor, BRISBANE, 3));
+
+    // The third phone waits too, behind a larger cursor than its own.
+    expectSnapshotNeeded(await download(other, BRISBANE, 1));
+    expectContinue(await downloadFrom(taylor, 3), 5);
+  });
+
+  test('[SYNC-171.1] answers snapshot-needed while the group stores a complete snapshot for another member device that covers more than the cursor', async () => {
+    const [taylor, casey] = await clearedToFive();
+    expectSnapshotNeeded(await download(casey, BRISBANE, 2));
+    await uploadAll(BRISBANE, snapshotOf(taylor, casey, { sequence: 4 }));
+
+    // Casey's phone may have taken it in, and would then hold the fourth event.
+    expectSnapshotNeeded(await download(taylor, BRISBANE, 3));
+
+    expectContinue(await downloadFrom(taylor, 4), 5);
+  });
+
+  test('[SYNC-171.1] a snapshot that is not complete does not count', async () => {
+    const [taylor, casey] = await clearedToFive();
+    expectSnapshotNeeded(await download(casey, BRISBANE, 2));
+    const s = snapshotOf(taylor, casey, { sequence: 4 });
+    expectStored(await uploadChunk(BRISBANE, s, 0), s, 0);
+    expectStored(await uploadChunk(BRISBANE, s, 1), s, 1);
+
+    expectContinue(await downloadFrom(taylor, 3), 5);
+  });
+
+  test('[SYNC-171.1] answers snapshot-needed while the group stores a complete snapshot for the phone itself that covers more than its cursor, so that it takes it in first', async () => {
+    const [taylor, casey] = await clearedToFive();
+    expectSnapshotNeeded(await download(casey, BRISBANE, 2));
+    await uploadAll(BRISBANE, snapshotOf(casey, taylor, { sequence: 4 }));
+
+    expectSnapshotNeeded(await download(taylor, BRISBANE, 3));
+
+    expectContinue(await downloadFrom(taylor, 4), 5);
+  });
+
+  test('[SYNC-171.1] with [SYNC-108.2] a member device that waits and has never downloaded holds none of the ledger, and does not keep the answer at snapshot-needed', async () => {
+    const [taylor, casey] = await clearedToFive();
+    // Casey's phone has never downloaded, and does not wait.
+    expectSnapshotNeeded(await download(taylor, BRISBANE, 3));
+
+    expectSnapshotRefused(await ask(casey, BRISBANE), NO_SNAPSHOT);
+
+    expectContinue(await downloadFrom(taylor, 3), 5);
+  });
+
+  test('[SYNC-171.1] records the cursor and the time as the progress of the phone it tells so, and that it waits', async () => {
+    const [taylor, casey] = await aloneClearedToFive();
+    setTime(LATER + 9_000);
+
+    expectContinue(await downloadFrom(taylor, 2), 5);
+
+    expect(await rowsHolding(BRISBANE, taylor.deviceId, 2, LATER + 9_000)).toBe(
+      1,
+    );
+    // A phone that becomes a member device afterwards is told who waits.
+    await addMember(BRISBANE, casey);
+    setTime(LATER + 10_000);
+    expectPageNaming(await downloadFrom(casey, 5), taylor.deviceId);
+  });
+
+  test('[SYNC-171.1] refuses a cursor past the group’s last number, and a device that is no member device, as before', async () => {
+    const [taylor, casey] = await aloneClearedToFive();
+
+    expectRefused(await download(taylor, BRISBANE, 6), REQUEST);
+    expectGroupRefused(await download(casey, BRISBANE, 2), NOT_A_MEMBER);
+
+    // What the member device is told for a cursor the group has had.
+    expectContinue(await downloadFrom(taylor, 2), 5);
+  });
+
+  test('[SYNC-171.1] goes by each group’s own member devices', async () => {
+    const [taylor] = await bothInBrisbane();
+    await store(taylor, 5);
+    expectCreated(await createGroup(taylor, TOKYO), TOKYO);
+    const two = events(2);
+    expectUploaded(await upload(taylor, TOKYO, two), two, [1, 2]);
+    await cleanUpAt(T + THIRTY_DAYS + 1);
+    setTime(LATER);
+
+    // Tokyo has Taylor's phone alone; in Brisbane Casey's phone does not wait.
+    expectContinue(await downloadFrom(taylor, 1, TOKYO), 2);
+    expectSnapshotNeeded(await download(taylor, BRISBANE, 2));
   });
 });

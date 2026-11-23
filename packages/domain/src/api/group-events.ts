@@ -240,5 +240,24 @@ export const readSnapshotNeededBy: (value: unknown) => string[] = () => {
   throw new Error('Not built yet (#156)');
 };
 
+/**
+ * The body of the API's answer to a download whose cursor is before the events the group
+ * still stores, when no member device could make the snapshot the phone would wait for
+ * (SYNC-171.1, ADR-0034): the phone goes on from `after`, the number the group is cleared
+ * to. Like the answer that a snapshot is needed, it is no refusal.
+ */
+export interface ContinueResponse {
+  error: 'continue';
+  after: number;
+}
+
+/** The HTTP status of that answer. */
+export const CONTINUE_STATUS = 410;
+
+/** Whether `value` is exactly the body of the answer that a phone goes on from a number (SYNC-172.1). Not built yet: #156. */
+export function isContinueResponse(value: unknown): value is ContinueResponse {
+  throw new Error(`Not built yet (#156): ${typeof value}`);
+}
+
 // The invite API uses the same group IDs, integer cursors and encrypted content limits.
 export { hasExactly, isContent, isId as isGroupId, isWhole };

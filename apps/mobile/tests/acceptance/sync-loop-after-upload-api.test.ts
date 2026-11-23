@@ -240,6 +240,7 @@ describe('SYNC-160.1', () => {
     ['status 500', 500, 'oops'],
     ['status 200 and no page', 200, {}],
     ['that it needs a snapshot', 410, { error: 'snapshot-needed' }],
+    ['that it goes on from a number', 410, { error: 'continue', after: 5 }],
   ])(
     '[SYNC-160.1] ends the sync when the second download is answered with %s',
     async (_case, status, body) => {
@@ -323,7 +324,7 @@ describe('SYNC-160.1', () => {
     expect(await unsent(a)).toEqual([]);
   });
 
-  test('[SYNC-160.1] with [SYNC-136.1] a phone that uploaded and then stayed away for 31 days gets a page, though the cleanup deleted its event', async () => {
+  test('[SYNC-160.1] with [SYNC-136.2] a phone that uploaded and then stayed away for 31 days gets a page, though the cleanup deleted its event', async () => {
     const setup = await twoPhones();
     const { a, b, brisbane } = setup;
     await addExpense(a);

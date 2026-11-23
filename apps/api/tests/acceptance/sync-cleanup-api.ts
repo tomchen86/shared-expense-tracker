@@ -63,7 +63,7 @@ export async function expectKept(...sent: UploadedEvent[]) {
   }
 }
 
-/** The API's answer that the phone needs a snapshot, as SYNC-136.1 words it. */
+/** The API's answer that the phone needs a snapshot, as SYNC-136.2 words it. */
 export function expectSnapshotNeeded(answer: Answer) {
   expect(answer).toEqual({ status: 410, body: { error: 'snapshot-needed' } });
   expect(SNAPSHOT_NEEDED_STATUS).toBe(410);

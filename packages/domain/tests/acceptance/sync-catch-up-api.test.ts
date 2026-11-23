@@ -1,5 +1,10 @@
 import {
+  CONTINUE_STATUS,
   SNAPSHOT_NEEDED_BY_HEADER,
+  isContinueResponse,
+  isEventsPageResponse,
+  isGroupRefusal,
+  isSnapshotNeededResponse,
   readSnapshotNeededBy,
   writeSnapshotNeededBy,
 } from '../../src/api';
@@ -7,6 +12,10 @@ import {
 // How the API tells a phone that keeps up which member devices a snapshot is needed by
 // (ADR-0034): one header of a page's answer, which the API writes and the phone reads with
 // the same two functions. A value that is not written exactly so names nobody.
+//
+// And the function that tells a phone the API's answer that it goes on from a number: the
+// API gives it where no member device could make the snapshot the phone would wait for. A
+// value is that answer's body only when it is exactly it.
 
 const CASEY = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
 const OTHER = '4b1d7a52-6f0e-4c83-9a2b-5d3e8f7c1a90';
@@ -87,5 +96,66 @@ describe('SYNC-163.1', () => {
     expect(writeSnapshotNeededBy([CASEY])).toBe(CASEY);
 
     expect(() => writeSnapshotNeededBy(ids)).toThrow();
+  });
+});
+
+const BRISBANE = '9b2f6c1e-8d47-4f3a-b1c5-2e7d90a4f6b8';
+const CONTINUE = { error: 'continue', after: 5 };
+const SNAPSHOT_NEEDED = { error: 'snapshot-needed' };
+const LARGEST = 9_007_199_254_740_991;
+
+describe('SYNC-172.1', () => {
+  test('[SYNC-172.1] is the reason and a number from 1 to the largest whole number, under status 410', () => {
+    expect(isContinueResponse(CONTINUE)).toBe(true);
+    expect(isContinueResponse({ error: 'continue', after: 1 })).toBe(true);
+    expect(isContinueResponse({ error: 'continue', after: LARGEST })).toBe(
+      true,
+    );
+    expect(CONTINUE_STATUS).toBe(410);
+  });
+
+  test('[SYNC-172.1] is neither the answer that a snapshot is needed, a refusal of the event API nor a page, and that answer is not this one', () => {
+    expect(isContinueResponse(CONTINUE)).toBe(true);
+
+    expect(isSnapshotNeededResponse(CONTINUE)).toBe(false);
+    expect(isGroupRefusal(CONTINUE)).toBe(false);
+    expect(isEventsPageResponse(CONTINUE)).toBe(false);
+    expect(isContinueResponse(SNAPSHOT_NEEDED)).toBe(false);
+  });
+
+  test.each<[string, unknown]>([
+    ['with no number', { error: 'continue' }],
+    ['with the group ID beside it', { ...CONTINUE, groupId: BRISBANE }],
+    ['with a sequence number beside it', { ...CONTINUE, sequence: 5 }],
+    ['whose number is 0', { error: 'continue', after: 0 }],
+    ['whose number is negative', { error: 'continue', after: -1 }],
+    ['whose number is no whole number', { error: 'continue', after: 1.5 }],
+    [
+      'whose number is past the largest whole number',
+      { error: 'continue', after: LARGEST + 1 },
+    ],
+    ['whose number is text', { error: 'continue', after: '5' }],
+    ['whose number is empty', { error: 'continue', after: null }],
+    ['whose number is under another name', { error: 'continue', cursor: 5 }],
+    ['with capitals in the reason', { error: 'Continue', after: 5 }],
+    ['with a space after the reason', { error: 'continue ', after: 5 }],
+    [
+      'with the reason that a snapshot is needed',
+      { error: 'snapshot-needed', after: 5 },
+    ],
+    ['with a reason that is no text', { error: 410, after: 5 }],
+    ['with the reason under another name', { reason: 'continue', after: 5 }],
+    ['that is an empty object', {}],
+    ['that is nothing', undefined],
+    ['that is null', null],
+    ['that is the reason as text', 'continue'],
+    ['that is an array', [CONTINUE]],
+    ['that is a number', 5],
+    ['that is a page', { events: [], more: false }],
+  ])('[SYNC-172.1] is not a value %s', (_, value) => {
+    // The answer itself, so that this is no test of a function that says no to everything.
+    expect(isContinueResponse(CONTINUE)).toBe(true);
+
+    expect(isContinueResponse(value)).toBe(false);
   });
 });
