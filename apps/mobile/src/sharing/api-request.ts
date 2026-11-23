@@ -45,6 +45,8 @@ export interface ApiRequest {
    * is part of it. Without it, a request waits as long as the platform does.
    */
   giveUpAfterMs?: number;
+  /** Lets a caller distinguish a secure-store read failure from other request errors. */
+  onSeedReadError?: (cause: unknown) => never;
 }
 
 /** What became of a request. */
@@ -299,7 +301,7 @@ export async function sendApiRequest(
   }
 
   const device = await inTurn(async (): Promise<SigningDevice | ApiResult> => {
-    const ready = await ensureDevice(database);
+    const ready = await ensureDevice(database, request.onSeedReadError);
     if (ready === 'lost') return { outcome: 'authorization-lost' };
     if (ready.registered) return ready;
     return (await register(database, ready, request)) ?? ready;

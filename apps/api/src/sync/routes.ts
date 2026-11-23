@@ -1,9 +1,14 @@
 import {
   GROUP_REFUSAL_STATUS,
   REFUSAL_STATUS,
+  SNAPSHOT_NEEDED_STATUS,
+  SNAPSHOT_REFUSAL_STATUS,
+  isSnapshotChunkStoredResponse,
+  isUploadSnapshotChunkRequest,
   isCreateGroupResponse,
   isUploadEventsRequest,
   type CreateGroupResponse,
+  type SnapshotRefusal,
 } from '@shared-expense/domain/api';
 import { Hono } from 'hono';
 import type { AppEnv } from '../app';
@@ -14,10 +19,15 @@ import {
   storeEvents,
   type EventApiRefusal,
 } from './groups';
+import { readSnapshot, storeChunk } from './snapshots';
 
-const STATUS = { request: REFUSAL_STATUS.request, ...GROUP_REFUSAL_STATUS };
+const STATUS = {
+  request: REFUSAL_STATUS.request,
+  ...GROUP_REFUSAL_STATUS,
+  ...SNAPSHOT_REFUSAL_STATUS,
+};
 
-const refuse = (refusal: EventApiRefusal) =>
+const refuse = (refusal: EventApiRefusal | SnapshotRefusal) =>
   Response.json(refusal, { status: STATUS[refusal.error] });
 
 /** Whether the text is a group ID, as the answer to creating the group carries it (SYNC-48.1). */
@@ -30,10 +40,30 @@ const AFTER = /^[^?]*\?after=(0|[1-9][0-9]{0,15})$/;
 /** Whether the URL carries a query, which a create and an upload must not (SYNC-64.1). */
 const hasQuery = (url: string) => url.includes('?');
 
+const chunkPath = '/groups/:groupId/snapshots/:snapshotId/chunks/:index';
+const validSnapshotPath = (url: string, groupId: string) =>
+  isGroupId(groupId) && !hasQuery(url);
+
+function requestedChunk(snapshotId: string, writtenIndex: string) {
+  const index = Number(writtenIndex);
+  const chunk = { snapshotId, index };
+  if (String(index) === writtenIndex && isSnapshotChunkStoredResponse(chunk))
+    return chunk;
+}
+
+// A recipient can ask the same URL before and after an upload or a replacement.
+function snapshotDownloadResponse(
+  result: Awaited<ReturnType<typeof readSnapshot>>,
+) {
+  return Response.json(result, {
+    status: 'error' in result ? STATUS[result.error] : 200,
+    headers: { 'Cache-Control': 'no-store' },
+  });
+}
+
 /**
- * The event API (ADR-0016, ADR-0024): a phone creates a group, uploads its events and
- * downloads them page by page. What is wrong with how a request is written is refused
- * before anything is read about the group (SYNC-60.1).
+ * The group, event and snapshot routes run after signature verification. Each checks the
+ * request's shape before looking up a group or its members.
  */
 export const syncRoutes = new Hono<AppEnv>()
   .put('/groups/:groupId', async (c) => {
@@ -84,8 +114,53 @@ export const syncRoutes = new Hono<AppEnv>()
       after,
       now: c.env.now(),
     });
-    if ('error' in outcome) return refuse(outcome);
-    // A phone that is up to date asks for the same URL every time (SYNC-57.1).
-    c.header('Cache-Control', 'no-store');
-    return c.json(outcome);
+    if ('error' in outcome && outcome.error !== 'snapshot-needed')
+      return refuse(outcome);
+    // The same cursor can get a page or need a snapshot after cleanup (SYNC-57.2).
+    return c.json(outcome, 'events' in outcome ? 200 : SNAPSHOT_NEEDED_STATUS, {
+      'Cache-Control': 'no-store',
+    });
+  })
+  .put(chunkPath, async (c) => {
+    const { groupId, snapshotId, index } = c.req.param();
+    const chunk = requestedChunk(snapshotId, index);
+    const upload = jsonOf(new Uint8Array(await c.req.arrayBuffer()));
+    if (
+      !validSnapshotPath(c.req.url, groupId) ||
+      !chunk ||
+      !isUploadSnapshotChunkRequest(upload) ||
+      chunk.index >= upload.count
+    )
+      return refuse({ error: 'request' });
+    const result = await storeChunk(
+      c.env.sql,
+      groupId,
+      c.var.deviceId,
+      chunk,
+      upload,
+      c.env.now,
+    );
+    return 'error' in result ? refuse(result) : c.json(result);
+  })
+  .get('/groups/:groupId/snapshot', async (c, next) => {
+    if (c.req.method !== 'GET') return next();
+    const groupId = c.req.param('groupId');
+    if (!validSnapshotPath(c.req.url, groupId))
+      return snapshotDownloadResponse({ error: 'request' });
+    const result = await readSnapshot(c.env.sql, groupId, c.var.deviceId);
+    return snapshotDownloadResponse(result);
+  })
+  .get(chunkPath, async (c, next) => {
+    if (c.req.method !== 'GET') return next();
+    const { groupId, snapshotId, index } = c.req.param();
+    const chunk = requestedChunk(snapshotId, index);
+    if (!validSnapshotPath(c.req.url, groupId) || !chunk)
+      return snapshotDownloadResponse({ error: 'request' });
+    const result = await readSnapshot(
+      c.env.sql,
+      groupId,
+      c.var.deviceId,
+      chunk,
+    );
+    return snapshotDownloadResponse(result);
   });

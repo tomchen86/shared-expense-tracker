@@ -475,6 +475,13 @@ async function startOn(
   };
 }
 
+/**
+ * A phone of its own that has the app and nothing of the other phones' data: its personal
+ * data, no group and no device identity yet. Its clock is at T.
+ */
+export const newPhone = (name: string): Promise<Phone> =>
+  startOn(newState(name));
+
 /** Ends the app on the phone and starts it again on the same data. */
 export async function restart(phone: Phone): Promise<Phone> {
   await phone.database.close();
