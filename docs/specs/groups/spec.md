@@ -2114,7 +2114,7 @@ WHEN 使用者在 Members 點一個申請的那一列，the mobile app SHALL 跳
 - **WHEN** 在 Dana 的選單按「Cancel」；或 Android 上按返回鍵，或點對話框外面
 - **THEN** 選單關閉，Dana 那一列還在；API 沒有收到同意和拒絕的請求
 
-### Requirement: GROUPS-170.1 群組的畫面最上面顯示有幾個沒有套用的變更
+### Requirement: GROUPS-170.2 群組的畫面最上面顯示有幾個沒有套用的變更
 
 WHILE 共同帳本有沒有套用的變更（sync），the mobile app SHALL 在它的畫面的大標題下面顯示一個按鈕：LEDGER-151.1 的圖示，後面是「1 change wasn't applied」，不只一個時是「<個數> changes weren't applied」，右邊有「›」；個數是這個共同帳本全部沒有套用的變更，不跟著期間、篩選和搜尋，它們不算進 GROUPS-107.2 的筆數；它在 GROUPS-107.2 的按鈕下面、GROUPS-130.1 的按鈕上面，所以三個都有時由上而下是掛著標記的支出、沒有套用的變更和想加入的人；沒有 GROUPS-107.2 的按鈕時就在大標題下面、SYNC-75.1 和 SYNC-83.1 的那兩句話下面，封存的共同帳本顯示在唯讀的提示（GROUPS-55.2）上面；螢幕閱讀器把它讀成一個按鈕，讀出這句話，不讀圖示和「›」，再讀出無障礙提示「Opens the list」；按一下就開啟 Changes Not Applied（GROUPS-171.1），連按兩次也只開啟一個。群組的畫面開著時多了或少了沒有套用的變更，不必重新打開，按鈕就跟著出現、改個數或消失。共同帳本沒有沒有套用的變更時，SHALL 不顯示這個按鈕；別的群組的畫面只算自己的。
 
@@ -2170,7 +2170,7 @@ WHILE 共同帳本有沒有套用的變更（sync），the mobile app SHALL 在�
 
 ### Requirement: GROUPS-171.1 Changes Not Applied 列出沒有套用的變更，一個一個按掉
 
-WHEN 使用者按群組的畫面上「<個數> change(s) wasn't/weren't applied」的按鈕（GROUPS-170.1），the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Changes Not Applied，標題是「Changes Not Applied」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.2）；按 Close、把它往下滑或按 Android 的返回鍵，SHALL 關閉它，回到群組的畫面。Changes Not Applied 依記下的先後（SYNC-350.1）由上而下替這個共同帳本每一個沒有套用的變更顯示一個區塊，每個區塊由上而下是：LEDGER-151.1 的圖示和區塊的標題；一句說明；這個變更的內容（LEDGER-230.1、GROUPS-172.1）；和角色為 button、名稱為「Dismiss」的按鈕。說明看不套用的原因：原因是時鐘時是「This phone's clock was too far ahead when you made this change, so the other phones in this group didn't accept it. It was undone on this phone. Check the date and time, then make the change again.」；其他原因都是「The other phones in this group couldn't accept this change, so it was undone on this phone. Make the change again if you still need it.」。WHEN 使用者按一個區塊的「Dismiss」，the mobile app SHALL 按掉那個沒有套用的變更（SYNC-352.1）：存好之後那個區塊消失，其他區塊不變，群組的畫面上的個數跟著少；按掉的是最後一個時，Changes Not Applied 關閉，群組的畫面沒有那個按鈕；存好之前再按「Dismiss」不再做一次；存不進本機資料時，跳出標題「Unable to Dismiss」、內容「Your change could not be saved. Please try again.」的提示框，區塊還在，本機資料和按之前一樣。Changes Not Applied 開著時多了一個沒有套用的變更，不必重新打開就多一個區塊。封存的共同帳本也照樣可以按「Dismiss」。
+WHEN 使用者按群組的畫面上「<個數> change(s) wasn't/weren't applied」的按鈕（GROUPS-170.2），the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Changes Not Applied，標題是「Changes Not Applied」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.2）；按 Close、把它往下滑或按 Android 的返回鍵，SHALL 關閉它，回到群組的畫面。Changes Not Applied 依記下的先後（SYNC-350.1）由上而下替這個共同帳本每一個沒有套用的變更顯示一個區塊，每個區塊由上而下是：LEDGER-151.1 的圖示和區塊的標題；一句說明；這個變更的內容（LEDGER-230.1、GROUPS-172.2）；和角色為 button、名稱為「Dismiss」的按鈕。說明看不套用的原因：原因是時鐘時是「This phone's clock was too far ahead when you made this change, so the other phones in this group didn't accept it. It was undone on this phone. Check the date and time, then make the change again.」；其他原因都是「The other phones in this group couldn't accept this change, so it was undone on this phone. Make the change again if you still need it.」。WHEN 使用者按一個區塊的「Dismiss」，the mobile app SHALL 按掉那個沒有套用的變更（SYNC-352.1）：存好之後那個區塊消失，其他區塊不變，群組的畫面上的個數跟著少；按掉的是最後一個時，Changes Not Applied 關閉，群組的畫面沒有那個按鈕；存好之前再按「Dismiss」不再做一次；存不進本機資料時，跳出標題「Unable to Dismiss」、內容「Your change could not be saved. Please try again.」的提示框，區塊還在，本機資料和按之前一樣。Changes Not Applied 開著時多了一個沒有套用的變更，不必重新打開就多一個區塊。封存的共同帳本也照樣可以按「Dismiss」。
 
 #### Scenario: 開啟和關閉
 
@@ -2227,7 +2227,7 @@ WHEN 使用者按群組的畫面上「<個數> change(s) wasn't/weren't applied�
 - **WHEN** 新增 Dinner，自己的事件不套用之後封存 Brisbane，從 Archived Groups 打開它的畫面，打開 Changes Not Applied，按「Dismiss」
 - **THEN** Changes Not Applied 關閉，Brisbane 的畫面沒有那個按鈕，它仍是封存的
 
-### Requirement: GROUPS-172.1 不是支出的變更和讀不出內容的變更的區塊
+### Requirement: GROUPS-172.2 不是支出的變更和讀不出內容的變更的區塊
 
 The mobile app SHALL 在 Changes Not Applied（GROUPS-171.1）替事件指的不是支出、原因不是結構的沒有套用的變更這樣顯示：區塊的標題是「Group change not applied」；內容只有一行，看事件指的紀錄的種類：群組是「Group name: <事件帶的名稱>」；成員是「Member: <名稱>」；分類是「Category: <名稱>」；邀請是「Invite link」；「不是重複」紀錄是「Not a Duplicate」；名冊紀錄是「Join approval」，它是同意加入申請時寫下的（sharing 的 SHARING-196.1）。成員和分類的名稱，是事件帶著名稱這個單位時它的值；沒有帶時，是退回之後（SYNC-351.1）這支手機存著的那位成員或那個分類現在的名稱，前成員和封存的分類也算；這支手機沒有他或它時，那一行只有「Member」或「Category」。原因是結構的沒有套用的變更，不論事件指的是什麼，區塊的標題是「Change not applied」，沒有內容那一行。
 

@@ -232,7 +232,7 @@ describe('GROUPS-130.1', () => {
   });
 });
 
-test('[GROUPS-170.1] counts the changes that were not applied above the requests to join', async () => {
+test('[GROUPS-170.2] counts the changes that were not applied above the requests to join', async () => {
   const { brisbane } = await startWithInvite();
   // Offline, so that the event can be read before it is uploaded.
   goOffline();

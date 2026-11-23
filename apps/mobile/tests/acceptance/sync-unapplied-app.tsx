@@ -46,7 +46,7 @@ export const CLOCK_TEXT =
 /** What it says for every other reason. */
 export const OTHER_TEXT =
   "The other phones in this group couldn't accept this change, so it was undone on this phone. Make the change again if you still need it.";
-/** What a screen reader reads after the button that counts them (GROUPS-170.1). */
+/** What a screen reader reads after the button that counts them (GROUPS-170.2). */
 export const LIST_HINT = 'Opens the list';
 /** The alert when a dismissal cannot be saved (GROUPS-171.1). */
 export const DISMISS_FAILED = [
@@ -54,13 +54,13 @@ export const DISMISS_FAILED = [
   'Your change could not be saved. Please try again.',
 ];
 
-/** The headings of a block (LEDGER-230.1, GROUPS-172.1). */
+/** The headings of a block (LEDGER-230.1, GROUPS-172.2). */
 export const NOT_ADDED = 'Expense not added';
 export const EXPENSE_CHANGE = 'Expense change not applied';
 export const GROUP_CHANGE = 'Group change not applied';
 export const UNREADABLE_CHANGE = 'Change not applied';
 
-/** What the button under a group's large title says for `count` changes (GROUPS-170.1). */
+/** What the button under a group's large title says for `count` changes (GROUPS-170.2). */
 export const notApplied = (count: number) =>
   count === 1 ? "1 change wasn't applied" : `${count} changes weren't applied`;
 

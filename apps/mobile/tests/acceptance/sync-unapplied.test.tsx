@@ -326,7 +326,7 @@ test('[SYNC-350.1] keeps one for an event refused twice, and keeps it after a re
   expect((await unapplied()).map(({ id }) => id)).toEqual([handed.id]);
 });
 
-test('[SYNC-350.1] [GROUPS-170.1] keeps it for the shared ledger the event belongs to, and counts each group by itself', async () => {
+test('[SYNC-350.1] [GROUPS-170.2] keeps it for the shared ledger the event belongs to, and counts each group by itself', async () => {
   await startShared({ ...BRISBANE, Tokyo: ['Dana'] });
   const tokyo = await share('Tokyo');
   await addGroupExpense({
@@ -739,7 +739,7 @@ test('[SYNC-352.1] [GROUPS-171.1] dismisses one change and leaves the others: th
 
 // The button under a group's title
 
-test("[GROUPS-170.1] counts the changes that were not applied in a button under the group's title, with the mark's icon and a chevron", async () => {
+test("[GROUPS-170.2] counts the changes that were not applied in a button under the group's title, with the mark's icon and a chevron", async () => {
   // Lunch stays in the group, so that its screen shows the period row and a card.
   const { brisbane } = await startWithLunch();
   await addDinner();
@@ -767,7 +767,7 @@ test("[GROUPS-170.1] counts the changes that were not applied in a button under 
   ).toBe(true);
 });
 
-test("[GROUPS-170.1] follows the changes while the group's screen stays open: one, then two", async () => {
+test("[GROUPS-170.2] follows the changes while the group's screen stays open: one, then two", async () => {
   const { brisbane } = await start();
   await showGroup('Brisbane');
   expect(notAppliedCount('Brisbane')).toBeUndefined();
@@ -785,7 +785,7 @@ test("[GROUPS-170.1] follows the changes while the group's screen stays open: on
   await waitFor(() => expect(notAppliedCount('Brisbane')).toBe(notApplied(2)));
 });
 
-test('[GROUPS-170.1] sits under the number of expenses to review, which does not count it', async () => {
+test('[GROUPS-170.2] sits under the number of expenses to review, which does not count it', async () => {
   const { brisbane } = await start();
   await addDinner();
   const dinner = (await storedExpenses())[0];
@@ -815,7 +815,7 @@ test('[GROUPS-170.1] sits under the number of expenses to review, which does not
   expect(reviewCount('Brisbane')).toBe(needsReview(1));
 });
 
-test('[GROUPS-170.1] stays while the screen is searched', async () => {
+test('[GROUPS-170.2] stays while the screen is searched', async () => {
   const { brisbane } = await startWithLunch();
   await addDinner();
   await refuseOwn(brisbane);
@@ -827,7 +827,7 @@ test('[GROUPS-170.1] stays while the screen is searched', async () => {
   expect(notAppliedCount('Brisbane')).toBe(notApplied(1));
 });
 
-test('[GROUPS-170.1] opens one Changes Not Applied when pressed twice', async () => {
+test('[GROUPS-170.2] opens one Changes Not Applied when pressed twice', async () => {
   const { brisbane } = await start();
   await addDinner();
   await refuseOwn(brisbane);
@@ -850,7 +850,7 @@ test('[GROUPS-170.1] opens one Changes Not Applied when pressed twice', async ()
   expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups', 'Brisbane']);
 });
 
-test('[GROUPS-170.1] [GROUPS-171.1] shows the button above the read-only line of an archived shared ledger, opens the sheet on the Settings tab, and dismisses there', async () => {
+test('[GROUPS-170.2] [GROUPS-171.1] shows the button above the read-only line of an archived shared ledger, opens the sheet on the Settings tab, and dismisses there', async () => {
   const { brisbane } = await start();
   await addDinner();
   await refuseOwn(brisbane);
@@ -880,7 +880,7 @@ test('[GROUPS-170.1] [GROUPS-171.1] shows the button above the read-only line of
   expect(await unapplied()).toEqual([]);
 });
 
-test('[GROUPS-170.1] shows no button on a group with no such change', async () => {
+test('[GROUPS-170.2] shows no button on a group with no such change', async () => {
   await startShared({ ...BRISBANE, Tokyo: ['Dana'] });
   const brisbane = await groupId('Brisbane');
   await showGroup('Brisbane');
@@ -898,7 +898,7 @@ test('[GROUPS-170.1] shows no button on a group with no such change', async () =
   await expectNotApplied('Tokyo', 0);
 });
 
-test('[GROUPS-170.1] still counts it after a restart', async () => {
+test('[GROUPS-170.2] still counts it after a restart', async () => {
   const { app, brisbane } = await start();
   await addDinner();
   await refuseOwn(brisbane);
@@ -1038,7 +1038,7 @@ test('[GROUPS-171.1] adds a block while it is open when another change is refuse
 
 // Blocks of changes that are not expenses, and of changes that cannot be read
 
-test("[GROUPS-172.1] names the group's name that was entered, and the screen shows the name the group has", async () => {
+test("[GROUPS-172.2] names the group's name that was entered, and the screen shows the name the group has", async () => {
   const { brisbane } = await start();
   await renameGroupTo('Brisbane', 'Brissie');
   await refuseOwn(brisbane);
@@ -1054,7 +1054,7 @@ test("[GROUPS-172.1] names the group's name that was entered, and the screen sho
   ]);
 });
 
-test('[GROUPS-172.1] names the member: the name the event holds, or the name the member has now', async () => {
+test('[GROUPS-172.2] names the member: the name the event holds, or the name the member has now', async () => {
   const { brisbane } = await start();
   await addToGroup('Brisbane', 'Dana');
   await refuseOwn(brisbane);
@@ -1082,7 +1082,7 @@ test('[GROUPS-172.1] names the member: the name the event holds, or the name the
   ).toEqual(['Taylor', 'Casey', 'Blake']);
 });
 
-test('[GROUPS-172.1] names the category: the one whose deletion was refused, and one an event archived', async () => {
+test('[GROUPS-172.2] names the category: the one whose deletion was refused, and one an event archived', async () => {
   const { brisbane } = await start();
   const other = await categoryOf('Brisbane', 'Other');
   await openGroupCategories(brisbane);
@@ -1110,7 +1110,7 @@ test('[GROUPS-172.1] names the category: the one whose deletion was refused, and
   );
 });
 
-test('[GROUPS-172.1] names an invite, a "not a duplicate" record and a roster entry by their kind', async () => {
+test('[GROUPS-172.2] names an invite, a "not a duplicate" record and a roster entry by their kind', async () => {
   const { brisbane } = await start();
   const { Casey } = await members('Brisbane');
 
@@ -1151,7 +1151,7 @@ test('[GROUPS-172.1] names an invite, a "not a duplicate" record and a roster en
   ]);
 });
 
-test('[GROUPS-172.1] says Member alone for a member the phone does not have', async () => {
+test('[GROUPS-172.2] says Member alone for a member the phone does not have', async () => {
   const { brisbane } = await start();
 
   await receiveEvents(
@@ -1169,7 +1169,7 @@ test('[GROUPS-172.1] says Member alone for a member the phone does not have', as
   await expectBlocks([[GROUP_CHANGE, CLOCK_TEXT, 'Member', DISMISS]]);
 });
 
-test('[GROUPS-172.1] shows a change refused for its structure with a heading, the sentence and Dismiss alone', async () => {
+test('[GROUPS-172.2] shows a change refused for its structure with a heading, the sentence and Dismiss alone', async () => {
   const { brisbane } = await startWithLunch();
 
   await receiveEvents(

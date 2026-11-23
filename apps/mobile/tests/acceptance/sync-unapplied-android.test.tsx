@@ -55,7 +55,7 @@ beforeEach(() => {
   exitApp = jest.spyOn(BackHandler, 'exitApp');
 });
 
-test("[GROUPS-170.1] [GROUPS-171.1] draws the Material warning symbol on Android, on the group's button and on the block, and closes Changes Not Applied with Back", async () => {
+test("[GROUPS-170.2] [GROUPS-171.1] draws the Material warning symbol on Android, on the group's button and on the block, and closes Changes Not Applied with Back", async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();

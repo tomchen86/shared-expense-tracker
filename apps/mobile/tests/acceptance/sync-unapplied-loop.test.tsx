@@ -87,7 +87,7 @@ afterEach(async () => {
 const methods = (from: number) =>
   eventRequests(from).map((request) => request.split(' ')[0]);
 
-test("[SYNC-350.1] [SYNC-351.1] [GROUPS-170.1] takes an expense back when a sync downloads the phone's own event and it does not apply, counts it on the group's screen, and never uploads it again", async () => {
+test("[SYNC-350.1] [SYNC-351.1] [GROUPS-170.2] takes an expense back when a sync downloads the phone's own event and it does not apply, counts it on the group's screen, and never uploads it again", async () => {
   await startSynced();
   const brisbane = await groupId('Brisbane');
   // Offline, so that the event can be read before it is uploaded.
