@@ -48,6 +48,7 @@ import {
   type Setup,
 } from './sync-loop-app';
 import {
+  answerNext as answerSnapshotRequest,
   contentFor,
   endSnapshotWorld,
   faultsLeft,
@@ -700,6 +701,14 @@ describe('SYNC-169.1', () => {
     [
       'the request that asks for the snapshot gets no answer',
       () => noAnswerTo('GET', 'ask'),
+    ],
+    [
+      'the request that asks for the snapshot is answered with status 500',
+      () => answerSnapshotRequest('GET', 'ask', 500, ''),
+    ],
+    [
+      'the request that asks for the snapshot is answered with what is no snapshot',
+      () => answerSnapshotRequest('GET', 'ask', 200, '{}'),
     ],
     [
       'the download of that snapshot’s chunk gets no answer this time',
