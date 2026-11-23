@@ -5059,7 +5059,7 @@ WHEN 使用者在可能重複的支出的明細按「Delete This Expense」，th
 
 ### Requirement: LEDGER-161.1 (manual) 手機上可能重複的標記
 
-The mobile app SHALL 讓可能重複的標記在手機上看得清楚、讀得出來：圖示是警示的顏色，文字是一般文字的顏色，所以不靠顏色也讀得出意思，淺色和深色外觀都一樣；系統字級最大時，卡片上的那一行和明細的區塊裡每一行都換行顯示完整的文字，不截斷也不重疊，三個按鈕都按得到；「Delete This Expense」是破壞性動作的樣式，不只靠顏色和另外兩個按鈕分開：它的文字說了它做什麼；VoiceOver 和 TalkBack 把卡片讀成一個按鈕並讀出「Possible duplicate」，在明細依序讀出區塊的每一行和三個按鈕。
+The mobile app SHALL 讓可能重複的標記在手機上看得清楚、讀得出來：圖示是警示的顏色，文字是一般文字的顏色，所以不靠顏色也讀得出意思，淺色和深色外觀都一樣；系統字級最大時，卡片上的那一行和明細的區塊裡每一行都顯示完整的文字，一行放不下時換行，不截斷也不重疊，三個按鈕都按得到；「Delete This Expense」是破壞性動作的樣式，不只靠顏色和另外兩個按鈕分開：它的文字說了它做什麼；VoiceOver 和 TalkBack 把卡片讀成一個按鈕並讀出「Possible duplicate」，在明細依序讀出區塊的每一行和三個按鈕。
 
 #### Scenario: 兩種外觀
 
@@ -5069,7 +5069,7 @@ The mobile app SHALL 讓可能重複的標記在手機上看得清楚、讀得�
 #### Scenario: 最大的字級
 
 - **WHEN** 把系統字級調到最大，看 Supper 的卡片和明細
-- **THEN** 卡片上「Possible duplicate」換行顯示完整；明細的區塊裡每一行都完整，「View Other Expense」、「Not a Duplicate」和「Delete This Expense」都在畫面上按得到
+- **THEN** 卡片上「Possible duplicate」顯示完整，一行放不下時換成兩行；明細的區塊裡每一行都完整，「View Other Expense」、「Not a Duplicate」和「Delete This Expense」都在畫面上按得到
 
 #### Scenario: 螢幕閱讀器
 
