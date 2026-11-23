@@ -11,7 +11,7 @@ import {
   textsOn,
 } from './group-details-app';
 import { showGroup } from './group-balances-app';
-import { restart } from './ledger-expense-app';
+import { editExpense, restart } from './ledger-expense-app';
 import { linesIn } from './ledger-expense-list-app';
 import { archiveGroup } from './ledger-group-expense-app';
 import {
@@ -76,15 +76,17 @@ import { tapTab } from './shell-tabs-app';
 import {
   LATER,
   YOU,
+  changed,
   created,
   eachTestGetsAPhone,
+  expenseTitled,
   leaveMembers,
   members,
   setClock,
   showMembers,
   unsent,
 } from './sync-app';
-import { addDinner } from './sync-conflict-app';
+import { addDinner, moneyOf, needsReview } from './sync-conflict-app';
 import {
   OTHER_DEVICE,
   apiEventIds,
@@ -232,6 +234,46 @@ describe('GROUPS-130.1', () => {
     await settle();
 
     expect(joinButton('Brisbane')).toBeUndefined();
+  });
+
+  test('[GROUPS-130.1] sits under the number of expenses to review', async () => {
+    const { brisbane } = await startWithInvite();
+    // Offline, so that the stamp of the event can be read before it is uploaded.
+    goOffline();
+    await addDinner();
+    const added = (await unsent()).at(-1)!;
+    goOnline();
+    await syncs();
+    await waitFor(async () => expect(await unsent()).toEqual([]));
+    const dinner = await expenseTitled('Dinner');
+    // You change the amount offline. The other phone, which saw Dinner as it was added
+    // and nothing since, changes it half a minute later: Dinner needs review.
+    goOffline();
+    await editExpense(dinner.id, { amount: '120.00' });
+    otherPhoneUploads(
+      brisbane,
+      changed(
+        'expense',
+        dinner.id,
+        otherStamp(Date.now() + 30_000),
+        { money: await moneyOf(9000) },
+        { money: added.content.stamp },
+      ),
+    );
+    goOnline();
+    await asks();
+    await syncs();
+    await waitFor(async () => expect(await unsent()).toEqual([]));
+
+    await showGroup('Brisbane');
+
+    await waitFor(() =>
+      expect(
+        textsOn('Brisbane')
+          .filter((text) => text !== '›')
+          .slice(0, 2),
+      ).toEqual([needsReview(1), '1 person wants to join']),
+    );
   });
 });
 
