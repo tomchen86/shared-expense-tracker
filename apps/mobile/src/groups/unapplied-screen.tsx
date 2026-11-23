@@ -2,8 +2,8 @@ import { useCallback, useRef, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import {
-  currencyDecimals,
   formatCurrency,
+  moneyRefusal,
   type SyncEvent,
 } from '@shared-expense/domain';
 import { formatExpenseDate } from '../ledger/format-date';
@@ -66,12 +66,7 @@ function describe(
     lines.push('YOU ENTERED');
     if (units.title) lines.push(units.title.value);
     const money = units.money?.value;
-    if (
-      money &&
-      change.reason !== 'currency' &&
-      change.reason !== 'sum' &&
-      currencyDecimals(money.currency) !== undefined
-    )
+    if (money && moneyRefusal(money) === undefined)
       lines.push(
         formatCurrency(money.amountMinor, money.currency, locale),
         ...moneyPeople(money, { members }, userId),

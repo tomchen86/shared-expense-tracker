@@ -14,7 +14,6 @@ type ChangeRow = Omit<UnappliedChange, 'content'> & { content: string };
 
 const notices =
   'FROM sync_refusals r JOIN sync_unapplied u ON u.refusal = r.position AND u.dismissed = 0';
-export const unappliedCount = `(SELECT COUNT(*) ${notices} WHERE r.groupId = sync_groups.groupId)`;
 
 function unpack<T extends ChangeRow>({ content, ...row }: T) {
   return { ...row, content: JSON.parse(content) as unknown };
@@ -27,6 +26,17 @@ export async function listUnappliedChanges(
     `SELECT r.groupId, r.id, r.reason, r.content ${notices} ORDER BY r.position`,
   );
   return rows.map(unpack);
+}
+
+export async function countGroupUnapplied(
+  database: SqlExecutor,
+  groupId: string,
+) {
+  const [{ count }] = await database.all<{ count: number }>(
+    `SELECT COUNT(*) AS count ${notices} WHERE r.groupId = ?`,
+    [groupId],
+  );
+  return count;
 }
 
 /** Resolve names against the ledger as it is now, including trash and former members. */

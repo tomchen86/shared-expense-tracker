@@ -10,6 +10,7 @@ export {
   compareSyncStamps,
   MAX_SYNC_PLAINTEXT_BYTES,
   mergeSyncEvent,
+  moneyRefusal,
   nextSyncStamp,
   overridesSyncMoney,
   sameSyncUnitValue,
