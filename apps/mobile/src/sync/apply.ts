@@ -113,15 +113,16 @@ export async function applyReceivedEvents(
   let seen = initial;
   let visibleChange = false;
   const toOrder = new Set<'member' | 'category'>();
-<<<<<<< HEAD
   let rosterChanged = false;
-=======
   async function project(
     record: SyncRecord,
     previous: SyncRecord | undefined,
     eventMs: number | null,
   ) {
     switch (record.type) {
+      case 'device':
+        rosterChanged = true;
+        return false;
       case 'distinct':
         return false; // Its sync record itself is what the duplicate check reads.
       case 'invite':
@@ -153,7 +154,6 @@ export async function applyReceivedEvents(
       }
     }
   }
->>>>>>> b2b5bb7ed7f8216f19bb931fb68a51df19d31bcf
   for (const received of events) {
     const verdict = checkSyncEvent(received.content, received);
     if (verdict.status === 'unsupported')
@@ -202,63 +202,10 @@ export async function applyReceivedEvents(
       mergeRecordEvent(held, event),
     );
     const { changes } = await storeSyncRecord(tx, groupId, record, created);
-<<<<<<< HEAD
-    if (record.type === 'member' || record.type === 'category')
-      toOrder.add(record.type);
-    switch (record.type) {
-      case 'device':
-        rosterChanged = true;
-        break;
-      case 'distinct':
-        if (changes > 0) visibleChange = true;
-        break;
-      case 'invite':
-        if (await applyMergedInvite(tx, groupId, record)) visibleChange = true;
-        break;
-      case 'group':
-      case 'member':
-        if (await applyMergedGroup(tx, groupId, record)) visibleChange = true;
-        break;
-      case 'category':
-        if (
-          await applyMergedCategory(
-            tx,
-            groupId,
-            record,
-            uncategorized,
-            event.stamp.ms,
-          )
-        )
-          visibleChange = true;
-        break;
-      case 'expense':
-        // An earlier event may change who recorded the expense without winning a unit.
-        if (previous && created !== previous.created) visibleChange = true;
-        if (await markIfOverridden(tx, event)) visibleChange = true;
-        if (
-          await applyMergedExpense(
-            tx,
-            groupId,
-            record,
-            previous?.record,
-            event.stamp.ms,
-          )
-        ) {
-          visibleChange = true;
-          if (
-            previous?.record.type === 'expense' &&
-            previous.record.units.trashed?.value &&
-            !record.units.trashed?.value
-          )
-            leftTrash.add(event.id);
-        }
-        break;
-=======
     if (record.type === 'expense') {
       // An earlier event may change who recorded the expense without winning a unit.
       if (previous && created !== previous.created) visibleChange = true;
       if (await markIfOverridden(tx, event)) visibleChange = true;
->>>>>>> b2b5bb7ed7f8216f19bb931fb68a51df19d31bcf
     }
     if (record.type === 'distinct' && changes > 0) visibleChange = true;
     if (await project(record, previous?.record, event.stamp.ms))

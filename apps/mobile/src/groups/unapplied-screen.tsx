@@ -55,6 +55,9 @@ function describe(
       case 'distinct':
         lines.push('Not a Duplicate');
         break;
+      case 'device':
+        lines.push('Join approval');
+        break;
     }
     return { title: 'Group change not applied', lines };
   }

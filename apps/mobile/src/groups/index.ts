@@ -36,12 +36,6 @@ export async function applyMergedGroup(
     return changes > 0;
   }
   const member = syncRecordValues(record);
-<<<<<<< HEAD
-  if (!member) return false;
-  // A member with a user ID is you or has a phone (SYNC-36.3): a member of the group
-  // whatever this unit says. Sync storage keeps the unit, with its stamp for ordering.
-  const removed = 'excluded.removed AND group_members.userId IS NULL';
-=======
   if (!member) {
     const { changes } = await tx.run(
       'DELETE FROM group_members WHERE groupId = ? AND id = ?',
@@ -49,11 +43,9 @@ export async function applyMergedGroup(
     );
     return changes > 0;
   }
-  // This phone represents its own linked member. Keep the received removed unit
-  // in sync storage, including its stamp for ordering.
-  const removed =
-    'excluded.removed AND group_members.userId IS NOT (SELECT userId FROM local_identity WHERE singleton = 1)';
->>>>>>> b2b5bb7ed7f8216f19bb931fb68a51df19d31bcf
+  // A member with a user ID is you or has a phone (SYNC-36.3): a member of the group
+  // whatever this unit says. Sync storage keeps the unit, with its stamp for ordering.
+  const removed = 'excluded.removed AND group_members.userId IS NULL';
   const { changes } = await tx.run(
     `INSERT INTO group_members (id, groupId, name, removed, position)
      VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(position), 0) + 1 FROM group_members WHERE groupId = ?))

@@ -17,7 +17,11 @@ import { useSyncNotices } from '../sync/use-sync-notices';
 import { groupTotals, yourBalanceLines } from './format-balance';
 import { GroupLargeTitle, useLargeTitleScroll } from './group-large-title';
 import { GroupSummary } from './group-summary';
-import { JoinRequestsButton, ReviewButton } from './review-button';
+import {
+  JoinRequestsButton,
+  ReviewButton,
+  UnappliedButton,
+} from './review-button';
 import { useGroup } from './use-group';
 import { useGroupArchive } from './use-group-archive';
 
@@ -146,15 +150,8 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                   }
                 />
               )}
-<<<<<<< HEAD
-              {asking > 0 && group?.shared && !group.archived && (
-                <JoinRequestsButton
-                  count={asking}
-                  onPress={membersAction.onPress}
-=======
               {notices.unapplied > 0 && (
-                <ReviewButton
-                  unapplied
+                <UnappliedButton
                   count={notices.unapplied}
                   onPress={() =>
                     router.navigate({
@@ -162,7 +159,12 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                       params: { id },
                     })
                   }
->>>>>>> b2b5bb7ed7f8216f19bb931fb68a51df19d31bcf
+                />
+              )}
+              {asking > 0 && group?.shared && !group.archived && (
+                <JoinRequestsButton
+                  count={asking}
+                  onPress={membersAction.onPress}
                 />
               )}
               {group?.archived && (
