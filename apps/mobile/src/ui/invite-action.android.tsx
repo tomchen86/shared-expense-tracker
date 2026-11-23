@@ -1,8 +1,7 @@
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, Text as NativeText, View } from 'react-native';
 import { Button, Text, TextButton } from '@expo/ui/jetpack-compose';
-import { semantics } from '@expo/ui/jetpack-compose/modifiers';
 import type { InviteActionProps } from './invite-action';
-import { MaterialHost, MaterialLabel } from './material.android';
+import { MaterialHost } from './material.android';
 import { useThemeColors } from './theme';
 
 export function InviteAction({
@@ -13,22 +12,6 @@ export function InviteAction({
   onPress,
 }: InviteActionProps) {
   const colors = useThemeColors();
-  if (inline)
-    return (
-      <View style={{ alignSelf: 'center' }}>
-        <MaterialHost matchContents>
-          <TextButton
-            enabled={!disabled}
-            onClick={onPress}
-            modifiers={[semantics({ contentDescription: label })]}
-          >
-            <MaterialLabel color="primary" accessibilityState={{ disabled }}>
-              {label}
-            </MaterialLabel>
-          </TextButton>
-        </MaterialHost>
-      </View>
-    );
   const Action = destructive ? TextButton : Button;
   return (
     <Pressable
@@ -37,19 +20,50 @@ export function InviteAction({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={{ alignSelf: 'center' }}
+      android_ripple={inline ? { color: colors.pressedSurface } : undefined}
+      style={[styles.button, inline && styles.inline]}
     >
-      <View importantForAccessibility="no-hide-descendants">
-        <MaterialHost matchContents>
-          <Action
-            onClick={onPress}
-            enabled={!disabled}
-            colors={destructive ? { contentColor: colors.error } : undefined}
-          >
-            <Text style={{ typography: 'labelLarge' }}>{label}</Text>
-          </Action>
-        </MaterialHost>
-      </View>
+      {inline ? (
+        <NativeText
+          style={[
+            styles.label,
+            { color: colors.accent },
+            disabled && styles.disabled,
+          ]}
+        >
+          {label}
+        </NativeText>
+      ) : (
+        <View importantForAccessibility="no-hide-descendants">
+          <MaterialHost matchContents>
+            <Action
+              onClick={onPress}
+              enabled={!disabled}
+              colors={destructive ? { contentColor: colors.error } : undefined}
+            >
+              <Text style={{ typography: 'labelLarge' }}>{label}</Text>
+            </Action>
+          </MaterialHost>
+        </View>
+      )}
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  button: { alignSelf: 'center' },
+  inline: {
+    minHeight: 48,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  label: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+    letterSpacing: 0.1,
+  },
+  disabled: { opacity: 0.38 },
+});

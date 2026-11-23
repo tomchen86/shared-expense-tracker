@@ -12,6 +12,7 @@ import { MAX_SHARED_GROUP_MEMBERS } from '@shared-expense/domain';
 import { memberNameKey } from '../groups';
 import { GroupedSection } from '../ui/grouped-section';
 import { InviteAction } from '../ui/invite-action';
+import { materialSymbolFrame } from '../ui/material-symbol-frame';
 import { useThemeColors } from '../ui/theme';
 import type { JoinCard } from './join-invite';
 
@@ -71,6 +72,7 @@ export function JoinForm({
           <SymbolView
             name={{ ios: 'checkmark', android: 'check' }}
             size={20}
+            style={materialSymbolFrame}
             tintColor={colors.accent}
           />
         )}
@@ -136,8 +138,8 @@ export function JoinForm({
             {!atLimit && row('New Member', newMember)}
             {card.members.map((member, index) =>
               member.hasDevice ? (
-                <View key={index} style={styles.row}>
-                  <Text style={[text, styles.label]}>{member.name}</Text>
+                <View key={index} style={[styles.row, styles.joinedRow]}>
+                  <Text style={text}>{member.name}</Text>
                   <Text style={secondary}>Already joined</Text>
                 </View>
               ) : (
@@ -177,5 +179,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  joinedRow: { flexWrap: 'wrap', justifyContent: 'space-between' },
   label: { flex: 1 },
 });
