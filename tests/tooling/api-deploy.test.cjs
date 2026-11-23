@@ -17,6 +17,15 @@ test('wrangler.jsonc has the two environments of ADR-0019', () => {
   expect(Object.keys(wrangler.env)).toEqual(environments);
 });
 
+test.each(environments)(
+  '%s schedules one cleanup at a fixed time each day',
+  (environment) => {
+    expect(wrangler.env[environment].triggers?.crons).toEqual([
+      expect.stringMatching(/^[0-5]?\d (?:[01]?\d|2[0-3]) \* \* \*$/),
+    ]);
+  },
+);
+
 test('the top level, which names no environment, binds no real Hyperdrive configuration', () => {
   expect(wrangler.hyperdrive).toEqual([
     {

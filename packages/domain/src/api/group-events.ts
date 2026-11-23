@@ -1,3 +1,5 @@
+import { hasExactly, isHexContent, isId, isWhole } from './wire';
+
 // What the event API's requests and answers look like on the wire (ADR-0016, ADR-0024,
 // docs/specs/sync/spec.md): a phone creates a group on the API, uploads the group's
 // events and downloads them page by page. The phone and the API both use this file, so
@@ -73,6 +75,18 @@ export interface EventsPageResponse {
 }
 
 /**
+ * What the API answers to a download whose cursor is before events the group no longer
+ * stores (SYNC-136.1, ADR-0033): the phone cannot go on from its cursor and needs a
+ * snapshot. It is no refusal: the API records the cursor as the device's progress.
+ */
+export interface SnapshotNeededResponse {
+  error: 'snapshot-needed';
+}
+
+/** The HTTP status of that answer. */
+export const SNAPSHOT_NEEDED_STATUS = 410;
+
+/**
  * Why the API refused a request of the event API, besides the reasons of `Refusal`. The
  * body of such a refusal is one of these, as JSON.
  */
@@ -93,44 +107,8 @@ export const GROUP_REFUSAL_STATUS: Record<GroupRefusalReason, number> = {
   'group-full': 413,
 };
 
-// A group ID, an event ID and a device ID are each a lowercase version-4 UUID.
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const LOWERCASE_HEX = /^[0-9a-f]*$/;
-
-/** Whether `value` is an object, as JSON has them, with exactly the keys `keys`. */
-function hasExactly<Key extends string>(
-  value: unknown,
-  keys: readonly Key[],
-): value is Record<Key, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return false;
-  }
-  const own = Object.keys(value);
-  return own.length === keys.length && keys.every((key) => own.includes(key));
-}
-
-function isId(value: unknown): value is string {
-  return typeof value === 'string' && UUID.test(value);
-}
-
-/** A whole number from `least` to the largest integer a number holds exactly. */
-function isWhole(value: unknown, least: number): value is number {
-  return (
-    typeof value === 'number' && Number.isSafeInteger(value) && value >= least
-  );
-}
-
-/** Two lowercase hexadecimal characters for each of 41 to 65,536 bytes. */
-function isContent(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    value.length >= EVENT_CONTENT_MINIMUM * 2 &&
-    value.length <= EVENT_CONTENT_LIMIT * 2 &&
-    value.length % 2 === 0 &&
-    LOWERCASE_HEX.test(value)
-  );
-}
+const isContent = (value: unknown) =>
+  isHexContent(value, EVENT_CONTENT_MINIMUM, EVENT_CONTENT_LIMIT);
 
 /**
  * Whether every item of `items` passes `isItem`, an empty slot included, which is an
@@ -235,6 +213,13 @@ export function isGroupRefusal(value: unknown): value is GroupRefusal {
     hasExactly(value, ['error']) &&
     (value.error === 'not-a-member' || value.error === 'group-full')
   );
+}
+
+/** Whether `value` is exactly the body of the answer that a phone needs a snapshot (SYNC-137.1). */
+export function isSnapshotNeededResponse(
+  value: unknown,
+): value is SnapshotNeededResponse {
+  return hasExactly(value, ['error']) && value.error === 'snapshot-needed';
 }
 
 // The invite API uses the same group IDs, integer cursors and encrypted content limits.
