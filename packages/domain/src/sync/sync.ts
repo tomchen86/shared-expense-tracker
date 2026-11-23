@@ -44,6 +44,7 @@ export interface SyncUnits {
    * represents, with the phone's user ID and its X25519 public key in lowercase hexadecimal.
    */
   device: { member: { memberId: string; userId: string; boxKey: string } };
+  distinct: { expenses: [string, string] };
 }
 
 export type SyncRecordType = keyof SyncUnits;
@@ -402,6 +403,14 @@ const unitValidators: {
       typeof value.boxKey === 'string' &&
       /^[0-9a-f]{64}$/.test(value.boxKey),
   },
+  distinct: {
+    expenses: (value) =>
+      Array.isArray(value) &&
+      value.length === 2 &&
+      isNonemptyString(value[0]) &&
+      isNonemptyString(value[1]) &&
+      value[0] !== value[1],
+  },
 };
 
 export function isRecordType(type: unknown): type is SyncRecordType {
@@ -513,6 +522,11 @@ function compareMoney(a: SyncMoney, b: SyncMoney): number {
 }
 
 function compareUnitValues(name: string, a: unknown, b: unknown): number {
+  if (name === 'expenses') {
+    const first = a as SyncUnits['distinct']['expenses'];
+    const second = b as SyncUnits['distinct']['expenses'];
+    return compare(first[0], second[0]) || compare(first[1], second[1]);
+  }
   if (name === 'link') {
     const first = a as SyncUnits['invite']['link'];
     const second = b as SyncUnits['invite']['link'];

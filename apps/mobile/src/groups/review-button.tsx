@@ -44,7 +44,7 @@ function NoticeButton({
 
 /**
  * The button that says how many of the group's expenses need review, and opens the
- * first (GROUPS-107.1).
+ * first (GROUPS-107.2).
  */
 export function ReviewButton({
   count,

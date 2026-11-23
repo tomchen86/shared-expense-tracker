@@ -28,3 +28,4 @@ export {
   type SyncVerdict,
 } from './sync/sync';
 export * from './sync/snapshot';
+export * from './sync/duplicates';

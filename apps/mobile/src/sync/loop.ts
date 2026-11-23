@@ -239,11 +239,11 @@ async function storePage(
         [cursor, waitsForUpdate, groupId],
       );
     // This ledger's screens are told once, with the expenses that left the trash.
-    moved.delete(groupId);
+    const reordered = moved.delete(groupId);
     return {
       moved,
       leftTrash,
-      changed: changed || waitsForUpdate !== ledger.waitsForUpdate,
+      changed: changed || reordered || waitsForUpdate !== ledger.waitsForUpdate,
     };
   });
   if (!stored) return 'end';

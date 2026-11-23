@@ -1,11 +1,9 @@
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import {
   alertsShown,
-  expectClosed,
   expectMembers,
   membersShown,
   openGroup,
-  pressOnBar,
   removeMember,
   renameMember,
   screenOf,
@@ -27,6 +25,7 @@ import {
   APPROVE,
   APPROVING,
   CANCEL,
+  CODE_A,
   D,
   DECLINE,
   DECLINING,
@@ -464,7 +463,8 @@ describe('SHARING-192.1', () => {
   test('[SHARING-192.1] shows only the request it can read, and rejects the other without asking', async () => {
     const { brisbane } = await startWithInvite();
     await asks();
-    apiHolds(brisbane, E, '00'.repeat(297));
+    // The format version the phone knows, and bytes that do not open.
+    apiHolds(brisbane, E, `01${'00'.repeat(296)}`);
     const unreadable = requestHash(brisbane, E);
     const from = received().length;
 
@@ -760,6 +760,30 @@ describe('SHARING-200.1', () => {
     expect(requestsOn(brisbane)).toEqual([D]);
   });
 
+  test('[SHARING-200.1] says the request was answered, and sends nothing, when the sync before it brings the news that the invite was revoked', async () => {
+    const { brisbane } = await inMembersWithDana();
+    const menu = await tapMember(DANA_ROW);
+    // Another member's phone has revoked the invite; the API holds no request of it any more.
+    otherPhoneUploads(brisbane, {
+      version: 1,
+      stamp: otherStamp(LATER + 1_000),
+      type: 'invite',
+      id: CODE_A,
+      deleted: true,
+    });
+    withdraws(brisbane);
+    const from = received().length;
+
+    await menu!.choose(APPROVE);
+
+    await waitFor(() =>
+      expect(alertsShown().at(-1)).toEqual([UNABLE_TO_APPROVE, ANSWERED]),
+    );
+    expect(chunks(from)).toEqual([]);
+    expect(approvals(from)).toEqual([]);
+    await expectMembers(MEMBERS);
+  });
+
   test('[SHARING-200.1] says something went wrong for an answer it cannot read', async () => {
     await inMembersWithDana();
     apiAnswersDecision('approve', 500, {});
@@ -891,8 +915,7 @@ describe('SHARING-202.1', () => {
     await menu!.choose(APPROVE);
     await waitFor(() => expect(approvals()).toHaveLength(1));
 
-    await pressOnBar('Members', 'Close');
-    await expectClosed('Members');
+    await leaveMembers('Brisbane');
     await releaseDecisions();
 
     expect(alertsShown()).toEqual([]);

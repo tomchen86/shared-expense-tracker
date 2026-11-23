@@ -108,7 +108,8 @@ test("[GROUPS-132.1] opens a dialog titled with the applicant's name on Android,
     cancel: CANCEL,
     cancelable: true,
   });
-  expect(alertsShown()).toHaveLength(1);
+  // The dialog is an alert, and so was the menu that opened Members.
+  expect(alertsShown().at(-1)).toEqual(['Dana', MAY_SEE]);
 });
 
 test('[GROUPS-132.1] does nothing when the dialog is closed with Back or a tap outside it on Android', async () => {

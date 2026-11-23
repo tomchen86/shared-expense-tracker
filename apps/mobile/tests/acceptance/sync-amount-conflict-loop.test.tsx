@@ -191,7 +191,7 @@ test('[SYNC-132.1] [SYNC-88.1] syncs the ledger once Use Mine is saved: a downlo
   expect(apiEventIds(brisbane)).toHaveLength(events + 1);
 });
 
-test('[GROUPS-107.1] counts the expenses to review under the two lines about the sync', async () => {
+test('[GROUPS-107.2] counts the expenses to review under the two lines about the sync', async () => {
   const { brisbane, dinner } = await overriddenBySync();
   await expectToReview('Brisbane', ['Dinner']);
   otherPhoneUploads(brisbane, newerEvent(otherStamp(Date.now() + MINUTE)));

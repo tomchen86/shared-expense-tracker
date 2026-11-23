@@ -4851,3 +4851,232 @@ The mobile app SHALL 讓標記在手機上看得清楚、讀得出來：圖示�
 
 - **WHEN** 開著 VoiceOver 或 TalkBack 滑過 Dinner 的卡片，再打開它的明細一項一項滑
 - **THEN** 卡片讀成一個按鈕，最後讀出「Your change was replaced」；明細依序讀出「Your change was replaced」、那句說明、「CURRENT」和它的三行、「YOURS」和它的三行，以及「Keep Current」和「Use Mine」兩個按鈕
+
+### Requirement: LEDGER-156.1 可能重複的支出的卡片多一行標記
+
+WHILE 一筆支出是可能重複的支出（sync），the mobile app SHALL 在它的每一張卡片上、分類那一行的下面多顯示一行標記：LEDGER-151.1 的圖示，後面是文字「Possible duplicate」；卡片的其他內容不變（LEDGER-33.3、LEDGER-65.4、GROUPS-61.6），螢幕閱讀器在日期之後讀出「Possible duplicate」，不讀圖示。這筆支出同時需要確認時（LEDGER-151.1），兩行都顯示，「Your change was replaced」那一行在上，螢幕閱讀器也依這個順序讀。它的對象的卡片不因此多這一行；不是可能重複的支出的卡片沒有這一行；垃圾桶裡的支出不是可能重複的支出，所以 Trash 的卡片也沒有。
+
+#### Scenario: 群組的畫面
+
+- **WHEN** 名字是「Taylor」，Brisbane 是共同帳本，新增 Dinner 之後套用別支手機的 Supper 的第一個事件（sync）
+- **THEN** Brisbane 的畫面上 Supper 的卡片依序顯示「Supper」、「$100.01」、「Food & Dining」、「Paid by Blake」、「Possible duplicate」；螢幕閱讀器讀出一個按鈕，依序是「Supper」、「$100.01」、「Food & Dining」、「Paid by Blake」、「Oct 30, 2026」和「Possible duplicate」。Dinner 的卡片沒有「Possible duplicate」
+
+#### Scenario: 支出清單
+
+- **WHEN** 同樣的情況下看支出清單
+- **THEN** Supper 的卡片依序顯示「Supper」、「$50.00」、「Food & Dining」、「Brisbane」、「Possible duplicate」
+
+#### Scenario: 類別的支出
+
+- **WHEN** 同樣的情況下，在 Brisbane 的 Insights 按 Food & Dining 那一列；或在個人的 Insights 按 Food & Dining 那一列
+- **THEN** 類別的支出（INSIGHTS-49.1）上 Supper 的卡片，前者依序顯示「Supper」、「$100.01」、「Food & Dining」、「Paid by Blake」、「Possible duplicate」，後者依序顯示「Supper」、「$50.00」、「Food & Dining」、「Brisbane」、「Possible duplicate」
+
+#### Scenario: 圖示
+
+- **WHEN** 在 iOS 和 Android 上看這張卡片
+- **THEN** 「Possible duplicate」前面的圖示，iOS 上是 `exclamationmark.triangle.fill`，Android 上是 `warning`；Dinner 的卡片沒有圖示
+
+#### Scenario: 自己記的那一筆比較晚
+
+- **WHEN** 新增 Dinner 之後套用比較早的 Supper 的第一個事件
+- **THEN** Dinner 的卡片有「Possible duplicate」，Supper 的卡片沒有
+
+#### Scenario: 同時需要確認
+
+- **WHEN** 新增 Dinner，把金額改成 120.00，套用比較早的 Supper 的第一個事件，它是 9000 USD（Blake 付 9000，分攤依序是 Blake 4500、Taylor 4500），再套用別支手機的 90.00
+- **THEN** Brisbane 的畫面上 Dinner 的卡片依序顯示「Dinner」、「$90.00」、「Food & Dining」、「Paid by Casey」、「Your change was replaced」、「Possible duplicate」；螢幕閱讀器在「Oct 30, 2026」之後依序讀出「Your change was replaced」和「Possible duplicate」
+
+#### Scenario: 垃圾桶
+
+- **WHEN** Supper 是可能重複的支出時把它移到垃圾桶，看 Trash，再把它還原
+- **THEN** Trash 上 Supper 的卡片沒有「Possible duplicate」；還原之後支出清單上它的卡片又有
+
+#### Scenario: 重新啟動
+
+- **WHEN** Supper 是可能重複的支出時重新啟動 app
+- **THEN** 支出清單和 Brisbane 的畫面上，Supper 的卡片仍有「Possible duplicate」
+
+### Requirement: LEDGER-157.1 可能重複的支出的明細最上面列出它的對象
+
+WHILE 一筆支出是可能重複的支出（sync），the mobile app SHALL 在它的明細最上面、支出的標題上方顯示可能重複的區塊，由上而下是：LEDGER-151.1 的圖示和「Possible duplicate」；「Another expense in this group has the same amount and date. If they are the same expense, delete one of them.」；「OTHER EXPENSE」和對象的三行，依序是對象的標題、「Paid by <付款的人>」和「Split between <分攤的人>」，人的寫法和 LEDGER-152.1 一樣；以及角色為 button 的三個按鈕，依序是「View Other Expense」（LEDGER-158.1）、「Not a Duplicate」（LEDGER-159.1）和「Delete This Expense」（LEDGER-160.1）。這筆支出同時需要確認時，LEDGER-152.1 的區塊在最上面，這個區塊在它下面、支出的標題上方。區塊下面是明細原本的內容，不因此改變。明細開著時這筆支出變成可能重複的支出、不再是，或它的對象換成另一筆、對象的內容改了，區塊不必重新打開就跟著出現、消失或更新。不是可能重複的支出的明細沒有這個區塊，對象的明細不因此有；Trash 的唯讀明細（LEDGER-78.4）也沒有。
+
+#### Scenario: 區塊
+
+- **WHEN** 名字是「Taylor」，新增 Dinner 之後套用別支手機的 Supper 的第一個事件，打開 Supper 的明細
+- **THEN** 由上而下依序是「Possible duplicate」、「Another expense in this group has the same amount and date. If they are the same expense, delete one of them.」、「OTHER EXPENSE」、「Dinner」、「Paid by Casey」、「Split between Blake, Taylor (You), Casey」、「View Other Expense」、「Not a Duplicate」、「Delete This Expense」，再來是「Supper」、「$100.01」和明細其他的內容；「Possible duplicate」前面是 LEDGER-151.1 的圖示
+
+#### Scenario: 對象的明細
+
+- **WHEN** 同樣的情況下打開 Dinner 的明細
+- **THEN** 沒有這個區塊，最上面是「Dinner」
+
+#### Scenario: 自己記的那一筆比較晚
+
+- **WHEN** 新增 Dinner 之後套用比較早的 Supper 的第一個事件，打開 Dinner 的明細
+- **THEN** 區塊的「OTHER EXPENSE」下面是「Supper」、「Paid by Blake」、「Split between Blake, Taylor (You)」
+
+#### Scenario: 對象改了，或成員改了名
+
+- **WHEN** Supper 的明細開著時，把 Casey 改名為「Cass」，再套用別支手機把 Dinner 的標題改成「Team dinner」的事件
+- **THEN** 不必重新打開，「OTHER EXPENSE」下面是「Team dinner」、「Paid by Cass」、「Split between Blake, Taylor (You), Cass」
+
+#### Scenario: 明細開著時變成可能重複的支出
+
+- **WHEN** 新增 Dinner 之後，套用別支手機的 Supper 的第一個事件，它是 9000 USD（Blake 付 9000，分攤依序是 Blake 4500、Taylor 4500），打開 Supper 的明細；這時套用 `T+150000/0/phone-b` 把 Dinner 的金額那一組改成 9000 的事件（別支手機的 90.00）
+- **THEN** 原本沒有這個區塊；套用之後不必重新打開就有，「OTHER EXPENSE」下面是「Dinner」
+
+#### Scenario: 明細開著時不再是可能重複的支出
+
+- **WHEN** Supper 的明細開著時，套用說 Dinner 和 Supper 不是重複的事件（sync）；或套用永久刪除 Dinner 的事件
+- **THEN** 區塊消失，最上面是「Supper」
+
+#### Scenario: 不只一個對象
+
+- **WHEN** 新增 Dinner，再新增一筆相同的 Brunch，套用別支手機的 Supper 的第一個事件，打開 Supper 的明細
+- **THEN** 區塊只有一個，「OTHER EXPENSE」下面是「Dinner」
+
+#### Scenario: 同時需要確認
+
+- **WHEN** Dinner 同時需要確認，也是可能重複的支出（LEDGER-156.1 的情境），打開它的明細
+- **THEN** 由上而下是「Your change was replaced」的區塊（到「Use Mine」為止）、「Possible duplicate」的區塊（到「Delete This Expense」為止），再來是「Dinner」
+
+#### Scenario: 唯讀明細
+
+- **WHEN** Supper 是可能重複的支出時把它移到垃圾桶，在 Trash 點它的卡片
+- **THEN** 唯讀明細最上面是「This expense is in the Trash.」，沒有這個區塊，也沒有那三個按鈕
+
+### Requirement: LEDGER-158.1 按 View Other Expense 推入對象的明細
+
+WHEN 使用者在可能重複的區塊按「View Other Expense」，the mobile app SHALL 在同一個分頁、這個明細的上面推入對象的明細（LEDGER-66.3），標題是「Expense」，網址和這個明細是同一種，換成對象的 ID：Expenses 分頁是 `/expenses/<對象的 ID>`，Groups 分頁是 `/groups/expenses/<對象的 ID>`，Settings 分頁是 `/settings/archived-groups/expenses/<對象的 ID>`；連按兩次也只推入一個，返回或按 Android 的返回鍵就回到原本的明細。這個按鈕不改任何資料，群組封存時也可以按。對象的明細和從別處打開的一樣：有「Edit」和「Expense actions」，它自己不是可能重複的支出時沒有區塊；在那裡選「Delete」（LEDGER-72.2）時，存好後返回的是原本的明細，那裡的區塊已經消失。
+
+#### Scenario: Groups 分頁
+
+- **WHEN** 在 Brisbane 的畫面點 Supper 的卡片，在它的明細按「View Other Expense」
+- **THEN** 仍選中 Groups 分頁，Groups 分頁的堆疊由下而上是「Groups」、「Brisbane」、「Expense」和「Expense」，最上面的明細是 Dinner 的，網址是 `/groups/expenses/` 加上 Dinner 的 ID，沒有可能重複的區塊，標題列有「Edit」和「Expense actions」
+
+#### Scenario: Expenses 分頁
+
+- **WHEN** 在支出清單點 Supper 的卡片，在它的明細按「View Other Expense」
+- **THEN** 仍選中 Expenses 分頁，最上面的明細是 Dinner 的，網址是 `/expenses/` 加上 Dinner 的 ID
+
+#### Scenario: 返回
+
+- **WHEN** 在 Dinner 的明細返回
+- **THEN** 回到 Supper 的明細，區塊仍在；再返回就回到 Brisbane 的畫面
+
+#### Scenario: 連按兩次
+
+- **WHEN** 連按兩次「View Other Expense」
+- **THEN** 只推入一個明細；返回一次就回到 Supper 的明細
+
+#### Scenario: 刪掉對象
+
+- **WHEN** 在這樣打開的 Dinner 的明細，從 Expense actions 選「Delete」
+- **THEN** 沒有跳出確認；Dinner 移到垃圾桶，返回 Supper 的明細，畫面底部顯示「Moved to Trash」；Supper 的明細沒有可能重複的區塊，Supper 仍是存著的支出，不在垃圾桶裡
+
+#### Scenario: 封存的群組
+
+- **WHEN** Supper 是可能重複的支出時封存 Brisbane，從 Archived Groups 打開 Brisbane 的畫面，點 Supper 的卡片，按「View Other Expense」
+- **THEN** 在 Settings 分頁推入 `/settings/archived-groups/expenses/` 加上 Dinner 的 ID，明細照 LEDGER-67.2 是唯讀的
+
+### Requirement: LEDGER-159.1 按 Not a Duplicate 記下這兩筆不是重複
+
+WHEN 使用者在可能重複的支出的明細按「Not a Duplicate」，the mobile app SHALL 記下這筆支出和區塊顯示的對象不是重複（SYNC-203.1），兩筆支出都不改，也都不移到垃圾桶：存好之後明細仍開著，其他內容不變；這筆支出沒有別的對象時，區塊消失，它在每個畫面的卡片都沒有「Possible duplicate」那一行，重新啟動 app 之後也一樣；還有別的對象時，區塊留著，「OTHER EXPENSE」下面換成下一個對象。存好之前再按「Not a Duplicate」或「Delete This Expense」都不再做一次，所以只記一次；存不進本機資料時，跳出 LEDGER-26.1 的提示框，區塊仍在，本機資料和按之前一樣。WHILE 支出的群組已封存，the mobile app SHALL 停用「Not a Duplicate」，它不能按，按了也不儲存（LEDGER-67.2）；群組還原後可以按。
+
+#### Scenario: 按下
+
+- **WHEN** Supper 是可能重複的支出、對象是 Dinner 時，在 Supper 的明細按「Not a Duplicate」
+- **THEN** 明細仍開著，最上面是「Supper」和「$100.01」，沒有可能重複的區塊；返回之後，支出清單和 Brisbane 的畫面上 Supper 的卡片都沒有「Possible duplicate」，Dinner 和 Supper 的卡片都還在，金額不變
+
+#### Scenario: 重新啟動
+
+- **WHEN** 按了「Not a Duplicate」之後重新啟動 app
+- **THEN** Supper 的卡片和明細都沒有標記
+
+#### Scenario: 還有別的對象
+
+- **WHEN** 新增 Dinner，再新增一筆相同的 Brunch，套用別支手機的 Supper 的第一個事件，在 Supper 的明細按「Not a Duplicate」；之後再按一次
+- **THEN** 第一次之後區塊仍在，「OTHER EXPENSE」下面是「Brunch」，Supper 的卡片仍有「Possible duplicate」；第二次之後區塊消失
+
+#### Scenario: 連按兩次
+
+- **WHEN** 連按兩次「Not a Duplicate」，第二次在存好之前
+- **THEN** 只多一個待上傳的事件
+
+#### Scenario: 先按 Not a Duplicate，存好之前按 Delete This Expense
+
+- **WHEN** 按「Not a Duplicate」，存好之前再按「Delete This Expense」
+- **THEN** Supper 沒有移到垃圾桶，明細仍開著，區塊消失
+
+#### Scenario: 存不進去
+
+- **WHEN** 資料庫無法寫入時按「Not a Duplicate」
+- **THEN** 跳出「Unable to Save Expense」和「Your expense could not be saved. Please try again.」；明細仍有可能重複的區塊，三個按鈕都可以再按；恢復後再按一次，區塊消失
+
+#### Scenario: 封存的群組
+
+- **WHEN** Supper 是可能重複的支出時封存 Brisbane，打開 Supper 的明細
+- **THEN** 區塊仍在，「Not a Duplicate」和「Delete This Expense」都停用，按了沒有反應，沒有多出待上傳的事件，Supper 仍不在垃圾桶裡；「View Other Expense」可以按。還原 Brisbane 之後兩個都可以按
+
+### Requirement: LEDGER-160.1 按 Delete This Expense 把這筆支出移到垃圾桶
+
+WHEN 使用者在可能重複的支出的明細按「Delete This Expense」，the mobile app SHALL 做和在這個明細的 Expense actions 選「Delete」一樣的事（LEDGER-72.2），只對這個明細的這筆支出：不另外確認，把它移到垃圾桶（LEDGER-71.3），存好後返回推入這個明細的畫面，顯示 Undo 提示（LEDGER-73.2）；它的對象和別的支出都不動。存好之前再按一次，或在 Expense actions 選「Delete」，都只移一次、只返回一次；存好之前按「Not a Duplicate」不記下任何東西（SYNC-203.1）。存不進本機資料時，跳出 LEDGER-82.1 的提示框，明細仍開著，區塊仍在，這筆支出不在垃圾桶裡，本機資料和按之前一樣。按 Undo 還原之後，它又是可能重複的支出。WHILE 支出的群組已封存，the mobile app SHALL 停用「Delete This Expense」（LEDGER-67.2）。
+
+#### Scenario: 按下
+
+- **WHEN** Supper 是可能重複的支出、對象是 Dinner 時，在 Brisbane 的畫面點 Supper 的卡片，在它的明細按「Delete This Expense」
+- **THEN** 沒有跳出確認；返回 Brisbane 的畫面，Groups 分頁的堆疊由下而上是「Groups」根畫面和「Brisbane」，畫面底部顯示「Moved to Trash」；Brisbane 的畫面只有 Dinner 的卡片，它沒有「Possible duplicate」，大標題下面沒有需要確認的筆數；Trash 只有 Supper
+
+#### Scenario: 只刪這一筆
+
+- **WHEN** 新增 Dinner，再新增一筆相同的 Brunch，套用別支手機的 Supper 的第一個事件和 `T+150000/0/phone-c` 新增一筆相同的 Snack 的事件，在 Supper 的明細按「Delete This Expense」
+- **THEN** 移到垃圾桶的只有 Supper；Dinner、Brunch 和 Snack 都還在 Brisbane 的畫面上，Snack 仍有「Possible duplicate」
+
+#### Scenario: Undo
+
+- **WHEN** 按了「Delete This Expense」之後按「Undo」
+- **THEN** Supper 回到 Brisbane 的畫面，卡片又有「Possible duplicate」
+
+#### Scenario: 連按兩次
+
+- **WHEN** 連按兩次「Delete This Expense」，第二次在存好之前
+- **THEN** 只返回一次，Supper 只移到垃圾桶一次，螢幕閱讀器只念一次「Supper moved to Trash. Undo available.」
+
+#### Scenario: 寫出的事件
+
+- **WHEN** 按「Delete This Expense」
+- **THEN** 只多一個待上傳的事件：Supper 的，只帶「在不在垃圾桶裡」（SYNC-24.1）
+
+#### Scenario: 先按 Delete This Expense，存好之前按 Not a Duplicate
+
+- **WHEN** 按「Delete This Expense」，存好之前再按「Not a Duplicate」
+- **THEN** 存好後返回 Brisbane 的畫面，Supper 在垃圾桶裡；只多一個待上傳的事件，是把 Supper 移到垃圾桶的那一個；沒有跳出提示框
+
+#### Scenario: 存不進去
+
+- **WHEN** 資料庫無法寫入時按「Delete This Expense」
+- **THEN** 跳出「Unable to Update Trash」和「Your change could not be saved. Please try again.」；明細仍開著，可能重複的區塊仍在，沒有「Moved to Trash」，Supper 不在垃圾桶裡，待上傳的事件沒有變多，本機資料和按之前一樣；恢復後再按一次，Supper 才移到垃圾桶，返回 Brisbane 的畫面
+
+### Requirement: LEDGER-161.1 (manual) 手機上可能重複的標記
+
+The mobile app SHALL 讓可能重複的標記在手機上看得清楚、讀得出來：圖示是警示的顏色，文字是一般文字的顏色，所以不靠顏色也讀得出意思，淺色和深色外觀都一樣；系統字級最大時，卡片上的那一行和明細的區塊裡每一行都顯示完整的文字，一行放不下時換行，不截斷也不重疊，三個按鈕都按得到；「Delete This Expense」是破壞性動作的樣式，不只靠顏色和另外兩個按鈕分開：它的文字說了它做什麼；VoiceOver 和 TalkBack 把卡片讀成一個按鈕並讀出「Possible duplicate」，在明細依序讀出區塊的每一行和三個按鈕。
+
+#### Scenario: 兩種外觀
+
+- **WHEN** Supper 是可能重複的支出，依序在淺色和深色外觀看 Brisbane 的畫面、支出清單和 Supper 的明細
+- **THEN** 圖示和「Possible duplicate」都看得清楚，圖示和文字的顏色不同；把手機調成灰階之後仍讀得出這是標記，也分得出三個按鈕
+
+#### Scenario: 最大的字級
+
+- **WHEN** 把系統字級調到最大，看 Supper 的卡片和明細
+- **THEN** 卡片上「Possible duplicate」顯示完整，一行放不下時換成兩行；明細的區塊裡每一行都完整，「View Other Expense」、「Not a Duplicate」和「Delete This Expense」都在畫面上按得到
+
+#### Scenario: 螢幕閱讀器
+
+- **WHEN** 開著 VoiceOver 或 TalkBack 滑過 Supper 的卡片，再打開它的明細一項一項滑
+- **THEN** 卡片讀成一個按鈕，最後讀出「Possible duplicate」；明細依序讀出「Possible duplicate」、那句說明、「OTHER EXPENSE」和它的三行，以及三個按鈕
+
+#### Scenario: 兩種標記都有
+
+- **WHEN** 一筆支出同時需要確認，也是可能重複的支出，把系統字級調到最大看它的卡片和明細
+- **THEN** 卡片上兩行標記都完整；明細的兩個區塊都完整，五個按鈕都按得到，捲動之後看得到明細原本的內容
