@@ -21,7 +21,7 @@ The earlier decisions leave open:
 - What a phone does when the API tells it that it is no member device, and what "authorization lapsed" (ADR-0015) means for the shared ledgers on that phone.
 - Who revokes the invite, the API in the removal's transaction or a phone.
 
-The owner decided on 2026-11-18 that a copy stays read-only, that leaving needs no settling up, and that a group has no "ended" state (#143). What a copy can do afterwards, being deleted or replaced when its phone joins again, and what an import does with a shared ledger, are a separate issue.
+The owner decided on 2026-11-18 that a copy stays read-only, that leaving needs no settling up, and that a group has no "ended" state (#143). What a copy can do afterwards, being deleted or replaced when its phone joins again, and what an import does with a shared ledger, are in ADR-0042.
 
 Also considered:
 
@@ -102,7 +102,7 @@ A phone that lost access:
 - Between a device leaving and a phone's next sync the invite still works: the device that left can read its card and ask to join, and a member would have to approve.
 - A phone learns that it was removed at its next sync. Until then it shows the ledger as it was and records changes that will never be sent; the copy keeps them and says how many.
 - A phone whose authorization lapsed, such as one that imported another phone's export file (ADR-0025), shows every shared ledger as a copy. It is still a member device on the API, which cannot know; another member removes it.
-- A copy cannot be deleted, and its phone cannot join the group again while it holds the copy (ADR-0039). The issue that follows #143 decides both, and what an import does with a shared ledger on a phone that still has its keys.
+- ADR-0042 decides how a copy is deleted, how its phone joins the group again, and what an import does with a shared ledger.
 - ADR-0034's snapshot for a phone that is behind is under the current epoch. A phone that lacks that key asks for its boxes as above; the spec that lands second adds the sentence.
 - #144 replaces a device's roster entry in an approval and has the old device removed; it can use the rotation request. #145 moves a membership to a new device and has to say what the old device's entry becomes.
 - The API gains two refusals of its own, the list of member devices in two answers, and one more reason for which a download is no page. A phone built from main takes that answer for no page (ADR-0027) and never rotates; no release exists.

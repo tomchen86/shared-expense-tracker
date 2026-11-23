@@ -563,8 +563,8 @@ describe('SHARING-195.1', () => {
   });
 });
 
-describe('SHARING-196.1', () => {
-  test('[SHARING-196.1] a first approval of a new member carries its own roster entry, the member and the new roster entry, stamped in turn', async () => {
+describe('SHARING-196.2', () => {
+  test('[SHARING-196.2] a first approval of a new member carries its own roster entry, the member and the new roster entry, stamped in turn', async () => {
     const { invite, taylor, dana, A, D, approval } = await danaApproved();
     const { Taylor } = await memberIds(taylor);
 
@@ -613,7 +613,7 @@ describe('SHARING-196.1', () => {
     expect(new Set(approval.events.map(({ id }) => id)).size).toBe(3);
   });
 
-  test('[SHARING-196.1] an approval for a member the group has carries no member event', async () => {
+  test('[SHARING-196.2] an approval for a member the group has carries no member event', async () => {
     const { invite, A, D, ids, approval } = await danaApproved({
       memberId: 'Casey',
     });
@@ -627,7 +627,7 @@ describe('SHARING-196.1', () => {
     expect(sent[1].units.member.value).toMatchObject({ memberId: ids.Casey });
   });
 
-  test('[SHARING-196.1] a later approval carries only the new roster entry', async () => {
+  test('[SHARING-196.2] a later approval carries only the new roster entry', async () => {
     const { invite, taylor, ids } = await danaApproved();
     const evan = await phoneOf('Evan', invite);
     setClock(evan, LATER);
@@ -643,7 +643,7 @@ describe('SHARING-196.1', () => {
     ).toEqual([['device', E]]);
   });
 
-  test('[SHARING-196.1] does not give the stamps of an approval that failed to a later change', async () => {
+  test('[SHARING-196.2] does not give the stamps of an approval that failed to a later change', async () => {
     const { invite, taylor, request } = await danaListed();
     const from = mark();
     noAnswerTo('POST');
@@ -659,7 +659,7 @@ describe('SHARING-196.1', () => {
     expect(renamed.content.stamp.counter).toBeGreaterThan(Math.max(...taken));
   });
 
-  test('[SHARING-196.1] checks the stamps before they go into the snapshot and the approval: a latest stamp nine minutes ahead that no record holds is not carried on', async () => {
+  test('[SHARING-196.2] checks the stamps before they go into the snapshot and the approval: a latest stamp nine minutes ahead that no record holds is not carried on', async () => {
     const { invite, taylor, dana, brisbane, key, A, D, ids } =
       await danaApproved();
     expect((await ask(dana, invite)).outcome).toBe('joined');
@@ -704,7 +704,7 @@ describe('SHARING-196.1', () => {
     });
   });
 
-  test('[SHARING-196.1] does not send events an hour ahead when the phone stored a latest stamp that nothing holds any more: every phone applies them', async () => {
+  test('[SHARING-196.2] does not send events an hour ahead when the phone stored a latest stamp that nothing holds any more: every phone applies them', async () => {
     const invite = await taylorInvites();
     const FAST = NOW + HOUR;
     setClock(invite.taylor, FAST);
@@ -1273,8 +1273,8 @@ describe('SHARING-216.1', () => {
   });
 });
 
-describe('SHARING-219.1', () => {
-  test('[SHARING-219.1] joins as the new member: the ledger is the same on both phones, and the request is gone', async () => {
+describe('SHARING-219.2', () => {
+  test('[SHARING-219.2] joins as the new member: the ledger is the same on both phones, and the request is gone', async () => {
     const { invite, taylor, dana, brisbane, approval } = await danaApproved();
     const from = mark();
 
@@ -1301,7 +1301,7 @@ describe('SHARING-219.1', () => {
     ).toContain(`GET /groups/${brisbane}/events?after=${approval.cursor}`);
   });
 
-  test('[SHARING-219.1] joins as the member it picked, and keeps its own name', async () => {
+  test('[SHARING-219.2] joins as the member it picked, and keeps its own name', async () => {
     const { invite, dana } = await danaApproved({ memberId: 'Casey' });
 
     expect((await ask(dana, invite)).outcome).toBe('joined');
@@ -1318,7 +1318,7 @@ describe('SHARING-219.1', () => {
     ]);
   });
 
-  test('[SHARING-219.1] records in the ledger it joined, and both phones end the same', async () => {
+  test('[SHARING-219.2] records in the ledger it joined, and both phones end the same', async () => {
     const { invite, taylor, dana, brisbane } = await danaApproved();
     expect((await ask(dana, invite)).outcome).toBe('joined');
 

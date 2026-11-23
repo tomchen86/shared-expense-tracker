@@ -16,7 +16,7 @@ const CANNOT_IMPORT = 'Unable to Import Data';
 const counted = (count: number, one: string) =>
   `${count} ${one}${count === 1 ? '' : 's'}`;
 
-/** What the confirmation says about the file, in the time zone the device is in (BACKUP-11.1). */
+/** What the confirmation says about the file, in the time zone the device is in (BACKUP-11.2). */
 function describe(
   { exportedAt, groups, expenses }: ExportFileSummary,
   locale: string,

@@ -10,7 +10,9 @@
 
 Scenario 裡「Taylor 的資料」是指：名字是「Taylor」，外觀選項是 Dark，Insights 的圖表類型是 Bar；群組 Brisbane 有成員 Taylor、Casey 和已經被移出的 Blake，另有封存的群組 Tokyo；個人空間多了分類「Gym」、封存了「Travel」，Brisbane 多了分類「Flights」；個人支出有 Coffee run 8.75 USD 和 Train 3.00 USD，Brisbane 有 Casey 付、三位成員分攤的 Dinner 100.01 USD，垃圾桶裡有個人支出 Lunch 12.00 USD。它有 2 個群組，不在垃圾桶裡的支出有 3 筆。
 
-全部資料也包括裝置身分的紀錄（SHARING-46.1）和共同帳本的同步資料（sync）。共同帳本、紀錄、單位、時間戳記、刪除紀錄、手機看過的最新時間戳記、待上傳的事件、套用，以及不套用的事件留下的紀錄，都和 sync 的定義一樣。同步資料是本機資料替同步記著的東西：哪些群組是共同帳本和這支手機在裡面用的裝置 ID、每筆紀錄每個單位的值和時間戳記、刪除紀錄、手機看過的最新時間戳記、待上傳的事件，以及不套用的事件留下的紀錄。匯出檔裡的共同帳本，是匯出檔的同步資料記成共同帳本的群組。匯入之後這支手機的同步資料回到匯出那一刻，只有手機看過的最新時間戳記不倒退（BACKUP-13.2、BACKUP-27.1、ADR-0025）。
+全部資料也包括裝置身分的紀錄（SHARING-46.1）和共同帳本的同步資料（sync）。共同帳本、紀錄、單位、時間戳記、刪除紀錄、手機看過的最新時間戳記、待上傳的事件、套用，以及不套用的事件留下的紀錄，都和 sync 的定義一樣。同步資料是本機資料替同步記著的東西：哪些群組是共同帳本和這支手機在裡面用的裝置 ID、每筆紀錄每個單位的值和時間戳記、刪除紀錄、手機看過的最新時間戳記、待上傳的事件，以及不套用的事件留下的紀錄。匯出檔裡的共同帳本，是匯出檔的同步資料記成共同帳本的群組。匯入之後這支手機的同步資料回到匯出那一刻，只有手機看過的最新時間戳記不倒退（BACKUP-13.3、BACKUP-27.1、ADR-0025）。
+
+唯讀副本和授權失效都和 sync、sharing 的定義一樣。這支手機在一個共同帳本裡，是指那個共同帳本在這支手機上不是唯讀副本：API 還把這支手機當成它的成員手機。匯入有兩處要看共同帳本（ADR-0042）：這支手機在裡面的共同帳本，匯入之後會不見時，不讓它匯入（BACKUP-28.1）；匯入之後這支手機授權失效時，匯出檔裡的共同帳本成為唯讀副本（BACKUP-29.1）。兩處都只看本機資料、匯出檔和 secure store，不連任何伺服器。
 
 有共同帳本的 Scenario 裡，T 是 `2026-11-18T06:32:00Z` 的毫秒數；Taylor 的手機的裝置 ID 是 `phone-a`，別支手機是 `phone-b`；Brisbane 是 Taylor 建立、依序加入 Casey 和 Blake 的群組，在校正後的時間 T 變成共同帳本，Tokyo 是另一個群組，不是共同帳本；時間戳記的寫法和 sync 一樣，例如 `T+60000/0/phone-a`。Lunch 是 `phone-b` 新增的 Brisbane 的支出，3000 USD，除非另外說明，Casey 付款、Taylor 和 Casey 各分攤 1500，收到時間是它的時間戳記的毫秒。
 
@@ -204,9 +206,9 @@ IF 使用者點「Import Data」之後檔案選擇畫面打不開，或它交不
 - **WHEN** 檔案選擇畫面恢復正常之後，再點「Import Data」並選同一個匯出檔
 - **THEN** 跳出「Replace All Data?」
 
-### Requirement: BACKUP-11.1 寫入之前顯示摘要並確認
+### Requirement: BACKUP-11.2 寫入之前顯示摘要並確認
 
-WHEN 使用者選了一個可以匯入的匯出檔，the mobile app SHALL 在寫入任何資料之前跳出確認框：標題「Replace All Data?」，內容「This file was exported on <匯出時間> and has <群組數> and <支出數>. Importing it replaces all the data on this phone. This cannot be undone.」，選項是「Cancel」和破壞性的「Replace」。匯出時間是手機地區的日期格式（LEDGER-30.2）的日期、「at」、和英文加手機的地區所用的短時間格式的時和分，手機回報不出地區或平台沒有這個地區的英文格式時只用英文，都以裝置所在的時區顯示；群組數是匯出檔裡的群組有幾個，封存的也算，寫成「1 group」或「2 groups」；支出數是匯出檔裡個人和群組的支出有幾筆，垃圾桶裡的不算，寫成「1 expense」或「2 expenses」，0 也用複數。
+WHEN 使用者選了一個可以匯入的匯出檔，而它沒有被 BACKUP-28.1 擋下，the mobile app SHALL 在寫入任何資料之前跳出確認框：標題「Replace All Data?」，內容「This file was exported on <匯出時間> and has <群組數> and <支出數>. Importing it replaces all the data on this phone. This cannot be undone.」，選項是「Cancel」和破壞性的「Replace」。匯出時間是手機地區的日期格式（LEDGER-30.2）的日期、「at」、和英文加手機的地區所用的短時間格式的時和分，手機回報不出地區或平台沒有這個地區的英文格式時只用英文，都以裝置所在的時區顯示；群組數是匯出檔裡的群組有幾個，封存的也算，寫成「1 group」或「2 groups」；支出數是匯出檔裡個人和群組的支出有幾筆，垃圾桶裡的不算，寫成「1 expense」或「2 expenses」，0 也用複數。IF 匯入會讓這支手機還沒送出的變更不見，THEN the mobile app SHALL 在內容後面空一行，再接一段：不見的是一個時，「1 change in your shared groups hasn't been sent yet and will be lost. To send it first, tap Cancel, connect to the internet, and open the app again.」；其他時候，「<個數> changes in your shared groups haven't been sent yet and will be lost. To send them first, tap Cancel, connect to the internet, and open the app again.」。會不見的，是這支手機在裡面的共同帳本的待上傳事件裡，事件 ID 不是匯出檔的待上傳事件的那些：匯出檔裡的那些跟著匯入回來，之後照常上傳（BACKUP-13.3）；唯讀副本的待上傳事件本來就送不出去，不算。匯入不替使用者同步：它不連任何伺服器。
 
 #### Scenario: Taylor 的資料
 
@@ -228,6 +230,26 @@ WHEN 使用者選了一個可以匯入的匯出檔，the mobile app SHALL 在寫
 - **WHEN** 手機是英文（美國），裝置在洛杉磯，選了同一個匯出檔
 - **THEN** 內容裡的匯出時間是「Nov 17, 2026 at 10:32 PM」
 
+#### Scenario: 有還沒送出的變更
+
+- **WHEN** Taylor 的手機匯出之後把 Brisbane 改名為「Brissie」，這個事件還沒上傳；選自己剛才的匯出檔
+- **THEN** 內容是原本那一段、空一行，和「1 change in your shared groups hasn't been sent yet and will be lost. To send it first, tap Cancel, connect to the internet, and open the app again.」
+
+#### Scenario: 三個還沒送出的變更
+
+- **WHEN** 匯出之後改名三次，三個事件都還沒上傳；選自己剛才的匯出檔
+- **THEN** 第二段是「3 changes in your shared groups haven't been sent yet and will be lost. To send them first, tap Cancel, connect to the internet, and open the app again.」
+
+#### Scenario: 匯出檔裡也有的不算
+
+- **WHEN** Taylor 的手機把 Brisbane 改名為「Brissie」之後才匯出，這個事件一直沒上傳；選這個匯出檔
+- **THEN** 內容只有原本那一段
+
+#### Scenario: 唯讀副本的不算
+
+- **WHEN** Brisbane 是唯讀副本，有兩個待上傳的事件；選 Taylor 的資料的匯出檔
+- **THEN** 內容只有原本那一段
+
 #### Scenario: 一個群組和一筆支出
 
 - **WHEN** 匯出檔裡只有一個群組和一筆不在垃圾桶裡的支出
@@ -247,9 +269,9 @@ WHEN 使用者在確認框按「Cancel」，the mobile app SHALL 不寫入任何
 - **WHEN** 手機上有名字「Sam」和個人支出 Bus，選了 Taylor 的資料的匯出檔，在確認框按「Cancel」
 - **THEN** 本機資料和選檔案之前一樣，仍停在 Settings 根畫面，名字欄位仍是「Sam」，沒有再跳出提示框
 
-### Requirement: BACKUP-13.2 按 Replace 時用匯出檔的內容取代全部資料
+### Requirement: BACKUP-13.3 按 Replace 時用匯出檔的內容取代全部資料
 
-WHEN 使用者在確認框按「Replace」，the mobile app SHALL 在一個 transaction 裡把本機資料的全部內容換成匯出檔的內容：換完之後，除了手機看過的最新時間戳記（BACKUP-27.1），本機資料的每一張表都和匯出時的本機資料一樣，原本在這支手機上、匯出檔裡沒有的資料都不在了，本機身分也是匯出檔裡的那一個。同步資料也在內，所以匯入之後：匯出檔裡的共同帳本是共同帳本，其他群組都不是；每筆紀錄每個單位的值和時間戳記、刪除紀錄、待上傳的事件連同它們的事件 ID 和順序、不套用的事件留下的紀錄，都是匯出檔裡的；匯出之後才寫下的待上傳事件，和匯出之後的其他修改一樣不在了。
+WHEN 使用者在確認框按「Replace」，the mobile app SHALL 在一個 transaction 裡把本機資料的全部內容換成匯出檔的內容：換完之後，除了手機看過的最新時間戳記（BACKUP-27.1），和授權失效的手機上共同帳本成為唯讀副本這件事（BACKUP-29.1），本機資料的每一張表都和匯出時的本機資料一樣，原本在這支手機上、匯出檔裡沒有的資料都不在了，本機身分也是匯出檔裡的那一個。同步資料也在內，所以匯入之後：匯出檔裡的共同帳本是共同帳本，其中的唯讀副本仍是唯讀副本、原因不變，其他群組都不是；每筆紀錄每個單位的值和時間戳記、刪除紀錄、待上傳的事件連同它們的事件 ID 和順序、不套用的事件留下的紀錄，都是匯出檔裡的；匯出之後才寫下的待上傳事件，和匯出之後的其他修改一樣不在了。
 
 #### Scenario: 新手機
 
@@ -278,13 +300,18 @@ WHEN 使用者在確認框按「Replace」，the mobile app SHALL 在一個 tran
 
 #### Scenario: 匯入自己之前的匯出檔，手機上有共同帳本
 
-- **WHEN** Taylor 的手機把 Brisbane 改名為「Brissie」，套用了 Lunch 的第一個事件和一個標題是空字串、所以不套用的事件，然後匯出；之後再把群組改名為「Sydney」、讓 Tokyo 也變成共同帳本、又套用一個不套用的事件，再匯入自己剛才的匯出檔
+- **WHEN** Taylor 的手機把 Brisbane 改名為「Brissie」，套用了 Lunch 的第一個事件和一個標題是空字串、所以不套用的事件，然後匯出；之後再把群組改名為「Sydney」、又套用一個不套用的事件，再匯入自己剛才的匯出檔
 - **THEN** 待上傳的事件只有改名為「Brissie」的那一個，事件 ID 和匯出時一樣；不套用的事件留下的紀錄只有匯出時的那一筆；群組叫 Brissie，Lunch 還在；之後替 Tokyo 改名不寫事件，替 Brissie 改名寫出一個事件，名稱根據的版本是改名為「Brissie」那個事件的時間戳記
 
-#### Scenario: 新手機匯入有共同帳本的匯出檔
+#### Scenario: 重裝之後匯入自己的匯出檔
 
-- **WHEN** 一支第一次打開 app 的手機匯入上面那個匯出檔，再替 Brissie 改名
+- **WHEN** Taylor 的手機重裝了 app，本機資料是新的，secure store 裡它的 seed 和 Brisbane 的群組鑰匙都還在；它匯入上面那個匯出檔，再替 Brissie 改名
 - **THEN** 匯入之後這支手機待上傳的事件、不套用的事件留下的紀錄都和匯出時一樣；改名寫出的事件屬於 Brisbane 的群組 ID，時間戳記的裝置 ID 是 `phone-a`，名稱根據的版本是改名為「Brissie」那個事件的時間戳記
+
+#### Scenario: 匯出檔裡的唯讀副本
+
+- **WHEN** Taylor 的手機上 Brisbane 成為唯讀副本、原因是不是成員之後匯出；再匯入這個匯出檔
+- **THEN** Brisbane 仍是唯讀副本，原因是不是成員
 
 ### Requirement: BACKUP-27.1 匯入不讓手機看過的最新時間戳記倒退
 
@@ -297,18 +324,83 @@ WHEN 使用者在確認框按「Replace」，the mobile app SHALL 在寫入匯�
 
 #### Scenario: 匯出檔裡的比較晚
 
-- **WHEN** Taylor 的手機套用時間戳記是 `T+360000/0/phone-b` 的 Lunch 的第一個事件之後才匯出；一支第一次打開 app 的手機，或一支有自己的共同帳本 Osaka（在校正後的時間 T 變成共同帳本，裝置 ID 是 `phone-s`）的手機匯入這個匯出檔，在校正後的時間 T+120000 把 Brisbane 改名為「Sydney」
-- **THEN** 兩支手機上，這個事件的時間戳記都是 `T+360000/1/phone-a`
+- **WHEN** Taylor 的手機套用時間戳記是 `T+360000/0/phone-b` 的 Lunch 的第一個事件之後才匯出；它重裝了 app，本機資料是新的，secure store 裡它的 seed 和 Brisbane 的群組鑰匙都還在；它匯入這個匯出檔，在校正後的時間 T+120000 把 Brisbane 改名為「Sydney」
+- **THEN** 這個事件的時間戳記是 `T+360000/1/phone-a`
 
 #### Scenario: 匯出檔沒有共同帳本
 
-- **WHEN** Taylor 的手機寫過時間戳記 `T+360000/1/phone-a` 的事件之後，匯入 Taylor 的資料的匯出檔，它沒有共同帳本；在校正後的時間 T+120000，Brisbane 變成共同帳本，裝置 ID 是 `phone-a`，再把它改名為「Sydney」
+- **WHEN** Taylor 的手機寫過時間戳記 `T+360000/1/phone-a` 的事件之後，Brisbane 成為唯讀副本；它匯入 Taylor 的資料的匯出檔，它沒有共同帳本；在校正後的時間 T+120000，Brisbane 變成共同帳本，裝置 ID 是 `phone-a`，再把它改名為「Sydney」
 - **THEN** 這個事件的時間戳記和名稱根據的版本，毫秒都是 T+360000
 
 #### Scenario: 兩邊都沒有
 
 - **WHEN** 沒有共同帳本的手機匯入 Taylor 的資料的匯出檔，在校正後的時間 T+120000，Brisbane 變成共同帳本，再把它改名為「Sydney」
 - **THEN** 這個事件的時間戳記和名稱根據的版本，毫秒都是 T+120000
+
+### Requirement: BACKUP-28.1 匯入之後這支手機在裡面的共同帳本會不見時，不能匯入
+
+IF 使用者選了一個可以匯入的匯出檔，而這支手機在裡面的共同帳本有任何一個，在匯出檔裡不是這支手機的共同帳本，THEN the mobile app SHALL 不跳出確認框，不寫入任何資料，本機資料和畫面都不變，並跳出標題「Leave Shared Groups First」的提示框。內容在這樣的共同帳本只有一個時是「This phone is still a member of <名稱>, and this file would remove that group from it. Leave the group first, then import the file again.」；有幾個時是「This phone is still a member of <名稱>, and this file would remove those groups from it. Leave them first, then import the file again.」，名稱依它們在這支手機上建立的先後，兩個時用「 and 」連接，三個以上時前面的用「, 」隔開、最後兩個用「 and 」連接。在匯出檔裡是這支手機的共同帳本，是指匯出檔的同步資料把同一個群組 ID 記成共同帳本，它在匯出檔裡不是唯讀副本，這支手機在裡面用的裝置 ID 也和本機資料裡的一樣。不能用的檔案和比 app 新的匯出檔先照 BACKUP-15.1 和 BACKUP-17.1 處理。
+
+不擋的話，匯入之後本機資料裡沒有那個共同帳本，或它成了唯讀副本，API 卻還把這支手機當成它的成員手機：別的成員看到一支不再同步的手機，要有人把它移除；這支手機之後用邀請連結再加入時，API 說它已經是成員（SHARING-222.1）。使用者先退出那個群組（groups 的 GROUPS-152.1），它成為唯讀副本，就可以匯入。這支手機自己的匯出檔，裡面那些共同帳本都還是它的，照常匯入，之後接著同步（SYNC-92.1）。
+
+#### Scenario: 加入之前的匯出檔
+
+- **WHEN** Taylor 的手機匯出之後，Tokyo 也變成共同帳本；選自己剛才的匯出檔
+- **THEN** 沒有跳出「Replace All Data?」；跳出「Leave Shared Groups First」，內容是「This phone is still a member of Tokyo, and this file would remove that group from it. Leave the group first, then import the file again.」；本機資料和之前完全一樣
+
+#### Scenario: 別支手機的匯出檔
+
+- **WHEN** 一支手機有自己的共同帳本 Osaka，裝置 ID 是 `phone-s`；選 Taylor 的手機的匯出檔，裡面沒有 Osaka
+- **THEN** 跳出「Leave Shared Groups First」，內容說的是 Osaka
+
+#### Scenario: 同一個群組，別支手機
+
+- **WHEN** Casey 的手機在 Brisbane 裡，裝置 ID 是 `phone-b`；選 Taylor 的手機的匯出檔，裡面 Brisbane 是共同帳本，裝置 ID 是 `phone-a`
+- **THEN** 跳出「Leave Shared Groups First」，內容說的是 Brisbane
+
+#### Scenario: 匯出檔裡它是唯讀副本
+
+- **WHEN** Taylor 的手機在 Brisbane 成為唯讀副本時匯出，之後它又在 Brisbane 裡；選那個匯出檔
+- **THEN** 跳出「Leave Shared Groups First」，內容說的是 Brisbane
+
+#### Scenario: 幾個群組
+
+- **WHEN** 這支手機依序建立了 Osaka、Kyoto 和 Nara，都是它在裡面的共同帳本；選一個裡面都沒有它們的匯出檔；或只有 Osaka 和 Nara 是
+- **THEN** 內容分別是「This phone is still a member of Osaka, Kyoto and Nara, and this file would remove those groups from it. Leave them first, then import the file again.」和「This phone is still a member of Osaka and Nara, and this file would remove those groups from it. Leave them first, then import the file again.」
+
+#### Scenario: 自己的匯出檔
+
+- **WHEN** Taylor 的手機在 Brisbane 裡，匯出之後又改了資料；選自己剛才的匯出檔
+- **THEN** 跳出「Replace All Data?」
+
+#### Scenario: 唯讀副本不擋
+
+- **WHEN** 這支手機的 Osaka 是唯讀副本，它沒有別的共同帳本；選 Taylor 的手機的匯出檔
+- **THEN** 跳出「Replace All Data?」
+
+### Requirement: BACKUP-29.1 匯入之後授權失效的手機上，匯出檔裡的共同帳本是唯讀副本
+
+WHEN 使用者在確認框按「Replace」，而匯入之後這支手機授權失效，也就是匯出檔有裝置身分的紀錄，它的裝置 ID 在這支手機的 secure store 裡沒有 seed（SHARING-29.1），the mobile app SHALL 在寫入匯出檔內容的同一個 transaction 裡，把匯出檔裡每個共同帳本記成唯讀副本，原因是授權失效（sync 的 SYNC-301.1、SYNC-302.1）；匯出檔裡已經是唯讀副本的，原因不變。所以匯入一完成，它們就只能看（groups 的 GROUPS-155.1、GROUPS-156.1），不等下一次同步：別支手機的匯出檔在這支手機上同步不了，中間寫下的變更永遠送不出去。它們待上傳的事件照匯出檔留著，不上傳。IF 這時 secure store 讀不了（SHARING-30.1），THEN the mobile app SHALL 照常匯入，不把共同帳本記成唯讀副本；之後的同步照 SYNC-301.1。WHILE 匯入之後這支手機不是授權失效——匯出檔沒有裝置身分的紀錄，或它的 seed 在這支手機的 secure store 裡——匯出檔裡的共同帳本 SHALL 照匯出檔，不因為匯入而成為唯讀副本：這支手機自己的匯出檔是這樣，它接著同步（SYNC-92.1），API 說它不是成員時才成為唯讀副本（SYNC-300.1）。
+
+#### Scenario: 別支手機的匯出檔
+
+- **WHEN** Taylor 的手機的匯出檔裡 Brisbane 是共同帳本，有一個待上傳的事件；一支第一次打開 app 的手機匯入它
+- **THEN** 匯入完成時 Brisbane 是唯讀副本，原因是授權失效；它的畫面的橫幅是「This phone can't sync this group anymore. This copy is read-only and won't update.」，下面是「1 change made on this phone was never sent to the group.」；那個待上傳的事件還在；app 沒有發出任何網路請求
+
+#### Scenario: 自己的匯出檔
+
+- **WHEN** Taylor 的手機重裝了 app，secure store 裡它的 seed 還在；它匯入自己的匯出檔
+- **THEN** Brisbane 不是唯讀副本，它的畫面有「Add expense」
+
+#### Scenario: 匯出檔裡已經是唯讀副本
+
+- **WHEN** 匯出檔裡 Brisbane 是唯讀副本，原因是不是成員，Tokyo 是共同帳本；一支第一次打開 app 的手機匯入它
+- **THEN** Brisbane 的原因仍是不是成員；Tokyo 是唯讀副本，原因是授權失效
+
+#### Scenario: secure store 讀不了
+
+- **WHEN** 讀 secure store 時它回報錯誤，一支手機匯入 Taylor 的手機的匯出檔
+- **THEN** 匯入完成，Brisbane 不是唯讀副本
 
 ### Requirement: BACKUP-14.1 匯入完成後回到 app 載入後的樣子，顯示匯入的資料
 
@@ -502,7 +594,7 @@ IF 使用者選的檔案是沒有損壞的 SQLite 資料庫檔，而它的版本
 
 ### Requirement: BACKUP-18.1 比 app 舊的匯出檔升級之後匯入
 
-WHEN 使用者選了一個版本比 app 舊的匯出檔，the mobile app SHALL 先在它的複本上跑它還沒跑過的 migration（ADR-0006），再把升級後的內容當成匯出檔，照 BACKUP-11.1 到 BACKUP-16.2 和 BACKUP-24.1 處理；確認框和同一個版本的匯出檔一樣，不另外說明它是舊版的。有一個 migration 跑不完的檔案是不能用的檔案（BACKUP-15.1）。
+WHEN 使用者選了一個版本比 app 舊的匯出檔，the mobile app SHALL 先在它的複本上跑它還沒跑過的 migration（ADR-0006），再把升級後的內容當成匯出檔，照 BACKUP-11.2 到 BACKUP-16.2 和 BACKUP-24.1 處理；確認框和同一個版本的匯出檔一樣，不另外說明它是舊版的。有一個 migration 跑不完的檔案是不能用的檔案（BACKUP-15.1）。
 
 #### Scenario: 還沒有圖表類型的 app 所匯出的檔案
 

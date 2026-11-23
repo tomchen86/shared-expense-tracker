@@ -1,9 +1,12 @@
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import {
+  addBackAlert,
   alertsShown,
   expectMembers,
+  lastAlertButtons,
   membersShown,
   openGroup,
+  pressAlertButton,
   removeMember,
   renameMember,
   screenOf,
@@ -74,6 +77,7 @@ import { tapTab } from './shell-tabs-app';
 import {
   LATER,
   YOU,
+  changed,
   created,
   eachTestGetsAPhone,
   leaveMembers,
@@ -974,5 +978,111 @@ describe('SHARING-204.1', () => {
       expect(alertsShown().at(-1)).toEqual([UNABLE_TO_DECLINE, OFFLINE]),
     );
     await releaseDecisions();
+  });
+});
+
+describe('SHARING-288.1', () => {
+  /**
+   * Blake was removed from Brisbane, and a phone asks to join as a new member under this
+   * name. Members is open; the row of the request is the first one.
+   */
+  async function someoneAsksAfterBlakeLeft(name = ' blake ') {
+    const started = await startWithInvite();
+    const { Blake } = await members('Brisbane');
+    await showMembers('Brisbane');
+    await removeMember('Blake');
+    await asks({ name });
+    await syncs();
+    const row = `${name.trim()}, ${NEW_MEMBER}`;
+    await waitFor(() => expect(membersShown()[0]).toBe(row));
+    return { ...started, row, blake: Blake };
+  }
+
+  test('[SHARING-288.1] asks whether to add a former member back before it approves a new member with his name, and sends nothing yet', async () => {
+    const { row } = await someoneAsksAfterBlakeLeft();
+    const menu = await tapMember(row);
+    const from = received().length;
+    const shown = alertsShown().length;
+
+    await menu!.choose(APPROVE);
+
+    expect(alertsShown().slice(shown)).toEqual([addBackAlert('Blake')]);
+    expect(lastAlertButtons()).toEqual(['Cancel', 'Add Back']);
+    expect(chunks(from)).toEqual([]);
+    expect(approvals(from)).toEqual([]);
+  });
+
+  test('[SHARING-288.1] approves once Add Back is pressed, and the phone joins as the former member, not as a second one', async () => {
+    const { row, blake } = await someoneAsksAfterBlakeLeft();
+    const menu = await tapMember(row);
+    const from = received().length;
+    const shown = alertsShown().length;
+    await menu!.choose(APPROVE);
+    expect(alertsShown().slice(shown)).toEqual([addBackAlert('Blake')]);
+
+    await pressAlertButton('Add Back');
+
+    await waitFor(() => expect(approvals(from)).toHaveLength(1));
+    await waitFor(() => expect(membersShown()).toContain('Blake, Joined'));
+    expect(membersShown().join('\n')).not.toMatch(/^blake/m);
+    expect((await members('Brisbane')).Blake).toBe(blake);
+    expect(Object.keys(await members('Brisbane')).sort()).toEqual([
+      'Blake',
+      'Casey',
+      'Taylor',
+    ]);
+  });
+
+  test('[SHARING-288.1] sends nothing, and keeps the request, when Cancel is pressed', async () => {
+    const { row } = await someoneAsksAfterBlakeLeft();
+    const menu = await tapMember(row);
+    const from = received().length;
+    const shown = alertsShown().length;
+    await menu!.choose(APPROVE);
+    expect(alertsShown().slice(shown)).toEqual([addBackAlert('Blake')]);
+
+    await pressAlertButton('Cancel');
+
+    expect(chunks(from)).toEqual([]);
+    expect(approvals(from)).toEqual([]);
+    expect(membersShown()[0]).toBe(row);
+    expect(await tapMember(row)).toMatchObject({
+      items: [APPROVE, DECLINE, CANCEL],
+    });
+  });
+
+  test("[SHARING-288.1] approves a new member whose name is no former member's without asking", async () => {
+    const { row } = await someoneAsksAfterBlakeLeft('Blake L');
+    const menu = await tapMember(row);
+    const from = received().length;
+    const shown = alertsShown().length;
+
+    await menu!.choose(APPROVE);
+
+    await waitFor(() => expect(approvals(from)).toHaveLength(1));
+    expect(alertsShown().slice(shown)).toEqual([]);
+  });
+
+  test("[SHARING-288.1] does not approve, and says the name is a member's, once another phone has added the former member back", async () => {
+    const { row, blake, brisbane } = await someoneAsksAfterBlakeLeft();
+    const menu = await tapMember(row);
+    const from = received().length;
+    const shown = alertsShown().length;
+    await menu!.choose(APPROVE);
+    expect(alertsShown().slice(shown)).toEqual([addBackAlert('Blake')]);
+    otherPhoneUploads(
+      brisbane,
+      changed('member', blake, otherStamp(LATER + 9_000), { removed: false }),
+    );
+
+    await pressAlertButton('Add Back');
+
+    await waitFor(() =>
+      expect(alertsShown().at(-1)).toEqual([
+        UNABLE_TO_APPROVE,
+        SAME_NAME('Blake'),
+      ]),
+    );
+    expect(approvals(from)).toEqual([]);
   });
 });

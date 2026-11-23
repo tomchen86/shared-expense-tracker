@@ -1,12 +1,14 @@
-import { fireEvent, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, waitFor } from '@testing-library/react-native';
+import { makeReadOnlyCopy, readOnlyCopyOf } from '../../src/sync';
 import {
+  addMember,
   alertsShown,
   expectMembers,
   expectOpen,
   isOpen,
   pressAlertButton,
 } from './group-details-app';
-import { cardNames } from './groups-app';
+import { cardNames, createGroup } from './groups-app';
 import { restart } from './ledger-expense-app';
 import { linesIn } from './ledger-expense-list-app';
 import {
@@ -46,10 +48,13 @@ import {
   NOT_SENT_OFFLINE,
   OFFLINE,
   ONLY_MEMBERS,
+  REPLACE_THIS_COPY,
+  REPLACE_YOUR_COPY,
   S,
   S2,
   SEND,
   TAYLORS_PHONE,
+  TAYLOR_ID,
   TITLE,
   TOKYO_LINK,
   WAITING,
@@ -61,6 +66,7 @@ import {
   chosen,
   eachTestGetsAJoiningPhone,
   hasSignedFields,
+  invites,
   isSending,
   joinButton,
   joinLines,
@@ -71,6 +77,8 @@ import {
   openRequest,
   pressInJoin,
   reads,
+  replaceThisCopy,
+  replaceYourCopy,
   requestCard,
   requested,
   rowsWith,
@@ -105,7 +113,16 @@ import {
 } from './sharing-outcome-app';
 import { allowWrites, failWrites, settle } from './shell-appearance-app';
 import { navigationBarTitles, tab, tapTab } from './shell-tabs-app';
-import { everything, setClock, showMembers } from './sync-app';
+import {
+  appDatabase,
+  everything,
+  groupId,
+  leaveMembers,
+  members,
+  setClock,
+  showMembers,
+  unsent as unsentEvents,
+} from './sync-app';
 
 // Runs on iOS. Each test starts the whole app on Dana's phone, which has sent a request to
 // join Brisbane, another phone's shared ledger (sharing-join-app). A member's phone answers
@@ -740,8 +757,8 @@ describe('SHARING-220.1', () => {
   });
 });
 
-describe('SHARING-219.1', () => {
-  test('[SHARING-219.1] is the new member in the group it joined, and sees who else has a phone', async () => {
+describe('SHARING-219.2', () => {
+  test('[SHARING-219.2] is the new member in the group it joined, and sees who else has a phone', async () => {
     await waiting();
     memberApproves();
     await comesBack();
@@ -763,7 +780,7 @@ describe('SHARING-219.1', () => {
     ]);
   });
 
-  test("[SHARING-219.1] is the member it picked, under that member's name", async () => {
+  test("[SHARING-219.2] is the member it picked, under that member's name", async () => {
     await waiting('Casey');
     memberApproves();
     await comesBack();
@@ -781,8 +798,8 @@ describe('SHARING-219.1', () => {
   });
 });
 
-describe('SHARING-219.1', () => {
-  test('[SHARING-219.1] keeps the request and no group when the snapshot cannot be written, and joins on Try Again once it can', async () => {
+describe('SHARING-219.2', () => {
+  test('[SHARING-219.2] keeps the request and no group when the snapshot cannot be written, and joins on Try Again once it can', async () => {
     await waiting();
     memberApproves();
     afterTheAnswerTo(isChunk, failWrites);
@@ -1145,5 +1162,132 @@ describe('SHARING-140.2', () => {
     expect(asked().length).toBeGreaterThan(before);
     expect(rowsWith(CODE_A, S)).toEqual([]);
     await waitFor(() => expect(isOpen(TITLE)).toBe(false));
+  });
+});
+
+describe('SHARING-289.1', () => {
+  const JOINED = [
+    'Taylor, Joined',
+    'Casey',
+    'Blake',
+    'Dana (You)',
+    'Add Member',
+  ];
+
+  test('[SHARING-289.1] [SHARING-226.2] replaces a read-only copy with the snapshot once the phone is approved again, without the change the copy never sent', async () => {
+    await waiting();
+    memberApproves();
+    await comesBack();
+    await waitFor(() => expect(hasBrisbane()).toBe(true));
+    // Evan is added while the phone has no network, and then the phone loses its access.
+    goOffline();
+    await showMembers('Brisbane');
+    await addMember('Evan');
+    await leaveMembers('Brisbane');
+    goOnline();
+    await act(async () => {
+      await makeReadOnlyCopy(appDatabase(), BRISBANE_ID, 'not-a-member');
+    });
+    await settle();
+    await tapTab('Settings');
+
+    await openLink(BRISBANE_LINK);
+    await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
+    const shown = alertsShown().length;
+    await pressInJoin(SEND);
+    expect(alertsShown().slice(shown)).toEqual([
+      [REPLACE_THIS_COPY, replaceThisCopy(1)],
+    ]);
+    await pressAlertButton(SEND);
+    await waitFor(() => expect(joinLines()).toContain(WAITING));
+    // Until a member approves, the copy is as it was.
+    expect(await readOnlyCopyOf(appDatabase(), BRISBANE_ID)).toEqual({
+      reason: 'not-a-member',
+      unsent: 1,
+    });
+    await closeJoin();
+    memberApproves();
+    await comesBack();
+
+    await waitFor(() => expect(rowsWith(CODE_A, S)).toEqual([]));
+    expect(await readOnlyCopyOf(appDatabase(), BRISBANE_ID)).toBeUndefined();
+    expect(await unsentEvents()).toEqual([]);
+    await tapTab('Groups');
+    await showMembers('Brisbane');
+    await expectMembers(JOINED);
+  });
+
+  test("[SHARING-289.1] [SHARING-226.2] replaces the phone's own copy of the group with the snapshot once it is approved, and keeps it until then", async () => {
+    await startAs();
+    await tapTab('Groups');
+    await createGroup('Brisbane');
+    await showMembers('Brisbane');
+    await addMember('Casey');
+    await leaveMembers('Brisbane');
+    const own = await groupId('Brisbane');
+    const ids = await members('Brisbane');
+    invites(
+      CODE_A,
+      S,
+      {
+        name: 'Brisbane',
+        members: [
+          { id: TAYLOR_ID, name: 'Taylor', hasDevice: true },
+          { id: ids.Casey, name: 'Casey', hasDevice: false },
+        ],
+      },
+      own,
+    );
+    await tapTab('Settings');
+    await openLink(BRISBANE_LINK);
+    await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
+    const shown = alertsShown().length;
+    await pressInJoin(SEND);
+    expect(alertsShown().slice(shown)).toEqual([
+      [REPLACE_YOUR_COPY, replaceYourCopy('Brisbane')],
+    ]);
+    await pressAlertButton(SEND);
+    await waitFor(() => expect(joinLines()).toContain(WAITING));
+    await closeJoin();
+    expect(await members('Brisbane')).toEqual(ids);
+
+    memberApproves({ groupId: own });
+    await comesBack();
+
+    await waitFor(() => expect(rowsWith(CODE_A, S)).toEqual([]));
+    await tapTab('Groups');
+    await waitFor(() => expect(cardNames()).toEqual(['Open Brisbane']));
+    await showMembers('Brisbane');
+    await expectMembers(JOINED);
+    expect(everything().groups).toHaveLength(1);
+    expect(JSON.stringify(everything())).not.toContain(ids.Casey);
+  });
+
+  test('[SHARING-289.1] keeps a read-only copy as it was when the request is declined', async () => {
+    await waiting();
+    memberApproves();
+    await comesBack();
+    await waitFor(() => expect(hasBrisbane()).toBe(true));
+    await act(async () => {
+      await makeReadOnlyCopy(appDatabase(), BRISBANE_ID, 'not-a-member');
+    });
+    await settle();
+    const groups = everything().groups;
+    const groupMembers = everything().group_members;
+    await tapTab('Settings');
+    await openLink(BRISBANE_LINK);
+    await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
+    await send();
+    await closeJoin();
+
+    memberRejects();
+    await comesBack();
+
+    await waitFor(() => expect(rowsWith(CODE_A, S)).toEqual([]));
+    expect(await readOnlyCopyOf(appDatabase(), BRISBANE_ID)).toMatchObject({
+      reason: 'not-a-member',
+    });
+    expect(everything().groups).toEqual(groups);
+    expect(everything().group_members).toEqual(groupMembers);
   });
 });

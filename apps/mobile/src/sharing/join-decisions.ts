@@ -75,11 +75,14 @@ export const listReceivedJoinRequests: (
 /**
  * Approves `request`, as pressing Approve in the menu that was opened for it does
  * (SHARING-195.1): the approval names the content the request held when it was listed.
+ * `addBack` is the former member the user chose to add back in place of a new member
+ * (SHARING-288.1, issue 143): the approval then carries no new member (SHARING-196.2).
  */
 export const approveJoinRequest: (
   database: Database,
   groupId: string,
   request: ReceivedJoinRequest,
+  addBack?: string,
 ) => Promise<ApproveResult> = notBuilt;
 
 /** Rejects `request`, as pressing Decline in its menu does (SHARING-201.1). */

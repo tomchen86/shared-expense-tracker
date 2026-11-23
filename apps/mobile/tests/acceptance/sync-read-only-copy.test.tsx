@@ -1,7 +1,15 @@
-import { act, screen, waitFor, within } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import { readOnlyCopyOf } from '../../src/sync';
 import {
+  NO_ARCHIVED,
   READ_ONLY,
+  contentButton,
   contentButtons,
   openArchivedGroup,
   openArchivedGroups,
@@ -12,10 +20,13 @@ import {
   alertsShown,
   barItems,
   expectMembers,
+  goBackFrom,
   isOpen,
+  lastAlertButtonStyles,
   longPressLargeTitle,
   openGroup,
   openMembers,
+  pressAlertButton,
   textsOn,
 } from './group-details-app';
 import {
@@ -24,6 +35,7 @@ import {
   openEditExpense,
   openNewExpense,
   press,
+  restart,
   titleField,
 } from './ledger-expense-app';
 import {
@@ -63,15 +75,23 @@ import {
   thisPhoneIsRemoved,
 } from './sharing-removal-app';
 import { expenseScreen, openTrash, openTrashed } from './ledger-trash-app';
+import {
+  allowWrites,
+  failWrites,
+  holdWrites,
+  settle,
+} from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
 import {
   YOU,
   appDatabase,
   categoriesLines,
   eachTestGetsAPhone,
+  everything,
   expenseTitled,
   groupId,
   leaveMembers,
+  members,
   openGroupCategories,
   showMembers,
   unsent,
@@ -155,6 +175,20 @@ const NO_CHANGE =
 const HISTORY_OF_A_COPY =
   'Payments and shares are preserved as read-only history.';
 const CATEGORIES_OF_A_COPY = 'Read-only copy. Categories are read-only.';
+const DELETE_COPY = 'Delete Copy';
+const DELETE_THIS_COPY = 'Delete This Copy?';
+const deleteMessage = (unsentChanges = 0) =>
+  unsentChanges === 0
+    ? "This copy and its expenses will be deleted from this phone. This can't be undone."
+    : `This copy and its expenses will be deleted from this phone, including ${
+        unsentChanges === 1
+          ? '1 change that was'
+          : `${unsentChanges} changes that were`
+      } never sent to the group. This can't be undone.`;
+const DELETE_FAILED = [
+  'Unable to Delete Copy',
+  'The copy could not be deleted. Please try again.',
+];
 
 /** The lines of a group's card on the Groups root. */
 const cardLines = (group: string) =>
@@ -175,6 +209,34 @@ async function withLunch() {
   await syncs();
   return brisbane;
 }
+
+/** Brisbane is a read-only copy because the phone was removed, and its screen is open on the Groups tab. */
+async function copyIsOpen(group = 'Brisbane') {
+  await thisPhoneIsRemoved(group);
+  await tapTab('Groups');
+  await openGroup(group);
+  await waitFor(() => expect(textsOn(group)).toContain(NO_MEMBER_BANNER));
+}
+
+async function pressDeleteCopy(group = 'Brisbane') {
+  await fireEvent.press(contentButton(group, DELETE_COPY));
+  await settle();
+}
+
+/** Presses Delete Copy and then Delete in the alert that asks. */
+async function deleteCopy(group = 'Brisbane') {
+  const shown = alertsShown().length;
+  await pressDeleteCopy(group);
+  expect(alertsShown().slice(shown)).toHaveLength(1);
+  await pressAlertButton('Delete');
+}
+
+/** The names of the group cards on the Groups root. */
+const groupCards = () =>
+  screen
+    .getAllByRole('button')
+    .map((button) => button.props.accessibilityLabel as string)
+    .filter((name) => /^Open /.test(name ?? ''));
 
 const secondsPass = (seconds: number) =>
   act(async () => {
@@ -340,7 +402,11 @@ describe('GROUPS-155.1', () => {
     await openGroup('Brisbane');
 
     await waitFor(() =>
-      expect(textsOn('Brisbane')).toEqual([NO_MEMBER_BANNER, NO_EXPENSES]),
+      expect(textsOn('Brisbane')).toEqual([
+        NO_MEMBER_BANNER,
+        DELETE_COPY,
+        NO_EXPENSES,
+      ]),
     );
     expect(textsOn('Brisbane')).not.toContain(READ_ONLY);
   });
@@ -366,6 +432,7 @@ describe('GROUPS-155.1', () => {
         expect(textsOn('Brisbane')).toEqual([
           NO_MEMBER_BANNER,
           neverSent(count),
+          DELETE_COPY,
           NO_EXPENSES,
         ]),
       );
@@ -420,6 +487,252 @@ describe('GROUPS-156.1', () => {
       expect(textsOn('Members')).toEqual(['Taylor (You)', 'Casey', 'Blake']),
     );
     expect(contentButtons('Members')).toEqual([]);
+  });
+});
+
+describe('GROUPS-157.1', () => {
+  test('[GROUPS-157.1] asks before it deletes a read-only copy, and changes nothing until then', async () => {
+    await startSynced(GROUPS);
+    await copyIsOpen();
+    const before = everything();
+    const shown = alertsShown().length;
+
+    await pressDeleteCopy();
+
+    expect(alertsShown().slice(shown)).toEqual([
+      [DELETE_THIS_COPY, deleteMessage()],
+    ]);
+    expect(lastAlertButtonStyles()).toEqual([
+      ['Cancel', 'cancel'],
+      ['Delete', 'destructive'],
+    ]);
+    expect(everything()).toEqual(before);
+  });
+
+  test.each([
+    [1, ['Dana']],
+    [3, ['Dana', 'Evan', 'Finn']],
+  ])(
+    '[GROUPS-157.1] says in the alert how many changes were never sent: %s',
+    async (count, added) => {
+      await startSynced(GROUPS);
+      goOffline();
+      await showMembers('Brisbane');
+      for (const name of added) await addMember(name);
+      await leaveMembers('Brisbane');
+      goOnline();
+      await copyIsOpen();
+      const shown = alertsShown().length;
+
+      await pressDeleteCopy();
+
+      expect(alertsShown().slice(shown)).toEqual([
+        [DELETE_THIS_COPY, deleteMessage(count)],
+      ]);
+    },
+  );
+
+  test('[GROUPS-157.1] keeps the copy, and everything the phone holds, when Cancel is pressed', async () => {
+    await startSynced(GROUPS);
+    await copyIsOpen();
+    const before = everything();
+    await pressDeleteCopy();
+
+    await pressAlertButton('Cancel');
+
+    expect(textsOn('Brisbane')).toEqual([
+      NO_MEMBER_BANNER,
+      DELETE_COPY,
+      NO_EXPENSES,
+    ]);
+    expect(await copyOf('Brisbane')).toMatchObject({ reason: 'not-a-member' });
+    expect(everything()).toEqual(before);
+  });
+
+  test('[GROUPS-157.1] has Delete Copy on an archived read-only copy too', async () => {
+    await startSynced(GROUPS);
+    await thisPhoneIsRemoved();
+    await archiveGroup('Brisbane');
+
+    await openArchivedGroups();
+    await openArchivedGroup('Brisbane');
+
+    await waitFor(() =>
+      expect(textsOn('Brisbane')).toEqual([
+        NO_MEMBER_BANNER,
+        DELETE_COPY,
+        NO_EXPENSES,
+      ]),
+    );
+  });
+
+  test('[GROUPS-157.1] has no Delete Copy on a group that is no read-only copy', async () => {
+    await startSynced(GROUPS, ['Brisbane', 'Tokyo']);
+    await copyIsOpen('Brisbane');
+    expect(textsOn('Brisbane')).toContain(DELETE_COPY);
+    await goBackFrom('Brisbane');
+
+    await openGroup('Tokyo');
+
+    expect(textsOn('Tokyo')).not.toContain(DELETE_COPY);
+  });
+});
+
+describe('GROUPS-158.1', () => {
+  test('[GROUPS-158.1] deletes the copy and everything the phone holds for it, with no request, and goes back to the Groups root', async () => {
+    await startSynced(GROUPS, ['Brisbane', 'Tokyo']);
+    const brisbane = await withLunch();
+    const ids = await members('Brisbane');
+    const lunch = await expenseTitled('Lunch');
+    await copyIsOpen();
+    const before = everything();
+    const from = mark();
+
+    await deleteCopy();
+
+    await waitFor(() => expect(isOpen('Brisbane')).toBe(false));
+    expect(groupCards()).toEqual(['Open Tokyo']);
+    const after = everything();
+    const held = JSON.stringify(after);
+    for (const id of [brisbane, lunch.id, ...Object.values(ids)]) {
+      expect(held).not.toContain(id);
+    }
+    expect(after.sync_clock).toEqual(before.sync_clock);
+    expect(after.groups).toEqual(
+      before.groups.filter((row) => !row.includes(brisbane)),
+    );
+    expect(after.local_identity).toEqual(before.local_identity);
+    expect(requestsFor(brisbane, from)).toEqual([]);
+    await tapTab('Expenses');
+    expect(screen.queryByText('Lunch')).toBeNull();
+  });
+
+  test('[GROUPS-158.1] deletes the changes that were never sent with the copy', async () => {
+    await startSynced(GROUPS);
+    goOffline();
+    await showMembers('Brisbane');
+    await addMember('Dana');
+    await addMember('Evan');
+    await leaveMembers('Brisbane');
+    goOnline();
+    await copyIsOpen();
+    expect(await unsent()).toHaveLength(2);
+
+    await deleteCopy();
+
+    await waitFor(() => expect(isOpen('Brisbane')).toBe(false));
+    expect(await unsent()).toEqual([]);
+  });
+
+  test("[GROUPS-158.1] deletes the copy's expenses in the Trash", async () => {
+    await startSynced(GROUPS);
+    await withLunch();
+    await tapTab('Groups');
+    await openGroup('Brisbane');
+    await deleteFromGroup('Brisbane', 'Lunch');
+    await syncs();
+    await goBackFrom('Brisbane');
+    await copyIsOpen();
+
+    await deleteCopy();
+
+    await waitFor(() => expect(isOpen('Brisbane')).toBe(false));
+    expect(everything().expenses).toEqual([]);
+    await openTrash();
+    expect(screen.queryByText('Lunch')).toBeNull();
+  });
+
+  test('[GROUPS-158.1] goes back to Archived Groups after deleting an archived copy', async () => {
+    await startSynced(GROUPS);
+    await thisPhoneIsRemoved();
+    await archiveGroup('Brisbane');
+    await openArchivedGroups();
+    await openArchivedGroup('Brisbane');
+    await waitFor(() =>
+      expect(textsOn('Brisbane')).toContain(NO_MEMBER_BANNER),
+    );
+
+    await deleteCopy();
+
+    await waitFor(() =>
+      expect(textsOn('Archived Groups')).toEqual([NO_ARCHIVED]),
+    );
+  });
+
+  test('[GROUPS-158.1] has no copy, and asks the API nothing about it, after a restart', async () => {
+    const app = await startSynced(GROUPS, ['Brisbane', 'Tokyo']);
+    const brisbane = await groupId('Brisbane');
+    await copyIsOpen();
+    await deleteCopy();
+    await waitFor(() => expect(isOpen('Brisbane')).toBe(false));
+    const from = mark();
+
+    await restart(app);
+    await tapTab('Groups');
+
+    expect(groupCards()).toEqual(['Open Tokyo']);
+    expect(requestsFor(brisbane, from)).toEqual([]);
+  });
+
+  test("[GROUPS-158.1] shows an open detail of the copy's expense as not found once the copy is deleted", async () => {
+    await startSynced(GROUPS);
+    await withLunch();
+    await tapTab('Expenses');
+    await openDetails('Lunch');
+    await copyIsOpen();
+
+    await deleteCopy();
+    await waitFor(() => expect(isOpen('Brisbane')).toBe(false));
+    await tapTab('Expenses');
+
+    await waitFor(() => expect(detailLines()).toEqual(['Expense not found.']));
+  });
+});
+
+describe('GROUPS-159.1', () => {
+  test('[GROUPS-159.1] says the copy could not be deleted, and keeps it, when the write fails', async () => {
+    await startSynced(GROUPS);
+    await withLunch();
+    await copyIsOpen();
+    const before = everything();
+    failWrites();
+    const shown = alertsShown().length;
+
+    await deleteCopy();
+
+    expect(alertsShown().slice(shown + 1)).toEqual([DELETE_FAILED]);
+    expect(textsOn('Brisbane')).toEqual(
+      expect.arrayContaining([NO_MEMBER_BANNER, DELETE_COPY]),
+    );
+    expect(isDisabled(contentButton('Brisbane', DELETE_COPY))).toBe(false);
+    expect(everything()).toEqual(before);
+  });
+
+  test('[GROUPS-159.1] deletes the copy when Delete is pressed again after writes recover', async () => {
+    await startSynced(GROUPS);
+    await copyIsOpen();
+    failWrites();
+    await deleteCopy();
+    allowWrites();
+
+    await deleteCopy();
+
+    await waitFor(() => expect(isOpen('Brisbane')).toBe(false));
+    expect(groupCards()).toEqual(['Open Tokyo']);
+  });
+
+  test('[GROUPS-159.1] disables Delete Copy while the copy is being deleted', async () => {
+    await startSynced(GROUPS);
+    await copyIsOpen();
+    const writes = holdWrites();
+
+    await deleteCopy();
+
+    expect(isDisabled(contentButton('Brisbane', DELETE_COPY))).toBe(true);
+    await writes.release();
+    await settle();
+    await waitFor(() => expect(isOpen('Brisbane')).toBe(false));
+    expect(alertsShown().at(-1)).toEqual([DELETE_THIS_COPY, deleteMessage()]);
   });
 });
 

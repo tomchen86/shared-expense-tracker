@@ -14,7 +14,7 @@ import { openDatabaseFile } from '../storage/expo-files';
 import { latestStamp, saveLatestStamp } from '../sync/records';
 import { CREATE_EXPORT_TABLE, EXPORT_TABLE } from './export';
 
-/** What the confirmation says about an export file (BACKUP-11.1). */
+/** What the confirmation says about an export file (BACKUP-11.2). */
 export interface ExportFileSummary {
   exportedAt: Date;
   /** Archived groups too. */

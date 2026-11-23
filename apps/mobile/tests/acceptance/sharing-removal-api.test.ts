@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer';
 import { randomBytes } from 'node:crypto';
 import { deriveKey, openBox, sealBox } from '@shared-expense/domain/crypto';
 import {
+  approvalsBy,
   asks,
   boxKeyOf,
   boxSecretOf,
@@ -20,6 +21,7 @@ import {
   NOW,
   addExpense,
   answerNext,
+  copyOfData,
   created,
   drewFromTheRandomSource,
   fromHex,
@@ -35,6 +37,7 @@ import {
   opened,
   refusals,
   requestHolds,
+  restoreData,
   saveKey,
   secureStoreEntry,
   sentBy,
@@ -153,6 +156,19 @@ async function danaIn(): Promise<Joined> {
     key: invite.key,
     ids: await memberIds(invite.taylor),
   };
+}
+
+/** A new invite of Taylor's phone: the one from before a removal is revoked by then (SHARING-284.1). */
+async function invitesAgain({
+  invite,
+  taylor,
+  brisbane,
+}: Joined): Promise<Inviting> {
+  const again = await on(taylor, () =>
+    taylor.sharing.prepareInvite(taylor.database, brisbane),
+  );
+  if (typeof again === 'string') throw new Error(`No invite: ${again}`);
+  return { ...invite, code: again.code, secret: again.secret };
 }
 
 const remove = ({ taylor, brisbane }: Joined, memberId: string) =>
@@ -658,9 +674,9 @@ describe('SHARING-278.1', () => {
 
   test('[SHARING-278.1] names the epoch it has reached the next time it asks, which lets the API drop the boxes before it', async () => {
     const world = await evanRemoved();
-    const { invite, dana, ids } = world;
+    const { dana, ids } = world;
     await sync(dana);
-    const { phone: finn } = await joins(invite, 'Finn', {
+    const { phone: finn } = await joins(await invitesAgain(world), 'Finn', {
       memberId: ids.Blake,
     });
     expect(await hasGroup(finn)).toBe(true);
@@ -1047,5 +1063,178 @@ describe('SYNC-304.1', () => {
         content: null,
       },
     ]);
+  });
+});
+
+// Coming back (ADR-0042)
+
+/**
+ * Dana's phone was removed and holds a read-only copy; meanwhile Taylor's phone added
+ * Lunch. Dana's phone asks to join again under its own name, as a new member, and Taylor's
+ * phone approves it by adding Dana back. `from` marks the requests before the approval.
+ */
+async function danaIsApprovedAgain() {
+  const world = await danaIn();
+  const { taylor, dana, D, brisbane, ids } = world;
+  expect(await remove(world, ids.Dana)).toEqual({ outcome: 'removed' });
+  await sync(taylor);
+  await sync(dana);
+  await addExpense(taylor, { title: 'Lunch' });
+  await sync(taylor);
+  const invite = await invitesAgain(world);
+  await asks(dana, invite);
+  await sync(taylor);
+  await sync(taylor);
+  const request = (
+    await on(taylor, () =>
+      taylor.sharing.listReceivedJoinRequests(taylor.database, brisbane),
+    )
+  ).find(({ deviceId }) => deviceId === D);
+  if (!request) throw new Error('Taylor’s phone lists no such request');
+  const from = mark();
+  expect(
+    await on(taylor, () =>
+      taylor.sharing.approveJoinRequest(
+        taylor.database,
+        brisbane,
+        request,
+        ids.Dana,
+      ),
+    ),
+  ).toEqual({ outcome: 'approved' });
+  return { ...world, invite, from };
+}
+
+describe('SHARING-196.2', () => {
+  test('[SHARING-196.2] [SHARING-288.1] an approval that adds a former member back carries the change to his record and the roster entry that names him, and no new member', async () => {
+    const { taylor, A, D, brisbane, ids, from } = await danaIsApprovedAgain();
+
+    const [approval] = await approvalsBy(taylor, from);
+
+    expect(approval.epoch).toBe(2);
+    const key = keyOf(taylor, brisbane, 2);
+    const sent = approval.events.map(({ id, content }) => {
+      const plaintext = opened(
+        key,
+        { groupId: brisbane, eventId: id, deviceId: A, epoch: 2 },
+        fromHex(content),
+      );
+      if (!plaintext) throw new Error('An event of the approval does not open');
+      return JSON.parse(Buffer.from(plaintext).toString('utf8')) as {
+        type: string;
+        id: string;
+        units: Record<string, { value: unknown; base?: unknown }>;
+      };
+    });
+    expect(sent.map(({ type, id }) => [type, id])).toEqual([
+      ['member', ids.Dana],
+      ['device', D],
+    ]);
+    expect(sent[0].units).toEqual({
+      removed: { value: false, base: expect.objectContaining({ device: A }) },
+    });
+    expect(sent[1].units.member.value).toMatchObject({ memberId: ids.Dana });
+  });
+});
+
+describe('SHARING-289.1', () => {
+  test('[SHARING-289.1] [SHARING-219.2] a removed phone that is approved again takes the snapshot in place of its copy, and is the member it was', async () => {
+    const { taylor, dana, brisbane, ids, invite } = await danaIsApprovedAgain();
+
+    expect(
+      await on(dana, () =>
+        dana.sharing.askJoinResult(dana.database, invite.code),
+      ),
+    ).toMatchObject({ outcome: 'joined' });
+    await sync(dana);
+    await sync(taylor);
+
+    expect(await copyOn(dana, brisbane)).toBeUndefined();
+    expect(await titles(dana)).toContain('Lunch');
+    const ledger = await ledgerOf(dana);
+    expect(namesOf(ledger.members).sort()).toEqual([
+      'Blake',
+      'Casey',
+      'Dana',
+      'Taylor',
+    ]);
+    expect(ledger.members.find(({ name }) => name === 'Dana')?.id).toBe(
+      ids.Dana,
+    );
+    expect(namesOf(ledger.formerMembers)).not.toContain('Dana');
+    expect(namesOf((await ledgerOf(taylor)).members).sort()).toEqual(
+      namesOf(ledger.members).sort(),
+    );
+    // What the phone adds from now on reaches the group.
+    await addExpense(dana, { title: 'Taxi' });
+    await sync(dana);
+    await sync(taylor);
+    expect(await titles(taylor)).toContain('Taxi');
+  });
+
+  test('[SHARING-289.1] keeps the copy, with what it never sent, while its request waits', async () => {
+    const world = await danaIn();
+    const { taylor, dana, brisbane, ids } = world;
+    goOffline();
+    await addExpense(dana, { title: 'Snack' });
+    goOnline();
+    expect(await remove(world, ids.Dana)).toEqual({ outcome: 'removed' });
+    await sync(taylor);
+    await sync(dana);
+    const held = async () => ({
+      copy: await copyOn(dana, brisbane),
+      titles: await titles(dana),
+      unsent: await unsent(dana),
+    });
+    const before = await held();
+    expect(before.copy).toEqual({ reason: 'not-a-member', unsent: 1 });
+    const invite = await invitesAgain(world);
+
+    await asks(dana, invite);
+    expect(
+      await on(dana, () =>
+        dana.sharing.askJoinResult(dana.database, invite.code),
+      ),
+    ).toMatchObject({ outcome: 'waiting' });
+
+    expect(await held()).toEqual(before);
+  });
+});
+
+describe('SYNC-305.1', () => {
+  test('[SYNC-305.1] takes the key epoch of the events it opens once its local data went back to before a rotation, and asks for the next key from there', async () => {
+    const world = await danaIn();
+    const { invite, taylor, brisbane, ids } = world;
+    // Dana's phone at key epoch 1.
+    const copy = await copyOfData(world.dana);
+    await joins(invite, 'Evan', { memberId: ids.Casey });
+    await sync(world.dana);
+    expect(await remove(world, ids.Casey)).toEqual({ outcome: 'removed' });
+    await sync(taylor);
+    await sync(world.dana);
+    expect(secureStoreEntry(world.dana, keyEntry(brisbane, 2))?.value).toBe(
+      toHex(keyOf(taylor, brisbane, 2)),
+    );
+
+    // Its local data goes back; the secure store keeps both keys.
+    const dana = await restoreData(world.dana, copy);
+    await sync(dana);
+    await addExpense(dana, { title: 'Lunch' });
+    const from = mark();
+    await sync(dana);
+
+    expect(
+      (await uploads(dana, from)).map(({ epoch, status }) => [epoch, status]),
+    ).toEqual([[2, 200]]);
+
+    // The next rotation: the phone asks for the keys after the epoch it has reached.
+    await joins(await invitesAgain(world), 'Finn', { memberId: ids.Blake });
+    await sync(dana);
+    expect(await remove(world, ids.Blake)).toEqual({ outcome: 'removed' });
+    const asked = mark();
+    await sync(dana);
+
+    expect(await keyQuestionsBy(dana, asked)).toEqual(['?after=2']);
+    expect(secureStoreEntry(dana, keyEntry(brisbane, 3))).toBeDefined();
   });
 });
