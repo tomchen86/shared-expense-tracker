@@ -48,6 +48,7 @@ import {
   type Setup,
 } from './sync-loop-app';
 import {
+  answerNext as answerSnapshotRequest,
   contentFor,
   endSnapshotWorld,
   faultsLeft,
@@ -681,6 +682,82 @@ describe('SYNC-169.1', () => {
 
     expect(await titles(a)).toEqual(['Lunch']);
     expect(await noticesOf(a)).toEqual([]);
+    expect(await waits(a)).toBe(false);
+  });
+
+  /** Taylor's phone is behind, and Brisbane's screen shows the update line for the snapshot the group stores for it, of format version 2. */
+  async function lineShown(): Promise<Setup> {
+    const setup = await taylorBehind();
+    const { a, b, key } = setup;
+    await sentSnapshot(b, a);
+    const content = await snapshotFor(setup);
+    await plant(b, a, key, { ...content, version: 2 }, { sequence: 1 });
+    await sync(a);
+    expect(await noticesOf(a)).toEqual([UPDATE_NOTICE]);
+    return setup;
+  }
+
+  test.each<[string, () => void]>([
+    [
+      'the request that asks for the snapshot gets no answer',
+      () => noAnswerTo('GET', 'ask'),
+    ],
+    [
+      'the request that asks for the snapshot is answered with status 500',
+      () => answerSnapshotRequest('GET', 'ask', 500, ''),
+    ],
+    [
+      'the request that asks for the snapshot is answered with what is no snapshot',
+      () => answerSnapshotRequest('GET', 'ask', 200, '{}'),
+    ],
+    [
+      'the download of that snapshot’s chunk gets no answer this time',
+      () => noAnswerTo('GET', 0),
+    ],
+  ])('[SYNC-169.1] the line stays when %s', async (_case, arrange) => {
+    const { a } = await lineShown();
+    arrange();
+
+    await sync(a);
+
+    expect(faultsLeft()).toBe(0);
+    expect(await noticesOf(a)).toEqual([UPDATE_NOTICE]);
+    expect(await waits(a)).toBe(true);
+  });
+
+  test('[SYNC-169.1] the line goes once the phone is told the group stores no snapshot for it, and the ledger still waits', async () => {
+    const setup = await lineShown();
+    const { a } = setup;
+    // Thirty-one days on, the cleanup takes that snapshot (SYNC-148.1).
+    everyClockAt(setup, AWAY + 31 * DAY);
+    await cleanUpAt(AWAY + 31 * DAY);
+    const from = mark();
+
+    await sync(a);
+
+    expect((await sentBy(a, from)).map(({ status }) => status)).toEqual([
+      410, 404,
+    ]);
+    expect(await noticesOf(a)).toEqual([]);
+    expect(await waits(a)).toBe(true);
+  });
+
+  test('[SYNC-169.1] the line goes once the group stores another snapshot for the phone, before the phone has read it', async () => {
+    const { a, b } = await lineShown();
+    // Casey's phone uploads its snapshot again, in the format version this app knows.
+    await sentSnapshot(b, a);
+    noAnswerTo('GET', 0);
+
+    await sync(a);
+
+    expect(faultsLeft()).toBe(0);
+    expect(await noticesOf(a)).toEqual([]);
+    expect(await waits(a)).toBe(true);
+    expect(await titles(a)).toEqual([]);
+
+    await sync(a);
+
+    expect(await titles(a)).toEqual(['Lunch']);
     expect(await waits(a)).toBe(false);
   });
 });
