@@ -34,7 +34,7 @@ On the API:
 - `GET /invites/<code>` is a public route, which supersedes ADR-0026's decision that it is a signed request. It takes no signature, ignores one that is sent, counts towards no device's limit, and changes nothing in the database. It answers as before: the expiry and the card of an active invite, and one refusal for every other code.
 - A join request belongs to an invite and a device. `PUT /invites/<code>/request` stores the request of the device that signed it, or replaces the content of the one it has, so a retry is safe. `DELETE /invites/<code>/request` removes it, and answers the same when there is none.
 - The API keeps the invite's code, the device ID, the time and the content, which it cannot read: 41 to 65,536 bytes, as an event or a card.
-- An invite has requests only while it is active. Revoking an invite deletes its requests. An expired invite's requests no longer count, and how long their rows stay is for #155.
+- An invite has requests only while it is active. Revoking an invite deletes its requests. An expired invite's requests no longer count, and the cleanup deletes them, whether or not the invite's card is still there (SYNC-151.1, ADR-0033).
 - An invite holds at most 20 requests, the number of members a group can have. A device that is a member device of the invite's group is refused, with a reason of its own.
 - A refusal names the first of: the checks every signed request passes (ADR-0022), how the request is written, no such invite, already a member, too many requests.
 

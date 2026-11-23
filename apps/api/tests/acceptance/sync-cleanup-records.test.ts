@@ -22,12 +22,16 @@ import {
   CODE_B,
   NO_INVITE,
   WEEK,
+  brisbaneInvitesCasey,
   card,
   expectCard,
   expectInvite,
   expectInviteRefused,
+  expectRequestAnswered,
+  joinRequest,
   putInvite,
   readInvite,
+  sendRequest,
   taylorWithBrisbaneAndCasey,
 } from './sharing-invites-api';
 import {
@@ -40,8 +44,9 @@ import {
 import { DAY, cleanUpAt, valuesAddedSince } from './sync-cleanup-api';
 
 // What the cleanup deletes besides events (ADR-0033): the card of an invite that has
-// expired, and what the checks of signed requests keep about a request and a
-// registration once they can no longer use it (ADR-0015, ADR-0022, ADR-0026).
+// expired and the join requests under it (ADR-0032), and what the checks of signed
+// requests keep about a request and a registration once they can no longer use it
+// (ADR-0015, ADR-0022, ADR-0026).
 
 useSyncApi();
 
@@ -104,6 +109,46 @@ describe('SYNC-142.1', () => {
     expect(await timesStored(y)).toBe(1);
     setTime(T + 7 * DAY);
     expectCard(await readInvite(taylor, CODE_B), T + 10 * DAY, y);
+  });
+});
+
+describe('SYNC-151.1', () => {
+  test('[SYNC-151.1] deletes the join requests of an invite once the invite has expired, not a millisecond before', async () => {
+    const [, casey] = await brisbaneInvitesCasey();
+    const other = await registered();
+    const p = joinRequest();
+    const q = joinRequest();
+    expectRequestAnswered(await sendRequest(casey, CODE_A, p), CODE_A);
+    setTime(T + DAY);
+    expectRequestAnswered(await sendRequest(other, CODE_A, q), CODE_A);
+
+    await cleanUpAt(T + WEEK - 1);
+    expect(await timesStored(p)).toBe(1);
+    expect(await timesStored(q)).toBe(1);
+
+    await cleanUpAt(T + WEEK);
+    expect(await timesStored(p)).toBe(0);
+    expect(await timesStored(q)).toBe(0);
+  });
+
+  test('[SYNC-151.1] leaves the join requests of an invite that has not expired', async () => {
+    const [taylor, casey] = await brisbaneInvitesCasey();
+    expectCreated(await createGroup(casey, TOKYO), TOKYO);
+    const p = joinRequest();
+    const q = joinRequest();
+    expectRequestAnswered(await sendRequest(casey, CODE_A, p), CODE_A);
+    setTime(T + 3 * DAY);
+    expectInvite(
+      await putInvite(casey, TOKYO, CODE_B, card()),
+      CODE_B,
+      T + 10 * DAY,
+    );
+    expectRequestAnswered(await sendRequest(taylor, CODE_B, q), CODE_B);
+
+    await cleanUpAt(T + 7 * DAY);
+
+    expect(await timesStored(p)).toBe(0);
+    expect(await timesStored(q)).toBe(1);
   });
 });
 
