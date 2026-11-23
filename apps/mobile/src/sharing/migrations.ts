@@ -11,3 +11,16 @@ export const sharingMigrations: readonly string[] = [
     clockOffsetMs INTEGER NOT NULL DEFAULT 0
   )`,
 ];
+
+/** The applicant's copy survives a restart or export, including an unacknowledged PUT. */
+export const joinRequestMigration = `
+  CREATE TABLE join_requests (
+    position INTEGER PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE,
+    secret TEXT NOT NULL,
+    groupName TEXT NOT NULL,
+    name TEXT NOT NULL,
+    memberId TEXT,
+    sent INTEGER NOT NULL DEFAULT 0 CHECK (sent IN (0, 1))
+  );
+`;

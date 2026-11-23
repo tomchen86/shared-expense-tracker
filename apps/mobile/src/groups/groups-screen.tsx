@@ -13,6 +13,7 @@ import { SwipeScrollView } from '../ui/swipe-action';
 import { useDisplayLocale } from '../ui/use-display-locale';
 import { groupCardLines } from './format-balance';
 import { GroupCard } from './group-card';
+import { JoinRequestCards } from './join-request-cards';
 import { useGroups } from './use-groups';
 import { useGroupArchive } from './use-group-archive';
 import { useRequireName } from './use-require-name';
@@ -56,6 +57,7 @@ export function GroupsScreen() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
       >
+        <JoinRequestCards />
         {activeGroups?.length === 0 ? (
           <Text style={[styles.empty, { color: colors.textMuted }]}>
             No groups yet. Tap + to create a group.
