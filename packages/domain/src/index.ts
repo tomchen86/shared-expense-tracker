@@ -5,4 +5,26 @@ export * from './insights/insights';
 export * from './categories/categories';
 export * from './groups/amounts';
 export * from './groups/members';
-export * from './sync/sync';
+export {
+  checkSyncEvent,
+  compareSyncStamps,
+  MAX_SYNC_PLAINTEXT_BYTES,
+  mergeSyncEvent,
+  nextSyncStamp,
+  overridesSyncMoney,
+  sameSyncUnitValue,
+  syncRecordValues,
+  type SyncChange,
+  type SyncDeletion,
+  type SyncEvent,
+  type SyncMerge,
+  type SyncMoney,
+  type SyncMoneyChange,
+  type SyncRecord,
+  type SyncRecordType,
+  type SyncRefusal,
+  type SyncStamp,
+  type SyncUnits,
+  type SyncVerdict,
+} from './sync/sync';
+export * from './sync/snapshot';
