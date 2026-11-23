@@ -67,7 +67,7 @@ export function ReviewButton({
 
 /**
  * The button that says how many changes weren't applied to the group, and opens
- * Changes Not Applied (GROUPS-170.1).
+ * Changes Not Applied (GROUPS-170.2).
  */
 export function UnappliedButton({
   count,
