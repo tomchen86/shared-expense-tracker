@@ -60,7 +60,7 @@ module.exports = {
     './apps/mobile/src/groups/review-button.tsx': { branches: 75 },
     // Possible duplicates (ADR-0035): the pairing rule, the ledger read and save, and the card.
     './packages/domain/src/sync/duplicates.ts': { branches: 91.66 },
-    './apps/mobile/src/sync/duplicates.ts': { branches: 90 },
+    './apps/mobile/src/sync/duplicates.ts': { branches: 100 },
     './apps/mobile/src/ledger/expense-card.tsx': { branches: 87.5 },
     // The phone's sync with the API (ADR-0027): the loop, the check of unsent stamps, and
     // what starts a sync and shows its notices. Measured with the tests against the API
