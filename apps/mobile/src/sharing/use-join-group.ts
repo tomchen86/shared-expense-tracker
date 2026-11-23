@@ -16,9 +16,11 @@ import { askJoinResult, type JoinResult } from './join-decisions';
 import {
   cannotUse,
   groupForLink,
+  offline,
   parseInviteLink,
   readJoinInvite,
   wentWrong,
+  type CardUnread,
   type InviteNotice,
   type JoinCard,
 } from './join-invite';
@@ -82,12 +84,6 @@ function navigateToGroup(group: { id: string; archived: number }) {
   );
 }
 
-const cannotReadCard: InviteNotice = {
-  kind: 'notice',
-  message: 'Connect to the internet to join this group.',
-  retry: true,
-};
-
 export function useJoinGroup() {
   const db = useLocalDatabase();
   const { userId } = useLocalIdentity();
@@ -98,8 +94,9 @@ export function useJoinGroup() {
   const [sending] = useState(() => new Map<string, Promise<SendResult>>());
   const [cancelling] = useState(() => new Map<string, Promise<CancelResult>>());
   const [asking] = useState(() => new Map<string, Promise<JoinResult>>());
-  // The card each request's last question read, for the form that chooses again.
-  const [cards] = useState(() => new Map<string, JoinCard>());
+  // The card each request's last question read, for the form that chooses again, or why
+  // it read none. In memory only (SHARING-212.1).
+  const [cards] = useState(() => new Map<string, JoinCard | CardUnread>());
   const close = useCallback(() => {
     active.current = undefined;
     setPage(null);
@@ -144,9 +141,19 @@ export function useJoinGroup() {
       }
       if (request.outcome === 'choose-again') {
         const card = cards.get(request.code);
-        if (card) return { kind: 'form', card, link, again: request };
+        if (typeof card === 'object')
+          return { kind: 'form', card, link, again: request };
         // The form shows the card as it is now, which only the question reads.
-        return asked ? { ...cannotReadCard, link } : { kind: 'loading' };
+        if (!asked) return { kind: 'loading' };
+        const noAnswer =
+          asked.outcome === 'no-answer' ||
+          (asked.outcome !== 'failed' && card === 'no-answer');
+        return {
+          kind: 'notice',
+          message: noAnswer ? offline : wentWrong,
+          retry: true,
+          link,
+        };
       }
       // A question that follows a refusal as a member, and finds nothing out (SHARING-140.2).
       const reason = !afterSend
@@ -172,7 +179,11 @@ export function useJoinGroup() {
         // Before the question: a request that ends keeps its place, and loses its code.
         const before = requestByCode(db, code).catch(() => undefined);
         job = askJoinResult(db, code, {
-          onCard: (card) => cards.set(code, card),
+          // A card that was read stays, whatever a later question reads.
+          onCard: (card) => {
+            if (typeof card === 'object' || typeof cards.get(code) !== 'object')
+              cards.set(code, card);
+          },
           onApproved: () => {
             changed();
             void before.then((request) => {

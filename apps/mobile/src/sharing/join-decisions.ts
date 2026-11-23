@@ -56,7 +56,7 @@ import { prepareSigningDevice, sendApiRequest } from './api-request';
 import { readCorrectedTime, type SigningDevice } from './device-identity';
 import { storeGroupKey } from './group-key';
 import type { InviteCredentials } from './invite-card';
-import { readInviteCard, type JoinCard } from './join-invite';
+import { readInviteCard, type CardUnread, type JoinCard } from './join-invite';
 import {
   REQUEST_PURPOSE,
   requestByCode,
@@ -528,10 +528,12 @@ export async function approveJoinRequest(
     if (stopped) return stopped;
     const device = await signingDevice(database);
     const [invite] = await database.all<InviteCredentials>(
-      'SELECT id AS code, secret FROM group_invites WHERE groupId = ? AND id = ?',
-      [groupId, request.code],
+      `SELECT id AS code, secret FROM group_invites
+       WHERE groupId = ? AND id = ? AND expiresAtMs > ?`,
+      [groupId, request.code, await readCorrectedTime(database)],
     );
-    // An invite this phone no longer holds was revoked, and its requests went with it.
+    // The sync brought its revocation, or it has expired: the API holds none of its
+    // requests any more (SHARING-200.1).
     if (!invite) return { outcome: 'answered' };
     if (device === 'lost') return { outcome: 'failed' };
 
@@ -779,8 +781,8 @@ async function join(
 
 /** What the screen that shows a request hears of while the question about it is on its way. */
 export interface JoinProgress {
-  /** The invite's card as it is now, read because the request still waits. */
-  onCard?: (card: JoinCard) => void;
+  /** The invite's card as it is now, read because the request still waits, or why it was not read. */
+  onCard?: (card: JoinCard | CardUnread) => void;
   /** The request was approved, and this phone starts to join. */
   onApproved?: () => void;
 }
@@ -837,10 +839,12 @@ export async function askJoinResult(
   // It waits: the API has it, whatever this phone knew. A member can approve it only
   // while it fits the card, so the person is asked to choose again when it does not.
   // A card that cannot be read, gone or not, changes nothing (SHARING-211.1).
-  const card = await readInviteCard(request).catch(() => undefined);
-  if (card) progress.onCard?.(card);
+  const card = await readInviteCard(request).catch(
+    (): CardUnread => 'unreadable',
+  );
+  progress.onCard?.(card);
   const outcome =
-    card === undefined
+    typeof card === 'string'
       ? (request.outcome ?? null)
       : fitsCard(card, request)
         ? null

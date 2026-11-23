@@ -16,6 +16,7 @@ import { cardCipher, type InviteCredentials } from './invite-card';
 export const cannotUse =
   "This invite link can't be used. Ask the person who sent it to send it again.";
 export const wentWrong = 'Something went wrong. Try again later.';
+export const offline = 'Connect to the internet to join this group.';
 const hasACopy =
   "This phone already has its own copy of this group, so it can't join it.";
 
@@ -96,12 +97,7 @@ async function fetchCard(
       { method: 'GET', credentials: 'omit' },
       GIVE_UP_AFTER_MS,
     ));
-  if (!answer)
-    return {
-      kind: 'notice',
-      message: 'Connect to the internet to join this group.',
-      retry: true,
-    };
+  if (!answer) return { kind: 'notice', message: offline, retry: true };
   const said = jsonIn(answer.body);
   if (answer.status !== 200 || !isReadInviteResponse(said)) {
     if (
@@ -128,12 +124,16 @@ async function fetchCard(
   return isCard(card) ? card : { kind: 'notice', message: cannotUse };
 }
 
-/** The invite's card as the API holds it now; nothing when it cannot be read. */
+/** Why an invite's card was not read: the request got no answer, or one that holds no card. */
+export type CardUnread = 'no-answer' | 'unreadable';
+
+/** The invite's card as the API holds it now, or why it was not read. */
 export async function readInviteCard(
   link: InviteCredentials,
-): Promise<JoinCard | undefined> {
+): Promise<JoinCard | CardUnread> {
   const card = await fetchCard(link);
-  return 'kind' in card ? undefined : card;
+  if (!('kind' in card)) return card;
+  return card.message === offline ? 'no-answer' : 'unreadable';
 }
 
 export async function readJoinInvite(
