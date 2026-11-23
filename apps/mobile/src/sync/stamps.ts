@@ -8,7 +8,13 @@ import { readCorrectedTime } from '../sharing/device-identity';
 import type { SqlExecutor, SqlValue } from '../storage';
 import { renameOwnMoney } from './own-money';
 import { orderSyncedRows } from './positions';
-import { readSyncRecord, saveLatestStamp, storeSyncRecord } from './records';
+import {
+  CONFIRMED_EVENT_IDS,
+  UNSENT_EVENTS,
+  readSyncRecord,
+  saveLatestStamp,
+  storeSyncRecord,
+} from './records';
 
 // The checks of an unsent event's stamp (ADR-0016, ADR-0027). A stamp more than 5 minutes
 // ahead of the corrected time is replaced before any other phone sees it, wherever the
@@ -43,7 +49,7 @@ async function readUnsent(
   parameters: readonly SqlValue[] = [],
 ): Promise<Unsent[]> {
   const rows = await tx.all<Omit<Unsent, 'event'>>(
-    `SELECT position, id, groupId, content FROM sync_outbox ${where} ORDER BY position`,
+    `SELECT position, id, groupId, content FROM ${UNSENT_EVENTS} ${where} ORDER BY position`,
     parameters,
   );
   return rows.map((row) => ({
@@ -214,7 +220,9 @@ export async function checkUnsentStamps(tx: SqlExecutor): Promise<Set<string>> {
   const unchecked = await readUnsent(tx, 'WHERE checked = 0');
   if (unchecked.length === 0) return new Set();
   const moved = await replaceStampsAhead(tx, unchecked);
-  await tx.run('UPDATE sync_outbox SET checked = 1 WHERE checked = 0');
+  await tx.run(
+    `UPDATE sync_outbox SET checked = 1 WHERE checked = 0 AND id NOT IN (${CONFIRMED_EVENT_IDS})`,
+  );
   return moved;
 }
 
@@ -247,7 +255,10 @@ export async function takeUploadedStamps(
   const rows = await readUnsent(tx, these, parameters);
   if (rows.length === 0) return new Set();
   // Checked whether or not the stamp differs: no later check may give it another.
-  await tx.run(`UPDATE sync_outbox SET checked = 1 ${these}`, parameters);
+  await tx.run(
+    `UPDATE sync_outbox SET checked = 1 ${these} AND id NOT IN (${CONFIRMED_EVENT_IDS})`,
+    parameters,
+  );
   const renames = new Map(
     rows.map((row) => [row.position, uploaded.get(row.id)!]),
   );

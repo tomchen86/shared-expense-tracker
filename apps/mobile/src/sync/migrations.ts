@@ -82,3 +82,11 @@ export const inviteMigration = `
     secret TEXT NOT NULL
   );
 `;
+
+/** A confirmed outbox row is held until its page arrives, or queued again at resendPosition. */
+export const syncUploadedEventsMigration = `
+  CREATE TABLE sync_uploaded_events (
+    eventId TEXT PRIMARY KEY NOT NULL REFERENCES sync_outbox(id) ON DELETE CASCADE,
+    resendPosition INTEGER
+  );
+`;
