@@ -4321,7 +4321,7 @@ WHEN API 回答同意了，the mobile app SHALL 把申請記成同意了還沒�
 
 ### Requirement: SHARING-217.2 先存下 box 裡的群組鑰匙，再匯入快照
 
-WHEN box 打開了，the mobile app SHALL 把裡面每一把群組鑰匙寫進 secure store 名稱是 `group-key.<群組 ID>.<鑰匙世代>` 的項目（SYNC-66.1），設定和 SHARING-93.1 一樣，再替那個群組匯入快照（SYNC-121.1 到 SYNC-128.3、SHARING-218.1、SHARING-219.2）。這時那個群組還不是這支手機上的共同帳本，所以鑰匙不是照 SYNC-94.1 存的：匯入讓它成為共同帳本，這支手機在它的鑰匙世代是快照的（SYNC-124.2）。鑰匙在這支手機用它解任何事件之前就驗證過：它來自打得開的 box，而且解得開那份快照；解不開快照時（SYNC-123.1）群組沒有成為共同帳本，這支手機不下載它的事件。IF 鑰匙存不進 secure store，THEN the mobile app SHALL 不匯入，加入沒有做完，原因是出了問題。IF 本機資料已經有群組 ID 是回應的 `groupId` 的群組，它是唯讀副本或不是共同帳本的群組，而這個申請沒有記著它（SHARING-226.2），THEN the mobile app SHALL 不存任何鑰匙，不問那個群組有沒有快照，加入沒有做完，原因是出了問題，那個群組和之前一樣：它不是使用者送出申請時答應取代的那一份，裝 box 的人就算有邀請的字串，也換不掉它。申請記著它時照常存下鑰匙，匯入時取代它（SHARING-289.1）。
+WHEN box 打開了，the mobile app SHALL 把裡面每一把群組鑰匙寫進 secure store 名稱是 `group-key.<群組 ID>.<鑰匙世代>` 的項目（SYNC-66.1），設定和 SHARING-93.1 一樣，再替那個群組匯入快照（SYNC-121.1 到 SYNC-128.3、SHARING-218.1、SHARING-219.2）。這時那個群組還不是這支手機上的共同帳本，所以鑰匙不是照 SYNC-94.1 存的：匯入讓它成為共同帳本，這支手機在它的鑰匙世代是快照的（SYNC-124.2）。鑰匙在這支手機用它解任何事件之前就驗證過：它來自打得開的 box，而且解得開那份快照；解不開快照時（SYNC-123.1）群組沒有成為共同帳本，這支手機不下載它的事件。IF 鑰匙存不進 secure store，THEN the mobile app SHALL 不匯入，加入沒有做完，原因是出了問題。IF 本機資料已經有群組 ID 是回應的 `groupId` 的群組，而它不是這個申請記著的副本（SHARING-226.2）——它是這支手機還在裡面的共同帳本，或是申請沒有記著的唯讀副本，或是申請沒有記著、不是共同帳本的群組——THEN the mobile app SHALL 不存任何鑰匙，不問那個群組有沒有快照，加入沒有做完，原因是出了問題，那個群組和 secure store 裡它的群組鑰匙都和之前一樣：裝 box 的人就算有邀請的字串，也換不掉這支手機已經在的共同帳本的鑰匙，和使用者送出申請時沒有答應取代的那一份。它是申請記著的副本時照常存下鑰匙，匯入時取代它（SHARING-289.1）。
 
 #### Scenario: 鑰匙在 secure store
 
@@ -4337,6 +4337,11 @@ WHEN box 打開了，the mobile app SHALL 把裡面每一把群組鑰匙寫進 s
 
 - **WHEN** box 打開了，secure store 這時卻寫不進去；恢復之後按「Try Again」
 - **THEN** 先是 API 沒有收到問快照的請求，Join Group 顯示「Something went wrong. Try again later.」和「Try Again」；按了之後加入好了
+
+#### Scenario: 同意指的是這支手機還在裡面的共同帳本
+
+- **WHEN** Dana 的手機替自己的群組 Tokyo 建立過邀請，Tokyo 是共同帳本，secure store 裡有它鑰匙世代 1 的群組鑰匙；它申請加入 Brisbane，得知同意時，回應的 `groupId` 是 Tokyo 的群組 ID，box 打得開，裡面是別的鑰匙
+- **THEN** secure store 裡 Tokyo 鑰匙世代 1 的群組鑰匙和之前一樣，沒有別的群組鑰匙；API 沒有收到問快照的請求；Join Group 顯示同意了和「Something went wrong. Try again later.」
 
 #### Scenario: 同意指的是申請沒有記著的群組
 

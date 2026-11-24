@@ -29,6 +29,8 @@ import {
   keepAnswersBack,
   requestsOnApi,
   revokedByAnotherPhone,
+  closeInvite,
+  invited,
   secondsPass,
 } from './sharing-invite-app';
 import {
@@ -1000,6 +1002,32 @@ describe('SHARING-217.2', () => {
     expect(groupKeys()).toEqual([]);
     expect(requestsReceived().filter(isSnapshotQuestion)).toEqual([]);
     expect(rowsWith(tokyo)).toEqual(before);
+  });
+
+  test('[SHARING-217.2] keeps the key of a shared ledger the phone is in when the approval names that ledger, and asks for no snapshot', async () => {
+    await waiting();
+    // Tokyo is a shared ledger of this phone: its first invite made it one, with a key.
+    await tapTab('Groups');
+    await createGroup('Tokyo');
+    await invited('Tokyo');
+    await closeInvite();
+    await leaveMembers('Tokyo');
+    const tokyo = await groupId('Tokyo');
+    const keys = groupKeys();
+    expect(keys.map(({ key }) => key)).toEqual([`group-key.${tokyo}.1`]);
+    const from = requestsReceived().length;
+    memberApproves({
+      groupId: tokyo,
+      boxContent: { keys: [{ epoch: 1, key: 'ab'.repeat(32) }] },
+    });
+
+    await openRequest('Brisbane');
+
+    await expectJoinLines([APPROVED, 'Brisbane', WENT_WRONG, 'Try Again']);
+    expect(groupKeys()).toEqual(keys);
+    expect(requestsReceived().slice(from).filter(isSnapshotQuestion)).toEqual(
+      [],
+    );
   });
 });
 
