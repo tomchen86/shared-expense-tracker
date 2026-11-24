@@ -14,7 +14,7 @@ On 2026-11-24 the owner tried inviting, asking and approving on two real phones,
 
 Joining is the one moment in this app when two people look at their phones at once and each waits for the other. The pushes that would tell them are not built (#152, #153), need accounts and keys the project does not have yet, and are delivered at the platform's discretion; a user can also turn notifications off.
 
-What a request costs: the API takes a lock on the device and writes a row for every signed request it accepts (ADR-0022), against a limit of 60 requests a minute for a device. Counted by reading `apps/api/src/sharing/devices.ts` and the routes, not measured, that is about six to nine statements a request. The managed database is billed by the time it is awake (ADR-0007); its provider's documentation says the free plan suspends it after five idle minutes, which nobody has checked on this project's database.
+What a request costs: the API takes a lock on the device and writes a row for every signed request it accepts (ADR-0022), against a limit of 60 requests a minute for a device. Counted by reading `apps/api/src/sharing/devices.ts` and the routes, not measured, that is about six to nine statements a request. The managed database sleeps when idle and costs almost nothing then (ADR-0007); its provider's documentation says the free plan suspends it after five idle minutes and counts the time it is awake, neither of which anybody has checked on this project's database.
 
 What the owner and the session weighed on 2026-11-25, before the owner decided:
 
@@ -40,7 +40,7 @@ Also considered:
 
 ## Decision
 
-- The proposal's sentence is read as a rule about syncing a shared ledger: no timer starts a sync, as ADR-0027 has it (SYNC-89.2). A request that syncs no ledger may be sent on a timer where a requirement says so. This supersedes the rejection in ADR-0039 of checking a request's state on a timer; the rest of ADR-0039 and all of ADR-0027 stand.
+- The proposal's sentence is read as a rule about syncing a shared ledger: no timer starts a sync of a ledger the phone holds, as ADR-0027 has it (SYNC-89.2). A request that syncs no ledger may be sent on a timer where a requirement says so. This supersedes the rejection in ADR-0039 of checking a request's state on a timer; the rest of ADR-0039 and all of ADR-0027 stand.
 - Two screens ask again on a timer, and only while the user sees them and the app is in the foreground:
   - A shared ledger's screen and its Members list the ledger's join requests again, under the conditions of SHARING-190.2 (SHARING-290.1).
   - Join Group, while it shows a request that waits for approval, asks what became of that request again, as SHARING-210.1 does (SHARING-291.1).
@@ -58,5 +58,5 @@ Also considered:
 - A phone still learns nothing while its app is closed or in the background, or while its user is on another screen: the card on the Groups root and the count on a group's screen change at the next sync or when their screen is opened. That is for #152 and #153.
 - "No timer asks the API" no longer holds as a general rule. A later issue that wants another request on a timer needs its own requirement and has to say why that screen is one a user waits on.
 - A cancellation that got no answer may have reached the API (SHARING-143.2). The question that follows a few seconds later then finds no request, and Join Group says the request was declined (SHARING-211.1), where before it said so only the next time the app or the request was opened. This is not changed here.
-- SYNC-89.1 said that the app asks the API for nothing on a timer while it is open. It becomes SYNC-89.2, which says that no timer starts a sync and names these two requirements as the only requests sent on one.
+- SYNC-89.1 said that the app asks the API for nothing on a timer while it is open. It becomes SYNC-89.2, which says that no timer starts a sync of a ledger the phone holds and names these two requirements as the only requests sent on one. A question on the timer that finds the request approved makes the phone join, which downloads the snapshot and syncs the ledger it has just joined (SHARING-219.2), as the same answer does when the app opens.
 - The existing tests of the two give-up rules (SHARING-145.1, SHARING-204.1) let more than 60 seconds pass on these screens, so they were changed to hold whatever the timer sends meanwhile.

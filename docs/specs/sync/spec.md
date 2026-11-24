@@ -3985,7 +3985,7 @@ WHEN 手機 app 替一個共同帳本存下了待上傳的事件，不論是哪�
 
 ### Requirement: SYNC-89.2 app 打開時每個共同帳本同步一次
 
-WHEN app 打開，the mobile app SHALL 為這支手機上的每個共同帳本各同步一次，封存的也算；不是共同帳本的群組和個人的資料不同步。除了 app 打開和存檔之後（SYNC-88.1），手機 app 不自己開始同步：沒有計時器開始同步。app 開著的時候，定時送給 API 的只有 sharing 的 SHARING-290.1 和 SHARING-291.1 的請求，它們不同步任何共同帳本，也不送事件 API 的請求。
+WHEN app 打開，the mobile app SHALL 為這支手機上的每個共同帳本各同步一次，封存的也算；不是共同帳本的群組和個人的資料不同步。除了 app 打開和存檔之後（SYNC-88.1），手機 app 不自己為這支手機上的共同帳本開始同步：沒有計時器替它們開始同步。app 開著的時候，每隔一段時間送給 API 的只有 sharing 的 SHARING-290.1 和 SHARING-291.1 的請求，這些請求本身不同步這支手機上已經有的共同帳本，也不是事件 API 的請求。SHARING-291.1 問到申請被同意了的時候，手機 app 照 sharing 的 SHARING-219.2 加入那個群組，並同步這個剛加入的共同帳本，和 app 打開時問到同意了一樣。
 
 #### Scenario: 啟動
 
