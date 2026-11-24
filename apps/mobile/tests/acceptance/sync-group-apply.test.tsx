@@ -106,7 +106,7 @@ const addDinner = () =>
 
 // The group
 
-test("[SYNC-36.3] shows a shared ledger's name, changed on another phone, on its screen that is open, on its card and on its expenses", async () => {
+test("[SYNC-36.4] shows a shared ledger's name, changed on another phone, on its screen that is open, on its card and on its expenses", async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await addDinner();
@@ -134,7 +134,7 @@ test("[SYNC-36.3] shows a shared ledger's name, changed on another phone, on its
 
 // Members
 
-test('[SYNC-36.3] lists a member another phone added, with no user ID, in Members that is open and in the expense form', async () => {
+test('[SYNC-36.4] lists a member another phone added, with no user ID, in Members that is open and in the expense form', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await showMembers('Brisbane');
@@ -159,7 +159,7 @@ test('[SYNC-36.3] lists a member another phone added, with no user ID, in Member
   ]);
 });
 
-test('[SYNC-36.3] renames a member another phone renamed, and you too, still as you', async () => {
+test('[SYNC-36.4] renames a member another phone renamed, and you too, still as you', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   const ids = await members('Brisbane');
@@ -179,7 +179,7 @@ test('[SYNC-36.3] renames a member another phone renamed, and you too, still as 
   });
 });
 
-test('[SYNC-36.3] makes a member another phone removed a former member, with their payments and shares kept, and a member again once that phone adds them back', async () => {
+test('[SYNC-36.4] makes a member another phone removed a former member, with their payments and shares kept, and a member again once that phone adds them back', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   const ids = await members('Brisbane');
@@ -208,7 +208,7 @@ test('[SYNC-36.3] makes a member another phone removed a former member, with the
   await expectMembers([YOU, 'Casey', 'Blake', 'Add Member']);
 });
 
-test('[SYNC-36.3] keeps you a member on this phone when another phone removes your member, placed by that event', async () => {
+test('[SYNC-36.4] keeps you a member on this phone when another phone removes your member, placed by that event', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   const ids = await members('Brisbane');
@@ -224,7 +224,7 @@ test('[SYNC-36.3] keeps you a member on this phone when another phone removes yo
   expect((await groupNamed('Brisbane')).members.at(-1)).toEqual(you);
 });
 
-test('[SYNC-36.3] lists nothing of a member until both of their units have arrived', async () => {
+test('[SYNC-36.4] lists nothing of a member until both of their units have arrived', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   await showMembers('Brisbane');
@@ -244,7 +244,7 @@ test('[SYNC-36.3] lists nothing of a member until both of their units have arriv
   await expectMembers([YOU, 'Casey', 'Blake', 'Dana D.', 'Add Member']);
 });
 
-test('[SYNC-36.3] still lists the members as merged after a restart', async () => {
+test('[SYNC-36.4] still lists the members as merged after a restart', async () => {
   const app = await startShared();
   const brisbane = await groupId('Brisbane');
   const ids = await members('Brisbane');

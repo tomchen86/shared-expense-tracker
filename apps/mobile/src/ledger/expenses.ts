@@ -266,6 +266,8 @@ export interface GroupSplit {
 }
 
 export class ArchivedExpenseError extends Error {}
+/** The expense's group is a read-only copy: nothing of it is changed (LEDGER-221.1). */
+export class ReadOnlyCopyError extends Error {}
 
 /** Write the expense and its ordered allocations, keeping an existing expense's rowid. */
 export async function writeExpenseRows(
@@ -364,11 +366,17 @@ export async function saveExpense(
     // they have to be among them.
     let currentMembers: ReadonlySet<string> | undefined;
     if (split) {
-      const [group] = await transaction.all<{ archived: number }>(
-        'SELECT archived FROM groups WHERE id = ?',
+      const [group] = await transaction.all<{
+        archived: number;
+        readOnly: string | null;
+      }>(
+        `SELECT g.archived, s.readOnly FROM groups g
+         LEFT JOIN sync_groups s ON s.groupId = g.id WHERE g.id = ?`,
         [spaceId],
       );
       if (!group) throw new Error('Group not found');
+      // A copy that is archived too is a copy first (LEDGER-221.1).
+      if (group.readOnly) throw new ReadOnlyCopyError();
       if (group.archived) throw new ArchivedExpenseError();
       const members = await transaction.all<{ id: string; removed: number }>(
         'SELECT id, removed FROM group_members WHERE groupId = ?',

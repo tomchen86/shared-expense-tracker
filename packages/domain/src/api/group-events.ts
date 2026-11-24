@@ -97,7 +97,12 @@ export type GroupRefusal =
   /** The upload names another key epoch than the group's, which is `epoch`. */
   | { error: 'epoch'; epoch: number }
   /** The group cannot store the upload's new events within its limit. */
-  | { error: 'group-full' };
+  | { error: 'group-full' }
+  /**
+   * The group needs a new key before the API takes this request (SHARING-256.1). `devices`
+   * are its member devices: 1 to 20 device IDs, each once, the smallest first.
+   */
+  | { error: 'rotation-needed'; devices: string[] };
 
 export type GroupRefusalReason = GroupRefusal['error'];
 
@@ -106,7 +111,28 @@ export const GROUP_REFUSAL_STATUS: Record<GroupRefusalReason, number> = {
   'not-a-member': 403,
   epoch: 409,
   'group-full': 413,
+  'rotation-needed': 409,
 };
+
+/** The most member devices a group has, so the most such a refusal lists. */
+export const MEMBER_DEVICE_LIMIT = 20;
+
+/**
+ * Whether `value` lists member devices as the API does: 1 to 20 device IDs, each once,
+ * the smallest first, compared character by character.
+ */
+export function isMemberDeviceList(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length >= 1 &&
+    value.length <= MEMBER_DEVICE_LIMIT &&
+    everyItem(
+      value,
+      (device, index) =>
+        isId(device) && (index === 0 || (value[index - 1] as string) < device),
+    )
+  );
+}
 
 const isContent = (value: unknown) =>
   isHexContent(value, EVENT_CONTENT_MINIMUM, EVENT_CONTENT_LIMIT);
@@ -148,14 +174,14 @@ export function isUploadEventsRequest(
   );
 }
 
-/** Whether `value` is exactly what the API answers once a group is created (SYNC-62.1). */
+/** Whether `value` is exactly what the API answers once a group is created (SYNC-62.2). */
 export function isCreateGroupResponse(
   value: unknown,
 ): value is CreateGroupResponse {
   return hasExactly(value, ['groupId']) && isId(value.groupId);
 }
 
-/** Whether `value` is exactly what the API answers to an upload (SYNC-62.1). */
+/** Whether `value` is exactly what the API answers to an upload (SYNC-62.2). */
 export function isUploadEventsResponse(
   value: unknown,
 ): value is UploadEventsResponse {
@@ -172,7 +198,7 @@ export function isUploadEventsResponse(
   );
 }
 
-/** Whether `value` is exactly a page of events (SYNC-62.1). */
+/** Whether `value` is exactly a page of events (SYNC-62.2). */
 export function isEventsPageResponse(
   value: unknown,
 ): value is EventsPageResponse {
@@ -205,10 +231,15 @@ export function isEventsPageResponse(
   );
 }
 
-/** Whether `value` is exactly the body of one of the event API's own refusals (SYNC-62.1). */
+/** Whether `value` is exactly the body of one of the event API's own refusals (SYNC-62.2). */
 export function isGroupRefusal(value: unknown): value is GroupRefusal {
   if (hasExactly(value, ['error', 'epoch'])) {
     return value.error === 'epoch' && isWhole(value.epoch, 1);
+  }
+  if (hasExactly(value, ['error', 'devices'])) {
+    return (
+      value.error === 'rotation-needed' && isMemberDeviceList(value.devices)
+    );
   }
   return (
     hasExactly(value, ['error']) &&

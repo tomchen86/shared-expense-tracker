@@ -1038,7 +1038,7 @@ test('[GROUPS-171.1] adds a block while it is open when another change is refuse
 
 // Blocks of changes that are not expenses, and of changes that cannot be read
 
-test("[GROUPS-172.2] names the group's name that was entered, and the screen shows the name the group has", async () => {
+test("[GROUPS-172.3] names the group's name that was entered, and the screen shows the name the group has", async () => {
   const { brisbane } = await start();
   await renameGroupTo('Brisbane', 'Brissie');
   await refuseOwn(brisbane);
@@ -1054,7 +1054,7 @@ test("[GROUPS-172.2] names the group's name that was entered, and the screen sho
   ]);
 });
 
-test('[GROUPS-172.2] names the member: the name the event holds, or the name the member has now', async () => {
+test('[GROUPS-172.3] names the member: the name the event holds, or the name the member has now', async () => {
   const { brisbane } = await start();
   await addToGroup('Brisbane', 'Dana');
   await refuseOwn(brisbane);
@@ -1082,7 +1082,7 @@ test('[GROUPS-172.2] names the member: the name the event holds, or the name the
   ).toEqual(['Taylor', 'Casey', 'Blake']);
 });
 
-test('[GROUPS-172.2] names the category: the one whose deletion was refused, and one an event archived', async () => {
+test('[GROUPS-172.3] names the category: the one whose deletion was refused, and one an event archived', async () => {
   const { brisbane } = await start();
   const other = await categoryOf('Brisbane', 'Other');
   await openGroupCategories(brisbane);
@@ -1110,7 +1110,7 @@ test('[GROUPS-172.2] names the category: the one whose deletion was refused, and
   );
 });
 
-test('[GROUPS-172.2] names an invite, a "not a duplicate" record and a roster entry by their kind', async () => {
+test('[GROUPS-172.3] names an invite, a "not a duplicate" record and a roster entry by their kind', async () => {
   const { brisbane } = await start();
   const { Casey } = await members('Brisbane');
 
@@ -1128,7 +1128,7 @@ test('[GROUPS-172.2] names an invite, a "not a duplicate" record and a roster en
       }),
       LATER,
     ),
-    // The entry an approval writes for the phone that asked (SHARING-196.1).
+    // The entry an approval writes for the phone that asked (SHARING-196.2).
     uploadedHere(
       created('device', 'phone-c', ahead(2), {
         member: { memberId: Casey, userId: 'user-c', boxKey: 'bc'.repeat(32) },
@@ -1151,7 +1151,25 @@ test('[GROUPS-172.2] names an invite, a "not a duplicate" record and a roster en
   ]);
 });
 
-test('[GROUPS-172.2] says Member alone for a member the phone does not have', async () => {
+test('[GROUPS-172.3] names a roster entry that says a phone represents nobody as a member removal', async () => {
+  const { brisbane } = await start();
+
+  // The entry a rotation writes for a phone that left (SHARING-271.1).
+  await receiveEvents(
+    brisbane,
+    uploadedHere(
+      created('device', 'phone-c', ahead(), { member: null }),
+      LATER,
+    ),
+  );
+  expect((await unapplied()).map(({ reason }) => reason)).toEqual(['clock']);
+
+  await showSheet();
+
+  await expectBlocks([[GROUP_CHANGE, CLOCK_TEXT, 'Member removal', DISMISS]]);
+});
+
+test('[GROUPS-172.3] says Member alone for a member the phone does not have', async () => {
   const { brisbane } = await start();
 
   await receiveEvents(
@@ -1169,7 +1187,7 @@ test('[GROUPS-172.2] says Member alone for a member the phone does not have', as
   await expectBlocks([[GROUP_CHANGE, CLOCK_TEXT, 'Member', DISMISS]]);
 });
 
-test('[GROUPS-172.2] shows a change refused for its structure with a heading, the sentence and Dismiss alone', async () => {
+test('[GROUPS-172.3] shows a change refused for its structure with a heading, the sentence and Dismiss alone', async () => {
   const { brisbane } = await startWithLunch();
 
   await receiveEvents(

@@ -18,6 +18,7 @@ import {
   type Category,
 } from '../categories';
 import {
+  isReadOnlyGroup,
   listFormerMembers,
   listGroups,
   type Group,
@@ -27,6 +28,7 @@ import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { SyncEventTooLargeError } from '../sync/records';
 import {
   ArchivedExpenseError,
+  ReadOnlyCopyError,
   readExpenseToEdit,
   saveExpense,
   type Expense,
@@ -73,7 +75,7 @@ export function useExpenseFormData(
         groups,
         formerMembers,
         initialGroupId: groups.find(
-          (group) => group.id === initialGroupId && !group.archived,
+          (group) => group.id === initialGroupId && !isReadOnlyGroup(group),
         )?.id,
       };
     });
@@ -352,7 +354,12 @@ export function useExpenseForm({
       closingRef.current = true;
       close();
     } catch (error) {
-      if (error instanceof ArchivedExpenseError)
+      if (error instanceof ReadOnlyCopyError)
+        Alert.alert(
+          'Read-only Copy',
+          "This group is a read-only copy. Its expenses can't be changed.",
+        );
+      else if (error instanceof ArchivedExpenseError)
         Alert.alert(
           'Historical Shared Expense',
           'Restore its group before editing this expense.',

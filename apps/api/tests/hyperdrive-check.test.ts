@@ -61,6 +61,7 @@ test(
       'devices',
       'group_events',
       'group_invites',
+      'group_key_boxes',
       'group_members',
       'group_snapshots',
       'groups',

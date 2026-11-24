@@ -222,7 +222,8 @@ async function replaceStampsAhead(
 
 /**
  * Takes `count` stamps, one after another, for events of `device` that go to the API
- * without ever being unsent events: those of an approval (SHARING-196.1). The phone's
+ * without ever being unsent events: those of an approval and of a rotation of the group
+ * key (SHARING-196.2, SHARING-271.1). The phone's
  * latest stamp becomes the last of them at once, so no later change gets one of them.
  * They are checked as an unsent event's stamp is: when they are more than 5 minutes ahead
  * of the corrected time, they are replaced as SYNC-85.1 replaces those.

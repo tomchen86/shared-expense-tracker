@@ -40,6 +40,8 @@ Name top-level directories only. File paths go stale.
 - Only `apps/mobile/src/storage/` reaches the phone's files, share sheet, and file picker; tests put Node's file system and a share sheet and picker of their own in their place (ADR-0020).
 - Recording and changing data never needs the network, except changing which phones can open a shared ledger (ADR-0015); sync runs separately and never blocks a local save (ADR-0005).
 - The app contacts no server until the phone first creates or joins a shared ledger (ADR-0015).
+- A device leaves a shared ledger in one request, and a phone that stays gives the group a new key before the API stores anything else for it. A phone that lost access keeps what it held as a read-only copy (ADR-0041).
+- A phone that lost access comes back through an invite: the snapshot replaces the copy it held, and a member adds a returning person back as the member they were. An import is refused while it would leave a member device without its ledger, and a shared ledger from a file syncs only where the phone holds its seed (ADR-0042).
 - Ledger content reaches the server only end-to-end encrypted; the API never holds a key that opens it (ADR-0015).
 - Every phone merges sync events with pure functions in `packages/domain` and reaches the same result, whatever order the events arrive in (ADR-0016).
 - A phone takes back its own event that every phone refuses, from the result of what it has received, and lists it for its user until dismissed (ADR-0043).

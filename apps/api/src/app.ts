@@ -4,6 +4,7 @@ import { healthRoutes } from './health/routes';
 import type { AppLinks } from './sharing/app-links';
 import { decisionRoutes } from './sharing/decision-routes';
 import { inviteRoutes, publicInviteRoutes } from './sharing/invite-routes';
+import { removalRoutes } from './sharing/removal-routes';
 import { appLinkRoutes } from './sharing/routes';
 import { signedRequests } from './sharing/signed-requests';
 import { syncRoutes } from './sync/routes';
@@ -43,4 +44,5 @@ export const app = new Hono<AppEnv>()
   // The routes that take signed requests: each runs only once its request has passed.
   .route('/', inviteRoutes)
   .route('/', decisionRoutes)
+  .route('/', removalRoutes)
   .route('/', syncRoutes);

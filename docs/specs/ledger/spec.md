@@ -1573,7 +1573,7 @@ WHILE 修改的群組支出的付款人或分攤的人裡有前成員，the mobi
 
 #### Scenario: 加回來
 
-- **WHEN** 把 Blake 加回 Brisbane（GROUPS-34.3）之後，打開 Dinner 的 Edit Expense
+- **WHEN** 把 Blake 加回 Brisbane（GROUPS-34.4）之後，打開 Dinner 的 Edit Expense
 - **THEN** 都可以操作，沒有這句話
 
 ### Requirement: LEDGER-61.1 修改封存群組的支出時擋下
@@ -3258,7 +3258,7 @@ WHEN 支出清單或群組的畫面的期間換了，或它的自訂範圍的 Fr
 
 ### Requirement: LEDGER-120.1 每筆支出記著最後修改時間
 
-The mobile app SHALL 在本機資料替每筆支出記著最後修改時間，也就是這支手機最後一次寫入這筆支出的時刻：新增它（LEDGER-21.2、LEDGER-54.1）、存下它的修改（LEDGER-22.2、LEDGER-56.2）、把它移到垃圾桶或還原（LEDGER-71.3、LEDGER-75.5、LEDGER-79.5）、把它搬到另一個分類（CATEGORIES-40.1）、選 Use Mine 把你的那一組再存一次（LEDGER-154.1）時，是手機的時鐘當下的時刻；套用收到的事件讓它的單位到齊，或改了存著的這筆支出時（SYNC-29.2），是那個事件的時間戳記的毫秒，比原本記著的早時不改。沒有寫入這筆支出的事不改它，例如分類改了名稱或顏色、成員改了名字，或同一個事件再收到（SYNC-28.3）。最後修改時間只留在這支手機，不寫進同步的事件；匯出檔帶著它，匯入之後和匯出時一樣（BACKUP-3.1、BACKUP-13.2）。它是用一個新的 migration 加進本機資料的：在那之前就存著的支出沒有最後修改時間，之前的 app 匯出的匯出檔照 BACKUP-18.1 升級之後匯入，裡面的支出也沒有，到下一次寫入才有。使用者從 Recently Edited 的排序（LEDGER-121.1）看到它。
+The mobile app SHALL 在本機資料替每筆支出記著最後修改時間，也就是這支手機最後一次寫入這筆支出的時刻：新增它（LEDGER-21.2、LEDGER-54.1）、存下它的修改（LEDGER-22.2、LEDGER-56.2）、把它移到垃圾桶或還原（LEDGER-71.3、LEDGER-75.5、LEDGER-79.5）、把它搬到另一個分類（CATEGORIES-40.1）、選 Use Mine 把你的那一組再存一次（LEDGER-154.1）時，是手機的時鐘當下的時刻；套用收到的事件讓它的單位到齊，或改了存著的這筆支出時（SYNC-29.2），是那個事件的時間戳記的毫秒，比原本記著的早時不改。沒有寫入這筆支出的事不改它，例如分類改了名稱或顏色、成員改了名字，或同一個事件再收到（SYNC-28.3）。最後修改時間只留在這支手機，不寫進同步的事件；匯出檔帶著它，匯入之後和匯出時一樣（BACKUP-3.1、BACKUP-13.3）。它是用一個新的 migration 加進本機資料的：在那之前就存著的支出沒有最後修改時間，之前的 app 匯出的匯出檔照 BACKUP-18.1 升級之後匯入，裡面的支出也沒有，到下一次寫入才有。使用者從 Recently Edited 的排序（LEDGER-121.1）看到它。
 
 #### Scenario: 新增
 
@@ -5080,6 +5080,58 @@ The mobile app SHALL 讓可能重複的標記在手機上看得清楚、讀得�
 
 - **WHEN** 一筆支出同時需要確認，也是可能重複的支出，把系統字級調到最大看它的卡片和明細
 - **THEN** 卡片上兩行標記都完整；明細的兩個區塊都完整，五個按鈕都按得到，捲動之後看得到明細原本的內容
+
+### Requirement: LEDGER-220.1 唯讀副本的支出只能看
+
+WHILE 支出的群組是唯讀副本（sync 的 SYNC-302.1），the mobile app SHALL 不管群組有沒有封存，都照封存群組的支出顯示它（LEDGER-67.2），只有文字不同：明細的金額下面是「Shared history」和「Payments and shares are preserved as read-only history.」，「Group」後面的「Status」是「Read-only copy」；「Edit」和「Expense actions」裡的「Delete」停用，它的卡片沒有 Delete：往左滑不露出「Delete」，也沒有「Delete expense」的輔助功能動作。它照常出現在支出清單、群組的畫面、Insights 和搜尋的結果裡。
+
+#### Scenario: 明細
+
+- **WHEN** Brisbane 成為唯讀副本之後，打開 Dinner 的明細
+- **THEN** 金額下面是「Shared history」和「Payments and shares are preserved as read-only history.」，「Group」「Brisbane」後面是「Status」「Read-only copy」，Edit 停用；iOS 上 Expense actions 的「Delete」是停用的，Android 上 Expense actions 的 `more_vert` 停用
+
+#### Scenario: 卡片
+
+- **WHEN** Brisbane 成為唯讀副本
+- **THEN** 支出清單和 Brisbane 的畫面上仍有 Dinner 的卡片，都沒有「Delete expense」的輔助功能動作
+
+#### Scenario: 封存的唯讀副本
+
+- **WHEN** 封存唯讀副本 Brisbane 之後，打開 Dinner 的明細
+- **THEN** 「Status」仍是「Read-only copy」，那句話裡沒有「Restore this group before editing.」
+
+### Requirement: LEDGER-221.1 修改唯讀副本的支出時擋下
+
+IF 使用者在唯讀副本的支出的 Edit Expense 按 Save，THEN the mobile app SHALL 不儲存，跳出標題「Read-only Copy」、內容「This group is a read-only copy. Its expenses can't be changed.」的提示框，表單保持開啟並保留輸入；群組同時是封存的也一樣，不是 LEDGER-61.1 的那個提示框。
+
+#### Scenario: 表單開著時成為唯讀副本
+
+- **WHEN** Dinner 的 Edit Expense 開著時，Brisbane 成為唯讀副本；把標題改成「Supper」後按 Save
+- **THEN** 跳出這個提示框，表單仍開著，標題是「Supper」；存著的 Dinner 沒有改變，沒有多的待上傳的事件
+
+#### Scenario: 以網址打開
+
+- **WHEN** Brisbane 成為唯讀副本之後，以 `/expenses/<Dinner 的 ID>/edit` 打開，把金額改成「120.00」後按 Save
+- **THEN** 跳出這個提示框；存著的 Dinner 沒有改變
+
+### Requirement: LEDGER-222.1 唯讀副本不能選來記帳，它在垃圾桶裡的支出不能還原
+
+WHILE 群組是唯讀副本，the mobile app SHALL 不讓它出現在 Select Group（LEDGER-46.2）；以 `/expenses/new?groupId=<它的群組 ID>` 打開 New Expense 時，照封存群組的群組 ID 處理（LEDGER-52.1）；垃圾桶裡它的支出的唯讀明細上「Restore」停用（LEDGER-79.5），Trash 仍列出那筆支出。
+
+#### Scenario: Select Group
+
+- **WHEN** 依序建立 Brisbane、Tokyo 和 Paris，Tokyo 成為唯讀副本；在 New Expense 打開 Select Group
+- **THEN** 清單只有 Brisbane 和 Paris
+
+#### Scenario: 以網址打開 New Expense
+
+- **WHEN** 以 `/expenses/new?groupId=` 加上唯讀副本 Tokyo 的群組 ID 打開
+- **THEN** 表單和封存 Tokyo 之後用同一個網址打開時一樣，沒有選著 Tokyo
+
+#### Scenario: 垃圾桶
+
+- **WHEN** Dinner 在垃圾桶裡時 Brisbane 成為唯讀副本；在 Trash 點 Dinner 的卡片
+- **THEN** 唯讀明細上「Restore」是停用的；Dinner 仍在垃圾桶裡，沒有多的待上傳的事件
 
 ### Requirement: LEDGER-230.1 支出的沒有套用的變更的區塊
 

@@ -17,6 +17,13 @@ jest.mock('../../src/groups/index', () => ({
   ],
   listFormerMembers: async () => [],
 }));
+// The group is no read-only copy, and no other phone represents a member of it.
+jest.mock('../../src/sync/read-only-copy', () => ({
+  readOnlyCopyOf: async () => undefined,
+}));
+jest.mock('../../src/sync/roster', () => ({
+  membersWithPhones: async () => [],
+}));
 
 beforeEach(() => {
   mockDatabase = {};

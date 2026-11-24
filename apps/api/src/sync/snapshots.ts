@@ -8,7 +8,7 @@ import {
 } from '@shared-expense/domain/api';
 import type { ISql } from 'postgres';
 import type { Sql } from '../database/connect';
-import type { EventApiRefusal } from './groups';
+import { lockMemberGroup, type EventApiRefusal } from './groups';
 
 type Refusal = SnapshotRefusal | EventApiRefusal;
 
@@ -26,11 +26,7 @@ export function storeChunk(
   return sql.begin<SnapshotChunkStoredResponse | Refusal>(
     'isolation level read committed',
     async (tx) => {
-      const [group] = await tx<{ epoch: string; last_sequence: string }[]>`
-        SELECT g.epoch, g.last_sequence FROM groups g
-        JOIN group_members m ON m.group_id = g.id
-        WHERE g.id = ${groupId} AND m.device_id = ${uploader}
-        FOR UPDATE OF g`;
+      const group = await lockMemberGroup(tx, groupId, uploader);
       if (!group) return { error: 'not-a-member' };
 
       const [existing] = await tx<{ matches: boolean; stored: boolean }[]>`

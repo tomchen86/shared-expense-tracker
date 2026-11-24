@@ -46,7 +46,7 @@ export const RENAME_GROUP_FAILED = [
 /** The title and message of the alert that asks to add the former member `name` back. */
 export const addBackAlert = (name: string) => [
   `Add ${name} Back?`,
-  `${name} was removed from this group before. Adding them back reconnects their past payments and shares.`,
+  `${name} was in this group before. Adding them back reconnects their past payments and shares.`,
 ];
 
 // Navigation bars and sheets

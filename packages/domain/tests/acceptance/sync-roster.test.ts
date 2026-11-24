@@ -54,7 +54,7 @@ test.each<[string, unknown]>([
       { stamp: at(2000), base: CREATED },
     ),
   ],
-])('[SYNC-250.1] accepts %s', (_case, content) => {
+])('[SYNC-250.2] accepts %s', (_case, content) => {
   expect(judge(content)).toEqual(VALID(content));
 });
 
@@ -93,7 +93,7 @@ test.each<[string, unknown]>([
   ['a character outside ASCII', 'phöne'],
   ['a number', 7],
 ])(
-  '[SYNC-250.1] refuses a roster entry whose ID has %s for its structure',
+  '[SYNC-250.2] refuses a roster entry whose ID has %s for its structure',
   (_case, id) => {
     expect(judge(entry())).toEqual(VALID(entry()));
 
@@ -116,9 +116,13 @@ test.each<[string, unknown]>([
   ['a box key that is a number', { ...REPRESENTS, boxKey: 7 }],
   ['an extra field', { ...REPRESENTS, name: 'Blake' }],
   ['a value that is only the member ID', 'blake'],
-  ['a value that is null', null],
+  ['a value that is false', false],
+  ['a value that is 0', 0],
+  ['a value that is an empty string', ''],
+  ['a value that is an empty array', []],
+  ['a value that is an empty object', {}],
 ])(
-  '[SYNC-250.1] refuses a roster entry with %s for its structure',
+  '[SYNC-250.2] refuses a roster entry with %s for its structure',
   (_case, member) => {
     expect(judge(entry())).toEqual(VALID(entry()));
 
@@ -126,7 +130,7 @@ test.each<[string, unknown]>([
   },
 );
 
-test('[SYNC-250.1] has something to show once its one unit has arrived, and follows a later change', () => {
+test('[SYNC-250.2] has something to show once its one unit has arrived, and follows a later change', () => {
   const first = merged([entry()]);
 
   expect(syncRecordValues(first)).toEqual({ member: REPRESENTS });
@@ -169,7 +173,7 @@ test.each<[string, object, object, object]>([
     { ...REPRESENTS, memberId: 'casey', userId: 'user-a' },
   ],
 ])(
-  '[SYNC-250.1] keeps %s of two events with one stamp, in either order',
+  '[SYNC-250.2] keeps %s of two events with one stamp, in either order',
   (_case, one, other, kept) => {
     for (const order of bothOrders(entry(one), entry(other))) {
       const record = merged(order);
@@ -178,6 +182,54 @@ test.each<[string, object, object, object]>([
     }
   },
 );
+
+// A device that left represents nobody (ADR-0041)
+
+test.each<[string, unknown]>([
+  [
+    'a change that makes the entry represent nobody',
+    entry(null, { stamp: at(2000), base: CREATED }),
+  ],
+  ['a first event that represents nobody', entry(null)],
+])('[SYNC-250.2] accepts %s', (_case, content) => {
+  expect(judge(content)).toEqual(VALID(content));
+});
+
+test('[SYNC-250.2] represents nobody once a later event says so, and a member again once a still later one names one, in any order', () => {
+  const left = entry(null, { stamp: at(2000), base: CREATED });
+  const back = entry(
+    { ...REPRESENTS, memberId: 'casey' },
+    { stamp: at(3000), base: at(2000) },
+  );
+
+  const gone = merged([entry(), left]);
+  expect(syncRecordValues(gone)).toEqual({ member: null });
+  expect(unit(gone, 'member')).toEqual({ value: null, stamp: at(2000) });
+
+  const first = entry();
+  for (const order of [
+    [first, left, back],
+    [first, back, left],
+    [left, first, back],
+    [left, back, first],
+    [back, first, left],
+    [back, left, first],
+  ]) {
+    expect(unit(merged(order), 'member')).toEqual({
+      value: { ...REPRESENTS, memberId: 'casey' },
+      stamp: at(3000),
+    });
+  }
+});
+
+test('[SYNC-250.2] keeps "represents nobody" of two events with one stamp, in either order', () => {
+  for (const order of bothOrders(entry(), entry(null))) {
+    expect(unit(merged(order), 'member')).toEqual({
+      value: null,
+      stamp: CREATED,
+    });
+  }
+});
 
 // In a snapshot
 
@@ -236,6 +288,7 @@ test.each<[string, unknown[]]>([
       rosterRecord({ ...REPRESENTS, userId: 'user-c' }, 'phone-c'),
     ],
   ],
+  ['a roster entry that represents nobody', [rosterRecord(null)]],
 ])('[SYNC-98.4] a snapshot with %s can be imported', (_case, records) => {
   const content = snapshot(records);
 
@@ -286,7 +339,7 @@ test.each<[string, unknown]>([
   },
 );
 
-test('[SYNC-250.1] merges a roster entry from a snapshot as its events would merge', () => {
+test('[SYNC-250.2] merges a roster entry from a snapshot as its events would merge', () => {
   const mine = merged([entry()]) as SyncRecord;
   const theirs = rosterRecord({ ...REPRESENTS, memberId: 'casey' });
 

@@ -184,11 +184,8 @@ test('a backup restores a retained upload alongside a later unsent event', async
   const [[file]] = jest.mocked(shareFile).mock.calls;
   await sync(a);
   expect(await unsent(a)).toEqual([]);
-  const { importData, readExportFile } = jest.requireActual<
-    typeof import('../../src/backup/import')
-  >('../../src/backup/import');
-  await readExportFile(a.database, file);
-  await importData(a.database, file, a.database.transaction);
+  // Through the harness: the import reads the secure store of the phone it runs on.
+  await importCopy(a, file);
   expect(await unsent(a)).toEqual([later]);
 
   await sync(b);

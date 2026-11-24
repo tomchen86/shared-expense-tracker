@@ -415,8 +415,8 @@ describe('SYNC-77.1', () => {
   );
 });
 
-describe('SYNC-78.1', () => {
-  test('[SYNC-78.1] keeps the events when the upload gets no answer, and uploads them at the next sync', async () => {
+describe('SYNC-78.2', () => {
+  test('[SYNC-78.2] keeps the events when the upload gets no answer, and uploads them at the next sync', async () => {
     const { a, brisbane } = await twoPhones();
     await addExpense(a);
     const before = await unsent(a);
@@ -434,7 +434,7 @@ describe('SYNC-78.1', () => {
     expect(await unsent(a)).toEqual([]);
   });
 
-  test('[SYNC-78.1] ends the sync when the API still asks it to wait after the one wait, and tries again at the next sync', async () => {
+  test('[SYNC-78.2] ends the sync when the API still asks it to wait after the one wait, and tries again at the next sync', async () => {
     const { a, brisbane } = await twoPhones();
     await addExpense(a);
     const before = await unsent(a);
@@ -463,7 +463,7 @@ describe('SYNC-78.1', () => {
     ['status 404', 404, 'not found'],
     ['status 200 with other text', 200, 'oops'],
   ])(
-    '[SYNC-78.1] keeps the events when the answer to an upload is %s',
+    '[SYNC-78.2] keeps the events when the answer to an upload is %s',
     async (_case, status, body) => {
       const { a } = await twoPhones();
       await addExpense(a);
@@ -479,7 +479,28 @@ describe('SYNC-78.1', () => {
     },
   );
 
-  test('[SYNC-78.1] sends nothing, and keeps the events, on a phone that has lost its authorization', async () => {
+  test('[SYNC-78.2] with [SYNC-300.1] keeps the events when an upload is refused as no member device, and sends nothing for the ledger after that', async () => {
+    const { a } = await twoPhones();
+    await addExpense(a);
+    const before = await unsent(a);
+    answerNext('POST', 403, { error: 'not-a-member' });
+
+    await sync(a);
+
+    expect(await unsent(a)).toEqual(before);
+    expect(await titles(a)).toEqual(['Dinner']);
+
+    const from = mark();
+    await sync(a);
+
+    expect(
+      (await sentBy(a, from)).map(
+        (request) => `${request.method} ${request.path}`,
+      ),
+    ).toEqual([]);
+  });
+
+  test('[SYNC-78.2] sends nothing, and keeps the events, on a phone that has lost its authorization', async () => {
     const { a } = await twoPhones();
     const start = mark();
     await sync(a);
@@ -495,7 +516,7 @@ describe('SYNC-78.1', () => {
     expect(await titles(a)).toEqual(['Dinner']);
   });
 
-  test('[SYNC-78.1] keeps the order of the events across a failed upload and changes saved after it', async () => {
+  test('[SYNC-78.2] keeps the order of the events across a failed upload and changes saved after it', async () => {
     const { a, brisbane } = await twoPhones();
     await addExpense(a);
     noAnswerTo('POST');

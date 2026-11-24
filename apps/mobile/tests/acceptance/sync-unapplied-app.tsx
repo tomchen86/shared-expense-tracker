@@ -54,7 +54,7 @@ export const DISMISS_FAILED = [
   'Your change could not be saved. Please try again.',
 ];
 
-/** The headings of a block (LEDGER-230.1, GROUPS-172.2). */
+/** The headings of a block (LEDGER-230.1, GROUPS-172.3). */
 export const NOT_ADDED = 'Expense not added';
 export const EXPENSE_CHANGE = 'Expense change not applied';
 export const GROUP_CHANGE = 'Group change not applied';

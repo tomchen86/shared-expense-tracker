@@ -60,9 +60,10 @@ export async function refreshReceivedRequests(
   if (held(database, groupId).processing) return;
   let requests: ReceivedJoinRequest[];
   try {
+    // A read-only copy lists none: nothing is sent for it (SYNC-302.1).
     const [ledger] = await database.all<{ archived: number }>(
       `SELECT g.archived FROM sync_groups s JOIN groups g ON g.id = s.groupId
-       WHERE s.groupId = ?`,
+       WHERE s.groupId = ? AND s.readOnly IS NULL`,
       [groupId],
     );
     requests =
@@ -82,13 +83,15 @@ export async function refreshReceivedRequests(
 /**
  * Approves or rejects a request, one at a time for a ledger (SHARING-202.1). Resolves
  * with how it ended, or with nothing when the ledger has a request being answered. It
- * goes on whatever screen is open.
+ * goes on whatever screen is open. `addBack` is the former member an approval adds back
+ * in place of a new member (SHARING-288.1).
  */
 export async function answerJoinRequest(
   database: Database,
   groupId: string,
   request: ReceivedJoinRequest,
   action: 'approve' | 'reject',
+  addBack?: string,
 ): Promise<ApproveResult | RejectResult | undefined> {
   const before = held(database, groupId);
   if (before.processing) return undefined;
@@ -97,10 +100,10 @@ export async function answerJoinRequest(
     processing: { deviceId: request.deviceId, action },
   });
   const result = await (
-    action === 'approve' ? approveJoinRequest : rejectJoinRequest
-  )(database, groupId, request).catch((): RejectResult => ({
-    outcome: 'failed',
-  }));
+    action === 'approve'
+      ? approveJoinRequest(database, groupId, request, addBack)
+      : rejectJoinRequest(database, groupId, request)
+  ).catch((): RejectResult => ({ outcome: 'failed' }));
   const answered =
     result.outcome === 'approved' || result.outcome === 'rejected';
   hold(database, groupId, {

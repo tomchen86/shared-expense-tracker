@@ -23,7 +23,9 @@ import {
   type CardUnread,
   type InviteNotice,
   type JoinCard,
+  type JoinCopy,
 } from './join-invite';
+import { readDeviceIdentity } from './device-identity';
 import {
   alreadyIn,
   cancelJoinRequest,
@@ -46,6 +48,8 @@ type Page =
       kind: 'form';
       card: JoinCard;
       link: InviteCredentials;
+      /** The copy of the group this phone holds, which an approval replaces (SHARING-226.2). */
+      copy?: JoinCopy;
       preparing?: boolean;
       /** The request whose choice no longer fits the card, when the form is to choose again. */
       again?: JoinRequest;
@@ -463,17 +467,52 @@ export function useJoinGroup() {
     },
     submit(name: string, memberId: string | null) {
       if (page?.kind !== 'form') return;
-      send(
-        page.again
-          ? { ...page.again, name, memberId, sent: 0, outcome: null }
-          : {
-              ...page.link,
-              name,
-              memberId,
-              groupName: page.card.name,
-              sent: 0,
-            },
-      );
+      if (page.again) {
+        send({ ...page.again, name, memberId, sent: 0, outcome: null });
+        return;
+      }
+      const { copy, card, link } = page;
+      const request: JoinRequest = {
+        ...link,
+        name,
+        memberId,
+        groupName: card.name,
+        sent: 0,
+        // The one group an approval of this request may replace.
+        copyGroupId: copy?.groupId ?? null,
+      };
+      // Asked once, where something of the copy can be lost: always for the phone's own
+      // copy, and for a read-only copy that has changes it never sent (SHARING-226.2).
+      const ask = copy && (copy.own || copy.unsent > 0);
+      if (!ask) {
+        send(request);
+        return;
+      }
+      void readDeviceIdentity(db)
+        .catch(() => undefined)
+        .then((identity) => {
+          if (active.current !== link) return;
+          // A phone whose authorization has lapsed is told that it cannot join instead.
+          if (identity?.status === 'lost') {
+            send(request);
+            return;
+          }
+          const lost =
+            copy.unsent === 1
+              ? '1 change made on this phone was never sent to the group and will be lost.'
+              : `${copy.unsent} changes made on this phone were never sent to the group and will be lost.`;
+          Alert.alert(
+            copy.own ? 'Replace Your Copy?' : 'Replace This Copy?',
+            copy.own
+              ? `This phone has its own copy of ${card.name}. If your request is approved, the group's version replaces it, and anything changed only in your copy will be lost. To keep it, export your data first.`
+              : `If your request is approved, the group's version replaces the read-only copy on this phone. ${lost}`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Send Request', onPress: () => send(request) },
+            ],
+            { cancelable: true },
+          );
+        });
     },
     retry() {
       if (page?.kind === 'request') send(page.request);

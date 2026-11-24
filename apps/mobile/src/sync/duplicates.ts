@@ -24,7 +24,8 @@ function readLedgers(tx: SqlExecutor, editableGroupId?: string) {
        (SELECT json_group_array(json_extract(record, '$.units.expenses.value'))
         FROM sync_records WHERE groupId = s.groupId AND type = 'distinct') AS distinctPairs
      FROM sync_groups s JOIN groups g ON g.id = s.groupId
-     ${editableGroupId === undefined ? '' : 'WHERE s.groupId = ? AND g.archived = 0'}`,
+     WHERE s.readOnly IS NULL
+     ${editableGroupId === undefined ? '' : 'AND s.groupId = ? AND g.archived = 0'}`,
     editableGroupId === undefined ? [] : [editableGroupId],
   );
 }

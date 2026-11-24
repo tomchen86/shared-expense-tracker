@@ -9,6 +9,7 @@ import {
 import { decrypt } from '@shared-expense/domain/crypto';
 import type { SqlExecutor } from '../storage';
 import { GIVE_UP_AFTER_MS, jsonIn } from '../sync/loop';
+import { UNSENT_EVENTS } from '../sync/records';
 import { apiUrl } from './api-address';
 import { fetchAnswer } from './api-request';
 import { cardCipher, type InviteCredentials } from './invite-card';
@@ -17,8 +18,6 @@ export const cannotUse =
   "This invite link can't be used. Ask the person who sent it to send it again.";
 export const wentWrong = 'Something went wrong. Try again later.';
 export const offline = 'Connect to the internet to join this group.';
-const hasACopy =
-  "This phone already has its own copy of this group, so it can't join it.";
 
 export interface JoinCard {
   name: string;
@@ -28,6 +27,17 @@ export interface JoinCard {
 interface LocalGroup {
   id: string;
   archived: number;
+}
+
+/**
+ * A copy of an invite's group that this phone holds (SHARING-226.2): a read-only copy,
+ * with how many of its events were never sent, or a group of its own that is no shared
+ * ledger. An approval replaces it, so the user is asked before the request is sent.
+ */
+export interface JoinCopy {
+  groupId: string;
+  own: boolean;
+  unsent: number;
 }
 
 export type InviteNotice = { kind: 'notice'; message: string; retry?: boolean };
@@ -51,8 +61,12 @@ export async function groupForLink(
   db: SqlExecutor,
   link: InviteCredentials,
 ): Promise<LocalGroup | undefined> {
+  // A read-only copy is no membership: its own invite's link is read like any other
+  // (SHARING-130.2).
   const [group] = await db.all<LocalGroup>(
-    'SELECT g.id, g.archived FROM group_invites i JOIN groups g ON g.id = i.groupId WHERE i.id = ? AND i.secret = ?',
+    `SELECT g.id, g.archived FROM group_invites i JOIN groups g ON g.id = i.groupId
+     JOIN sync_groups s ON s.groupId = i.groupId AND s.readOnly IS NULL
+     WHERE i.id = ? AND i.secret = ?`,
     [link.code, link.secret],
   );
   return group;
@@ -141,27 +155,32 @@ export async function readJoinInvite(
   link: InviteCredentials,
 ): Promise<
   | InviteNotice
-  | { kind: 'form'; card: JoinCard }
+  | { kind: 'form'; card: JoinCard; copy?: JoinCopy }
   | { kind: 'group'; group: LocalGroup }
 > {
   const card = await fetchCard(link);
   if ('kind' in card) return card;
-  // Former members still identify their shared ledger. A personal, unshared group cannot.
+  const memberIds = JSON.stringify(card.members.map(({ id }) => id));
+  // Former members still identify their shared ledger. A read-only copy is none.
   const [group] = await db.all<LocalGroup>(
     `SELECT g.id, g.archived FROM json_each(?) c
-     JOIN group_members m ON m.id = c.value JOIN sync_groups s ON s.groupId = m.groupId
+     JOIN group_members m ON m.id = c.value
+     JOIN sync_groups s ON s.groupId = m.groupId AND s.readOnly IS NULL
      JOIN groups g ON g.id = s.groupId ORDER BY c.key LIMIT 1`,
-    [JSON.stringify(card.members.map(({ id }) => id))],
+    [memberIds],
   );
   if (group) return { kind: 'group', group };
-  // A group of this phone that is no shared ledger and has one of these members is a
-  // copy of the invite's group: no snapshot fits into it (SHARING-226.1).
-  const copy = await db.all(
-    `SELECT 1 FROM json_each(?) c JOIN group_members m ON m.id = c.value
-     WHERE m.groupId NOT IN (SELECT groupId FROM sync_groups) LIMIT 1`,
-    [JSON.stringify(card.members.map(({ id }) => id))],
+  // A read-only copy, or a group of this phone that is no shared ledger, with one of
+  // these members is a copy of the invite's group (SHARING-226.2).
+  const [copy] = await db.all<{ groupId: string; own: number; unsent: number }>(
+    `SELECT m.groupId, s.groupId IS NULL AS own,
+       (SELECT COUNT(*) FROM ${UNSENT_EVENTS} o WHERE o.groupId = m.groupId) AS unsent
+     FROM json_each(?) c JOIN group_members m ON m.id = c.value
+     LEFT JOIN sync_groups s ON s.groupId = m.groupId
+     ORDER BY c.key LIMIT 1`,
+    [memberIds],
   );
-  return copy.length > 0
-    ? { kind: 'notice', message: hasACopy }
+  return copy
+    ? { kind: 'form', card, copy: { ...copy, own: copy.own === 1 } }
     : { kind: 'form', card };
 }

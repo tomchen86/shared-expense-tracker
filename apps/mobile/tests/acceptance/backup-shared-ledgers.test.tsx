@@ -14,6 +14,8 @@ import {
   applySyncEvents,
   listRefusedSyncEvents,
   listUnsentSyncEvents,
+  makeReadOnlyCopy,
+  readOnlyCopyOf,
   shareGroup,
 } from '../../src/sync';
 import {
@@ -157,6 +159,62 @@ const renameOn = (on: Phone, ms: number, from: string, to: string) =>
     await renameGroup(database, (await groupNamed(database, from)).id, to);
     return listUnsentSyncEvents(database);
   });
+
+/** The group is a read-only copy on the phone from now on, as after the phone left it. */
+const becomesACopy = (on: Phone, group: string, ms = T + MINUTE) =>
+  onPhone(on, ms, async (database) =>
+    makeReadOnlyCopy(database, (await groupNamed(database, group)).id, 'left'),
+  );
+
+/** What makes the group a read-only copy on the phone, if it is one. */
+const copyOn = (on: Phone, group: string) =>
+  read(on, async (database) =>
+    readOnlyCopyOf(database, (await groupNamed(database, group)).id),
+  );
+
+/** A phone of Sam's with these groups, the `shared` ones shared ledgers since T under the device `phone-s`. */
+async function writeSamsGroups(on: Phone, groups: string[], shared = groups) {
+  jest.useFakeTimers();
+  jest.setSystemTime(T);
+  await writeData(
+    on,
+    { name: 'Sam', groups: groups.map((name) => ({ name })) },
+    async (database) => {
+      for (const name of shared) {
+        const { id } = await groupNamed(database, name);
+        await shareGroup(database, { groupId: id, device: 'phone-s' });
+      }
+    },
+  );
+}
+
+/**
+ * Starts the app on the phone and picks `file` with Import Data: the alert the app
+ * answers with, and its message as written, apart from the space before AM or PM.
+ */
+async function chooseOn(on: Phone, file: string, ms = T + 4 * MINUTE) {
+  const app = await startOn(on, { now: iso(ms) });
+  const before = alertsShown().length;
+  await chooseFile(file);
+  const alert = await nextAlert(before + 1);
+  const written = (
+    jest.mocked(Alert.alert).mock.calls.at(-1)?.[1] ?? ''
+  ).replace(/[\u202f\u00a0]/g, ' ');
+  await close(app);
+  return { alert, written };
+}
+
+const LEAVE_FIRST = 'Leave Shared Groups First';
+const leaveFirst = (...groups: string[]) =>
+  groups.length === 1
+    ? `This phone is still a member of ${groups[0]}, and this file would remove that group from it. Leave the group first, then import the file again.`
+    : `This phone is still a member of ${groups.slice(0, -1).join(', ')} and ${groups.at(-1)}, and this file would remove those groups from it. Leave them first, then import the file again.`;
+
+/** What the confirmation adds about changes an import would lose. */
+const lost = (count: number) =>
+  count === 1
+    ? "1 change in your shared groups hasn't been sent yet and will be lost. To send it first, tap Cancel, connect to the internet, and open the app again."
+    : `${count} changes in your shared groups haven't been sent yet and will be lost. To send them first, tap Cancel, connect to the internet, and open the app again.`;
 
 /**
  * Taylor's phone, device `phone-a`: Brisbane with Casey and Blake, which becomes a
@@ -454,8 +512,8 @@ test.each(OUTSIDE_THE_SHARED_LEDGER)(
 
 /**
  * Taylor's phone renames Brisbane to Brissie, applies Lunch and refuses Taxi for its
- * empty title, and exports. After the export it renames the group to Sydney, makes
- * Tokyo a shared ledger too, and refuses another event.
+ * empty title, and exports. After the export it renames the group to Sydney and
+ * refuses another event.
  */
 async function exportThenChangeTheSharedLedgers() {
   const taylors = newPhone();
@@ -498,8 +556,6 @@ async function exportThenChangeTheSharedLedgers() {
 
   await renameOn(taylors, T + 3 * MINUTE, 'Brissie', 'Sydney');
   await onPhone(taylors, T + 3 * MINUTE, async (database) => {
-    const tokyo = await groupNamed(database, 'Tokyo');
-    await shareGroup(database, { groupId: tokyo.id, device: PHONE });
     await applySyncEvents(database, atExport.brisbane, [
       await emptyTitle(
         database,
@@ -512,7 +568,7 @@ async function exportThenChangeTheSharedLedgers() {
   return { taylors, atExport, ...exported };
 }
 
-test('[BACKUP-13.2] takes the shared ledgers, the unsent events and the refused events of a phone back to what its export file holds', async () => {
+test('[BACKUP-13.3] takes the shared ledgers, the unsent events and the refused events of a phone back to what its export file holds', async () => {
   const { taylors, atExport, file, data } =
     await exportThenChangeTheSharedLedgers();
   expect(atExport.unsent).toHaveLength(1);
@@ -535,7 +591,7 @@ test('[BACKUP-13.2] takes the shared ledgers, the unsent events and the refused 
     exceptLatestStamp(data),
   );
 
-  // Tokyo is no shared ledger again, and Brissie's name has the stamp the file gave it.
+  // Tokyo is no shared ledger, and Brissie's name has the stamp the file gave it.
   await renameOn(taylors, T + 5 * MINUTE, 'Tokyo', 'Kyoto');
   const events = await renameOn(taylors, T + 5 * MINUTE, 'Brissie', 'Cairns');
   expect(events.slice(0, 1)).toEqual(atExport.unsent);
@@ -552,7 +608,10 @@ test('[BACKUP-13.2] takes the shared ledgers, the unsent events and the refused 
   });
 });
 
-test("[BACKUP-13.2] gives a new phone the exporting phone's shared ledgers, unsent events and refused events, and the device ID it stamps with", async () => {
+// A phone whose local data is new, as after the app was installed again. These phones
+// have no device identity, so an import leaves none of them with a lapsed authorization
+// (BACKUP-29.1 has its own file).
+test("[BACKUP-13.3] gives a phone whose local data is new the exporting phone's shared ledgers, unsent events and refused events, and the device ID it stamps with", async () => {
   const { atExport, file, data } = await exportThenChangeTheSharedLedgers();
 
   await importOn(phone, file, T + 4 * MINUTE);
@@ -610,43 +669,19 @@ test('[BACKUP-27.1] stamps a change made after an import later than the changes 
   });
 });
 
-/** Phones that have seen nothing as late as the file: one new, one with a shared ledger of its own since T. */
-const WITH_AN_EARLIER_STAMP: [string, (on: Phone) => Promise<void>][] = [
-  ['a new phone', async () => undefined],
-  [
-    'a phone whose own shared ledger has earlier stamps',
-    async (on) => {
-      jest.useFakeTimers();
-      jest.setSystemTime(T);
-      await writeData(
-        on,
-        { name: 'Sam', groups: [{ name: 'Osaka' }] },
-        async (database) => {
-          const { id } = await groupNamed(database, 'Osaka');
-          await shareGroup(database, { groupId: id, device: 'phone-s' });
-        },
-      );
-    },
-  ],
-];
+test("[BACKUP-27.1] follows the file's latest stamp on a phone whose local data is new", async () => {
+  const taylors = newPhone();
+  await writeSharedBrisbane(taylors);
+  await receiveLunchStampedAhead(taylors);
+  const { file } = await exportFrom(taylors, iso(T + MINUTE));
 
-test.each(WITH_AN_EARLIER_STAMP)(
-  "[BACKUP-27.1] follows the file's latest stamp on %s",
-  async (_which, prepare) => {
-    const taylors = newPhone();
-    await writeSharedBrisbane(taylors);
-    await receiveLunchStampedAhead(taylors);
-    const { file } = await exportFrom(taylors, iso(T + MINUTE));
-    await prepare(phone);
+  await importOn(phone, file);
 
-    await importOn(phone, file);
-
-    const events = await renameOn(phone, T + 2 * MINUTE, 'Brisbane', 'Sydney');
-    expect(events.map((event) => event.content.stamp)).toEqual([
-      { ms: T + 6 * MINUTE, counter: 1, device: PHONE },
-    ]);
-  },
-);
+  const events = await renameOn(phone, T + 2 * MINUTE, 'Brisbane', 'Sydney');
+  expect(events.map((event) => event.content.stamp)).toEqual([
+    { ms: T + 6 * MINUTE, counter: 1, device: PHONE },
+  ]);
+});
 
 /** Makes the imported Brisbane a shared ledger at T+2 minutes and renames it; the event it writes. */
 async function shareAndRenameBrisbane(on: Phone) {
@@ -665,6 +700,8 @@ test('[BACKUP-27.1] keeps the latest stamp the phone has seen when the file has 
   await writeSharedBrisbane(taylors);
   await receiveLunchStampedAhead(taylors);
   await renameOn(taylors, T + MINUTE, 'Brisbane', 'Brissie');
+  // The phone is no longer in Brissie, or the import would be refused (BACKUP-28.1).
+  await becomesACopy(taylors, 'Brissie');
 
   await importOn(taylors, file);
 
@@ -684,4 +721,201 @@ test('[BACKUP-27.1] has no latest stamp after an import when neither the phone n
     stamp: { ms: T + 2 * MINUTE, device: PHONE },
     units: { name: { base: { ms: T + 2 * MINUTE, device: PHONE } } },
   });
+});
+
+// A copy in the file stays a copy
+
+test('[BACKUP-13.3] keeps a read-only copy of the export file a read-only copy, for the same reason', async () => {
+  const taylors = newPhone();
+  await writeSharedBrisbane(taylors);
+  await onPhone(taylors, T + MINUTE, async (database) =>
+    makeReadOnlyCopy(
+      database,
+      (await groupNamed(database, 'Brisbane')).id,
+      'not-a-member',
+    ),
+  );
+  const { file } = await exportFrom(taylors, iso(T + 2 * MINUTE));
+
+  await importOn(taylors, file);
+
+  expect(await copyOn(taylors, 'Brisbane')).toEqual({
+    reason: 'not-a-member',
+    unsent: 0,
+  });
+});
+
+// An import that would take a shared ledger the phone is in
+
+test('[BACKUP-28.1] refuses a file from before the phone shared a group it is in, and names the group', async () => {
+  const taylors = newPhone();
+  await writeSharedBrisbane(taylors);
+  const { file } = await exportFrom(taylors, iso(T + MINUTE));
+  await onPhone(taylors, T + 2 * MINUTE, async (database) => {
+    const tokyo = await groupNamed(database, 'Tokyo');
+    await shareGroup(database, { groupId: tokyo.id, device: PHONE });
+  });
+  const before = dataIn(taylors.database);
+
+  const { alert } = await chooseOn(taylors, file);
+
+  expect(alert).toEqual([LEAVE_FIRST, leaveFirst('Tokyo')]);
+  expect(alertsShown()).toHaveLength(1);
+  expect(dataIn(taylors.database)).toEqual(before);
+});
+
+test("[BACKUP-28.1] refuses another phone's file on a phone that is in a shared ledger of its own", async () => {
+  const taylors = newPhone();
+  await writeSharedBrisbane(taylors);
+  const { file } = await exportFrom(taylors, iso(T + MINUTE));
+  await writeSamsGroups(phone, ['Osaka']);
+  const before = dataIn(phone.database);
+
+  const { alert } = await chooseOn(phone, file);
+
+  expect(alert).toEqual([LEAVE_FIRST, leaveFirst('Osaka')]);
+  expect(dataIn(phone.database)).toEqual(before);
+});
+
+test('[BACKUP-28.1] refuses a file in which the shared ledger the phone is in belongs to another device', async () => {
+  const taylors = newPhone();
+  jest.useFakeTimers();
+  jest.setSystemTime(T);
+  await writeData(taylors, {
+    name: 'Taylor',
+    groups: [{ name: 'Brisbane', members: ['Casey', 'Blake'] }],
+  });
+  const unshared = await exportFrom(taylors, iso(T + MINUTE));
+  await onPhone(taylors, T + MINUTE, async (database) => {
+    const { id } = await groupNamed(database, 'Brisbane');
+    await shareGroup(database, { groupId: id, device: PHONE });
+  });
+  const { file } = await exportFrom(taylors, iso(T + 2 * MINUTE));
+  // Casey's phone has the same group, and is in it as another device.
+  await importOn(phone, unshared.file);
+  await onPhone(phone, T + 3 * MINUTE, async (database) => {
+    const { id } = await groupNamed(database, 'Brisbane');
+    await shareGroup(database, { groupId: id, device: OTHER });
+  });
+  jest.mocked(Alert.alert).mockClear();
+
+  const { alert } = await chooseOn(phone, file);
+
+  expect(alert).toEqual([LEAVE_FIRST, leaveFirst('Brisbane')]);
+});
+
+test.each([
+  [['Osaka', 'Kyoto', 'Nara'], leaveFirst('Osaka', 'Kyoto', 'Nara')],
+  [['Osaka', 'Nara'], leaveFirst('Osaka', 'Nara')],
+])(
+  '[BACKUP-28.1] names every shared ledger the import would take, in the order the phone created them: %s',
+  async (shared, message) => {
+    const { file } = await taylorsExport();
+    await writeSamsGroups(phone, ['Osaka', 'Kyoto', 'Nara'], shared);
+
+    const { alert } = await chooseOn(phone, file);
+
+    expect(alert).toEqual([LEAVE_FIRST, message]);
+  },
+);
+
+test('[BACKUP-28.1] refuses a file in which the shared ledger the phone is in is a read-only copy', async () => {
+  const taylors = newPhone();
+  await writeSharedBrisbane(taylors);
+  const inIt = await exportFrom(taylors, iso(T + MINUTE));
+  await becomesACopy(taylors, 'Brisbane');
+  const asACopy = await exportFrom(taylors, iso(T + 2 * MINUTE));
+  // The phone is in Brisbane again.
+  await importOn(taylors, inIt.file);
+  jest.mocked(Alert.alert).mockClear();
+
+  const { alert } = await chooseOn(taylors, asACopy.file);
+
+  expect(alert).toEqual([LEAVE_FIRST, leaveFirst('Brisbane')]);
+});
+
+test('[BACKUP-28.1] asks to replace the data when the phone picks its own file, whose shared ledgers it is still in', async () => {
+  const taylors = newPhone();
+  await writeSharedBrisbane(taylors);
+  const { file } = await exportFrom(taylors, iso(T + MINUTE));
+  await onPhone(taylors, T + 2 * MINUTE, async (database) => {
+    await renameGroup(
+      database,
+      (await groupNamed(database, 'Tokyo')).id,
+      'Kyoto',
+    );
+  });
+
+  const { alert } = await chooseOn(taylors, file);
+
+  expect(alert[0]).toBe(REPLACE);
+});
+
+test('[BACKUP-28.1] lets a phone import over a read-only copy', async () => {
+  const { file } = await taylorsExport();
+  await writeSamsGroups(phone, ['Osaka']);
+  await becomesACopy(phone, 'Osaka');
+
+  const { alert } = await chooseOn(phone, file);
+
+  expect(alert[0]).toBe(REPLACE);
+});
+
+// What the confirmation says about changes that were never sent
+
+const EXPORTED_AT_1433 = replaceMessage(
+  'Nov 18, 2026 at 2:33 PM',
+  '2 groups',
+  '0 expenses',
+);
+
+test.each([
+  [1, ['Brissie']],
+  [3, ['Bris', 'Brissie', 'Sydney']],
+])(
+  '[BACKUP-11.2] says in the confirmation how many unsent changes the import would lose, and how to send them first: %s',
+  async (count, names) => {
+    const taylors = newPhone();
+    await writeSharedBrisbane(taylors);
+    const { file } = await exportFrom(taylors, iso(T + MINUTE));
+    let name = 'Brisbane';
+    for (const next of names) {
+      await renameOn(taylors, T + 2 * MINUTE, name, next);
+      name = next;
+    }
+    expect(await unsentOn(taylors)).toHaveLength(count);
+
+    const { alert, written } = await chooseOn(taylors, file);
+
+    expect(alert[0]).toBe(REPLACE);
+    expect(written).toBe(`${EXPORTED_AT_1433}\n\n${lost(count)}`);
+  },
+);
+
+test('[BACKUP-11.2] does not count an unsent change that the export file holds too', async () => {
+  const taylors = newPhone();
+  await writeSharedBrisbane(taylors);
+  await renameOn(taylors, T + MINUTE, 'Brisbane', 'Brissie');
+  const { file } = await exportFrom(taylors, iso(T + MINUTE));
+  expect(await unsentOn(taylors)).toHaveLength(1);
+  await renameOn(taylors, T + 2 * MINUTE, 'Brissie', 'Sydney');
+
+  const { written } = await chooseOn(taylors, file);
+
+  expect(written).toBe(`${EXPORTED_AT_1433}\n\n${lost(1)}`);
+});
+
+test('[BACKUP-11.2] does not count the unsent changes of a read-only copy', async () => {
+  const { file } = await taylorsExport();
+  const taylors = newPhone();
+  await writeSharedBrisbane(taylors);
+  await renameOn(taylors, T + MINUTE, 'Brisbane', 'Brissie');
+  await becomesACopy(taylors, 'Brissie');
+
+  const { alert } = await chooseOn(taylors, file);
+
+  expect(alert).toEqual([
+    REPLACE,
+    replaceMessage('Nov 18, 2026 at 2:32 PM', '2 groups', '3 expenses'),
+  ]);
 });

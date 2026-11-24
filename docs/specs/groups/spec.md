@@ -2,7 +2,7 @@
 
 ## Purpose
 
-群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。共同帳本是在這支手機上已經變成共同帳本的群組（sync）。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；Members 的成員清單是成員那幾列，加上最後的「Add Member」或名稱欄位，和清單下面關於人數上限的那句話（GROUPS-105.1）；「Invite with Link」在成員清單的上面，自成一區，不是清單的一列（GROUPS-106.1），它打開的 Invite 見 sharing；手機上的申請是這支手機用邀請連結申請加入別人的群組的申請，六種狀態的都算（sharing），申請的卡片是 Groups 根畫面上替它顯示的卡片（GROUPS-108.2）；收到的申請是別的手機申請加入這支手機上的共同帳本、這支手機讀得懂的申請（sharing 的 SHARING-190.2、SHARING-191.1），它們顯示在群組的畫面上的按鈕（GROUPS-130.1）和 Members 的申請那一區（GROUPS-131.1），點了跳出申請的選單（GROUPS-132.1）；有手機的成員是共同帳本裡存著使用者 ID 的成員（sync 的 SYNC-251.1），也就是你在裡面的成員，和名冊裡有別支手機的紀錄代表的成員；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡、日期在群組的畫面的期間裡、通過這個畫面的篩選的支出（GROUPS-61.6），支出的卡片、明細、垃圾桶、期間、期間列、篩選和膠囊列見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上清單上方的總額（GROUPS-68.6）和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
+群組：Groups 分頁根畫面上的群組列表、建立群組的 New Group、每個群組的畫面，以及從群組的畫面打開的 Members、Rename Member 和 Rename Group，群組的封存和還原、Settings 分頁上列出封存群組的 Archived Groups，還有存在本機資料裡的群組和成員（ADR-0006）。每個群組有一個群組 ID、一個名稱和成員；每位成員有一個成員 ID 和一個名稱，你在群組裡的成員另外有使用者 ID，從 Members 加入的成員沒有使用者 ID。你是這支手機的本機身分：你的使用者 ID、個人空間 ID、個人 participant ID 和名字都在本機身分裡（shell）。存過名字是指名字不是空字串。你在群組裡的成員，是使用者 ID 等於你的使用者 ID 的那位成員；群組裡其他的成員是別人。前成員是被移出群組、還沒加回來的人；群組的成員只算現在的成員，不算前成員。共同帳本是在這支手機上已經變成共同帳本的群組（sync）。兩個成員名稱去掉頭尾空白並轉成小寫（JavaScript 的 `toLowerCase()`，不依裝置的語言設定）後相同，就是同名。New Group 是建立群組的表單。建立中是指 New Group 開始把群組寫入本機資料之後，存好或存不進去之前。Rename Member 和 Rename Group 是名稱表單；Members 的名稱欄位是在 Members 按「Add Member」後出現、用來加入成員的欄位（GROUPS-29.2）；Members 的成員清單是成員那幾列，加上最後的「Add Member」或名稱欄位，和清單下面關於人數上限的那句話（GROUPS-105.1）；「Invite with Link」在成員清單的上面，自成一區，不是清單的一列（GROUPS-106.1），它打開的 Invite 見 sharing；手機上的申請是這支手機用邀請連結申請加入別人的群組的申請，六種狀態的都算（sharing），申請的卡片是 Groups 根畫面上替它顯示的卡片（GROUPS-108.2）；收到的申請是別的手機申請加入這支手機上的共同帳本、這支手機讀得懂的申請（sharing 的 SHARING-190.2、SHARING-191.1），它們顯示在群組的畫面上的按鈕（GROUPS-130.1）和 Members 的申請那一區（GROUPS-131.1），點了跳出申請的選單（GROUPS-132.1）；有手機的成員是共同帳本裡存著使用者 ID 的成員（sync 的 SYNC-251.2），也就是你在裡面的成員，和名冊裡有別支手機的紀錄代表的成員；儲存中是指名稱表單或 Members 的名稱欄位開始寫入本機資料之後，存好或存不進去之前，所以名稱空白、和成員同名，或還在問要不要加回前成員時，都不是儲存中；移除中是指選了 Remove from Group 之後，存好或存不進去之前；移除別支手機代表的成員時，是按了確認框的「Remove」之後，到移除有結果為止（GROUPS-151.1），退出中是按了確認框的「Leave」之後，到退出有結果為止。別支手機代表的成員，是共同帳本的名冊裡有別支手機的紀錄代表的成員，不看那筆紀錄的使用者 ID（sync 的 SYNC-251.2）。唯讀副本是在這支手機上不再同步、只能看的共同帳本（sync 的 SYNC-300.1 到 SYNC-302.1）：這支手機被移除、退出了，或授權失效。這份 spec 說未封存的群組和共同帳本能做的事——改名、加入和移出成員、邀請、同意申請、新增支出——唯讀副本都不能做，它的畫面照封存的群組顯示（GROUPS-155.1、GROUPS-156.1）；它的卡片仍留在原本的地方（GROUPS-153.1）。使用者可以把它從這支手機刪掉（GROUPS-157.1 到 GROUPS-159.1）；別的群組 app 都不刪除。封存的群組是本機資料裡標成封存的群組，它的群組 ID、名稱和成員都留著；其他的群組是未封存的群組；還原是拿掉封存的標記。封存中是指開始把封存寫入本機資料之後，存好或存不進去之前；還原中也一樣。群組的卡片是 Groups 根畫面上的卡片，封存群組的卡片是 Archived Groups 上的卡片。群組的畫面在 Groups 分頁上，從封存群組的卡片打開時在 Settings 分頁上；從群組的畫面打開的 Members 和名稱表單都和它在同一個分頁。群組的畫面也列出這個群組不在垃圾桶裡、日期在群組的畫面的期間裡、通過這個畫面的篩選的支出（GROUPS-61.6），支出的卡片、明細、垃圾桶、期間、期間列、篩選和膠囊列見 ledger。Balances 是從群組的畫面打開、列出群組裡每個人的已付、份額和淨額的畫面，和群組的畫面在同一個分頁。一個人在群組裡某個幣別的已付，是這個群組不在垃圾桶裡、這個幣別的支出的付款裡記在他的成員 ID 下的金額總和；份額是這些支出的分攤裡記在他的成員 ID 下的金額總和；淨額是已付減份額。你的已付、份額和淨額是你在群組裡的成員的。群組的金額是群組的畫面上清單上方的總額（GROUPS-68.6）和你的淨額、Balances，以及群組的卡片上的份額和淨額；它們都依幣別分開，不把不同幣別的金額相加或換算。
 
 ## Requirements
 
@@ -424,12 +424,12 @@ The mobile app SHALL 在未封存群組的 Members 依加入的先後，由上�
 
 #### Scenario: 有手機的成員
 
-- **WHEN** Brisbane 是共同帳本，名冊裡有別支手機代表 Casey 的紀錄（sync 的 SYNC-251.1），開啟它的 Members
+- **WHEN** Brisbane 是共同帳本，名冊裡有別支手機代表 Casey 的紀錄（sync 的 SYNC-251.2），開啟它的 Members
 - **THEN** Casey 那一列顯示「Casey」和「Joined」，是名稱為「Casey, Joined」的按鈕；Blake 那一列沒有「Joined」；你那一列仍是「Taylor (You)」，沒有「Joined」
 
-### Requirement: GROUPS-25.3 在未封存群組的 Members 點成員那一列跳出他的選單
+### Requirement: GROUPS-25.4 在未封存群組的 Members 點成員那一列跳出他的選單
 
-WHEN 使用者在未封存群組的 Members 點成員那一列，the mobile app SHALL 跳出標題是這位成員的名稱的選單：別人的選單內容是「If removed, their historical payments and shares will be retained.」，依序是「Rename」、「Remove from Group」和「Cancel」；你的選單沒有內容，依序是「Rename」和「Cancel」；有手機的別人的選單也沒有內容，依序是「Rename」和「Cancel」：他的手機還在這個共同帳本裡，把它移出不在這裡（sharing）。iOS 上選單是動作表（action sheet），「Remove from Group」是破壞性的樣式；Android 上選單是對話框。按 Cancel 時關閉選單，什麼都不改；Android 上按返回鍵或點對話框外面也一樣。
+WHEN 使用者在未封存群組的 Members 點成員那一列，the mobile app SHALL 跳出標題是這位成員的名稱的選單：別人的選單內容是「If removed, their historical payments and shares will be retained.」，依序是「Rename」、「Remove from Group」和「Cancel」，別支手機代表的成員也是這個選單；你的選單沒有內容，依序是「Rename」和「Cancel」，群組是共同帳本時依序是「Rename」、「Leave Group」和「Cancel」。iOS 上選單是動作表（action sheet），「Remove from Group」和「Leave Group」是破壞性的樣式；Android 上選單是對話框。按 Cancel 時關閉選單，什麼都不改；Android 上按返回鍵或點對話框外面也一樣。
 
 #### Scenario: iOS
 
@@ -443,13 +443,18 @@ WHEN 使用者在未封存群組的 Members 點成員那一列，the mobile app 
 
 #### Scenario: 你的選單
 
-- **WHEN** 名字是「Taylor」，在 Members 點「Taylor (You)」
+- **WHEN** 名字是「Taylor」，Brisbane 還不是共同帳本，在 Members 點「Taylor (You)」
 - **THEN** 跳出標題「Taylor」、沒有內容的選單，依序是「Rename」和「Cancel」
+
+#### Scenario: 共同帳本裡你的選單
+
+- **WHEN** Brisbane 是共同帳本，在 Members 點「Taylor (You)」
+- **THEN** iOS 上跳出標題「Taylor」、沒有內容的動作表，依序是「Rename」、破壞性的「Leave Group」和「Cancel」；Android 上是按鈕「Rename」、「Leave Group」和「Cancel」的對話框
 
 #### Scenario: 有手機的成員的選單
 
 - **WHEN** Brisbane 是共同帳本，名冊裡有別支手機代表 Casey 的紀錄，在 Members 點 Casey 那一列
-- **THEN** 跳出標題「Casey」、沒有內容的選單，依序是「Rename」和「Cancel」，沒有「Remove from Group」
+- **THEN** 跳出標題「Casey」、內容是「If removed, their historical payments and shares will be retained.」的選單，依序是「Rename」、「Remove from Group」和「Cancel」
 
 #### Scenario: 按 Cancel
 
@@ -461,9 +466,9 @@ WHEN 使用者在未封存群組的 Members 點成員那一列，the mobile app 
 - **WHEN** Android 上 Blake 的對話框開著時按返回鍵，或點對話框外面
 - **THEN** 對話框關閉，Members 仍列出 Blake，Brisbane 的成員沒有改變
 
-### Requirement: GROUPS-26.1 選 Remove from Group 時移出群組
+### Requirement: GROUPS-26.2 選 Remove from Group 時移出群組
 
-WHEN 使用者在別人的選單選「Remove from Group」，the mobile app SHALL 不再另外確認，直接把他移出群組，存好後 Members 不再列出他。
+WHEN 使用者在沒有別支手機代表的別人的選單選「Remove from Group」，the mobile app SHALL 不再另外確認，直接把他移出群組，存好後 Members 不再列出他，離線也一樣；別支手機代表的成員照 GROUPS-150.1 先確認，再連上線移除。
 
 #### Scenario: 移除
 
@@ -520,7 +525,7 @@ IF 移除存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable
 
 ### Requirement: GROUPS-29.2 按 Add Member 時多一列名稱欄位
 
-WHEN 使用者在未封存群組的 Members 按「Add Member」，the mobile app SHALL 不開新的畫面，把「Add Member」那一列換成名稱欄位，讓它取得焦點並打開鍵盤：名稱欄位的無障礙名稱是「Member name」，開啟時是空的、顯示「Enter member name」；名稱欄位失去焦點時，例如收起鍵盤或點了成員那一列，名稱欄位和裡面的名稱都留著，名稱欄位開著時點成員那一列，第一下就跳出他的選單（GROUPS-25.3）；Members 關閉時，名稱欄位裡還沒加入的名稱不會存下。
+WHEN 使用者在未封存群組的 Members 按「Add Member」，the mobile app SHALL 不開新的畫面，把「Add Member」那一列換成名稱欄位，讓它取得焦點並打開鍵盤：名稱欄位的無障礙名稱是「Member name」，開啟時是空的、顯示「Enter member name」；名稱欄位失去焦點時，例如收起鍵盤或點了成員那一列，名稱欄位和裡面的名稱都留著，名稱欄位開著時點成員那一列，第一下就跳出他的選單（GROUPS-25.4）；Members 關閉時，名稱欄位裡還沒加入的名稱不會存下。
 
 #### Scenario: 按 Add Member
 
@@ -623,14 +628,14 @@ IF 使用者在 Members 的名稱欄位按 Return 時，名稱和群組的某位
 - **WHEN** 移除 Blake 之後，把 Casey 改名為「Blake」，再在名稱欄位輸入「blake」，按 Return
 - **THEN** 名稱欄位下方顯示這句話，沒有問要不要加回來
 
-### Requirement: GROUPS-34.3 和前成員同名時問要不要加回來
+### Requirement: GROUPS-34.4 和前成員同名時問要不要加回來
 
-IF 使用者在 Members 的名稱欄位按 Return 時，名稱不和群組的任何成員同名，但和這個群組的前成員同名，THEN the mobile app SHALL 先不儲存，跳出標題「Add <前成員的名稱> Back?」、內容「<前成員的名稱> was removed from this group before. Adding them back reconnects their past payments and shares.」的提示框，選項是「Cancel」和「Add Back」，同名的前成員不只一位時問的是最近被移出的那一位：按 Add Back 時讓他回到群組，沿用他原本的成員 ID 和名稱，存好後把他列在成員的最後，名稱欄位清空並保有焦點，他是共同帳本的第 20 位成員時名稱欄位就收起（GROUPS-105.1）；按 Cancel 時名稱欄位保留輸入，Android 上按返回鍵或點提示框外面也一樣。
+IF 使用者在 Members 的名稱欄位按 Return 時，名稱不和群組的任何成員同名，但和這個群組的前成員同名，THEN the mobile app SHALL 先不儲存，跳出標題「Add <前成員的名稱> Back?」、內容「<前成員的名稱> was in this group before. Adding them back reconnects their past payments and shares.」的提示框，選項是「Cancel」和「Add Back」，同名的前成員不只一位時問的是最近被移出的那一位：按 Add Back 時讓他回到群組，沿用他原本的成員 ID 和名稱，存好後把他列在成員的最後，名稱欄位清空並保有焦點，他是共同帳本的第 20 位成員時名稱欄位就收起（GROUPS-105.1）；按 Cancel 時名稱欄位保留輸入，Android 上按返回鍵或點提示框外面也一樣。
 
 #### Scenario: 加回來
 
 - **WHEN** Brisbane 有 Taylor、Blake 和 Casey，移除 Blake 之後，在名稱欄位輸入「blake」，按 Return，再按「Add Back」
-- **THEN** 先跳出標題「Add Blake Back?」、內容「Blake was removed from this group before. Adding them back reconnects their past payments and shares.」的提示框；按 Add Back 後 Members 由上而下是「Taylor (You)」、「Casey」、「Blake」和空的名稱欄位；Blake 的成員 ID 和移除之前一樣，名稱是「Blake」
+- **THEN** 先跳出標題「Add Blake Back?」、內容「Blake was in this group before. Adding them back reconnects their past payments and shares.」的提示框；按 Add Back 後 Members 由上而下是「Taylor (You)」、「Casey」、「Blake」和空的名稱欄位；Blake 的成員 ID 和移除之前一樣，名稱是「Blake」
 
 #### Scenario: 按 Cancel
 
@@ -1217,7 +1222,7 @@ WHILE 群組有不在垃圾桶裡的支出，the mobile app SHALL 在群組的�
 
 #### Scenario: 前成員付款
 
-- **WHEN** 把付了 Dinner 的 Casey 移出 Brisbane（GROUPS-34.3）
+- **WHEN** 把付了 Dinner 的 Casey 移出 Brisbane（GROUPS-34.4）
 - **THEN** 卡片上仍是「Paid by Casey」
 
 #### Scenario: 和你無關的支出
@@ -1353,7 +1358,7 @@ WHEN 支出存好，the mobile app SHALL 讓群組的畫面再出現時就是存
 
 ### Requirement: GROUPS-66.1 移出成員時不改支出
 
-WHEN 使用者把成員移出群組（GROUPS-26.1），the mobile app SHALL 不改這個群組的支出，他的付款和分攤的金額和成員 ID 都保留。
+WHEN 使用者把成員移出群組（GROUPS-26.2），the mobile app SHALL 不改這個群組的支出，他的付款和分攤的金額和成員 ID 都保留。
 
 #### Scenario: 移出分攤的人
 
@@ -1362,7 +1367,7 @@ WHEN 使用者把成員移出群組（GROUPS-26.1），the mobile app SHALL 不�
 
 #### Scenario: 加回來
 
-- **WHEN** 再把 Blake 加回 Brisbane（GROUPS-34.3）
+- **WHEN** 再把 Blake 加回 Brisbane（GROUPS-34.4）
 - **THEN** Dinner 的分攤仍記在 Blake 原本的成員 ID 下，他又是 Brisbane 的成員
 
 ### Requirement: GROUPS-67.1 (manual) 群組畫面最後一張卡片不被 + 按鈕擋住
@@ -1565,9 +1570,9 @@ The mobile app SHALL 在 Balances 依幣別代碼排序，為群組不在垃圾�
 - **WHEN** Brisbane 有 Taylor 付、Taylor 和 Casey 分攤的 60.00 USD 的 Dinner，以及 Casey 付、只有 Blake 分攤的 25.00 USD 的 Taxi，把 Blake 移出 Brisbane，再把 Taxi 移到垃圾桶
 - **THEN** Balances 沒有 Blake；按 Undo 提示的「Undo」之後又有 Blake
 
-### Requirement: GROUPS-72.3 群組的卡片顯示成員人數
+### Requirement: GROUPS-72.4 群組的卡片顯示成員人數
 
-The mobile app SHALL 在群組的卡片上、群組名稱那一行的右邊顯示群組的成員人數，一位時是「1 member」，其他時候是「<人數> members」；前成員不算在內。群組名稱是粗體。字級很大時，成員人數改在名稱的下一行（GROUPS-104.1）。
+The mobile app SHALL 在群組的卡片上、群組名稱那一行的右邊顯示群組的成員人數，一位時是「1 member」，其他時候是「<人數> members」；前成員不算在內；唯讀副本顯示的不是成員人數，是「Read-only copy」（GROUPS-153.1）。群組名稱是粗體。字級很大時，成員人數改在名稱的下一行（GROUPS-104.1）。
 
 #### Scenario: 新建立的群組
 
@@ -1913,7 +1918,7 @@ The mobile app SHALL 讓 Groups 根畫面上每張群組的卡片一樣高，不
 
 ### Requirement: GROUPS-104.1 字級很大時，群組卡片的成員人數在名稱下一行
 
-WHILE 手機的字級是 iOS 的輔助使用字級，或 Android 的字型大小在 150% 以上，the mobile app SHALL 在群組的卡片上把成員人數放在群組名稱的下一行，讓名稱使用整行的寬度，仍然只佔一行，放不下時尾端漸層消失（SHELL-68.1）；比這小的字級，成員人數在名稱右邊（GROUPS-72.3）。
+WHILE 手機的字級是 iOS 的輔助使用字級，或 Android 的字型大小在 150% 以上，the mobile app SHALL 在群組的卡片上把成員人數放在群組名稱的下一行，讓名稱使用整行的寬度，仍然只佔一行，放不下時尾端漸層消失（SHELL-68.1）；比這小的字級，成員人數在名稱右邊（GROUPS-72.4）。
 
 #### Scenario: iOS 的輔助使用字級
 
@@ -2019,7 +2024,7 @@ WHILE 本機資料存著申請（sharing），the mobile app SHALL 在 Groups �
 
 #### Scenario: 加入好了之後
 
-- **WHEN** 成員同意了 Brisbane 的申請，這支手機加入好了（sharing 的 SHARING-219.1）
+- **WHEN** 成員同意了 Brisbane 的申請，這支手機加入好了（sharing 的 SHARING-219.2）
 - **THEN** 沒有申請的卡片，群組的卡片裡有「Open Brisbane」
 
 #### Scenario: 排在群組的卡片上面
@@ -2114,6 +2119,217 @@ WHEN 使用者在 Members 點一個申請的那一列，the mobile app SHALL 跳
 - **WHEN** 在 Dana 的選單按「Cancel」；或 Android 上按返回鍵，或點對話框外面
 - **THEN** 選單關閉，Dana 那一列還在；API 沒有收到同意和拒絕的請求
 
+### Requirement: GROUPS-150.1 移除別支手機代表的成員之前先確認
+
+WHEN 使用者在未封存的共同帳本的 Members，在別支手機代表的成員的選單選「Remove from Group」，the mobile app SHALL 先跳出提示框：標題「Remove <成員名稱>?」，訊息「<成員名稱>'s phone will lose access to this group right away. Their past payments and shares will be kept.」，按鈕是「Cancel」和破壞性的「Remove」。按「Remove」才照 sharing 的 SHARING-270.1 移除，這要連上線；按「Cancel」關閉提示框，什麼都不做，Android 上按返回鍵或點提示框外面也一樣。
+
+#### Scenario: 確認
+
+- **WHEN** Brisbane 是共同帳本，名冊裡有別支手機代表 Dana 的紀錄；在 Members 點 Dana 那一列，選「Remove from Group」
+- **THEN** 跳出標題「Remove Dana?」的提示框，訊息是「Dana's phone will lose access to this group right away. Their past payments and shares will be kept.」，按鈕是「Cancel」和破壞性的「Remove」；API 還沒有收到任何請求，Members 仍列出 Dana
+
+#### Scenario: 按 Cancel
+
+- **WHEN** 在提示框按「Cancel」
+- **THEN** 提示框關閉，Members 仍列出 Dana，她那一列有「Joined」；API 沒有收到換鑰匙的請求
+
+#### Scenario: 沒有手機的成員不問
+
+- **WHEN** 在同一個共同帳本的 Members 點沒有手機的 Blake，選「Remove from Group」
+- **THEN** 沒有跳出提示框，Members 不再列出 Blake（GROUPS-26.2）；API 沒有收到換鑰匙的請求
+
+### Requirement: GROUPS-151.1 移除別支手機代表的成員和退出的時候鎖住 Members
+
+WHILE 別支手機代表的成員在移除中，也就是按了「Remove」之後、移除有結果之前，the mobile app SHALL 讓他那一列的第二行顯示「Removing…」，不顯示「Joined」，無障礙名稱是他的名稱、逗號、空格和「Removing…」，並照 GROUPS-27.2 鎖住 Members；WHILE 退出中，也就是按了「Leave」之後、退出有結果之前，SHALL 讓你那一列的第二行顯示「Leaving…」，無障礙名稱是你那一列原本的名稱、逗號、空格和「Leaving…」，也照 GROUPS-27.2 鎖住 Members。移除好了時 Members 不再列出他，並解開；退出好了時 Members 關閉（SHARING-276.1）；沒成功時解開，並照 SHARING-274.1 或 SHARING-277.1 跳出提示框。
+
+#### Scenario: 移除中
+
+- **WHEN** 在 Dana 的確認框按「Remove」，API 還沒回答換鑰匙的請求
+- **THEN** Dana 那一列是「Dana」和「Removing…」，是名稱為「Dana, Removing…」的按鈕；Close 停用，點「Casey」不跳出選單，按「Add Member」不出現名稱欄位，往下滑或按 Android 的返回鍵 Members 都不關閉
+
+#### Scenario: 移除好了
+
+- **WHEN** API 回答換好了，這支手機同步之後
+- **THEN** Members 不再列出 Dana，Close 恢復可以按
+
+#### Scenario: 退出中
+
+- **WHEN** 在退出的確認框按「Leave」，API 還沒回答退出的請求
+- **THEN** 你那一列是「Taylor (You)」和「Leaving…」，名稱是「Taylor (You), Leaving…」；Close 停用，每一列都按了沒有反應
+
+#### Scenario: 沒成功
+
+- **WHEN** 換鑰匙的請求沒有得到回應
+- **THEN** 跳出「Unable to Remove Member」之後，Dana 那一列又是「Dana」和「Joined」，Close 和每一列都恢復可以按
+
+### Requirement: GROUPS-152.1 退出之前先確認，並寫出你還沒結清的金額
+
+WHEN 使用者在共同帳本裡你的選單選「Leave Group」，the mobile app SHALL 跳出提示框：標題「Leave <群組名稱>?」；訊息依序是這幾段，段落之間空一行：「This phone keeps a read-only copy. You won't see new expenses or be able to change this group.」；你在這個群組的淨額有不是 0 的幣別時，GROUPS-69.4 的那一行或兩行，也就是「You owe: …」、「You're owed: …」或兩行都有，中間換行；名冊裡沒有別支手機代表任何一位成員時，「No other phone has joined this group, so nobody else will have its expenses.」。按鈕是「Cancel」和破壞性的「Leave」。按「Leave」才照 sharing 的 SHARING-276.1 退出，這要連上線；按「Cancel」關閉提示框，什麼都不做，Android 上按返回鍵或點提示框外面也一樣。退出不必先結清，也不必別的成員同意。
+
+#### Scenario: 你欠別人
+
+- **WHEN** Brisbane 是共同帳本，名冊裡有別支手機代表 Dana 的紀錄；只有 Casey 付的 60.00 USD 的 Dinner，分給 Taylor、Casey 和 Blake；在 Members 點「Taylor (You)」，選「Leave Group」
+- **THEN** 跳出標題「Leave Brisbane?」的提示框，訊息是「This phone keeps a read-only copy. You won't see new expenses or be able to change this group.」、一行空白和「You owe: $20.00」，按鈕是「Cancel」和破壞性的「Leave」；API 還沒有收到退出的請求
+
+#### Scenario: 兩個方向
+
+- **WHEN** Brisbane 另外有 Taylor 付的 3000 JPY 的 Sushi，分給 Taylor 和 Casey
+- **THEN** 訊息的第二段是兩行：「You owe: $20.00」和「You're owed: ¥1,500」
+
+#### Scenario: 打平或沒有支出
+
+- **WHEN** Brisbane 沒有支出，或你的淨額每個幣別都是 0
+- **THEN** 訊息只有第一段，沒有「Settled up」
+
+#### Scenario: 沒有別的手機
+
+- **WHEN** Brisbane 是 Taylor 邀請過、還沒有人加入的共同帳本，名冊沒有紀錄；選「Leave Group」
+- **THEN** 訊息的最後一段是「No other phone has joined this group, so nobody else will have its expenses.」
+
+#### Scenario: 按 Cancel
+
+- **WHEN** 在提示框按「Cancel」
+- **THEN** 提示框關閉，Brisbane 不是唯讀副本；API 沒有收到退出的請求
+
+### Requirement: GROUPS-153.1 唯讀副本的卡片留在原本的地方，寫著 Read-only copy
+
+WHILE 群組是唯讀副本（sync），the mobile app SHALL 讓它的卡片留在原本的地方：沒有封存的在 Groups 根畫面依建立的先後該在的位置（GROUPS-2.2），封存的在 Archived Groups（GROUPS-52.1）。群組的卡片上，原本顯示成員人數的地方（GROUPS-72.4、GROUPS-104.1）改顯示「Read-only copy」，其他都不變：名稱、你的份額和淨額（GROUPS-73.2）和無障礙名稱。它照常可以封存和還原（GROUPS-48.1、GROUPS-57.1），兩者都不改它是唯讀副本。
+
+#### Scenario: Groups 根畫面
+
+- **WHEN** 依序建立 Brisbane、Tokyo 和 Paris，Tokyo 成為唯讀副本
+- **THEN** Groups 根畫面依序是 Brisbane、Tokyo 和 Paris 的卡片；Tokyo 的卡片是名稱為「Open Tokyo」的按鈕，上面是「Tokyo」和「Read-only copy」，沒有「1 member」；另外兩張仍顯示成員人數
+
+#### Scenario: 封存和還原
+
+- **WHEN** 封存唯讀副本 Tokyo，再從 Archived Groups 按它的「Restore」
+- **THEN** 先是它的卡片在 Archived Groups，由上而下是「Tokyo」和「Archived group」；還原之後回到 Groups 根畫面原本的位置，仍寫著「Read-only copy」，它的畫面仍有唯讀副本的橫幅
+
+### Requirement: GROUPS-155.1 唯讀副本的畫面用橫幅說明，沒有 Restore Group
+
+WHILE 群組是唯讀副本，the mobile app SHALL 在它的畫面的大標題下面顯示橫幅，文字依它成為唯讀副本的原因（sync 的 SYNC-300.1、SYNC-301.1，sharing 的 SHARING-276.1）：不是成員是「You're no longer a member of this group. This copy is read-only and won't update.」；退出是「You left this group. This copy is read-only and won't update.」；授權失效是「This phone can't sync this group anymore. This copy is read-only and won't update.」。它有待上傳的事件時，橫幅下面多一行：一個時是「1 change made on this phone was never sent to the group.」，其他時候是「<個數> changes made on this phone were never sent to the group.」。這個畫面沒有「Restore Group」，封存的唯讀副本也沒有；也不顯示封存群組的那句提示（GROUPS-55.2）、等 app 更新和群組滿了的那兩句話（SYNC-75.1、SYNC-83.1、SYNC-169.1）、需要確認的按鈕（GROUPS-107.2）、沒有套用的變更的按鈕（GROUPS-170.2）和想加入的按鈕（GROUPS-130.1）。
+
+#### Scenario: 被移除
+
+- **WHEN** Brisbane 成為唯讀副本，原因是不是成員，沒有待上傳的事件；打開它的畫面
+- **THEN** 由上而下是大標題「Brisbane」、「You're no longer a member of this group. This copy is read-only and won't update.」、「Delete Copy」按鈕（GROUPS-157.1）和支出的清單；沒有「Restore Group」，也沒有「Archived group. Expenses and allocations are read-only.」
+
+#### Scenario: 退出和授權失效
+
+- **WHEN** Brisbane 成為唯讀副本的原因是退出；或是授權失效
+- **THEN** 橫幅分別是「You left this group. This copy is read-only and won't update.」和「This phone can't sync this group anymore. This copy is read-only and won't update.」
+
+#### Scenario: 沒送出的變更
+
+- **WHEN** Brisbane 成為唯讀副本時有一個待上傳的事件；或有三個
+- **THEN** 橫幅下面分別是「1 change made on this phone was never sent to the group.」和「3 changes made on this phone were never sent to the group.」
+
+#### Scenario: 封存的唯讀副本
+
+- **WHEN** 封存唯讀副本 Brisbane 之後，從 Archived Groups 打開它的畫面
+- **THEN** 畫面上是唯讀副本的橫幅，沒有「Archived group. Expenses and allocations are read-only.」，也沒有「Restore Group」
+
+#### Scenario: 原本顯示的提示都不顯示
+
+- **WHEN** Brisbane 成為唯讀副本之前在等 app 更新（SYNC-75.1），有一筆需要確認的支出和一個收到的申請
+- **THEN** 它的畫面只有唯讀副本的橫幅，沒有那句話和那兩個按鈕
+
+### Requirement: GROUPS-156.1 唯讀副本的畫面和 Members 只能看
+
+WHILE 群組是唯讀副本，the mobile app SHALL 不管它有沒有封存，都照封存的群組顯示它的畫面和 Members：Group actions 依序是「Members」和「Categories」（GROUPS-22.3 裡封存的群組的那一種），畫面沒有「Add expense」按鈕（GROUPS-64.1），長按大標題不開啟 Rename Group；Members 照 GROUPS-56.1 只列出成員，成員列都不是按鈕、沒有「›」和「Joined」，沒有「Add Member」、「Invite with Link」和「Requests」那一區。它的支出和分類也只能看（ledger 的 LEDGER-220.1 到 LEDGER-222.1、categories 的 CATEGORIES-60.1）。
+
+#### Scenario: Group actions
+
+- **WHEN** 沒有封存的 Brisbane 成為唯讀副本；iOS 上打開它的畫面，或 Android 上按「Group actions」
+- **THEN** iOS 的選單依序列出「Members」和「Categories」，沒有「Rename Group」；Android 的對話框按鈕是「Members」、「Categories」和「Cancel」
+
+#### Scenario: 沒有 Add expense，也不能改名
+
+- **WHEN** 打開唯讀副本 Brisbane 的畫面，長按大標題
+- **THEN** 畫面上沒有「Add expense」按鈕；沒有開啟 Rename Group
+
+#### Scenario: Members
+
+- **WHEN** Brisbane 的成員是 Taylor、Casey、Blake 和有手機的 Dana，它成為唯讀副本之後打開 Members
+- **THEN** 由上而下是「Taylor (You)」、「Casey」、「Blake」和「Dana」；Members 的內容裡沒有任何按鈕、「›」和「Joined」，沒有「Invite with Link」和「Add Member」；點任何一列都沒有跳出選單
+
+### Requirement: GROUPS-157.1 唯讀副本的畫面有 Delete Copy，按了先確認
+
+WHILE 群組是唯讀副本，the mobile app SHALL 在它的畫面的橫幅下面——有沒送出的變更那一行時，在那一行下面（GROUPS-155.1）——顯示角色為 button、名稱為「Delete Copy」的按鈕，封存的唯讀副本也有。WHEN 使用者按它，the mobile app SHALL 在改動本機資料之前跳出提示框：標題「Delete This Copy?」；訊息在它沒有待上傳的事件時是「This copy and its expenses will be deleted from this phone. This can't be undone.」，有一個時是「This copy and its expenses will be deleted from this phone, including 1 change that was never sent to the group. This can't be undone.」，其他時候是「This copy and its expenses will be deleted from this phone, including <個數> changes that were never sent to the group. This can't be undone.」；按鈕是「Cancel」和破壞性的「Delete」。按「Delete」才照 GROUPS-158.1 刪除；按「Cancel」關閉提示框，什麼都不做，Android 上按返回鍵或點提示框外面也一樣。不是唯讀副本的群組，畫面上沒有這個按鈕：app 只刪除唯讀副本，不刪除別的群組。
+
+#### Scenario: 按 Delete Copy
+
+- **WHEN** Brisbane 成為唯讀副本，沒有待上傳的事件；在它的畫面按「Delete Copy」
+- **THEN** 跳出「Delete This Copy?」，訊息是「This copy and its expenses will be deleted from this phone. This can't be undone.」，按鈕是 Cancel 和破壞性的 Delete；本機資料還沒有任何改變
+
+#### Scenario: 有沒送出的變更
+
+- **WHEN** Brisbane 成為唯讀副本時有一個待上傳的事件；或有三個；按「Delete Copy」
+- **THEN** 橫幅、那一行和「Delete Copy」由上而下排列；訊息分別是「This copy and its expenses will be deleted from this phone, including 1 change that was never sent to the group. This can't be undone.」和「This copy and its expenses will be deleted from this phone, including 3 changes that were never sent to the group. This can't be undone.」
+
+#### Scenario: 按 Cancel
+
+- **WHEN** 在這個提示框按「Cancel」
+- **THEN** Brisbane 仍是唯讀副本，畫面不變，本機資料和按「Delete Copy」之前完全一樣
+
+#### Scenario: 封存的唯讀副本
+
+- **WHEN** 封存唯讀副本 Brisbane 之後，從 Archived Groups 打開它的畫面
+- **THEN** 橫幅下面是「Delete Copy」按鈕
+
+#### Scenario: 不是唯讀副本的群組
+
+- **WHEN** 打開共同帳本 Tokyo 的畫面；或打開封存的、不是唯讀副本的群組的畫面
+- **THEN** 畫面上都沒有「Delete Copy」
+
+### Requirement: GROUPS-158.1 按 Delete 時把這份副本從這支手機刪掉
+
+WHEN 使用者在「Delete This Copy?」按「Delete」，the mobile app SHALL 在一個 SQLite transaction 裡，從本機資料刪掉這個群組和本機資料替它存著的每一樣東西：它的成員和前成員；它的分類；它的支出，垃圾桶裡的也算；它的支出清單的排序和篩選條件（ledger）；它的同步資料，也就是每筆紀錄的值和時間戳記、刪除紀錄、待上傳的事件、API 確認過而 cursor 還沒有涵蓋的事件（SYNC-161.1）、不套用的事件留下的紀錄、沒有套用的變更（SYNC-350.1）、它在等快照這件事（SYNC-165.1）、名冊，和它是唯讀副本這件事（sync）；還有它的邀請（sharing）。刪除不發出任何網路請求，不寫事件。手機看過的最新時間戳記（SYNC-2.1）、這支手機的裝置身分和 secure store 的內容都不變；別的群組、個人的帳和這支手機送出的加入申請都不受影響。存好之後，SHALL 關閉這個群組的畫面：從 Groups 根畫面打開的，回到 Groups 根畫面；從 Archived Groups 打開的，回到 Archived Groups；那裡不再有它的卡片。它的支出不再出現在 Expenses 和 Trash。別的分頁上還開著它的畫面或它的支出的明細時，那些畫面照找不到群組和找不到支出的規則顯示（GROUPS-21.1、ledger 的 LEDGER-39.1）。
+
+#### Scenario: 刪除
+
+- **WHEN** 唯讀副本 Brisbane 有成員 Taylor、Casey 和 Blake，有支出 Lunch，垃圾桶裡有它的支出 Taxi；Tokyo 是共同帳本，另外有個人支出 Coffee；在 Brisbane 的畫面按「Delete Copy」，再按「Delete」
+- **THEN** 回到 Groups 根畫面，上面只有 Tokyo 的卡片；Expenses 只列出 Coffee，Trash 沒有 Taxi；本機資料裡沒有任何一列帶著 Brisbane 的群組 ID、它的成員的成員 ID、它的分類的 ID 或它的支出的 ID；Tokyo、Coffee 和手機看過的最新時間戳記都和刪除之前一樣；API 沒有收到任何請求
+
+#### Scenario: 沒送出的變更一起刪掉
+
+- **WHEN** Brisbane 成為唯讀副本時有兩個待上傳的事件；刪除這份副本
+- **THEN** 這支手機沒有待上傳的事件，之後的同步也不上傳它們
+
+#### Scenario: 封存的唯讀副本
+
+- **WHEN** 封存唯讀副本 Brisbane 之後，從 Archived Groups 打開它的畫面，按「Delete Copy」，再按「Delete」
+- **THEN** 回到 Archived Groups，顯示「No archived groups.」
+
+#### Scenario: 重新啟動之後
+
+- **WHEN** 刪除唯讀副本 Brisbane 之後重新啟動 app
+- **THEN** Groups 根畫面沒有 Brisbane 的卡片；API 沒有收到 Brisbane 的請求
+
+#### Scenario: 別的分頁上開著它的支出
+
+- **WHEN** Expenses 分頁上開著 Lunch 的明細；到 Groups 分頁打開唯讀副本 Brisbane 的畫面，刪除這份副本，再回到 Expenses 分頁
+- **THEN** 明細只顯示「Expense not found.」
+
+### Requirement: GROUPS-159.1 刪不掉時說明，副本還在
+
+IF 刪除唯讀副本存不進本機資料，THEN the mobile app SHALL 跳出標題「Unable to Delete Copy」、內容「The copy could not be deleted. Please try again.」的提示框，本機資料和按「Delete」之前完全一樣，畫面不關閉，仍是唯讀副本的畫面。WHILE 刪除還沒存好，the mobile app SHALL 停用「Delete Copy」，到存好或失敗為止。
+
+#### Scenario: 寫不進去
+
+- **WHEN** 資料庫無法寫入時，在唯讀副本 Brisbane 的畫面按「Delete Copy」，再按「Delete」
+- **THEN** 跳出這個提示框；畫面仍顯示唯讀副本的橫幅和「Delete Copy」；本機資料和之前完全一樣
+
+#### Scenario: 之後再刪一次
+
+- **WHEN** 資料庫又可以寫入之後，再按「Delete Copy」和「Delete」
+- **THEN** 回到 Groups 根畫面，沒有 Brisbane 的卡片
+
+#### Scenario: 還沒存好
+
+- **WHEN** 按了「Delete」，還沒存好
+- **THEN** 「Delete Copy」停用；存好之後回到 Groups 根畫面
+
 ### Requirement: GROUPS-170.2 群組的畫面最上面顯示有幾個沒有套用的變更
 
 WHILE 共同帳本有沒有套用的變更（sync），the mobile app SHALL 在它的畫面的大標題下面顯示一個按鈕：LEDGER-151.1 的圖示，後面是「1 change wasn't applied」，不只一個時是「<個數> changes weren't applied」，右邊有「›」；個數是這個共同帳本全部沒有套用的變更，不跟著期間、篩選和搜尋，它們不算進 GROUPS-107.2 的筆數；它在 GROUPS-107.2 的按鈕下面、GROUPS-130.1 的按鈕上面，所以三個都有時由上而下是掛著標記的支出、沒有套用的變更和想加入的人；沒有 GROUPS-107.2 的按鈕時就在大標題下面、SYNC-75.1 和 SYNC-83.1 的那兩句話下面，封存的共同帳本顯示在唯讀的提示（GROUPS-55.2）上面；螢幕閱讀器把它讀成一個按鈕，讀出這句話，不讀圖示和「›」，再讀出無障礙提示「Opens the list」；按一下就開啟 Changes Not Applied（GROUPS-171.1），連按兩次也只開啟一個。群組的畫面開著時多了或少了沒有套用的變更，不必重新打開，按鈕就跟著出現、改個數或消失。共同帳本沒有沒有套用的變更時，SHALL 不顯示這個按鈕；別的群組的畫面只算自己的。
@@ -2170,7 +2386,7 @@ WHILE 共同帳本有沒有套用的變更（sync），the mobile app SHALL 在�
 
 ### Requirement: GROUPS-171.1 Changes Not Applied 列出沒有套用的變更，一個一個按掉
 
-WHEN 使用者按群組的畫面上「<個數> change(s) wasn't/weren't applied」的按鈕（GROUPS-170.2），the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Changes Not Applied，標題是「Changes Not Applied」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.2）；按 Close、把它往下滑或按 Android 的返回鍵，SHALL 關閉它，回到群組的畫面。Changes Not Applied 依記下的先後（SYNC-350.1）由上而下替這個共同帳本每一個沒有套用的變更顯示一個區塊，每個區塊由上而下是：LEDGER-151.1 的圖示和區塊的標題；一句說明；這個變更的內容（LEDGER-230.1、GROUPS-172.2）；和角色為 button、名稱為「Dismiss」的按鈕。說明看不套用的原因：原因是時鐘時是「This phone's clock was too far ahead when you made this change, so the other phones in this group didn't accept it. It was undone on this phone. Check the date and time, then make the change again.」；其他原因都是「The other phones in this group couldn't accept this change, so it was undone on this phone. Make the change again if you still need it.」。WHEN 使用者按一個區塊的「Dismiss」，the mobile app SHALL 按掉那個沒有套用的變更（SYNC-352.1）：存好之後那個區塊消失，其他區塊不變，群組的畫面上的個數跟著少；按掉的是最後一個時，Changes Not Applied 關閉，群組的畫面沒有那個按鈕；存好之前再按「Dismiss」不再做一次；存不進本機資料時，跳出標題「Unable to Dismiss」、內容「Your change could not be saved. Please try again.」的提示框，區塊還在，本機資料和按之前一樣。Changes Not Applied 開著時多了一個沒有套用的變更，不必重新打開就多一個區塊。封存的共同帳本也照樣可以按「Dismiss」。
+WHEN 使用者按群組的畫面上「<個數> change(s) wasn't/weren't applied」的按鈕（GROUPS-170.2），the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Changes Not Applied，標題是「Changes Not Applied」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.2）；按 Close、把它往下滑或按 Android 的返回鍵，SHALL 關閉它，回到群組的畫面。Changes Not Applied 依記下的先後（SYNC-350.1）由上而下替這個共同帳本每一個沒有套用的變更顯示一個區塊，每個區塊由上而下是：LEDGER-151.1 的圖示和區塊的標題；一句說明；這個變更的內容（LEDGER-230.1、GROUPS-172.3）；和角色為 button、名稱為「Dismiss」的按鈕。說明看不套用的原因：原因是時鐘時是「This phone's clock was too far ahead when you made this change, so the other phones in this group didn't accept it. It was undone on this phone. Check the date and time, then make the change again.」；其他原因都是「The other phones in this group couldn't accept this change, so it was undone on this phone. Make the change again if you still need it.」。WHEN 使用者按一個區塊的「Dismiss」，the mobile app SHALL 按掉那個沒有套用的變更（SYNC-352.1）：存好之後那個區塊消失，其他區塊不變，群組的畫面上的個數跟著少；按掉的是最後一個時，Changes Not Applied 關閉，群組的畫面沒有那個按鈕；存好之前再按「Dismiss」不再做一次；存不進本機資料時，跳出標題「Unable to Dismiss」、內容「Your change could not be saved. Please try again.」的提示框，區塊還在，本機資料和按之前一樣。Changes Not Applied 開著時多了一個沒有套用的變更，不必重新打開就多一個區塊。封存的共同帳本也照樣可以按「Dismiss」。
 
 #### Scenario: 開啟和關閉
 
@@ -2227,9 +2443,9 @@ WHEN 使用者按群組的畫面上「<個數> change(s) wasn't/weren't applied�
 - **WHEN** 新增 Dinner，自己的事件不套用之後封存 Brisbane，從 Archived Groups 打開它的畫面，打開 Changes Not Applied，按「Dismiss」
 - **THEN** Changes Not Applied 關閉，Brisbane 的畫面沒有那個按鈕，它仍是封存的
 
-### Requirement: GROUPS-172.2 不是支出的變更和讀不出內容的變更的區塊
+### Requirement: GROUPS-172.3 不是支出的變更和讀不出內容的變更的區塊
 
-The mobile app SHALL 在 Changes Not Applied（GROUPS-171.1）替事件指的不是支出、原因不是結構的沒有套用的變更這樣顯示：區塊的標題是「Group change not applied」；內容只有一行，看事件指的紀錄的種類：群組是「Group name: <事件帶的名稱>」；成員是「Member: <名稱>」；分類是「Category: <名稱>」；邀請是「Invite link」；「不是重複」紀錄是「Not a Duplicate」；名冊紀錄是「Join approval」，它是同意加入申請時寫下的（sharing 的 SHARING-196.1）。成員和分類的名稱，是事件帶著名稱這個單位時它的值；沒有帶時，是退回之後（SYNC-351.1）這支手機存著的那位成員或那個分類現在的名稱，前成員和封存的分類也算；這支手機沒有他或它時，那一行只有「Member」或「Category」。原因是結構的沒有套用的變更，不論事件指的是什麼，區塊的標題是「Change not applied」，沒有內容那一行。
+The mobile app SHALL 在 Changes Not Applied（GROUPS-171.1）替事件指的不是支出、原因不是結構的沒有套用的變更這樣顯示：區塊的標題是「Group change not applied」；內容只有一行，看事件指的紀錄的種類：群組是「Group name: <事件帶的名稱>」；成員是「Member: <名稱>」；分類是「Category: <名稱>」；邀請是「Invite link」；「不是重複」紀錄是「Not a Duplicate」；名冊紀錄看事件帶的代表：代表一位成員的是「Join approval」，它是同意加入申請時寫下的（sharing 的 SHARING-196.2）；不代表任何人的是「Member removal」，它是替群組換鑰匙時為離開的手機寫下的（sharing 的 SHARING-271.1）。成員和分類的名稱，是事件帶著名稱這個單位時它的值；沒有帶時，是退回之後（SYNC-351.1）這支手機存著的那位成員或那個分類現在的名稱，前成員和封存的分類也算；這支手機沒有他或它時，那一行只有「Member」或「Category」。原因是結構的沒有套用的變更，不論事件指的是什麼，區塊的標題是「Change not applied」，沒有內容那一行。
 
 #### Scenario: 群組的名稱
 
@@ -2250,6 +2466,11 @@ The mobile app SHALL 在 Changes Not Applied（GROUPS-171.1）替事件指的不
 
 - **WHEN** 套用三個上傳的裝置 ID 是 `phone-a`、時間戳記比收到時間晚一小時、這支手機沒有寫過的事件：一個邀請的第一個事件、一筆「不是重複」紀錄的第一個事件，和一筆名冊紀錄的第一個事件
 - **THEN** 三個區塊的內容依序是「Invite link」、「Not a Duplicate」和「Join approval」
+
+#### Scenario: 手機離開時寫下的名冊紀錄
+
+- **WHEN** 套用一個上傳的裝置 ID 是 `phone-a`、時間戳記比收到時間晚一小時、這支手機沒有寫過、代表是不代表任何人的名冊紀錄的第一個事件
+- **THEN** 區塊的內容是「Member removal」
 
 #### Scenario: 這支手機沒有那位成員
 

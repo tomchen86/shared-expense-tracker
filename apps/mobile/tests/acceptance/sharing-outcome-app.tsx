@@ -13,6 +13,7 @@ import {
   approvedOnApi,
   cardOnApi,
   rejectedOnApi,
+  removedOnApi,
   type Handover,
   type StoredSnapshot,
 } from './sharing-invite-app';
@@ -105,6 +106,10 @@ export const phoneDevice = () => sendings().at(-1)!.deviceId!;
 export const memberRejects = (code = CODE_A) =>
   rejectedOnApi(code, phoneDevice());
 
+/** A member removes the phone from Brisbane: the API counts it as a member device no more. */
+export const memberRemovesThePhone = () =>
+  removedOnApi(BRISBANE_ID, phoneDevice());
+
 /** A member's phone uploads a new card for Brisbane's invite: the card of the scenarios with these changes. */
 export function cardBecomes(members: typeof BRISBANE_CARD.members) {
   cardOnApi(CODE_A, sealedCard(CODE_A, S, { ...BRISBANE_CARD, members }));
@@ -155,6 +160,8 @@ export interface ApprovalChanges {
   boxChanged?: boolean;
   /** Whether the API stores a snapshot at all. */
   snapshot?: boolean;
+  /** The group the phone is approved for, when it is not Brisbane of the scenarios: one whose ID the phone already holds. */
+  groupId?: string;
 }
 
 /**
@@ -167,8 +174,9 @@ export function memberApproves(changes: ApprovalChanges = {}) {
   const request = lastRequest();
   const mine = request.memberId ?? NEW_MEMBER_ID;
   const senderKey = toHex(boxPublicKey(TAYLOR_BOX));
+  const groupId = changes.groupId ?? BRISBANE_ID;
   const records = [
-    whole('group', BRISBANE_ID, { name: 'Brisbane' }, 0),
+    whole('group', groupId, { name: 'Brisbane' }, 0),
     whole(
       'category',
       UNCATEGORIZED,
@@ -239,14 +247,14 @@ export function memberApproves(changes: ApprovalChanges = {}) {
         JSON.stringify({
           version: 1,
           eventVersion: 1,
-          groupId: BRISBANE_ID,
+          groupId,
           sequence: 0,
           uncategorized: UNCATEGORIZED,
           records,
         }),
       ),
       associatedData: utf8(
-        [SNAPSHOT, BRISBANE_ID, snapshotId, TAYLORS_PHONE, '1', '0', '1'].join(
+        [SNAPSHOT, groupId, snapshotId, TAYLORS_PHONE, '1', '0', '1'].join(
           '\n',
         ),
       ),
@@ -256,7 +264,7 @@ export function memberApproves(changes: ApprovalChanges = {}) {
     sealBox({
       senderSecretKey: TAYLOR_BOX,
       recipientPublicKey: fromHex(request.boxKey),
-      context: utf8([HANDOVER, CODE_A, BRISBANE_ID, '1'].join('\n')),
+      context: utf8([HANDOVER, CODE_A, groupId, '1'].join('\n')),
       salt: deriveKey({
         secret: new Uint8Array(
           Buffer.from(changes.boxSecret ?? S, 'base64url'),
@@ -289,7 +297,7 @@ export function memberApproves(changes: ApprovalChanges = {}) {
     CODE_A,
     device,
     {
-      groupId: BRISBANE_ID,
+      groupId,
       deviceId: TAYLORS_PHONE,
       senderKey,
       epoch: 1,

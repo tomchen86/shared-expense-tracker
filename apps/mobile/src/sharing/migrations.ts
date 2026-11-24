@@ -16,7 +16,9 @@ export const sharingMigrations: readonly string[] = [
  * The applicant's copy survives a restart or export, including an unacknowledged PUT.
  * `outcome` is what asking the API has found since (SHARING-210.1), and nothing while the
  * request is unsent or waits. A request that was declined, or whose invite is gone, keeps
- * the group's name and nothing else (SHARING-213.1, SHARING-214.1).
+ * the group's name and nothing else (SHARING-213.1, SHARING-214.1). `copyGroupId` is the
+ * copy of the invite's group this phone held when it asked, which an approval may replace
+ * (SHARING-226.2).
  */
 export const joinRequestMigration = `
   CREATE TABLE join_requests (
@@ -28,6 +30,7 @@ export const joinRequestMigration = `
     memberId TEXT,
     sent INTEGER NOT NULL DEFAULT 0 CHECK (sent IN (0, 1)),
     outcome TEXT CHECK (outcome IN ('choose-again', 'approved', 'declined', 'invalid')),
+    copyGroupId TEXT,
     CHECK ((code IS NULL) = (outcome IS NOT NULL AND outcome IN ('declined', 'invalid'))),
     CHECK ((code IS NULL) = (secret IS NULL) AND (code IS NULL) = (name IS NULL))
   );

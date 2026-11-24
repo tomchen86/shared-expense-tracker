@@ -409,7 +409,7 @@ describe('SYNC-90.1', () => {
     await releaseAnswers();
 
     await expectAllUploaded();
-    // Each sync begins with a download, and the first downloads once more after its upload (SYNC-160.1).
+    // Each sync begins with a download, and the first downloads once more after its upload (SYNC-160.2).
     await waitFor(() =>
       expect(
         eventRequests(from).filter((request) => request.startsWith('GET')),
@@ -631,7 +631,12 @@ describe('SYNC-75.1', () => {
     otherPhoneUploadsUnderEpoch2(brisbane, '01');
     const from = mark();
     await leaveAndComeBack();
-    await expectRequests(from, [download(brisbane)]);
+    // One download; the phone may go on to ask the API for the key of that epoch (SHARING-278.1).
+    await waitFor(() =>
+      expect(
+        eventRequests(from).filter((request) => !request.includes('/keys?')),
+      ).toEqual([download(brisbane)]),
+    );
 
     await showGroup('Brisbane');
 

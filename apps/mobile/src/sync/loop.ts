@@ -1,4 +1,4 @@
-import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils.js';
+import { hexToBytes, utf8ToBytes } from '@noble/hashes/utils.js';
 import { checkSyncEvent, type SyncStamp } from '@shared-expense/domain';
 import {
   CONTINUE_STATUS,
@@ -14,14 +14,12 @@ import {
   readSnapshotNeededBy,
   type EventsPageResponse,
   type GroupRefusal,
-  type UploadedEvent,
+  type RelayedEvent,
   type UploadEventsRequest,
 } from '@shared-expense/domain/api';
-import { decrypt, encrypt } from '@shared-expense/domain/crypto';
-import { getRandomValues } from 'expo-crypto';
+import { decrypt } from '@shared-expense/domain/crypto';
 import { sendApiRequest, type ApiResult } from '../sharing/api-request';
 import { readDeviceIdentity } from '../sharing/device-identity';
-import { storeGroupKey } from '../sharing/group-key';
 import type { Database, SqlExecutor } from '../storage';
 import {
   applyReceivedEvents,
@@ -29,24 +27,43 @@ import {
   type ReceivedSyncEvent,
 } from './apply';
 import {
+  fetchGroupKeys,
+  revokeInvitesOfThoseWhoLeft,
+  rotateForGroup,
+} from './key-rotation';
+import { becomeReadOnlyCopy, type ReadOnlyCopyReason } from './read-only-copy';
+import {
   CONFIRMED_EVENT_IDS,
   UNSENT_EVENTS,
   requeueConfirmedEvents,
 } from './records';
 import { fetchSnapshot, sendSnapshot } from './snapshots';
 import { checkUnsentStamps, recheckStamps, takeUploadedStamps } from './stamps';
-import { GIVE_UP_AFTER_MS, jsonIn, readGroupKey } from './transport';
+import {
+  GIVE_UP_AFTER_MS,
+  associatedData,
+  encryptEvents,
+  jsonIn,
+  readGroupKey,
+} from './transport';
 import { countGroupUnapplied } from './unapplied';
 
-export { GIVE_UP_AFTER_MS, jsonIn, readGroupKey } from './transport';
+export {
+  GIVE_UP_AFTER_MS,
+  encryptEvents,
+  jsonIn,
+  readGroupKey,
+} from './transport';
 
 // A phone syncs one shared ledger with the API (ADR-0027, ADR-0034). It downloads
 // from its cursor, uploads its unsent events under the group key, and downloads once
-// more if the API confirmed any upload.
+// more if the API confirmed any upload. What the API's answers ask of the phone it does
+// before the sync has ended (ADR-0041): it makes the ledger a read-only copy, fetches a
+// group key it lacks, rotates the key for a group that needs it, and revokes the invites
+// a device that left knows.
 
 /** The most bytes a request's body may have (SHARING-48.2). */
 const BODY_LIMIT = 1_048_576;
-const NONCE_LENGTH = 24;
 const KEY_LENGTH = 32;
 /** Stands in for a key the phone lacks, where only a ciphertext's format version is asked. */
 const NO_KEY = new Uint8Array(KEY_LENGTH);
@@ -57,19 +74,6 @@ const FULL_NOTICE =
   'This group has reached its storage limit. New changes stay on this phone until there is room.';
 
 const eventsPath = (groupId: string) => `/groups/${groupId}/events`;
-
-/** What an event is encrypted with besides its key: five lines of ASCII (SYNC-67.1). */
-const associatedData = (
-  groupId: string,
-  eventId: string,
-  deviceId: string,
-  epoch: number,
-) =>
-  utf8ToBytes(
-    ['shared-expense/event/v1', groupId, eventId, deviceId, String(epoch)].join(
-      '\n',
-    ),
-  );
 
 /** The event API's own refusal that an answer is, when its status and its body both say so. */
 function groupRefusalIn(answer: ApiResult): GroupRefusal | undefined {
@@ -84,6 +88,8 @@ function groupRefusalIn(answer: ApiResult): GroupRefusal | undefined {
 interface Ledger {
   device: string;
   cursor: number;
+  /** The highest key epoch among the events of the pages stored so far (SYNC-304.1). */
+  maxEpoch: number;
   waitsForUpdate: number;
   waitsForSnapshot: number;
 }
@@ -97,11 +103,29 @@ async function readLedger(
   database: SqlExecutor,
   groupId: string,
 ): Promise<Ledger | undefined> {
+  // A read-only copy is no shared ledger: nothing is sent or stored for it (SYNC-302.1).
   const [ledger] = await database.all<Ledger>(
-    'SELECT device, cursor, waitsForUpdate, waitsForSnapshot FROM sync_groups WHERE groupId = ?',
+    `SELECT device, cursor, maxEpoch, waitsForUpdate, waitsForSnapshot FROM sync_groups
+     WHERE groupId = ? AND readOnly IS NULL`,
     [groupId],
   );
   return ledger;
+}
+
+/**
+ * What a sync found that the phone acts on once its requests are done, each from an
+ * answer of the API or from the lack of a key.
+ */
+interface Follow {
+  /** Why the ledger becomes a read-only copy (SYNC-300.1, SYNC-301.1). */
+  copy?: ReadOnlyCopyReason;
+  /** The member devices the API listed when it said the group needs a rotation (SHARING-275.1). */
+  rotationFor?: string[];
+  /**
+   * The phone lacks a group key (SHARING-278.1), with the event its download stopped at
+   * when that is how it found out.
+   */
+  keyMissing?: { stoppedAt?: RelayedEvent };
 }
 
 /** How a sync ended, for what follows one: listing join requests, and approving one. */
@@ -147,18 +171,42 @@ interface OpenedPage {
   stamps: Map<string, SyncStamp>;
   /** Why the phone stops before the page's end: it lacks a key, or does not know a format version. */
   stopped?: 'key' | 'version';
+  /** The event it stopped at for the lack of a key. */
+  stoppedAt?: RelayedEvent;
+  /** The highest key epoch among `events` and the pages stored before (SYNC-304.1). */
+  maxEpoch: number;
+  /** The highest key epoch among the events of `events` that decrypted; 0 when none did (SYNC-305.1). */
+  openedEpoch: number;
 }
 
-/** Decrypts a page's events up to the first one this phone has to stop at (SYNC-72.1 to SYNC-74.1). */
+/**
+ * Decrypts a page's events up to the first one this phone has to stop at (SYNC-72.1 to
+ * SYNC-74.1). An event in a lower key epoch than one the phone has stored, in pages
+ * before or earlier in this one, is not opened (SYNC-304.1); `received` is the highest
+ * epoch of the pages before.
+ */
 async function openPage(
   groupId: string,
   page: EventsPageResponse,
   keys: Map<number, Uint8Array | undefined>,
+  received: number,
 ): Promise<OpenedPage> {
   const events: ReceivedSyncEvent[] = [];
   const stamps = new Map<string, SyncStamp>();
+  let maxEpoch = received;
+  let openedEpoch = 0;
   for (const relayed of page.events) {
     const { id, deviceId, epoch, receivedAtMs } = relayed;
+    if (epoch < maxEpoch) {
+      events.push({
+        id,
+        device: deviceId,
+        receivedAtMs,
+        content: null,
+        refused: 'epoch',
+      });
+      continue;
+    }
     if (!keys.has(epoch)) keys.set(epoch, await readGroupKey(groupId, epoch));
     const key = keys.get(epoch);
     // The tool tells a format version it does not know before it uses the key, so a
@@ -169,8 +217,16 @@ async function openPage(
       associatedData: associatedData(groupId, id, deviceId, epoch),
     });
     if (!opened.ok && opened.reason === 'unsupported-version')
-      return { events, stamps, stopped: 'version' };
-    if (!key) return { events, stamps, stopped: 'key' };
+      return { events, stamps, stopped: 'version', maxEpoch, openedEpoch };
+    if (!key)
+      return {
+        events,
+        stamps,
+        stopped: 'key',
+        stoppedAt: relayed,
+        maxEpoch,
+        openedEpoch,
+      };
     // An event that does not open, or holds no JSON, is judged as empty content.
     const event: ReceivedSyncEvent = {
       id,
@@ -180,23 +236,26 @@ async function openPage(
     };
     const verdict = checkSyncEvent(event.content, event);
     if (verdict.status === 'unsupported')
-      return { events, stamps, stopped: 'version' };
+      return { events, stamps, stopped: 'version', maxEpoch, openedEpoch };
     if (verdict.status === 'valid') stamps.set(id, verdict.event.stamp);
     events.push(event);
+    maxEpoch = epoch;
+    if (opened.ok) openedEpoch = epoch;
   }
-  return { events, stamps };
+  return { events, stamps, maxEpoch, openedEpoch };
 }
 
 /**
  * Stores a page in one transaction (SYNC-70.1, SYNC-84.1): the stamps the API holds for
  * unsent events of this phone, the check of the unsent events' stamps, the page's events
- * and the cursor. A page that does not start right after the cursor ends the sync (SYNC-71.2).
+ * and the cursor. A page that does not start right after the cursor ends the sync (SYNC-71.3).
+ * The phone's key epoch follows the events it could open (SYNC-305.1).
  */
 async function storePage(
   database: Database,
   groupId: string,
   page: EventsPageResponse,
-  { events, stamps, stopped }: OpenedPage,
+  { events, stamps, stopped, maxEpoch, openedEpoch }: OpenedPage,
 ): Promise<'next page' | 'downloaded' | 'end'> {
   // An empty page ends the download whatever it says: the cursor would not move.
   const ended = !page.more || page.events.length === 0;
@@ -241,6 +300,11 @@ async function storePage(
          waitsForSnapshot = 0, snapshotNeedingUpdate = NULL WHERE groupId = ?`,
         [cursor, waitsForUpdate, groupId],
       );
+    await tx.run(
+      `UPDATE sync_groups SET maxEpoch = MAX(maxEpoch, ?), epoch = MAX(epoch, ?)
+       WHERE groupId = ? AND (maxEpoch < ? OR epoch < ?)`,
+      [maxEpoch, openedEpoch, groupId, maxEpoch, openedEpoch],
+    );
     // This ledger's screens are told once, with the expenses that left the trash.
     const reordered = moved.delete(groupId);
     return {
@@ -276,6 +340,7 @@ async function download(
   target: SyncTarget,
   phase: 'before upload' | 'after upload',
   end: SyncEnd,
+  follow: Follow,
 ): Promise<string[] | undefined> {
   const { apiUrl, groupId } = target;
   const keys = new Map<number, Uint8Array | undefined>();
@@ -291,7 +356,13 @@ async function download(
       giveUpAfterMs: GIVE_UP_AFTER_MS,
     });
     end.noAnswer = answer.outcome === 'no-answer';
+    // Nothing was sent: the phone holds a device ID whose seed is gone (SYNC-301.1).
+    if (answer.outcome === 'authorization-lost') follow.copy = 'lapsed';
     if (answer.outcome !== 'answered') return;
+    const refusal = groupRefusalIn(answer);
+    if (refusal?.error === 'not-a-member') follow.copy = 'not-a-member';
+    if (refusal?.error === 'rotation-needed')
+      follow.rotationFor = refusal.devices;
     const body = jsonIn(answer.body);
     if (phase === 'before upload') {
       if (
@@ -308,6 +379,8 @@ async function download(
           catchUp: true,
         });
         end.noAnswer = snapshot.outcome === 'no-answer';
+        // The snapshot it waits for is under a key epoch it has no key for (SYNC-170.1).
+        if (snapshot.outcome === 'no-key') follow.keyMissing = {};
         if (snapshot.outcome !== 'imported') return;
         tookSnapshot = true;
         continue;
@@ -320,13 +393,11 @@ async function download(
       }
     }
     if (answer.status !== 200 || !isEventsPageResponse(body)) return;
-    const next = await storePage(
-      database,
-      groupId,
-      body,
-      await openPage(groupId, body, keys),
-    );
+    const opened = await openPage(groupId, body, keys, ledger.maxEpoch);
+    const next = await storePage(database, groupId, body, opened);
     if (next === 'end') return;
+    if (opened.stopped === 'key')
+      follow.keyMissing = { stoppedAt: opened.stoppedAt };
     if (next === 'downloaded')
       return readSnapshotNeededBy(answer.snapshotNeededBy);
   }
@@ -337,27 +408,6 @@ async function download(
 interface UnsentRow {
   id: string;
   content: string;
-}
-
-/** `events` as an upload carries them, each encrypted under `key` with a nonce of its own (SYNC-67.1). */
-export function encryptEvents(
-  groupId: string,
-  deviceId: string,
-  epoch: number,
-  key: Uint8Array,
-  events: readonly UnsentRow[],
-): UploadedEvent[] {
-  return events.map(({ id, content }) => ({
-    id,
-    content: bytesToHex(
-      encrypt({
-        key,
-        nonce: getRandomValues(new Uint8Array(NONCE_LENGTH)),
-        plaintext: utf8ToBytes(content),
-        associatedData: associatedData(groupId, id, deviceId, epoch),
-      }),
-    ),
-  }));
 }
 
 /** The body of an upload of `events`. */
@@ -448,6 +498,7 @@ async function upload(
   database: Database,
   { apiUrl, groupId }: SyncTarget,
   end: SyncEnd,
+  follow: Follow,
 ): Promise<boolean> {
   for (;;) {
     // An event saved since the last page was stored has not been checked (SYNC-84.1).
@@ -498,11 +549,18 @@ async function upload(
     if (refusal?.error === 'epoch') {
       // Once for a request, and only with the key of the epoch the API names (SYNC-79.1).
       const named = await readGroupKey(groupId, refusal.epoch);
-      if (!named) break;
+      if (!named) {
+        follow.keyMissing ??= {};
+        break;
+      }
       answer = await send(refusal.epoch, named);
       refusal = groupRefusalIn(answer);
     }
     end.noAnswer = answer.outcome === 'no-answer';
+    // The unsent events stay, and what follows the sync is not another try (SYNC-78.2).
+    if (refusal?.error === 'not-a-member') follow.copy = 'not-a-member';
+    if (refusal?.error === 'rotation-needed')
+      follow.rotationFor = refusal.devices;
     const full = refusal?.error === 'group-full';
     const confirmed = confirmedEvents(answer, events);
     if (!confirmed && !full) break;
@@ -526,6 +584,89 @@ async function upload(
   return false;
 }
 
+// One sync, and what follows it
+
+/** One sync of the ledger: a download, the uploads, and a download after a confirmed upload. */
+async function syncOnce(
+  database: Database,
+  ledger: SyncTarget,
+  follow: Follow,
+): Promise<SyncEnd> {
+  const end = { downloaded: false, uploaded: false, noAnswer: false };
+  let recipients = await download(
+    database,
+    ledger,
+    'before upload',
+    end,
+    follow,
+  );
+  end.downloaded = recipients !== undefined;
+  if (!recipients) return end;
+  const complete = await upload(database, ledger, end, follow);
+  // An upload refused as no member ends the sync: the ledger is a copy (SYNC-160.2).
+  if (follow.copy) return end;
+  if (end.uploaded) {
+    recipients = await download(database, ledger, 'after upload', end, follow);
+    if (!recipients) return end;
+  }
+  if (!complete) return end;
+  for (const deviceId of recipients) {
+    const snapshot = await sendSnapshot(database, { ...ledger, deviceId });
+    if (snapshot.outcome !== 'uploaded') break;
+  }
+  return end;
+}
+
+/**
+ * Syncs the ledger, does what the sync asked for, and syncs again when that got the phone
+ * further: once after it fetched a key, and once after it rotated the group's key or
+ * found that another phone had (SHARING-275.1, SHARING-278.1). Resolves with how the
+ * first sync ended.
+ */
+async function syncAndFollow(
+  database: Database,
+  ledger: SyncTarget,
+): Promise<SyncEnd> {
+  const { groupId } = ledger;
+  let first: SyncEnd | undefined;
+  let fetched = false;
+  let rotated = false;
+  for (;;) {
+    const follow: Follow = {};
+    const end = await syncOnce(database, ledger, follow);
+    first ??= end;
+    if (follow.copy) {
+      await becomeReadOnlyCopy(database, groupId, follow.copy);
+      break;
+    }
+    if (follow.keyMissing && !fetched) {
+      fetched = true;
+      const saved = await fetchGroupKeys(
+        database,
+        ledger,
+        follow.keyMissing.stoppedAt,
+      ).catch(() => 0);
+      if (saved > 0) continue;
+    }
+    if (follow.rotationFor && !rotated) {
+      rotated = true;
+      const again = await rotateForGroup(
+        database,
+        ledger,
+        follow.rotationFor,
+      ).catch(() => false);
+      if (again) continue;
+    }
+    // A device that left knows the invites made before it did (SHARING-284.1).
+    if (end.downloaded)
+      await revokeInvitesOfThoseWhoLeft(database, ledger).catch(
+        () => undefined,
+      );
+    break;
+  }
+  return first;
+}
+
 // One sync at a time
 
 interface Turn {
@@ -537,9 +678,12 @@ const turns = new WeakMap<Database, Map<string, Turn>>();
 
 /**
  * Syncs one shared ledger with the API at `apiUrl`. It downloads, uploads the ledger's
- * unsent events and downloads again after a confirmed upload (SYNC-68.2, SYNC-160.1).
+ * unsent events and downloads again after a confirmed upload (SYNC-68.2, SYNC-160.2).
  * Resolves when the sync ends, with how it ended; what it did shows in the local data.
  * Rejects when the local data cannot be read or written.
+ *
+ * Before it resolves, the phone has also done what that sync asked of it, and synced once
+ * more where that could help: it resolves with how the first of those syncs ended.
  *
  * A ledger has one sync at a time (SYNC-90.1): asked while one runs, however often, this
  * starts one more when that one has ended, and resolves once that one has ended too.
@@ -558,23 +702,7 @@ export function syncGroup(
     return current.next;
   }
   const turn: Turn = {
-    running: (async () => {
-      const end = { downloaded: false, uploaded: false, noAnswer: false };
-      let recipients = await download(database, ledger, 'before upload', end);
-      end.downloaded = recipients !== undefined;
-      if (!recipients) return end;
-      const complete = await upload(database, ledger, end);
-      if (end.uploaded) {
-        recipients = await download(database, ledger, 'after upload', end);
-        if (!recipients) return end;
-      }
-      if (!complete) return end;
-      for (const deviceId of recipients) {
-        const snapshot = await sendSnapshot(database, { ...ledger, deviceId });
-        if (snapshot.outcome !== 'uploaded') break;
-      }
-      return end;
-    })()
+    running: syncAndFollow(database, ledger)
       .finally(() => byGroup.delete(groupId))
       .then((end) => {
         try {
@@ -587,32 +715,6 @@ export function syncGroup(
   };
   byGroup.set(groupId, turn);
   return turn.running;
-}
-
-/**
- * Saves a shared ledger's group key of one key epoch on this phone, as the secure-store
- * entry a sync reads (SYNC-66.1), and remembers the key epoch: the phone uploads under
- * the highest one saved this way (SYNC-94.1).
- */
-export async function saveGroupKey(
-  database: Database,
-  groupKey: { groupId: string; epoch: number; key: Uint8Array },
-): Promise<void> {
-  const { groupId, epoch, key } = groupKey;
-  if (
-    key.length !== KEY_LENGTH ||
-    !Number.isSafeInteger(epoch) ||
-    epoch < 1 ||
-    !(await readLedger(database, groupId))
-  )
-    throw new Error('Not a group key of a shared ledger');
-  // The entry first: a phone stopped here has the key, and learns the epoch from the
-  // API's refusal of its next upload (SYNC-79.1).
-  await storeGroupKey(groupId, epoch, key);
-  await database.run(
-    'UPDATE sync_groups SET epoch = ? WHERE groupId = ? AND epoch < ?',
-    [epoch, groupId, epoch],
-  );
 }
 
 /** The lines the screen of the group shows under its title about its sync, top to bottom. */

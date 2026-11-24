@@ -225,7 +225,7 @@ test('[BACKUP-26.1] says the data could not be imported when the file picker can
   expect(dataIn(phone.database)).toEqual(before);
 });
 
-test("[BACKUP-11.1] asks before writing anything, with the file's export time and its counts", async () => {
+test("[BACKUP-11.2] asks before writing anything, with the file's export time and its counts", async () => {
   const { file } = await taylorsExport();
   await startWithSamsData();
   const before = dataIn(phone.database);
@@ -243,7 +243,7 @@ test("[BACKUP-11.1] asks before writing anything, with the file's export time an
   expect(dataIn(phone.database)).toEqual(before);
 });
 
-test("[BACKUP-11.1] writes the export time in English with the phone's region when the phone's language is not English", async () => {
+test("[BACKUP-11.2] writes the export time in English with the phone's region when the phone's language is not English", async () => {
   const { file } = await taylorsExport();
   setPhoneLanguage('zh-Hant-AU');
   await startOn(phone);
@@ -256,7 +256,7 @@ test("[BACKUP-11.1] writes the export time in English with the phone's region wh
   ]);
 });
 
-test('[BACKUP-11.1] writes the export time in plain English when the phone reports no region', async () => {
+test('[BACKUP-11.2] writes the export time in plain English when the phone reports no region', async () => {
   const { file } = await taylorsExport();
   setPhoneLanguage('ja');
   await startOn(phone);
@@ -269,7 +269,7 @@ test('[BACKUP-11.1] writes the export time in plain English when the phone repor
   ]);
 });
 
-test('[BACKUP-11.1] writes the export time in the time zone the device is in', async () => {
+test('[BACKUP-11.2] writes the export time in the time zone the device is in', async () => {
   const { file } = await taylorsExport();
   await startOn(phone, { timeZone: 'America/Los_Angeles' });
 
@@ -281,7 +281,7 @@ test('[BACKUP-11.1] writes the export time in the time zone the device is in', a
   ]);
 });
 
-test('[BACKUP-11.1] leaves expenses in the Trash out of the count, and writes one group and one expense in the singular', async () => {
+test('[BACKUP-11.2] leaves expenses in the Trash out of the count, and writes one group and one expense in the singular', async () => {
   // Sam's data has one group, the expense Bus, and Tea in the Trash.
   const sams = newPhone();
   await writeSamsData(sams);
@@ -296,7 +296,7 @@ test('[BACKUP-11.1] leaves expenses in the Trash out of the count, and writes on
   ]);
 });
 
-test('[BACKUP-11.1] writes 0 groups and 0 expenses for a file exported before anything was recorded', async () => {
+test('[BACKUP-11.2] writes 0 groups and 0 expenses for a file exported before anything was recorded', async () => {
   const { file } = await exportFrom(newPhone());
   await startOn(phone);
 
@@ -322,7 +322,7 @@ test('[BACKUP-12.1] writes nothing and stays on Settings when Cancel is pressed'
   expect(alertsShown()).toHaveLength(1);
 });
 
-test('[BACKUP-13.2] makes a new phone hold exactly what the exporting phone held, its local identity included', async () => {
+test('[BACKUP-13.3] makes a new phone hold exactly what the exporting phone held, its local identity included', async () => {
   const { file, data } = await taylorsExport();
   await startOn(phone);
   const own = dataIn(phone.database);
@@ -333,7 +333,7 @@ test('[BACKUP-13.2] makes a new phone hold exactly what the exporting phone held
   expect(data.local_identity).not.toEqual(own.local_identity);
 });
 
-test('[BACKUP-13.2] leaves nothing of the data the phone had before', async () => {
+test('[BACKUP-13.3] leaves nothing of the data the phone had before', async () => {
   const { file, data } = await taylorsExport();
   await startWithSamsData();
 
@@ -344,7 +344,7 @@ test('[BACKUP-13.2] leaves nothing of the data the phone had before', async () =
   expect(JSON.stringify(now)).not.toMatch(/Sam|Osaka|Bus|Tea/);
 });
 
-test('[BACKUP-13.2] takes a phone back to what it held when it exported the file', async () => {
+test('[BACKUP-13.3] takes a phone back to what it held when it exported the file', async () => {
   const taylors = newPhone();
   await writeData(taylors, { name: 'Taylor', groups: [{ name: 'Brisbane' }] });
   const { file, data } = await exportFrom(taylors);
@@ -371,7 +371,7 @@ test('[BACKUP-13.2] takes a phone back to what it held when it exported the file
   expect(dataIn(taylors.database)).toEqual(data);
 });
 
-test('[BACKUP-13.2] ends with the same data when the same file is imported twice', async () => {
+test('[BACKUP-13.3] ends with the same data when the same file is imported twice', async () => {
   const { file, data } = await taylorsExport();
   await startOn(phone);
   await importFile(file);
@@ -382,7 +382,7 @@ test('[BACKUP-13.2] ends with the same data when the same file is imported twice
   expect(dataIn(phone.database)).toEqual(data);
 });
 
-test('[BACKUP-13.2] exports the same data again after an import', async () => {
+test('[BACKUP-13.3] exports the same data again after an import', async () => {
   const { file, data } = await taylorsExport();
   await startOn(phone);
   await importFile(file);
@@ -981,7 +981,7 @@ async function exportAfterChangingA() {
   return copy;
 }
 
-test('[LEDGER-120.1] [BACKUP-13.2] brings the time each expense was last changed with an import', async () => {
+test('[LEDGER-120.1] [BACKUP-13.3] brings the time each expense was last changed with an import', async () => {
   const file = await exportAfterChangingA();
   await startOn(phone);
 
@@ -1008,7 +1008,7 @@ test('[BACKUP-18.1] [LEDGER-120.1] [LEDGER-121.1] imports a file exported before
   expect(cardTitles()).toEqual(['B2', 'C', 'A2']);
 });
 
-test('[LEDGER-124.1] [BACKUP-13.2] lists the expenses in the order the export file holds after an import', async () => {
+test('[LEDGER-124.1] [BACKUP-13.3] lists the expenses in the order the export file holds after an import', async () => {
   const source = newPhone();
   await writeData(source, {
     expenses: [
@@ -1058,7 +1058,7 @@ async function saveLowestAmountAs(min: string, name: string) {
   await closeFilters();
 }
 
-test("[LEDGER-140.1] [LEDGER-144.1] [BACKUP-13.2] brings the filter and the saved filters of the export file with an import, in place of the phone's own", async () => {
+test("[LEDGER-140.1] [LEDGER-144.1] [BACKUP-13.3] brings the filter and the saved filters of the export file with an import, in place of the phone's own", async () => {
   const source = newPhone();
   await writeData(source, {
     expenses: [

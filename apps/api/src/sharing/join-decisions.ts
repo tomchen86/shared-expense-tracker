@@ -13,6 +13,7 @@ import {
 import type { Sql } from '../database/connect';
 import {
   lockMemberGroup,
+  rotationNeeded,
   storeLockedGroupEvents,
   type EventApiRefusal,
 } from '../sync/groups';
@@ -101,10 +102,10 @@ export function rejectJoinRequest(
 }
 
 /**
- * Approves a request in one transaction under the group's lock (SHARING-173.1): it
+ * Approves a request in one transaction under the group's lock (SHARING-173.2): it
  * stores the approval's events, makes the device a member device whose progress is what
  * its snapshot covers, keeps the handover and deletes the request, or does none of it
- * and resolves with the first reason of SHARING-182.1.
+ * and resolves with the first reason of SHARING-182.2.
  */
 export function approveJoinRequest(
   sql: Sql,
@@ -163,6 +164,8 @@ export function approveJoinRequest(
           ) AS members`;
       if (!found.asked) return { error: 'no-request' };
       if (cursor < Number(group.last_sequence)) return { error: 'behind' };
+      // No device joins under the key a device that left knows (SHARING-256.1).
+      if (group.rotation_needed) return rotationNeeded(tx, groupId);
       if (epoch !== Number(group.epoch)) {
         return { error: 'epoch', epoch: Number(group.epoch) };
       }

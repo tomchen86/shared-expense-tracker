@@ -1,4 +1,10 @@
-import { useCallback, useRef, useState, type ComponentRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+} from 'react';
 import {
   AccessibilityInfo,
   Alert,
@@ -14,20 +20,26 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import {
   canAddGroupMember,
+  groupAmounts,
   MAX_SHARED_GROUP_MEMBERS,
 } from '@shared-expense/domain';
+import { listExpenses } from '../ledger/expenses';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { InviteContent } from '../sharing/invite-sheet';
+import { leaveSharedGroup, removeMemberDevices } from '../sharing/removal';
 import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
 import { Sheet } from '../ui/sheet';
 import { useThemeColors } from '../ui/theme';
+import { useDisplayLocale } from '../ui/use-display-locale';
 import { useSheetScroll } from '../ui/use-sheet-scroll';
 import { useKeyboardScroll } from '../ui/use-keyboard-scroll';
 
+import { yourBalanceLines } from './format-balance';
 import {
   addGroupMember,
+  isReadOnlyGroup,
   listGroups,
   memberNameKey,
   MemberNameExistsError,
@@ -36,9 +48,11 @@ import {
 } from './index';
 import { JoinRequests } from './join-requests';
 import { nameSaveErrorMessage } from './name-save-error';
-import { useGroup } from './use-group';
+import { readGroupDetails, useGroup } from './use-group';
 
 const ALREADY_EXISTS = 'A member with this name already exists.';
+const CONNECT = 'Connect to the internet and try again.';
+const WENT_WRONG = 'Something went wrong. Try again later.';
 
 export function MembersScreen({
   inSettings = false,
@@ -55,12 +69,24 @@ export function MembersScreen({
   );
   const sheetScrollProps: ScrollViewProps = sheetScroll.scrollProps;
 
+  const locale = useDisplayLocale();
   const [group, setGroup] = useGroup(id, { startFromLatest: true });
-  const editable = group && !group.archived;
+  // An archived group and a read-only copy only list their members (GROUPS-156.1).
+  const editable = group && !isReadOnlyGroup(group);
   const canAdd = group && canAddGroupMember(group.shared, group.members.length);
   const base = inSettings ? '/settings/archived-groups' : '/groups';
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  // The member whose phones are being removed, or you while you leave (GROUPS-151.1).
+  const [working, setWorking] = useState<{
+    memberId: string;
+    line: 'Removing…' | 'Leaving…';
+  }>();
+  // Members closes once you have left, when nothing keeps it from closing any more.
+  const [left, setLeft] = useState(false);
+  useEffect(() => {
+    if (left && !busy) router.back();
+  }, [left, busy]);
   const [adding, setAdding] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const closeInvite = useCallback(() => setInviteOpen(false), []);
@@ -141,7 +167,7 @@ export function MembersScreen({
     if (former) {
       Alert.alert(
         `Add ${former.name} Back?`,
-        `${former.name} was removed from this group before. Adding them back reconnects their past payments and shares.`,
+        `${former.name} was in this group before. Adding them back reconnects their past payments and shares.`,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Add Back', onPress: () => void add(text, former) },
@@ -178,11 +204,102 @@ export function MembersScreen({
     }
   }
 
+  /** Runs a removal or a leave with Members locked, and resolves once it has ended. */
+  async function locked<T>(
+    lock: NonNullable<typeof working>,
+    work: () => Promise<T>,
+  ): Promise<T | undefined> {
+    if (busyRef.current) return undefined;
+    busyRef.current = true;
+    setBusy(true);
+    setWorking(lock);
+    try {
+      return await work();
+    } finally {
+      // What the removal's own sync left, whether or not it went through.
+      const fresh = await readGroupDetails(database, id).catch(() => undefined);
+      if (fresh) setGroup(fresh);
+      busyRef.current = false;
+      setBusy(false);
+      setWorking(undefined);
+    }
+  }
+
+  /** Asks first: the member's phones lose access at once, and it needs the network (GROUPS-150.1). */
+  function confirmRemove(member: GroupMember) {
+    Alert.alert(
+      `Remove ${member.name}?`,
+      `${member.name}'s phone will lose access to this group right away. Their past payments and shares will be kept.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () =>
+            void locked({ memberId: member.id, line: 'Removing…' }, () =>
+              removeMemberDevices(database, id, member.id),
+            ).then((result) => {
+              if (result && result.outcome !== 'removed')
+                Alert.alert(
+                  'Unable to Remove Member',
+                  result.outcome === 'no-answer' ? CONNECT : WENT_WRONG,
+                );
+            }),
+        },
+      ],
+      { cancelable: true },
+    );
+  }
+
+  /** Asks first, with what you still owe or are owed (GROUPS-152.1). */
+  async function confirmLeave(you: GroupMember) {
+    if (!group) return;
+    const amounts = groupAmounts(await listExpenses(database, id), group);
+    const balance = yourBalanceLines(amounts, you.id, locale).filter(
+      (line) => line !== 'Settled up',
+    );
+    const message = [
+      "This phone keeps a read-only copy. You won't see new expenses or be able to change this group.",
+      balance.join('\n'),
+      ...((group.phones ?? []).length === 0
+        ? [
+            'No other phone has joined this group, so nobody else will have its expenses.',
+          ]
+        : []),
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+    Alert.alert(
+      `Leave ${group.name}?`,
+      message,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: () =>
+            void locked({ memberId: you.id, line: 'Leaving…' }, () =>
+              leaveSharedGroup(database, id),
+            ).then((result) => {
+              if (!result) return;
+              if (result.outcome === 'left') setLeft(true);
+              else
+                Alert.alert(
+                  'Unable to Leave Group',
+                  result.outcome === 'no-answer' ? CONNECT : WENT_WRONG,
+                );
+            }),
+        },
+      ],
+      { cancelable: true },
+    );
+  }
+
   function openMenu(member: GroupMember) {
-    if (busyRef.current) return;
-    // You, or a member whose phone is in the shared ledger: removing a phone is not
-    // done from here (GROUPS-25.3).
-    const own = member.userId !== null;
+    if (busyRef.current || !group) return;
+    const own = member.userId === identity.userId;
+    // Another phone represents him: it is removed with him, online (GROUPS-25.4).
+    const hasPhone = group.phones?.includes(member.id) ?? false;
     showActionMenu({
       title: member.name,
       message: own
@@ -200,12 +317,22 @@ export function MembersScreen({
           },
         },
         ...(own
-          ? []
+          ? group.shared
+            ? [
+                {
+                  label: 'Leave Group',
+                  destructive: true,
+                  onPress: () =>
+                    void confirmLeave(member).catch(() => undefined),
+                },
+              ]
+            : []
           : [
               {
                 label: 'Remove from Group',
                 destructive: true,
-                onPress: () => void remove(member),
+                onPress: () =>
+                  hasPhone ? confirmRemove(member) : void remove(member),
               },
             ]),
       ],
@@ -277,15 +404,25 @@ export function MembersScreen({
           </GroupedSection>
         )}
         {editable && group.shared && (
-          <JoinRequests groupId={id} members={group.members} />
+          <JoinRequests
+            groupId={id}
+            members={group.members}
+            formerMembers={group.formerMembers}
+          />
         )}
         <GroupedSection>
           {group?.members.map((member) => {
             const you = member.userId === identity.userId;
             const label = member.name + (you ? ' (You)' : '');
-            // Someone else whose own phone is in the shared ledger (GROUPS-24.4).
-            const joined = !you && member.userId !== null;
-            if (group.archived)
+            // Someone else whose own phone is in the shared ledger (GROUPS-24.4), unless
+            // the row says what is being done about him or you (GROUPS-151.1).
+            const second =
+              working?.memberId === member.id
+                ? working.line
+                : !you && member.userId !== null
+                  ? 'Joined'
+                  : undefined;
+            if (!editable)
               return (
                 <View key={member.id} style={styles.row}>
                   <Text style={[styles.name, { color: colors.text }]}>
@@ -297,7 +434,7 @@ export function MembersScreen({
               <Pressable
                 key={member.id}
                 accessibilityRole="button"
-                accessibilityLabel={joined ? `${label}, Joined` : label}
+                accessibilityLabel={second ? `${label}, ${second}` : label}
                 accessibilityState={{ disabled: busy }}
                 disabled={busy}
                 onPress={() => openMenu(member)}
@@ -309,9 +446,9 @@ export function MembersScreen({
                 <Text style={[styles.name, { color: colors.text }]}>
                   {label}
                 </Text>
-                {joined && (
+                {second && (
                   <Text style={[styles.joined, { color: colors.textMuted }]}>
-                    Joined
+                    {second}
                   </Text>
                 )}
                 <Text accessible={false} style={{ color: colors.textMuted }}>

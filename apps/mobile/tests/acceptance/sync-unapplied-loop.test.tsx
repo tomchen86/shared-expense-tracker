@@ -30,7 +30,7 @@ import { HOUR, expectNotApplied, unapplied } from './sync-unapplied-app';
 // memory. The tests change when that API says it received the phone's own event, which
 // the real API never does, so that the event comes back as one every phone refuses. They
 // do so before the API's answer to the upload reaches the phone, because the download
-// that follows a confirmed upload brings the event back in the same sync (SYNC-160.1).
+// that follows a confirmed upload brings the event back in the same sync (SYNC-160.2).
 
 jest.mock('../../src/storage/expo', () => ({
   openPhoneDatabase: async () =>

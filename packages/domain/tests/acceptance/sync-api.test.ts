@@ -19,6 +19,14 @@ const EVENT_B = '6f2a9d1c-3b4e-4c7a-9e8f-1a2b3c4d5e6f';
 /** 2026-11-18T06:32:00Z. */
 const T = 1794983520000;
 const LARGEST_INTEGER = 9007199254740991;
+/** Twenty device IDs in the order the API lists them, the smallest first. */
+const DEVICES = Array.from(
+  { length: 20 },
+  (_, index) =>
+    `0f8fad5b-d9cb-469f-a165-7086772895${String(index).padStart(2, '0')}`,
+);
+/** A device ID that comes after all of them. */
+const MORE_THAN_TWENTY = 'ffffffff-ffff-4fff-bfff-ffffffffffff';
 
 /** A content of that many bytes, in lowercase hexadecimal. */
 const content = (bytes: number) => 'ab'.repeat(bytes);
@@ -298,13 +306,13 @@ describe('SYNC-53.1', () => {
   });
 });
 
-describe('SYNC-62.1', () => {
+describe('SYNC-62.2', () => {
   describe('what the API answers once a group is created', () => {
-    test('[SYNC-62.1] is the group ID alone', () => {
+    test('[SYNC-62.2] is the group ID alone', () => {
       expect(isCreateGroupResponse({ groupId: BRISBANE })).toBe(true);
     });
 
-    test('[SYNC-62.1] is nothing else', () => {
+    test('[SYNC-62.2] is nothing else', () => {
       for (const value of [
         ...NOT_OBJECTS,
         {},
@@ -326,7 +334,7 @@ describe('SYNC-62.1', () => {
       ...fields,
     });
 
-    test('[SYNC-62.1] is one ID and one sequence number for each event, however many and whatever the numbers', () => {
+    test('[SYNC-62.2] is one ID and one sequence number for each event, however many and whatever the numbers', () => {
       expect(isUploadEventsResponse({ events: [stored()] })).toBe(true);
       expect(isUploadEventsResponse({ events: [] })).toBe(true);
       expect(
@@ -344,7 +352,7 @@ describe('SYNC-62.1', () => {
       ).toBe(true);
     });
 
-    test('[SYNC-62.1] is nothing else', () => {
+    test('[SYNC-62.2] is nothing else', () => {
       for (const value of [
         ...NOT_OBJECTS,
         {},
@@ -379,14 +387,14 @@ describe('SYNC-62.1', () => {
       );
     const page = (events: unknown, more: unknown = false) => ({ events, more });
 
-    test('[SYNC-62.1] is a list of events, which may be empty, and whether more follow', () => {
+    test('[SYNC-62.2] is a list of events, which may be empty, and whether more follow', () => {
       expect(isEventsPageResponse(page([]))).toBe(true);
       expect(isEventsPageResponse(page([], true))).toBe(true);
       expect(isEventsPageResponse(page([relayed()]))).toBe(true);
       expect(isEventsPageResponse(page([relayed()], true))).toBe(true);
     });
 
-    test('[SYNC-62.1] has events whose sequence numbers follow one another, from any number', () => {
+    test('[SYNC-62.2] has events whose sequence numbers follow one another, from any number', () => {
       expect(
         isEventsPageResponse(
           page([
@@ -421,7 +429,7 @@ describe('SYNC-62.1', () => {
       ).toBe(false);
     });
 
-    test('[SYNC-62.1] takes every value an event can be relayed with', () => {
+    test('[SYNC-62.2] takes every value an event can be relayed with', () => {
       for (const fields of [
         { sequence: LARGEST_INTEGER },
         { epoch: 2 },
@@ -436,7 +444,7 @@ describe('SYNC-62.1', () => {
       }
     });
 
-    test('[SYNC-62.1] is nothing else', () => {
+    test('[SYNC-62.2] is nothing else', () => {
       for (const value of [
         ...NOT_OBJECTS,
         {},
@@ -454,7 +462,7 @@ describe('SYNC-62.1', () => {
       }
     });
 
-    test('[SYNC-62.1] has no event with a key missing, a key too many, or a value of another kind', () => {
+    test('[SYNC-62.2] has no event with a key missing, a key too many, or a value of another kind', () => {
       const wrong: unknown[] = [
         ...[
           'id',
@@ -489,7 +497,7 @@ describe('SYNC-62.1', () => {
   });
 
   describe("one of the event API's own refusals", () => {
-    test('[SYNC-62.1] is its reason, and for a key epoch also the epoch of the group; each has its status', () => {
+    test('[SYNC-62.2] is its reason, and for a key epoch also the epoch of the group; each has its status', () => {
       expect(isGroupRefusal({ error: 'not-a-member' })).toBe(true);
       expect(isGroupRefusal({ error: 'group-full' })).toBe(true);
       expect(isGroupRefusal({ error: 'epoch', epoch: 1 })).toBe(true);
@@ -500,10 +508,39 @@ describe('SYNC-62.1', () => {
         'not-a-member': 403,
         epoch: 409,
         'group-full': 413,
+        'rotation-needed': 409,
       });
     });
 
-    test('[SYNC-62.1] is nothing else', () => {
+    test('[SYNC-62.2] is a rotation that is needed, with the member devices of the group in order', () => {
+      expect(
+        isGroupRefusal({ error: 'rotation-needed', devices: [DEVICES[0]] }),
+      ).toBe(true);
+      expect(
+        isGroupRefusal({ error: 'rotation-needed', devices: DEVICES }),
+      ).toBe(true);
+    });
+
+    test('[SYNC-62.2] is no rotation that is needed without such a list', () => {
+      const [first, second] = DEVICES;
+      for (const value of [
+        { error: 'rotation-needed' },
+        { error: 'rotation-needed', devices: [] },
+        { error: 'rotation-needed', devices: [...DEVICES, MORE_THAN_TWENTY] },
+        { error: 'rotation-needed', devices: [first, first] },
+        { error: 'rotation-needed', devices: [second, first] },
+        { error: 'rotation-needed', devices: [first.toUpperCase()] },
+        { error: 'rotation-needed', devices: ['phone-a'] },
+        { error: 'rotation-needed', devices: first },
+        { error: 'rotation-needed', devices: [first], epoch: 2 },
+        { error: 'rotation-not-needed' },
+        { error: 'devices', devices: [first] },
+      ]) {
+        expect(isGroupRefusal(value)).toBe(false);
+      }
+    });
+
+    test('[SYNC-62.2] is nothing else', () => {
       for (const value of [
         ...NOT_OBJECTS,
         {},

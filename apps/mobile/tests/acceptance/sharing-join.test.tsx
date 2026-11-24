@@ -1,11 +1,14 @@
 import { Buffer } from 'node:buffer';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { makeReadOnlyCopy } from '../../src/sync';
 import {
+  addMember,
   alertsShown,
   expectClosed,
   expectOpen,
   isOpen,
   lastAlertButtonStyles,
+  lastAlertButtons,
   pressAlertButton,
   pressOnBar,
 } from './group-details-app';
@@ -62,7 +65,6 @@ import {
 import { receiveLink, startAppFromLink } from './sharing-invite-link-app';
 import {
   ALREADY_IN,
-  HAS_A_COPY,
   ALREADY_JOINED,
   APPROVAL,
   BLAKE_ID,
@@ -84,6 +86,8 @@ import {
   NOT_SENT_OFFLINE,
   OFFLINE,
   ONLY_MEMBERS,
+  REPLACE_THIS_COPY,
+  REPLACE_YOUR_COPY,
   S,
   S2,
   SAME_NAME,
@@ -125,6 +129,8 @@ import {
   openedRequest,
   pressInJoin,
   reads,
+  replaceThisCopy,
+  replaceYourCopy,
   requestCard,
   requestKeyOf,
   requested,
@@ -141,12 +147,14 @@ import { iconNames } from './shell-actions-app';
 import { allowWrites, failWrites, settle } from './shell-appearance-app';
 import { selectedTab, tapTab } from './shell-tabs-app';
 import {
+  appDatabase,
   everything,
   groupId,
   leaveMembers,
   members,
   setClock,
   share,
+  showMembers,
 } from './sync-app';
 
 // Runs on iOS. Each test starts the whole app on Dana's phone: Dana saved as your name, no
@@ -652,7 +660,7 @@ describe('SHARING-129.1', () => {
 
 // A phone that already belongs to the group
 
-describe('SHARING-130.1', () => {
+describe('SHARING-130.2', () => {
   /** Taylor's phone with Brisbane and the invite it made; the invite's link. Ends on the Settings root. */
   async function taylorInvited() {
     const app = await startAt({ Brisbane: ['Casey', 'Blake'] });
@@ -663,7 +671,7 @@ describe('SHARING-130.1', () => {
     return { app, link };
   }
 
-  test('[SHARING-130.1] opens the group, not Join Group, for the link of an invite the phone holds, and asks the API nothing', async () => {
+  test('[SHARING-130.2] opens the group, not Join Group, for the link of an invite the phone holds, and asks the API nothing', async () => {
     const { link } = await taylorInvited();
     const sent = asked();
 
@@ -675,7 +683,7 @@ describe('SHARING-130.1', () => {
     expect(asked()).toBe(sent);
   });
 
-  test('[SHARING-130.1] opens the group when that link starts the app', async () => {
+  test('[SHARING-130.2] opens the group when that link starts the app', async () => {
     const { app, link } = await taylorInvited();
     await app.unmount();
     await settle();
@@ -687,7 +695,7 @@ describe('SHARING-130.1', () => {
     expect(selectedTab()).toBe('Groups');
   });
 
-  test('[SHARING-130.1] opens the group for the link of an invite that has expired on the phone', async () => {
+  test('[SHARING-130.2] opens the group for the link of an invite that has expired on the phone', async () => {
     const { link } = await taylorInvited();
     const sent = asked();
     setClock(T + WEEK);
@@ -699,7 +707,7 @@ describe('SHARING-130.1', () => {
     expect(asked()).toBe(sent);
   });
 
-  test('[SHARING-130.1] takes a link with the same code and another secret for no invite of its own', async () => {
+  test('[SHARING-130.2] takes a link with the same code and another secret for no invite of its own', async () => {
     const { link } = await taylorInvited();
 
     await openLink(linkOf(partsOf(link).code, S2));
@@ -708,7 +716,7 @@ describe('SHARING-130.1', () => {
     expect(reads()).toHaveLength(1);
   });
 
-  test("[SHARING-130.1] closes Join Group and opens the group when the card names a member of one of the phone's shared ledgers", async () => {
+  test("[SHARING-130.2] closes Join Group and opens the group when the card names a member of one of the phone's shared ledgers", async () => {
     await startAt({ Brisbane: ['Casey', 'Blake'] });
     await share('Brisbane');
     const ids = await members('Brisbane');
@@ -736,7 +744,7 @@ describe('SHARING-130.1', () => {
     expect(rowsWith(CODE_B)).toEqual([]);
   });
 
-  test('[SHARING-130.1] opens the group when the only member the phone knows on the card is a former member', async () => {
+  test('[SHARING-130.2] opens the group when the only member the phone knows on the card is a former member', async () => {
     await startAt({ Brisbane: ['Casey', 'Blake'] });
     await share('Brisbane');
     await removeFromGroup('Brisbane', 'Blake');
@@ -762,7 +770,7 @@ describe('SHARING-130.1', () => {
     expect(selectedTab()).toBe('Groups');
   });
 
-  test('[SHARING-130.1] says the link cannot be used once the phone has revoked its invite, member or not', async () => {
+  test('[SHARING-130.2] says the link cannot be used once the phone has revoked its invite, member or not', async () => {
     await startAt({ Brisbane: ['Casey', 'Blake'] });
     const link = await invited('Brisbane');
     await pressInInvite('Revoke Link');
@@ -777,7 +785,7 @@ describe('SHARING-130.1', () => {
     expect(selectedTab()).toBe('Settings');
   });
 
-  test('[SHARING-130.1] opens an archived group on the Settings tab', async () => {
+  test('[SHARING-130.2] opens an archived group on the Settings tab', async () => {
     const { link } = await taylorInvited();
     await archiveGroup('Brisbane');
     await tapTab('Expenses');
@@ -791,36 +799,126 @@ describe('SHARING-130.1', () => {
   });
 });
 
-describe('SHARING-226.1', () => {
-  test('[SHARING-226.1] shows no form, and says the phone has its own copy, when the card names a member of a group of the phone that is no shared ledger', async () => {
+/** The phone lost its access to the group: from now on it holds a read-only copy of it. */
+async function becomesACopy(group: string) {
+  const id = await groupId(group);
+  await act(async () => {
+    await makeReadOnlyCopy(appDatabase(), id, 'not-a-member');
+  });
+  await settle();
+  return id;
+}
+
+/** Another phone's invite to the group, whose card names Taylor, who has a phone, and Casey and Blake of this phone's group. */
+async function othersInvite(group = 'Brisbane') {
+  const ids = await members(group);
+  invites(
+    CODE_B,
+    S2,
+    {
+      name: 'Brisbane',
+      members: [
+        { id: ids.Taylor, name: 'Taylor', hasDevice: true },
+        { id: ids.Casey, name: 'Casey', hasDevice: false },
+        { id: ids.Blake, name: 'Blake', hasDevice: false },
+      ],
+    },
+    await groupId(group),
+  );
+  return linkOf(CODE_B, S2);
+}
+
+describe('SHARING-130.2', () => {
+  test('[SHARING-130.2] shows the form, and opens no group, when the card names a member of a read-only copy on the phone', async () => {
     await startAt({ Brisbane: ['Casey', 'Blake'] });
-    const ids = await members('Brisbane');
-    invites(
-      CODE_B,
-      S2,
-      {
-        name: 'Brisbane',
-        members: [
-          { id: ids.Taylor, name: 'Taylor', hasDevice: true },
-          { id: ids.Casey, name: 'Casey', hasDevice: false },
-        ],
-      },
-      await groupId('Brisbane'),
-    );
+    await share('Brisbane');
+    await becomesACopy('Brisbane');
+    const link = await othersInvite();
     await tapTab('Settings');
-    const before = everything();
 
-    await openLink(linkOf(CODE_B, S2));
+    await openLink(link);
 
-    await waitFor(() => expect(joinLines()).toEqual([HAS_A_COPY]));
+    await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
     expect(isOpen(TITLE)).toBe(true);
-    expect(reads()).toHaveLength(1);
-    expect(received()).toHaveLength(1);
+    expect(selectedTab()).toBe('Settings');
+    expect(choices()).toEqual([NEW_MEMBER, 'Casey', 'Blake']);
+  });
+
+  test('[SHARING-130.2] reads the invite, as for any link, when the invite the phone holds belongs to a read-only copy', async () => {
+    await startAt({ Brisbane: ['Casey', 'Blake'] });
+    const link = await invited('Brisbane');
+    await closeInvite();
+    await leaveMembers('Brisbane');
+    await becomesACopy('Brisbane');
+    await tapTab('Settings');
+    const before = reads().length;
+
+    await receiveLink(link);
+
+    await waitFor(() => expect(reads()).toHaveLength(before + 1));
+    expect(isOpen(TITLE)).toBe(true);
+    expect(selectedTab()).toBe('Settings');
+  });
+});
+
+describe('SHARING-226.2', () => {
+  /** The phone has a group of its own that the invite's card knows, and Blake is picked in the form. */
+  async function formOverOwnCopy() {
+    await startAt({ Brisbane: ['Casey', 'Blake'] });
+    const link = await othersInvite();
+    await tapTab('Settings');
+    await openLink(link);
+    await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
+    await pressInJoin('Blake');
+  }
+
+  test('[SHARING-226.2] shows the form to a phone that has its own copy of the group, and asks before it sends the request', async () => {
+    await formOverOwnCopy();
+    const before = everything();
+    const shown = alertsShown().length;
+
+    await pressInJoin(SEND);
+
+    expect(alertsShown().slice(shown)).toEqual([
+      [REPLACE_YOUR_COPY, replaceYourCopy('Brisbane')],
+    ]);
+    expect(lastAlertButtons()).toEqual(['Cancel', SEND]);
+    expect(sendings()).toEqual([]);
     expect(secureStoreEntries()).toEqual([]);
     expect(everything()).toEqual(before);
   });
 
-  test('[SHARING-226.1] says the same when the only member it knows on the card is a former member of that group', async () => {
+  test('[SHARING-226.2] sends the request once Send Request is pressed in that alert, and leaves the copy as it was', async () => {
+    await formOverOwnCopy();
+    const { groups, group_members: groupMembers } = everything();
+    const shown = alertsShown().length;
+    await pressInJoin(SEND);
+    expect(alertsShown()).toHaveLength(shown + 1);
+
+    await pressAlertButton(SEND);
+
+    await waitFor(() => expect(joinLines()).toContain(WAITING));
+    expect(sendings()).toHaveLength(1);
+    expect(everything().groups).toEqual(groups);
+    expect(everything().group_members).toEqual(groupMembers);
+  });
+
+  test('[SHARING-226.2] sends nothing, and keeps the form as it was, when Cancel is pressed in that alert', async () => {
+    await formOverOwnCopy();
+    const before = everything();
+    const shown = alertsShown().length;
+    await pressInJoin(SEND);
+    expect(alertsShown()).toHaveLength(shown + 1);
+
+    await pressAlertButton('Cancel');
+
+    expect(chosen()).toEqual(['Blake']);
+    expect(canSend()).toBe(true);
+    expect(sendings()).toEqual([]);
+    expect(everything()).toEqual(before);
+  });
+
+  test('[SHARING-226.2] asks the same when the only member it knows on the card is a former member of that group', async () => {
     await startAt({ Brisbane: ['Casey', 'Blake'] });
     await removeFromGroup('Brisbane', 'Blake');
     const ids = await members('Brisbane');
@@ -837,11 +935,65 @@ describe('SHARING-226.1', () => {
       await groupId('Brisbane'),
     );
     await tapTab('Settings');
-
     await openLink(linkOf(CODE_B, S2));
+    await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
+    const shown = alertsShown().length;
 
-    await waitFor(() => expect(joinLines()).toEqual([HAS_A_COPY]));
+    await pressInJoin(SEND);
+
+    expect(alertsShown().slice(shown)).toEqual([
+      [REPLACE_YOUR_COPY, replaceYourCopy('Brisbane')],
+    ]);
     expect(sendings()).toEqual([]);
+  });
+
+  test.each([
+    [1, ['Dana']],
+    [3, ['Dana', 'Evan', 'Finn']],
+  ])(
+    '[SHARING-226.2] says how many changes of a read-only copy were never sent, before it sends the request: %s',
+    async (count, added) => {
+      await startAt({ Brisbane: ['Casey', 'Blake'] });
+      await share('Brisbane');
+      goOffline();
+      await showMembers('Brisbane');
+      for (const name of added) await addMember(name);
+      await leaveMembers('Brisbane');
+      goOnline();
+      await becomesACopy('Brisbane');
+      const link = await othersInvite();
+      await tapTab('Settings');
+      await openLink(link);
+      await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
+      await pressInJoin('Casey');
+      const shown = alertsShown().length;
+
+      await pressInJoin(SEND);
+
+      expect(alertsShown().slice(shown)).toEqual([
+        [REPLACE_THIS_COPY, replaceThisCopy(count)],
+      ]);
+      expect(lastAlertButtons()).toEqual(['Cancel', SEND]);
+      expect(sendings()).toEqual([]);
+    },
+  );
+
+  test('[SHARING-226.2] sends the request without asking when the read-only copy has no change that was never sent', async () => {
+    await startAt({ Brisbane: ['Casey', 'Blake'] });
+    await share('Brisbane');
+    await becomesACopy('Brisbane');
+    const link = await othersInvite();
+    await tapTab('Settings');
+    await openLink(link);
+    await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
+    await pressInJoin('Casey');
+    const shown = alertsShown().length;
+
+    await send();
+
+    expect(alertsShown()).toHaveLength(shown);
+    expect(sendings()).toHaveLength(1);
+    expect(joinLines()).toContain(WAITING);
   });
 });
 

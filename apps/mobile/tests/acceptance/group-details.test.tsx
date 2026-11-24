@@ -316,7 +316,7 @@ test('[GROUPS-24.4] lists the members in the order they joined, each other membe
     expect(within(membersButton(name)).getByText('›')).toBeOnTheScreen();
 });
 
-test("[GROUPS-25.3] opens an action sheet titled with the member's name when their row is tapped", async () => {
+test("[GROUPS-25.4] opens an action sheet titled with the member's name when their row is tapped", async () => {
   await startInMembers(['Blake']);
 
   const menu = await tapMember('Blake');
@@ -332,7 +332,7 @@ test("[GROUPS-25.3] opens an action sheet titled with the member's name when the
   expect(alertsShown()).toEqual([]);
 });
 
-test('[GROUPS-25.3] opens your own action sheet, titled with your member name and offering only Rename, when your row is tapped', async () => {
+test('[GROUPS-25.4] opens your own action sheet, titled with your member name and offering only Rename, when your row is tapped', async () => {
   await startInMembers(['Blake']);
 
   const menu = await tapMember('Taylor (You)');
@@ -346,7 +346,7 @@ test('[GROUPS-25.3] opens your own action sheet, titled with your member name an
   expect(menu?.message ?? '').toBe('');
 });
 
-test("[GROUPS-25.3] changes nothing when Cancel is chosen in a member's menu", async () => {
+test("[GROUPS-25.4] changes nothing when Cancel is chosen in a member's menu", async () => {
   await startInMembers(['Blake']);
   const before = localData(file);
 
@@ -358,7 +358,7 @@ test("[GROUPS-25.3] changes nothing when Cancel is chosen in a member's menu", a
   expect(localData(file)).toEqual(before);
 });
 
-test('[GROUPS-26.1] removes a member right away when Remove from Group is chosen', async () => {
+test('[GROUPS-26.2] removes a member right away when Remove from Group is chosen', async () => {
   await startInMembers(['Blake', 'Casey']);
 
   await removeMember('Blake');
@@ -374,7 +374,7 @@ test('[GROUPS-26.1] removes a member right away when Remove from Group is chosen
   ]);
 });
 
-test('[GROUPS-26.1] keeps a removed member out of the group after a restart', async () => {
+test('[GROUPS-26.2] keeps a removed member out of the group after a restart', async () => {
   const app = await startInMembers(['Blake', 'Casey']);
   await removeMember('Blake');
   await waitFor(() => expect(membersShown()).not.toContain('Blake'));
@@ -791,7 +791,7 @@ test('[GROUPS-33.2] says a member has the name, without asking to add anyone bac
   ]);
 });
 
-test('[GROUPS-34.3] asks to add a former member back, then adds them back last with their member ID and name', async () => {
+test('[GROUPS-34.4] asks to add a former member back, then adds them back last with their member ID and name', async () => {
   await startInMembers(['Blake', 'Casey']);
   const blake = await storedMember(file, 'Brisbane', 'Blake');
   await removeMember('Blake');
@@ -820,7 +820,7 @@ test('[GROUPS-34.3] asks to add a former member back, then adds them back last w
   expect(members[2]).toEqual(blake);
 });
 
-test('[GROUPS-34.3] keeps the name in the field when Cancel is pressed instead of Add Back', async () => {
+test('[GROUPS-34.4] keeps the name in the field when Cancel is pressed instead of Add Back', async () => {
   await startInMembers(['Blake', 'Casey']);
   await removeMember('Blake');
   await waitFor(() => expect(membersShown()).not.toContain('Blake'));
@@ -840,7 +840,7 @@ test('[GROUPS-34.3] keeps the name in the field when Cancel is pressed instead o
   ]);
 });
 
-test('[GROUPS-34.3] asks about the most recently removed of the former members with the name', async () => {
+test('[GROUPS-34.4] asks about the most recently removed of the former members with the name', async () => {
   await startInMembers(['Blake', 'Casey']);
   const blake = await storedMember(file, 'Brisbane', 'Blake');
   const casey = await storedMember(file, 'Brisbane', 'Casey');
@@ -865,7 +865,7 @@ test('[GROUPS-34.3] asks about the most recently removed of the former members w
   expect(JSON.stringify(localData(file))).toContain(blake.id);
 });
 
-test('[GROUPS-34.3] asks about the most recently removed former member with the name, even one who joined earlier', async () => {
+test('[GROUPS-34.4] asks about the most recently removed former member with the name, even one who joined earlier', async () => {
   // Blake joins first but leaves last, so neither the order of joining nor of
   // the rows picks him.
   await startInMembers(['Blake', 'Casey']);
@@ -892,7 +892,7 @@ test('[GROUPS-34.3] asks about the most recently removed former member with the 
   expect(JSON.stringify(localData(file))).toContain(casey.id);
 });
 
-test('[GROUPS-34.3] adds a former member back with their member ID after a restart', async () => {
+test('[GROUPS-34.4] adds a former member back with their member ID after a restart', async () => {
   const app = await startInMembers(['Blake']);
   const blake = await storedMember(file, 'Brisbane', 'Blake');
   await removeMember('Blake');
@@ -913,7 +913,7 @@ test('[GROUPS-34.3] adds a former member back with their member ID after a resta
   expect(await storedMember(file, 'Brisbane', 'Blake')).toEqual(blake);
 });
 
-test("[GROUPS-34.3] adds a new member, without asking, for the name of another group's former member", async () => {
+test("[GROUPS-34.4] adds a new member, without asking, for the name of another group's former member", async () => {
   const app = await startWithName();
   await createGroup('Brisbane');
   await createGroup('Tokyo');

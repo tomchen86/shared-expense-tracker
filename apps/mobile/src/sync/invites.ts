@@ -16,10 +16,13 @@ interface StoredInvite extends Invite {
   cardPending: number;
 }
 
+/** The ledger's invite that has not expired. A read-only copy has none to share or keep up (SYNC-302.1). */
 export async function activeInvite(tx: SqlExecutor, groupId: string) {
   const [invite] = await tx.all<StoredInvite>(
     `SELECT id AS code, secret, expiresAtMs, cardHash, cardPending FROM group_invites
-     WHERE groupId = ? AND expiresAtMs > ? ORDER BY expiresAtMs DESC, id DESC LIMIT 1`,
+     WHERE groupId = ? AND expiresAtMs > ?
+       AND groupId IN (SELECT groupId FROM sync_groups WHERE readOnly IS NULL)
+     ORDER BY expiresAtMs DESC, id DESC LIMIT 1`,
     [groupId, await readCorrectedTime(tx)],
   );
   return invite;

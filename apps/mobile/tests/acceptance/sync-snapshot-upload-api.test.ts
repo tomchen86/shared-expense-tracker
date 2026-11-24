@@ -300,7 +300,7 @@ describe('SYNC-114.3', () => {
     const setup = await twoPhones();
     const { a, key } = setup;
     await addExpense(a);
-    // The download after the upload gets no answer, so the cursor stays before the event (SYNC-160.1).
+    // The download after the upload gets no answer, so the cursor stays before the event (SYNC-160.2).
     whenEventsAnswered('POST', async () => noAnswerToEvents('GET'));
     await sync(a);
     const c = await newcomer(setup);

@@ -325,7 +325,7 @@ describe('SYNC-69.2', () => {
 
     await sync(a);
 
-    // The second download brings its own event back (SYNC-160.1).
+    // The second download brings its own event back (SYNC-160.2).
     expect(await downloads(a, from)).toEqual(['after=0', 'after=0']);
     expect(await ledgerOf(a)).toEqual(ledger);
     expect(await unsent(a)).toEqual([]);
@@ -357,7 +357,7 @@ describe('SYNC-69.2', () => {
 
     await sync(a);
 
-    // One download before the upload, and the one after it (SYNC-160.1).
+    // One download before the upload, and the one after it (SYNC-160.2).
     expect(await requestsOf(a, from)).toEqual([
       `GET /groups/${brisbane}/events?after=0`,
       `POST /groups/${brisbane}/events`,
@@ -503,8 +503,8 @@ describe('SYNC-70.1', () => {
   });
 });
 
-describe('SYNC-71.2', () => {
-  test('[SYNC-71.2] without a network it uploads nothing and keeps what is unsent', async () => {
+describe('SYNC-71.3', () => {
+  test('[SYNC-71.3] without a network it uploads nothing and keeps what is unsent', async () => {
     const { a, brisbane } = await twoPhones();
     await addExpense(a);
     const ledger = await ledgerOf(a);
@@ -533,9 +533,8 @@ describe('SYNC-71.2', () => {
     ['text that is no JSON', 200, 'not json'],
     ['status 500', 500, ''],
     ['status 404', 404, 'not found'],
-    ['a refusal as no member device', 403, { error: 'not-a-member' }],
   ])(
-    '[SYNC-71.2] applies nothing and uploads nothing when the answer to a download is %s',
+    '[SYNC-71.3] applies nothing and uploads nothing when the answer to a download is %s',
     async (_case, status, body) => {
       const setup = await twoPhones();
       const { a, b, key } = setup;
@@ -558,6 +557,29 @@ describe('SYNC-71.2', () => {
     },
   );
 
+  test('[SYNC-71.3] with [SYNC-300.1] uploads nothing when a download is refused as no member device, and sends nothing for the ledger after that', async () => {
+    const { a } = await twoPhones();
+    await addExpense(a);
+    const before = await unsent(a);
+    answerNext('GET', 403, { error: 'not-a-member' });
+    const from = mark();
+
+    await sync(a);
+
+    expect(await uploads(a, from)).toEqual([]);
+    expect(await unsent(a)).toEqual(before);
+    expect(await titles(a)).toEqual(['Dinner']);
+
+    const next = mark();
+    await sync(a);
+
+    expect(
+      (await sentBy(a, next)).map(
+        (request) => `${request.method} ${request.path}`,
+      ),
+    ).toEqual([]);
+  });
+
   /** A page of events Casey's phone would have uploaded, as the tests answer it. */
   async function pageOf(
     setup: Setup,
@@ -576,7 +598,7 @@ describe('SYNC-71.2', () => {
     };
   }
 
-  test('[SYNC-71.2] applies nothing of a page that does not start right after its cursor', async () => {
+  test('[SYNC-71.3] applies nothing of a page that does not start right after its cursor', async () => {
     const setup = await twoPhones();
     const { a, B, brisbane, key } = setup;
     const page = await pageOf(setup, [{ sequence: 2, content: '' }]);
@@ -595,7 +617,7 @@ describe('SYNC-71.2', () => {
     expect(await downloads(a, from)).toEqual(['after=0']);
   });
 
-  test('[SYNC-71.2] applies nothing of an answer that holds an event over 65,536 bytes', async () => {
+  test('[SYNC-71.3] applies nothing of an answer that holds an event over 65,536 bytes', async () => {
     const setup = await twoPhones();
     const { a, B, brisbane, key } = setup;
     const page = await pageOf(setup, [

@@ -42,7 +42,9 @@ import {
   jsonIn,
   syncGroup,
 } from '../sync/loop';
-import { sharedGroup } from '../sync/records';
+import { fetchKeysToJoin } from '../sync/key-rotation';
+import { deleteGroupData } from '../sync/read-only-copy';
+import { mergeRecordEvent, readSyncRecord } from '../sync/records';
 import { readRoster } from '../sync/roster';
 import { makeSnapshot } from '../sync/snapshot-ledger';
 import {
@@ -57,6 +59,7 @@ import { readCorrectedTime, type SigningDevice } from './device-identity';
 import { storeGroupKey } from './group-key';
 import type { InviteCredentials } from './invite-card';
 import { readInviteCard, type CardUnread, type JoinCard } from './join-invite';
+import { dropJoinKeys, forgetJoinKeys, rememberJoinKeys } from './join-keys';
 import {
   REQUEST_PURPOSE,
   requestByCode,
@@ -79,7 +82,7 @@ export interface ReceivedJoinRequest {
   memberId: string | null;
   /**
    * The SHA-256 of the content the API listed, in lowercase hexadecimal. An approval and a
-   * rejection name the request by it (SHARING-172.1, SHARING-173.1).
+   * rejection name the request by it (SHARING-172.1, SHARING-173.2).
    */
   request: string;
 }
@@ -389,9 +392,10 @@ interface Prepared {
 
 /**
  * In one transaction (SHARING-195.2): checks that the request can be approved, writes the
- * approval's events without storing them (SHARING-196.1), and reads the snapshot that
+ * approval's events without storing them (SHARING-196.2), and reads the snapshot that
  * holds their records beside the ledger's own (SHARING-197.1), whose sequence number is
- * the cursor the approval carries. Only the phone's latest stamp is stored.
+ * the cursor the approval carries. Only the phone's latest stamp is stored. `addBack` is
+ * the former member the applicant becomes in place of a new one (SHARING-288.1).
  */
 async function prepareApproval(
   tx: SqlExecutor,
@@ -399,8 +403,14 @@ async function prepareApproval(
   request: ReceivedJoinRequest,
   applicant: Applicant,
   device: SigningDevice,
+  addBack?: string,
 ): Promise<Prepared | { reason: CannotApprove } | undefined> {
-  const group = await sharedGroup(tx, groupId);
+  // A read-only copy approves nothing, and the sync before this may have made the ledger
+  // one (SYNC-302.1).
+  const [group] = await tx.all<{ device: string }>(
+    'SELECT device FROM sync_groups WHERE groupId = ? AND readOnly IS NULL',
+    [groupId],
+  );
   if (!group) return undefined;
   const { members, userId } = await readMembers(tx, groupId);
   const blocked = whyNotApprove(members, userId, request);
@@ -409,7 +419,8 @@ async function prepareApproval(
   const changes: object[] = [];
   // This phone's own entry goes with the first approval it gives.
   const you = members.find((member) => member.userId === userId);
-  if (you && !(await readRoster(tx, groupId)).has(group.device))
+  const roster = await readRoster(tx, groupId);
+  if (you && !roster.has(group.device))
     changes.push({
       type: 'device',
       id: group.device,
@@ -419,17 +430,41 @@ async function prepareApproval(
         },
       },
     });
-  const memberId = request.memberId ?? (await createUuid(tx));
-  if (request.memberId === null)
+  const memberId = addBack ?? request.memberId ?? (await createUuid(tx));
+  if (addBack !== undefined) {
+    // Only while he is still a former member: someone may have added him back since.
+    const [former] = await tx.all<{ removedAt: string }>(
+      `SELECT json_extract(r.record, '$.units.removed.stamp') AS removedAt
+       FROM group_members m JOIN sync_records r
+         ON r.groupId = m.groupId AND r.type = 'member' AND r.id = m.id
+       WHERE m.groupId = ? AND m.id = ? AND m.removed = 1`,
+      [groupId, addBack],
+    );
+    if (!former) return undefined;
+    changes.push({
+      type: 'member',
+      id: addBack,
+      units: {
+        removed: { value: false, base: JSON.parse(former.removedAt) as object },
+      },
+    });
+  } else if (request.memberId === null)
     changes.push({
       type: 'member',
       id: memberId,
       units: { name: { value: request.name }, removed: { value: false } },
     });
+  // A device that left has an entry that represents nobody, which this one follows.
+  const left = roster.get(request.deviceId);
   changes.push({
     type: 'device',
     id: request.deviceId,
-    units: { member: { value: { memberId, ...applicant } } },
+    units: {
+      member: {
+        value: { memberId, ...applicant },
+        ...(left && { base: left.stamp }),
+      },
+    },
   });
 
   const stamps = await takeCheckedStamps(tx, group.device, changes.length);
@@ -446,22 +481,18 @@ async function prepareApproval(
     if (utf8ToBytes(content).length > MAX_SYNC_PLAINTEXT_BYTES)
       return undefined;
     events.push({ id: await createUuid(tx), content });
+    // The record as the event leaves it: a new one, or the one the ledger holds with
+    // this change merged in, as every phone will merge it.
+    const merged = mergeRecordEvent(
+      await readSyncRecord(tx, groupId, event.type, event.id),
+      event,
+    );
     records.push({
-      type: event.type,
-      id: event.id,
-      units: Object.fromEntries(
-        Object.entries(event.units).map(([name, { value }]) => [
-          name,
-          { value: value as unknown, stamp },
-        ]),
-      ),
-      created: stamp,
-      seeded: false,
+      ...merged.record,
+      created: merged.created,
+      seeded: merged.seeded,
     } as SyncSnapshotRecord);
   }
-  // ponytail: a ledger that already holds a roster entry of the applicant's device makes
-  // no valid snapshot, so the approval fails. No phone gets there until a device can
-  // leave a group (#143); merge the event into the stored record then.
   const made = await makeSnapshot(tx, groupId, records);
   return made.outcome === 'made' ? { made, records, events } : undefined;
 }
@@ -504,11 +535,14 @@ const signingDevice = (database: Database) =>
  * Approves `request`, as pressing Approve in the menu that was opened for it does
  * (SHARING-195.2): the approval names the content the request held when it was listed.
  * Other syncs of the ledger go on meanwhile.
+ * `addBack` is the former member the user chose to add back in place of a new member
+ * (SHARING-288.1, issue 143): the approval then carries no new member (SHARING-196.2).
  */
 export async function approveJoinRequest(
   database: Database,
   groupId: string,
   request: ReceivedJoinRequest,
+  addBack?: string,
 ): Promise<ApproveResult> {
   const url = apiUrl();
   const applicant = applicants.get(request);
@@ -538,7 +572,7 @@ export async function approveJoinRequest(
     if (device === 'lost') return { outcome: 'failed' };
 
     const prepared = await database.transaction((tx) =>
-      prepareApproval(tx, groupId, request, applicant, device),
+      prepareApproval(tx, groupId, request, applicant, device, addBack),
     );
     if (!prepared) return { outcome: 'failed' };
     if ('reason' in prepared) return { outcome: 'cannot-approve', ...prepared };
@@ -638,7 +672,7 @@ export async function approveJoinRequest(
 
 const ended = (outcome: 'declined' | 'invalid') =>
   `UPDATE join_requests SET code = NULL, secret = NULL, name = NULL, memberId = NULL,
-     sent = 0, outcome = '${outcome}' WHERE code = ? AND secret = ?`;
+     copyGroupId = NULL, sent = 0, outcome = '${outcome}' WHERE code = ? AND secret = ?`;
 
 /** Whether the request still fits the invite's card, so that a member can approve it (SHARING-212.1). */
 function fitsCard(
@@ -725,9 +759,29 @@ const unfinished = (reason: Unfinished['reason']): Unfinished => ({
 });
 
 /**
- * Joins the group this phone was approved for (SHARING-216.1 to 219.1): opens the box,
+ * What the phone holds under a group ID: nothing, a copy that an approval may replace,
+ * which is a read-only copy or a group that is no shared ledger, or a shared ledger it
+ * is in (SHARING-217.2).
+ */
+async function heldGroup(
+  database: SqlExecutor,
+  groupId: string,
+): Promise<'none' | 'copy' | 'ledger'> {
+  const [group] = await database.all<{ ledger: number }>(
+    `SELECT s.groupId IS NOT NULL AND s.readOnly IS NULL AS ledger
+     FROM groups g LEFT JOIN sync_groups s ON s.groupId = g.id WHERE g.id = ?`,
+    [groupId],
+  );
+  if (!group) return 'none';
+  return group.ledger ? 'ledger' : 'copy';
+}
+
+/**
+ * Joins the group this phone was approved for (SHARING-216.1 to 219.2): opens the box,
  * saves its keys, takes the snapshot in with the request deleted in the same transaction,
- * and syncs.
+ * and syncs. A copy of the group that the request recorded is replaced in that
+ * transaction (SHARING-289.1); any other group of that ID stops the join before a key is
+ * saved.
  */
 async function join(
   database: Database,
@@ -738,6 +792,11 @@ async function join(
   const device = await signingDevice(database);
   if (!url || device === 'lost') return unfinished('failed');
   const { groupId, epoch } = handover;
+  // Whoever sealed the box hands over the invite's group, not any group whose ID it
+  // knows: only the copy the user agreed to replace may be replaced.
+  const held = await heldGroup(database, groupId);
+  if (held === 'ledger' || (held === 'copy' && request.copyGroupId !== groupId))
+    return unfinished('failed');
   const opened = openBox({
     recipientSecretKey: device.boxSecretKey,
     senderPublicKey: hexToBytes(handover.senderKey),
@@ -755,7 +814,12 @@ async function join(
   const ledger = { apiUrl: url, groupId };
   try {
     // Straight to the secure store: the group is no shared ledger here until the
-    // snapshot is in, and the snapshot is what these keys have to open (SHARING-217.1).
+    // snapshot is in, and the snapshot is what these keys have to open (SHARING-217.2).
+    // Whose they are is remembered beside them, for a phone that is removed before it
+    // joins (SHARING-282.1).
+    const remember = (upTo: number) =>
+      rememberJoinKeys(request.code, groupId, upTo);
+    await remember(epoch);
     for (const { epoch: of, key } of keys)
       await storeGroupKey(groupId, of, hexToBytes(key));
     const [{ userId }] = await database.all<{ userId: string }>(
@@ -763,6 +827,16 @@ async function join(
     );
     const taken = await fetchSnapshot(database, ledger, {
       accepts: (snapshot) => rosterFits(snapshot, handover, device, userId),
+      // The group rotated since the approval: the keys after the handover's come from
+      // the boxes of those rotations, opened from the handover's key on (SHARING-281.1).
+      missingKey: async (of) => {
+        await remember(of);
+        await fetchKeysToJoin(database, ledger, epoch);
+      },
+      replaces: async (tx) => {
+        if ((await heldGroup(tx, groupId)) === 'copy')
+          await deleteGroupData(tx, groupId);
+      },
       alsoIn: async (tx) => {
         await tx.run('DELETE FROM join_requests WHERE code = ?', [
           request.code,
@@ -775,6 +849,8 @@ async function join(
   } catch {
     return unfinished('failed');
   }
+  // The keys are the ledger's now.
+  await forgetJoinKeys(request.code).catch(() => undefined);
   await syncGroup(database, ledger).catch(() => undefined);
   return { outcome: 'joined', groupId };
 }
@@ -804,6 +880,8 @@ export async function askJoinResult(
   const mine = [code, request.secret];
   const refusal = refusalIn(answer);
   if (refusal === 'no-invite') {
+    // Whatever joining saved for it goes with it.
+    await dropJoinKeys(database, code).catch(() => undefined);
     await database.run(ended('invalid'), mine);
     return { outcome: 'invalid' };
   }
@@ -827,8 +905,14 @@ export async function askJoinResult(
     progress.onApproved?.();
     return join(database, request, result);
   }
-  // The API holds no handover for a phone that this phone's data says was approved.
-  if (request.outcome === 'approved') return unfinished('failed');
+  if (request.outcome === 'approved') {
+    // The API holds no handover for a phone that this phone's data says was approved.
+    if (result.state !== 'none') return unfinished('failed');
+    // A member removed it before it joined (SHARING-282.1): the keys it saved go too.
+    await dropJoinKeys(database, code).catch(() => undefined);
+    await database.run(ended('declined'), mine);
+    return { outcome: 'declined' };
+  }
   if (result.state === 'none') {
     // The API never took a request that is not sent, and nothing sends it again.
     if (!request.sent) return { outcome: 'not-sent' };

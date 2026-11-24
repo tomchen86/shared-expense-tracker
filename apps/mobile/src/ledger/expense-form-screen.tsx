@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { CategoryForm } from '../categories/category-form';
+import { isReadOnlyGroup } from '../groups';
 import { DateField } from '../ui/date-field';
 import { formScrollInsetAdjustment } from '../ui/form-presentation';
 import { GroupedSection } from '../ui/grouped-section';
@@ -209,7 +210,7 @@ function CategoryField({
       selected={[category.id]}
       onSelect={(id) => change('categoryId', id)}
       action={
-        group?.archived
+        group && isReadOnlyGroup(group)
           ? undefined
           : { label: '+ Add New Category', onPress: onAdd }
       }
@@ -265,7 +266,7 @@ function SplitSection({
             value={group?.name ?? 'not selected'}
             disabled={saving || groupLocked}
             options={groups
-              .filter((item) => !item.archived)
+              .filter((item) => !isReadOnlyGroup(item))
               .map(({ id, name }) => ({ id, name }))}
             selected={form.groupId ? [form.groupId] : []}
             empty="No Groups"

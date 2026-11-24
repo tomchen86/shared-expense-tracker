@@ -28,18 +28,18 @@ module.exports = {
     './packages/domain/src/sync/sync.ts': { branches: 100 },
     // Checks imported amounts and keeps the latest sync stamp across an import.
     './apps/mobile/src/backup/import.ts': { branches: 100 },
-    './apps/mobile/src/groups/group-card.tsx': { branches: 83.33 },
+    './apps/mobile/src/groups/group-card.tsx': { branches: 85.71 },
     './apps/mobile/src/groups/join-request-cards.tsx': { branches: 86.36 },
-    './apps/mobile/src/groups/group-screen.tsx': { branches: 97.26 },
+    './apps/mobile/src/groups/group-screen.tsx': { branches: 97.59 },
     './apps/mobile/src/groups/group-summary.tsx': { branches: 50 },
     './apps/mobile/src/groups/groups-screen.tsx': { branches: 100 },
     './apps/mobile/src/groups/balances-screen.tsx': { branches: 100 },
     './apps/mobile/src/groups/format-balance.ts': { branches: 100 },
-    './apps/mobile/src/ledger/expenses.ts': { branches: 94.28 },
+    './apps/mobile/src/ledger/expenses.ts': { branches: 94.39 },
     './apps/mobile/src/ledger/list-filter.ts': { branches: 100 },
-    './apps/mobile/src/ledger/expense-form-screen.tsx': { branches: 97.91 },
-    './apps/mobile/src/ledger/use-expense-form.ts': { branches: 92.36 },
-    './apps/mobile/src/ledger/use-expenses.ts': { branches: 91.66 },
+    './apps/mobile/src/ledger/expense-form-screen.tsx': { branches: 98 },
+    './apps/mobile/src/ledger/use-expense-form.ts': { branches: 92.48 },
+    './apps/mobile/src/ledger/use-expenses.ts': { branches: 92.3 },
     './apps/mobile/src/ledger/expense-screen.tsx': { branches: 100 },
     './apps/mobile/src/ledger/expenses-screen.tsx': { branches: 100 },
     // Offline sync: what writes a shared ledger's changes as events and applies the
@@ -65,7 +65,7 @@ module.exports = {
     // The phone's sync with the API (ADR-0027): the loop, what its requests share, its
     // tables, the check of unsent stamps, and what starts a sync and shows its notices.
     // Measured with the tests against the API (`*-api.test.*`), which need Docker.
-    './apps/mobile/src/sync/loop.ts': { branches: 98.61 },
+    './apps/mobile/src/sync/loop.ts': { branches: 100 },
     './apps/mobile/src/sync/transport.ts': { branches: 100 },
     './apps/mobile/src/sync/migrations.ts': { branches: 100 },
     './apps/mobile/src/sync/stamps.ts': { branches: 96.42 },
@@ -77,7 +77,7 @@ module.exports = {
     './apps/mobile/src/ledger/trash.ts': { branches: 83.33 },
     './apps/mobile/src/categories/merged-category.ts': { branches: 100 },
     './apps/mobile/src/categories/repository.ts': { branches: 88.23 },
-    './apps/mobile/src/groups/index.ts': { branches: 79.16 },
+    './apps/mobile/src/groups/index.ts': { branches: 82.69 },
     // Device identity and signed requests: what lets a phone reach the API that a shared
     // ledger syncs through, and what the API checks before it takes anything (ADR-0015,
     // ADR-0022).
@@ -103,7 +103,7 @@ module.exports = {
     './apps/mobile/src/sharing/invites.ts': { branches: 94.73 },
     './apps/mobile/src/sharing/join-form.tsx': { branches: 92.85 },
     './apps/mobile/src/sharing/join-invite.ts': { branches: 100 },
-    './apps/mobile/src/sharing/join-requests.ts': { branches: 92.72 },
+    './apps/mobile/src/sharing/join-requests.ts': { branches: 92.98 },
     './apps/mobile/src/sharing/refresh-invite-card.ts': { branches: 96.77 },
     './apps/mobile/src/sharing/use-join-group.ts': { branches: 88.26 },
     './apps/mobile/src/sync/invites.ts': { branches: 75 },
@@ -115,9 +115,9 @@ module.exports = {
     './apps/api/src/sharing/decision-routes.ts': { branches: 100 },
     './apps/api/src/sharing/join-decisions.ts': { branches: 100 },
     './apps/mobile/src/sync/roster.ts': { branches: 100 },
-    './apps/mobile/src/sharing/join-decisions.ts': { branches: 93.91 },
+    './apps/mobile/src/sharing/join-decisions.ts': { branches: 94.4 },
     './apps/mobile/src/sharing/received-requests.ts': { branches: 93.33 },
-    './apps/mobile/src/groups/join-requests.tsx': { branches: 92.85 },
+    './apps/mobile/src/groups/join-requests.tsx': { branches: 93.47 },
     // The event API: what stores a shared ledger's events, numbers them and hands them
     // out, and the checks of its bodies that the phone and the API share (ADR-0016,
     // ADR-0024).
@@ -135,14 +135,42 @@ module.exports = {
     './packages/domain/src/api/group-snapshots.ts': { branches: 100 },
     './packages/domain/src/sync/snapshot.ts': { branches: 100 },
     './apps/api/src/sync/snapshots.ts': { branches: 100 },
-    './apps/mobile/src/sync/snapshot-ledger.ts': { branches: 97.67 },
-    './apps/mobile/src/sync/snapshots.ts': { branches: 98.83 },
+    './apps/mobile/src/sync/snapshot-ledger.ts': { branches: 97.77 },
+    './apps/mobile/src/sync/snapshots.ts': { branches: 98.88 },
     // A phone's own event that no phone applies (ADR-0043): what keeps the result of what
     // it has received, takes the refused event back and keeps the notices, and the sheet
     // that lists them. No acceptance test dismisses a notice that is gone already.
     './apps/mobile/src/sync/undo-refused.ts': { branches: 85.48 },
     './apps/mobile/src/sync/unapplied.ts': { branches: 50 },
-    './apps/mobile/src/groups/unapplied-screen.tsx': { branches: 92.53 },
+    './apps/mobile/src/groups/unapplied-screen.tsx': { branches: 92.75 },
+    // Taking a device out of a group (ADR-0041, ADR-0042): the API's rotation, leave and
+    // key boxes, the phone's rotation and the keys it fetches, removing and leaving, the
+    // read-only copy with its deletion, the keys of a join that has not finished, and what
+    // got its paths on the screens: Members, the group a screen reads, the import's check,
+    // and the categories of a copy.
+    // Some branches left are cases the spec states and no acceptance test reaches: a
+    // revocation the API does not answer (SHARING-284.1), a rotation nobody leaves in
+    // (SHARING-271.1), a third refusal for the key epoch (SHARING-274.1), a refusal for an
+    // epoch whose key the phone holds (SHARING-275.1), and a second page of boxes
+    // (SHARING-278.1).
+    // The others are guards: an identity, an address, a group or a record that is gone in
+    // the middle, a malformed answer, an event that fails its own check, a group that is
+    // no copy handed to the deletion, a press while another action runs, a screen closed
+    // before its read ends, and a button or a row held down.
+    './packages/domain/src/api/group-rotation.ts': { branches: 100 },
+    './apps/api/src/sharing/removal.ts': { branches: 100 },
+    './apps/api/src/sharing/removal-routes.ts': { branches: 100 },
+    './apps/mobile/src/sync/key-rotation.ts': { branches: 87.33 },
+    './apps/mobile/src/sync/read-only-copy.ts': { branches: 75 },
+    './apps/mobile/src/sharing/removal.ts': { branches: 87.5 },
+    './apps/mobile/src/sharing/join-keys.ts': { branches: 100 },
+    './apps/mobile/src/groups/copy-banner.tsx': { branches: 83.33 },
+    './apps/mobile/src/groups/members-screen.tsx': { branches: 85.83 },
+    './apps/mobile/src/groups/use-group.ts': { branches: 82.6 },
+    './apps/mobile/src/backup/use-backup.ts': { branches: 95 },
+    './apps/mobile/src/categories/manage-categories-screen.tsx': {
+      branches: 89.83,
+    },
   },
   testTimeout: 15000,
 };

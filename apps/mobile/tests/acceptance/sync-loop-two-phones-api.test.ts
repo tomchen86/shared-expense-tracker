@@ -349,8 +349,8 @@ describe('SYNC-92.2', () => {
   });
 });
 
-describe('SYNC-71.2', () => {
-  test('[SYNC-71.2] does not store a page when an import took the cursor back while the page was on its way', async () => {
+describe('SYNC-71.3', () => {
+  test('[SYNC-71.3] does not store a page when an import took the cursor back while the page was on its way', async () => {
     const { a, b, key } = await twoPhones();
     const copy = await copyOfData(a);
     await uploadAs(b, key, [await created(b, 'Lunch', await stampOf(b, NOW))]);

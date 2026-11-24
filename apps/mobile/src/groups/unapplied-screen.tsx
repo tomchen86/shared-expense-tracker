@@ -56,7 +56,12 @@ function describe(
         lines.push('Not a Duplicate');
         break;
       case 'device':
-        lines.push('Join approval');
+        // An approval's entry names a member; a rotation's says a device left (GROUPS-172.3).
+        lines.push(
+          event.units.member?.value === null
+            ? 'Member removal'
+            : 'Join approval',
+        );
         break;
     }
     return { title: 'Group change not applied', lines };

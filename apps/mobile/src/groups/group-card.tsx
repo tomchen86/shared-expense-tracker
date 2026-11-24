@@ -28,7 +28,10 @@ export function GroupCard({
   const colors = useThemeColors();
   // iOS's accessibility text sizes start at 1.786, after 1.353; Android's 150% is 1.5, after 1.3.
   const stacked = useWindowDimensions().fontScale >= 1.5;
-  const count = `${group.members.length} ${group.members.length === 1 ? 'member' : 'members'}`;
+  // A read-only copy says so where the others say how many members they have (GROUPS-153.1).
+  const count = group.readOnlyCopy
+    ? 'Read-only copy'
+    : `${group.members.length} ${group.members.length === 1 ? 'member' : 'members'}`;
   return (
     <View style={styles.card}>
       <SwipeAction

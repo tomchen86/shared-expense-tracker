@@ -14,7 +14,7 @@ import {
 import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
 import { useThemeColors } from '../ui/theme';
-import { listGroups, type GroupMember } from './index';
+import { listGroups, memberNameKey, type GroupMember } from './index';
 
 const CANNOT = "This request can't be approved.";
 const WENT_WRONG = 'Something went wrong. Try again later.';
@@ -46,9 +46,12 @@ function cannotApproveText({
 export function JoinRequests({
   groupId,
   members,
+  formerMembers,
 }: {
   groupId: string;
   members: readonly GroupMember[];
+  /** The most recently removed first. */
+  formerMembers: readonly GroupMember[];
 }) {
   const database = useLocalDatabase();
   const { userId } = useLocalIdentity();
@@ -66,8 +69,15 @@ export function JoinRequests({
   async function answer(
     request: ReceivedJoinRequest,
     action: 'approve' | 'reject',
+    addBack?: string,
   ) {
-    const result = await answerJoinRequest(database, groupId, request, action);
+    const result = await answerJoinRequest(
+      database,
+      groupId,
+      request,
+      action,
+      addBack,
+    );
     // Once Members is closed the answer stands, and nothing is said (SHARING-202.1).
     if (!result || !open.current) return;
     let message: string;
@@ -103,6 +113,33 @@ export function JoinRequests({
       );
   }
 
+  /**
+   * Approves, after asking first when the request is for a new member whose name a
+   * former member has: someone who left can only ask as a new member, and a member says
+   * whether it is the same person (SHARING-288.1).
+   */
+  function approve(request: ReceivedJoinRequest) {
+    const former =
+      request.memberId === null
+        ? formerMembers.find(
+            ({ name }) => memberNameKey(name) === memberNameKey(request.name),
+          )
+        : undefined;
+    if (!former) return void answer(request, 'approve');
+    Alert.alert(
+      `Add ${former.name} Back?`,
+      `${former.name} was in this group before. Adding them back reconnects their past payments and shares.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Add Back',
+          onPress: () => void answer(request, 'approve', former.id),
+        },
+      ],
+      { cancelable: true },
+    );
+  }
+
   function openMenu(request: ReceivedJoinRequest) {
     const blocked = whyNotApprove(members, userId, request);
     showActionMenu({
@@ -116,7 +153,7 @@ export function JoinRequests({
           : [
               {
                 label: 'Approve',
-                onPress: () => void answer(request, 'approve'),
+                onPress: () => approve(request),
               },
             ]),
         {
