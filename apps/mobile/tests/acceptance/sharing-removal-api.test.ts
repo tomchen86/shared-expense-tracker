@@ -839,6 +839,13 @@ describe('SHARING-278.1', () => {
   test('[SHARING-278.1] [SYNC-305.1] reads the keys it holds before it asks, once its local data went back and it waits for a snapshot under a newer key', async () => {
     const world = await danaIn();
     const { invite, taylor, brisbane, ids } = world;
+    // The API takes 60 requests a minute from one device (SHARING-37.1), and three rounds
+    // of an approval and a removal are more than that for Taylor's phone. Time moves on
+    // between the rounds, on the API and on the phones.
+    const minutesOn = (minutes: number, ...phones: Phone[]) => {
+      setApiTime(LATER + minutes * MINUTE);
+      for (const phone of phones) setClock(phone, LATER + minutes * MINUTE);
+    };
     // Dana's phone at key epoch 1.
     const copy = await copyOfData(world.dana);
     // Two rotations, and Dana's phone fetches each key: when it asks after epoch 2, the API
@@ -847,6 +854,7 @@ describe('SHARING-278.1', () => {
     expect(await remove(world, ids.Casey)).toEqual({ outcome: 'removed' });
     await sync(taylor);
     await sync(world.dana);
+    minutesOn(2, taylor, world.dana);
     await joins(await invitesAgain(world), 'Finn', { memberId: ids.Blake });
     expect(await remove(world, ids.Blake)).toEqual({ outcome: 'removed' });
     await sync(taylor);
@@ -854,6 +862,7 @@ describe('SHARING-278.1', () => {
     expect(secureStoreEntry(world.dana, keyEntry(brisbane, 3))).toBeDefined();
     // Its local data goes back, and the key is rotated once more while it is away.
     const dana = await restoreData(world.dana, copy);
+    minutesOn(4, taylor, dana);
     await joins(await invitesAgain(world), 'Gina');
     expect(await remove(world, (await memberIds(taylor)).Gina)).toEqual({
       outcome: 'removed',
@@ -1518,7 +1527,7 @@ describe('SHARING-289.1', () => {
     expect(before.copy).toEqual({ reason: 'not-a-member', unsent: 1 });
     const invite = await invitesAgain(world);
 
-    await asks(dana, invite);
+    await asks(dana, invite, { copyGroupId: brisbane });
     expect(
       await on(dana, () =>
         dana.sharing.askJoinResult(dana.database, invite.code),

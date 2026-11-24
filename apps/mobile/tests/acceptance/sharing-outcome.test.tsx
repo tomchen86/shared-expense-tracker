@@ -1325,6 +1325,38 @@ describe('SHARING-289.1', () => {
     await expectMembers(JOINED);
   });
 
+  test('[SHARING-289.1] [SHARING-226.2] replaces a read-only copy that has nothing unsent once the phone is approved again, though sending the request asked nothing', async () => {
+    await waiting();
+    memberApproves();
+    await comesBack();
+    await waitFor(() => expect(hasBrisbane()).toBe(true));
+    // A member has removed the phone: the API takes a new request from it.
+    memberRemovesThePhone();
+    await act(async () => {
+      await makeReadOnlyCopy(appDatabase(), BRISBANE_ID, 'not-a-member');
+    });
+    await settle();
+    await tapTab('Settings');
+    await openLink(BRISBANE_LINK);
+    await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
+    const shown = alertsShown().length;
+
+    await send();
+
+    // Nothing of the copy would be lost, so no alert asked; the request records the copy
+    // all the same.
+    expect(alertsShown()).toHaveLength(shown);
+    await closeJoin();
+    memberApproves();
+    await comesBack();
+
+    await waitFor(() => expect(rowsWith(CODE_A, S)).toEqual([]));
+    expect(await readOnlyCopyOf(appDatabase(), BRISBANE_ID)).toBeUndefined();
+    await tapTab('Groups');
+    await showMembers('Brisbane');
+    await expectMembers(JOINED);
+  });
+
   test("[SHARING-289.1] [SHARING-226.2] replaces the phone's own copy of the group with the snapshot once it is approved, and keeps it until then", async () => {
     const { own, ids } = await ownCopyAsks();
     expect(await members('Brisbane')).toEqual(ids);

@@ -594,9 +594,10 @@ describe('SHARING-284.1', () => {
     await showMembers('Brisbane');
     await expectMembers(WITH_DANA);
     await askToRemoveDana();
-    // The app syncs as soon as it has written an event (SYNC-88.1). The API takes no new
-    // event for now, so that the deletion is still unsent when the test looks.
-    groupIsFull(brisbane, true);
+    // The app syncs as soon as it has written an event (SYNC-88.1). So the API keeps its
+    // answer to the revocation back until the group is full, after the rotation: it then
+    // takes no new event, and the deletion is still unsent when the test looks.
+    holdRemovals('revoke');
     const from = mark();
     const before = alertsShown().length;
 
@@ -607,6 +608,8 @@ describe('SHARING-284.1', () => {
         `/groups/${brisbane}/invites/${CODE_A}`,
       ]),
     );
+    groupIsFull(brisbane, true);
+    await releaseRemovals();
     await waitFor(async () =>
       expect(await unsent()).toMatchObject([
         {
