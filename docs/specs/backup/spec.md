@@ -341,7 +341,7 @@ WHEN 使用者在確認框按「Replace」，the mobile app SHALL 在寫入匯�
 
 IF 使用者選了一個可以匯入的匯出檔，而這支手機在裡面的共同帳本有任何一個，在匯出檔裡不是這支手機的共同帳本，THEN the mobile app SHALL 不跳出確認框，不寫入任何資料，本機資料和畫面都不變，並跳出標題「Leave Shared Groups First」的提示框。內容在這樣的共同帳本只有一個時是「This phone is still a member of <名稱>, and this file would remove that group from it. Leave the group first, then import the file again.」；有幾個時是「This phone is still a member of <名稱>, and this file would remove those groups from it. Leave them first, then import the file again.」，名稱依它們在這支手機上建立的先後，兩個時用「 and 」連接，三個以上時前面的用「, 」隔開、最後兩個用「 and 」連接。在匯出檔裡是這支手機的共同帳本，是指匯出檔的同步資料把同一個群組 ID 記成共同帳本，它在匯出檔裡不是唯讀副本，這支手機在裡面用的裝置 ID 也和本機資料裡的一樣。不能用的檔案和比 app 新的匯出檔先照 BACKUP-15.1 和 BACKUP-17.1 處理。
 
-不擋的話，匯入之後本機資料裡沒有那個共同帳本，或它成了唯讀副本，API 卻還把這支手機當成它的成員手機：別的成員看到一支不再同步的手機，要有人把它移除；這支手機之後用邀請連結再加入時，API 說它已經是成員（SHARING-222.1）。使用者先退出那個群組（groups 的 GROUPS-152.1），它成為唯讀副本，就可以匯入。這支手機自己的匯出檔，裡面那些共同帳本都還是它的，照常匯入，之後接著同步（SYNC-92.1）。
+不擋的話，匯入之後本機資料裡沒有那個共同帳本，或它成了唯讀副本，API 卻還把這支手機當成它的成員手機：別的成員看到一支不再同步的手機，要有人把它移除；這支手機之後用邀請連結再加入時，API 說它已經是成員（SHARING-222.1）。使用者先退出那個群組（groups 的 GROUPS-152.1），它成為唯讀副本，就可以匯入。這支手機自己的匯出檔，裡面那些共同帳本都還是它的，照常匯入，之後接著同步（SYNC-92.2）。
 
 #### Scenario: 加入之前的匯出檔
 
@@ -380,7 +380,7 @@ IF 使用者選了一個可以匯入的匯出檔，而這支手機在裡面的�
 
 ### Requirement: BACKUP-29.1 匯入之後授權失效的手機上，匯出檔裡的共同帳本是唯讀副本
 
-WHEN 使用者在確認框按「Replace」，而匯入之後這支手機授權失效，也就是匯出檔有裝置身分的紀錄，它的裝置 ID 在這支手機的 secure store 裡沒有 seed（SHARING-29.1），the mobile app SHALL 在寫入匯出檔內容的同一個 transaction 裡，把匯出檔裡每個共同帳本記成唯讀副本，原因是授權失效（sync 的 SYNC-301.1、SYNC-302.1）；匯出檔裡已經是唯讀副本的，原因不變。所以匯入一完成，它們就只能看（groups 的 GROUPS-155.1、GROUPS-156.1），不等下一次同步：別支手機的匯出檔在這支手機上同步不了，中間寫下的變更永遠送不出去。它們待上傳的事件照匯出檔留著，不上傳。IF 這時 secure store 讀不了（SHARING-30.1），THEN the mobile app SHALL 照常匯入，不把共同帳本記成唯讀副本；之後的同步照 SYNC-301.1。WHILE 匯入之後這支手機不是授權失效——匯出檔沒有裝置身分的紀錄，或它的 seed 在這支手機的 secure store 裡——匯出檔裡的共同帳本 SHALL 照匯出檔，不因為匯入而成為唯讀副本：這支手機自己的匯出檔是這樣，它接著同步（SYNC-92.1），API 說它不是成員時才成為唯讀副本（SYNC-300.1）。
+WHEN 使用者在確認框按「Replace」，而匯入之後這支手機授權失效，也就是匯出檔有裝置身分的紀錄，它的裝置 ID 在這支手機的 secure store 裡沒有 seed（SHARING-29.1），the mobile app SHALL 在寫入匯出檔內容的同一個 transaction 裡，把匯出檔裡每個共同帳本記成唯讀副本，原因是授權失效（sync 的 SYNC-301.1、SYNC-302.1）；匯出檔裡已經是唯讀副本的，原因不變。所以匯入一完成，它們就只能看（groups 的 GROUPS-155.1、GROUPS-156.1），不等下一次同步：別支手機的匯出檔在這支手機上同步不了，中間寫下的變更永遠送不出去。它們待上傳的事件照匯出檔留著，不上傳。IF 這時 secure store 讀不了（SHARING-30.1），THEN the mobile app SHALL 照常匯入，不把共同帳本記成唯讀副本；之後的同步照 SYNC-301.1。WHILE 匯入之後這支手機不是授權失效——匯出檔沒有裝置身分的紀錄，或它的 seed 在這支手機的 secure store 裡——匯出檔裡的共同帳本 SHALL 照匯出檔，不因為匯入而成為唯讀副本：這支手機自己的匯出檔是這樣，它接著同步（SYNC-92.2），API 說它不是成員時才成為唯讀副本（SYNC-300.1）。
 
 #### Scenario: 別支手機的匯出檔
 

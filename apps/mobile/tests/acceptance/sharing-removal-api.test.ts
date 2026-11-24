@@ -17,6 +17,7 @@ import {
   taylorInvites,
   type Inviting,
 } from './sharing-approval-app';
+import { DAY, cleanUpAt, requestsOf, waits } from './sync-catch-up-app';
 import {
   MINUTE,
   NOW,
@@ -696,6 +697,39 @@ describe('SHARING-278.1', () => {
     expect(secureStoreEntry(dana, keyEntry(world.brisbane, 3))).toBeDefined();
   });
 
+  test('[SHARING-278.1] asks for the key of the snapshot it waits for, and takes that snapshot in at the sync that follows', async () => {
+    const { taylor, dana, brisbane } = await evanRemoved();
+    await addExpense(taylor, { title: 'Lunch' });
+    await sync(taylor);
+    // 31 days on, the cleanup deletes what Dana's phone has not downloaded: it is behind,
+    // and holds the key of epoch 1 only.
+    const away = LATER + 31 * DAY;
+    setApiTime(away);
+    setClock(taylor, away);
+    setClock(dana, away);
+    await cleanUpAt(away);
+    await sync(dana);
+    expect(await waits(dana)).toBe(true);
+    // Taylor's phone, which keeps up, uploads its snapshot under epoch 2.
+    await sync(taylor);
+    const from = mark();
+
+    await sync(dana);
+
+    const sent = await requestsOf(dana, from);
+    const keys = sent.indexOf(`GET /groups/${brisbane}/keys?after=1`);
+    expect(sent.indexOf('ask')).toBeGreaterThan(0);
+    expect(keys).toBeGreaterThan(sent.indexOf('ask'));
+    expect(sent.indexOf('get chunk 0')).toBeGreaterThan(keys);
+    expect(await keyQuestionsBy(dana, from)).toEqual(['?after=1']);
+    expect(secureStoreEntry(dana, keyEntry(brisbane, 2))?.value).toBe(
+      toHex(keyOf(taylor, brisbane, 2)),
+    );
+    expect(await waits(dana)).toBe(false);
+    expect(await titles(dana)).toContain('Lunch');
+    expect(namesOf((await ledgerOf(dana)).formerMembers)).toContain('Casey');
+  });
+
   test('[SHARING-278.1] syncs no more when the API holds no box for it', async () => {
     const { dana, brisbane } = await evanRemoved();
     whenAnswered('GET', async () => undefined);
@@ -935,21 +969,21 @@ describe('SHARING-284.1', () => {
     ).toEqual([]);
   });
 
-  test('[SHARING-284.1] leaves no request to approve under the invite it revokes: an approval after a phone has left rotates, revokes, and reports the request answered', async () => {
+  test('[SHARING-284.1] leaves no request to approve under the invite it revokes: an approval after a phone has left fails while the phone rotates and revokes, and the next one finds the request answered', async () => {
     const { invite, taylor, dana, brisbane } = await danaIn();
     const evan = await phoneOf('Evan', invite);
     const E = await asks(evan, invite);
     const request = await listedFor(invite, E);
     expect(await leave(dana, brisbane)).toEqual({ outcome: 'left' });
     const from = mark();
-
-    expect(
-      await on(taylor, () =>
+    const approve = () =>
+      on(taylor, () =>
         taylor.sharing.approveJoinRequest(taylor.database, brisbane, request),
-      ),
-    ).toEqual({ outcome: 'answered' });
+      );
 
-    expect(await approvalsBy(taylor, from)).toEqual([]);
+    // The sync before the approval is refused: the group needs a rotation (SHARING-200.2).
+    expect(await approve()).toEqual({ outcome: 'failed' });
+
     const sentLines = await lines(taylor, from);
     const rotation = sentLines.indexOf(`POST /groups/${brisbane}/rotation`);
     expect(sentLines[0]).toBe(`GET /groups/${brisbane}/events`);
@@ -958,6 +992,9 @@ describe('SHARING-284.1', () => {
       sentLines.indexOf(`DELETE /groups/${brisbane}/invites/${invite.code}`),
     ).toBeGreaterThan(rotation);
     expect(await requestOnApi(invite.code, E)).toBeUndefined();
+
+    expect(await approve()).toEqual({ outcome: 'answered' });
+    expect(await approvalsBy(taylor, from)).toEqual([]);
     expect(await isMemberDevice(brisbane, E)).toBe(false);
   });
 });
@@ -1096,6 +1133,33 @@ describe('SYNC-304.1', () => {
         content: null,
       },
     ]);
+  });
+
+  test('[SYNC-304.1] keeps such an event out of the changes not applied though the phone itself uploaded it', async () => {
+    const { a, brisbane, key, A } = await twoPhones();
+    const key2 = new Uint8Array(randomBytes(32));
+    const stamp = (seconds: number) => ({
+      ms: NOW + seconds * 1_000,
+      counter: 0,
+      device: A,
+    });
+    await setEpoch(brisbane, 2);
+    await saveKey(a, brisbane, 2, key2);
+    await uploadAs(a, key2, [await created(a, 'Taxi', stamp(1))], { epoch: 2 });
+    // The API takes no upload under an old epoch; the test puts one in as it could not.
+    await setEpoch(brisbane, 1);
+    const [coffee] = await uploadAs(a, key, [
+      await created(a, 'Coffee', stamp(2)),
+    ]);
+    await setEpoch(brisbane, 2);
+
+    await sync(a);
+
+    expect(await titles(a)).toEqual(['Taxi']);
+    expect(await refusals(a)).toMatchObject([
+      { id: coffee, device: A, reason: 'epoch', content: null },
+    ]);
+    expect(await a.sync.listUnappliedChanges(a.database)).toEqual([]);
   });
 });
 

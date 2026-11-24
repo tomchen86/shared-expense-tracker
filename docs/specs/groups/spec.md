@@ -2207,7 +2207,7 @@ WHILE 群組是唯讀副本（sync），the mobile app SHALL 讓它的卡片留�
 
 ### Requirement: GROUPS-155.1 唯讀副本的畫面用橫幅說明，沒有 Restore Group
 
-WHILE 群組是唯讀副本，the mobile app SHALL 在它的畫面的大標題下面顯示橫幅，文字依它成為唯讀副本的原因（sync 的 SYNC-300.1、SYNC-301.1，sharing 的 SHARING-276.1）：不是成員是「You're no longer a member of this group. This copy is read-only and won't update.」；退出是「You left this group. This copy is read-only and won't update.」；授權失效是「This phone can't sync this group anymore. This copy is read-only and won't update.」。它有待上傳的事件時，橫幅下面多一行：一個時是「1 change made on this phone was never sent to the group.」，其他時候是「<個數> changes made on this phone were never sent to the group.」。這個畫面沒有「Restore Group」，封存的唯讀副本也沒有；也不顯示封存群組的那句提示（GROUPS-55.2）、等 app 更新和群組滿了的那兩句話（SYNC-75.1、SYNC-83.1）、需要確認的按鈕（GROUPS-107.2）和想加入的按鈕（GROUPS-130.1）。
+WHILE 群組是唯讀副本，the mobile app SHALL 在它的畫面的大標題下面顯示橫幅，文字依它成為唯讀副本的原因（sync 的 SYNC-300.1、SYNC-301.1，sharing 的 SHARING-276.1）：不是成員是「You're no longer a member of this group. This copy is read-only and won't update.」；退出是「You left this group. This copy is read-only and won't update.」；授權失效是「This phone can't sync this group anymore. This copy is read-only and won't update.」。它有待上傳的事件時，橫幅下面多一行：一個時是「1 change made on this phone was never sent to the group.」，其他時候是「<個數> changes made on this phone were never sent to the group.」。這個畫面沒有「Restore Group」，封存的唯讀副本也沒有；也不顯示封存群組的那句提示（GROUPS-55.2）、等 app 更新和群組滿了的那兩句話（SYNC-75.1、SYNC-83.1、SYNC-169.1）、需要確認的按鈕（GROUPS-107.2）、沒有套用的變更的按鈕（GROUPS-170.2）和想加入的按鈕（GROUPS-130.1）。
 
 #### Scenario: 被移除
 
@@ -2284,7 +2284,7 @@ WHILE 群組是唯讀副本，the mobile app SHALL 在它的畫面的橫幅下�
 
 ### Requirement: GROUPS-158.1 按 Delete 時把這份副本從這支手機刪掉
 
-WHEN 使用者在「Delete This Copy?」按「Delete」，the mobile app SHALL 在一個 SQLite transaction 裡，從本機資料刪掉這個群組和本機資料替它存著的每一樣東西：它的成員和前成員；它的分類；它的支出，垃圾桶裡的也算；它的支出清單的排序和篩選條件（ledger）；它的同步資料，也就是每筆紀錄的值和時間戳記、刪除紀錄、待上傳的事件、不套用的事件留下的紀錄、名冊，和它是唯讀副本這件事（sync）；還有它的邀請（sharing）。刪除不發出任何網路請求，不寫事件。手機看過的最新時間戳記（SYNC-2.1）、這支手機的裝置身分和 secure store 的內容都不變；別的群組、個人的帳和這支手機送出的加入申請都不受影響。存好之後，SHALL 關閉這個群組的畫面：從 Groups 根畫面打開的，回到 Groups 根畫面；從 Archived Groups 打開的，回到 Archived Groups；那裡不再有它的卡片。它的支出不再出現在 Expenses 和 Trash。別的分頁上還開著它的畫面或它的支出的明細時，那些畫面照找不到群組和找不到支出的規則顯示（GROUPS-21.1、ledger 的 LEDGER-39.1）。
+WHEN 使用者在「Delete This Copy?」按「Delete」，the mobile app SHALL 在一個 SQLite transaction 裡，從本機資料刪掉這個群組和本機資料替它存著的每一樣東西：它的成員和前成員；它的分類；它的支出，垃圾桶裡的也算；它的支出清單的排序和篩選條件（ledger）；它的同步資料，也就是每筆紀錄的值和時間戳記、刪除紀錄、待上傳的事件、API 確認過而 cursor 還沒有涵蓋的事件（SYNC-161.1）、不套用的事件留下的紀錄、沒有套用的變更（SYNC-350.1）、它在等快照這件事（SYNC-165.1）、名冊，和它是唯讀副本這件事（sync）；還有它的邀請（sharing）。刪除不發出任何網路請求，不寫事件。手機看過的最新時間戳記（SYNC-2.1）、這支手機的裝置身分和 secure store 的內容都不變；別的群組、個人的帳和這支手機送出的加入申請都不受影響。存好之後，SHALL 關閉這個群組的畫面：從 Groups 根畫面打開的，回到 Groups 根畫面；從 Archived Groups 打開的，回到 Archived Groups；那裡不再有它的卡片。它的支出不再出現在 Expenses 和 Trash。別的分頁上還開著它的畫面或它的支出的明細時，那些畫面照找不到群組和找不到支出的規則顯示（GROUPS-21.1、ledger 的 LEDGER-39.1）。
 
 #### Scenario: 刪除
 
@@ -2386,7 +2386,7 @@ WHILE 共同帳本有沒有套用的變更（sync），the mobile app SHALL 在�
 
 ### Requirement: GROUPS-171.1 Changes Not Applied 列出沒有套用的變更，一個一個按掉
 
-WHEN 使用者按群組的畫面上「<個數> change(s) wasn't/weren't applied」的按鈕（GROUPS-170.2），the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Changes Not Applied，標題是「Changes Not Applied」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.2）；按 Close、把它往下滑或按 Android 的返回鍵，SHALL 關閉它，回到群組的畫面。Changes Not Applied 依記下的先後（SYNC-350.1）由上而下替這個共同帳本每一個沒有套用的變更顯示一個區塊，每個區塊由上而下是：LEDGER-151.1 的圖示和區塊的標題；一句說明；這個變更的內容（LEDGER-230.1、GROUPS-172.2）；和角色為 button、名稱為「Dismiss」的按鈕。說明看不套用的原因：原因是時鐘時是「This phone's clock was too far ahead when you made this change, so the other phones in this group didn't accept it. It was undone on this phone. Check the date and time, then make the change again.」；其他原因都是「The other phones in this group couldn't accept this change, so it was undone on this phone. Make the change again if you still need it.」。WHEN 使用者按一個區塊的「Dismiss」，the mobile app SHALL 按掉那個沒有套用的變更（SYNC-352.1）：存好之後那個區塊消失，其他區塊不變，群組的畫面上的個數跟著少；按掉的是最後一個時，Changes Not Applied 關閉，群組的畫面沒有那個按鈕；存好之前再按「Dismiss」不再做一次；存不進本機資料時，跳出標題「Unable to Dismiss」、內容「Your change could not be saved. Please try again.」的提示框，區塊還在，本機資料和按之前一樣。Changes Not Applied 開著時多了一個沒有套用的變更，不必重新打開就多一個區塊。封存的共同帳本也照樣可以按「Dismiss」。
+WHEN 使用者按群組的畫面上「<個數> change(s) wasn't/weren't applied」的按鈕（GROUPS-170.2），the mobile app SHALL 開啟從畫面底部升起、蓋在群組的畫面上的 Changes Not Applied，標題是「Changes Not Applied」，標題列只有取消「Close」（SHELL-47.2、SHELL-48.2）；按 Close、把它往下滑或按 Android 的返回鍵，SHALL 關閉它，回到群組的畫面。Changes Not Applied 依記下的先後（SYNC-350.1）由上而下替這個共同帳本每一個沒有套用的變更顯示一個區塊，每個區塊由上而下是：LEDGER-151.1 的圖示和區塊的標題；一句說明；這個變更的內容（LEDGER-230.1、GROUPS-172.3）；和角色為 button、名稱為「Dismiss」的按鈕。說明看不套用的原因：原因是時鐘時是「This phone's clock was too far ahead when you made this change, so the other phones in this group didn't accept it. It was undone on this phone. Check the date and time, then make the change again.」；其他原因都是「The other phones in this group couldn't accept this change, so it was undone on this phone. Make the change again if you still need it.」。WHEN 使用者按一個區塊的「Dismiss」，the mobile app SHALL 按掉那個沒有套用的變更（SYNC-352.1）：存好之後那個區塊消失，其他區塊不變，群組的畫面上的個數跟著少；按掉的是最後一個時，Changes Not Applied 關閉，群組的畫面沒有那個按鈕；存好之前再按「Dismiss」不再做一次；存不進本機資料時，跳出標題「Unable to Dismiss」、內容「Your change could not be saved. Please try again.」的提示框，區塊還在，本機資料和按之前一樣。Changes Not Applied 開著時多了一個沒有套用的變更，不必重新打開就多一個區塊。封存的共同帳本也照樣可以按「Dismiss」。
 
 #### Scenario: 開啟和關閉
 
@@ -2443,9 +2443,9 @@ WHEN 使用者按群組的畫面上「<個數> change(s) wasn't/weren't applied�
 - **WHEN** 新增 Dinner，自己的事件不套用之後封存 Brisbane，從 Archived Groups 打開它的畫面，打開 Changes Not Applied，按「Dismiss」
 - **THEN** Changes Not Applied 關閉，Brisbane 的畫面沒有那個按鈕，它仍是封存的
 
-### Requirement: GROUPS-172.2 不是支出的變更和讀不出內容的變更的區塊
+### Requirement: GROUPS-172.3 不是支出的變更和讀不出內容的變更的區塊
 
-The mobile app SHALL 在 Changes Not Applied（GROUPS-171.1）替事件指的不是支出、原因不是結構的沒有套用的變更這樣顯示：區塊的標題是「Group change not applied」；內容只有一行，看事件指的紀錄的種類：群組是「Group name: <事件帶的名稱>」；成員是「Member: <名稱>」；分類是「Category: <名稱>」；邀請是「Invite link」；「不是重複」紀錄是「Not a Duplicate」；名冊紀錄是「Join approval」，它是同意加入申請時寫下的（sharing 的 SHARING-196.1）。成員和分類的名稱，是事件帶著名稱這個單位時它的值；沒有帶時，是退回之後（SYNC-351.1）這支手機存著的那位成員或那個分類現在的名稱，前成員和封存的分類也算；這支手機沒有他或它時，那一行只有「Member」或「Category」。原因是結構的沒有套用的變更，不論事件指的是什麼，區塊的標題是「Change not applied」，沒有內容那一行。
+The mobile app SHALL 在 Changes Not Applied（GROUPS-171.1）替事件指的不是支出、原因不是結構的沒有套用的變更這樣顯示：區塊的標題是「Group change not applied」；內容只有一行，看事件指的紀錄的種類：群組是「Group name: <事件帶的名稱>」；成員是「Member: <名稱>」；分類是「Category: <名稱>」；邀請是「Invite link」；「不是重複」紀錄是「Not a Duplicate」；名冊紀錄看事件帶的代表：代表一位成員的是「Join approval」，它是同意加入申請時寫下的（sharing 的 SHARING-196.2）；不代表任何人的是「Member removal」，它是替群組換鑰匙時為離開的手機寫下的（sharing 的 SHARING-271.1）。成員和分類的名稱，是事件帶著名稱這個單位時它的值；沒有帶時，是退回之後（SYNC-351.1）這支手機存著的那位成員或那個分類現在的名稱，前成員和封存的分類也算；這支手機沒有他或它時，那一行只有「Member」或「Category」。原因是結構的沒有套用的變更，不論事件指的是什麼，區塊的標題是「Change not applied」，沒有內容那一行。
 
 #### Scenario: 群組的名稱
 
@@ -2466,6 +2466,11 @@ The mobile app SHALL 在 Changes Not Applied（GROUPS-171.1）替事件指的不
 
 - **WHEN** 套用三個上傳的裝置 ID 是 `phone-a`、時間戳記比收到時間晚一小時、這支手機沒有寫過的事件：一個邀請的第一個事件、一筆「不是重複」紀錄的第一個事件，和一筆名冊紀錄的第一個事件
 - **THEN** 三個區塊的內容依序是「Invite link」、「Not a Duplicate」和「Join approval」
+
+#### Scenario: 手機離開時寫下的名冊紀錄
+
+- **WHEN** 套用一個上傳的裝置 ID 是 `phone-a`、時間戳記比收到時間晚一小時、這支手機沒有寫過、代表是不代表任何人的名冊紀錄的第一個事件
+- **THEN** 區塊的內容是「Member removal」
 
 #### Scenario: 這支手機沒有那位成員
 

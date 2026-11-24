@@ -83,9 +83,11 @@ import {
 } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
 import {
+  LATER,
   YOU,
   appDatabase,
   categoriesLines,
+  created,
   eachTestGetsAPhone,
   everything,
   expenseTitled,
@@ -93,10 +95,13 @@ import {
   leaveMembers,
   members,
   openGroupCategories,
+  receiveEvents,
+  relayed,
   showMembers,
   unsent,
 } from './sync-app';
 import {
+  deviceId,
   eventRequests,
   lunchCreated,
   mark,
@@ -104,6 +109,7 @@ import {
   startEventApi,
   startSynced,
 } from './sync-screens-app';
+import { HOUR, notAppliedCount, unapplied } from './sync-unapplied-app';
 
 // Runs on iOS. Each test starts the whole app with Taylor saved as your name and Brisbane's
 // members Taylor, Casey and Blake, a shared ledger that syncs (sync-screens-app). Then the
@@ -208,6 +214,26 @@ async function withLunch() {
   otherPhoneUploads(brisbane, await lunchCreated());
   await syncs();
   return brisbane;
+}
+
+/** While the phone was a member, it uploaded a change that no phone applied: its stamp is an hour ahead of when the API got it (SYNC-350.1). */
+async function aChangeWasNotApplied(brisbane: string) {
+  const device = await deviceId();
+  await receiveEvents(
+    brisbane,
+    relayed(
+      created(
+        'invite',
+        'A'.repeat(22),
+        { ms: LATER + HOUR, counter: 0, device },
+        {
+          link: { secret: 'A'.repeat(43), expiresAtMs: LATER + 7 * 24 * HOUR },
+        },
+      ),
+      { device, receivedAtMs: LATER },
+    ),
+  );
+  expect(await unapplied()).toHaveLength(1);
 }
 
 /** Brisbane is a read-only copy because the phone was removed, and its screen is open on the Groups tab. */
@@ -411,6 +437,27 @@ describe('GROUPS-155.1', () => {
     expect(textsOn('Brisbane')).not.toContain(READ_ONLY);
   });
 
+  test('[GROUPS-155.1] shows no button for the changes that were not applied, which the copy keeps', async () => {
+    await startSynced(GROUPS);
+    await aChangeWasNotApplied(await groupId('Brisbane'));
+    await tapTab('Groups');
+    await openGroup('Brisbane');
+    await waitFor(() =>
+      expect(notAppliedCount('Brisbane')).toBe("1 change wasn't applied"),
+    );
+    await goBackFrom('Brisbane');
+
+    await copyIsOpen();
+
+    expect(textsOn('Brisbane')).toEqual([
+      NO_MEMBER_BANNER,
+      DELETE_COPY,
+      NO_EXPENSES,
+    ]);
+    expect(notAppliedCount('Brisbane')).toBeUndefined();
+    expect(await unapplied()).toHaveLength(1);
+  });
+
   test.each([
     [1, ['Dana']],
     [3, ['Dana', 'Evan', 'Finn']],
@@ -584,6 +631,7 @@ describe('GROUPS-158.1', () => {
     const brisbane = await withLunch();
     const ids = await members('Brisbane');
     const lunch = await expenseTitled('Lunch');
+    await aChangeWasNotApplied(brisbane);
     await copyIsOpen();
     const before = everything();
     const from = mark();
@@ -592,6 +640,7 @@ describe('GROUPS-158.1', () => {
 
     await waitFor(() => expect(isOpen('Brisbane')).toBe(false));
     expect(groupCards()).toEqual(['Open Tokyo']);
+    expect(await unapplied()).toEqual([]);
     const after = everything();
     const held = JSON.stringify(after);
     for (const id of [brisbane, lunch.id, ...Object.values(ids)]) {

@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { SNAPSHOT_NEEDED_BY_HEADER } from '@shared-expense/domain/api';
 import {
   T,
   databaseContents,
@@ -98,7 +99,14 @@ import {
   useSyncApi,
   wrongEpoch,
 } from './sync-api';
-import { DAY, cleanUpAt, reach, store } from './sync-cleanup-api';
+import {
+  DAY,
+  THIRTY_DAYS,
+  cleanUpAt,
+  expectSnapshotNeeded,
+  reach,
+  store,
+} from './sync-cleanup-api';
 import {
   ask,
   chunksStored,
@@ -294,6 +302,39 @@ describe('SHARING-250.1', () => {
       ],
       more: false,
     });
+  });
+});
+
+describe('SYNC-162.1 once a device is gone', () => {
+  /** Who the page after `cursor` says needs a snapshot; null when it names nobody. */
+  const neededBy = async (phone: Phone, cursor: number) =>
+    (
+      await answerHeaders(phone, {
+        path: `/groups/${BRISBANE}/events?after=${cursor}`,
+      })
+    ).get(SNAPSHOT_NEEDED_BY_HEADER);
+
+  test('[SHARING-250.1] [SHARING-254.1] a device that waited for a snapshot is named on no page once it was removed, or has left', async () => {
+    const [taylor, casey, dana] = await threeInBrisbane();
+    await store(taylor, 5);
+    await cleanUpAt(T + THIRTY_DAYS + 1);
+    setTime(T + 31 * DAY);
+    expectSnapshotNeeded(await download(casey, BRISBANE, 2));
+    expectSnapshotNeeded(await download(dana, BRISBANE, 2));
+    expect(await neededBy(taylor, 5)).toBe(
+      [casey.deviceId, DANA].sort().join(','),
+    );
+
+    const removal = removingDana(taylor, casey);
+    expectRotated(await rotate(taylor, BRISBANE, removal), removal, [6]);
+
+    expect(await neededBy(taylor, 5)).toBe(casey.deviceId);
+
+    expectLeft(await leave(casey, BRISBANE), casey);
+    const alone = rotationOf([taylor], { epoch: 3, events: [] });
+    expectRotated(await rotate(taylor, BRISBANE, alone), alone, []);
+
+    expect(await neededBy(taylor, 5)).toBeNull();
   });
 });
 
