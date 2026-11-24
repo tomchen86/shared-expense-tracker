@@ -8,14 +8,18 @@ import {
   listUnsentSyncEvents,
   makeReadOnlyCopy,
   readOnlyCopyOf,
+  saveGroupKey,
   shareGroup,
 } from '../../src/sync';
 import {
+  alertsShown,
+  chooseFile,
   close,
   exportFrom,
   goOffline,
   importFile,
   newPhone,
+  nextAlert,
   removePhones,
   resetPhones,
   startOn,
@@ -30,6 +34,7 @@ import {
   emptySecureStore,
   failSecureStoreReads,
   mistakes,
+  removeSecureStoreEntry,
   removeWorld,
   resetWorld,
   secureStoreWorks,
@@ -264,5 +269,53 @@ test('[BACKUP-29.1] imports, and makes no ledger a copy, while the secure store 
   secureStoreWorks();
 
   expect(await copyOn(phone, taylors.brisbane)).toBeUndefined();
+  await close(app);
+});
+
+/** Saves Brissie's group key of a key epoch on Taylor's phone, as the app saves one (SYNC-94.1). */
+const saveKey = (
+  taylors: Awaited<ReturnType<typeof taylorsPhone>>,
+  epoch: number,
+) =>
+  onPhone(taylors.phone, (database) =>
+    saveGroupKey(database, {
+      groupId: taylors.brisbane,
+      epoch,
+      key: new Uint8Array(32).fill(epoch),
+    }),
+  );
+
+test("[BACKUP-28.1] does not import a file from the phone's earlier time in a group once the key of that time is gone", async () => {
+  const taylors = await taylorsPhone();
+  await saveKey(taylors, 1);
+  const { file } = await exportFrom(taylors.phone);
+  // The phone left the group and was approved again: the key of its first time went when
+  // the ledger became a copy, and the ledger is at key epoch 2 now.
+  await saveKey(taylors, 2);
+  removeSecureStoreEntry(`group-key.${taylors.brisbane}.1`);
+  const app = await startOn(taylors.phone);
+  const before = alertsShown().length;
+
+  await chooseFile(file);
+
+  expect(await nextAlert(before + 1)).toEqual([
+    'Leave Shared Groups First',
+    'This phone is still a member of Brissie, and this file would remove that group from it. Leave the group first, then import the file again.',
+  ]);
+  await close(app);
+  expect(await copyOn(taylors.phone, taylors.brisbane)).toBeUndefined();
+});
+
+test('[BACKUP-28.1] asks to replace the data for a file from before a rotation while the phone still holds the key of that time', async () => {
+  const taylors = await taylorsPhone();
+  await saveKey(taylors, 1);
+  const { file } = await exportFrom(taylors.phone);
+  await saveKey(taylors, 2);
+  const app = await startOn(taylors.phone);
+  const before = alertsShown().length;
+
+  await chooseFile(file);
+
+  expect((await nextAlert(before + 1))[0]).toBe('Replace All Data?');
   await close(app);
 });

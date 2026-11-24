@@ -286,11 +286,12 @@ export function apiDropsThisPhone(group: string) {
 
 /**
  * From now on the group needs a rotation and has these member devices, so the API refuses
- * uploads of new events and downloads from its last number (SHARING-256.1); with no
- * devices, it needs none any more.
+ * uploads of new events and downloads from its last number (SHARING-256.1), listing the
+ * devices in ascending order as the API does (SYNC-62.2); with no devices, it needs none
+ * any more.
  */
 export function groupNeedsRotation(group: string, devices?: string[]) {
-  world().groups.get(group)!.rotationNeededBy = devices;
+  world().groups.get(group)!.rotationNeededBy = devices && [...devices].sort();
 }
 
 /** The most requests for a group that were ever on their way at one moment. */

@@ -50,7 +50,7 @@ afterEach(endWorld);
 /** 31 days, after which the cleanup takes an event whatever phone has it. */
 const THIRTY_ONE_DAYS = 31 * 86_400_000;
 
-describe('SYNC-71.2', () => {
+describe('SYNC-71.3', () => {
   test.each<[string, number, unknown]>([
     ['status 410 and an empty object', 410, {}],
     [
@@ -62,7 +62,7 @@ describe('SYNC-71.2', () => {
     ['status 410 and text that is no JSON', 410, 'not json'],
     ['status 200 and the reason', 200, { error: 'snapshot-needed' }],
   ])(
-    '[SYNC-71.2] with [SYNC-137.1] takes %s for no answer that it needs a snapshot: it asks for none, uploads nothing and changes nothing',
+    '[SYNC-71.3] with [SYNC-137.1] takes %s for no answer that it needs a snapshot: it asks for none, uploads nothing and changes nothing',
     async (_case, status, body) => {
       const setup = await twoPhones();
       const { a, b, brisbane, key } = setup;

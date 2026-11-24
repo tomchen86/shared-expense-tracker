@@ -779,7 +779,12 @@ describe('SYNC-170.1', () => {
 
     await sync(a);
 
-    expect(await requestsOf(a, from)).toEqual(['download after=0', 'ask']);
+    // It may go on to ask the API for the key (SHARING-278.1); it takes no chunk and uploads nothing.
+    const asked = await requestsOf(a, from);
+    expect(asked.slice(0, 2)).toEqual(['download after=0', 'ask']);
+    expect(
+      asked.filter((line) => line === 'upload' || line.startsWith('get chunk')),
+    ).toEqual([]);
     expect(await unsent(a)).toEqual([dinner]);
     expect(await titles(a)).toEqual(['Dinner']);
     expect(await waits(a)).toBe(true);
