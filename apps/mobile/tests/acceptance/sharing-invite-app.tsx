@@ -392,6 +392,19 @@ export function addMemberDevice(groupId: string, deviceId: string) {
   api().groups.get(groupId)!.add(deviceId);
 }
 
+/**
+ * A member removes the device from the group (SHARING-250.1): the API counts it as a
+ * member device no more, and holds its handover no longer.
+ */
+export function removedOnApi(groupId: string, deviceId: string) {
+  api().groups.get(groupId)?.delete(deviceId);
+  for (const [key, handover] of api().handovers) {
+    if (handover.groupId === groupId && key.endsWith(` ${deviceId}`)) {
+      api().handovers.delete(key);
+    }
+  }
+}
+
 /** Another phone creates the group's invite on the API, as a member device would. */
 export function inviteByAnotherPhone(groupId: string, code: string) {
   api().invites.set(code, {

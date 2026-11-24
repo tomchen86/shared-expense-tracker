@@ -63,9 +63,11 @@ import {
   unsent,
 } from './sync-app';
 import {
+  apiEventIds,
   deviceId,
   download,
   eventRequests,
+  groupIsFull,
   groupNeedsRotation,
   lunchCreated,
   mark,
@@ -592,6 +594,10 @@ describe('SHARING-284.1', () => {
     await showMembers('Brisbane');
     await expectMembers(WITH_DANA);
     await askToRemoveDana();
+    // The app syncs as soon as it has written an event (SYNC-88.1). So the API keeps its
+    // answer to the revocation back until the group is full, after the rotation: it then
+    // takes no new event, and the deletion is still unsent when the test looks.
+    holdRemovals('revoke');
     const from = mark();
     const before = alertsShown().length;
 
@@ -602,6 +608,8 @@ describe('SHARING-284.1', () => {
         `/groups/${brisbane}/invites/${CODE_A}`,
       ]),
     );
+    groupIsFull(brisbane, true);
+    await releaseRemovals();
     await waitFor(async () =>
       expect(await unsent()).toMatchObject([
         {
@@ -611,6 +619,13 @@ describe('SHARING-284.1', () => {
       ]),
     );
     expect(alertsShown().slice(before)).toEqual([]);
+
+    // The next sync uploads it.
+    const [deletion] = await unsent();
+    groupIsFull(brisbane, false);
+    await syncs();
+    await waitFor(() => expect(apiEventIds(brisbane)).toContain(deletion.id));
+    await waitFor(async () => expect(await unsent()).toEqual([]));
   });
 
   test('[SHARING-284.1] revokes no invite while no phone has left', async () => {

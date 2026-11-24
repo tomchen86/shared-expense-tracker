@@ -13,6 +13,7 @@ import {
   approvedOnApi,
   cardOnApi,
   rejectedOnApi,
+  removedOnApi,
   type Handover,
   type StoredSnapshot,
 } from './sharing-invite-app';
@@ -104,6 +105,10 @@ export const phoneDevice = () => sendings().at(-1)!.deviceId!;
 /** A member rejects the phone's request. */
 export const memberRejects = (code = CODE_A) =>
   rejectedOnApi(code, phoneDevice());
+
+/** A member removes the phone from Brisbane: the API counts it as a member device no more. */
+export const memberRemovesThePhone = () =>
+  removedOnApi(BRISBANE_ID, phoneDevice());
 
 /** A member's phone uploads a new card for Brisbane's invite: the card of the scenarios with these changes. */
 export function cardBecomes(members: typeof BRISBANE_CARD.members) {

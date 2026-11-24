@@ -548,10 +548,15 @@ export async function restoreData(phone: Phone, copy: string): Promise<Phone> {
 
 /**
  * Imports the copy as the phone's own export file (backup): through the app's import, on
- * the open database, with the app still running.
+ * the open database, with the app still running. The import looks in the secure store
+ * (BACKUP-28.1, BACKUP-29.1), and the modules a plain `requireActual` gives are those of
+ * the phone started last, with that phone's secure store. So the import is loaded anew
+ * for this phone, as starting a phone loads its modules; the phone's own stay as they are.
  */
 export async function importData(phone: Phone, copy: string): Promise<void> {
   turnTo(phone);
+  world().starting = phone.state;
+  jest.resetModules();
   const backup = jest.requireActual<typeof import('../../src/backup/import')>(
     '../../src/backup/import',
   );
