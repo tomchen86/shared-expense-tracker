@@ -4,6 +4,7 @@ import {
   PAGE_EVENT_LIMIT,
   type ContinueResponse,
   type EventsPageResponse,
+  type GroupDevicesResponse,
   type GroupRefusal,
   type SnapshotNeededResponse,
   type UploadEventsRequest,
@@ -80,6 +81,30 @@ export async function memberDevices(
     SELECT device_id FROM group_members
     WHERE group_id = ${groupId} ORDER BY device_id`;
   return rows.map(({ device_id }) => device_id);
+}
+
+/** Read membership and progress in one statement so both see the same group members. */
+export async function readGroupDevices(
+  sql: Sql,
+  groupId: string,
+  deviceId: string,
+): Promise<GroupDevicesResponse | GroupRefusal> {
+  const rows = await sql<
+    { device_id: string; progress_at_ms: string | null }[]
+  >`
+    SELECT m.device_id, m.progress_at_ms FROM group_members m
+    WHERE m.group_id = ${groupId} AND EXISTS (
+      SELECT 1 FROM group_members
+      WHERE group_id = m.group_id AND device_id = ${deviceId}
+    )
+    ORDER BY m.device_id`;
+  if (rows.length === 0) return { error: 'not-a-member' };
+  return {
+    devices: rows.map(({ device_id, progress_at_ms }) => ({
+      deviceId: device_id,
+      syncedAtMs: progress_at_ms === null ? null : Number(progress_at_ms),
+    })),
+  };
 }
 
 /**
