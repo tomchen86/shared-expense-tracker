@@ -18,7 +18,7 @@ const counted = (count: number, one: string) =>
 
 /** What the confirmation says about the file, in the time zone the device is in (BACKUP-11.2). */
 function describe(
-  { exportedAt, groups, expenses }: ExportFileSummary,
+  { exportedAt, groups, expenses, unsentLost }: ExportFileSummary,
   locale: string,
 ) {
   const { timeZone } = Intl.DateTimeFormat().resolvedOptions();
@@ -26,8 +26,21 @@ function describe(
     new Intl.DateTimeFormat(locale, { ...options, timeZone }).format(
       exportedAt,
     );
-  return `This file was exported on ${format({ dateStyle: 'medium' })} at ${format({ timeStyle: 'short' })} and has ${counted(groups, 'group')} and ${counted(expenses, 'expense')}. Importing it replaces all the data on this phone. This cannot be undone.`;
+  const summary = `This file was exported on ${format({ dateStyle: 'medium' })} at ${format({ timeStyle: 'short' })} and has ${counted(groups, 'group')} and ${counted(expenses, 'expense')}. Importing it replaces all the data on this phone. This cannot be undone.`;
+  if (unsentLost === 0) return summary;
+  // An import connects to no server, so it cannot send them first.
+  return `${summary}\n\n${
+    unsentLost === 1
+      ? "1 change in your shared groups hasn't been sent yet and will be lost. To send it first"
+      : `${unsentLost} changes in your shared groups haven't been sent yet and will be lost. To send them first`
+  }, tap Cancel, connect to the internet, and open the app again.`;
 }
+
+/** The names with commas between them and "and" before the last. */
+const listed = (names: string[]) =>
+  names.length < 2
+    ? names.join('')
+    : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
 
 const confirmReplace = (message: string) =>
   new Promise<boolean>((resolve) =>
@@ -69,6 +82,20 @@ export function useBackup() {
         error instanceof NewerExportFile
           ? 'This file was exported by a newer version of the app. Update the app, then try again. Your data was not changed.'
           : 'This file is damaged or was not exported by this app. Your data was not changed.',
+      );
+      return;
+    }
+    // The API would go on counting this phone in a group its data no longer holds
+    // (BACKUP-28.1).
+    const { memberOf } = summary;
+    if (memberOf.length > 0) {
+      Alert.alert(
+        'Leave Shared Groups First',
+        `This phone is still a member of ${listed(memberOf)}, and this file would remove ${
+          memberOf.length === 1
+            ? 'that group from it. Leave the group first'
+            : 'those groups from it. Leave them first'
+        }, then import the file again.`,
       );
       return;
     }

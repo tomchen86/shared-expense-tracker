@@ -10,8 +10,11 @@ import {
   type Database,
   type SqlExecutor,
 } from '../storage';
+import { readDeviceIdentity } from '../sharing/device-identity';
 import { openDatabaseFile } from '../storage/expo-files';
-import { latestStamp, saveLatestStamp } from '../sync/records';
+import { deleteGroupKeys } from '../sync/read-only-copy';
+import { UNSENT_EVENTS, latestStamp, saveLatestStamp } from '../sync/records';
+import { readGroupKey } from '../sync/transport';
 import { CREATE_EXPORT_TABLE, EXPORT_TABLE } from './export';
 
 /** What the confirmation says about an export file (BACKUP-11.2). */
@@ -21,6 +24,13 @@ export interface ExportFileSummary {
   groups: number;
   /** Without those in the Trash. */
   expenses: number;
+  /**
+   * The names of the shared ledgers this phone is in that the file would take from it, in
+   * the order they were created: such a file is not imported (BACKUP-28.1).
+   */
+  memberOf: string[];
+  /** How many unsent events of the shared ledgers this phone is in the file does not hold. */
+  unsentLost: number;
 }
 
 /** The file is a sound export from a later version of the app than this one (BACKUP-17.1). */
@@ -65,6 +75,74 @@ const BROKEN_RULES = `
         SELECT COALESCE(SUM(amountMinor), 0) FROM expense_payments WHERE expenseId = expenses.id)
       OR amountMinor <> (
         SELECT COALESCE(SUM(amountMinor), 0) FROM expense_shares WHERE expenseId = expenses.id)`;
+
+/**
+ * Whether the phone holds the group key of its own key epoch for the ledger and lacks the
+ * one of the epoch the file records: the file is from an earlier time in the group, whose
+ * keys went when the ledger became a copy (BACKUP-28.1). A secure store that cannot be
+ * read says nothing.
+ */
+async function lacksTheFilesKey(
+  groupId: string,
+  epoch: number,
+  filedEpoch: number,
+): Promise<boolean> {
+  const held = (of: number) =>
+    readGroupKey(groupId, of, (cause) => {
+      throw cause;
+    });
+  try {
+    return !!(await held(epoch)) && !(await held(filedEpoch));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * What an import of `file` would do to the shared ledgers this phone is in (ADR-0042):
+ * which of them the file does not hold as this phone's shared ledger, and how many of
+ * their unsent events it does not hold either. A read-only copy is not one the phone is in.
+ */
+async function sharedLedgersAtStake(database: Database, file: SqlExecutor) {
+  const mine = await database.all<{
+    groupId: string;
+    name: string;
+    device: string;
+    epoch: number;
+  }>(
+    `SELECT s.groupId, g.name, s.device, s.epoch FROM sync_groups s
+     JOIN groups g ON g.id = s.groupId WHERE s.readOnly IS NULL ORDER BY g.position`,
+  );
+  const filed = new Map(
+    (
+      await file.all<{ groupId: string; device: string; epoch: number }>(
+        'SELECT groupId, device, epoch FROM sync_groups WHERE readOnly IS NULL',
+      )
+    ).map((ledger) => [ledger.groupId, ledger]),
+  );
+  const memberOf: string[] = [];
+  for (const { groupId, name, device, epoch } of mine) {
+    const theirs = filed.get(groupId);
+    if (
+      theirs?.device !== device ||
+      (await lacksTheFilesKey(groupId, epoch, theirs.epoch))
+    )
+      memberOf.push(name);
+  }
+  const kept = new Set(
+    (await file.all<{ id: string }>(`SELECT id FROM ${UNSENT_EVENTS}`)).map(
+      ({ id }) => id,
+    ),
+  );
+  const unsent = await database.all<{ id: string }>(
+    `SELECT o.id FROM ${UNSENT_EVENTS} o JOIN sync_groups s ON s.groupId = o.groupId
+     WHERE s.readOnly IS NULL`,
+  );
+  return {
+    memberOf,
+    unsentLost: unsent.filter(({ id }) => !kept.has(id)).length,
+  };
+}
 
 /**
  * Checks the file at `path`, which comes from outside the app, in the order ADR-0020
@@ -133,7 +211,12 @@ export async function readExportFile(
       `SELECT (SELECT count(*) FROM groups) AS groups,
         (SELECT count(*) FROM expenses WHERE trashOrder IS NULL) AS expenses`,
     );
-    return { exportedAt: new Date(exportedAt), groups, expenses };
+    return {
+      exportedAt: new Date(exportedAt),
+      groups,
+      expenses,
+      ...(await sharedLedgersAtStake(database, file)),
+    };
   } finally {
     await file.close().catch(() => undefined);
   }
@@ -146,6 +229,10 @@ const ATTACHED = 'export_file';
  * keeping the later of the phone's and the file's latest sync stamps.
  * `replaceLocalData` runs the writes in one transaction on the phone's connection,
  * so a failure leaves the local data as it was.
+ *
+ * On a phone that holds no seed for the file's device identity, the file's shared ledgers
+ * become read-only copies in that transaction (BACKUP-29.1): the phone could never sync
+ * them, and what it wrote meanwhile would never be sent.
  */
 export async function importData(
   database: Database,
@@ -156,6 +243,7 @@ export async function importData(
 ): Promise<void> {
   // A transaction cannot attach a database, so the file is attached around it.
   await database.run(`ATTACH DATABASE ? AS ${ATTACHED}`, [path]);
+  let lapsed: { groupId: string; epoch: number }[] = [];
   try {
     const tables = (
       await database.all<{ name: string }>(
@@ -182,8 +270,23 @@ export async function importData(
         )
           await saveLatestStamp(transaction, previousStamp);
       }
+      // A secure store that cannot be read is not a lost seed: the next sync finds out.
+      const identity = await readDeviceIdentity(transaction).catch(
+        () => undefined,
+      );
+      if (identity?.status === 'lost') {
+        lapsed = await transaction.all(
+          'SELECT groupId, epoch FROM sync_groups WHERE readOnly IS NULL',
+        );
+        await transaction.run(
+          "UPDATE sync_groups SET readOnly = 'lapsed' WHERE readOnly IS NULL",
+        );
+      }
     });
   } finally {
     await database.exec(`DETACH DATABASE ${ATTACHED}`).catch(() => undefined);
   }
+  // A copy holds no group key (SYNC-302.1).
+  for (const { groupId, epoch } of lapsed)
+    await deleteGroupKeys(groupId, epoch);
 }
