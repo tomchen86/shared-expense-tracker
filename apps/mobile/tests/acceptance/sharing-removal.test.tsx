@@ -176,7 +176,7 @@ const keyEntries = (group: string) =>
     .sort();
 
 describe('GROUPS-150.1', () => {
-  test('[GROUPS-150.1] asks before it removes a member another phone represents, and has sent nothing yet', async () => {
+  test('[GROUPS-150.1] [GROUPS-26.2] asks before it removes a member another phone represents, and has sent nothing yet', async () => {
     await inMembersWithDana();
     const from = mark();
     const before = alertsShown().length;

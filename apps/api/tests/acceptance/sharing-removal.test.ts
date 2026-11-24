@@ -681,7 +681,7 @@ describe('SHARING-256.1', () => {
     });
   });
 
-  test('[SHARING-256.1] refuses an approval while the group needs a rotation', async () => {
+  test('[SHARING-256.1] [SHARING-173.2] refuses an approval while the group needs a rotation', async () => {
     const { taylor, casey, P, S } = await caseyAsked();
     const dana = await registered(DANA);
     await addMember(BRISBANE, dana);
