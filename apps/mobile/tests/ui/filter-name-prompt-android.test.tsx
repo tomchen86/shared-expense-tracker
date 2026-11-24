@@ -1,7 +1,7 @@
 import { Button, View } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import {
-  AlertDialog,
+  BasicAlertDialog,
   Text,
   TextButton,
   TextField,
@@ -50,7 +50,7 @@ test('focuses the suggested name at its end on each opening and preserves a move
   expect(screen.getByText('Save')).toBeDisabled();
   await fireEvent.press(screen.getByText('Save'));
   expect(save).not.toHaveBeenCalled();
-  await fireEvent(components(AlertDialog)[0].view!, 'dismissRequest');
+  await fireEvent(components(BasicAlertDialog)[0].view!, 'dismissRequest');
   expect(save).not.toHaveBeenCalled();
   await open();
   expect(field().value?.value).toBe(suggestion);
