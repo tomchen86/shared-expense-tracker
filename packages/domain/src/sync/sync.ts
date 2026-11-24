@@ -21,7 +21,7 @@ export interface SyncMoney {
   shares: Share<string>[];
 }
 
-/** Each kind of record's units, and the value each unit holds (SYNC-5.1, SYNC-6.1, SYNC-250.1). */
+/** Each kind of record's units, and the value each unit holds (SYNC-5.1, SYNC-6.1, SYNC-250.2). */
 export interface SyncUnits {
   expense: {
     title: string;
@@ -42,8 +42,11 @@ export interface SyncUnits {
   /**
    * A roster entry (ADR-0039): its ID is a device ID, and it says which member that device
    * represents, with the phone's user ID and its X25519 public key in lowercase hexadecimal.
+   * null once the device left the ledger: it represents nobody (ADR-0041).
    */
-  device: { member: { memberId: string; userId: string; boxKey: string } };
+  device: {
+    member: { memberId: string; userId: string; boxKey: string } | null;
+  };
   distinct: { expenses: [string, string] };
 }
 
@@ -93,8 +96,13 @@ export type SyncRecord = {
   };
 }[SyncRecordType];
 
-/** Why an event is not applied (SYNC-10.2). */
-export type SyncRefusal = 'structure' | 'device' | 'clock' | 'currency' | 'sum';
+/**
+ * Why an event is not applied (SYNC-10.2). `epoch` is the one reason these rules never
+ * give: a phone gives it to an event in a lower key epoch than one it has stored
+ * (SYNC-304.1).
+ */
+export type SyncRefusal =
+  'structure' | 'device' | 'clock' | 'currency' | 'sum' | 'epoch';
 
 export type SyncVerdict =
   | { status: 'valid'; event: SyncEvent }
@@ -397,11 +405,12 @@ const unitValidators: {
   },
   device: {
     member: (value) =>
-      hasFields(value, ['memberId', 'userId', 'boxKey']) &&
-      isNonemptyString(value.memberId) &&
-      isNonemptyString(value.userId) &&
-      typeof value.boxKey === 'string' &&
-      /^[0-9a-f]{64}$/.test(value.boxKey),
+      value === null ||
+      (hasFields(value, ['memberId', 'userId', 'boxKey']) &&
+        isNonemptyString(value.memberId) &&
+        isNonemptyString(value.userId) &&
+        typeof value.boxKey === 'string' &&
+        /^[0-9a-f]{64}$/.test(value.boxKey)),
   },
   distinct: {
     expenses: (value) =>
@@ -538,6 +547,10 @@ function compareUnitValues(name: string, a: unknown, b: unknown): number {
   if (name === 'member') {
     const first = a as SyncUnits['device']['member'];
     const second = b as SyncUnits['device']['member'];
+    // Representing nobody is greater than representing any member (SYNC-250.2).
+    if (first === null || second === null) {
+      return compare(first === null, second === null);
+    }
     return (
       compare(first.memberId, second.memberId) ||
       compare(first.userId, second.userId) ||
