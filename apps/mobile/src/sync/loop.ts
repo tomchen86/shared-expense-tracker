@@ -1,4 +1,4 @@
-import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils.js';
+import { hexToBytes, utf8ToBytes } from '@noble/hashes/utils.js';
 import { checkSyncEvent, type SyncStamp } from '@shared-expense/domain';
 import {
   CONTINUE_STATUS,
@@ -15,14 +15,11 @@ import {
   type EventsPageResponse,
   type GroupRefusal,
   type RelayedEvent,
-  type UploadedEvent,
   type UploadEventsRequest,
 } from '@shared-expense/domain/api';
-import { decrypt, encrypt } from '@shared-expense/domain/crypto';
-import { getRandomValues } from 'expo-crypto';
+import { decrypt } from '@shared-expense/domain/crypto';
 import { sendApiRequest, type ApiResult } from '../sharing/api-request';
 import { readDeviceIdentity } from '../sharing/device-identity';
-import { storeGroupKey } from '../sharing/group-key';
 import type { Database, SqlExecutor } from '../storage';
 import {
   applyReceivedEvents,
@@ -42,10 +39,21 @@ import {
 } from './records';
 import { fetchSnapshot, sendSnapshot } from './snapshots';
 import { checkUnsentStamps, recheckStamps, takeUploadedStamps } from './stamps';
-import { GIVE_UP_AFTER_MS, jsonIn, readGroupKey } from './transport';
+import {
+  GIVE_UP_AFTER_MS,
+  associatedData,
+  encryptEvents,
+  jsonIn,
+  readGroupKey,
+} from './transport';
 import { countGroupUnapplied } from './unapplied';
 
-export { GIVE_UP_AFTER_MS, jsonIn, readGroupKey } from './transport';
+export {
+  GIVE_UP_AFTER_MS,
+  encryptEvents,
+  jsonIn,
+  readGroupKey,
+} from './transport';
 
 // A phone syncs one shared ledger with the API (ADR-0027, ADR-0034). It downloads
 // from its cursor, uploads its unsent events under the group key, and downloads once
@@ -56,7 +64,6 @@ export { GIVE_UP_AFTER_MS, jsonIn, readGroupKey } from './transport';
 
 /** The most bytes a request's body may have (SHARING-48.2). */
 const BODY_LIMIT = 1_048_576;
-const NONCE_LENGTH = 24;
 const KEY_LENGTH = 32;
 /** Stands in for a key the phone lacks, where only a ciphertext's format version is asked. */
 const NO_KEY = new Uint8Array(KEY_LENGTH);
@@ -67,19 +74,6 @@ const FULL_NOTICE =
   'This group has reached its storage limit. New changes stay on this phone until there is room.';
 
 const eventsPath = (groupId: string) => `/groups/${groupId}/events`;
-
-/** What an event is encrypted with besides its key: five lines of ASCII (SYNC-67.1). */
-export const associatedData = (
-  groupId: string,
-  eventId: string,
-  deviceId: string,
-  epoch: number,
-) =>
-  utf8ToBytes(
-    ['shared-expense/event/v1', groupId, eventId, deviceId, String(epoch)].join(
-      '\n',
-    ),
-  );
 
 /** The event API's own refusal that an answer is, when its status and its body both say so. */
 function groupRefusalIn(answer: ApiResult): GroupRefusal | undefined {
@@ -416,27 +410,6 @@ interface UnsentRow {
   content: string;
 }
 
-/** `events` as an upload carries them, each encrypted under `key` with a nonce of its own (SYNC-67.1). */
-export function encryptEvents(
-  groupId: string,
-  deviceId: string,
-  epoch: number,
-  key: Uint8Array,
-  events: readonly UnsentRow[],
-): UploadedEvent[] {
-  return events.map(({ id, content }) => ({
-    id,
-    content: bytesToHex(
-      encrypt({
-        key,
-        nonce: getRandomValues(new Uint8Array(NONCE_LENGTH)),
-        plaintext: utf8ToBytes(content),
-        associatedData: associatedData(groupId, id, deviceId, epoch),
-      }),
-    ),
-  }));
-}
-
 /** The body of an upload of `events`. */
 function uploadBody(
   groupId: string,
@@ -742,32 +715,6 @@ export function syncGroup(
   };
   byGroup.set(groupId, turn);
   return turn.running;
-}
-
-/**
- * Saves a shared ledger's group key of one key epoch on this phone, as the secure-store
- * entry a sync reads (SYNC-66.1), and remembers the key epoch: the phone uploads under
- * the highest one saved this way (SYNC-94.1).
- */
-export async function saveGroupKey(
-  database: Database,
-  groupKey: { groupId: string; epoch: number; key: Uint8Array },
-): Promise<void> {
-  const { groupId, epoch, key } = groupKey;
-  if (
-    key.length !== KEY_LENGTH ||
-    !Number.isSafeInteger(epoch) ||
-    epoch < 1 ||
-    !(await readLedger(database, groupId))
-  )
-    throw new Error('Not a group key of a shared ledger');
-  // The entry first: a phone stopped here has the key, and learns the epoch from the
-  // API's refusal of its next upload (SYNC-79.1).
-  await storeGroupKey(groupId, epoch, key);
-  await database.run(
-    'UPDATE sync_groups SET epoch = ? WHERE groupId = ? AND epoch < ?',
-    [epoch, groupId, epoch],
-  );
 }
 
 /** The lines the screen of the group shows under its title about its sync, top to bottom. */

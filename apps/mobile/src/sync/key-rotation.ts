@@ -34,11 +34,16 @@ import { GROUP_KEY_HEX, storeGroupKey } from '../sharing/group-key';
 import { createUuid, type Database, type SqlExecutor } from '../storage';
 import { notifyApplied } from './apply';
 import { recordRevokedInvite } from './invites';
-import { associatedData, encryptEvents, saveGroupKey } from './loop';
 import { readSyncRecord, sharedGroup } from './records';
 import { readRoster } from './roster';
 import { takeCheckedStamps } from './stamps';
-import { GIVE_UP_AFTER_MS, jsonIn, readGroupKey } from './transport';
+import {
+  GIVE_UP_AFTER_MS,
+  associatedData,
+  encryptEvents,
+  jsonIn,
+  readGroupKey,
+} from './transport';
 
 // The group key changes when a device loses access (ADR-0015, ADR-0041;
 // docs/specs/sharing/spec.md, SHARING-270.1 to 286.1). A phone that stays makes the new
@@ -80,6 +85,34 @@ async function recordedEpoch(
     [groupId],
   );
   return ledger?.epoch;
+}
+
+// Saving a key
+
+/**
+ * Saves a shared ledger's group key of one key epoch on this phone, as the secure-store
+ * entry a sync reads (SYNC-66.1), and remembers the key epoch: the phone uploads under
+ * the highest one saved this way (SYNC-94.1).
+ */
+export async function saveGroupKey(
+  database: Database,
+  groupKey: { groupId: string; epoch: number; key: Uint8Array },
+): Promise<void> {
+  const { groupId, epoch, key } = groupKey;
+  if (
+    key.length !== KEY_LENGTH ||
+    !Number.isSafeInteger(epoch) ||
+    epoch < 1 ||
+    (await recordedEpoch(database, groupId)) === undefined
+  )
+    throw new Error('Not a group key of a shared ledger');
+  // The entry first: a phone stopped here has the key, and learns the epoch from the
+  // API's refusal of its next upload (SYNC-79.1).
+  await storeGroupKey(groupId, epoch, key);
+  await database.run(
+    'UPDATE sync_groups SET epoch = ? WHERE groupId = ? AND epoch < ?',
+    [epoch, groupId, epoch],
+  );
 }
 
 // Fetching the keys of rotations this phone missed
