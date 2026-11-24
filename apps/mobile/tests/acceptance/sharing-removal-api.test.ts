@@ -47,6 +47,7 @@ import {
   setClock,
   setEpoch,
   sync,
+  takeKey,
   titles,
   toHex,
   twoPhones,
@@ -529,6 +530,19 @@ describe('SHARING-274.1', () => {
     ).toBeUndefined();
     expect(await isMemberDevice(brisbane, D)).toBe(false);
   });
+
+  test('[SHARING-274.1] [SHARING-272.1] fails with no rotation sent when the phone lacks the group key of its key epoch, and keeps the member', async () => {
+    const world = await danaIn();
+    const { taylor, brisbane, D, ids } = world;
+    takeKey(taylor, brisbane, 1);
+    const from = mark();
+
+    expect(await remove(world, ids.Dana)).toEqual({ outcome: 'failed' });
+
+    expect(await rotationsBy(taylor, from)).toEqual([]);
+    expect(namesOf((await ledgerOf(taylor)).members)).toContain('Dana');
+    expect(await isMemberDevice(brisbane, D)).toBe(true);
+  });
 });
 
 describe('SHARING-275.1', () => {
@@ -595,6 +609,21 @@ describe('SHARING-275.1', () => {
       sentLines.indexOf(`GET /groups/${brisbane}/events`, keys),
     ).toBeGreaterThan(keys);
   });
+
+  test('[SHARING-275.1] [SHARING-272.1] sends no rotation, and syncs no more, while the phone lacks the group key of its key epoch', async () => {
+    const { taylor, dana, brisbane } = await danaIn();
+    expect(await leave(dana, brisbane)).toEqual({ outcome: 'left' });
+    takeKey(taylor, brisbane, 1);
+    const from = mark();
+
+    await sync(taylor);
+
+    expect(await rotationsBy(taylor, from)).toEqual([]);
+    // The download that the API refused, since the group needs a rotation, and no other.
+    expect(await lines(taylor, from)).toEqual([
+      `GET /groups/${brisbane}/events`,
+    ]);
+  });
 });
 
 describe('SHARING-276.1', () => {
@@ -637,6 +666,49 @@ describe('SHARING-276.1', () => {
 
     expect(await copyOn(dana, brisbane)).toMatchObject({
       reason: 'not-a-member',
+    });
+  });
+
+  test('[SHARING-276.1] becomes a copy of a phone that is no member when the API refuses the leave itself: the phone was removed after its sync', async () => {
+    const world = await danaIn();
+    const { taylor, dana, brisbane, A, D } = world;
+    // Taylor's phone removes it as soon as the API has answered the download of the sync
+    // before the leave: that sync finds the phone a member, and the leave does not.
+    let removed: number | undefined;
+    whenAnswered('GET', async () => {
+      const rotation = await sendAs(
+        taylor,
+        'POST',
+        `/groups/${brisbane}/rotation`,
+        {
+          epoch: 2,
+          remove: [D],
+          senderKey: await boxKeyOf(taylor),
+          boxes: [{ deviceId: A, box: randomBytes(120).toString('hex') }],
+          events: [],
+        },
+      );
+      removed = rotation.status;
+    });
+    const from = mark();
+
+    expect(await leave(dana, brisbane)).toEqual({ outcome: 'left' });
+
+    expect(removed).toBe(200);
+    const requests = await sentBy(dana, from);
+    expect(
+      requests.map(({ method, path, status }) => [
+        method,
+        path.split('?')[0],
+        status,
+      ]),
+    ).toEqual([
+      ['GET', `/groups/${brisbane}/events`, 200],
+      ['POST', `/groups/${brisbane}/leave`, 403],
+    ]);
+    expect(await copyOn(dana, brisbane)).toEqual({
+      reason: 'not-a-member',
+      unsent: 0,
     });
   });
 
@@ -862,7 +934,7 @@ describe('SHARING-278.1', () => {
     expect(secureStoreEntry(world.dana, keyEntry(brisbane, 3))).toBeDefined();
     // Its local data goes back, and the key is rotated once more while it is away.
     const dana = await restoreData(world.dana, copy);
-    minutesOn(4, taylor, dana);
+    minutesOn(3, taylor, dana);
     await joins(await invitesAgain(world), 'Gina');
     expect(await remove(world, (await memberIds(taylor)).Gina)).toEqual({
       outcome: 'removed',
@@ -1215,6 +1287,42 @@ describe('SHARING-284.1', () => {
     ).toEqual([]);
   });
 
+  test('[SHARING-284.1] revokes the invite it holds once it has applied a removal by another phone, and deletes it though that phone revoked it first', async () => {
+    const world = await danaIn();
+    const { invite, taylor, dana, brisbane, ids } = world;
+    await joins(invite, 'Evan', { memberId: ids.Casey });
+    await sync(dana);
+    const revocation = `/groups/${brisbane}/invites/${invite.code}`;
+    // Dana's phone removes Evan's, and the invite is revoked on the API before Taylor's
+    // phone syncs. No event about the invite has reached that phone: it holds it still.
+    expect(
+      await on(dana, () =>
+        dana.sharing.removeMemberDevices(dana.database, brisbane, ids.Casey),
+      ),
+    ).toEqual({ outcome: 'removed' });
+    expect((await sendAs(dana, 'DELETE', revocation)).status).toBe(200);
+    const from = mark();
+    const revocations = async () =>
+      (await sentBy(taylor, from))
+        .filter(
+          ({ method, path }) => method === 'DELETE' && path === revocation,
+        )
+        .map(({ status }) => status);
+
+    await sync(taylor);
+
+    // The API answers that it is revoked, as for any invite that is valid no more (SHARING-82.1).
+    expect(await revocations()).toEqual([200]);
+    expect(await unsent(taylor)).toMatchObject([
+      { content: { type: 'invite', id: invite.code, deleted: true } },
+    ]);
+    // The deletion goes up, and the phone asks to revoke no invite it holds no more.
+    await sync(taylor);
+    await sync(taylor);
+    expect(await unsent(taylor)).toEqual([]);
+    expect(await revocations()).toEqual([200]);
+  });
+
   test('[SHARING-284.1] leaves no request to approve under the invite it revokes: an approval after a phone has left fails while the phone rotates and revokes, and the next one finds the request answered', async () => {
     const { invite, taylor, dana, brisbane } = await danaIn();
     const evan = await phoneOf('Evan', invite);
@@ -1536,6 +1644,75 @@ describe('SHARING-289.1', () => {
 
     expect(await held()).toEqual(before);
   });
+
+  /**
+   * Dana's phone, approved again over its copy, asks for the answer: it opens the box,
+   * saves the group key, and stops at the snapshot. `keys` says which of Brisbane's key
+   * epochs 1 to 3 its secure store holds a key of, and `copy` what the phone has of Brisbane.
+   */
+  async function danaStopsAtTheSnapshot() {
+    const world = await danaIsApprovedAgain();
+    const { dana, brisbane, invite } = world;
+    const keys = () =>
+      [1, 2, 3].map(
+        (epoch) =>
+          secureStoreEntry(dana, keyEntry(brisbane, epoch)) !== undefined,
+      );
+    const copy = async () => ({
+      copy: await copyOn(dana, brisbane),
+      titles: await titles(dana),
+      unsent: await unsent(dana),
+    });
+    const before = await copy();
+    const ask = () =>
+      on(dana, () => dana.sharing.askJoinResult(dana.database, invite.code));
+    answerNext('GET', 500, '');
+    expect(await ask()).toMatchObject({ outcome: 'approved' });
+    expect(keys()).toEqual([false, true, false]);
+    return { ...world, keys, copy, before, ask };
+  }
+
+  test('[SHARING-289.1] [SHARING-282.1] a phone that was approved again and removed before it joined keeps none of the group’s keys, and its copy as it was', async () => {
+    const { taylor, A, D, brisbane, keys, copy, before, ask } =
+      await danaStopsAtTheSnapshot();
+    // Taylor's phone removes it again while the invite is still active: the test sends that
+    // rotation itself, since the phone would revoke the invite next.
+    const removed = await sendAs(
+      taylor,
+      'POST',
+      `/groups/${brisbane}/rotation`,
+      {
+        epoch: 3,
+        remove: [D],
+        senderKey: await boxKeyOf(taylor),
+        boxes: [{ deviceId: A, box: randomBytes(120).toString('hex') }],
+        events: [],
+      },
+    );
+    expect(removed.status).toBe(200);
+
+    expect(await ask()).toEqual({ outcome: 'declined' });
+
+    expect(keys()).toEqual([false, false, false]);
+    expect(await copy()).toEqual(before);
+  });
+
+  test('[SHARING-289.1] [SHARING-214.1] a phone that was approved again keeps none of the group’s keys, and its copy as it was, once a member has removed it and revoked its invite', async () => {
+    const world = await danaStopsAtTheSnapshot();
+    const { taylor, ids, invite, keys, copy, before, ask } = world;
+    // Taylor's phone removes it as the app does: it rotates, and its sync then revokes
+    // the invite the removed phone knows (SHARING-284.1).
+    expect(await remove(world, ids.Dana)).toEqual({ outcome: 'removed' });
+    await sync(taylor);
+    expect(
+      (await sendAs(taylor, 'GET', `/invites/${invite.code}`)).status,
+    ).toBe(404);
+
+    expect(await ask()).toEqual({ outcome: 'invalid' });
+
+    expect(keys()).toEqual([false, false, false]);
+    expect(await copy()).toEqual(before);
+  });
 });
 
 describe('SYNC-305.1', () => {
@@ -1573,5 +1750,35 @@ describe('SYNC-305.1', () => {
 
     expect(await keyQuestionsBy(dana, asked)).toEqual(['?after=2']);
     expect(secureStoreEntry(dana, keyEntry(brisbane, 3))).toBeDefined();
+  });
+});
+
+describe('SYNC-306.1', () => {
+  test('[SYNC-306.1] deletes the keys above its key epoch too when a phone whose local data went back becomes a read-only copy', async () => {
+    const world = await danaIn();
+    const { invite, taylor, brisbane, ids } = world;
+    // Dana's phone at key epoch 1.
+    const copy = await copyOfData(world.dana);
+    await joins(invite, 'Evan', { memberId: ids.Casey });
+    await sync(world.dana);
+    expect(await remove(world, ids.Casey)).toEqual({ outcome: 'removed' });
+    await sync(taylor);
+    await sync(world.dana);
+    expect(secureStoreEntry(world.dana, keyEntry(brisbane, 2))).toBeDefined();
+    // Its local data goes back to key epoch 1, and the secure store keeps both keys.
+    // Taylor's phone removes it before it syncs again.
+    const dana = await restoreData(world.dana, copy);
+    expect(await remove(world, ids.Dana)).toEqual({ outcome: 'removed' });
+
+    await sync(dana);
+
+    expect(await copyOn(dana, brisbane)).toMatchObject({
+      reason: 'not-a-member',
+    });
+    expect(
+      [1, 2, 3].map((epoch) =>
+        secureStoreEntry(dana, keyEntry(brisbane, epoch)),
+      ),
+    ).toEqual([undefined, undefined, undefined]);
   });
 });

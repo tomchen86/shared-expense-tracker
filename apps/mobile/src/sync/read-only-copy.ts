@@ -1,12 +1,13 @@
-import { deleteGroupKey } from '../sharing/group-key';
+import { deleteGroupKey, readGroupKeyEntry } from '../sharing/group-key';
 import type { Database, SqlExecutor } from '../storage';
 import { notifyApplied } from './apply';
 import { UNSENT_EVENTS } from './records';
 
 // A shared ledger this phone no longer syncs (docs/specs/sync/spec.md, SYNC-300.1 to
-// SYNC-302.1; ADR-0041, ADR-0042): the API said the phone is no member device, the user
-// left, or the phone's authorization has lapsed. The copy keeps its records, its cursor
-// and its unsent events, and nothing turns it back into a shared ledger.
+// SYNC-302.1, SYNC-306.1; ADR-0041, ADR-0042): the API said the phone is no member
+// device, the user left, or the phone's authorization has lapsed. The copy keeps its
+// records, its cursor and its unsent events, and nothing turns it back into a shared
+// ledger.
 
 /** Why a shared ledger is a read-only copy on this phone. */
 export type ReadOnlyCopyReason = 'not-a-member' | 'left' | 'lapsed';
@@ -49,11 +50,23 @@ export async function makeReadOnlyCopy(
 }
 
 /**
- * Deletes the group's keys of key epochs 1 to `epoch` from the secure store (SYNC-302.1).
- * A key that cannot be deleted stays: the copy is one all the same.
+ * Deletes the group's keys from the secure store for a shared ledger that became a copy
+ * at key epoch `epoch`: those of key epochs 1 to `epoch` (SYNC-302.1), and those above it,
+ * one epoch after another while the secure store has an entry of that name (SYNC-306.1):
+ * local data that went back records an older epoch than the keys the phone holds. A key
+ * that cannot be deleted stays, and an entry that cannot be read ends the look upward:
+ * the copy is one all the same. With `epoch` 0, no ledger became a copy, and nothing is
+ * deleted.
  */
 export async function deleteGroupKeys(groupId: string, epoch: number) {
   for (let each = 1; each <= epoch; each += 1)
+    await deleteGroupKey(groupId, each).catch(() => undefined);
+  const held = (each: number) =>
+    readGroupKeyEntry(groupId, each).then(
+      (value) => value !== null,
+      () => false,
+    );
+  for (let each = epoch + 1; epoch > 0 && (await held(each)); each += 1)
     await deleteGroupKey(groupId, each).catch(() => undefined);
 }
 
