@@ -16,6 +16,18 @@ Joining is the one moment in this app when two people look at their phones at on
 
 What a request costs: the API takes a lock on the device and writes a row for every signed request it accepts (ADR-0022), against a limit of 60 requests a minute for a device. Counted by reading `apps/api/src/sharing/devices.ts` and the routes, not measured, that is about six to nine statements a request. The managed database is billed by the time it is awake (ADR-0007); its provider's documentation says the free plan suspends it after five idle minutes, which nobody has checked on this project's database.
 
+What the owner and the session weighed on 2026-11-25, before the owner decided:
+
+- Pushes in both directions would do without a timer whenever they arrive: one to the members when someone asks to join, one to the applicant when a member answers. That is what the proposal had in mind. As written, #152 wakes phones for a group's new events, and a join request is not an event; the applicant has given the API no push token before it has joined; and #153 notifies members of a request but not the applicant of the answer. Those gaps are recorded on #152 and #153.
+- A push is a hint the app cannot count on. The platform delivers a silent push when it chooses to, and may delay it. With notifications turned off no visible one is shown. Whether a phone without that permission gets a push token through Expo, and whether a push that carries both text and the silent field reaches the app in the foreground then, has not been tried on this project. What apps commonly do, as the session knew it and without a survey: a push as a doorbell, a fetch when the app opens, and a screen that waits for someone refreshing by itself.
+- With the app closed, a push is the only way to reach a phone. With the app open, the phone can ask by itself, and that is the part the app can guarantee.
+- Money is not what a timer costs here. The first 2 minutes of one such screen are 40 requests, a few hundred statements by the count above, against the 100,000 database queries a day that the API's free plan allows (the provider's documentation as read that day, not checked on this account). By the same count, the sync that every opening of the app already starts puts the free plan's ceiling near ten thousand API requests a day, with or without a timer.
+- What a timer costs is complexity: timers in the code that offline sync depends on, tests that run on a fake clock, and one more thing that sends requests while other tests count them.
+- "No polling" was written without a reason, and what it was written for is a ledger's sync. Keeping it for sync and letting a waiting screen ask is narrower than dropping it.
+- The first design asked on any screen while something was pending. The owner's observation narrowed it: every other moment already fetches (opening the app, coming back to it, saving, opening Members, opening the request), and only a screen left open stands still. So only those screens ask.
+- The smallest version was the member's side alone, since an applicant who switches back to the app is told. The owner chose both sides on 2026-11-25: the rule is the same, and the two people sit with these two screens at the same time.
+- Doing this before the pushes, not after: it needs no account, key or device trial, and it stays as what is left when a push does not come.
+
 Also considered:
 
 - Waiting for the pushes: the screens stay as they are until then, and afterwards for every push that does not arrive.
@@ -34,7 +46,7 @@ Also considered:
   - Join Group, while it shows a request that waits for approval, asks what became of that request again, as SHARING-210.1 does (SHARING-291.1).
 - The next time is 3 seconds after the last one ended while the screen has been showing for under 2 minutes, and 30 seconds after it from then on. Counting from the end of the last one keeps one such request under way at a time, however slow the answers are.
 - The timer adds no request of a new kind and no new answer: each time is the list or the question the phone already sends, with every condition it already has. Nothing is shown when one fails.
-- The intervals, and that both the member's screens and the applicant's do this, are the spec author's recommendation in #256. The owner decided to build this on 2026-11-25 and has yet to confirm those two.
+- The owner decided on 2026-11-25 to build this, and for both sides. The intervals are the spec author's recommendation in #256, taken while the owner had delegated mode on (ADR-0044).
 - A screen that is closed or covered, and an app in the background, send nothing. Showing the screen again starts the 2 minutes anew.
 
 ## Consequences
