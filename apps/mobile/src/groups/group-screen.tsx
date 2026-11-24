@@ -31,7 +31,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const [group, setGroup, pendingRead] = useGroup(id);
   const database = useLocalDatabase();
   const notices = useSyncNotices(database, group?.shared ? id : undefined);
-  // Only an unarchived shared ledger has any (SHARING-190.1).
+  // Only an unarchived shared ledger has any (SHARING-190.2).
   const asking = useReceivedRequests(database, id).requests.length;
   /** Runs `go` if the group is unarchived, once a read in progress has finished. */
   function whenUnarchived(go: () => void) {

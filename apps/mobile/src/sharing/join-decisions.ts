@@ -64,7 +64,7 @@ import {
 } from './join-requests';
 
 // Approving and rejecting join requests on a member's phone, and learning the answer on
-// the phone that asked (docs/specs/sharing/spec.md, SHARING-190.1 to 229.1; ADR-0039).
+// the phone that asked (docs/specs/sharing/spec.md, SHARING-190.2 to 229.1; ADR-0039).
 // Nothing here shows anything: the screens of `groups` and Join Group call these.
 
 /** A join request a member's phone listed and could read (SHARING-191.1). It is kept in memory only. */
@@ -88,7 +88,7 @@ export interface ReceivedJoinRequest {
 export type CannotApprove =
   'not-a-member' | 'is-you' | 'has-a-phone' | 'group-full' | 'same-name';
 
-/** How approving a request ended (SHARING-195.1 to 200.1). */
+/** How approving a request ended (SHARING-195.2 to 200.2). */
 export type ApproveResult =
   | { outcome: 'approved' }
   /** A request of the sync, the snapshot or the approval got no answer. */
@@ -261,7 +261,7 @@ const rejection = (
 
 /**
  * Lists the group's requests from the API, rejects the ones this phone cannot read, and
- * resolves with the ones it can, in the API's order (SHARING-190.1 to 192.1). It lists
+ * resolves with the ones it can, in the API's order (SHARING-190.2 to 192.1). It lists
  * none without an invite of the ledger that has not expired. Rejects when a request of
  * the list got no answer, or one that is no page.
  */
@@ -388,7 +388,7 @@ interface Prepared {
 }
 
 /**
- * In one transaction (SHARING-195.1): checks that the request can be approved, writes the
+ * In one transaction (SHARING-195.2): checks that the request can be approved, writes the
  * approval's events without storing them (SHARING-196.1), and reads the snapshot that
  * holds their records beside the ledger's own (SHARING-197.1), whose sequence number is
  * the cursor the approval carries. Only the phone's latest stamp is stored.
@@ -502,7 +502,7 @@ const signingDevice = (database: Database) =>
 
 /**
  * Approves `request`, as pressing Approve in the menu that was opened for it does
- * (SHARING-195.1): the approval names the content the request held when it was listed.
+ * (SHARING-195.2): the approval names the content the request held when it was listed.
  * Other syncs of the ledger go on meanwhile.
  */
 export async function approveJoinRequest(
@@ -533,7 +533,7 @@ export async function approveJoinRequest(
       [groupId, request.code, await readCorrectedTime(database)],
     );
     // The sync brought its revocation, or it has expired: the API holds none of its
-    // requests any more (SHARING-200.1).
+    // requests any more (SHARING-200.2).
     if (!invite) return { outcome: 'answered' };
     if (device === 'lost') return { outcome: 'failed' };
 
@@ -593,7 +593,7 @@ export async function approveJoinRequest(
       if (!retry) return { outcome: 'failed' };
 
       // Behind: this phone has not checked the request against the group's last events
-      // (SHARING-200.1). It syncs and looks again, and sends the same snapshot and
+      // (SHARING-200.2). It syncs and looks again, and sends the same snapshot and
       // events with the cursor it has then. Without a snapshot it uploads another.
       if (refusal === 'behind') {
         const unsynced = await sync();

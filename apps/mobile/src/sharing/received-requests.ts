@@ -49,7 +49,7 @@ function hold(database: Database, groupId: string, next: ReceivedRequests) {
 }
 
 /**
- * Lists a shared ledger's requests again (SHARING-190.1), and holds what the phone could
+ * Lists a shared ledger's requests again (SHARING-190.2), and holds what the phone could
  * read in place of what it held. A ledger that is archived has none, and one with a
  * request being answered is not listed. A list that fails changes nothing.
  */
@@ -109,13 +109,13 @@ export async function answerJoinRequest(
     ),
   });
   // What the API holds now: nothing of a request that was approved, and whatever took
-  // the place of one that somebody else answered (SHARING-199.1, SHARING-200.1).
+  // the place of one that somebody else answered (SHARING-199.1, SHARING-200.2).
   if (result.outcome === 'approved' || result.outcome === 'answered')
     void refreshReceivedRequests(database, groupId);
   return result;
 }
 
-/** Lists a ledger's requests after each sync of it whose download finished (SHARING-190.1). */
+/** Lists a ledger's requests after each sync whose first download finished (SHARING-190.2). */
 export const watchReceivedRequests = (database: Database) =>
   subscribeToSyncEnds(database, (groupId, { downloaded }) => {
     if (downloaded) void refreshReceivedRequests(database, groupId);

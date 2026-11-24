@@ -41,7 +41,7 @@ function cannotApproveText({
 /**
  * The Requests section of an unarchived shared ledger's Members (GROUPS-131.1): the join
  * requests the phone has listed, each with the menu that approves or declines it
- * (GROUPS-132.1). It lists them again as Members opens (SHARING-190.1).
+ * (GROUPS-132.1). It lists them again as Members opens (SHARING-190.2).
  */
 export function JoinRequests({
   groupId,
