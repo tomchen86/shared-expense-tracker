@@ -27,11 +27,13 @@ export {
 export { saveGroupKey, syncGroup } from './loop';
 export { listUnappliedChanges, type UnappliedChange } from './unapplied';
 export {
+  deleteReadOnlyCopy,
   makeReadOnlyCopy,
   readOnlyCopyOf,
   type ReadOnlyCopy,
   type ReadOnlyCopyReason,
 } from './read-only-copy';
+export { membersWithPhones } from './roster';
 export {
   sendSnapshot,
   takeSnapshot,

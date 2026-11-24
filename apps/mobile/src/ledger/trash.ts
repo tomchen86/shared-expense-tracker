@@ -23,6 +23,10 @@ export function restoreExpense(
   return setTrashed(database, spaceId, id, false);
 }
 
+/** An expense of a read-only copy stays where it is, in the trash or out of it (LEDGER-220.1, LEDGER-222.1). */
+const NO_COPY = `NOT EXISTS (SELECT 1 FROM sync_groups
+  WHERE groupId = expenses.spaceId AND readOnly IS NOT NULL)`;
+
 async function setTrashed(
   database: Database,
   spaceId: string,
@@ -36,9 +40,10 @@ async function setTrashed(
         (SELECT COALESCE(MAX(trashOrder), 0) + 1 FROM expenses)
        WHERE id = ? AND (spaceId = ? OR spaceId IN (SELECT id FROM groups))
        AND NOT EXISTS (SELECT 1 FROM groups WHERE id = expenses.spaceId AND archived = 1)
-       AND trashOrder IS NULL`
+       AND ${NO_COPY} AND trashOrder IS NULL`
         : `UPDATE expenses SET trashOrder = NULL WHERE id = ?
-       AND (spaceId = ? OR spaceId IN (SELECT id FROM groups)) AND trashOrder IS NOT NULL`,
+       AND (spaceId = ? OR spaceId IN (SELECT id FROM groups))
+       AND ${NO_COPY} AND trashOrder IS NOT NULL`,
       [id, spaceId],
     );
     if (!changes) return false;

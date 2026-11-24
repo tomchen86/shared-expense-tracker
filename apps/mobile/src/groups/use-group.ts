@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { readOnlyCopyOf, type ReadOnlyCopy } from '../sync/read-only-copy';
+import { membersWithPhones } from '../sync/roster';
 import { useSyncedFocusEffect } from '../sync/use-synced-focus-effect';
 import { useLocalDatabase } from '../shell';
 import {
@@ -8,8 +10,29 @@ import {
   type GroupMember,
 } from './index';
 
-type GroupDetails = Group & { formerMembers: GroupMember[] };
+type GroupDetails = Group & {
+  formerMembers: GroupMember[];
+  /** Why the group is a read-only copy, and how many of its changes were never sent. */
+  copy?: ReadOnlyCopy;
+  /** The IDs of the members another phone represents (SYNC-251.2). */
+  phones?: readonly string[];
+};
 type Database = ReturnType<typeof useLocalDatabase>;
+
+/** The group as its screens show it, read now; null when the phone has no such group. */
+export async function readGroupDetails(
+  database: Database,
+  id: string,
+): Promise<GroupDetails | null> {
+  const [groups, formerMembers, copy, phones] = await Promise.all([
+    listGroups(database),
+    listFormerMembers(database, id),
+    readOnlyCopyOf(database, id),
+    membersWithPhones(database, id),
+  ]);
+  const found = groups.find((candidate) => candidate.id === id);
+  return found ? { ...found, formerMembers, copy, phones } : null;
+}
 
 // Each database's latest group details that a screen holds, with the changes it made. On
 // iOS, a sheet sized to its contents that grows after it opens can keep its screen at the
@@ -41,12 +64,7 @@ export function useGroup(
     id,
     useCallback(() => {
       let active = true;
-      const read = Promise.all([
-        listGroups(database),
-        listFormerMembers(database, id),
-      ]).then(([groups, formerMembers]) => {
-        const found = groups.find((candidate) => candidate.id === id);
-        const details = found ? { ...found, formerMembers } : null;
+      const read = readGroupDetails(database, id).then((details) => {
         if (active) setGroup(details);
         return details;
       });

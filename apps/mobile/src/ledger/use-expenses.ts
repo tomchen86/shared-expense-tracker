@@ -110,6 +110,8 @@ export function useReadExpenses(trashed = false, { throwOnError = true } = {}) {
               ]);
               return {
                 ...expense,
+                // A read-only copy's expenses carry no mark (SYNC-302.1).
+                ...(group?.readOnlyCopy && { yours: undefined }),
                 duplicateOf: duplicates.get(expense.id),
                 categorySnapshot: expense.category,
                 category: cardCategory,

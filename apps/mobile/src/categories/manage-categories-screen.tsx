@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { listGroups } from '../groups';
+import { isReadOnlyGroup, listGroups } from '../groups';
 import { categoryExpenseCounts } from '../ledger/expenses';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { useSyncedFocusEffect } from '../sync/use-synced-focus-effect';
@@ -55,7 +55,9 @@ export function ManageCategoriesScreen({
   const [checkedGroup, setCheckedGroup] = useState<{
     id: string | undefined;
     exists: boolean;
+    /** The group can only be looked at: it is archived, or a read-only copy (CATEGORIES-60.1). */
     archived: boolean;
+    copy: boolean;
   }>();
   const groupExists = groupId
     ? checkedGroup?.id === groupId
@@ -64,11 +66,18 @@ export function ManageCategoriesScreen({
     : true;
   const groupArchived =
     !!groupId && checkedGroup?.id === groupId && checkedGroup.archived;
+  const groupIsCopy =
+    !!groupId && checkedGroup?.id === groupId && checkedGroup.copy;
   const [categories, setCategories] = useState<Category[]>([]);
   const [expenseCounts, setExpenseCounts] = useState(new Map<string, number>());
   const [error, setError] = useState<unknown>();
   const pending = useRef<
-    | Promise<{ rows: Category[]; exists: boolean; archived: boolean }>
+    | Promise<{
+        rows: Category[];
+        exists: boolean;
+        archived: boolean;
+        copy: boolean;
+      }>
     | undefined
   >(undefined);
   const [formState, setFormState] = useState<FormState | null>(null);
@@ -90,7 +99,8 @@ export function ManageCategoriesScreen({
         const fresh = {
           rows,
           exists: group !== undefined,
-          archived: group?.archived ?? false,
+          archived: group ? isReadOnlyGroup(group) : false,
+          copy: group?.readOnlyCopy !== undefined,
         };
         if (active) {
           setCategories(rows);
@@ -369,7 +379,9 @@ export function ManageCategoriesScreen({
         >
           {groupArchived && (
             <Text style={[styles.readOnlyNotice, { color: colors.text }]}>
-              Archived group. Categories are read-only.
+              {groupIsCopy
+                ? 'Read-only copy. Categories are read-only.'
+                : 'Archived group. Categories are read-only.'}
             </Text>
           )}
           <View style={styles.sectionHeader}>

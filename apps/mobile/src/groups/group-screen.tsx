@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { groupAmounts } from '@shared-expense/domain';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
@@ -13,10 +13,12 @@ import { PeriodList, useListPeriod } from '../ledger/list-period-ui';
 import { useTrashActions } from '../ledger/trash-provider';
 import { useReadExpenses } from '../ledger/use-expenses';
 import { useReceivedRequests } from '../sharing/received-requests';
+import { deleteReadOnlyCopy, type ReadOnlyCopy } from '../sync/read-only-copy';
 import { useSyncNotices } from '../sync/use-sync-notices';
 import { groupTotals, yourBalanceLines } from './format-balance';
 import { GroupLargeTitle, useLargeTitleScroll } from './group-large-title';
 import { GroupSummary } from './group-summary';
+import { isReadOnlyGroup } from './index';
 import {
   JoinRequestsButton,
   ReviewButton,
@@ -33,18 +35,55 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const notices = useSyncNotices(database, group?.shared ? id : undefined);
   // Only an unarchived shared ledger has any (SHARING-190.2).
   const asking = useReceivedRequests(database, id).requests.length;
-  /** Runs `go` if the group is unarchived, once a read in progress has finished. */
+  /** Runs `go` if the group can be changed, once a read in progress has finished. */
   function whenUnarchived(go: () => void) {
     const read = pendingRead();
     if (read === undefined) {
-      if (group && !group.archived) go();
+      if (group && !isReadOnlyGroup(group)) go();
       return;
     }
     void read.then(
       (fresh) => {
-        if (fresh && !fresh.archived) go();
+        if (fresh && !isReadOnlyGroup(fresh)) go();
       },
       () => undefined,
+    );
+  }
+  // An archived group and a read-only copy can only be looked at (GROUPS-156.1).
+  const readOnly = group ? isReadOnlyGroup(group) : false;
+  const [deleting, setDeleting] = useState(false);
+  /** Deletes this copy from the phone once the user has confirmed (GROUPS-157.1 to 159.1). */
+  function deleteCopy(copy: ReadOnlyCopy) {
+    const unsent =
+      copy.unsent === 0
+        ? ''
+        : copy.unsent === 1
+          ? ', including 1 change that was never sent to the group'
+          : `, including ${copy.unsent} changes that were never sent to the group`;
+    Alert.alert(
+      'Delete This Copy?',
+      `This copy and its expenses will be deleted from this phone${unsent}. This can't be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setDeleting(true);
+            deleteReadOnlyCopy(database, id).then(
+              () => router.back(),
+              () => {
+                setDeleting(false);
+                Alert.alert(
+                  'Unable to Delete Copy',
+                  'The copy could not be deleted. Please try again.',
+                );
+              },
+            );
+          },
+        },
+      ],
+      { cancelable: true },
     );
   }
   const { pending, save } = useGroupArchive();
@@ -107,7 +146,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
           filter={periods.filterAction}
           menu={{
             label: 'Group actions',
-            actions: group.archived
+            actions: readOnly
               ? [membersAction, categoriesAction]
               : [
                   membersAction,
@@ -131,7 +170,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                 <GroupLargeTitle
                   name={group.name}
                   onLayout={titleScroll.onTitleLayout}
-                  onRename={group.archived ? undefined : rename}
+                  onRename={readOnly ? undefined : rename}
                 />
               )}
               {notices.lines.map((notice) => (
@@ -142,7 +181,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                   {notice}
                 </Text>
               ))}
-              {toReview.length > 0 && (
+              {toReview.length > 0 && !group?.readOnlyCopy && (
                 <ReviewButton
                   count={toReview.length}
                   onPress={() =>
@@ -167,7 +206,14 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                   onPress={membersAction.onPress}
                 />
               )}
-              {group?.archived && (
+              {group?.copy && (
+                <CopyBanner
+                  copy={group.copy}
+                  deleting={deleting}
+                  onDelete={() => deleteCopy(group.copy!)}
+                />
+              )}
+              {group?.archived && !group.readOnlyCopy && (
                 <ArchivedBanner
                   restoring={pending.has(id)}
                   onRestore={() =>
@@ -217,13 +263,13 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
               expense={expense}
               trailing={paidBy(expense, userId)}
               onPress={() => router.navigate(`${base}/expenses/${expense.id}`)}
-              onDelete={group?.archived ? undefined : () => void move(expense)}
+              onDelete={readOnly ? undefined : () => void move(expense)}
             />
           )}
         />
       )}
       {periods.filters}
-      {group && !group.archived && (
+      {group && !readOnly && (
         <AddButton
           onPress={() =>
             whenUnarchived(() =>
@@ -236,6 +282,54 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
         />
       )}
     </View>
+  );
+}
+
+const COPY_BANNERS: Record<ReadOnlyCopy['reason'], string> = {
+  'not-a-member':
+    "You're no longer a member of this group. This copy is read-only and won't update.",
+  left: "You left this group. This copy is read-only and won't update.",
+  lapsed:
+    "This phone can't sync this group anymore. This copy is read-only and won't update.",
+};
+
+/** What a read-only copy's screen shows under its title: why it is one, what it never sent, and Delete Copy (GROUPS-155.1, GROUPS-157.1). */
+function CopyBanner({
+  copy,
+  deleting,
+  onDelete,
+}: {
+  copy: ReadOnlyCopy;
+  deleting: boolean;
+  onDelete: () => void;
+}) {
+  const colors = useThemeColors();
+  return (
+    <GroupedSection style={styles.banner}>
+      <Text style={{ color: colors.text, fontSize: 16 }}>
+        {COPY_BANNERS[copy.reason]}
+      </Text>
+      {copy.unsent > 0 && (
+        <Text style={[styles.unsent, { color: colors.textMuted }]}>
+          {copy.unsent === 1
+            ? '1 change made on this phone was never sent to the group.'
+            : `${copy.unsent} changes made on this phone were never sent to the group.`}
+        </Text>
+      )}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Delete Copy"
+        accessibilityState={{ disabled: deleting }}
+        disabled={deleting}
+        onPress={onDelete}
+        style={({ pressed }) => [
+          styles.restore,
+          pressed && { backgroundColor: colors.pressedSurface },
+        ]}
+      >
+        <Text style={{ color: colors.error, fontSize: 17 }}>Delete Copy</Text>
+      </Pressable>
+    </GroupedSection>
   );
 }
 
@@ -282,6 +376,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   banner: { marginBottom: 20, padding: 16 },
+  unsent: { fontSize: 15, lineHeight: 20, marginTop: 8 },
   restore: { minHeight: 44, justifyContent: 'center', marginTop: 8 },
   message: { padding: 20, marginTop: 48, textAlign: 'center', fontSize: 16 },
 });

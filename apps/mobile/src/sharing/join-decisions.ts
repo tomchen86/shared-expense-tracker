@@ -56,7 +56,13 @@ import { takeCheckedStamps } from '../sync/stamps';
 import { apiUrl } from './api-address';
 import { prepareSigningDevice, sendApiRequest } from './api-request';
 import { readCorrectedTime, type SigningDevice } from './device-identity';
-import { deleteGroupKey, storeGroupKey } from './group-key';
+import {
+  deleteGroupKey,
+  forgetJoinKeys,
+  readJoinKeys,
+  rememberJoinKeys,
+  storeGroupKey,
+} from './group-key';
 import type { InviteCredentials } from './invite-card';
 import { readInviteCard, type CardUnread, type JoinCard } from './join-invite';
 import {
@@ -667,8 +673,20 @@ export async function approveJoinRequest(
 
 const ended = (outcome: 'declined' | 'invalid') =>
   `UPDATE join_requests SET code = NULL, secret = NULL, name = NULL, memberId = NULL,
-     copyGroupId = NULL, keysGroupId = NULL, keysEpoch = NULL,
-     sent = 0, outcome = '${outcome}' WHERE code = ? AND secret = ?`;
+     copyGroupId = NULL, sent = 0, outcome = '${outcome}' WHERE code = ? AND secret = ?`;
+
+/**
+ * Deletes the group keys that joining through the invite `code` saved for a group this
+ * phone has not joined after all (SHARING-282.1). Keys of a group it holds by now stay.
+ */
+async function dropJoinKeys(database: SqlExecutor, code: string) {
+  const saved = await readJoinKeys(code).catch(() => undefined);
+  if (!saved) return;
+  if ((await heldGroup(database, saved.groupId)) === 'none')
+    for (let each = 1; each <= saved.epoch; each += 1)
+      await deleteGroupKey(saved.groupId, each).catch(() => undefined);
+  await forgetJoinKeys(code).catch(() => undefined);
+}
 
 /** Whether the request still fits the invite's card, so that a member can approve it (SHARING-212.1). */
 function fitsCard(
@@ -811,12 +829,10 @@ async function join(
   try {
     // Straight to the secure store: the group is no shared ledger here until the
     // snapshot is in, and the snapshot is what these keys have to open (SHARING-217.2).
-    // The request remembers them, for a phone that is removed before it joins (SHARING-282.1).
+    // Whose they are is remembered beside them, for a phone that is removed before it
+    // joins (SHARING-282.1).
     const remember = (upTo: number) =>
-      database.run(
-        'UPDATE join_requests SET keysGroupId = ?, keysEpoch = ? WHERE code = ? AND secret = ?',
-        [groupId, upTo, request.code, request.secret],
-      );
+      rememberJoinKeys(request.code, groupId, upTo);
     await remember(epoch);
     for (const { epoch: of, key } of keys)
       await storeGroupKey(groupId, of, hexToBytes(key));
@@ -847,6 +863,8 @@ async function join(
   } catch {
     return unfinished('failed');
   }
+  // The keys are the ledger's now.
+  await forgetJoinKeys(request.code).catch(() => undefined);
   await syncGroup(database, ledger).catch(() => undefined);
   return { outcome: 'joined', groupId };
 }
@@ -876,6 +894,7 @@ export async function askJoinResult(
   const mine = [code, request.secret];
   const refusal = refusalIn(answer);
   if (refusal === 'no-invite') {
+    if (request.outcome === 'approved') await dropJoinKeys(database, code);
     await database.run(ended('invalid'), mine);
     return { outcome: 'invalid' };
   }
@@ -902,12 +921,8 @@ export async function askJoinResult(
   if (request.outcome === 'approved') {
     // The API holds no handover for a phone that this phone's data says was approved.
     if (result.state !== 'none') return unfinished('failed');
-    // A member removed it before it joined (SHARING-282.1): the keys it saved go too,
-    // unless the group is by now one this phone holds.
-    const { keysGroupId, keysEpoch } = request;
-    if (keysGroupId && (await heldGroup(database, keysGroupId)) === 'none')
-      for (let each = 1; each <= (keysEpoch ?? 0); each += 1)
-        await deleteGroupKey(keysGroupId, each).catch(() => undefined);
+    // A member removed it before it joined (SHARING-282.1): the keys it saved go too.
+    await dropJoinKeys(database, code);
     await database.run(ended('declined'), mine);
     return { outcome: 'declined' };
   }

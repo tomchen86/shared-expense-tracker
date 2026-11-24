@@ -37,9 +37,6 @@ export interface JoinRequest extends InviteCredentials {
    * first stored (SHARING-226.2): the only group an approval of it may replace.
    */
   copyGroupId?: string | null;
-  /** The group whose keys joining has saved for this request, up to `keysEpoch` (SHARING-282.1). */
-  keysGroupId?: string | null;
-  keysEpoch?: number | null;
 }
 
 /**

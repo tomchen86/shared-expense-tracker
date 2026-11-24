@@ -18,9 +18,21 @@ export interface Group {
   id: string;
   name: string;
   archived: boolean;
+  /** Whether it is a shared ledger. A read-only copy is none (SYNC-302.1). */
   shared: boolean;
+  /**
+   * Why the group is a read-only copy on this phone: the API says the phone is no member
+   * device, the user left, or the phone's authorization has lapsed. Absent when it is none.
+   */
+  readOnlyCopy?: 'not-a-member' | 'left' | 'lapsed';
   members: GroupMember[];
 }
+
+/** Whether the group can only be looked at: it is archived, or a read-only copy (GROUPS-156.1). */
+export const isReadOnlyGroup = (group: {
+  archived: boolean;
+  readOnlyCopy?: string;
+}) => group.archived || group.readOnlyCopy !== undefined;
 
 export async function applyMergedGroup(
   tx: SqlExecutor,
@@ -43,8 +55,9 @@ export async function applyMergedGroup(
     );
     return changes > 0;
   }
-  // A member with a user ID is you or has a phone (SYNC-36.3): a member of the group
-  // whatever this unit says. Sync storage keeps the unit, with its stamp for ordering.
+  // A member with a user ID is you or has a phone: a member of the group whatever this
+  // unit says. The roster, read once the page's events are in, has the last word
+  // (SYNC-36.4). Sync storage keeps the unit, with its stamp for ordering.
   const removed = 'excluded.removed AND group_members.userId IS NULL';
   const { changes } = await tx.run(
     `INSERT INTO group_members (id, groupId, name, removed, position)
@@ -64,10 +77,12 @@ export async function listGroups(database: SqlExecutor): Promise<Group[]> {
     name: string;
     archived: number;
     shared: number;
+    readOnly: Group['readOnlyCopy'] | null;
     memberId: string | null;
     userId: string | null;
     memberName: string;
-  }>(`SELECT g.id, g.name, g.archived, s.groupId IS NOT NULL AS shared,
+  }>(`SELECT g.id, g.name, g.archived,
+             s.groupId IS NOT NULL AND s.readOnly IS NULL AS shared, s.readOnly,
              m.id AS memberId, m.userId, m.name AS memberName
       FROM groups g LEFT JOIN sync_groups s ON s.groupId = g.id
       LEFT JOIN group_members m ON m.groupId = g.id AND m.removed = 0
@@ -81,6 +96,7 @@ export async function listGroups(database: SqlExecutor): Promise<Group[]> {
         name: row.name,
         archived: row.archived === 1,
         shared: row.shared === 1,
+        ...(row.readOnly && { readOnlyCopy: row.readOnly }),
         members: [],
       };
       groups.set(row.id, group);

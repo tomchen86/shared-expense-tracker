@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { formatCurrency } from '@shared-expense/domain';
-import { listGroups } from '../groups';
+import { isReadOnlyGroup, listGroups } from '../groups';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { markExpensesDistinct } from '../sync/duplicates';
 import { listExpenses } from './expenses';
@@ -38,6 +38,10 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
   const other = otherId && expenses?.find((item) => item.id === otherId);
   const { userId, personalSpaceId } = useLocalIdentity();
   const position = expense ? expense.yourPaid - expense.yourShare : 0;
+  // A read-only copy is shown as an archived group's expenses are, in its own words,
+  // whether or not it is archived too (LEDGER-220.1).
+  const copy = expense?.group?.readOnlyCopy !== undefined;
+  const locked = expense?.group ? isReadOnlyGroup(expense.group) : false;
 
   async function saveOnce(change: () => Promise<void>) {
     if (saving.current) return;
@@ -71,7 +75,7 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
       listGroups(database),
     ]);
     const archived = new Set(
-      groups.filter((group) => group.archived).map((group) => group.id),
+      groups.filter(isReadOnlyGroup).map((group) => group.id),
     );
     if (
       rows.some(
@@ -103,7 +107,7 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
             ? undefined
             : {
                 label: 'Edit',
-                disabled: expense.group?.archived,
+                disabled: locked,
                 onPress: () =>
                   void editIfAllowed().catch((failure: unknown) =>
                     // Thrown in the next render, so the screen shows the read error (SHELL-60.1).
@@ -121,7 +125,7 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
                   {
                     label: trashed ? 'Delete Permanently' : 'Delete',
                     destructive: true,
-                    disabled: !trashed && expense.group?.archived,
+                    disabled: !trashed && locked,
                     onPress: trashed
                       ? () => deletePermanently(expense)
                       : () => void moveToTrash(expense),
@@ -145,6 +149,8 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Restore"
+                  accessibilityState={{ disabled: copy }}
+                  disabled={copy}
                   style={styles.restore}
                   onPress={() =>
                     void changeAndReturn(expense, () =>
@@ -164,7 +170,7 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
             {other && (
               <DuplicateBlock
                 other={other}
-                archived={expense.group?.archived === true}
+                archived={locked}
                 onDistinct={() =>
                   saveOnce(() =>
                     markExpensesDistinct(
@@ -193,12 +199,13 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
               color={expense.category.color}
               name={expense.categoryLabel}
             />
-            {expense.group?.archived && !trashed && (
+            {locked && !trashed && (
               <GroupedSection style={styles.history}>
                 <Text style={{ color: colors.text }}>Shared history</Text>
                 <Text style={{ color: colors.textMuted }}>
-                  Payments and shares are preserved as read-only history.
-                  Restore this group before editing.
+                  {copy
+                    ? 'Payments and shares are preserved as read-only history.'
+                    : 'Payments and shares are preserved as read-only history. Restore this group before editing.'}
                 </Text>
               </GroupedSection>
             )}
@@ -273,8 +280,11 @@ export function ExpenseScreen({ trashed = false }: { trashed?: boolean }) {
             {expense.group && (
               <GroupedSection style={styles.groupRows}>
                 <DetailRow label="Group" value={expense.group.name} />
-                {expense.group.archived && (
-                  <DetailRow label="Status" value="Archived · Read-only" />
+                {locked && (
+                  <DetailRow
+                    label="Status"
+                    value={copy ? 'Read-only copy' : 'Archived · Read-only'}
+                  />
                 )}
               </GroupedSection>
             )}

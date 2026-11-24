@@ -114,3 +114,20 @@ export async function deleteGroupData(tx: SqlExecutor, groupId: string) {
   ])
     await tx.run(statement, [groupId]);
 }
+
+/**
+ * Deletes a read-only copy from this phone in one transaction, as pressing Delete in the
+ * confirmation does (GROUPS-158.1). It sends nothing and writes no event. Rejects when the
+ * group is no read-only copy, or when the local data cannot be written.
+ */
+export async function deleteReadOnlyCopy(
+  database: Database,
+  groupId: string,
+): Promise<void> {
+  await database.transaction(async (tx) => {
+    if (!(await readOnlyCopyOf(tx, groupId)))
+      throw new Error('Not a read-only copy');
+    await deleteGroupData(tx, groupId);
+  });
+  notifyApplied(database, groupId);
+}

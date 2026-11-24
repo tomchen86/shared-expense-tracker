@@ -33,6 +33,25 @@ export async function readRoster(
 }
 
 /**
+ * The members of a shared ledger that another phone represents: those a roster entry of
+ * another device names, whatever user ID that entry carries (SYNC-251.2). None for a group
+ * that is no shared ledger.
+ */
+export async function membersWithPhones(
+  database: SqlExecutor,
+  groupId: string,
+): Promise<string[]> {
+  const rows = await database.all<{ memberId: string }>(
+    `SELECT DISTINCT json_extract(r.record, '$.units.member.value.memberId') AS memberId
+     FROM sync_records r JOIN sync_groups s ON s.groupId = r.groupId
+     WHERE r.groupId = ? AND r.type = 'device' AND r.id <> s.device
+       AND json_extract(r.record, '$.units.member.value.memberId') IS NOT NULL`,
+    [groupId],
+  );
+  return rows.map(({ memberId }) => memberId);
+}
+
+/**
  * Gives every member and former member of a shared ledger the user ID that its roster and
  * which phone this is decide (SYNC-251.2), in whatever order the events came. You are
  * the member this phone's own entry names, and the member it created the group as or

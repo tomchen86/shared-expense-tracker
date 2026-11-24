@@ -3,6 +3,7 @@ import { StyleSheet, Text } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatCurrency } from '@shared-expense/domain';
+import { isReadOnlyGroup } from '../groups';
 import { AddButton } from '../ui/add-button';
 import { HeaderActions } from '../ui/header-actions';
 import { useThemeColors } from '../ui/theme';
@@ -78,7 +79,9 @@ export function ExpensesScreen() {
             amountMinor={expense.yourShare}
             onPress={() => router.navigate(`/expenses/${expense.id}`)}
             onDelete={
-              expense.group?.archived ? undefined : () => void move(expense)
+              expense.group && isReadOnlyGroup(expense.group)
+                ? undefined
+                : () => void move(expense)
             }
           />
         )}
