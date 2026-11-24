@@ -631,7 +631,12 @@ describe('SYNC-75.1', () => {
     otherPhoneUploadsUnderEpoch2(brisbane, '01');
     const from = mark();
     await leaveAndComeBack();
-    await expectRequests(from, [download(brisbane)]);
+    // One download; the phone may go on to ask the API for the key of that epoch (SHARING-278.1).
+    await waitFor(() =>
+      expect(
+        eventRequests(from).filter((request) => !request.includes('/keys?')),
+      ).toEqual([download(brisbane)]),
+    );
 
     await showGroup('Brisbane');
 
