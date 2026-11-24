@@ -489,6 +489,46 @@ describe('SHARING-274.1', () => {
     expect(secureStoreEntry(taylor, keyEntry(brisbane, 2))).toBeUndefined();
     expect(namesOf((await ledgerOf(taylor)).members)).toContain('Dana');
   });
+
+  test('[SHARING-274.1] fetches the new key when the API refuses the rotation for its key epoch, and rotates again to the epoch after it with boxes sealed from that key', async () => {
+    const world = await danaIn();
+    const { taylor, dana, brisbane, A, D, key, ids } = world;
+    // Another member's phone has rotated since Taylor's phone last looked: the API is at
+    // key epoch 2, and hands Taylor's phone the box that phone sealed for it.
+    const key2 = new Uint8Array(randomBytes(32));
+    await setEpoch(brisbane, 2);
+    const box = await rotationBox(
+      dana,
+      taylor,
+      { groupId: brisbane, device: A, epoch: 2, previous: key },
+      { keys: [{ epoch: 2, key: toHex(key2) }] },
+    );
+    const senderKey = await boxKeyOf(dana);
+    whenAnswered('POST', async () =>
+      answerNext('GET', 200, {
+        keys: [{ epoch: 2, senderKey, box }],
+        more: false,
+      }),
+    );
+    const from = mark();
+
+    expect(await remove(world, ids.Dana)).toEqual({ outcome: 'removed' });
+
+    const [first, second, ...more] = await rotationsBy(taylor, from);
+    expect(more).toEqual([]);
+    expect([first.epoch, second.epoch]).toEqual([2, 3]);
+    expect(await keyQuestionsBy(taylor, from)).toEqual(['?after=1']);
+    const own = second.boxes.find(({ deviceId }) => deviceId === A);
+    const sealed = { senderKey: second.senderKey, box: own?.box ?? '' };
+    const made = { groupId: brisbane, device: A, epoch: 3 };
+    expect(
+      await openedRotationBox(taylor, sealed, { ...made, previous: key2 }),
+    ).toMatchObject({ keys: [{ epoch: 3 }] });
+    expect(
+      await openedRotationBox(taylor, sealed, { ...made, previous: key }),
+    ).toBeUndefined();
+    expect(await isMemberDevice(brisbane, D)).toBe(false);
+  });
 });
 
 describe('SHARING-275.1', () => {
@@ -531,6 +571,25 @@ describe('SHARING-275.1', () => {
     expect(await titles(taylor)).toEqual(
       expect.arrayContaining(['Lunch', 'Taxi']),
     );
+  });
+
+  test('[SHARING-275.1] rotates no second time when the API says another phone has rotated: it asks for the key and syncs', async () => {
+    const { taylor, dana, brisbane } = await danaIn();
+    expect(await leave(dana, brisbane)).toEqual({ outcome: 'left' });
+    answerNext('POST', 409, { error: 'epoch', epoch: 2 });
+    const from = mark();
+
+    await sync(taylor);
+
+    expect(await rotationsBy(taylor, from)).toHaveLength(1);
+    const sentLines = await lines(taylor, from);
+    const rotation = sentLines.indexOf(`POST /groups/${brisbane}/rotation`);
+    const keys = sentLines.indexOf(`GET /groups/${brisbane}/keys`, rotation);
+    expect(rotation).toBeGreaterThan(-1);
+    expect(keys).toBeGreaterThan(rotation);
+    expect(
+      sentLines.indexOf(`GET /groups/${brisbane}/events`, keys),
+    ).toBeGreaterThan(keys);
   });
 });
 
@@ -744,6 +803,77 @@ describe('SHARING-278.1', () => {
     ]);
     expect(secureStoreEntry(dana, keyEntry(brisbane, 2))).toBeUndefined();
   });
+
+  test('[SHARING-278.1] opens the boxes of two rotations it missed in order, with one question', async () => {
+    const world = await evanRemoved();
+    const { taylor, dana, brisbane, ids } = world;
+    const { phone: finn } = await joins(await invitesAgain(world), 'Finn', {
+      memberId: ids.Blake,
+    });
+    expect(await hasGroup(finn)).toBe(true);
+    expect(await remove(world, ids.Blake)).toEqual({ outcome: 'removed' });
+    await sync(taylor);
+    const from = mark();
+
+    await sync(dana);
+
+    expect(await keyQuestionsBy(dana, from)).toEqual(['?after=1']);
+    // The box of epoch 3 opens only with the key of epoch 2, which came in the box before it.
+    for (const epoch of [2, 3]) {
+      expect(secureStoreEntry(dana, keyEntry(brisbane, epoch))?.value).toBe(
+        toHex(keyOf(taylor, brisbane, epoch)),
+      );
+    }
+    expect(namesOf((await ledgerOf(dana)).formerMembers)).toEqual(
+      expect.arrayContaining(['Casey', 'Blake']),
+    );
+  });
+
+  test('[SHARING-278.1] [SYNC-305.1] reads the keys it holds before it asks, once its local data went back and it waits for a snapshot under a newer key', async () => {
+    const world = await danaIn();
+    const { invite, taylor, brisbane, ids } = world;
+    // Dana's phone at key epoch 1.
+    const copy = await copyOfData(world.dana);
+    // Two rotations, and Dana's phone fetches each key: when it asks after epoch 2, the API
+    // drops the box of epoch 2.
+    await joins(invite, 'Evan', { memberId: ids.Casey });
+    expect(await remove(world, ids.Casey)).toEqual({ outcome: 'removed' });
+    await sync(taylor);
+    await sync(world.dana);
+    await joins(await invitesAgain(world), 'Finn', { memberId: ids.Blake });
+    expect(await remove(world, ids.Blake)).toEqual({ outcome: 'removed' });
+    await sync(taylor);
+    await sync(world.dana);
+    expect(secureStoreEntry(world.dana, keyEntry(brisbane, 3))).toBeDefined();
+    // Its local data goes back, and the key is rotated once more while it is away.
+    const dana = await restoreData(world.dana, copy);
+    await joins(await invitesAgain(world), 'Gina');
+    expect(await remove(world, (await memberIds(taylor)).Gina)).toEqual({
+      outcome: 'removed',
+    });
+    await addExpense(taylor, { title: 'Lunch' });
+    await sync(taylor);
+    // 31 days on, the cleanup deletes what Dana's phone would download: it needs a snapshot,
+    // and the one Taylor's phone uploads is under key epoch 4.
+    const away = LATER + 31 * DAY;
+    setApiTime(away);
+    setClock(taylor, away);
+    setClock(dana, away);
+    await cleanUpAt(away);
+    await sync(dana);
+    expect(await waits(dana)).toBe(true);
+    await sync(taylor);
+    const from = mark();
+
+    await sync(dana);
+
+    expect(await keyQuestionsBy(dana, from)).toEqual(['?after=3']);
+    expect(secureStoreEntry(dana, keyEntry(brisbane, 4))?.value).toBe(
+      toHex(keyOf(taylor, brisbane, 4)),
+    );
+    expect(await waits(dana)).toBe(false);
+    expect(await titles(dana)).toContain('Lunch');
+  });
 });
 
 describe('SHARING-279.1', () => {
@@ -835,6 +965,35 @@ describe('SHARING-279.1', () => {
     expect(secureStoreEntry(dana, keyEntry(brisbane, 3))).toBeUndefined();
     expect(secureStoreEntry(dana, keyEntry(brisbane, 2))).toBeUndefined();
   });
+
+  test('[SHARING-279.1] saves neither key when the first of two boxes does not open: the second is sealed from the key it then lacks', async () => {
+    const { taylor, dana, brisbane, D } = await evanRemoved();
+    const senderKey = await boxKeyOf(taylor);
+    const third = await rotationBox(
+      taylor,
+      dana,
+      {
+        groupId: brisbane,
+        device: D,
+        epoch: 3,
+        previous: keyOf(taylor, brisbane, 2),
+      },
+      { keys: [{ epoch: 3, key: toHex(randomBytes(32)) }] },
+    );
+    whenAnswered('GET', async () => undefined);
+    answerNext('GET', 200, {
+      keys: [
+        { epoch: 2, senderKey, box: randomBytes(120).toString('hex') },
+        { epoch: 3, senderKey, box: third },
+      ],
+      more: false,
+    });
+
+    await sync(dana);
+
+    expect(secureStoreEntry(dana, keyEntry(brisbane, 2))).toBeUndefined();
+    expect(secureStoreEntry(dana, keyEntry(brisbane, 3))).toBeUndefined();
+  });
 });
 
 describe('SHARING-280.1', () => {
@@ -890,6 +1049,77 @@ describe('SHARING-281.1', () => {
       toHex(keyOf(taylor, brisbane, 2)),
     );
     expect(namesOf((await ledgerOf(evan)).formerMembers)).toContain('Dana');
+  });
+
+  /**
+   * Evan's phone was approved and has not joined. Dana is removed since, so Brisbane is at
+   * key epoch 2. 31 days on, the cleanup has deleted the snapshot the approval left: Evan's
+   * phone asks and is told there is none, and Taylor's phone, which keeps up, uploads
+   * another, under key epoch 2. Evan's handover still holds the key of epoch 1 alone.
+   */
+  async function approvedBeforeARotation() {
+    const world = await danaIn();
+    const { invite, taylor, ids } = world;
+    const { phone: evan } = await joins(invite, 'Evan', {
+      memberId: ids.Casey,
+      join: false,
+    });
+    expect(await remove(world, ids.Dana)).toEqual({ outcome: 'removed' });
+    await sync(taylor);
+    const away = LATER + 31 * DAY;
+    setApiTime(away);
+    setClock(taylor, away);
+    setClock(evan, away);
+    await cleanUpAt(away);
+    expect(
+      await on(evan, () =>
+        evan.sharing.askJoinResult(evan.database, invite.code),
+      ),
+    ).toMatchObject({ outcome: 'approved' });
+    await sync(taylor);
+    return { ...world, evan };
+  }
+
+  test('[SHARING-281.1] fetches the key after the one in its handover when its snapshot is under a newer key epoch, then takes the snapshot in', async () => {
+    const { invite, taylor, evan, brisbane } = await approvedBeforeARotation();
+    const from = mark();
+
+    expect(
+      await on(evan, () =>
+        evan.sharing.askJoinResult(evan.database, invite.code),
+      ),
+    ).toMatchObject({ outcome: 'joined' });
+
+    const sent = await requestsOf(evan, from);
+    const keys = sent.indexOf(`GET /groups/${brisbane}/keys?after=1`);
+    expect(sent).toContain('ask');
+    expect(keys).toBeGreaterThan(sent.indexOf('ask'));
+    expect(sent.indexOf('get chunk 0')).toBeGreaterThan(keys);
+    expect(secureStoreEntry(evan, keyEntry(brisbane, 2))?.value).toBe(
+      toHex(keyOf(taylor, brisbane, 2)),
+    );
+    expect(namesOf((await ledgerOf(evan)).formerMembers)).toContain('Dana');
+  });
+
+  test('[SHARING-281.1] takes no snapshot in, and has not joined, when the API holds no box for it', async () => {
+    const { invite, evan, brisbane } = await approvedBeforeARotation();
+    // The question for the snapshot gets its answer; the one for the keys gets no box.
+    whenAnswered('GET', async () =>
+      answerNext('GET', 200, { keys: [], more: false }),
+    );
+    const from = mark();
+
+    expect(
+      await on(evan, () =>
+        evan.sharing.askJoinResult(evan.database, invite.code),
+      ),
+    ).toMatchObject({ outcome: 'approved' });
+
+    const sent = await requestsOf(evan, from);
+    expect(sent).toContain(`GET /groups/${brisbane}/keys?after=1`);
+    expect(sent.filter((line) => line.startsWith('get chunk'))).toEqual([]);
+    expect(secureStoreEntry(evan, keyEntry(brisbane, 2))).toBeUndefined();
+    expect(await hasGroup(evan)).toBe(false);
   });
 });
 

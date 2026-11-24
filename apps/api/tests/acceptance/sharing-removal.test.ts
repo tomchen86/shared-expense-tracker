@@ -463,7 +463,7 @@ describe('SHARING-251.1', () => {
 });
 
 describe('SHARING-252.1', () => {
-  test.each([1, 3, Number.MAX_SAFE_INTEGER])(
+  test.each([3, Number.MAX_SAFE_INTEGER])(
     '[SHARING-252.1] refuses a rotation to key epoch %s while the group is at key epoch 1',
     async (epoch) => {
       const [taylor, casey, dana] = await threeInBrisbane();

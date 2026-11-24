@@ -986,7 +986,65 @@ describe('SHARING-217.2', () => {
   });
 });
 
+/**
+ * The phone has its own Brisbane with Casey: a group that is no shared ledger, with the ID
+ * and the Casey of the invite's group. It has answered Replace Your Copy? with Send Request,
+ * so its request records that copy, and Join Group is closed.
+ */
+async function ownCopyAsks() {
+  await startAs();
+  await tapTab('Groups');
+  await createGroup('Brisbane');
+  await showMembers('Brisbane');
+  await addMember('Casey');
+  await leaveMembers('Brisbane');
+  const own = await groupId('Brisbane');
+  const ids = await members('Brisbane');
+  invites(
+    CODE_A,
+    S,
+    {
+      name: 'Brisbane',
+      members: [
+        { id: TAYLOR_ID, name: 'Taylor', hasDevice: true },
+        { id: ids.Casey, name: 'Casey', hasDevice: false },
+      ],
+    },
+    own,
+  );
+  await tapTab('Settings');
+  await openLink(BRISBANE_LINK);
+  await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
+  const shown = alertsShown().length;
+  await pressInJoin(SEND);
+  expect(alertsShown().slice(shown)).toEqual([
+    [REPLACE_YOUR_COPY, replaceYourCopy('Brisbane')],
+  ]);
+  await pressAlertButton(SEND);
+  await waitFor(() => expect(joinLines()).toContain(WAITING));
+  await closeJoin();
+  return { own, ids };
+}
+
 describe('SHARING-217.2', () => {
+  test('[SHARING-217.2] saves no key when the request records one copy and the approval names another group of the phone', async () => {
+    const { ids } = await ownCopyAsks();
+    // Tokyo is another group of this phone; the request records its own Brisbane.
+    await tapTab('Groups');
+    await createGroup('Tokyo');
+    const tokyo = await groupId('Tokyo');
+    const before = rowsWith(tokyo);
+    memberApproves({ groupId: tokyo });
+
+    await openRequest('Brisbane');
+
+    await expectJoinLines([APPROVED, 'Brisbane', WENT_WRONG, 'Try Again']);
+    expect(groupKeys()).toEqual([]);
+    expect(requestsReceived().filter(isSnapshotQuestion)).toEqual([]);
+    expect(rowsWith(tokyo)).toEqual(before);
+    expect(await members('Brisbane')).toEqual(ids);
+  });
+
   test('[SHARING-217.2] [SHARING-289.1] saves no key and asks for no snapshot when the approval names a group of the phone that the request was not sent for', async () => {
     await waiting();
     // Tokyo is this phone's own group; the request is for Brisbane and records no copy.
@@ -1265,37 +1323,7 @@ describe('SHARING-289.1', () => {
   });
 
   test("[SHARING-289.1] [SHARING-226.2] replaces the phone's own copy of the group with the snapshot once it is approved, and keeps it until then", async () => {
-    await startAs();
-    await tapTab('Groups');
-    await createGroup('Brisbane');
-    await showMembers('Brisbane');
-    await addMember('Casey');
-    await leaveMembers('Brisbane');
-    const own = await groupId('Brisbane');
-    const ids = await members('Brisbane');
-    invites(
-      CODE_A,
-      S,
-      {
-        name: 'Brisbane',
-        members: [
-          { id: TAYLOR_ID, name: 'Taylor', hasDevice: true },
-          { id: ids.Casey, name: 'Casey', hasDevice: false },
-        ],
-      },
-      own,
-    );
-    await tapTab('Settings');
-    await openLink(BRISBANE_LINK);
-    await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
-    const shown = alertsShown().length;
-    await pressInJoin(SEND);
-    expect(alertsShown().slice(shown)).toEqual([
-      [REPLACE_YOUR_COPY, replaceYourCopy('Brisbane')],
-    ]);
-    await pressAlertButton(SEND);
-    await waitFor(() => expect(joinLines()).toContain(WAITING));
-    await closeJoin();
+    const { own, ids } = await ownCopyAsks();
     expect(await members('Brisbane')).toEqual(ids);
 
     memberApproves({ groupId: own });
@@ -1307,6 +1335,25 @@ describe('SHARING-289.1', () => {
     await showMembers('Brisbane');
     await expectMembers(JOINED);
     expect(everything().groups).toHaveLength(1);
+    expect(JSON.stringify(everything())).not.toContain(ids.Casey);
+  });
+
+  test('[SHARING-289.1] keeps the copy and the request when the snapshot cannot be written, and replaces the copy on Try Again once it can', async () => {
+    const { own, ids } = await ownCopyAsks();
+    memberApproves({ groupId: own });
+    afterTheAnswerTo(isChunk, failWrites);
+
+    await tapTab('Groups');
+    await openRequest('Brisbane');
+
+    await expectJoinLines([APPROVED, 'Brisbane', WENT_WRONG, 'Try Again']);
+    allowWrites();
+    expect(await members('Brisbane')).toEqual(ids);
+    expect(rowsWith(CODE_A).length).toBeGreaterThan(0);
+
+    await pressInJoin('Try Again');
+
+    await waitFor(() => expect(rowsWith(CODE_A, S)).toEqual([]));
     expect(JSON.stringify(everything())).not.toContain(ids.Casey);
   });
 

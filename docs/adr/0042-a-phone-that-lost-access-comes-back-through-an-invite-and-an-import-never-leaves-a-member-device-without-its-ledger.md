@@ -41,7 +41,9 @@ Also considered:
 
 ## Consequences
 
-- A phone that restores its own older file keeps syncing, also across rotations whose keys it holds. A file from before the phone joined a ledger, or before it shared one, cannot be imported until the phone leaves that ledger, which closes the state ADR-0025 describes in its Consequences.
+- A phone that restores its own older file keeps syncing, also across rotations whose keys it holds. Where nothing it downloads shows it the epoch it has reached, because those events were cleared and it waits for a snapshot, it reads the next keys from the secure store by name before it asks the API for more.
+- An export from the phone's earlier time in a group that it left and joined again passes the check: the same device, a shared ledger in both. The keys of that time were deleted when the ledger became a copy, so after the import the download stops at the first event under one of them. The phone receives nothing until those events are cleared and it catches up from a snapshot (ADR-0034); its own changes still upload.
+- An import drops a request that was approved and has not joined, as it does on main: the API counts the phone as a member device, and the phone holds neither the group nor the request. While the invite is valid, opening the link again finds the approval; after that another member removes the device. A file from before the phone joined a ledger, or before it shared one, cannot be imported until the phone leaves that ledger, which closes the state ADR-0025 describes in its Consequences.
 - A new phone that imports the old phone's file holds copies and no seed. It cannot send a request (ADR-0015), so it cannot ask to join either. #144 and #145 are where a new phone gets back in; this ADR does not change that.
 - A user who leaves a ledger in order to import loses nothing the group has, but the unsent changes of that ledger stay in the copy and are never sent.
 - The import check compares the file's sync rows with the phone's. A file edited by hand can pass it, as it can pass every other check (ADR-0020), and leave the phone a member device whose ledger is gone; another member removes it.
@@ -49,6 +51,7 @@ Also considered:
 - A request sent from a phone with an editable copy can be approved days later. The copy and whatever was added to it since are replaced then, with no second question; the confirmation says so and points to Export.
 - A request records the copy it was sent over, and an approval replaces that copy only. An approval that names another group the phone holds, a copy or a group of its own, stops before any key is saved: a member with the invite string hands over the invite's group (ADR-0039), not any group whose ID it knows.
 - A copy none of whose members is on the card is not recognised when the request is sent, so nothing is asked and the request records none. The approval then stops as above and the copy stays. A read-only copy can be deleted and the join tried again; a group of the phone's own has no delete yet.
+- A former member of the same name whom the sync before the approval brings is not asked about: the newcomer becomes a member beside him.
 - The rule for a returning person goes by name. Someone who types another name becomes a second member; adding them back in Members before they ask, or merging members (#184), repairs it. A newcomer who shares a former member's name has to pick another, as in Members.
 - An approval can carry a change to an existing member record. The snapshot uploaded with the approval holds it like the new member's record.
 - A replaced copy comes back as a new group: at the end of the list, not archived, without its own sort order, filters and "my own change" marks.
