@@ -306,7 +306,7 @@ test.each(['the roster entry first', 'the removal first'])(
   },
 );
 
-test('[GROUPS-24.4] marks a member who has a phone as joined, and nobody else', async () => {
+test('[GROUPS-24.5] marks a member who has a phone as joined, and nobody else', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');
   const { Casey } = await members('Brisbane');

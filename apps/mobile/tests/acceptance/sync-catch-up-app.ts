@@ -113,6 +113,10 @@ export async function noticesOf(
 export const UPDATE_NOTICE =
   'This group has changes from a newer version of the app. Update the app to see them.';
 
+/** The line a shared ledger's screen shows while it waits for a snapshot (SYNC-314.1). */
+export const WAITING_NOTICE =
+  'This group is out of date. It will catch up after another member opens the app.';
+
 /** The group's expenses on the phone as its cards read them: each with `yours` while it needs review (LEDGER-151.1). */
 async function cardsOf(phone: Phone, groupId: string) {
   return (await phone.expenses.listExpensesForCards(phone.database)).filter(

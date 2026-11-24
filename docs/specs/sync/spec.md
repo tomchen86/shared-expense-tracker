@@ -54,6 +54,8 @@ API 的快照情境（SYNC-101.1 到 SYNC-113.1）沿用上面 API 的情境。�
 
 補上資料的情境：API 的（SYNC-162.1、SYNC-171.1）沿用清除的情境，手機 app 的（SYNC-161.1、SYNC-164.1 到 SYNC-170.1 和 SYNC-173.1）沿用同步的情境和快照的情境；D 是一天，86,400,000 毫秒。「清除」是把這時 API 的時間交給 API 的清除執行一次（SYNC-134.1 到 SYNC-148.1）。除非另外說明，「Taylor 的手機落後了」是這樣開始的：Casey 的手機新增 Lunch 並同步，Taylor 的手機沒有同步；之後手機的時鐘和 API 的時間都是 T+60000+31D，清除刪掉了 Lunch 的事件（SYNC-135.1），Brisbane 清到的序號是 1。這時 Taylor 的手機的 cursor 是 0，Casey 的手機的 cursor 是 1，它跟得上。
 
+同步狀態（SYNC-310.1 到 SYNC-320.1，ADR-0045）：一切正常時，畫面上看不到同步。手機 app 只在三種時候，在共同帳本的畫面用一行字說明：它在等快照（SYNC-314.1）、很久沒同步（SYNC-315.1），或最近一次同步沒有得到回應（SYNC-316.1）；三句最多顯示一句（SYNC-317.1）。還沒上傳的支出在卡片上有時鐘圖示（ledger 的 LEDGER-240.1）。一個共同帳本上次同步的時間，是這支手機最後一次得到它的一個下載的一頁時手機的時鐘（SYNC-313.1）；API 記的進度的時間（SYNC-58.1）是同一件事在 API 那一邊的紀錄，成員手機問得到群組每支成員手機的（SYNC-310.1 到 SYNC-312.1），手機 app 在打開 Members 時問（SYNC-320.1），顯示在 Members 上（groups 的 GROUPS-24.5）。很久是 259,200,000 毫秒，也就是 3 天。除了 app 打開和存檔之後（SYNC-88.1、SYNC-89.1），使用者在共同帳本的畫面往下拉也同步一次（SYNC-318.1）。這些都只說共同帳本：唯讀副本和不是共同帳本的群組不顯示這些，也不能往下拉同步。同步狀態的情境，API 的（SYNC-310.1 到 SYNC-312.1）沿用上面 API 的情境，手機 app 的沿用同步的情境：手機在台北，今天是 `2026-10-30`。
+
 ## Requirements
 
 ### Requirement: SYNC-1.1 時間戳記的先後
@@ -742,7 +744,7 @@ WHEN 交給它一個共同帳本的支出，每一筆是它的 ID、建立的時
 
 ### Requirement: SYNC-20.1 群組變成共同帳本時，每筆紀錄都拿到時間戳記
 
-WHEN 群組變成共同帳本，the mobile app SHALL 在同一個 SQLite transaction 裡把它記成共同帳本、記下這支手機的裝置 ID，並替它的每筆紀錄記下每個單位現在的值和時間戳記，不寫任何事件：每筆紀錄各取一個新的時間戳記（SYNC-2.1，用校正後的時間和這支手機的裝置 ID），它的每個單位都用這一個；成員依 Members 的順序（GROUPS-24.4）一個比一個晚，前成員依被移出的先後一個比一個晚，分類依儲存的順序（CATEGORIES-7.5）一個比一個晚。其中任何一筆存不進去，就都不留下，群組仍不是共同帳本；群組已經是共同帳本時什麼都不改。
+WHEN 群組變成共同帳本，the mobile app SHALL 在同一個 SQLite transaction 裡把它記成共同帳本、記下這支手機的裝置 ID，並替它的每筆紀錄記下每個單位現在的值和時間戳記，不寫任何事件：每筆紀錄各取一個新的時間戳記（SYNC-2.1，用校正後的時間和這支手機的裝置 ID），它的每個單位都用這一個；成員依 Members 的順序（GROUPS-24.5）一個比一個晚，前成員依被移出的先後一個比一個晚，分類依儲存的順序（CATEGORIES-7.5）一個比一個晚。其中任何一筆存不進去，就都不留下，群組仍不是共同帳本；群組已經是共同帳本時什麼都不改。
 
 #### Scenario: 不寫事件
 
@@ -1320,7 +1322,7 @@ WHEN 套用共同帳本的群組或成員的事件，the mobile app SHALL 讓存
 
 ### Requirement: SYNC-37.1 成員依「是否被移出群組」的時間戳記排列
 
-The mobile app SHALL 讓共同帳本的成員依「是否被移出群組」這個單位的時間戳記由早到晚排列（SYNC-1.1），不依事件到達的先後，所以每支手機上的順序都一樣，兩支手機同時加入的成員都留下，同名也一樣；改名不改變位置，被移出再加回來的排在最後（GROUPS-24.4）；前成員裡最近被移出的，是這個時間戳記最晚的那一位（GROUPS-34.4）。
+The mobile app SHALL 讓共同帳本的成員依「是否被移出群組」這個單位的時間戳記由早到晚排列（SYNC-1.1），不依事件到達的先後，所以每支手機上的順序都一樣，兩支手機同時加入的成員都留下，同名也一樣；改名不改變位置，被移出再加回來的排在最後（GROUPS-24.5）；前成員裡最近被移出的，是這個時間戳記最晚的那一位（GROUPS-34.4）。
 
 #### Scenario: 比較早加入的後到
 
@@ -5446,7 +5448,7 @@ The mobile app SHALL 讓共同帳本每位成員和前成員存著的使用者 I
 #### Scenario: 別支手機代表 Casey
 
 - **WHEN** Brisbane 的 Members 開著時，套用名冊紀錄 `phone-b` 的第一個事件，代表的是 Casey 的成員 ID 和使用者 ID `user-b`
-- **THEN** Casey 存著的使用者 ID 是 `user-b`；Members 上 Casey 那一列多了「Joined」（GROUPS-24.4），你那一列仍是「Taylor (You)」；Blake 沒有使用者 ID
+- **THEN** Casey 存著的使用者 ID 是 `user-b`；Members 上 Casey 那一列多了「Joined」（GROUPS-24.5），你那一列仍是「Taylor (You)」；Blake 沒有使用者 ID
 
 #### Scenario: 新成員和他的名冊紀錄
 
@@ -5632,3 +5634,357 @@ WHEN 手機 app 存下下載的一頁，而這一頁裡它解開的事件——�
 
 - **WHEN** 下載的一頁裡，事件的鑰匙世代都不比這支手機的鑰匙世代大
 - **THEN** 這支手機的鑰匙世代不變
+
+### Requirement: SYNC-310.1 成員手機列出群組每支成員手機上次同步的時間
+
+WHEN 成員手機送 `GET /groups/<群組 ID>/devices`，the API SHALL 回答狀態碼 200 和 `{"devices":[…]}`：這個群組這時的每一支成員手機各一項，送請求的那一支也在裡面，依裝置 ID 從小到大（SYNC-1.1 比裝置 ID 的比法）；每一項剛好有 `deviceId` 和 `syncedAtMs` 兩個欄位，`syncedAtMs` 是 API 記著的那支手機在這個群組的進度的時間（SYNC-58.1），沒有進度的手機是 `null`。回應帶著 `Cache-Control: no-store`。這是簽名的請求，先通過 sharing 的檢查。這個請求不改資料庫裡這個群組的任何東西：不記進度，也不改誰在等快照（SYNC-162.1），所以問上次同步的時間不算同步；API 也不為它多存什麼（SYNC-61.4）。群組需要換鑰匙時（sharing 的 SHARING-256.1）照常回答。
+
+#### Scenario: 三支成員手機
+
+- **WHEN** Brisbane 的成員手機是 Taylor 的、Casey 的和 Dana 的；Taylor 的手機在 T+1,000 從 cursor 0 下載，Casey 的手機在 T+2,000 從 cursor 0 下載，Dana 的手機沒有下載過；Taylor 的手機在 T+3,000 送 `GET /groups/9b2f6c1e-8d47-4f3a-b1c5-2e7d90a4f6b8/devices`
+- **THEN** 回應是 200，`devices` 有三項，依裝置 ID 從小到大：Taylor 的手機的 `syncedAtMs` 是 1794983521000，Casey 的是 1794983522000，Dana 的是 `null`；每一項只有 `deviceId` 和 `syncedAtMs`；標頭有 `Cache-Control: no-store`
+
+#### Scenario: 新的蓋掉舊的
+
+- **WHEN** 接著 Casey 的手機在 T+4,000 再下載一次，Taylor 的手機再問
+- **THEN** Casey 的手機的 `syncedAtMs` 是 1794983524000
+
+#### Scenario: 上傳和被拒絕的下載不算
+
+- **WHEN** Casey 的手機的進度是 T+2,000；它在 T+5,000 上傳一個事件，在 T+6,000 送一個沒有帶 cursor 的下載；Taylor 的手機再問
+- **THEN** Casey 的手機的 `syncedAtMs` 仍是 1794983522000
+
+#### Scenario: 問不算同步
+
+- **WHEN** Taylor 的手機的進度是 cursor 0 和 T+1,000；Taylor 的手機在 T+9,000 問，Casey 的手機也問
+- **THEN** 兩個回應裡 Taylor 的手機的 `syncedAtMs` 都是 1794983521000；資料庫裡 Brisbane 的每支成員手機的進度、是不是在等快照和記成是的時間都和問之前一樣
+
+#### Scenario: 別的群組
+
+- **WHEN** Taylor 的手機也是 Tokyo 的成員手機，在 T+7,000 下載 Tokyo；Blake 的手機只是 Tokyo 的成員手機；Taylor 的手機問 Brisbane 的，再問 Tokyo 的
+- **THEN** Brisbane 的回應沒有 Blake 的手機，Taylor 的手機的 `syncedAtMs` 是 1794983521000；Tokyo 的回應有 Taylor 的和 Blake 的兩項，Taylor 的手機的是 1794983527000
+
+#### Scenario: 離開的手機不在裡面
+
+- **WHEN** Casey 的手機退出 Brisbane（sharing 的 SHARING-254.1）之後，Taylor 的手機問
+- **THEN** 回應是 200，`devices` 只有 Taylor 的和 Dana 的：群組這時需要換鑰匙，照常回答
+
+### Requirement: SYNC-311.1 列出成員手機的請求寫得不對，或不是成員手機送的
+
+IF 列出成員手機的請求（SYNC-310.1）寫得不對，也就是群組 ID 不是小寫的第 4 版 UUID，或網址帶了查詢，THEN the API SHALL 拒絕，原因是內容不對；IF 送請求的手機不是這個群組的成員手機，沒有這個群組時也一樣，THEN the API SHALL 拒絕，原因是不是成員，回應和下載被這樣拒絕時一模一樣（SYNC-49.1）。兩個問題都有時，回報的是這個順序裡最前面的原因：sharing 對簽名的請求的檢查、內容不對、不是成員（SYNC-60.2 的順序）。被拒絕的請求不回傳任何一支成員手機的裝置 ID 和時間。
+
+#### Scenario: 寫得不對
+
+- **WHEN** Taylor 的手機列出成員手機時，群組 ID 是大寫的 `9B2F6C1E-8D47-4F3A-B1C5-2E7D90A4F6B8` 或 `brisbane`；或網址後面帶 `?x=1` 或 `?after=0`
+- **THEN** 都被拒絕，原因是內容不對（400）
+
+#### Scenario: 不是成員手機
+
+- **WHEN** Blake 的手機註冊過，不是 Brisbane 的成員手機，它列出 Brisbane 的成員手機；Taylor 的手機列出一個沒有人建立過的群組的成員手機
+- **THEN** 兩個請求都被拒絕，原因是不是成員（403），回應的內容只有那個原因
+
+#### Scenario: 寫法先於是不是成員
+
+- **WHEN** Blake 的手機列出 Brisbane 的成員手機，網址後面帶 `?x=1`
+- **THEN** 被拒絕，原因是內容不對
+
+#### Scenario: 沒簽名或沒註冊
+
+- **WHEN** 列出 Brisbane 的成員手機的請求沒帶簽名的四個欄位，或由還沒註冊的手機簽名
+- **THEN** 被拒絕，原因是簽名
+
+### Requirement: SYNC-312.1 同樣的路徑配上別的方法，不是列出成員手機的請求
+
+IF 簽名的請求打 `/groups/<群組 ID>/devices` 而方法不是 `GET`，THEN the API SHALL 把它當成路徑沒有路由的請求，回答找不到，不改任何群組。`HEAD` 也一樣：它不是列出成員手機。
+
+#### Scenario: 別的方法
+
+- **WHEN** Taylor 的手機對 `/groups/9b2f6c1e-8d47-4f3a-b1c5-2e7d90a4f6b8/devices` 送 `HEAD`、`POST`、`PUT`、`PATCH` 和 `DELETE`
+- **THEN** 五個請求都得到找不到（404），不是任何一種拒絕；Brisbane 的成員手機和它們的進度都和之前一樣
+
+### Requirement: SYNC-313.1 手機記下每個共同帳本上次同步的時間
+
+WHEN 一個共同帳本的一個下載得到一頁（SYNC-69.2），沒有事件的一頁也算，the mobile app SHALL 記下這個共同帳本上次同步的時間：這時手機的時鐘，以毫秒計，蓋掉之前記的；有事件的一頁，時間和那一頁的事件、cursor 在同一個 SQLite transaction 裡存下（SYNC-70.1）。別的回應——拒絕、需要快照的回答、從這裡接著的回答和看不懂的回應——和沒有得到回應都不改它；列出成員手機（SYNC-320.1）也不改它。它記在本機資料，每個共同帳本各記各的，重新啟動 app 之後還在；`sync` 匯出 `lastSyncedAt(database, groupId)`，讓手機 app 的其他功能讀得到：還沒有得到過一頁的共同帳本和不是共同帳本的群組是 `null`。
+
+#### Scenario: 得到一頁
+
+- **WHEN** Taylor 的手機的時鐘是 `2026-10-30T04:01:00Z`，它同步 Brisbane，下載得到沒有事件的一頁
+- **THEN** Brisbane 上次同步的時間是 1793332860000
+
+#### Scenario: 新的蓋掉舊的
+
+- **WHEN** 接著時鐘是 `2026-10-31T04:01:00Z` 時再同步一次，下載得到帶著 Lunch 的一頁
+- **THEN** 上次同步的時間是 1793419260000
+
+#### Scenario: 不是一頁的回應
+
+- **WHEN** Brisbane 上次同步的時間是 1793332860000；一天之後同步，下載沒有得到回應，或得到狀態碼 500，或得到狀態碼 200 和 `{}`，或得到需要快照的回答
+- **THEN** 上次同步的時間都仍是 1793332860000
+
+#### Scenario: 列出成員手機
+
+- **WHEN** Brisbane 上次同步的時間是 1793332860000；一天之後打開它的 Members，API 回答了列出成員手機的請求
+- **THEN** 上次同步的時間仍是 1793332860000
+
+#### Scenario: 重新啟動
+
+- **WHEN** Brisbane 上次同步的時間是 1793332860000；沒有網路時重新啟動 app
+- **THEN** 仍是 1793332860000
+
+#### Scenario: 各記各的，和還沒記過的
+
+- **WHEN** Brisbane 和 Tokyo 都是共同帳本，Osaka 不是；只有 Brisbane 同步過
+- **THEN** Brisbane 有上次同步的時間；Tokyo 和 Osaka 的都是 `null`
+
+### Requirement: SYNC-314.1 等快照的共同帳本在畫面上說明
+
+WHILE 一個共同帳本在等快照（SYNC-165.1），而它的畫面不照 SYNC-169.1 顯示等 app 更新的那一行，the mobile app SHALL 在它的畫面顯示一行「This group is out of date. It will catch up after another member opens the app.」，位置照 SYNC-317.1，重新啟動 app 之後、還沒再同步之前也顯示。畫面開著時，它從開始等的那一刻就顯示：同步開頭的下載得到需要快照的回答、手機 app 記下它在等的時候，不必等這次同步結束，也不必重新打開畫面；不再等的時候，也就是存下一頁的時候，不必重新打開畫面就不再顯示。等多久都是這一句：等了很久不另外說明，SYNC-315.1 和 SYNC-316.1 的兩句在等快照時都不顯示（SYNC-317.1）。
+
+#### Scenario: 開始等的那一刻
+
+- **WHEN** Brisbane 的畫面開著；API 清掉了 Taylor 的手機還沒下載的事件，它回到 app，下載得到需要快照的回答，問有沒有快照的請求還沒有得到回應
+- **THEN** 不必重新打開，Brisbane 的畫面就顯示「This group is out of date. It will catch up after another member opens the app.」
+
+#### Scenario: 重新啟動之後
+
+- **WHEN** Brisbane 在等快照；沒有網路時重新啟動 app，打開 Brisbane 的畫面
+- **THEN** 顯示這句話，沒有 SYNC-316.1 的那一句
+
+#### Scenario: 補上之後
+
+- **WHEN** Brisbane 的畫面顯示這句話；API 開始回答它的下載一頁，它回到 app
+- **THEN** 不必重新打開，Brisbane 的畫面就不再顯示這句話
+
+#### Scenario: 等了很久
+
+- **WHEN** Brisbane 在等快照，上次同步的時間是 4 天前；它回到 app，下載又得到需要快照的回答
+- **THEN** Brisbane 的畫面只顯示這句話，沒有「Last synced」開頭的那一句
+
+#### Scenario: 等的快照要更新 app
+
+- **WHEN** Brisbane 在等快照，它問到的快照要更新 app 才能匯入（SYNC-169.1）
+- **THEN** Brisbane 的畫面顯示「This group has changes from a newer version of the app. Update the app to see them.」，沒有這句話
+
+#### Scenario: 別的群組
+
+- **WHEN** Brisbane 在等快照，Tokyo 也是共同帳本，照常同步
+- **THEN** Tokyo 的畫面沒有這句話
+
+### Requirement: SYNC-315.1 很久沒同步的共同帳本在畫面上說明
+
+WHEN 一個共同帳本的一次同步結束，而這時手機的時鐘比它上次同步的時間（SYNC-313.1）晚了 259,200,000 毫秒（3 天）以上，剛好 3 天也算，the mobile app SHALL 從這時起在它的畫面顯示一行：「Last synced 」，加上上次同步的時間在手機時區的日期，用手機地區的日期格式（LEDGER-30.2），再加上「. Pull down to sync.」，位置照 SYNC-317.1，到它的下一次同步結束為止；下一次同步結束時再照這一條看一次，所以得到過一頁的同步結束之後就不再顯示。這次同步怎麼結束的都一樣：沒有得到回應、被拒絕，或得到看不懂的回應。還沒有上次同步的時間的共同帳本不顯示。它不記在本機資料：重新啟動 app 之後，要到這個共同帳本的一次同步結束才再顯示；畫面開著時，不必重新打開就顯示和消失。換不成鑰匙的手機（sharing 的 SHARING-275.1）沒有另外的提示：它得不到一頁，滿 3 天之後顯示的就是這一句。
+
+#### Scenario: 三天沒有網路
+
+- **WHEN** Brisbane 上次同步的時間是 `2026-10-30T04:01:00Z`，之後沒有網路；時鐘是 `2026-11-02T04:01:00Z` 時回到 app，Brisbane 的畫面開著
+- **THEN** 不必重新打開，Brisbane 的畫面就顯示「Last synced Oct 30, 2026. Pull down to sync.」，沒有 SYNC-316.1 的那一句
+
+#### Scenario: 還不到三天
+
+- **WHEN** 同樣的情況下，時鐘是 `2026-11-02T04:00:59.999Z` 時回到 app
+- **THEN** 沒有「Last synced」開頭的那一句；顯示的是 SYNC-316.1 的那一句
+
+#### Scenario: API 一直沒有給一頁
+
+- **WHEN** Brisbane 上次同步的時間是 `2026-10-30T04:01:00Z`；4 天之後回到 app，API 對它的下載回答狀態碼 500
+- **THEN** Brisbane 的畫面顯示「Last synced Oct 30, 2026. Pull down to sync.」
+
+#### Scenario: 換不成鑰匙的手機
+
+- **WHEN** Brisbane 上次同步的時間是 `2026-10-30T04:01:00Z`；之後 API 說 Brisbane 需要換鑰匙，`devices` 裡有一支這支手機的名冊裡沒有紀錄的手機；一天之後回到 app，4 天之後再回到 app
+- **THEN** 一天之後 Brisbane 的畫面沒有關於同步的話；4 天之後顯示「Last synced Oct 30, 2026. Pull down to sync.」
+
+#### Scenario: 同步到了之後
+
+- **WHEN** Brisbane 的畫面顯示「Last synced Oct 30, 2026. Pull down to sync.」；網路恢復之後回到 app
+- **THEN** 不必重新打開，這句話就不再顯示
+
+#### Scenario: 日期照手機的時區
+
+- **WHEN** 手機在台北，Brisbane 上次同步的時間是 `2026-10-30T16:30:00Z`；之後沒有網路，5 天之後回到 app
+- **THEN** 顯示「Last synced Oct 31, 2026. Pull down to sync.」
+
+#### Scenario: 重新啟動
+
+- **WHEN** Brisbane 上次同步的時間是 4 天前；沒有網路時重新啟動 app，打開 Brisbane 的畫面
+- **THEN** app 打開時的那次同步結束之後，Brisbane 的畫面顯示「Last synced Oct 30, 2026. Pull down to sync.」
+
+#### Scenario: 還沒有上次同步的時間
+
+- **WHEN** Brisbane 剛變成共同帳本，還沒有得到過一頁；沒有網路，5 天之後回到 app
+- **THEN** 沒有「Last synced」開頭的那一句；顯示的是 SYNC-316.1 的那一句
+
+### Requirement: SYNC-316.1 最近一次同步沒有得到回應的共同帳本在畫面上說明
+
+WHEN 一個共同帳本的一次同步結束，而它是因為一個請求沒有得到回應才結束的——下載（SYNC-71.3）、上傳（SYNC-78.2）、等不到回應而放棄的請求（SYNC-97.1），和落後的手機問快照、下載快照分塊的請求（SYNC-164.1）；最後替別支成員手機上傳的快照（SYNC-166.1）不算——the mobile app SHALL 從這時起在它的畫面顯示一行「Connect to the internet to sync this group. New changes stay on this phone until then.」，位置照 SYNC-317.1，到它的下一次同步結束為止；下一次同步不是這樣結束的，就不再顯示。被拒絕和看不懂的回應不是沒有得到回應。它不記在本機資料：重新啟動 app 之後，要到這個共同帳本的一次同步這樣結束才再顯示；畫面開著時，不必重新打開就顯示和消失。同步沒有做完時仍不跳出提示框（SYNC-88.1）。
+
+#### Scenario: 沒有網路時存檔
+
+- **WHEN** Brisbane 的畫面開著，沒有網路時新增 Dinner
+- **THEN** 表單關閉，Brisbane 的畫面有 Dinner 的卡片，大標題下面顯示「Connect to the internet to sync this group. New changes stay on this phone until then.」；沒有提示框
+
+#### Scenario: 網路恢復之後
+
+- **WHEN** 接著網路恢復，把 app 留在背景再回來
+- **THEN** 不必重新打開，Brisbane 的畫面就不再顯示這句話
+
+#### Scenario: 上傳沒有得到回應
+
+- **WHEN** 新增 Dinner，這次同步的下載 API 照常回答，上傳的回應沒有送到
+- **THEN** Brisbane 的畫面顯示這句話
+
+#### Scenario: 等不到回應
+
+- **WHEN** Brisbane 的畫面開著，回到 app 時 API 一直沒有回答它的下載；過了 59 秒，再過 2 秒
+- **THEN** 59 秒時沒有這句話；之後顯示
+
+#### Scenario: 被拒絕和看不懂的回應
+
+- **WHEN** 回到 app 時，API 對 Brisbane 的下載回答狀態碼 500，或狀態碼 403 而內容不是事件 API 的拒絕，或狀態碼 200 和 `{}`
+- **THEN** Brisbane 的畫面都沒有這句話
+
+#### Scenario: 別的群組
+
+- **WHEN** Brisbane 和 Tokyo 都是共同帳本；回到 app 時只有 Brisbane 的下載沒有得到回應
+- **THEN** Brisbane 的畫面顯示這句話，Tokyo 的沒有
+
+#### Scenario: 重新啟動
+
+- **WHEN** 沒有網路時重新啟動 app，打開 Brisbane 的畫面
+- **THEN** app 打開時的那次同步結束之後，顯示這句話
+
+### Requirement: SYNC-317.1 同步狀態的三句話最多顯示一句，平常都不顯示
+
+The mobile app SHALL 讓 SYNC-314.1、SYNC-315.1 和 SYNC-316.1 的三句話，在一個共同帳本的畫面上最多顯示一句：照 SYNC-314.1 要顯示時只顯示它；否則照 SYNC-315.1 要顯示時只顯示它；否則才顯示 SYNC-316.1 的；共同帳本在等快照、而它的畫面照 SYNC-169.1 顯示等 app 更新的那一行時，三句都不顯示。這一句在大標題下面、SYNC-75.1 和 SYNC-83.1 的那兩句話下面，GROUPS-107.2、GROUPS-170.2 和 GROUPS-130.1 的按鈕上面，封存的共同帳本顯示在唯讀的提示（GROUPS-55.2）上面。三句都不必顯示時，共同帳本的畫面上沒有任何關於同步的字和圖示，同步正在進行時也沒有；往下拉時的更新指示（SYNC-318.1）和還沒上傳的支出的時鐘（LEDGER-240.1）除外。唯讀副本的畫面（GROUPS-155.1）和不是共同帳本的群組的畫面都不顯示這三句，原本顯示著的，成為唯讀副本之後也不再顯示；別的群組的畫面只看自己的。
+
+#### Scenario: 一切正常
+
+- **WHEN** Brisbane 是共同帳本，同步得到一頁；打開 Brisbane 的畫面，之後新增 Dinner，API 還沒有回答這次同步的下載
+- **THEN** 兩個時候大標題下面都直接是期間列：沒有這三句的任何一句，也沒有 SYNC-75.1 和 SYNC-83.1 的那兩句
+
+#### Scenario: 和等 app 更新、群組滿了的兩句
+
+- **WHEN** Brisbane 停在格式版本 2 的事件，上傳因為群組滿了被拒絕；之後沒有網路時回到 app
+- **THEN** 大標題下面由上而下是 SYNC-75.1 的那句話、SYNC-83.1 的那句話和「Connect to the internet to sync this group. New changes stay on this phone until then.」
+
+#### Scenario: 和按鈕
+
+- **WHEN** Brisbane 有一筆掛著標記的支出（GROUPS-107.2）；沒有網路時回到 app
+- **THEN** 大標題下面由上而下是「Connect to the internet to sync this group. New changes stay on this phone until then.」和「1 expense needs review」
+
+#### Scenario: 封存的共同帳本
+
+- **WHEN** 封存 Brisbane 之後，沒有網路時回到 app，從 Archived Groups 打開它的畫面
+- **THEN** 由上而下是大標題「Brisbane」、「Connect to the internet to sync this group. New changes stay on this phone until then.」、「Archived group. Expenses and allocations are read-only.」和「Restore Group」按鈕
+
+#### Scenario: 成為唯讀副本之後
+
+- **WHEN** Brisbane 的畫面顯示「Last synced Oct 30, 2026. Pull down to sync.」；之後 API 對它的下載回答不是成員，它回到 app
+- **THEN** Brisbane 的畫面是唯讀副本的橫幅（GROUPS-155.1），沒有這三句的任何一句
+
+#### Scenario: 不是共同帳本的群組
+
+- **WHEN** Tokyo 不是共同帳本；沒有網路時在 Tokyo 新增 Sushi，把 app 留在背景再回來
+- **THEN** Tokyo 的畫面沒有這三句的任何一句，app 沒有發出任何網路請求
+
+### Requirement: SYNC-318.1 在共同帳本的畫面往下拉時同步一次
+
+WHEN 使用者在一個共同帳本的畫面把支出的清單往下拉再放開，也就是系統的下拉更新，the mobile app SHALL 同步這個共同帳本一次（SYNC-68.2），並顯示系統的更新指示，到這次同步結束為止，不論它是怎麼結束的；不跳出提示框，結果照 SYNC-314.1 到 SYNC-317.1 顯示在畫面上。它正在同步時往下拉，不開始第二個同步：照 SYNC-90.1 在那次同步結束之後再同步一次，更新指示到後面那一次結束為止。沒有支出的共同帳本和封存的共同帳本也可以這樣往下拉。往下拉只同步這一個共同帳本。唯讀副本的畫面、不是共同帳本的群組的畫面，和這個 build 沒有設定 API 的網址時（SYNC-93.1）共同帳本的畫面，都不能下拉更新：沒有更新指示，也不發出網路請求。
+
+#### Scenario: 收到別人的修改
+
+- **WHEN** Casey 的手機上傳了 Lunch；Taylor 的手機的 Brisbane 的畫面開著，往下拉
+- **THEN** API 收到一個 Brisbane 的下載；Brisbane 的畫面有 Lunch 的卡片，更新指示不再顯示
+
+#### Scenario: 更新指示
+
+- **WHEN** 在 Brisbane 的畫面往下拉，API 還沒有回答這次同步的下載；之後 API 回答
+- **THEN** 回答之前顯示更新指示；回答之後不再顯示
+
+#### Scenario: 沒有網路
+
+- **WHEN** 沒有網路時在 Brisbane 的畫面往下拉
+- **THEN** 更新指示不再顯示，畫面顯示 SYNC-316.1 的那一句；沒有提示框
+
+#### Scenario: 被移除的手機
+
+- **WHEN** Casey 的手機被移出 Brisbane 之後還沒有同步；它在 Brisbane 的畫面往下拉
+- **THEN** Brisbane 成為唯讀副本（SYNC-300.1），畫面顯示唯讀副本的橫幅；之後這個畫面不能下拉更新
+
+#### Scenario: 正在同步時
+
+- **WHEN** 新增 Dinner 之後，API 還沒有回答它的下載時，在 Brisbane 的畫面往下拉；之後 API 才回答
+- **THEN** API 回答之前只收到一個請求，更新指示顯示著；之後 Brisbane 一共同步了兩次，沒有同時在進行的，第二次結束之後更新指示才不再顯示
+
+#### Scenario: 沒有支出的和封存的共同帳本
+
+- **WHEN** Brisbane 沒有支出，在它的畫面往下拉；封存 Brisbane 之後，從 Archived Groups 打開它的畫面，往下拉
+- **THEN** 兩次 API 都收到一個 Brisbane 的下載
+
+#### Scenario: 只同步這一個
+
+- **WHEN** Brisbane 和 Tokyo 都是共同帳本；在 Brisbane 的畫面往下拉
+- **THEN** API 沒有收到 Tokyo 的請求
+
+#### Scenario: 不是共同帳本的群組和唯讀副本
+
+- **WHEN** 打開不是共同帳本的 Tokyo 的畫面；或打開唯讀副本 Brisbane 的畫面
+- **THEN** 兩個畫面的清單都沒有下拉更新；app 沒有為它們發出網路請求
+
+#### Scenario: 沒有設定 API 的網址
+
+- **WHEN** build 沒有設定 API 的網址，Brisbane 是共同帳本，打開它的畫面
+- **THEN** 清單沒有下拉更新
+
+### Requirement: SYNC-319.1 (manual) 手機上的同步狀態
+
+The mobile app SHALL 讓同步狀態在手機上看得清楚、用得順手：時鐘圖示（LEDGER-240.1）和 SYNC-314.1 到 SYNC-316.1 的三句話在淺色和深色外觀都看得清楚；系統字級最大時，那一句換行顯示完整，不截斷也不重疊，時鐘不擋住標題和金額；在共同帳本的畫面往下拉時，iOS 和 Android 都出現系統的更新指示，放開之後同步、結束時收起，大標題和清單照常捲動；VoiceOver 和 TalkBack 讀得出那一句，並在還沒上傳的支出的卡片讀出「Not sent yet」。
+
+#### Scenario: 飛航模式
+
+- **WHEN** 兩支真的手機在同一個共同帳本裡；一支開飛航模式，新增一筆支出，依序在淺色和深色外觀看群組的畫面和支出清單
+- **THEN** 那筆支出的卡片標題後面有時鐘，群組的畫面顯示「Connect to the internet to sync this group. New changes stay on this phone until then.」；關掉飛航模式，在群組的畫面往下拉，更新指示出現又收起，時鐘和那句話都消失，另一支手機回到 app 之後有這筆支出
+
+#### Scenario: 最大的字級和螢幕閱讀器
+
+- **WHEN** 把系統字級調到最大，開飛航模式新增一筆支出；再開著 VoiceOver 或 TalkBack 滑過群組的畫面
+- **THEN** 那一句換行顯示完整，卡片上標題、時鐘和金額都不重疊；螢幕閱讀器讀出那一句，卡片讀成一個按鈕，在日期之後讀出「Not sent yet」
+
+### Requirement: SYNC-320.1 打開 Members 時問成員手機上次同步的時間
+
+WHEN 使用者打開一個未封存的共同帳本的 Members，而它有別人是有手機的成員（GROUPS-24.5），the mobile app SHALL 送一個列出成員手機的請求（SYNC-310.1），並用它的回應決定每位這樣的成員上次同步的時間：名冊裡代表他、使用者 ID 不是你的使用者 ID 的別支手機的紀錄（SYNC-251.2），它們的裝置 ID 在回應裡 `syncedAtMs` 不是 `null` 的那幾項裡，最晚的那一個時間；沒有這樣的項時是不知道。回應到之前也是不知道；回應到了，Members 不必關閉再打開就跟著顯示（GROUPS-24.5）。這些時間不存進本機資料：Members 關閉之後不留著，下一次打開再問。IF 這個請求沒有得到回應、被拒絕，或回應看不懂——不是狀態碼 200，或內容不是 SYNC-310.1 的寫法——THEN the mobile app SHALL 當成每一位都不知道，不顯示任何提示，共同帳本也不因此成為唯讀副本（SYNC-300.1 只看同步的下載和上傳）。送出 60 秒之後還沒有收完回應時放棄這個請求，當成沒有得到回應，和 SYNC-97.1 一樣算。沒有別人是有手機的成員的共同帳本、封存的共同帳本、唯讀副本（SYNC-302.1）和不是共同帳本的群組都不問，沒有設定 API 的網址時（SYNC-93.1）也不問。回應裡這支手機自己的那一項，和名冊裡沒有紀錄、或紀錄不代表任何人的裝置 ID 的項，都不用。
+
+#### Scenario: 打開 Members
+
+- **WHEN** Brisbane 是共同帳本，名冊裡 `phone-b` 代表 Casey；API 記著 `phone-b` 上次同步的時間是 `2026-10-27T04:00:00Z`；打開 Brisbane 的 Members
+- **THEN** API 收到一個 `GET /groups/<Brisbane 的群組 ID>/devices`；回應到之前 Casey 那一列是「Casey」和「Joined」，到了之後是「Casey」和「Last synced Oct 27, 2026」
+
+#### Scenario: 兩支手機代表同一位成員
+
+- **WHEN** 名冊裡 `phone-b` 和 `phone-c` 都代表 Casey，API 回答它們的 `syncedAtMs` 分別是 `2026-10-27T04:00:00Z` 和 `2026-10-28T04:00:00Z` 的毫秒
+- **THEN** Casey 那一列是「Last synced Oct 28, 2026」
+
+#### Scenario: 沒有進度的手機，和不用的項
+
+- **WHEN** 名冊裡 `phone-b` 代表 Casey、`phone-c` 代表 Blake；API 的回應裡 `phone-b` 的 `syncedAtMs` 是 `null`，沒有 `phone-c`，另外有這支手機自己的一項和名冊裡沒有紀錄的 `phone-d` 的一項
+- **THEN** Casey 和 Blake 那兩列的第二行都是「Joined」；你那一列仍是「Taylor (You)」
+
+#### Scenario: 問不到
+
+- **WHEN** 打開 Members 時沒有網路；或 API 回答狀態碼 500；或拒絕它、原因是不是成員；或回答狀態碼 200 和 `{}`、`{"devices":"none"}`、其中一項的 `syncedAtMs` 是字串的 `devices`
+- **THEN** Casey 那一列的第二行都是「Joined」；沒有提示框，Brisbane 仍是共同帳本，不是唯讀副本
+
+#### Scenario: 等不到回應
+
+- **WHEN** 打開 Members 時 API 一直沒有回答這個請求；過了 61 秒 API 才回答
+- **THEN** Casey 那一列的第二行一直是「Joined」，回答到了也不變
+
+#### Scenario: 每次打開都問，不留著
+
+- **WHEN** Casey 那一列是「Last synced Oct 27, 2026」；關閉 Members 再打開，這次 API 回答的是 `2026-10-28T04:00:00Z`；之後關閉 Members，沒有網路時再打開
+- **THEN** 第二次打開時 API 又收到一個請求，Casey 那一列是「Last synced Oct 28, 2026」；第三次打開時第二行是「Joined」；本機資料裡找不到這兩個時間
+
+#### Scenario: 不問的時候
+
+- **WHEN** Brisbane 是共同帳本，沒有別人是有手機的成員，打開它的 Members；或封存有手機的 Casey 在裡面的 Brisbane 之後打開它的 Members；或打開唯讀副本、不是共同帳本的群組的 Members；或 build 沒有設定 API 的網址
+- **THEN** app 都沒有送列出成員手機的請求

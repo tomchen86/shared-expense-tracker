@@ -58,6 +58,19 @@ export async function isWaitingForSnapshot(
   return waiting.length > 0;
 }
 
+/**
+ * When a shared ledger of this phone last synced (SYNC-313.1): the phone's clock, in
+ * milliseconds, when a download of it last got a page. Null for a shared ledger that
+ * has got none yet, and for a group that is no shared ledger. Not built yet: issue 151's
+ * implementation replaces this body.
+ */
+export const lastSyncedAt: (
+  database: SqlExecutor,
+  groupId: string,
+) => Promise<number | null> = () => {
+  throw new Error('Not implemented: issue 151');
+};
+
 /** An event this phone has queued for upload. */
 export interface UnsentSyncEvent {
   /** The event's own ID, the same every time it is uploaded. */
