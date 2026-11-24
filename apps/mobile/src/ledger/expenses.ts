@@ -73,7 +73,7 @@ export async function moveExpensesToCategory(
   sourceId: string,
   target: Expense['category'] & { spaceId: string },
   group: SharedGroup | undefined,
-  eventMs?: number,
+  eventMs?: number | null,
 ): Promise<void> {
   const { id, name, color, spaceId } = target;
   const expenses = await transaction.all<{ id: string }>(
@@ -98,13 +98,13 @@ export async function moveExpensesToCategory(
   );
 }
 
-/** Stamp one write, including a whole category move. Only received events keep a later time. */
+/** Stamp one write, including a whole category move. A refusal (null) preserves the last change time. */
 export async function recordExpenseChanges(
   transaction: SqlExecutor,
   ids: readonly string[],
-  eventMs?: number,
+  eventMs?: number | null,
 ) {
-  if (ids.length === 0) return;
+  if (ids.length === 0 || eventMs === null) return;
   await transaction.run(
     `INSERT INTO expense_changes (expenseId, changedAt)
      SELECT value, ? FROM json_each(?) WHERE true
@@ -272,7 +272,7 @@ export async function writeExpenseRows(
   transaction: SqlExecutor,
   expense: Expense,
   existing: boolean,
-  eventMs?: number,
+  eventMs?: number | null,
 ) {
   const { id, category, payments, shares } = expense;
   const values = [

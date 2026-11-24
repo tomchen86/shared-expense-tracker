@@ -431,8 +431,8 @@ describe('SHARING-194.1', () => {
   );
 });
 
-describe('SHARING-195.1', () => {
-  test('[SHARING-195.1] syncs, uploads a snapshot for the device, and then sends one approval that names it', async () => {
+describe('SHARING-195.2', () => {
+  test('[SHARING-195.2] syncs, uploads a snapshot for the device, and then sends one approval that names it', async () => {
     const { invite, taylor, dana, brisbane, code, D, request } =
       await danaListed();
     const content = (await requestOnApi(code, D))!;
@@ -461,7 +461,7 @@ describe('SHARING-195.1', () => {
     expect(await requestOnApi(code, D)).toBeUndefined();
   });
 
-  test('[SHARING-195.1] uploads its own unsent changes before it approves, and the snapshot holds them', async () => {
+  test('[SHARING-195.2] uploads its own unsent changes before it approves, and the snapshot holds them', async () => {
     const { invite, taylor, dana, brisbane, key, request } = await danaListed();
     goOffline();
     await addExpense(taylor, { title: 'Lunch' });
@@ -477,7 +477,39 @@ describe('SHARING-195.1', () => {
     expect(titlesIn.sort()).toEqual(['Dinner', 'Lunch']);
   });
 
-  test('[SHARING-195.1] changes nothing on the phone until the API has approved', async () => {
+  test('[SHARING-195.2] syncs once more though the download after its upload got no answer, and sends one approval', async () => {
+    const { invite, taylor, brisbane, request } = await danaListed();
+    goOffline();
+    await addExpense(taylor, { title: 'Lunch' });
+    goOnline();
+    // The API confirms the upload of Lunch; the download that follows it (SYNC-160.1) gets
+    // no answer.
+    whenAnswered('POST', async () => noAnswerTo('GET'));
+    const from = mark();
+
+    expect(await approve(invite, request)).toEqual(APPROVED);
+
+    const sent = await sentBy(taylor, from);
+    const approval = sent.findIndex(({ path }) => path.endsWith('/approval'));
+    expect(
+      sent
+        .slice(0, approval)
+        .filter(
+          ({ path }) => path.split('?')[0] === `/groups/${brisbane}/events`,
+        )
+        .map(({ method, reached }) => [method, reached]),
+    ).toEqual([
+      ['GET', true],
+      ['POST', true],
+      ['GET', false],
+      ['GET', true],
+    ]);
+    // Its cursor is past Lunch, so the API does not call the approval behind.
+    expect(await approvalsBy(taylor, from)).toHaveLength(1);
+    expect(await unsent(taylor)).toEqual([]);
+  });
+
+  test('[SHARING-195.2] changes nothing on the phone until the API has approved', async () => {
     const { invite, taylor, request } = await danaListed();
     const before = await ledgerOf(taylor);
     noAnswerTo('POST');
@@ -491,7 +523,7 @@ describe('SHARING-195.1', () => {
     );
   });
 
-  test('[SHARING-195.1] sends the cursor it checked at though a sync has moved on since, and does not approve what it could not have checked', async () => {
+  test('[SHARING-195.2] sends the cursor it checked at though a sync has moved on since, and does not approve what it could not have checked', async () => {
     const { invite, taylor, dana, brisbane, code, key, D, ids } =
       await danaApproved();
     expect((await ask(dana, invite)).outcome).toBe('joined');
@@ -537,7 +569,7 @@ describe('SHARING-195.1', () => {
     expect(await requestOnApi(code, E)).toBeDefined();
   });
 
-  test('[SHARING-195.1] names the content it listed: a request that was replaced since is answered as gone, and stays', async () => {
+  test('[SHARING-195.2] names the content it listed: a request that was replaced since is answered as gone, and stays', async () => {
     const { invite, taylor, dana, brisbane, code, D, ids, request } =
       await danaListed();
     const old = sha256Of((await requestOnApi(code, D))!);
@@ -867,8 +899,8 @@ describe('SHARING-199.1', () => {
   });
 });
 
-describe('SHARING-200.1', () => {
-  test('[SHARING-200.1] reports no answer when the network is gone, and keeps the request', async () => {
+describe('SHARING-200.2', () => {
+  test('[SHARING-200.2] reports no answer when the network is gone, and keeps the request', async () => {
     const { invite, code, D, request } = await danaListed();
     goOffline();
 
@@ -878,7 +910,128 @@ describe('SHARING-200.1', () => {
     expect(await requestOnApi(code, D)).toBeDefined();
   });
 
-  test('[SHARING-200.1] reports a request another member has answered', async () => {
+  test('[SHARING-200.2] reports no answer when the second sync uploads too, and the download after that upload gets none', async () => {
+    const { invite, taylor, code, D, request } = await danaListed();
+    goOffline();
+    await addExpense(taylor, { title: 'Lunch' });
+    goOnline();
+    // A change is saved while the first sync downloads again, so the second sync uploads
+    // as well. The API confirms that upload, and the download that follows it gets no answer.
+    whenAnswered('POST', async () =>
+      whenAnswered('GET', async () => {
+        await addExpense(taylor, { title: 'Supper' });
+        whenAnswered('POST', async () => noAnswerTo('GET'));
+      }),
+    );
+    const from = mark();
+
+    expect(await approve(invite, request)).toEqual({ outcome: 'no-answer' });
+
+    const sent = await sentBy(taylor, from);
+    expect(sent.map(({ method, reached }) => [method, reached])).toEqual([
+      ['GET', true],
+      ['POST', true],
+      ['GET', true],
+      ['GET', true],
+      ['POST', true],
+      ['GET', false],
+    ]);
+    expect(await approvalsBy(taylor, from)).toEqual([]);
+    expect(await requestOnApi(code, D)).toBeDefined();
+  });
+
+  test("[SHARING-200.2] goes on to approve when the download after the second sync's upload is answered with no page: the API calls it behind, and it syncs and sends again", async () => {
+    const { invite, taylor, brisbane, D, request } = await danaListed();
+    goOffline();
+    await addExpense(taylor, { title: 'Lunch' });
+    goOnline();
+    // A change is saved while the first sync downloads again, so the second sync uploads
+    // as well. The API confirms that upload, and the download that follows it is answered
+    // with an error: the sync ends there, with the cursor short of the phone's own event.
+    whenAnswered('POST', async () =>
+      whenAnswered('GET', async () => {
+        await addExpense(taylor, { title: 'Supper' });
+        whenAnswered('POST', async () => answerNext('GET', 500, {}));
+      }),
+    );
+    const from = mark();
+
+    expect(await approve(invite, request)).toEqual(APPROVED);
+
+    const approvals = await approvalsBy(taylor, from);
+    expect(approvals).toHaveLength(2);
+    expect(approvals[1].cursor).toBeGreaterThan(approvals[0].cursor);
+    expect(approvals[1].snapshotId).toBe(approvals[0].snapshotId);
+    expect(await isMemberDevice(brisbane, D)).toBe(true);
+  });
+
+  test('[SHARING-200.2] says it failed, not that there is no answer, when a later upload of the second sync got none and the download after it was answered', async () => {
+    const { invite, taylor, code, D, request } = await danaListed();
+    goOffline();
+    await addExpense(taylor, { title: 'Lunch' });
+    goOnline();
+    // 101 changes are saved while the first sync downloads again, so the second sync
+    // uploads them in two requests (SYNC-76.1). The API confirms the first; the second
+    // gets no answer, and the download that follows the uploads is answered.
+    whenAnswered('POST', async () =>
+      whenAnswered('GET', async () => {
+        for (let each = 0; each < 101; each += 1) {
+          await addExpense(taylor, { title: `Snack ${each}` });
+        }
+        whenAnswered('POST', async () => noAnswerTo('POST'));
+      }),
+    );
+    const from = mark();
+
+    expect(await approve(invite, request)).toEqual({ outcome: 'failed' });
+
+    const sent = await sentBy(taylor, from);
+    expect(sent.map(({ method, reached }) => [method, reached])).toEqual([
+      ['GET', true],
+      ['POST', true],
+      ['GET', true],
+      ['GET', true],
+      ['POST', true],
+      ['POST', false],
+      ['GET', true],
+    ]);
+    expect(await approvalsBy(taylor, from)).toEqual([]);
+    expect(await unsent(taylor)).toHaveLength(1);
+    expect(await requestOnApi(code, D)).toBeDefined();
+  });
+
+  test('[SHARING-200.2] approves though the snapshot it uploads for another member device at the end of the sync gets no answer', async () => {
+    const { invite, taylor, dana, brisbane } = await danaApproved();
+    expect((await ask(dana, invite)).outcome).toBe('joined');
+    // Taylor's phone asks for a snapshot and the API has none for it: from now on a page
+    // names it to the other member devices (SYNC-108.2, SYNC-162.1).
+    expect(await fetched(taylor, brisbane)).toBeUndefined();
+    const evan = await phoneOf('Evan', invite);
+    const E = await asks(evan, invite);
+    // Dana's phone approves: it is a member, and holds the invite.
+    const asDana = { ...invite, taylor: dana };
+    const request = await listed(asDana, E);
+    // The first snapshot it uploads is the one for Taylor's phone, when its sync ends.
+    noAnswerTo('PUT');
+    const from = mark();
+
+    expect(await approve(asDana, request)).toEqual(APPROVED);
+
+    const sent = await sentBy(dana, from);
+    const approval = sent.findIndex(({ path }) => path.endsWith('/approval'));
+    const puts = sent
+      .slice(0, approval)
+      .filter(({ method }) => method === 'PUT');
+    expect(puts[0].reached).toBe(false);
+    expect(puts.slice(1).every(({ reached }) => reached)).toBe(true);
+    const [sentApproval] = await approvalsBy(dana, from);
+    expect((await fetched(evan, brisbane))!.snapshotId).toBe(
+      sentApproval.snapshotId,
+    );
+    expect(await isMemberDevice(brisbane, E)).toBe(true);
+  });
+
+  test('[SHARING-200.2] reports a request another member has answered', async () => {
     const { invite, taylor, D, request } = await danaListed();
     expect(
       (
@@ -893,7 +1046,7 @@ describe('SHARING-200.1', () => {
     expect(await approve(invite, request)).toEqual({ outcome: 'answered' });
   });
 
-  test('[SHARING-200.1] syncs and sends the approval again when the API says it is behind', async () => {
+  test('[SHARING-200.2] syncs and sends the approval again when the API says it is behind', async () => {
     const { invite, taylor, brisbane, request } = await danaListed();
     const from = mark();
     answerNext('POST', 409, { error: 'behind' });
@@ -915,7 +1068,7 @@ describe('SHARING-200.1', () => {
     ).toBe(true);
   });
 
-  test('[SHARING-200.1] gives up after three approvals that the API calls behind', async () => {
+  test('[SHARING-200.2] gives up after three approvals that the API calls behind', async () => {
     const { invite, taylor, code, D, request } = await danaListed();
     const from = mark();
     for (let each = 0; each < 3; each += 1) {
@@ -928,7 +1081,7 @@ describe('SHARING-200.1', () => {
     expect(await requestOnApi(code, D)).toBeDefined();
   });
 
-  test('[SHARING-200.1] uploads another snapshot once when the API has none for the approval', async () => {
+  test('[SHARING-200.2] uploads another snapshot once when the API has none for the approval', async () => {
     const { invite, taylor, dana, brisbane, request } = await danaListed();
     const from = mark();
     answerNext('POST', 404, { error: 'no-snapshot' });
@@ -940,7 +1093,7 @@ describe('SHARING-200.1', () => {
     expect((await fetched(dana, brisbane))!.snapshotId).toBe(second.snapshotId);
   });
 
-  test('[SHARING-200.1] fails when the API has no snapshot a second time, or refuses in another way', async () => {
+  test('[SHARING-200.2] fails when the API has no snapshot a second time, or refuses in another way', async () => {
     const { invite, request } = await danaListed();
     answerNext('POST', 404, { error: 'no-snapshot' });
     answerNext('POST', 404, { error: 'no-snapshot' });

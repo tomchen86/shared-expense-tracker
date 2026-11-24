@@ -3258,7 +3258,7 @@ WHEN 支出清單或群組的畫面的期間換了，或它的自訂範圍的 Fr
 
 ### Requirement: LEDGER-120.1 每筆支出記著最後修改時間
 
-The mobile app SHALL 在本機資料替每筆支出記著最後修改時間，也就是這支手機最後一次寫入這筆支出的時刻：新增它（LEDGER-21.2、LEDGER-54.1）、存下它的修改（LEDGER-22.2、LEDGER-56.2）、把它移到垃圾桶或還原（LEDGER-71.3、LEDGER-75.5、LEDGER-79.5）、把它搬到另一個分類（CATEGORIES-40.1）、選 Use Mine 把你的那一組再存一次（LEDGER-154.1）時，是手機的時鐘當下的時刻；套用收到的事件讓它的單位到齊，或改了存著的這筆支出時（SYNC-29.2），是那個事件的時間戳記的毫秒，比原本記著的早時不改。沒有寫入這筆支出的事不改它，例如分類改了名稱或顏色、成員改了名字，或同一個事件再收到（SYNC-28.2）。最後修改時間只留在這支手機，不寫進同步的事件；匯出檔帶著它，匯入之後和匯出時一樣（BACKUP-3.1、BACKUP-13.3）。它是用一個新的 migration 加進本機資料的：在那之前就存著的支出沒有最後修改時間，之前的 app 匯出的匯出檔照 BACKUP-18.1 升級之後匯入，裡面的支出也沒有，到下一次寫入才有。使用者從 Recently Edited 的排序（LEDGER-121.1）看到它。
+The mobile app SHALL 在本機資料替每筆支出記著最後修改時間，也就是這支手機最後一次寫入這筆支出的時刻：新增它（LEDGER-21.2、LEDGER-54.1）、存下它的修改（LEDGER-22.2、LEDGER-56.2）、把它移到垃圾桶或還原（LEDGER-71.3、LEDGER-75.5、LEDGER-79.5）、把它搬到另一個分類（CATEGORIES-40.1）、選 Use Mine 把你的那一組再存一次（LEDGER-154.1）時，是手機的時鐘當下的時刻；套用收到的事件讓它的單位到齊，或改了存著的這筆支出時（SYNC-29.2），是那個事件的時間戳記的毫秒，比原本記著的早時不改。沒有寫入這筆支出的事不改它，例如分類改了名稱或顏色、成員改了名字，或同一個事件再收到（SYNC-28.3）。最後修改時間只留在這支手機，不寫進同步的事件；匯出檔帶著它，匯入之後和匯出時一樣（BACKUP-3.1、BACKUP-13.3）。它是用一個新的 migration 加進本機資料的：在那之前就存著的支出沒有最後修改時間，之前的 app 匯出的匯出檔照 BACKUP-18.1 升級之後匯入，裡面的支出也沒有，到下一次寫入才有。使用者從 Recently Edited 的排序（LEDGER-121.1）看到它。
 
 #### Scenario: 新增
 
@@ -5132,3 +5132,62 @@ WHILE 群組是唯讀副本，the mobile app SHALL 不讓它出現在 Select Gro
 
 - **WHEN** Dinner 在垃圾桶裡時 Brisbane 成為唯讀副本；在 Trash 點 Dinner 的卡片
 - **THEN** 唯讀明細上「Restore」是停用的；Dinner 仍在垃圾桶裡，沒有多的待上傳的事件
+
+### Requirement: LEDGER-230.1 支出的沒有套用的變更的區塊
+
+The mobile app SHALL 在 Changes Not Applied（GROUPS-171.1）替事件指的是支出、原因不是結構的沒有套用的變更（sync）這樣顯示。事件帶著支出的六個單位時，區塊的標題是「Expense not added」，內容是「YOU ENTERED」和事件帶的值。其他時候區塊的標題是「Expense change not applied」，內容先是「EXPENSE」和退回之後（SYNC-351.1）這支手機存著的這筆支出現在的標題，垃圾桶裡的也算，這支手機沒有這筆支出時沒有這兩行；再是「YOU ENTERED」和事件帶的值。事件帶的值只列事件改的單位，依這個順序：標題；金額那一組的三行，寫法和 LEDGER-152.1 的一組一樣；日期，用手機地區的日期格式（LEDGER-30.2）；分類，是事件帶著的名稱；備註，沒有備註時是「No note」；在不在垃圾桶裡，是的時候是「Moved to Trash」，否的時候是「Restored from Trash」，帶著六個單位的事件不列這一行。事件帶的金額那一組的幣別不支援（SYNC-7.1）或加總不對（SYNC-8.1）時，不列金額那一組的三行：原因是幣別或加總時是這樣，原因是裝置或時鐘、而那一組另外有這兩種問題時也一樣（SYNC-10.2）。永久刪除支出的事件沒有「YOU ENTERED」和它下面的值。成員改了名之後，「Paid by」和「Split between」跟著用現在的名稱。
+
+#### Scenario: 新增的支出
+
+- **WHEN** 名字是「Taylor」，Brisbane 是共同帳本，新增 Dinner，自己的事件不套用（sync），打開 Brisbane 的 Changes Not Applied
+- **THEN** 區塊由上而下是「Expense not added」、時鐘的說明（GROUPS-171.1）、「YOU ENTERED」、「Dinner」、「$100.01」、「Paid by Casey」、「Split between Blake, Taylor (You), Casey」、「Oct 30, 2026」、「Food & Dining」、「No note」和「Dismiss」
+
+#### Scenario: 改了金額
+
+- **WHEN** 有 Lunch；把 Lunch 的金額改成「45.00」，自己的事件不套用
+- **THEN** 區塊由上而下是「Expense change not applied」、時鐘的說明、「EXPENSE」、「Lunch」、「YOU ENTERED」、「$45.00」、「Paid by Casey」、「Split between Taylor (You), Casey」和「Dismiss」
+
+#### Scenario: 改了標題和備註
+
+- **WHEN** 有 Lunch；在 Edit Expense 把標題改成「Brunch」、備註改成「Window seat」，按 Save，自己的事件不套用
+- **THEN** 「EXPENSE」下面是「Lunch」；「YOU ENTERED」下面依序是「Brunch」和「Window seat」
+
+#### Scenario: 改了日期和分類
+
+- **WHEN** 有 Lunch；在 Edit Expense 把日期改成 `2026-10-29`、分類改成 Shopping，按 Save，自己的事件不套用
+- **THEN** 「YOU ENTERED」下面依序是「Oct 29, 2026」和「Shopping」
+
+#### Scenario: 清掉備註
+
+- **WHEN** 有 Lunch，它的備註是「Window seat」；在 Edit Expense 清掉備註，按 Save，自己的事件不套用
+- **THEN** 「YOU ENTERED」下面是「No note」
+
+#### Scenario: 移到垃圾桶和還原
+
+- **WHEN** 有 Lunch；把 Lunch 移到垃圾桶，自己的事件不套用；或 Lunch 已經在垃圾桶裡（別支手機移的），在 Trash 還原它，自己的事件不套用
+- **THEN** 「EXPENSE」下面都是「Lunch」；「YOU ENTERED」下面分別是「Moved to Trash」和「Restored from Trash」
+
+#### Scenario: 成員改了名
+
+- **WHEN** 新增 Dinner，自己的事件不套用之後，把 Casey 改名為「Cass」，打開 Changes Not Applied
+- **THEN** 區塊裡是「Paid by Cass」和「Split between Blake, Taylor (You), Cass」
+
+#### Scenario: 原因是幣別或加總
+
+- **WHEN** 有 Lunch；套用兩個上傳的裝置 ID 是 `phone-a`、這支手機沒有寫過、改 Lunch 的標題和金額那一組的事件：一個標題是「Brunch」、幣別是 `XYZ`，另一個標題是「Late lunch」、金額是 3100 而分攤加總仍是 3000
+- **THEN** 兩個區塊的「YOU ENTERED」下面各只有「Brunch」和「Late lunch」，沒有金額、「Paid by」和「Split between」；說明都是其他原因的那一句
+
+#### Scenario: 原因是時鐘或裝置，金額那一組另外有問題
+
+- **WHEN** 有 Lunch；套用兩個上傳的裝置 ID 是 `phone-a`、這支手機沒有寫過、改 Lunch 的標題和金額那一組的事件：一個標題是「Brunch」、幣別是 `XYZ`、時間戳記比收到時間晚一小時，原因是時鐘；另一個標題是「Late lunch」、金額是 3100 而分攤加總仍是 3000、時間戳記的裝置 ID 是 `phone-b`，原因是裝置
+- **THEN** 兩個區塊的「YOU ENTERED」下面各只有「Brunch」和「Late lunch」，沒有金額、「Paid by」和「Split between」；前一個的說明是時鐘的那一句，後一個是其他原因的那一句
+
+#### Scenario: 這支手機沒有這筆支出
+
+- **WHEN** 套用一個上傳的裝置 ID 是 `phone-a`、時間戳記比收到時間晚一小時、只把一筆這支手機沒有的支出的標題改成「Brunch」的事件
+- **THEN** 區塊由上而下是「Expense change not applied」、時鐘的說明、「YOU ENTERED」、「Brunch」和「Dismiss」，沒有「EXPENSE」
+
+#### Scenario: 永久刪除支出的事件
+
+- **WHEN** 有 Lunch；套用一個上傳的裝置 ID 是 `phone-a`、時間戳記比收到時間晚一小時、永久刪除 Lunch 的事件
+- **THEN** 區塊由上而下是「Expense change not applied」、時鐘的說明、「EXPENSE」、「Lunch」和「Dismiss」；Lunch 還在支出清單

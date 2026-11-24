@@ -21,7 +21,7 @@ export interface SyncMoney {
   shares: Share<string>[];
 }
 
-/** Each kind of record's units, and the value each unit holds (SYNC-5.1, SYNC-6.1). */
+/** Each kind of record's units, and the value each unit holds (SYNC-5.1, SYNC-6.1, SYNC-250.1). */
 export interface SyncUnits {
   expense: {
     title: string;
@@ -39,6 +39,11 @@ export interface SyncUnits {
   group: { name: string };
   member: { name: string; removed: boolean };
   invite: { link: { secret: string; expiresAtMs: number } };
+  /**
+   * A roster entry (ADR-0039): its ID is a device ID, and it says which member that device
+   * represents, with the phone's user ID and its X25519 public key in lowercase hexadecimal.
+   */
+  device: { member: { memberId: string; userId: string; boxKey: string } };
   distinct: { expenses: [string, string] };
 }
 
@@ -390,6 +395,14 @@ const unitValidators: {
       /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(value.secret) &&
       isClockInteger(value.expiresAtMs),
   },
+  device: {
+    member: (value) =>
+      hasFields(value, ['memberId', 'userId', 'boxKey']) &&
+      isNonemptyString(value.memberId) &&
+      isNonemptyString(value.userId) &&
+      typeof value.boxKey === 'string' &&
+      /^[0-9a-f]{64}$/.test(value.boxKey),
+  },
   distinct: {
     expenses: (value) =>
       Array.isArray(value) &&
@@ -408,7 +421,8 @@ export function isSyncRecordId(
   type: SyncRecordType,
   id: unknown,
 ): id is string {
-  return type === 'invite' ? isInviteCode(id) : isNonemptyString(id);
+  if (type === 'invite') return isInviteCode(id);
+  return type === 'device' ? isDevice(id) : isNonemptyString(id);
 }
 
 export function isSyncUnitValue(
@@ -519,6 +533,15 @@ function compareUnitValues(name: string, a: unknown, b: unknown): number {
     return (
       compare(first.expiresAtMs, second.expiresAtMs) ||
       compare(first.secret, second.secret)
+    );
+  }
+  if (name === 'member') {
+    const first = a as SyncUnits['device']['member'];
+    const second = b as SyncUnits['device']['member'];
+    return (
+      compare(first.memberId, second.memberId) ||
+      compare(first.userId, second.userId) ||
+      compare(first.boxKey, second.boxKey)
     );
   }
   if (name === 'money') return compareMoney(a as SyncMoney, b as SyncMoney);

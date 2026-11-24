@@ -163,12 +163,15 @@ export async function createCategory(
   });
 }
 
+type SharedCategory = SharedGroup &
+  Pick<CategoryRow, 'isDefault' | 'createdByUserId'>;
+
 async function sharedGroupForCategory(
   transaction: SqlExecutor,
   id: string,
-): Promise<SharedGroup | undefined> {
-  const [group] = await transaction.all<SharedGroup>(
-    `SELECT s.groupId, s.device FROM categories c
+): Promise<SharedCategory | undefined> {
+  const [group] = await transaction.all<SharedCategory>(
+    `SELECT s.groupId, s.device, c.isDefault, c.createdByUserId FROM categories c
      JOIN sync_groups s ON s.groupId = c.spaceId WHERE c.id = ?`,
     [id],
   );
@@ -215,7 +218,15 @@ export async function deleteCategory(
       [id],
     );
     if (result.changes !== 1) throw new Error('Category cannot be deleted');
-    if (group) await writeLocalDeletion(transaction, group, 'category', id);
+    if (group) {
+      await writeLocalDeletion(transaction, group, 'category', id);
+      // These local attributes have no sync unit. Keep them if this deletion is undone.
+      await transaction.run(
+        `UPDATE sync_received SET categoryDefault = ?, categoryCreator = ?
+         WHERE groupId = ? AND type = 'category' AND id = ?`,
+        [group.isDefault, group.createdByUserId, group.groupId, id],
+      );
+    }
   });
 }
 

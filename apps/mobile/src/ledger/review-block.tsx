@@ -128,6 +128,21 @@ async function saveReviewChoice(save: () => Promise<void>) {
   }
 }
 
+export function moneyPeople(
+  money: SyncMoney,
+  expense: Pick<ExpenseView, 'members'>,
+  userId: string,
+) {
+  const names = (allocations: readonly Share<string>[]) =>
+    allocations
+      .map(({ participant }) => participantName(expense, participant, userId))
+      .join(', ');
+  return [
+    `Paid by ${names(money.payments)}`,
+    `Split between ${names(money.shares)}`,
+  ];
+}
+
 function ReviewSide({
   heading,
   expense,
@@ -141,27 +156,20 @@ function ReviewSide({
 }) {
   const colors = useThemeColors();
   const { userId } = useLocalIdentity();
-  const names = (allocations: readonly Share<string>[]) =>
-    allocations
-      .map(({ participant }) => participantName(expense, participant, userId))
-      .join(', ');
+  const [paid, split] = moneyPeople(money, expense, userId);
   return (
     <View style={[styles.side, { borderTopColor: colors.separator }]}>
       <Text style={[styles.heading, { color: colors.textMuted }]}>
         {heading}
       </Text>
       <Text style={[styles.amount, { color: colors.text }]}>{summary}</Text>
-      <Text
-        style={[styles.people, { color: colors.textMuted }]}
-      >{`Paid by ${names(money.payments)}`}</Text>
-      <Text
-        style={[styles.people, { color: colors.textMuted }]}
-      >{`Split between ${names(money.shares)}`}</Text>
+      <Text style={[styles.people, { color: colors.textMuted }]}>{paid}</Text>
+      <Text style={[styles.people, { color: colors.textMuted }]}>{split}</Text>
     </View>
   );
 }
 
-function ReviewAction({
+export function ReviewAction({
   label,
   onPress,
   disabled = false,
@@ -204,7 +212,7 @@ function ReviewAction({
   );
 }
 
-function ReviewPanel({
+export function ReviewPanel({
   title,
   explanation,
   children,

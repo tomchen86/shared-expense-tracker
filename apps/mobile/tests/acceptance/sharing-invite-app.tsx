@@ -500,7 +500,7 @@ export const isRegistering = (request: Sent) =>
 const isEventApi = (request: Sent) =>
   /^\/groups\/[^/?]+\/events(\?|$)/.test(request.path);
 
-/** A member's phone listing its group's join requests, which it does after a sync (SHARING-190.1). */
+/** A member's phone listing its group's join requests, which it does after a sync (SHARING-190.2). */
 const isRequestList = (request: Sent) =>
   request.method === 'GET' &&
   /^\/groups\/[^/?]+\/requests(\?|$)/.test(request.path);

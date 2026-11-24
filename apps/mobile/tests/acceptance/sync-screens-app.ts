@@ -425,6 +425,18 @@ export function apiStores(
   });
 }
 
+/**
+ * Makes the API relay the group's event `id` as received at `receivedAtMs`. The real API
+ * never changes when it received an event: this stands for one that the phones refuse.
+ */
+export function apiReceivedAt(group: string, id: string, receivedAtMs: number) {
+  const event = world()
+    .groups.get(group)
+    ?.events.find((stored) => stored.id === id);
+  if (!event) throw new Error('The API holds no such event');
+  event.receivedAtMs = receivedAtMs;
+}
+
 /** The API forgets the group's events, as if they had never been uploaded. */
 export function apiForgetsEvents(group: string) {
   world().groups.get(group)!.events = [];

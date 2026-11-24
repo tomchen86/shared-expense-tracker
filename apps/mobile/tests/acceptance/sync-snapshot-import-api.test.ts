@@ -30,6 +30,7 @@ import {
   memberIds,
   mostRequestsAtOnce,
   moveToTrash,
+  noAnswerTo as noAnswerToEvents,
   randomId,
   randomKey,
   refusals,
@@ -50,6 +51,7 @@ import {
   uploadAs,
   uploads,
   utf8,
+  whenAnswered as whenEventsAnswered,
   type Phone,
   type Setup,
 } from './sync-loop-app';
@@ -1039,6 +1041,8 @@ describe('SYNC-126.1', () => {
     const setup = await twoPhones();
     const { a } = setup;
     await addExpense(a);
+    // The download after the upload gets no answer, so the cursor stays before the event (SYNC-160.1).
+    whenEventsAnswered('POST', async () => noAnswerToEvents('GET'));
     await sync(a);
     const c = await newcomer(setup);
     expect(await sendSnapshot(a, c)).toMatchObject({ sequence: 0 });
@@ -1191,7 +1195,8 @@ describe('SYNC-127.2', () => {
     const from = mark();
     await sync(b);
     await sync(a);
-    expect(await downloads(b, from)).toEqual(['after=3']);
+    // The sync begins after the snapshot, and downloads once more after its upload (SYNC-160.1).
+    expect(await downloads(b, from)).toEqual(['after=3', 'after=3']);
     expect(await unsent(b)).toEqual([]);
     const ledger = await ledgerOf(a);
     expect(ledger).toEqual(await ledgerOf(b));

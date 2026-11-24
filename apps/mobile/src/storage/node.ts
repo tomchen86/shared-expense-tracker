@@ -12,6 +12,8 @@ export function openNodeDatabase(
   options: NodeDatabaseOptions = {},
 ): Database {
   const connection = new DatabaseSync(path, options);
+  // What is deleted is overwritten, so that it is not left in the file (SHARING-213.1).
+  connection.exec('PRAGMA secure_delete = ON');
   return createDatabase({
     exec: async (sql) => {
       connection.exec(sql);

@@ -13,6 +13,8 @@ export async function openExpoDatabase(
   );
   try {
     await connection.execAsync('PRAGMA foreign_keys = ON');
+    // What is deleted is overwritten, so that it is not left in the file (SHARING-213.1).
+    await connection.execAsync('PRAGMA secure_delete = ON');
   } catch (error) {
     await connection.closeAsync();
     throw error;

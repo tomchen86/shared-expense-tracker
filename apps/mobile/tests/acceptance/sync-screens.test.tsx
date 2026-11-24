@@ -158,7 +158,7 @@ const secondsPass = (seconds: number) =>
   });
 
 describe('SYNC-88.1', () => {
-  test('[SYNC-88.1] syncs the ledger once a new expense is saved: a download, then the upload', async () => {
+  test('[SYNC-88.1] syncs the ledger once a new expense is saved: a download, then the upload, then the download after it', async () => {
     await startSynced();
     const brisbane = await groupId('Brisbane');
     const from = mark();
@@ -169,6 +169,7 @@ describe('SYNC-88.1', () => {
       expect(eventRequests(from)).toEqual([
         download(brisbane),
         upload(brisbane),
+        download(brisbane),
       ]),
     );
     await expectAllUploaded();
@@ -192,7 +193,13 @@ describe('SYNC-88.1', () => {
     await releaseAnswers();
 
     await expectAllUploaded();
-    expect(eventRequests(from)).toEqual([download(brisbane), upload(brisbane)]);
+    await waitFor(() =>
+      expect(eventRequests(from)).toEqual([
+        download(brisbane),
+        upload(brisbane),
+        download(brisbane),
+      ]),
+    );
   });
 
   test('[SYNC-88.1] saves without a network, with no alert, and keeps the event unsent', async () => {
@@ -402,10 +409,15 @@ describe('SYNC-90.1', () => {
     await releaseAnswers();
 
     await expectAllUploaded();
+    // Each sync begins with a download, and the first downloads once more after its upload (SYNC-160.1).
     await waitFor(() =>
       expect(
         eventRequests(from).filter((request) => request.startsWith('GET')),
-      ).toHaveLength(2),
+      ).toEqual([
+        download(brisbane),
+        download(brisbane),
+        download(brisbane, 3),
+      ]),
     );
     expect(apiEventIds(brisbane)).toEqual(written);
     expect(mostAtOnce(brisbane)).toBe(1);

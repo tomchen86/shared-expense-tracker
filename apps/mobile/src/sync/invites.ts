@@ -67,8 +67,8 @@ export async function applyMergedInvite(
   groupId: string,
   record: Extract<SyncRecord, { type: 'invite' }>,
 ) {
-  if (record.deleted) return deleteInvite(tx, groupId, record.id);
-  const link = record.units.link!.value; // The only unit of an invite.
+  const link = record.units.link?.value;
+  if (!link) return deleteInvite(tx, groupId, record.id);
   return storeInvite(
     tx,
     groupId,

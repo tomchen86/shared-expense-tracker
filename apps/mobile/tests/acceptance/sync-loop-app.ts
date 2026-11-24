@@ -87,7 +87,12 @@ export interface Sent {
 type Act =
   | { kind: 'no-answer' }
   | { kind: 'lose-answer' }
-  | { kind: 'answer'; status: number; body: string }
+  | {
+      kind: 'answer';
+      status: number;
+      body: string;
+      headers: Record<string, string>;
+    }
   | { kind: 'then'; hook: () => Promise<void> };
 
 interface Rule {
@@ -238,7 +243,23 @@ export function setApiTime(ms: number) {
 
 const noNetwork = () => new TypeError('Network request failed');
 
-function reach(sent: Sent): Promise<{ status: number; body: Buffer }> {
+/** The headers of an answer that the phone gets: the ones that say something about the body, and the API's own. */
+function headersToPass(all: Record<string, string | string[] | undefined>) {
+  return Object.fromEntries(
+    Object.entries(all).flatMap(([name, value]) =>
+      typeof value === 'string' &&
+      (name === 'content-type' ||
+        name === 'cache-control' ||
+        name.startsWith('x-'))
+        ? [[name, value]]
+        : [],
+    ),
+  );
+}
+
+function reach(
+  sent: Sent,
+): Promise<{ status: number; body: Buffer; headers: Record<string, string> }> {
   const { hostname, port } = new URL(sent.url);
   return new Promise((resolve, reject) => {
     const outgoing = httpRequest(
@@ -262,6 +283,7 @@ function reach(sent: Sent): Promise<{ status: number; body: Buffer }> {
           resolve({
             status: response.statusCode ?? 0,
             body: Buffer.concat(chunks),
+            headers: headersToPass(response.headers),
           }),
         );
         response.on('error', reject);
@@ -306,14 +328,20 @@ async function fetchThroughTheTests(
     if (act?.kind === 'no-answer') throw noNetwork();
     if (act?.kind === 'answer') {
       sent.status = act.status;
-      return new Response(act.body, { status: act.status });
+      return new Response(act.body, {
+        status: act.status,
+        headers: act.headers,
+      });
     }
     sent.reached = true;
     const answer = await reach(sent);
     if (act?.kind === 'lose-answer') throw noNetwork();
     if (act?.kind === 'then') await act.hook();
     sent.status = answer.status;
-    return new Response(new Uint8Array(answer.body), { status: answer.status });
+    return new Response(new Uint8Array(answer.body), {
+      status: answer.status,
+      headers: answer.headers,
+    });
   } finally {
     state.inFlight -= 1;
   }
@@ -344,12 +372,21 @@ export const noAnswerTo = (method: Method, times = 1) =>
 export const loseAnswerTo = (method: Method, times = 1) =>
   rule(method, { kind: 'lose-answer' }, times);
 
-/** The tests answer the next such request in the API's place; `body` is sent as JSON unless it is text. */
-export const answerNext = (method: Method, status: number, body: unknown) =>
+/**
+ * The tests answer the next such request in the API's place; `body` is sent as JSON unless
+ * it is text, with `headers` when the answer has any.
+ */
+export const answerNext = (
+  method: Method,
+  status: number,
+  body: unknown,
+  headers: Record<string, string> = {},
+) =>
   rule(method, {
     kind: 'answer',
     status,
     body: typeof body === 'string' ? body : JSON.stringify(body),
+    headers,
   });
 
 /** Once the API has answered the next such request, `hook` runs before the phone gets the answer. */
