@@ -31,8 +31,8 @@ import { readGroupKey } from './transport';
 
 /**
  * Read the outbox, cursor and merged records at one point in the ledger's history.
- * `more` are records the local data does not hold yet: those an approval is about to
- * write (SHARING-197.1).
+ * `more` are records as an approval is about to leave them (SHARING-197.1): new ones, and
+ * ones the local data holds that the approval changes, which they stand in for.
  */
 export async function makeSnapshot(
   tx: SqlExecutor,
@@ -58,7 +58,13 @@ export async function makeSnapshot(
     groupId,
     sequence: ledger.cursor,
     uncategorized: (await groupUncategorized(tx, groupId)).id,
-    records: [...(await snapshotRecords(tx, groupId)), ...more],
+    records: [
+      ...(await snapshotRecords(tx, groupId)).filter(
+        (held) =>
+          !more.some(({ type, id }) => type === held.type && id === held.id),
+      ),
+      ...more,
+    ],
   };
   if (checkSyncSnapshot(content).status !== 'valid')
     throw new Error('Invalid snapshot in local data');

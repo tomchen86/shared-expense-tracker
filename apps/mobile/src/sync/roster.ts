@@ -8,7 +8,10 @@ import type { SqlExecutor } from '../storage';
 
 type Entry = { value: SyncUnits['device']['member']; stamp: SyncStamp };
 
-/** A shared ledger's roster entries by device ID: which member each device represents. */
+/**
+ * A shared ledger's roster entries by device ID: which member each device represents, or
+ * null for a device that left and represents nobody (SYNC-250.2).
+ */
 export async function readRoster(
   tx: SqlExecutor,
   groupId: string,
@@ -31,11 +34,13 @@ export async function readRoster(
 
 /**
  * Gives every member and former member of a shared ledger the user ID that its roster and
- * which phone this is decide (SYNC-251.1), in whatever order the events came. You are
+ * which phone this is decide (SYNC-251.2), in whatever order the events came. You are
  * the member this phone's own entry names, and the member it created the group as or
- * joined as until an entry names one. Every other member has the user ID of the latest
- * entry of another device that names it, unless that is your user ID. A member with a
- * user ID is a member of the group whatever its `removed` unit says (SYNC-36.3).
+ * joined as while that entry names none. Every other member has the user ID of the latest
+ * entry of another device that names it, unless that is your user ID. You, and a member
+ * that another device's entry names, whatever user ID that entry carries, are members of
+ * the group whatever their `removed` unit says (SYNC-36.4); once every entry that named a
+ * member represents nobody, the unit decides again.
  * Resolves with whether that changed a member.
  */
 export async function applyRoster(
@@ -65,7 +70,7 @@ export async function applyRoster(
     [groupId],
   );
   const roster = await readRoster(tx, groupId);
-  const own = roster.get(ledger.device)?.value.memberId;
+  const own = roster.get(ledger.device)?.value?.memberId;
   const you =
     own !== undefined && members.some(({ id }) => id === own)
       ? own
@@ -84,18 +89,24 @@ export async function applyRoster(
     for (const [device, entry] of roster)
       if (
         device !== ledger.device &&
-        entry.value.memberId === memberId &&
+        entry.value?.memberId === memberId &&
         entry.value.userId !== ledger.userId &&
         (!latest || compareSyncStamps(entry.stamp, latest.stamp) > 0)
       )
         latest = entry;
-    return latest?.value.userId ?? null;
+    return latest?.value?.userId ?? null;
   };
+  /** The members another device represents, whatever user ID its entry carries. */
+  const represented = new Set<string>();
+  for (const [device, entry] of roster)
+    if (device !== ledger.device && entry.value)
+      represented.add(entry.value.memberId);
 
   let changed = false;
   for (const member of members) {
     const userId = userIdOf(member.id);
-    const removed = userId === null ? member.left : 0;
+    const removed =
+      member.id === you || represented.has(member.id) ? 0 : member.left;
     if (userId === member.userId && removed === member.removed) continue;
     await tx.run(
       'UPDATE group_members SET userId = ?, removed = ? WHERE id = ?',

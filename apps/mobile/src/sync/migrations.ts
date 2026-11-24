@@ -1,7 +1,9 @@
 /**
  * What a phone keeps of a shared ledger. `ownMemberId` is the member this phone is while
- * its own roster entry names none of the ledger's (SYNC-251.1): the one it created the
- * group as, or the one it joined as.
+ * its own roster entry names none of the ledger's (SYNC-251.2): the one it created the
+ * group as, or the one it joined as. `readOnly` is why the ledger is a read-only copy on
+ * this phone, and empty while it is none (SYNC-302.1). `maxEpoch` is the highest key epoch
+ * among the events of the pages the phone has stored (SYNC-304.1).
  */
 export const syncMigration = `
   CREATE TABLE sync_groups (
@@ -9,7 +11,9 @@ export const syncMigration = `
     device TEXT NOT NULL,
     ownMemberId TEXT,
     waitsForSnapshot INTEGER NOT NULL DEFAULT 0 CHECK (waitsForSnapshot IN (0, 1)),
-    snapshotNeedingUpdate TEXT
+    snapshotNeedingUpdate TEXT,
+    readOnly TEXT CHECK (readOnly IN ('not-a-member', 'left', 'lapsed')),
+    maxEpoch INTEGER NOT NULL DEFAULT 0
   );
   CREATE TABLE sync_clock (
     singleton INTEGER PRIMARY KEY CHECK (singleton = 1),

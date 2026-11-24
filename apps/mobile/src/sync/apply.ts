@@ -35,6 +35,11 @@ export interface ReceivedSyncEvent {
   /** When the API received it, in milliseconds since the Unix epoch. */
   receivedAtMs: number;
   content: unknown;
+  /**
+   * Set for an event the phone did not open because its key epoch is lower than one it
+   * has stored (SYNC-304.1): it is recorded as refused for that, and not judged.
+   */
+  refused?: 'epoch';
 }
 
 /** A received event that was judged not to apply. */
@@ -155,6 +160,22 @@ export async function applyReceivedEvents(
     }
   }
   for (const received of events) {
+    if (received.refused) {
+      // Not judged, so it is no change of this phone that was not applied either, and
+      // nothing is taken back (SYNC-304.1).
+      await tx.run(
+        `INSERT INTO sync_refusals (groupId, id, device, receivedAtMs, content, reason)
+         VALUES (?, ?, ?, ?, 'null', ?) ON CONFLICT (groupId, id) DO NOTHING`,
+        [
+          groupId,
+          received.id,
+          received.device,
+          received.receivedAtMs,
+          received.refused,
+        ],
+      );
+      continue;
+    }
     const verdict = checkSyncEvent(received.content, received);
     if (verdict.status === 'unsupported')
       throw new Error('Unknown sync event format version');
@@ -211,7 +232,7 @@ export async function applyReceivedEvents(
     if (await project(record, previous?.record, event.stamp.ms))
       visibleChange = true;
   }
-  // Whichever arrived first, a member or the roster entry that names it (SYNC-251.1).
+  // Whichever arrived first, a member or the roster entry that names it (SYNC-251.2).
   if (
     (rosterChanged || toOrder.has('member')) &&
     (await applyRoster(tx, groupId))

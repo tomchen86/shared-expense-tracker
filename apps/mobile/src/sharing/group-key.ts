@@ -20,6 +20,11 @@ export function storeGroupKey(groupId: string, epoch: number, key: Uint8Array) {
   );
 }
 
+/** Deletes the entry of one key epoch; an entry that is not there is no error. */
+export function deleteGroupKey(groupId: string, epoch: number) {
+  return SecureStore.deleteItemAsync(entry(groupId, epoch), SEED_OPTIONS);
+}
+
 export async function ensureFirstGroupKey(groupId: string) {
   const held = await readGroupKeyEntry(groupId, 1);
   if (held === null || !GROUP_KEY_HEX.test(held))

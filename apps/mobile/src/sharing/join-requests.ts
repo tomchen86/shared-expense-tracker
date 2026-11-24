@@ -32,6 +32,14 @@ export interface JoinRequest extends InviteCredentials {
    * request is unsent or waits.
    */
   outcome?: 'choose-again' | 'approved' | null;
+  /**
+   * The group ID of the copy of the invite's group this phone held when the request was
+   * first stored (SHARING-226.2): the only group an approval of it may replace.
+   */
+  copyGroupId?: string | null;
+  /** The group whose keys joining has saved for this request, up to `keysEpoch` (SHARING-282.1). */
+  keysGroupId?: string | null;
+  keysEpoch?: number | null;
 }
 
 /**
@@ -206,8 +214,8 @@ export async function sendJoinRequest(
   if (isNew) {
     try {
       const saved = await db.run(
-        `INSERT INTO join_requests (code, secret, groupName, name, memberId)
-         SELECT ?, ?, ?, ?, ? FROM local_identity, device_identity
+        `INSERT INTO join_requests (code, secret, groupName, name, memberId, copyGroupId)
+         SELECT ?, ?, ?, ?, ?, ? FROM local_identity, device_identity
          WHERE userId = ? AND deviceId = COALESCE(?, deviceId)`,
         [
           request.code,
@@ -215,6 +223,7 @@ export async function sendJoinRequest(
           request.groupName,
           request.name,
           request.memberId,
+          request.copyGroupId ?? null,
           userId,
           device?.deviceId ?? null,
         ],

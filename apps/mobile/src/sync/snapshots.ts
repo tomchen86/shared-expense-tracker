@@ -250,7 +250,21 @@ export interface Joining {
   accepts: (snapshot: SyncSnapshot) => boolean;
   /** Runs in the transaction that takes the snapshot in, once it is in. */
   alsoIn: (tx: SqlExecutor) => Promise<void>;
+  /**
+   * Runs in that transaction before the snapshot is taken in: deletes the copy of the
+   * group the phone holds, which the snapshot replaces (SHARING-289.1). A snapshot that
+   * is then not taken in leaves the copy as it was.
+   */
+  replaces?: (tx: SqlExecutor) => Promise<void>;
+  /**
+   * Called when the phone has no key of the snapshot's key epoch, before it gives up: the
+   * group rotated its key since the phone was approved (SHARING-281.1).
+   */
+  missingKey?: (epoch: number) => Promise<void>;
 }
+
+/** The snapshot was not taken in, and what `replaces` deleted for it must come back. */
+class NotTakenIn extends Error {}
 
 interface SnapshotGroup {
   apiUrl: string;
@@ -283,7 +297,11 @@ async function downloadChunks(
   joining?: Joining,
 ): Promise<TakeSnapshotResult | NoAnswer> {
   const { apiUrl, groupId } = group;
-  const key = await readGroupKey(groupId, envelope.epoch);
+  let key = await readGroupKey(groupId, envelope.epoch);
+  if (!key && joining?.missingKey) {
+    await joining.missingKey(envelope.epoch);
+    key = await readGroupKey(groupId, envelope.epoch);
+  }
   if (!key) return { outcome: 'no-key' };
 
   const pieces: Uint8Array[] = [];
@@ -318,13 +336,24 @@ async function downloadChunks(
     joining?.accepts(verdict.snapshot) === false
   )
     return { outcome: 'unusable' };
-  const result = await database.transaction((tx) =>
-    takeAtSequence(tx, group, verdict.snapshot.sequence, async () => {
-      const taken = await importSnapshot(tx, verdict.snapshot, envelope.epoch);
-      if (taken) await joining?.alsoIn(tx);
-      return { outcome: taken ? 'imported' : 'unusable' };
-    }),
-  );
+  const result = await database
+    .transaction((tx) =>
+      takeAtSequence(tx, group, verdict.snapshot.sequence, async () => {
+        await joining?.replaces?.(tx);
+        const taken = await importSnapshot(
+          tx,
+          verdict.snapshot,
+          envelope.epoch,
+        );
+        if (taken) await joining?.alsoIn(tx);
+        else if (joining?.replaces) throw new NotTakenIn();
+        return { outcome: taken ? 'imported' : 'unusable' };
+      }),
+    )
+    .catch((error: unknown): TakeSnapshotResult => {
+      if (error instanceof NotTakenIn) return { outcome: 'unusable' };
+      throw error;
+    });
   if (result.outcome === 'imported') notifyApplied(database, groupId);
   return result;
 }
