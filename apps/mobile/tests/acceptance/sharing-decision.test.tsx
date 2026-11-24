@@ -293,7 +293,7 @@ test('[GROUPS-170.2] counts the changes that were not applied above the requests
   // The API now says it received the phone's own event an hour before its stamp, which
   // the real API never does: the event comes back as one every phone refuses. It says so
   // before its answer to the upload reaches the phone, because the download that follows
-  // a confirmed upload brings the event back in the same sync (SYNC-160.1).
+  // a confirmed upload brings the event back in the same sync (SYNC-160.2).
   apiReceivedAt(brisbane, added.id, added.content.stamp.ms - HOUR);
   await releaseAnswers();
   await waitFor(async () => expect(await unsent()).toEqual([]));
@@ -431,7 +431,7 @@ describe('SHARING-190.2', () => {
     await syncs();
     await waitFor(() => expect(apiEventIds(brisbane)).toContain(added.id));
     // The answer to the upload goes to the phone. The answer to the download that follows
-    // it (SYNC-160.1) never comes: the two calls leave no moment between them in which
+    // it (SYNC-160.2) never comes: the two calls leave no moment between them in which
     // the phone could send that download and have it answered.
     const released = releaseAnswers();
     holdAnswers('GET');

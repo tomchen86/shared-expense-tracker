@@ -409,7 +409,7 @@ describe('SYNC-90.1', () => {
     await releaseAnswers();
 
     await expectAllUploaded();
-    // Each sync begins with a download, and the first downloads once more after its upload (SYNC-160.1).
+    // Each sync begins with a download, and the first downloads once more after its upload (SYNC-160.2).
     await waitFor(() =>
       expect(
         eventRequests(from).filter((request) => request.startsWith('GET')),

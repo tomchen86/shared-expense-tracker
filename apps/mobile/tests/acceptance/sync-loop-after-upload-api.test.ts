@@ -59,8 +59,8 @@ const GROUP_LIMIT = 10_485_760;
 /** What a sync with one unsent event sends once its upload is confirmed. */
 const DOWN_UP_DOWN = ['download after=0', 'upload', 'download after=0'];
 
-describe('SYNC-160.1', () => {
-  test('[SYNC-160.1] downloads again once its upload is confirmed, and the next sync starts after its own event', async () => {
+describe('SYNC-160.2', () => {
+  test('[SYNC-160.2] downloads again once its upload is confirmed, and the next sync starts after its own event', async () => {
     const { a, brisbane } = await twoPhones();
     await addExpense(a);
     const from = mark();
@@ -79,7 +79,7 @@ describe('SYNC-160.1', () => {
     expect(await storedEvents(brisbane)).toHaveLength(1);
   });
 
-  test('[SYNC-160.1] a sync that uploads nothing downloads once', async () => {
+  test('[SYNC-160.2] a sync that uploads nothing downloads once', async () => {
     const { a } = await twoPhones();
     const from = mark();
 
@@ -94,7 +94,7 @@ describe('SYNC-160.1', () => {
     expect(await requestsOf(a, next)).toEqual(DOWN_UP_DOWN);
   });
 
-  test('[SYNC-160.1] a sync whose upload got no answer downloads once', async () => {
+  test('[SYNC-160.2] a sync whose upload got no answer downloads once', async () => {
     const { a } = await twoPhones();
     await addExpense(a);
     loseAnswerTo('POST');
@@ -116,7 +116,7 @@ describe('SYNC-160.1', () => {
     expect(await unsent(a)).toEqual([]);
   });
 
-  test('[SYNC-160.1] a sync whose upload was refused because the group is full downloads once', async () => {
+  test('[SYNC-160.2] a sync whose upload was refused because the group is full downloads once', async () => {
     const { a, brisbane } = await twoPhones();
     await addExpense(a);
     await setStoredBytes(brisbane, GROUP_LIMIT - 100);
@@ -133,7 +133,7 @@ describe('SYNC-160.1', () => {
     expect(await requestsOf(a, next)).toEqual(DOWN_UP_DOWN);
   });
 
-  test("[SYNC-160.1] the second download brings what another phone uploaded between this phone's download and its upload", async () => {
+  test("[SYNC-160.2] the second download brings what another phone uploaded between this phone's download and its upload", async () => {
     const { a, b, brisbane, key } = await twoPhones();
     await addExpense(a);
     const [dinner] = await unsent(a);
@@ -158,7 +158,7 @@ describe('SYNC-160.1', () => {
     expect(await requestsOf(a, next)).toEqual(['download after=2']);
   });
 
-  test('[SYNC-160.1] after several uploads it downloads page by page to the end', async () => {
+  test('[SYNC-160.2] after several uploads it downloads page by page to the end', async () => {
     const { a } = await twoPhones();
     for (let index = 0; index < 250; index += 1) {
       await renameGroup(a, `Trip ${index + 1}`);
@@ -182,7 +182,7 @@ describe('SYNC-160.1', () => {
     expect(await requestsOf(a, next)).toEqual(['download after=250']);
   });
 
-  test('[SYNC-160.1] downloads again when one upload was confirmed and the next did not reach the API', async () => {
+  test('[SYNC-160.2] downloads again when one upload was confirmed and the next did not reach the API', async () => {
     const { a, brisbane } = await twoPhones();
     for (let index = 0; index < 250; index += 1) {
       await renameGroup(a, `Trip ${index + 1}`);
@@ -207,7 +207,7 @@ describe('SYNC-160.1', () => {
     expect((await downloads(a, next))[0]).toBe('after=100');
   });
 
-  test('[SYNC-160.1] a second download with no answer ends the sync, and the confirmed event is not uploaded again', async () => {
+  test('[SYNC-160.2] a second download with no answer ends the sync, and the confirmed event is not uploaded again', async () => {
     const { a, brisbane } = await twoPhones();
     await addExpense(a);
     whenAnswered('POST', async () => goOffline());
@@ -242,7 +242,7 @@ describe('SYNC-160.1', () => {
     ['that it needs a snapshot', 410, { error: 'snapshot-needed' }],
     ['that it goes on from a number', 410, { error: 'continue', after: 5 }],
   ])(
-    '[SYNC-160.1] ends the sync when the second download is answered with %s',
+    '[SYNC-160.2] ends the sync when the second download is answered with %s',
     async (_case, status, body) => {
       const { a } = await twoPhones();
       await addExpense(a);
@@ -267,7 +267,55 @@ describe('SYNC-160.1', () => {
     },
   );
 
-  test('[SYNC-160.1] a change saved while it downloads again is uploaded by the next sync', async () => {
+  test('[SYNC-160.2] with [SYNC-300.1] sends nothing more for the ledger once the download after its upload is refused as no member device', async () => {
+    const { a } = await twoPhones();
+    await addExpense(a);
+    // The download that follows the upload, not the one the sync begins with.
+    whenAnswered('POST', async () =>
+      answerNext('GET', 403, { error: 'not-a-member' }),
+    );
+    const from = mark();
+
+    await sync(a);
+
+    expect(await requestsOf(a, from)).toEqual(DOWN_UP_DOWN);
+    expect(await unsent(a)).toEqual([]);
+    expect(await titles(a)).toEqual(['Dinner']);
+
+    const next = mark();
+    await sync(a);
+
+    expect(await requestsOf(a, next)).toEqual([]);
+  });
+
+  test('[SYNC-160.2] with [SYNC-300.1] downloads no second time when a later upload is refused as no member device', async () => {
+    const { a, brisbane } = await twoPhones();
+    for (let index = 0; index < 250; index += 1) {
+      await renameGroup(a, `Trip ${index + 1}`);
+    }
+    // The second upload, once the first has been answered.
+    whenAnswered('POST', async () =>
+      answerNext('POST', 403, { error: 'not-a-member' }),
+    );
+    const from = mark();
+
+    await sync(a);
+
+    expect(await requestsOf(a, from)).toEqual([
+      'download after=0',
+      'upload',
+      'upload',
+    ]);
+    expect(await storedEvents(brisbane)).toHaveLength(100);
+    expect(await unsent(a)).toHaveLength(150);
+
+    const next = mark();
+    await sync(a);
+
+    expect(await requestsOf(a, next)).toEqual([]);
+  });
+
+  test('[SYNC-160.2] a change saved while it downloads again is uploaded by the next sync', async () => {
     const { a } = await twoPhones();
     await addExpense(a);
     whenAnswered('POST', async () =>
@@ -295,7 +343,7 @@ describe('SYNC-160.1', () => {
     expect(await unsent(a)).toEqual([]);
   });
 
-  test('[SYNC-160.1] the second download stops before an event in a format version it does not know, as the first did', async () => {
+  test('[SYNC-160.2] the second download stops before an event in a format version it does not know, as the first did', async () => {
     const { a, b, brisbane, key } = await twoPhones();
     await uploadAs(b, key, [
       {
@@ -324,7 +372,7 @@ describe('SYNC-160.1', () => {
     expect(await unsent(a)).toEqual([]);
   });
 
-  test('[SYNC-160.1] with [SYNC-136.2] a phone that uploaded and then stayed away for 31 days gets a page, though the cleanup deleted its event', async () => {
+  test('[SYNC-160.2] with [SYNC-136.2] a phone that uploaded and then stayed away for 31 days gets a page, though the cleanup deleted its event', async () => {
     const setup = await twoPhones();
     const { a, b, brisbane } = setup;
     await addExpense(a);

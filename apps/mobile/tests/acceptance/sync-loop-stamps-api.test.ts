@@ -274,7 +274,7 @@ describe('SYNC-85.1', () => {
     const { a, A, brisbane, key, written, from } = await afterAnHourAhead();
 
     // The download is refused for the clock first, and accepted at the API's time; the
-    // download after the upload follows at that time too (SYNC-160.1).
+    // download after the upload follows at that time too (SYNC-160.2).
     expect(await attempts(a, from, 'GET')).toEqual([
       [String(FAST), 401],
       [String(NOW), 200],

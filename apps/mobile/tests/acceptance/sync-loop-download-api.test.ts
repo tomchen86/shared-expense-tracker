@@ -325,7 +325,7 @@ describe('SYNC-69.2', () => {
 
     await sync(a);
 
-    // The second download brings its own event back (SYNC-160.1).
+    // The second download brings its own event back (SYNC-160.2).
     expect(await downloads(a, from)).toEqual(['after=0', 'after=0']);
     expect(await ledgerOf(a)).toEqual(ledger);
     expect(await unsent(a)).toEqual([]);
@@ -357,7 +357,7 @@ describe('SYNC-69.2', () => {
 
     await sync(a);
 
-    // One download before the upload, and the one after it (SYNC-160.1).
+    // One download before the upload, and the one after it (SYNC-160.2).
     expect(await requestsOf(a, from)).toEqual([
       `GET /groups/${brisbane}/events?after=0`,
       `POST /groups/${brisbane}/events`,

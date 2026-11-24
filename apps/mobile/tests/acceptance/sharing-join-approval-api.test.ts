@@ -482,7 +482,7 @@ describe('SHARING-195.2', () => {
     goOffline();
     await addExpense(taylor, { title: 'Lunch' });
     goOnline();
-    // The API confirms the upload of Lunch; the download that follows it (SYNC-160.1) gets
+    // The API confirms the upload of Lunch; the download that follows it (SYNC-160.2) gets
     // no answer.
     whenAnswered('POST', async () => noAnswerTo('GET'));
     const from = mark();
