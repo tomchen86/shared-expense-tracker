@@ -47,7 +47,8 @@ Also considered:
 - The import check compares the file's sync rows with the phone's. A file edited by hand can pass it, as it can pass every other check (ADR-0020), and leave the phone a member device whose ledger is gone; another member removes it.
 - Deleting a copy removes the only place its unsent changes existed. The confirmation says how many.
 - A request sent from a phone with an editable copy can be approved days later. The copy and whatever was added to it since are replaced then, with no second question; the confirmation says so and points to Export.
-- A copy none of whose members is on the card is not recognised when the request is sent, so nothing is asked; the snapshot still replaces it.
+- A request records the copy it was sent over, and an approval replaces that copy only. An approval that names another group the phone holds, a copy or a group of its own, stops before any key is saved: a member with the invite string hands over the invite's group (ADR-0039), not any group whose ID it knows.
+- A copy none of whose members is on the card is not recognised when the request is sent, so nothing is asked and the request records none. The approval then stops as above and the copy stays. A read-only copy can be deleted and the join tried again; a group of the phone's own has no delete yet.
 - The rule for a returning person goes by name. Someone who types another name becomes a second member; adding them back in Members before they ask, or merging members (#184), repairs it. A newcomer who shares a former member's name has to pick another, as in Members.
 - An approval can carry a change to an existing member record. The snapshot uploaded with the approval holds it like the new member's record.
 - A replaced copy comes back as a new group: at the end of the list, not archived, without its own sort order, filters and "my own change" marks.

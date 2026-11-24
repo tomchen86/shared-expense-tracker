@@ -4319,9 +4319,9 @@ WHEN API 回答同意了，the mobile app SHALL 把申請記成同意了還沒�
 - **WHEN** box 的第一個 byte 是 `0x02`
 - **THEN** Join Group 顯示「Approved」、「Brisbane」和「Update the app to finish joining this group.」
 
-### Requirement: SHARING-217.1 先存下 box 裡的群組鑰匙，再匯入快照
+### Requirement: SHARING-217.2 先存下 box 裡的群組鑰匙，再匯入快照
 
-WHEN box 打開了，the mobile app SHALL 把裡面每一把群組鑰匙寫進 secure store 名稱是 `group-key.<群組 ID>.<鑰匙世代>` 的項目（SYNC-66.1），設定和 SHARING-93.1 一樣，再替那個群組匯入快照（SYNC-121.1 到 SYNC-128.3、SHARING-218.1、SHARING-219.2）。這時那個群組還不是這支手機上的共同帳本，所以鑰匙不是照 SYNC-94.1 存的：匯入讓它成為共同帳本，這支手機在它的鑰匙世代是快照的（SYNC-124.2）。鑰匙在這支手機用它解任何事件之前就驗證過：它來自打得開的 box，而且解得開那份快照；解不開快照時（SYNC-123.1）群組沒有成為共同帳本，這支手機不下載它的事件。IF 鑰匙存不進 secure store，THEN the mobile app SHALL 不匯入，加入沒有做完，原因是出了問題。
+WHEN box 打開了，the mobile app SHALL 把裡面每一把群組鑰匙寫進 secure store 名稱是 `group-key.<群組 ID>.<鑰匙世代>` 的項目（SYNC-66.1），設定和 SHARING-93.1 一樣，再替那個群組匯入快照（SYNC-121.1 到 SYNC-128.3、SHARING-218.1、SHARING-219.2）。這時那個群組還不是這支手機上的共同帳本，所以鑰匙不是照 SYNC-94.1 存的：匯入讓它成為共同帳本，這支手機在它的鑰匙世代是快照的（SYNC-124.2）。鑰匙在這支手機用它解任何事件之前就驗證過：它來自打得開的 box，而且解得開那份快照；解不開快照時（SYNC-123.1）群組沒有成為共同帳本，這支手機不下載它的事件。IF 鑰匙存不進 secure store，THEN the mobile app SHALL 不匯入，加入沒有做完，原因是出了問題。IF 本機資料已經有群組 ID 是回應的 `groupId` 的群組，它是唯讀副本或不是共同帳本的群組，而這個申請沒有記著它（SHARING-226.2），THEN the mobile app SHALL 不存任何鑰匙，不問那個群組有沒有快照，加入沒有做完，原因是出了問題，那個群組和之前一樣：它不是使用者送出申請時答應取代的那一份，裝 box 的人就算有邀請的字串，也換不掉它。申請記著它時照常存下鑰匙，匯入時取代它（SHARING-289.1）。
 
 #### Scenario: 鑰匙在 secure store
 
@@ -4337,6 +4337,11 @@ WHEN box 打開了，the mobile app SHALL 把裡面每一把群組鑰匙寫進 s
 
 - **WHEN** box 打開了，secure store 這時卻寫不進去；恢復之後按「Try Again」
 - **THEN** 先是 API 沒有收到問快照的請求，Join Group 顯示「Something went wrong. Try again later.」和「Try Again」；按了之後加入好了
+
+#### Scenario: 同意指的是申請沒有記著的群組
+
+- **WHEN** Dana 的手機申請加入 Brisbane，申請沒有記著任何副本；它另外有自己建立、不是共同帳本的群組 Tokyo；它得知同意時，回應的 `groupId` 是 Tokyo 的群組 ID，box 打得開
+- **THEN** secure store 裡沒有任何群組鑰匙，API 沒有收到問快照的請求；Join Group 顯示同意了和「Something went wrong. Try again later.」；Tokyo 和之前一樣
 
 ### Requirement: SHARING-218.1 匯入之前確認快照的名冊
 
@@ -4449,7 +4454,7 @@ WHILE Join Group 顯示手機上的一個申請，the mobile app SHALL 照它的
 
 ### Requirement: SHARING-226.2 手機上有這個群組的副本時，送出申請之前先確認
 
-WHILE Join Group 顯示一個邀請的表單，而這支手機有這個群組的副本，the mobile app SHALL 照常顯示表單（SHARING-125.1）。這個群組的副本，是這支手機上一個群組，名片上有一位成員的成員 ID 是它的成員或前成員的成員 ID，有兩種：唯讀副本（sync）；和這支手機自己的一份，也就是不是共同帳本的群組，例如匯入過那個群組變成共同帳本之前的匯出檔（backup）。WHEN 使用者在表單按「Send Request」，而它沒有被 SHARING-127.1 或 SHARING-128.1 擋下，這支手機也不是授權失效（那時不問，照 SHARING-141.1 說它不能加入），the mobile app SHALL 在下面兩種情況先跳出提示框，不存申請，不發出網路請求。副本是這支手機自己的一份時，標題「Replace Your Copy?」，訊息「This phone has its own copy of <群組名稱>. If your request is approved, the group's version replaces it, and anything changed only in your copy will be lost. To keep it, export your data first.」，群組名稱是表單上的。副本是唯讀副本，而且有待上傳的事件時，標題「Replace This Copy?」，訊息是「If your request is approved, the group's version replaces the read-only copy on this phone.」、一個空格，再接：一個時「1 change made on this phone was never sent to the group and will be lost.」，其他時候「<個數> changes made on this phone were never sent to the group and will be lost.」。按鈕都是「Cancel」和「Send Request」。按「Send Request」才照 SHARING-134.1 存下申請並送出；按「Cancel」關閉提示框，表單、名字欄位和選著的那一列都不變，Android 上按返回鍵或點提示框外面也一樣。唯讀副本沒有待上傳的事件時不問，直接照 SHARING-134.1：它有的，群組都有。這支手機自己的一份每次都問，也不寫筆數：送出時還沒有群組的版本，手機 app 不知道哪些東西只有這一份有。替還沒送出的申請按「Try Again」（SHARING-139.2），和替要重選的申請再按「Send Request」（SHARING-212.1）時不再問。副本在被同意、匯入快照的那一刻才被取代（SHARING-289.1），在那之前都不變。名片上的成員是這支手機上一個不是唯讀副本的共同帳本的成員或前成員時，照 SHARING-130.2 打開那個群組。
+WHILE Join Group 顯示一個邀請的表單，而這支手機有這個群組的副本，the mobile app SHALL 照常顯示表單（SHARING-125.1）。這個群組的副本，是這支手機上一個群組，名片上有一位成員的成員 ID 是它的成員或前成員的成員 ID，有兩種：唯讀副本（sync）；和這支手機自己的一份，也就是不是共同帳本的群組，例如匯入過那個群組變成共同帳本之前的匯出檔（backup）。WHEN 使用者在表單按「Send Request」，而它沒有被 SHARING-127.1 或 SHARING-128.1 擋下，這支手機也不是授權失效（那時不問，照 SHARING-141.1 說它不能加入），the mobile app SHALL 在下面兩種情況先跳出提示框，不存申請，不發出網路請求。副本是這支手機自己的一份時，標題「Replace Your Copy?」，訊息「This phone has its own copy of <群組名稱>. If your request is approved, the group's version replaces it, and anything changed only in your copy will be lost. To keep it, export your data first.」，群組名稱是表單上的。副本是唯讀副本，而且有待上傳的事件時，標題「Replace This Copy?」，訊息是「If your request is approved, the group's version replaces the read-only copy on this phone.」、一個空格，再接：一個時「1 change made on this phone was never sent to the group and will be lost.」，其他時候「<個數> changes made on this phone were never sent to the group and will be lost.」。按鈕都是「Cancel」和「Send Request」。按「Send Request」才照 SHARING-134.1 存下申請並送出；按「Cancel」關閉提示框，表單、名字欄位和選著的那一列都不變，Android 上按返回鍵或點提示框外面也一樣。唯讀副本沒有待上傳的事件時不問，直接照 SHARING-134.1：它有的，群組都有。不論問了沒有，存下的申請都記著這個副本的群組 ID，重新啟動 app 之後還記著：被同意時，只有它可以被取代（SHARING-217.2、SHARING-289.1）。這支手機自己的一份每次都問，也不寫筆數：送出時還沒有群組的版本，手機 app 不知道哪些東西只有這一份有。替還沒送出的申請按「Try Again」（SHARING-139.2），和替要重選的申請再按「Send Request」（SHARING-212.1）時不再問。副本在被同意、匯入快照的那一刻才被取代（SHARING-289.1），在那之前都不變。名片上的成員是這支手機上一個不是唯讀副本的共同帳本的成員或前成員時，照 SHARING-130.2 打開那個群組。
 
 #### Scenario: 這支手機自己的一份
 
@@ -5171,7 +5176,7 @@ IF 這支手機的下載正停在一個事件前（SYNC-73.1），而拿到的 b
 
 ### Requirement: SHARING-281.1 加入時快照的鑰匙世代比交接的新，先拿鑰匙再匯入
 
-WHEN 加入時（SHARING-217.1）API 回答的那份給這支手機的快照，鑰匙世代比交接的 box 裡最大的鑰匙世代大，the mobile app SHALL 先送拿鑰匙的請求（SHARING-259.1），`after` 是 box 裡最大的鑰匙世代，照 SHARING-278.1 和 SHARING-279.1 一個一個打開，上一個世代的群組鑰匙從交接的 box 裡的那一把算起；把打開的每一把照 SHARING-217.1 寫進 secure store，再匯入快照。這支手機被同意之後、加入之前，群組換過鑰匙時就是這樣。IF 這樣仍沒有快照的鑰匙世代的群組鑰匙，THEN the mobile app SHALL 不匯入，加入沒有做完，原因是出了問題（SHARING-221.1）。
+WHEN 加入時（SHARING-217.2）API 回答的那份給這支手機的快照，鑰匙世代比交接的 box 裡最大的鑰匙世代大，the mobile app SHALL 先送拿鑰匙的請求（SHARING-259.1），`after` 是 box 裡最大的鑰匙世代，照 SHARING-278.1 和 SHARING-279.1 一個一個打開，上一個世代的群組鑰匙從交接的 box 裡的那一把算起；把打開的每一把照 SHARING-217.2 寫進 secure store，再匯入快照。這支手機被同意之後、加入之前，群組換過鑰匙時就是這樣。IF 這樣仍沒有快照的鑰匙世代的群組鑰匙，THEN the mobile app SHALL 不匯入，加入沒有做完，原因是出了問題（SHARING-221.1）。
 
 #### Scenario: 被同意之後群組換過鑰匙
 
@@ -5304,7 +5309,7 @@ WHEN 使用者在申請的選單按「Approve」，而那個申請要當新成�
 
 ### Requirement: SHARING-289.1 被同意之後，匯入的快照取代這支手機上的副本
 
-WHEN 加入時匯入快照（SHARING-217.1 到 SHARING-219.2），而本機資料有群組 ID 和快照的群組 ID 相同的群組，它是唯讀副本，或不是共同帳本，the mobile app SHALL 在匯入的同一個 SQLite transaction 裡，先刪掉那個群組和本機資料替它存著的每一樣東西，和刪除唯讀副本時刪的一樣（groups 的 GROUPS-158.1），再匯入快照、刪掉申請（SHARING-219.2）；其中一個存不進去就都不留下，副本和申請都還在，加入沒有做完（SHARING-221.1）。匯入之後和原本沒有這個群組的手機一樣（SYNC-125.2）：它是共同帳本，不是唯讀副本，沒有封存，排在這支手機的群組的最後，內容是快照的；副本裡沒送出的變更、只在那一份裡改過的東西都不在了，使用者送出申請之前確認過（SHARING-226.2）。在那之前副本都不變：申請還在等、被拒絕（SHARING-213.1）、邀請不再有效（SHARING-214.1）、申請被取消（SHARING-142.1）或加入沒有做完時，副本都和送出申請之前一樣，唯讀副本仍是唯讀副本。這樣副本不會先不見、加入卻沒成功，兩邊都沒有。
+WHEN 加入時匯入快照（SHARING-217.2 到 SHARING-219.2），而本機資料有群組 ID 和快照的群組 ID 相同的群組，它是唯讀副本，或不是共同帳本，也是這個申請記著的那個副本（SHARING-226.2），the mobile app SHALL 在匯入的同一個 SQLite transaction 裡，先刪掉那個群組和本機資料替它存著的每一樣東西，和刪除唯讀副本時刪的一樣（groups 的 GROUPS-158.1），再匯入快照、刪掉申請（SHARING-219.2）；其中一個存不進去就都不留下，副本和申請都還在，加入沒有做完（SHARING-221.1）。匯入之後和原本沒有這個群組的手機一樣（SYNC-125.2）：它是共同帳本，不是唯讀副本，沒有封存，排在這支手機的群組的最後，內容是快照的；副本裡沒送出的變更、只在那一份裡改過的東西都不在了，使用者送出申請之前確認過（SHARING-226.2）。在那之前副本都不變：申請還在等、被拒絕（SHARING-213.1）、邀請不再有效（SHARING-214.1）、申請被取消（SHARING-142.1）或加入沒有做完時，副本都和送出申請之前一樣，唯讀副本仍是唯讀副本。這樣副本不會先不見、加入卻沒成功，兩邊都沒有。回應指的是這支手機上申請沒有記著的副本或群組時，加入在存下鑰匙之前就停下（SHARING-217.2），那個群組不變。
 
 #### Scenario: 唯讀副本
 

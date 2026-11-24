@@ -947,8 +947,8 @@ describe('SHARING-216.1', () => {
   );
 });
 
-describe('SHARING-217.1', () => {
-  test('[SHARING-217.1] does not take in a snapshot the key of its box does not open', async () => {
+describe('SHARING-217.2', () => {
+  test('[SHARING-217.2] does not take in a snapshot the key of its box does not open', async () => {
     await waiting();
     memberApproves({ snapshotKey: new Uint8Array(32).fill(3) });
 
@@ -960,8 +960,8 @@ describe('SHARING-217.1', () => {
   });
 });
 
-describe('SHARING-217.1', () => {
-  test('[SHARING-217.1] does not ask for the snapshot when the key cannot be saved, and joins on Try Again once it can', async () => {
+describe('SHARING-217.2', () => {
+  test('[SHARING-217.2] does not ask for the snapshot when the key cannot be saved, and joins on Try Again once it can', async () => {
     await waiting();
     memberApproves();
     failSecureStoreWrites();
@@ -981,6 +981,25 @@ describe('SHARING-217.1', () => {
     expect(groupKeys().map(({ key }) => key)).toEqual([
       `group-key.${BRISBANE_ID}.1`,
     ]);
+  });
+});
+
+describe('SHARING-217.2', () => {
+  test('[SHARING-217.2] [SHARING-289.1] saves no key and asks for no snapshot when the approval names a group of the phone that the request was not sent for', async () => {
+    await waiting();
+    // Tokyo is this phone's own group; the request is for Brisbane and records no copy.
+    await tapTab('Groups');
+    await createGroup('Tokyo');
+    const tokyo = await groupId('Tokyo');
+    const before = rowsWith(tokyo);
+    memberApproves({ groupId: tokyo });
+
+    await openRequest('Brisbane');
+
+    await expectJoinLines([APPROVED, 'Brisbane', WENT_WRONG, 'Try Again']);
+    expect(groupKeys()).toEqual([]);
+    expect(requestsReceived().filter(isSnapshotQuestion)).toEqual([]);
+    expect(rowsWith(tokyo)).toEqual(before);
   });
 });
 
