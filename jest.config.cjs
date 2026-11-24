@@ -115,7 +115,7 @@ module.exports = {
     './apps/api/src/sharing/decision-routes.ts': { branches: 100 },
     './apps/api/src/sharing/join-decisions.ts': { branches: 100 },
     './apps/mobile/src/sync/roster.ts': { branches: 100 },
-    './apps/mobile/src/sharing/join-decisions.ts': { branches: 93.04 },
+    './apps/mobile/src/sharing/join-decisions.ts': { branches: 93.91 },
     './apps/mobile/src/sharing/received-requests.ts': { branches: 93.33 },
     './apps/mobile/src/groups/join-requests.tsx': { branches: 92.85 },
     // The event API: what stores a shared ledger's events, numbers them and hands them
