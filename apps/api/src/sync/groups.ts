@@ -40,12 +40,23 @@ export async function lockMemberGroup(
     JOIN group_members m ON m.group_id = g.id
     WHERE g.id = ${groupId} AND m.device_id = ${deviceId}
     FOR UPDATE OF g`;
-  if (
-    rows.length === 0 ||
-    !(await isMemberDevice(transaction, groupId, deviceId))
-  )
-    return undefined;
-  return rows[0];
+  return stillMember(transaction, groupId, deviceId, rows.at(0));
+}
+
+/**
+ * `locked`, the group as a statement that waited for its lock found it, unless a statement
+ * of its own finds that the device is no member device any more.
+ */
+export async function stillMember<Locked>(
+  transaction: TransactionSql,
+  groupId: string,
+  deviceId: string,
+  locked: Locked | undefined,
+): Promise<Locked | undefined> {
+  return locked !== undefined &&
+    (await isMemberDevice(transaction, groupId, deviceId))
+    ? locked
+    : undefined;
 }
 
 /** Whether the device is a member device of the group as this statement finds it. */
@@ -245,7 +256,7 @@ export function readPage(
     async (tx) => {
       // Downloads share the lock. Uploads and cleanup wait until the page, progress
       // and any deletion of the recipient's snapshot have committed.
-      const [member] = await tx<
+      const [locked] = await tx<
         { last_sequence: string; rotation_needed: boolean }[]
       >`
         SELECT g.last_sequence, g.rotation_needed
@@ -253,16 +264,14 @@ export function readPage(
         JOIN group_members m ON m.group_id = g.id
         WHERE g.id = ${groupId} AND m.device_id = ${deviceId}
         FOR SHARE OF g`;
+      // While this holds the lock no device is taken out, so its member row stays.
+      const member = await stillMember(tx, groupId, deviceId, locked);
       if (!member) return { error: 'not-a-member' };
       if (after > Number(member.last_sequence)) return { error: 'request' };
       // A phone that has caught up is told to rotate, and no progress is recorded
       // (SYNC-57.3). One that is behind gets its page first.
       if (member.rotation_needed && after === Number(member.last_sequence)) {
-        const refusal = await rotationNeeded(tx, groupId);
-        // A device that was taken out while this waited is told what any other is.
-        return refusal.devices.includes(deviceId)
-          ? refusal
-          : { error: 'not-a-member' };
+        return rotationNeeded(tx, groupId);
       }
 
       // The cleared prefix ends just before the first retained event, or at the last
@@ -277,8 +286,6 @@ export function readPage(
         FROM cleared
         WHERE group_id = ${groupId} AND device_id = ${deviceId}
         RETURNING cleared_to`;
-      // No row: the device was taken out of the group while this waited for the lock.
-      if (!progress) return { error: 'not-a-member' };
       const clearedTo = Number(progress.cleared_to);
       const members = membersWithSnapshots(tx, groupId);
       if (after < clearedTo) {

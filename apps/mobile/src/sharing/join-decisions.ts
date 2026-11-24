@@ -56,15 +56,10 @@ import { takeCheckedStamps } from '../sync/stamps';
 import { apiUrl } from './api-address';
 import { prepareSigningDevice, sendApiRequest } from './api-request';
 import { readCorrectedTime, type SigningDevice } from './device-identity';
-import {
-  deleteGroupKey,
-  forgetJoinKeys,
-  readJoinKeys,
-  rememberJoinKeys,
-  storeGroupKey,
-} from './group-key';
+import { storeGroupKey } from './group-key';
 import type { InviteCredentials } from './invite-card';
 import { readInviteCard, type CardUnread, type JoinCard } from './join-invite';
+import { dropJoinKeys, forgetJoinKeys, rememberJoinKeys } from './join-keys';
 import {
   REQUEST_PURPOSE,
   requestByCode,
@@ -433,21 +428,20 @@ async function prepareApproval(
   const memberId = addBack ?? request.memberId ?? (await createUuid(tx));
   if (addBack !== undefined) {
     // Only while he is still a former member: someone may have added him back since.
-    const stored = await readSyncRecord(tx, groupId, 'member', addBack);
-    const removed =
-      stored?.record.type === 'member'
-        ? stored.record.units.removed
-        : undefined;
-    const former = await tx.all(
-      'SELECT 1 FROM group_members WHERE groupId = ? AND id = ? AND removed = 1',
+    const [former] = await tx.all<{ removedAt: string }>(
+      `SELECT json_extract(r.record, '$.units.removed.stamp') AS removedAt
+       FROM group_members m JOIN sync_records r
+         ON r.groupId = m.groupId AND r.type = 'member' AND r.id = m.id
+       WHERE m.groupId = ? AND m.id = ? AND m.removed = 1`,
       [groupId, addBack],
     );
-    if (request.memberId !== null || !removed || former.length === 0)
-      return undefined;
+    if (!former) return undefined;
     changes.push({
       type: 'member',
       id: addBack,
-      units: { removed: { value: false, base: removed.stamp } },
+      units: {
+        removed: { value: false, base: JSON.parse(former.removedAt) as object },
+      },
     });
   } else if (request.memberId === null)
     changes.push({
@@ -675,19 +669,6 @@ const ended = (outcome: 'declined' | 'invalid') =>
   `UPDATE join_requests SET code = NULL, secret = NULL, name = NULL, memberId = NULL,
      copyGroupId = NULL, sent = 0, outcome = '${outcome}' WHERE code = ? AND secret = ?`;
 
-/**
- * Deletes the group keys that joining through the invite `code` saved for a group this
- * phone has not joined after all (SHARING-282.1). Keys of a group it holds by now stay.
- */
-async function dropJoinKeys(database: SqlExecutor, code: string) {
-  const saved = await readJoinKeys(code).catch(() => undefined);
-  if (!saved) return;
-  if ((await heldGroup(database, saved.groupId)) === 'none')
-    for (let each = 1; each <= saved.epoch; each += 1)
-      await deleteGroupKey(saved.groupId, each).catch(() => undefined);
-  await forgetJoinKeys(code).catch(() => undefined);
-}
-
 /** Whether the request still fits the invite's card, so that a member can approve it (SHARING-212.1). */
 function fitsCard(
   { members }: JoinCard,
@@ -894,7 +875,8 @@ export async function askJoinResult(
   const mine = [code, request.secret];
   const refusal = refusalIn(answer);
   if (refusal === 'no-invite') {
-    if (request.outcome === 'approved') await dropJoinKeys(database, code);
+    // Whatever joining saved for it goes with it.
+    await dropJoinKeys(database, code).catch(() => undefined);
     await database.run(ended('invalid'), mine);
     return { outcome: 'invalid' };
   }
@@ -922,7 +904,7 @@ export async function askJoinResult(
     // The API holds no handover for a phone that this phone's data says was approved.
     if (result.state !== 'none') return unfinished('failed');
     // A member removed it before it joined (SHARING-282.1): the keys it saved go too.
-    await dropJoinKeys(database, code);
+    await dropJoinKeys(database, code).catch(() => undefined);
     await database.run(ended('declined'), mine);
     return { outcome: 'declined' };
   }

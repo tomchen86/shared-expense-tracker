@@ -255,15 +255,15 @@ export interface Joining {
    * group the phone holds, which the snapshot replaces (SHARING-289.1). A snapshot that
    * is then not taken in leaves the copy as it was.
    */
-  replaces?: (tx: SqlExecutor) => Promise<void>;
+  replaces: (tx: SqlExecutor) => Promise<void>;
   /**
    * Called when the phone has no key of the snapshot's key epoch, before it gives up: the
    * group rotated its key since the phone was approved (SHARING-281.1).
    */
-  missingKey?: (epoch: number) => Promise<void>;
+  missingKey: (epoch: number) => Promise<void>;
 }
 
-/** The snapshot was not taken in, and what `replaces` deleted for it must come back. */
+/** The snapshot was not taken in: its transaction fails, so what `replaces` deleted for it is back. */
 class NotTakenIn extends Error {}
 
 interface SnapshotGroup {
@@ -298,7 +298,7 @@ async function downloadChunks(
 ): Promise<TakeSnapshotResult | NoAnswer> {
   const { apiUrl, groupId } = group;
   let key = await readGroupKey(groupId, envelope.epoch);
-  if (!key && joining?.missingKey) {
+  if (!key && joining) {
     await joining.missingKey(envelope.epoch);
     key = await readGroupKey(groupId, envelope.epoch);
   }
@@ -339,15 +339,11 @@ async function downloadChunks(
   const result = await database
     .transaction((tx) =>
       takeAtSequence(tx, group, verdict.snapshot.sequence, async () => {
-        await joining?.replaces?.(tx);
-        const taken = await importSnapshot(
-          tx,
-          verdict.snapshot,
-          envelope.epoch,
-        );
-        if (taken) await joining?.alsoIn(tx);
-        else if (joining?.replaces) throw new NotTakenIn();
-        return { outcome: taken ? 'imported' : 'unusable' };
+        await joining?.replaces(tx);
+        if (!(await importSnapshot(tx, verdict.snapshot, envelope.epoch)))
+          throw new NotTakenIn();
+        await joining?.alsoIn(tx);
+        return { outcome: 'imported' };
       }),
     )
     .catch((error: unknown): TakeSnapshotResult => {

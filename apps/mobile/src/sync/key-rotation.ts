@@ -94,35 +94,31 @@ function keyIn(
   sealed: StoredKeyBox,
   previousKey: Uint8Array,
 ): Uint8Array | 'unsupported' | undefined {
-  let opened;
   try {
-    opened = openBox({
+    const opened = openBox({
       recipientSecretKey: device.boxSecretKey,
       senderPublicKey: hexToBytes(sealed.senderKey),
       salt: rotationSalt(previousKey),
       context: rotationContext(groupId, device.deviceId, sealed.epoch),
       box: hexToBytes(sealed.box),
     });
+    if (!opened.ok)
+      return opened.reason === 'unsupported-version'
+        ? 'unsupported'
+        : undefined;
+    const { keys } = jsonIn(opened.plaintext) as { keys: unknown };
+    if (!Array.isArray(keys) || keys.length !== 1) return undefined;
+    const [held] = keys as [{ epoch: unknown; key: unknown }];
+    return held.epoch === sealed.epoch &&
+      typeof held.key === 'string' &&
+      GROUP_KEY_HEX.test(held.key)
+      ? hexToBytes(held.key)
+      : undefined;
   } catch {
-    // A public key that is no point to agree a key with.
+    // A public key that is no point to agree a key with, or content that is no object.
     return undefined;
   }
-  if (!opened.ok)
-    return opened.reason === 'unsupported-version' ? 'unsupported' : undefined;
-  const said = jsonIn(opened.plaintext);
-  const keys = isObject(said) ? said.keys : undefined;
-  if (!Array.isArray(keys) || keys.length !== 1) return undefined;
-  const [held] = keys as unknown[];
-  return isObject(held) &&
-    held.epoch === sealed.epoch &&
-    typeof held.key === 'string' &&
-    GROUP_KEY_HEX.test(held.key)
-    ? hexToBytes(held.key)
-    : undefined;
 }
-
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
  * Asks the API for the boxes it keeps for this phone after `after` and opens them one

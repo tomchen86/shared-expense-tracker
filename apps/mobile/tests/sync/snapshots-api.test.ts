@@ -36,6 +36,7 @@ import {
   unsent,
   uploadAs,
   whenAnswered as whenEventAnswered,
+  type Phone,
 } from '../acceptance/sync-loop-app';
 import {
   answerNext,
@@ -125,8 +126,19 @@ test.each(['snapshot', 'continue'])(
   },
 );
 
+/**
+ * The import these tests run reads the secure store of the phone that was started last,
+ * which is `last`'s. It is given `phone`'s seed, so that the import finds `phone` on its
+ * own phone and leaves its shared ledgers as they are (BACKUP-29.1).
+ */
+function importsOnItsOwnPhone(phone: Phone, last: Phone) {
+  for (const [name, held] of phone.state.store)
+    if (name.startsWith('device-seed.')) last.state.store.set(name, held);
+}
+
 test('a backup restored while fetching a snapshot can already cover it', async () => {
   const { a, b } = await twoPhones();
+  importsOnItsOwnPhone(a, b);
   const before = await copyOfData(a);
   await addExpense(b, { title: 'Lunch' });
   await sync(b);
@@ -172,6 +184,7 @@ test('an interrupted snapshot download keeps the update notice only for the same
 
 test('a backup restores a retained upload alongside a later unsent event', async () => {
   const { a, b } = await twoPhones();
+  importsOnItsOwnPhone(a, b);
   await addExpense(a);
   const [retained] = await unsent(a);
   whenEventAnswered('POST', async () => noEventAnswerTo('GET'));
@@ -214,6 +227,7 @@ test('a signed page response exposes the snapshot recipient header to its caller
 
 test('a retained upload goes ahead of an older event whose content a backup restored during confirmation', async () => {
   const { a, b, A, brisbane, key } = await twoPhones();
+  importsOnItsOwnPhone(a, b);
   await addExpense(a);
   await addExpense(a, { title: 'Lunch' });
   const [older, later] = await unsent(a);

@@ -59,7 +59,7 @@ export async function removeMemberDevices(
   try {
     // Whether or not this sync runs to its end: a phone that is behind, or waits for a
     // snapshot, can remove a device too.
-    const before = await sync();
+    await sync();
     const plan: RotationPlan = { memberId };
     for (let sent = 1; ; sent += 1) {
       const result = await rotateGroupKey(database, ledger, plan);
@@ -88,14 +88,8 @@ export async function removeMemberDevices(
         case 'no-answer':
           return { outcome: 'no-answer' };
         default:
-          // Nothing was sent, or the API said something else. Without a network the
-          // sync before it got no answer either.
-          return {
-            outcome:
-              result.outcome === 'cannot' && before.noAnswer
-                ? 'no-answer'
-                : 'failed',
-          };
+          // Nothing could be sent, or the API said something else.
+          return { outcome: 'failed' };
       }
     }
   } catch {

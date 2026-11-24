@@ -9,9 +9,9 @@ import {
 import type { TransactionSql } from 'postgres';
 import type { Sql } from '../database/connect';
 import {
-  isMemberDevice,
   lockMemberGroup,
   memberDevices,
+  stillMember,
   storeLockedGroupEvents,
   type EventApiRefusal,
 } from '../sync/groups';
@@ -182,12 +182,12 @@ export function readKeys(
     async (tx) => {
       // Like a download, it shares the group's lock: a rotation and a leave wait, so a
       // device that is being taken out gets no box of the rotation that removes it.
-      const [member] = await tx`
+      const [locked] = await tx`
         SELECT 1 FROM groups g
         JOIN group_members m ON m.group_id = g.id
         WHERE g.id = ${groupId} AND m.device_id = ${deviceId}
         FOR SHARE OF g`;
-      if (!member || !(await isMemberDevice(tx, groupId, deviceId))) {
+      if (!(await stillMember(tx, groupId, deviceId, locked))) {
         return { error: 'not-a-member' };
       }
       // Read one box past what a page holds to tell whether more follow.

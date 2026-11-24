@@ -59,25 +59,25 @@ export async function deleteGroupKeys(groupId: string, epoch: number) {
 
 /**
  * Makes the shared ledger a read-only copy in one transaction, deletes its group keys and
- * tells its screens. Resolves with whether it became one now: it was none before.
+ * tells its screens. A group that is a copy already, or no shared ledger, stays as it is.
  */
 export async function becomeReadOnlyCopy(
   database: Database,
   groupId: string,
   reason: ReadOnlyCopyReason,
-): Promise<boolean> {
+): Promise<void> {
   const epoch = await database.transaction(async (tx) => {
-    const [ledger] = await tx.all<{ epoch: number }>(
-      'SELECT epoch FROM sync_groups WHERE groupId = ? AND readOnly IS NULL',
+    // 0 for a group whose keys are not this change's to delete.
+    const [{ epoch }] = await tx.all<{ epoch: number }>(
+      `SELECT COALESCE((SELECT epoch FROM sync_groups
+         WHERE groupId = ? AND readOnly IS NULL), 0) AS epoch`,
       [groupId],
     );
-    if (ledger) await makeReadOnlyCopy(tx, groupId, reason);
-    return ledger?.epoch;
+    await makeReadOnlyCopy(tx, groupId, reason);
+    return epoch;
   });
-  if (epoch === undefined) return false;
   await deleteGroupKeys(groupId, epoch);
   notifyApplied(database, groupId);
-  return true;
 }
 
 /**
