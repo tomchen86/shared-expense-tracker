@@ -20,8 +20,6 @@ import { isHexContent, isId, isWhole } from './wire';
 
 /** The most bytes the contents of a page's requests add up to: 256 KiB. */
 export const REQUESTS_PAGE_CONTENT_LIMIT = 262_144;
-/** The most member devices a group has. */
-export const MEMBER_DEVICE_LIMIT = 20;
 
 /** A join request as a member device lists it. */
 export interface ListedJoinRequest {

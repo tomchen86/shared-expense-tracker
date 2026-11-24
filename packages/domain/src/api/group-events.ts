@@ -114,7 +114,7 @@ export const GROUP_REFUSAL_STATUS: Record<GroupRefusalReason, number> = {
   'rotation-needed': 409,
 };
 
-/** The most member devices a group has (SHARING-173.2), so the most such a refusal lists. */
+/** The most member devices a group has, so the most such a refusal lists. */
 export const MEMBER_DEVICE_LIMIT = 20;
 
 /**

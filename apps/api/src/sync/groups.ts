@@ -16,22 +16,72 @@ import { membersWithSnapshots } from './snapshots';
 /** Why the event API refuses a request that passed the checks before routing. */
 export type EventApiRefusal = GroupRefusal | { error: 'request' };
 
-/** Only a member device may lock the group for a write. A waiter sees the last writer's cursor. */
+/**
+ * Only a member device may lock the group for a write. A waiter sees the last writer's
+ * cursor, but it would still see its own member row though that writer removed it
+ * (SHARING-250.1): the rows a statement joins to the one it waited for are as old as the
+ * statement. So a statement of its own looks again once the lock is held.
+ */
 export async function lockMemberGroup(
   transaction: TransactionSql,
   groupId: string,
   deviceId: string,
 ) {
   const rows = await transaction<
-    { epoch: string; last_sequence: string; stored_bytes: string }[]
+    {
+      epoch: string;
+      last_sequence: string;
+      stored_bytes: string;
+      rotation_needed: boolean;
+    }[]
   >`
-    SELECT g.epoch, g.last_sequence, g.stored_bytes
+    SELECT g.epoch, g.last_sequence, g.stored_bytes, g.rotation_needed
     FROM groups g
     JOIN group_members m ON m.group_id = g.id
     WHERE g.id = ${groupId} AND m.device_id = ${deviceId}
     FOR UPDATE OF g`;
-  return rows.at(0);
+  if (
+    rows.length === 0 ||
+    !(await isMemberDevice(transaction, groupId, deviceId))
+  )
+    return undefined;
+  return rows[0];
 }
+
+/** Whether the device is a member device of the group as this statement finds it. */
+export async function isMemberDevice(
+  transaction: TransactionSql,
+  groupId: string,
+  deviceId: string,
+): Promise<boolean> {
+  const [member] = await transaction`
+    SELECT 1 FROM group_members
+    WHERE group_id = ${groupId} AND device_id = ${deviceId}`;
+  return member !== undefined;
+}
+
+/** The group's member devices as the API lists them: the smallest device ID first. */
+export async function memberDevices(
+  transaction: TransactionSql,
+  groupId: string,
+): Promise<string[]> {
+  const rows = await transaction<{ device_id: string }[]>`
+    SELECT device_id FROM group_members
+    WHERE group_id = ${groupId} ORDER BY device_id`;
+  return rows.map(({ device_id }) => device_id);
+}
+
+/**
+ * What a group that needs a rotation answers an upload of new events, an approval and a
+ * download from its last number (SHARING-256.1). The caller holds the group's lock.
+ */
+export const rotationNeeded = async (
+  transaction: TransactionSql,
+  groupId: string,
+): Promise<GroupRefusal & { error: 'rotation-needed' }> => ({
+  error: 'rotation-needed',
+  devices: await memberDevices(transaction, groupId),
+});
 
 /**
  * Creates the group with the device as its only member device (SYNC-45.1), or finds that
@@ -66,7 +116,7 @@ export async function createGroup(
  * Stores the events of an upload that the group does not have yet, under the group's
  * next sequence numbers in the order of the request, and resolves with the number of
  * every event of the request (SYNC-50.1, 51.1), or with why none was stored
- * (SYNC-49.1, 55.1, 56.1).
+ * (SYNC-49.1, 55.1, 56.1, SHARING-256.1).
  *
  * It is one transaction that holds the lock on the group's row from its first statement
  * to its commit, so the uploads of a group commit in the order of their sequence
@@ -97,7 +147,8 @@ export function storeEvents(
 
 /**
  * What `storeEvents` does once its transaction holds the group's lock, for an approval
- * to store its events in a transaction of its own (SHARING-173.1).
+ * and a rotation to store their events in a transaction of their own (SHARING-173.2,
+ * SHARING-250.1).
  */
 export async function storeLockedGroupEvents(
   transaction: TransactionSql,
@@ -127,6 +178,8 @@ export async function storeLockedGroupEvents(
 
   const fresh = events.filter(({ id }) => !sequences.has(id));
   if (fresh.length > 0) {
+    // Nothing new is stored under the key a device that left knows (SYNC-60.2).
+    if (group.rotation_needed) return rotationNeeded(transaction, groupId);
     if (epoch !== Number(group.epoch)) {
       return { error: 'epoch', epoch: Number(group.epoch) };
     }
@@ -192,14 +245,25 @@ export function readPage(
     async (tx) => {
       // Downloads share the lock. Uploads and cleanup wait until the page, progress
       // and any deletion of the recipient's snapshot have committed.
-      const [member] = await tx<{ last_sequence: string }[]>`
-        SELECT g.last_sequence
+      const [member] = await tx<
+        { last_sequence: string; rotation_needed: boolean }[]
+      >`
+        SELECT g.last_sequence, g.rotation_needed
         FROM groups g
         JOIN group_members m ON m.group_id = g.id
         WHERE g.id = ${groupId} AND m.device_id = ${deviceId}
         FOR SHARE OF g`;
       if (!member) return { error: 'not-a-member' };
       if (after > Number(member.last_sequence)) return { error: 'request' };
+      // A phone that has caught up is told to rotate, and no progress is recorded
+      // (SYNC-57.3). One that is behind gets its page first.
+      if (member.rotation_needed && after === Number(member.last_sequence)) {
+        const refusal = await rotationNeeded(tx, groupId);
+        // A device that was taken out while this waited is told what any other is.
+        return refusal.devices.includes(deviceId)
+          ? refusal
+          : { error: 'not-a-member' };
+      }
 
       // The cleared prefix ends just before the first retained event, or at the last
       // assigned number when none remain. Read it after acquiring the group lock.
@@ -213,6 +277,8 @@ export function readPage(
         FROM cleared
         WHERE group_id = ${groupId} AND device_id = ${deviceId}
         RETURNING cleared_to`;
+      // No row: the device was taken out of the group while this waited for the lock.
+      if (!progress) return { error: 'not-a-member' };
       const clearedTo = Number(progress.cleared_to);
       const members = membersWithSnapshots(tx, groupId);
       if (after < clearedTo) {
@@ -230,7 +296,7 @@ export function readPage(
       }
 
       // Read one event past a full page to tell whether more follow, and decode only
-      // the contents the page returns (SYNC-57.2).
+      // the contents the page returns (SYNC-57.3).
       const events = await tx<
         {
           id: string;

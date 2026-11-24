@@ -14,6 +14,13 @@ import type { Migration } from '../database/migrate';
  * - `invite_handovers`: what an approval left for the device it admitted (SHARING-186.1):
  *   the invite's code, the two devices, the sender's box public key, the key epoch and the
  *   box. It goes when that device first downloads a page of the group's events.
+ * - `group_key_boxes`: a box that holds the key of one key epoch for one member device
+ *   (SHARING-263.1), with the box public key of the phone that made it. It goes when its
+ *   device has saved that key or is no member device any more (SHARING-260.1).
+ *
+ * `groups.rotation_needed` says that a device left and no phone has rotated the key since
+ * (SHARING-254.1). The code of an invite whose group was deleted stays, with no group, so
+ * that it is never used again (SHARING-255.1).
  */
 export const sharingMigrations: readonly Migration[] = [
   {
@@ -100,6 +107,23 @@ export const sharingMigrations: readonly Migration[] = [
         box bytea NOT NULL,
         PRIMARY KEY (code, device_id)
       );
+    `,
+  },
+  {
+    name: 'sharing/0005-create-key-boxes',
+    sql: `
+      ALTER TABLE groups ADD COLUMN rotation_needed boolean NOT NULL DEFAULT false;
+
+      CREATE TABLE group_key_boxes (
+        group_id uuid NOT NULL REFERENCES groups (id),
+        device_id uuid NOT NULL REFERENCES devices (id),
+        epoch bigint NOT NULL,
+        sender_key bytea NOT NULL CHECK (octet_length(sender_key) = 32),
+        box bytea NOT NULL,
+        PRIMARY KEY (group_id, device_id, epoch)
+      );
+
+      ALTER TABLE group_invites ALTER COLUMN group_id DROP NOT NULL;
     `,
   },
 ];
