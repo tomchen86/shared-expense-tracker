@@ -1,7 +1,7 @@
 # ADR-0039: A member admits a phone in one request, and a roster record says which member it is
 
 - Date: 2026-11-23
-- Status: Accepted
+- Status: Accepted; parts are superseded by ADR-0046
 
 ## Context
 
