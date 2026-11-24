@@ -28,14 +28,17 @@ export function forgetJoinKeys(code: string) {
 
 /**
  * Deletes the group keys that joining through the invite `code` saved, for a group this
- * phone has not joined after all. The keys of a group it holds by now stay.
+ * phone has not joined after all. Only the keys of a shared ledger it is in by now stay:
+ * a copy of the group that the request was sent over has no key of its own, so every key
+ * under its group ID is one that joining saved.
  */
 export async function dropJoinKeys(database: SqlExecutor, code: string) {
   const saved = await SecureStore.getItemAsync(entry(code), SEED_OPTIONS);
   const [groupId, epoch] = (saved ?? '').split('.');
-  const held = await database.all('SELECT 1 FROM groups WHERE id = ?', [
-    groupId,
-  ]);
+  const held = await database.all(
+    'SELECT 1 FROM sync_groups WHERE groupId = ? AND readOnly IS NULL',
+    [groupId],
+  );
   // No entry leaves no epoch to count to.
   for (let each = 1; held.length === 0 && each <= Number(epoch); each += 1)
     await deleteGroupKey(groupId, each).catch(() => undefined);
