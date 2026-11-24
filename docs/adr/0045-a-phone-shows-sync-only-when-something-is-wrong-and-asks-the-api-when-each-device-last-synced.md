@@ -9,7 +9,7 @@ The cloud-sharing proposal says sync stays out of sight until something is wrong
 
 What was open:
 
-- How a phone learns when the other phones last synced. The API already records, for each member device, the time of its last download that got a page (its progress, ADR-0024). No phone can read it.
+- How a phone learns when the other phones last synced. The API already records a time with each member device's progress (ADR-0024): when a download of that device last got a page, when the API last told it that it needs a snapshot or can go on (ADR-0033, ADR-0034), or, until it downloads, when a member admitted it (ADR-0039). No phone can read it.
 - What "offline" and "not synced for long" mean on a phone that syncs only at certain moments, and when the phone decides them.
 - Whether a phone that waits for a snapshot, or cannot rotate, gets words of its own.
 
@@ -24,7 +24,7 @@ Also considered:
 
 ## Decision
 
-1. A member device asks `GET /groups/<group ID>/devices`, a signed request (ADR-0022). The API answers with every member device of the group and the time of its progress, or none while it has no progress. The API stores nothing for it, and the request changes nothing: asking is not syncing.
+1. A member device asks `GET /groups/<group ID>/devices`, a signed request (ADR-0022). The API answers with every member device of the group and the time of its progress, or none while it has no progress. That time says when the device last came to the API for the group's events and was served, or was admitted; it does not say that the device holds the group's latest data. The API stores nothing for it, and the request changes nothing: asking is not syncing.
 2. A phone asks when Members opens on a shared ledger in which someone else has a phone, and shows the answer there, by member, through the roster (ADR-0039). It keeps the answer only while Members is open. When the request fails in any way, Members shows what it showed before #151.
 3. A phone's own state comes from its own syncs alone. It records, per shared ledger, when a download last got a page. When a sync ends it decides what the group's screen says until the next sync ends: nothing; that it has not synced for three days, with the date; or that the sync got no answer. The last two are not stored: after a restart the sync that opens the app decides again.
 4. A ledger that waits for a snapshot says so for as long as it waits, from the moment it starts, and that line replaces the other two. A phone that cannot rotate has no line of its own: its changes show the clock, and after three days the line of item 3 appears.
@@ -33,6 +33,7 @@ Also considered:
 ## Consequences
 
 - Every member device can read when each other device of its groups last downloaded, to the millisecond, by asking the API. The proposal accepts that members see this; the API has always held it (ADR-0024).
+- The time on Members and a phone's own state can differ. A phone that has waited three weeks for a snapshot and opens the app every day shows as synced today on the other phones, while its own screen says the group is out of date; a phone admitted last month that never opened the app again shows the day it was admitted. Both tell a member what the time is for: whether that phone is still in use.
 - Members shows the times only while the phone reaches the API, and a moment after it opens. Until the answer arrives a row says "Joined", as before.
 - "Not synced for long" and "no answer" appear only after a sync has ended, so a build with no API address never shows them, and neither does a phone in the seconds before its first sync of a start ends.
 - A phone decides "three days" by its own clock at the two moments. A clock set back hides the line, and one set forward shows it early; the next sync that gets a page clears it either way.

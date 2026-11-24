@@ -234,6 +234,27 @@ describe('SYNC-313.1', () => {
       'is told the ledger needs a snapshot',
       (brisbane) => apiNeedsASnapshotOnce(brisbane),
     ],
+    [
+      'is answered with a page that does not follow its cursor',
+      (brisbane) =>
+        apiAnswersNext(
+          isDownloadOf(brisbane),
+          200,
+          JSON.stringify({
+            events: [
+              {
+                id: '5d2c0e4f-8b1a-4c3d-9e7f-6a5b4c3d2e1f',
+                sequence: 5,
+                deviceId: THIRD_DEVICE,
+                epoch: 1,
+                receivedAtMs: LATER + DAY,
+                content: `01${'ab'.repeat(80)}`,
+              },
+            ],
+            more: false,
+          }),
+        ),
+    ],
   ])(
     '[SYNC-313.1] keeps the time when a download a day later %s',
     async (_case, arrange) => {
@@ -246,6 +267,23 @@ describe('SYNC-313.1', () => {
       expect(await lastSynced(brisbane)).toBe(LATER);
     },
   );
+
+  test('[SYNC-313.1] [SYNC-315.1] records the time of a page it stops in, so a ledger that waits for an app update says only that after four days', async () => {
+    const { brisbane } = await synced();
+    await showGroup('Brisbane');
+    otherPhoneUploads(brisbane, newerEvent());
+    const from = mark();
+
+    await comeBackAt(LATER + 4 * DAY);
+
+    await waitFor(() =>
+      expect(eventRequests(from)).toEqual([download(brisbane)]),
+    );
+    await waitFor(() => expect(textsOn('Brisbane')[0]).toBe(UPDATE_NOTICE));
+    expect(statusLines('Brisbane')).toEqual([]);
+    expect(await lastSynced(brisbane)).toBe(LATER + 4 * DAY);
+    expect(LATER + 4 * DAY).toBe(1793678460000);
+  });
 
   test('[SYNC-313.1] keeps the time over a restart with no network', async () => {
     const { app, brisbane } = await synced();

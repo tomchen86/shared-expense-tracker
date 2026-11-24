@@ -23,10 +23,14 @@ import {
   START,
   YOU,
   appDatabase,
+  at,
+  changed,
   eachTestGetsAPhone,
   everything,
   groupId,
+  groupNamed,
   leaveMembers,
+  receive,
   members,
   setClock,
   showMembers,
@@ -41,6 +45,7 @@ import {
 } from './sync-screens-app';
 import {
   DAY,
+  FIFTH_DEVICE,
   FOURTH_DEVICE,
   OTHER_DEVICE,
   THIRD_DEVICE,
@@ -203,7 +208,29 @@ describe('SYNC-320.1', () => {
     ]);
   });
 
-  test('[SYNC-320.1] knows no time for a phone with no progress or one the answer leaves out, and uses neither its own entry nor one of a device the roster lacks', async () => {
+  test('[SYNC-320.1] leaves out the time of a phone whose roster entry represents the member under your own user ID', async () => {
+    const { brisbane, Casey } = await caseyHasAPhone();
+    const you = (await groupNamed('Brisbane')).members.find(
+      ({ name }) => name === 'Taylor',
+    )!.userId!;
+    await phoneRepresents(brisbane, THIRD_DEVICE, Casey, you, LATER + 2_000);
+    apiSaysDevicesSynced(brisbane, [
+      [await deviceId(), LATER],
+      [OTHER_DEVICE, OCT_27],
+      [THIRD_DEVICE, OCT_28],
+    ]);
+
+    await showMembers('Brisbane');
+
+    await expectMembers([
+      YOU,
+      'Casey, Last synced Oct 27, 2026',
+      'Blake',
+      'Add Member',
+    ]);
+  });
+
+  test('[SYNC-320.1] knows no time for a phone with no progress or one the answer leaves out, and uses neither its own entry, nor one of a phone whose roster entry represents nobody any more, nor one of a device the roster lacks', async () => {
     const { brisbane, Blake } = await caseyHasAPhone();
     await phoneRepresents(
       brisbane,
@@ -212,10 +239,29 @@ describe('SYNC-320.1', () => {
       'user-c',
       LATER + 2_000,
     );
+    // A fourth phone represented Blake too, and has left: its entry represents nobody.
+    await phoneRepresents(
+      brisbane,
+      FOURTH_DEVICE,
+      Blake,
+      'user-d',
+      LATER + 3_000,
+    );
+    await receive(
+      brisbane,
+      changed(
+        'device' as Parameters<typeof changed>[0],
+        FOURTH_DEVICE,
+        at(LATER + 4_000, 0, OTHER_DEVICE),
+        { member: null },
+        { member: at(LATER + 3_000, 0, FOURTH_DEVICE) },
+      ),
+    );
     apiSaysDevicesSynced(brisbane, [
       [await deviceId(), OCT_27],
       [OTHER_DEVICE, null],
       [FOURTH_DEVICE, OCT_28],
+      [FIFTH_DEVICE, OCT_28],
     ]);
     const from = mark();
 

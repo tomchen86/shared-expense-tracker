@@ -207,6 +207,7 @@ export const hasClock = (
 /** A third and a fourth phone, by their device IDs. */
 export const THIRD_DEVICE = 'c9bf9e57-1685-4c89-bafb-ff5af830be8a';
 export const FOURTH_DEVICE = 'e7f3a6c2-4b1d-4f8a-9c3e-5d6b7a8c9d0e';
+export const FIFTH_DEVICE = 'f1a2b3c4-d5e6-4f70-8a9b-0c1d2e3f4a5b';
 
 const BOX_KEY =
   'bc908a559c76aef30842db38b5e1844f63847c087cf94b793fe477da10d44e75';

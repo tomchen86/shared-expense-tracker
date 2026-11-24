@@ -54,6 +54,7 @@ import {
   otherPhoneUploads,
   otherStamp,
   releaseAnswers,
+  setBuiltApiUrl,
   startEventApi,
   startSynced,
 } from './sync-screens-app';
@@ -347,6 +348,20 @@ test('[LEDGER-240.1] draws no clock on a personal expense, nor on an expense of 
   }
   await showGroup('Tokyo');
   expect(hasClock(groupCard('Tokyo', 'Sushi'))).toBe(false);
+});
+
+test('[LEDGER-240.1] draws no clock in a build that names no API, where the event of a new expense stays unsent for good', async () => {
+  await startSynced();
+  setBuiltApiUrl(undefined);
+
+  await addDinner();
+
+  expect(await unsent()).toHaveLength(1);
+  await waitFor(() => expect(linesIn(card('Dinner'))[0]).toBe('Dinner'));
+  expect(hasClock(card('Dinner'))).toBe(false);
+  expect(readOut(card('Dinner'))).not.toContain(NOT_SENT);
+  await showGroup('Brisbane');
+  expect(hasClock(groupCard('Brisbane', 'Dinner'))).toBe(false);
 });
 
 test('[LEDGER-240.1] draws no clock on an expense of a read-only copy: its banner counts the change that was never sent', async () => {

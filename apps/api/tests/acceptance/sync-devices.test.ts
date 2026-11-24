@@ -12,6 +12,7 @@ import {
   type Answer,
   type Phone,
 } from './sharing-api';
+import { approvalOf, approve, caseyAsked } from './sharing-decisions-api';
 import { leave } from './sharing-removal-api';
 import {
   BRISBANE,
@@ -33,6 +34,13 @@ import {
   upload,
   useSyncApi,
 } from './sync-api';
+import {
+  DAY,
+  THIRTY_DAYS,
+  cleanUpAt,
+  expectSnapshotNeeded,
+  store,
+} from './sync-cleanup-api';
 
 // What a member device is told about when each member device of its group last synced
 // (ADR-0045): the time of the progress the API already records for a download that got
@@ -69,14 +77,16 @@ function expectDevices(
 
 /**
  * Brisbane with the member devices of Taylor, Casey and Dana: Taylor's downloaded at
- * T+1,000 and Casey's at T+2,000, both from cursor 0, and Dana's never has.
+ * T+1,000 and Casey's at T+2,000, both from cursor 0, and Dana's never has. Casey's
+ * phone created the group and Taylor's joined after it, so the order the devices became
+ * member devices in is not the order of their device IDs.
  */
 async function threeInBrisbane() {
   const taylor = await registered(TAYLOR);
   const casey = await registered(CASEY);
   const dana = await registered(DANA);
-  expectCreated(await createGroup(taylor, BRISBANE), BRISBANE);
-  await addMember(BRISBANE, casey);
+  expectCreated(await createGroup(casey, BRISBANE), BRISBANE);
+  await addMember(BRISBANE, taylor);
   await addMember(BRISBANE, dana);
   setTime(T + 1_000);
   expect((await download(taylor, BRISBANE, 0)).status).toBe(200);
@@ -139,6 +149,36 @@ describe('SYNC-310.1', () => {
     ]);
   });
 
+  test('[SYNC-310.1] gives a device that was admitted and has not downloaded the time of the approval, and null only to one that never downloaded', async () => {
+    const { taylor, casey, P, S } = await caseyAsked();
+    setTime(T + 1_000);
+    expect(
+      (await approve(taylor, BRISBANE, casey, approvalOf(P, S))).status,
+    ).toBe(200);
+
+    setTime(T + 2_000);
+    expectDevices(await listDevices(taylor, BRISBANE), [
+      [TAYLOR, null],
+      [CASEY, T + 1_000],
+    ]);
+  });
+
+  test('[SYNC-310.1] gives a device that was told it needs a snapshot the time of that answer, though it got no page', async () => {
+    const taylor = await registered(TAYLOR);
+    const casey = await registered(CASEY);
+    expectCreated(await createGroup(taylor, BRISBANE), BRISBANE);
+    await addMember(BRISBANE, casey);
+    await store(taylor, 5);
+    await cleanUpAt(T + THIRTY_DAYS + 1);
+    setTime(T + 31 * DAY);
+    expectSnapshotNeeded(await download(casey, BRISBANE, 2));
+
+    expectDevices(await listDevices(taylor, BRISBANE), [
+      [TAYLOR, null],
+      [CASEY, T + 31 * DAY],
+    ]);
+  });
+
   test("[SYNC-310.1] asking is not syncing: it leaves every device's progress as it was, the asking device's too", async () => {
     const { taylor, casey } = await threeInBrisbane();
 
@@ -162,8 +202,8 @@ describe('SYNC-310.1', () => {
   test("[SYNC-310.1] lists only the group's own member devices, each with its time in that group", async () => {
     const { taylor } = await threeInBrisbane();
     const blake = await registered(BLAKE);
-    expectCreated(await createGroup(taylor, TOKYO), TOKYO);
-    await addMember(TOKYO, blake);
+    expectCreated(await createGroup(blake, TOKYO), TOKYO);
+    await addMember(TOKYO, taylor);
     setTime(T + 7_000);
     expect((await download(taylor, TOKYO, 0)).status).toBe(200);
 
