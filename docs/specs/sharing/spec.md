@@ -4281,6 +4281,11 @@ WHEN 問結果的請求被拒絕，原因是沒有這個邀請，the mobile app 
 - **WHEN** 沒有網路時按了「Send Request」；之後邀請過期，有網路之後打開那個申請
 - **THEN** Join Group 顯示「Invite No Longer Valid」那幾行
 
+#### Scenario: 同意了還沒加入好的申請
+
+- **WHEN** Dana 的手機有 Brisbane 的唯讀副本，用新的邀請申請、被同意，打開了 box、存下群組鑰匙，下載快照時沒有回應；之後成員移除了她，那個邀請也被撤回（SHARING-284.1）；Dana 的手機再問結果，被拒絕，原因是沒有這個邀請
+- **THEN** 申請記成邀請不再有效；secure store 裡沒有 Brisbane 任何鑰匙世代的群組鑰匙；副本和送出申請之前一樣（SHARING-289.1）
+
 ### Requirement: SHARING-215.1 問不到結果時申請不變
 
 IF 問結果的請求沒有得到回應，被對簽名的請求的檢查拒絕（SHARING-31.2），或回應看不懂——不是 SHARING-183.1 的任何一種，沒有帶原因的 404 也算——THEN the mobile app SHALL 讓申請和問之前一樣，不跳出提示框，Join Group 和卡片顯示的不變；下次再問（SHARING-210.1）。
@@ -4930,8 +4935,8 @@ WHEN 備換鑰匙的請求，the mobile app SHALL 讓 `events` 依序是這些�
 
 #### Scenario: 還有別支手機代表他
 
-- **WHEN** 名冊裡 D 和另一支手機 E 都代表 Dana；API 回答過成員手機不一樣，名單是這支手機和 E（SHARING-274.1），所以這次只有 D 要離開
-- **THEN** 換鑰匙的請求只有一個事件：名冊紀錄 D 改成不代表任何人；沒有 Dana 的成員事件
+- **WHEN** 名冊裡 D 和另一支手機 E 都代表 Dana；D 退出了，沒有手機替群組換過鑰匙；Taylor 的手機替群組換鑰匙（SHARING-275.1），API 說成員手機是這支手機和 E，所以只有 D 要離開
+- **THEN** 換鑰匙的請求的 `remove` 是空的，只有一個事件：名冊紀錄 D 改成不代表任何人；沒有 Dana 的成員事件
 
 #### Scenario: 已經退出的手機
 
@@ -5035,6 +5040,11 @@ IF API 拒絕移除時送的換鑰匙的請求，THEN the mobile app SHALL 照�
 - **WHEN** API 拒絕換鑰匙的請求，原因是群組滿了；或回 500
 - **THEN** 都跳出「Unable to Remove Member」，訊息是「Something went wrong. Try again later.」；Members 仍列出 Dana，secure store 裡沒有鑰匙世代 2 的群組鑰匙
 
+#### Scenario: 沒有現在的群組鑰匙
+
+- **WHEN** secure store 裡沒有這支手機在 Brisbane 的鑰匙世代的群組鑰匙；在 Dana 的確認框按「Remove」
+- **THEN** API 沒有收到換鑰匙的請求；跳出「Unable to Remove Member」，訊息是「Something went wrong. Try again later.」；Members 仍列出 Dana，API 上 D 仍是成員手機
+
 ### Requirement: SHARING-275.1 API 說需要換鑰匙時，替群組換鑰匙
 
 WHEN 一個共同帳本的一次同步結束，而它的下載或上傳被拒絕，原因是需要換鑰匙（SHARING-256.1；sync 的 SYNC-62.2 判定的拒絕，寫得不對的照 SYNC-71.3、SYNC-78.2 當成別的回應），the mobile app SHALL 替群組換鑰匙：在同一個 SQLite transaction 裡，把回應的 `devices` 當成留下來的手機，照 SHARING-271.1 和 SHARING-272.1 備請求，送換鑰匙的請求，`epoch` 是這支手機在這個共同帳本的鑰匙世代加 1，`remove` 是空的。API 回答換好了之後照 SHARING-273.1 存下新的群組鑰匙，再同步這個共同帳本一次：它從 cursor 下載，再用新的鑰匙世代上傳。IF `devices` 裡有一支手機在這支手機的名冊裡沒有代表某位成員的紀錄，或這支手機沒有現在的鑰匙世代的群組鑰匙，THEN the mobile app SHALL 不送，也不再同步：別支成員手機會換。IF 換鑰匙的請求被拒絕，原因是鑰匙世代或不必換鑰匙，THEN the mobile app SHALL 再同步這個共同帳本一次，原因是鑰匙世代而它沒有那把鑰匙時先拿（SHARING-278.1）：別支手機已經換了；其他的拒絕和沒有得到回應時不再同步，待上傳的事件都留著，下一次同步時再換。這樣換了一次之後的那次同步又被拒絕、原因是需要換鑰匙時，不再換，等下一次同步；都不顯示任何提示。
@@ -5064,6 +5074,11 @@ WHEN 一個共同帳本的一次同步結束，而它的下載或上傳被拒絕
 - **WHEN** 換鑰匙的請求沒有得到回應，或 API 回 500
 - **THEN** 這次同步沒有再送請求；secure store 裡沒有鑰匙世代 2 的群組鑰匙；下一次同步時再換
 
+#### Scenario: 沒有現在的群組鑰匙
+
+- **WHEN** Dana 的手機退出之後，Taylor 的手機的 secure store 裡沒有它在 Brisbane 的鑰匙世代的群組鑰匙；它同步
+- **THEN** API 收到 Brisbane 的下載，拒絕它，原因是需要換鑰匙；之後沒有收到換鑰匙的請求，也沒有收到別的請求
+
 ### Requirement: SHARING-276.1 確認退出之後同步、送退出的請求，群組成為唯讀副本
 
 WHEN 使用者在退出的確認框按「Leave」（GROUPS-152.1），the mobile app SHALL 先同步這個共同帳本一次（SYNC-68.2），讓還沒上傳的變更先送出去，這次同步不管做完了沒有都接著做；再送退出的請求（SHARING-254.1）。API 回答退出好了之後，這個共同帳本在這支手機上成為唯讀副本，原因是退出（SYNC-300.1）；Members 關閉，群組的畫面顯示唯讀副本的橫幅（GROUPS-155.1）。IF API 拒絕退出的請求，原因是不是成員，THEN the mobile app SHALL 讓它成為唯讀副本，原因是不是成員：這支手機已經被移除了。退出不寫事件：誰離開了，由留下來替群組換鑰匙的手機寫下（SHARING-271.1）。
@@ -5082,6 +5097,11 @@ WHEN 使用者在退出的確認框按「Leave」（GROUPS-152.1），the mobile
 
 - **WHEN** Dana 的手機把 Taylor 的手機移除了，Taylor 的手機還沒有同步；它按「Leave」
 - **THEN** Brisbane 成為唯讀副本，橫幅是「You're no longer a member of this group. This copy is read-only and won't update.」
+
+#### Scenario: 同步之後才被移除
+
+- **WHEN** Taylor 的手機按「Leave」；退出之前的同步 API 照常回答，退出的請求送到之前，Dana 的手機把它移除了
+- **THEN** API 依序收到 Brisbane 的下載和退出的請求，拒絕退出的請求，原因是不是成員；Brisbane 成為唯讀副本，原因是不是成員
 
 #### Scenario: 留下來的手機看到的
 
@@ -5217,9 +5237,14 @@ WHEN 手機上的申請是同意了還沒加入好的（SHARING-221.1），而�
 - **WHEN** 成員同意了 Dana 的申請，Dana 的手機打開了 box、存下群組鑰匙，下載快照時沒有網路；之後成員移除了她；Dana 的手機重新啟動 app，API 回答 `{"state":"none"}`
 - **THEN** 卡片是「Brisbane」和「Request declined」；secure store 裡沒有 Brisbane 的群組鑰匙，本機資料的檔案裡找不到 S；這支手機沒有 Brisbane 這個群組
 
+#### Scenario: 手機上有這個群組的副本
+
+- **WHEN** Dana 的手機有 Brisbane 的唯讀副本，用新的邀請申請、被同意，打開了 box、存下群組鑰匙，下載快照時沒有回應；之後成員移除了她，那個邀請還有效；Dana 的手機再問結果，API 回答 `{"state":"none"}`
+- **THEN** 申請記成被拒絕；secure store 裡沒有 Brisbane 任何鑰匙世代的群組鑰匙；副本和送出申請之前一樣（SHARING-289.1）
+
 ### Requirement: SHARING-284.1 有人離開之後，撤回比那次離開早的邀請
 
-WHEN 一個共同帳本的一次同步結束，而這次同步開頭的下載做完了（SYNC-69.2），這支手機又替它存著一個還沒到期的邀請，那個邀請建立的時間戳記（sync）比這個共同帳本的名冊裡某一筆不代表任何人的紀錄的「代表」的時間戳記早（SYNC-1.1），the mobile app SHALL 送撤回那個邀請的請求（SHARING-82.1），不問使用者，也不顯示任何提示：離開的手機知道那條連結。WHEN API 回答撤回好了，或拒絕、原因是沒有這個邀請——別支成員手機先撤回了——the mobile app SHALL 在同一個 SQLite transaction 裡刪掉存著的這個邀請並寫下永久刪除它的事件（SYNC-80.2）；Invite 正顯示它時關閉，回到 Members。其他情況邀請不變，下一次同步之後再試。建立的時間戳記比每一次離開都晚的邀請不撤回；成員要邀人時照常建立新的（SHARING-91.1）。撤回之後，那個邀請收到、還沒有被同意的申請 API 不再存著（SHARING-174.1），所以有手機離開之後才送的同意不會成功：同意之前的那次同步（SHARING-195.2）被拒絕、原因是需要換鑰匙時，同意照 SHARING-200.2 的其他情況說明，這支手機照常替群組換鑰匙（SHARING-275.1）、撤回邀請；之後再按「Approve」，這支手機已經沒有那個邀請，照 SHARING-200.2 說明申請已經處理過。申請的人要用新的邀請再申請一次；已經被同意、還沒有加入好的手機不受影響（SHARING-183.1）。
+WHEN 一個共同帳本的一次同步結束，而這次同步開頭的下載做完了（SYNC-69.2），這支手機又替它存著一個還沒到期的邀請，那個邀請建立的時間戳記（sync）比這個共同帳本的名冊裡某一筆不代表任何人的紀錄的「代表」的時間戳記早（SYNC-1.1），the mobile app SHALL 送撤回那個邀請的請求（SHARING-82.1），不問使用者，也不顯示任何提示：離開的手機知道那條連結。WHEN API 回答撤回好了——別支成員手機先撤回了的邀請，API 也這樣回答（SHARING-82.1）——或拒絕、原因是沒有這個邀請，the mobile app SHALL 在同一個 SQLite transaction 裡刪掉存著的這個邀請並寫下永久刪除它的事件（SYNC-80.2）；Invite 正顯示它時關閉，回到 Members。其他情況邀請不變，下一次同步之後再試。建立的時間戳記比每一次離開都晚的邀請不撤回；成員要邀人時照常建立新的（SHARING-91.1）。撤回之後，那個邀請收到、還沒有被同意的申請 API 不再存著（SHARING-174.1），所以有手機離開之後才送的同意不會成功：同意之前的那次同步（SHARING-195.2）被拒絕、原因是需要換鑰匙時，同意照 SHARING-200.2 的其他情況說明，這支手機照常替群組換鑰匙（SHARING-275.1）、撤回邀請；之後再按「Approve」，這支手機已經沒有那個邀請，照 SHARING-200.2 說明申請已經處理過。申請的人要用新的邀請再申請一次；已經被同意、還沒有加入好的手機不受影響（SHARING-183.1）。
 
 #### Scenario: 移除之後
 
@@ -5233,8 +5258,13 @@ WHEN 一個共同帳本的一次同步結束，而這次同步開頭的下載做
 
 #### Scenario: 別支手機移除的
 
-- **WHEN** Dana 的手機移除了另一支手機 E；Taylor 的手機存著代號 A 的邀請，同步並套用了那些事件
-- **THEN** Taylor 的手機送撤回代號 A 的請求；API 回答沒有這個邀請時，它照樣刪掉存著的邀請，寫下永久刪除它的事件
+- **WHEN** Dana 的手機移除了另一支手機 E，代號 A 的邀請在 API 上已經被撤回；Taylor 的手機存著代號 A 的邀請，同步並套用了那些事件
+- **THEN** Taylor 的手機送撤回代號 A 的請求；API 回答撤回好了，它刪掉存著的邀請，寫下永久刪除它的事件，下一次同步時上傳；之後的同步不再送撤回的請求
+
+#### Scenario: API 說沒有這個邀請
+
+- **WHEN** Taylor 的手機移除 Dana；撤回代號 A 的請求被拒絕，原因是沒有這個邀請
+- **THEN** 它照樣刪掉存著的邀請，寫下永久刪除它的事件；之後的同步不再送撤回的請求
 
 #### Scenario: 撤回沒成功
 
