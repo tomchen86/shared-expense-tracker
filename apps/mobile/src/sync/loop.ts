@@ -18,6 +18,7 @@ import {
   type UploadEventsRequest,
 } from '@shared-expense/domain/api';
 import { decrypt } from '@shared-expense/domain/crypto';
+import { notifyExpensesChanged } from '../ledger/expenses';
 import { sendApiRequest, type ApiResult } from '../sharing/api-request';
 import { readDeviceIdentity } from '../sharing/device-identity';
 import type { Database, SqlExecutor } from '../storage';
@@ -325,13 +326,14 @@ async function continueFrom(
   groupId: string,
   after: number,
 ) {
-  await database.transaction(async (tx) => {
+  const requeued = await database.transaction(async (tx) => {
     const { changes } = await tx.run(
       'UPDATE sync_groups SET cursor = ? WHERE groupId = ? AND cursor < ?',
       [after, groupId, after],
     );
-    if (changes) await requeueConfirmedEvents(tx, groupId);
+    if (changes) return (await requeueConfirmedEvents(tx, groupId)).changes;
   });
+  if (requeued) notifyExpensesChanged(database);
 }
 
 /** Downloads to the last page (SYNC-69.2) and returns its snapshot recipients, or nothing on an early end. */
@@ -578,6 +580,7 @@ async function upload(
       return { uploaded, noticeChanged: notice.changes > 0 };
     });
     if (after.noticeChanged) notify(database, [groupId]);
+    else if (after.uploaded > 0) notifyExpensesChanged(database);
     // With nothing gone from the unsent events, the next request would be this one again.
     if (after.uploaded === 0) break;
   }
