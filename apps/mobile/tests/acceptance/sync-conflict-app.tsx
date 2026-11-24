@@ -29,10 +29,10 @@ export const MARK_TEXT =
   'This expense was changed on another phone before your change reached it. Choose which version to keep.';
 export const KEEP_CURRENT = 'Keep Current';
 export const USE_MINE = 'Use Mine';
-/** What a screen reader reads after the button that counts the expenses to review (GROUPS-107.1). */
+/** What a screen reader reads after the button that counts the expenses to review (GROUPS-107.2). */
 export const REVIEW_HINT = 'Opens the first one';
 
-/** What the button under a group's large title says when `count` of its expenses need review (GROUPS-107.1). */
+/** What the button under a group's large title says when `count` of its expenses need review (GROUPS-107.2). */
 export const needsReview = (count: number) =>
   count === 1 ? '1 expense needs review' : `${count} expenses need review`;
 

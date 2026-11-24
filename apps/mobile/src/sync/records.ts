@@ -1,9 +1,11 @@
 import {
   checkSyncEvent,
+  compareSyncStamps,
   MAX_SYNC_PLAINTEXT_BYTES,
   mergeSyncEvent,
   nextSyncStamp,
   sameSyncUnitValue,
+  type SyncEvent,
   type SyncRecord,
   type SyncRecordType,
   type SyncStamp,
@@ -56,8 +58,8 @@ interface RecordRow {
 
 function unpackRecord(row: RecordRow) {
   return {
-    created: JSON.parse(row.created) as SyncStamp,
     record: JSON.parse(row.record) as SyncRecord,
+    created: JSON.parse(row.created) as SyncStamp,
     seeded: row.seeded === 1,
   };
 }
@@ -90,6 +92,61 @@ export async function readSyncRecord(
   if (row) return unpackRecord(row);
 }
 
+export type StoredRecord = ReturnType<typeof unpackRecord>;
+
+/** The creation stamp follows the earliest event, except for a record seeded at sharing. */
+export function mergeRecordEvent(
+  previous: StoredRecord | undefined,
+  event: SyncEvent,
+): StoredRecord {
+  return {
+    record: mergeSyncEvent({ record: previous?.record, event }).record,
+    created:
+      previous &&
+      (previous.seeded || compareSyncStamps(previous.created, event.stamp) <= 0)
+        ? previous.created
+        : event.stamp,
+    seeded: previous?.seeded ?? false,
+  };
+}
+
+/** With no row here the merged record itself is the received result (including old backups
+ * and records seeded at sharing). A row with NULL means nothing has been received yet. */
+export async function readReceived(
+  tx: SqlExecutor,
+  groupId: string,
+  key: Pick<SyncRecord, 'type' | 'id'>,
+) {
+  const [row] = await tx.all<{ state: string | null }>(
+    'SELECT state FROM sync_received WHERE groupId = ? AND type = ? AND id = ?',
+    [groupId, key.type, key.id],
+  );
+  if (row)
+    return {
+      state:
+        row.state === null
+          ? undefined
+          : (JSON.parse(row.state) as StoredRecord),
+    };
+}
+
+/** Once a local write has separated the two results, merge each delivery into both. */
+export async function updateReceived(
+  tx: SqlExecutor,
+  groupId: string,
+  key: Pick<SyncRecord, 'type' | 'id'>,
+  merge: (held: StoredRecord | undefined) => StoredRecord,
+) {
+  const received = await readReceived(tx, groupId, key);
+  if (received) {
+    const state = JSON.stringify(merge(received.state));
+    await tx.run(
+      'UPDATE sync_received SET state = ? WHERE groupId = ? AND type = ? AND id = ? AND state IS NOT ?',
+      [state, groupId, key.type, key.id, state],
+    );
+  }
+}
+
 export async function storeSyncRecord(
   tx: SqlExecutor,
   groupId: string,
@@ -97,7 +154,7 @@ export async function storeSyncRecord(
   created: SyncStamp,
   seeded = false,
 ) {
-  await tx.run(
+  return tx.run(
     `INSERT INTO sync_records (groupId, type, id, created, record, seeded) VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT (groupId, type, id) DO UPDATE SET created = excluded.created, record = excluded.record,
        seeded = MAX(seeded, excluded.seeded)
@@ -147,8 +204,6 @@ export function changedUnits(values: object, stored: SyncRecord['units']) {
   return changes;
 }
 
-type StoredRecord = Awaited<ReturnType<typeof readSyncRecord>>;
-
 type UnsentListener = (
   groupId: string,
   position: number,
@@ -168,11 +223,39 @@ export function subscribeToUnsentEvents(listener: UnsentListener) {
   };
 }
 
+/** Uploads still waiting for a page that carries them (SYNC-161.1). */
+export const CONFIRMED_EVENT_IDS =
+  'SELECT eventId FROM sync_uploaded_events WHERE resendPosition IS NULL';
+
+/** The unsent queue, with the original write position as the tiebreaker on a resend. */
+export const UNSENT_EVENTS = `(SELECT o.*, COALESCE(u.resendPosition, o.position) AS sendPosition
+  FROM sync_outbox o LEFT JOIN sync_uploaded_events u ON u.eventId = o.id
+  WHERE u.eventId IS NULL OR u.resendPosition IS NOT NULL)`;
+
+/** Put retained uploads ahead of the ledger's unsent events in their original write order (SYNC-161.1). */
+export async function requeueConfirmedEvents(tx: SqlExecutor, groupId: string) {
+  await tx.run(
+    `UPDATE sync_outbox SET checked = 1 WHERE groupId = ? AND checked = 0 AND id IN (${CONFIRMED_EVENT_IDS})`,
+    [groupId],
+  );
+  // A backup imported during an upload can leave an older unsent row. Cap the resend
+  // positions just before the current queue. The original positions break any ties.
+  await tx.run(
+    `WITH head AS MATERIALIZED (
+       SELECT MIN(sendPosition) - 1 AS beforeFirst FROM ${UNSENT_EVENTS} WHERE groupId = ?
+     )
+     UPDATE sync_uploaded_events SET resendPosition = MIN(o.position, COALESCE(head.beforeFirst, o.position))
+     FROM sync_outbox o, head
+     WHERE eventId = o.id AND o.groupId = ? AND resendPosition IS NULL`,
+    [groupId, groupId],
+  );
+}
+
 /** Stamps, checks, measures and stores one event of this phone, with the record it changes. */
 async function writeEvent(
   tx: SqlExecutor,
   group: SharedGroup,
-  previous: StoredRecord,
+  previous: StoredRecord | undefined,
   change: { type: SyncRecordType; id: string } & (
     { units: object } | { deleted: true }
   ),
@@ -191,6 +274,17 @@ async function writeEvent(
 
   const { record } = mergeSyncEvent({ record: previous?.record, event });
   await storeSyncRecord(tx, group.groupId, record, previous?.created ?? stamp);
+  // Preserve the received result before this phone's first optimistic write to the record.
+  await tx.run(
+    `INSERT INTO sync_received (groupId, type, id, state) VALUES (?, ?, ?, ?)
+     ON CONFLICT (groupId, type, id) DO NOTHING`,
+    [
+      group.groupId,
+      event.type,
+      event.id,
+      previous ? JSON.stringify(previous) : null,
+    ],
+  );
   // The last event of this phone that held the expense's money (SYNC-129.1).
   if (event.type === 'expense' && 'units' in event && event.units.money)
     await keepOwnMoney(tx, event.id, stamp, event.units.money.value);

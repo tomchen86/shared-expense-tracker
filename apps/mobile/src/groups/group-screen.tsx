@@ -12,11 +12,16 @@ import { ExpenseCard, paidBy } from '../ledger/expense-card';
 import { PeriodList, useListPeriod } from '../ledger/list-period-ui';
 import { useTrashActions } from '../ledger/trash-provider';
 import { useReadExpenses } from '../ledger/use-expenses';
+import { useReceivedRequests } from '../sharing/received-requests';
 import { useSyncNotices } from '../sync/use-sync-notices';
 import { groupTotals, yourBalanceLines } from './format-balance';
 import { GroupLargeTitle, useLargeTitleScroll } from './group-large-title';
 import { GroupSummary } from './group-summary';
-import { ReviewButton } from './review-button';
+import {
+  JoinRequestsButton,
+  ReviewButton,
+  UnappliedButton,
+} from './review-button';
 import { useGroup } from './use-group';
 import { useGroupArchive } from './use-group-archive';
 
@@ -24,10 +29,10 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useThemeColors();
   const [group, setGroup, pendingRead] = useGroup(id);
-  const notices = useSyncNotices(
-    useLocalDatabase(),
-    group?.shared ? id : undefined,
-  );
+  const database = useLocalDatabase();
+  const notices = useSyncNotices(database, group?.shared ? id : undefined);
+  // Only an unarchived shared ledger has any (SHARING-190.2).
+  const asking = useReceivedRequests(database, id).requests.length;
   /** Runs `go` if the group is unarchived, once a read in progress has finished. */
   function whenUnarchived(go: () => void) {
     const read = pendingRead();
@@ -55,9 +60,10 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   );
   const periods = useListPeriod(id, expenses, read);
   // Every expense of the group that needs review, whatever the list shows of them, in the
-  // order of LEDGER-28.1, which is the order they are read in (GROUPS-107.1).
+  // order of LEDGER-28.1, which is the order they are read in (GROUPS-107.2).
   const toReview = useMemo(
-    () => expenses?.filter((expense) => expense.yours) ?? [],
+    () =>
+      expenses?.filter((expense) => expense.yours || expense.duplicateOf) ?? [],
     [expenses],
   );
   // Your balance uses every expense (GROUPS-69.4). The total uses every card that passes
@@ -128,7 +134,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                   onRename={group.archived ? undefined : rename}
                 />
               )}
-              {notices.map((notice) => (
+              {notices.lines.map((notice) => (
                 <Text
                   key={notice}
                   style={[styles.notice, { color: colors.textMuted }]}
@@ -142,6 +148,23 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
                   onPress={() =>
                     router.navigate(`${base}/expenses/${toReview[0].id}`)
                   }
+                />
+              )}
+              {notices.unapplied > 0 && (
+                <UnappliedButton
+                  count={notices.unapplied}
+                  onPress={() =>
+                    router.navigate({
+                      pathname: `${base}/unapplied`,
+                      params: { id },
+                    })
+                  }
+                />
+              )}
+              {asking > 0 && group?.shared && !group.archived && (
+                <JoinRequestsButton
+                  count={asking}
+                  onPress={membersAction.onPress}
                 />
               )}
               {group?.archived && (

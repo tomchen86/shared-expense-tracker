@@ -688,7 +688,7 @@ const groupButtons = (group: string) =>
     .queryAllByRole('button')
     .filter((button) => !inTitleBar(button));
 
-/** The expense cards on the group's screen, top to bottom: its buttons besides its large title, the number of expenses to review (GROUPS-107.1), +, Restore Group and the list's controls, which include the total and your net balance. */
+/** The expense cards on the group's screen, top to bottom: its buttons besides its large title, the number of expenses to review (GROUPS-107.2), the number of changes that were not applied (GROUPS-170.2), +, Restore Group and the list's controls, which include the total and your net balance. */
 export const groupCards = (group: string) =>
   groupButtons(group).filter((button) => {
     const name = nameOf(button);
@@ -698,6 +698,7 @@ export const groupCards = (group: string) =>
       name !== 'Restore Group' &&
       !/^(Group Total: |You're owed: |You owe: |Settled up)/.test(name) &&
       !/^\d+ expenses? needs? review$/.test(name) &&
+      !/^\d+ changes? (wasn't|weren't) applied$/.test(name) &&
       !isListControl(button)
     );
   });

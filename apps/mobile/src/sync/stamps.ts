@@ -1,5 +1,6 @@
 import {
   compareSyncStamps,
+  nextSyncStamp,
   type SyncEvent,
   type SyncRecord,
   type SyncStamp,
@@ -8,14 +9,21 @@ import { readCorrectedTime } from '../sharing/device-identity';
 import type { SqlExecutor, SqlValue } from '../storage';
 import { renameOwnMoney } from './own-money';
 import { orderSyncedRows } from './positions';
-import { readSyncRecord, saveLatestStamp, storeSyncRecord } from './records';
+import {
+  CONFIRMED_EVENT_IDS,
+  UNSENT_EVENTS,
+  latestStamp,
+  readSyncRecord,
+  saveLatestStamp,
+  storeSyncRecord,
+} from './records';
 
 // The checks of an unsent event's stamp (ADR-0016, ADR-0027). A stamp more than 5 minutes
 // ahead of the corrected time is replaced before any other phone sees it, wherever the
 // local data holds it: in the event, in the record it changed, as the base of later
 // unsent events, and in the phone's own money change of the expense (ADR-0029).
 // Everything here runs inside the caller's transaction, and resolves with
-// the shared ledgers whose members or categories a replaced stamp put in another order.
+// the shared ledgers whose member order, category order or duplicate marks may have changed.
 
 /** How far ahead of the corrected time a checked stamp may be, in milliseconds (SYNC-84.1). */
 const MOST_AHEAD_MS = 300_000;
@@ -43,7 +51,7 @@ async function readUnsent(
   parameters: readonly SqlValue[] = [],
 ): Promise<Unsent[]> {
   const rows = await tx.all<Omit<Unsent, 'event'>>(
-    `SELECT position, id, groupId, content FROM sync_outbox ${where} ORDER BY position`,
+    `SELECT position, id, groupId, content FROM ${UNSENT_EVENTS} ${where} ORDER BY position`,
     parameters,
   );
   return rows.map((row) => ({
@@ -73,7 +81,9 @@ async function latestStampLeft(
   // ponytail: reads every record of every shared ledger. Only a stamp more than 5 minutes
   // ahead gets here; keep the latest stamp held in a column if that is ever common.
   const records = await tx.all<{ created: string; record: string }>(
-    'SELECT created, record FROM sync_records',
+    `SELECT created, record FROM sync_records
+     UNION ALL SELECT json_extract(state, '$.created'), json_extract(state, '$.record')
+     FROM sync_received WHERE state IS NOT NULL`,
   );
   for (const row of records) {
     const record = JSON.parse(row.record) as SyncRecord;
@@ -111,12 +121,14 @@ async function rename(
   }
   const renamed = (stamp: SyncStamp) => to.get(keyOf(stamp)) ?? stamp;
 
+  const moved = new Set<string>();
   const toOrder = new Map<string, [string, 'member' | 'category']>();
   for (const { groupId, event } of records.values()) {
     const stored = await readSyncRecord(tx, groupId, event.type, event.id);
     // An event's record is stored with it.
     if (!stored) continue;
     const { record } = stored;
+    const created = renamed(stored.created);
     const units = Object.fromEntries(
       Object.entries<{ stamp: SyncStamp }>(record.units).map(([name, unit]) => [
         name,
@@ -131,10 +143,13 @@ async function rename(
         ...(record.deleted && { deleted: renamed(record.deleted) }),
         units,
       } as SyncRecord,
-      renamed(stored.created),
+      created,
     );
-    // So that an event applied later is compared with the stamp the change has now (SYNC-133.1).
-    if (event.type === 'expense') await renameOwnMoney(tx, event.id, renamed);
+    if (event.type === 'expense') {
+      await renameOwnMoney(tx, event.id, renamed);
+      // Duplicate marks depend on creation order, even if every expense value stayed the same.
+      if (compareSyncStamps(created, stored.created) !== 0) moved.add(groupId);
+    }
     if (event.type === 'member' || event.type === 'category')
       toOrder.set(`${groupId}/${event.type}`, [groupId, event.type]);
   }
@@ -162,7 +177,6 @@ async function rename(
 
   // A category's place follows the stamp it was created with, and a member's the stamp
   // of its last removal or return.
-  const moved = new Set<string>();
   for (const [groupId, type] of toOrder.values())
     if (await orderSyncedRows(tx, groupId, type)) moved.add(groupId);
   return moved;
@@ -207,6 +221,38 @@ async function replaceStampsAhead(
 }
 
 /**
+ * Takes `count` stamps, one after another, for events of `device` that go to the API
+ * without ever being unsent events: those of an approval (SHARING-196.1). The phone's
+ * latest stamp becomes the last of them at once, so no later change gets one of them.
+ * They are checked as an unsent event's stamp is: when they are more than 5 minutes ahead
+ * of the corrected time, they are replaced as SYNC-85.1 replaces those.
+ */
+export async function takeCheckedStamps(
+  tx: SqlExecutor,
+  device: string,
+  count: number,
+): Promise<SyncStamp[]> {
+  const nowMs = await readCorrectedTime(tx);
+  let stamps: SyncStamp[] = [];
+  let seen = await latestStamp(tx);
+  for (let taken = 0; taken < count; taken += 1) {
+    seen = nextSyncStamp({ seen, nowMs, device });
+    stamps.push(seen);
+  }
+  if (stamps.some(({ ms }) => ms - nowMs > MOST_AHEAD_MS)) {
+    const left = await latestStampLeft(tx, await readUnsent(tx), new Set());
+    const firstMs = left && left.ms >= nowMs ? left.ms + 1 : nowMs;
+    stamps = stamps.map((_, index) => ({
+      ms: firstMs + index,
+      counter: 0,
+      device,
+    }));
+  }
+  await saveLatestStamp(tx, stamps[count - 1]);
+  return stamps;
+}
+
+/**
  * Checks the stamp of every unsent event of this phone that has not been checked, those
  * of its other shared ledgers too, and marks them checked (SYNC-84.1).
  */
@@ -214,7 +260,9 @@ export async function checkUnsentStamps(tx: SqlExecutor): Promise<Set<string>> {
   const unchecked = await readUnsent(tx, 'WHERE checked = 0');
   if (unchecked.length === 0) return new Set();
   const moved = await replaceStampsAhead(tx, unchecked);
-  await tx.run('UPDATE sync_outbox SET checked = 1 WHERE checked = 0');
+  await tx.run(
+    `UPDATE sync_outbox SET checked = 1 WHERE checked = 0 AND id NOT IN (${CONFIRMED_EVENT_IDS})`,
+  );
   return moved;
 }
 
@@ -247,7 +295,10 @@ export async function takeUploadedStamps(
   const rows = await readUnsent(tx, these, parameters);
   if (rows.length === 0) return new Set();
   // Checked whether or not the stamp differs: no later check may give it another.
-  await tx.run(`UPDATE sync_outbox SET checked = 1 ${these}`, parameters);
+  await tx.run(
+    `UPDATE sync_outbox SET checked = 1 ${these} AND id NOT IN (${CONFIRMED_EVENT_IDS})`,
+    parameters,
+  );
   const renames = new Map(
     rows.map((row) => [row.position, uploaded.get(row.id)!]),
   );

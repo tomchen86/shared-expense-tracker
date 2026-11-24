@@ -1,8 +1,9 @@
 import {
   checkSyncEvent,
   compareSyncStamps,
-  mergeSyncEvent,
+  syncRecordValues,
   type SyncEvent,
+  type SyncRecord,
   type SyncRefusal,
 } from '@shared-expense/domain';
 import { applyMergedCategory } from '../categories/merged-category';
@@ -14,13 +15,17 @@ import type { Database, SqlExecutor } from '../storage';
 import { applyMergedInvite } from './invites';
 import { markIfOverridden } from './own-money';
 import { orderSyncedRows } from './positions';
+import { applyRoster } from './roster';
 import {
   latestStamp,
+  mergeRecordEvent,
   readSyncRecord,
   saveLatestStamp,
   sharedGroup,
   storeSyncRecord,
+  updateReceived,
 } from './records';
+import { undoRefusedEvent } from './undo-refused';
 
 /** An event as the API relays it, decrypted and parsed. */
 export interface ReceivedSyncEvent {
@@ -73,6 +78,10 @@ export async function canMergeInGroup(
   event: Pick<SyncEvent, 'type' | 'id'>,
 ) {
   if (event.type === 'group') return event.id === groupId;
+  // A roster entry belongs to its ledger: one device has one in each ledger it is in.
+  if (event.type === 'device') return true;
+  // A distinct record lives entirely under its ledger's key in sync_records.
+  if (event.type === 'distinct') return true;
   const [table, owner] = recordOwners[event.type];
   // Partial records and tombstones can belong to another group even without a visible row.
   const foreign = await tx.all(
@@ -96,13 +105,55 @@ export async function applyReceivedEvents(
   events: readonly ReceivedSyncEvent[],
   leftTrash: Set<string>,
 ): Promise<boolean> {
-  if (!(await sharedGroup(tx, groupId))) throw new Error('Not a shared ledger');
+  const group = await sharedGroup(tx, groupId);
+  if (!group) throw new Error('Not a shared ledger');
   // Sharing seeds at least the group's own stamp in the same transaction.
   const initial = (await latestStamp(tx))!;
   const uncategorized = await groupUncategorized(tx, groupId);
   let seen = initial;
   let visibleChange = false;
   const toOrder = new Set<'member' | 'category'>();
+  let rosterChanged = false;
+  async function project(
+    record: SyncRecord,
+    previous: SyncRecord | undefined,
+    eventMs: number | null,
+  ) {
+    switch (record.type) {
+      case 'device':
+        rosterChanged = true;
+        return false;
+      case 'distinct':
+        return false; // Its sync record itself is what the duplicate check reads.
+      case 'invite':
+        return applyMergedInvite(tx, groupId, record);
+      case 'member':
+        toOrder.add('member');
+        return applyMergedGroup(tx, groupId, record);
+      case 'group':
+        return applyMergedGroup(tx, groupId, record);
+      case 'category':
+        toOrder.add('category');
+        return applyMergedCategory(tx, groupId, record, uncategorized, eventMs);
+      case 'expense': {
+        const changed = await applyMergedExpense(
+          tx,
+          groupId,
+          record,
+          previous,
+          eventMs,
+        );
+        if (
+          changed &&
+          previous?.type === 'expense' &&
+          previous.units.trashed?.value &&
+          !syncRecordValues(record)?.trashed
+        )
+          leftTrash.add(record.id);
+        return changed;
+      }
+    }
+  }
   for (const received of events) {
     const verdict = checkSyncEvent(received.content, received);
     if (verdict.status === 'unsupported')
@@ -120,66 +171,52 @@ export async function applyReceivedEvents(
           verdict.reason,
         ],
       );
+      if (received.device === group.device) {
+        const notice = await tx.run(
+          `INSERT INTO sync_unapplied (refusal) SELECT position FROM sync_refusals
+           WHERE groupId = ? AND id = ? ON CONFLICT (refusal) DO NOTHING`,
+          [groupId, received.id],
+        );
+        if (notice.changes) visibleChange = true;
+        const undone = await undoRefusedEvent(
+          tx,
+          groupId,
+          received,
+          !notice.changes,
+        );
+        if (undone) {
+          await project(undone.record, undone.previous, null);
+          visibleChange = true;
+        }
+      }
       continue;
     }
     const { event } = verdict;
     if (!(await canMergeInGroup(tx, groupId, event))) continue;
     const previous = await readSyncRecord(tx, groupId, event.type, event.id);
-    const merged = mergeSyncEvent({ record: previous?.record, seen, event });
-    seen = merged.seen;
-    const { record } = merged;
+    if (compareSyncStamps(event.stamp, seen) > 0) seen = event.stamp;
+    const { record, created } = mergeRecordEvent(previous, event);
     // The stamp has been seen, but no event replaces the reserved category's seeded record.
     if (record.type === 'category' && record.id === uncategorized.id) continue;
-    const created =
-      previous &&
-      (previous.seeded || compareSyncStamps(previous.created, event.stamp) <= 0)
-        ? previous.created
-        : event.stamp;
-    await storeSyncRecord(tx, groupId, record, created);
-    if (record.type === 'member' || record.type === 'category')
-      toOrder.add(record.type);
-    switch (record.type) {
-      case 'invite':
-        if (await applyMergedInvite(tx, groupId, record)) visibleChange = true;
-        break;
-      case 'group':
-      case 'member':
-        if (await applyMergedGroup(tx, groupId, record)) visibleChange = true;
-        break;
-      case 'category':
-        if (
-          await applyMergedCategory(
-            tx,
-            groupId,
-            record,
-            uncategorized,
-            event.stamp.ms,
-          )
-        )
-          visibleChange = true;
-        break;
-      case 'expense':
-        if (await markIfOverridden(tx, event)) visibleChange = true;
-        if (
-          await applyMergedExpense(
-            tx,
-            groupId,
-            record,
-            previous?.record,
-            event.stamp.ms,
-          )
-        ) {
-          visibleChange = true;
-          if (
-            previous?.record.type === 'expense' &&
-            previous.record.units.trashed?.value &&
-            !record.units.trashed?.value
-          )
-            leftTrash.add(event.id);
-        }
-        break;
+    await updateReceived(tx, groupId, event, (held) =>
+      mergeRecordEvent(held, event),
+    );
+    const { changes } = await storeSyncRecord(tx, groupId, record, created);
+    if (record.type === 'expense') {
+      // An earlier event may change who recorded the expense without winning a unit.
+      if (previous && created !== previous.created) visibleChange = true;
+      if (await markIfOverridden(tx, event)) visibleChange = true;
     }
+    if (record.type === 'distinct' && changes > 0) visibleChange = true;
+    if (await project(record, previous?.record, event.stamp.ms))
+      visibleChange = true;
   }
+  // Whichever arrived first, a member or the roster entry that names it (SYNC-251.1).
+  if (
+    (rosterChanged || toOrder.has('member')) &&
+    (await applyRoster(tx, groupId))
+  )
+    visibleChange = true;
   for (const type of toOrder)
     if (await orderSyncedRows(tx, groupId, type)) visibleChange = true;
   if (compareSyncStamps(seen, initial) > 0) await saveLatestStamp(tx, seen);

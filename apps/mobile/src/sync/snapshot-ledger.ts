@@ -13,24 +13,38 @@ import { applyMergedExpense } from '../ledger/merged-expense';
 import type { SqlExecutor } from '../storage';
 import { canMergeInGroup } from './apply';
 import { applyMergedInvite } from './invites';
-import { readGroupKey } from './loop';
+import { markSnapshotMoney } from './own-money';
 import { orderSyncedRows } from './positions';
+import { applyRoster } from './roster';
 import {
+  UNSENT_EVENTS,
   latestStamp,
   readSyncRecord,
+  requeueConfirmedEvents,
   saveLatestStamp,
   snapshotRecords,
   storeSyncRecord,
+  updateReceived,
+  type StoredRecord,
 } from './records';
+import { readGroupKey } from './transport';
 
-/** Read the outbox, cursor and merged records at one point in the ledger's history. */
-export async function makeSnapshot(tx: SqlExecutor, groupId: string) {
+/**
+ * Read the outbox, cursor and merged records at one point in the ledger's history.
+ * `more` are records the local data does not hold yet: those an approval is about to
+ * write (SHARING-197.1).
+ */
+export async function makeSnapshot(
+  tx: SqlExecutor,
+  groupId: string,
+  more: readonly SyncSnapshotRecord[] = [],
+) {
   const [ledger] = await tx.all<{
     epoch: number;
     cursor: number;
     unsent: number;
   }>(
-    `SELECT epoch, cursor, EXISTS(SELECT 1 FROM sync_outbox WHERE groupId = ?) AS unsent
+    `SELECT epoch, cursor, EXISTS(SELECT 1 FROM ${UNSENT_EVENTS} WHERE groupId = ?) AS unsent
      FROM sync_groups WHERE groupId = ?`,
     [groupId, groupId],
   );
@@ -44,7 +58,7 @@ export async function makeSnapshot(tx: SqlExecutor, groupId: string) {
     groupId,
     sequence: ledger.cursor,
     uncategorized: (await groupUncategorized(tx, groupId)).id,
-    records: await snapshotRecords(tx, groupId),
+    records: [...(await snapshotRecords(tx, groupId)), ...more],
   };
   if (checkSyncSnapshot(content).status !== 'valid')
     throw new Error('Invalid snapshot in local data');
@@ -79,6 +93,7 @@ async function openSnapshotGroup(
       'UPDATE sync_groups SET cursor = MAX(cursor, ?), epoch = MAX(epoch, ?) WHERE groupId = ?',
       [sequence, epoch, groupId],
     );
+    await requeueConfirmedEvents(tx, groupId);
     return true;
   }
   // Validation established exactly one group record and a complete reserved category.
@@ -186,20 +201,30 @@ export async function importSnapshot(
       incoming.type,
       incoming.id,
     );
-    const merged = mergeSyncSnapshotRecord({
-      incoming,
-      held: previous && {
-        ...previous.record,
-        created: previous.created,
-        seeded: previous.seeded,
-      },
-      seen,
-    });
+    const merge = (held: StoredRecord | undefined) =>
+      mergeSyncSnapshotRecord({
+        incoming,
+        held: held && {
+          ...held.record,
+          created: held.created,
+          seeded: held.seeded,
+        },
+        seen,
+      });
+    const merged = merge(previous);
     seen = merged.seen;
     if (foreign.has(incoming)) continue;
+    if (incoming.type === 'expense' && incoming.units.money)
+      await markSnapshotMoney(tx, incoming.id, incoming.units.money);
     const { created, seeded, ...record } = merged.record;
     await storeSyncRecord(tx, groupId, record, created, seeded);
+    await updateReceived(tx, groupId, incoming, (held) => {
+      const { created, seeded, ...record } = merge(held).record;
+      return { record, created, seeded };
+    });
     switch (record.type) {
+      case 'device':
+        break;
       case 'invite':
         invites.push(record);
         break;
@@ -231,7 +256,8 @@ export async function importSnapshot(
   await applyExpenses(tx, groupId, expenses);
   await orderSyncedRows(tx, groupId, 'category');
   await orderSyncedRows(tx, groupId, 'member');
-  // An invite's card uses the merged group name and ordered members.
+  await applyRoster(tx, groupId);
+  // An invite's card uses the merged group name, the ordered members and who has a phone.
   for (const invite of invites) await applyMergedInvite(tx, groupId, invite);
   await saveLatestStamp(tx, seen!); // A valid snapshot always includes the group itself.
   return true;

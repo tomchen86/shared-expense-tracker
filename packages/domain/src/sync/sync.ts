@@ -21,7 +21,7 @@ export interface SyncMoney {
   shares: Share<string>[];
 }
 
-/** Each kind of record's units, and the value each unit holds (SYNC-5.1, SYNC-6.1). */
+/** Each kind of record's units, and the value each unit holds (SYNC-5.1, SYNC-6.1, SYNC-250.1). */
 export interface SyncUnits {
   expense: {
     title: string;
@@ -39,6 +39,12 @@ export interface SyncUnits {
   group: { name: string };
   member: { name: string; removed: boolean };
   invite: { link: { secret: string; expiresAtMs: number } };
+  /**
+   * A roster entry (ADR-0039): its ID is a device ID, and it says which member that device
+   * represents, with the phone's user ID and its X25519 public key in lowercase hexadecimal.
+   */
+  device: { member: { memberId: string; userId: string; boxKey: string } };
+  distinct: { expenses: [string, string] };
 }
 
 export type SyncRecordType = keyof SyncUnits;
@@ -389,6 +395,22 @@ const unitValidators: {
       /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(value.secret) &&
       isClockInteger(value.expiresAtMs),
   },
+  device: {
+    member: (value) =>
+      hasFields(value, ['memberId', 'userId', 'boxKey']) &&
+      isNonemptyString(value.memberId) &&
+      isNonemptyString(value.userId) &&
+      typeof value.boxKey === 'string' &&
+      /^[0-9a-f]{64}$/.test(value.boxKey),
+  },
+  distinct: {
+    expenses: (value) =>
+      Array.isArray(value) &&
+      value.length === 2 &&
+      isNonemptyString(value[0]) &&
+      isNonemptyString(value[1]) &&
+      value[0] !== value[1],
+  },
 };
 
 export function isRecordType(type: unknown): type is SyncRecordType {
@@ -399,7 +421,8 @@ export function isSyncRecordId(
   type: SyncRecordType,
   id: unknown,
 ): id is string {
-  return type === 'invite' ? isInviteCode(id) : isNonemptyString(id);
+  if (type === 'invite') return isInviteCode(id);
+  return type === 'device' ? isDevice(id) : isNonemptyString(id);
 }
 
 export function isSyncUnitValue(
@@ -499,12 +522,26 @@ function compareMoney(a: SyncMoney, b: SyncMoney): number {
 }
 
 function compareUnitValues(name: string, a: unknown, b: unknown): number {
+  if (name === 'expenses') {
+    const first = a as SyncUnits['distinct']['expenses'];
+    const second = b as SyncUnits['distinct']['expenses'];
+    return compare(first[0], second[0]) || compare(first[1], second[1]);
+  }
   if (name === 'link') {
     const first = a as SyncUnits['invite']['link'];
     const second = b as SyncUnits['invite']['link'];
     return (
       compare(first.expiresAtMs, second.expiresAtMs) ||
       compare(first.secret, second.secret)
+    );
+  }
+  if (name === 'member') {
+    const first = a as SyncUnits['device']['member'];
+    const second = b as SyncUnits['device']['member'];
+    return (
+      compare(first.memberId, second.memberId) ||
+      compare(first.userId, second.userId) ||
+      compare(first.boxKey, second.boxKey)
     );
   }
   if (name === 'money') return compareMoney(a as SyncMoney, b as SyncMoney);

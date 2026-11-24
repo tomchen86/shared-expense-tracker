@@ -11,6 +11,9 @@ import type { Migration } from '../database/migrate';
  *   request time together only once, since a second one is a replay or off the clock.
  * - `device_registrations`: for each new device, when it registered and the keyed hash that
  *   stands for the IP it came from, never the IP itself, to count that IP's new devices.
+ * - `invite_handovers`: what an approval left for the device it admitted (SHARING-186.1):
+ *   the invite's code, the two devices, the sender's box public key, the key epoch and the
+ *   box. It goes when that device first downloads a page of the group's events.
  */
 export const sharingMigrations: readonly Migration[] = [
   {
@@ -83,6 +86,20 @@ export const sharingMigrations: readonly Migration[] = [
         AFTER UPDATE OF revoked ON group_invites
         FOR EACH ROW WHEN (NEW.revoked AND NOT OLD.revoked)
         EXECUTE FUNCTION delete_revoked_invite_requests();
+    `,
+  },
+  {
+    name: 'sharing/0004-create-handovers',
+    sql: `
+      CREATE TABLE invite_handovers (
+        code text NOT NULL REFERENCES group_invites (code),
+        device_id uuid NOT NULL REFERENCES devices (id),
+        approver uuid NOT NULL REFERENCES devices (id),
+        sender_key bytea NOT NULL CHECK (octet_length(sender_key) = 32),
+        epoch bigint NOT NULL,
+        box bytea NOT NULL,
+        PRIMARY KEY (code, device_id)
+      );
     `,
   },
 ];

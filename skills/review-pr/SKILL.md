@@ -11,7 +11,7 @@ Take one PR at a time through the final stretch (update, check, report, merge). 
 
 ## Spec review
 
-On a draft PR with no `spec/<branch>`, review once, without running tests or waiting for CI: the rules are clear and contradict neither each other nor the issue, each rule has a test that really checks it, and version bumps are complete and collide with no other open PR. Report in one PR comment, what must change first. The implementation review, in this same session, sees the fixes.
+On a draft PR with no `spec/<branch>`, review once, without running tests or waiting for CI: the rules are clear and contradict neither each other nor the issue, each rule has a test that really checks it, and version bumps are complete and collide with no other open PR. Report in one PR comment, what must change first. The implementation review, in this same session, sees the fixes. When the spec author says it is in delegated mode (`skills/delegated-mode/SKILL.md`), a report with nothing that must change names the commit to publish by its full SHA. When it asks you to look at its fixes sooner, or at a commit on top of `spec/<branch>`, read what changed since the commit you reviewed, by the same measures, and when nothing must change, write a PR comment that names that commit the same way.
 
 ## Checklist
 
@@ -24,6 +24,8 @@ On a draft PR with no `spec/<branch>`, review once, without running tests or wai
    ```
 
    It passes only when it exits successfully and prints an `ok` line; keep that line, including main's SHA, for your report. Differences in specs or acceptance tests go to the spec author. A PR that changes specs or acceptance tests without changing what they require (`AGENTS.md`, Roles) has no `spec/<branch>`, so this step flags those files. List them in your report as changes the owner's merge will approve, and confirm that every acceptance test kept its cases, assertions, and IDs.
+
+   `ok` shows that the owner's account pushed `spec/<branch>`, not who ran the push. When a PR comment says a session published it in delegated mode (ADR-0044), say so in your report, copy the PR body's `Decided without the owner` list into it, and say that the owner's merge will be the first approval of that spec. If such a comment has no comment from a reviewer naming that commit before it, report that as well.
 4. Spec, code, and tests say the same thing, and every test that cites a requirement actually checks it. No test outside the acceptance test paths cites an ID: the implementer's own tests are not evidence for a requirement.
 5. "Rules discovered during implementation": each must already be in the spec with a test, added by the spec author before it was implemented. Send back any behavior a user or another component would notice that exists only in the code.
 6. Traced coverage: when you start the review, run `gh workflow run traced.yml --ref <branch>`; when it finishes, `gh run download <run-id> --name coverage`. List the new branches no test citing an ID executes. Each is a missing requirement, dead code, or defensive code. Read function and branch coverage, not line coverage. For text-only documentation changes that do not affect code, tests, or how they run, report `N/A` with a reason instead. Refactors and dependency updates do not qualify for this exception.

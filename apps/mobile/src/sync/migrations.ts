@@ -1,7 +1,15 @@
+/**
+ * What a phone keeps of a shared ledger. `ownMemberId` is the member this phone is while
+ * its own roster entry names none of the ledger's (SYNC-251.1): the one it created the
+ * group as, or the one it joined as.
+ */
 export const syncMigration = `
   CREATE TABLE sync_groups (
     groupId TEXT PRIMARY KEY NOT NULL REFERENCES groups(id),
-    device TEXT NOT NULL
+    device TEXT NOT NULL,
+    ownMemberId TEXT,
+    waitsForSnapshot INTEGER NOT NULL DEFAULT 0 CHECK (waitsForSnapshot IN (0, 1)),
+    snapshotNeedingUpdate TEXT
   );
   CREATE TABLE sync_clock (
     singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
@@ -80,5 +88,30 @@ export const inviteMigration = `
     groupId TEXT PRIMARY KEY NOT NULL REFERENCES sync_groups(groupId),
     code TEXT NOT NULL UNIQUE,
     secret TEXT NOT NULL
+  );
+`;
+
+export const unappliedChangesMigration = `
+  CREATE TABLE sync_received (
+    groupId TEXT NOT NULL,
+    type TEXT NOT NULL,
+    id TEXT NOT NULL,
+    state TEXT,
+    categoryDefault INTEGER,
+    categoryCreator TEXT,
+    PRIMARY KEY (groupId, type, id),
+    FOREIGN KEY (groupId, type, id) REFERENCES sync_records(groupId, type, id) ON DELETE CASCADE
+  );
+  CREATE TABLE sync_unapplied (
+    refusal INTEGER PRIMARY KEY REFERENCES sync_refusals(position) ON DELETE CASCADE,
+    dismissed INTEGER NOT NULL DEFAULT 0 CHECK (dismissed IN (0, 1))
+  );
+`;
+
+/** A confirmed outbox row is held until its page arrives, or queued again at resendPosition. */
+export const syncUploadedEventsMigration = `
+  CREATE TABLE sync_uploaded_events (
+    eventId TEXT PRIMARY KEY NOT NULL REFERENCES sync_outbox(id) ON DELETE CASCADE,
+    resendPosition INTEGER
   );
 `;

@@ -280,8 +280,8 @@ describe('SHARING-116.1', () => {
   });
 });
 
-describe('SHARING-117.1', () => {
-  test("[SHARING-117.1] cancels the device's request and leaves another device's", async () => {
+describe('SHARING-117.2', () => {
+  test("[SHARING-117.2] cancels the device's request and leaves another device's", async () => {
     const [, casey] = await brisbaneInvitesCasey();
     const other = await registered();
     expectRequestAnswered(await sendRequest(casey, CODE_A, P), CODE_A);
@@ -294,7 +294,7 @@ describe('SHARING-117.1', () => {
     expect(await timesStored(Q)).toBe(1);
   });
 
-  test('[SHARING-117.1] answers a second cancellation the same, and changes nothing', async () => {
+  test('[SHARING-117.2] answers a second cancellation the same, and changes nothing', async () => {
     const [, casey] = await brisbaneInvitesCasey();
     const other = await registered();
     expectRequestAnswered(await sendRequest(casey, CODE_A, P), CODE_A);
@@ -309,7 +309,7 @@ describe('SHARING-117.1', () => {
     expect(await timesStored(Q)).toBe(1);
   });
 
-  test('[SHARING-117.1] takes a new request from a device that cancelled its own', async () => {
+  test('[SHARING-117.2] takes a new request from a device that cancelled its own', async () => {
     const [, casey] = await brisbaneInvitesCasey();
     expectRequestAnswered(await sendRequest(casey, CODE_A, P), CODE_A);
     expectRequestAnswered(await cancelRequest(casey, CODE_A), CODE_A);
@@ -319,7 +319,7 @@ describe('SHARING-117.1', () => {
     expect(await timesStored(R)).toBe(1);
   });
 
-  test('[SHARING-117.1] answers the cancellation for a revoked invite, an expired one and a code it has never seen, and changes nothing', async () => {
+  test('[SHARING-117.2] answers the cancellation for a revoked invite, an expired one and a code it has never seen, and changes nothing', async () => {
     const [taylor, casey] = await brisbaneInvitesCasey();
     expectRevoked(await revokeInvite(taylor, BRISBANE, CODE_A), CODE_A);
     await tokyoInvites(taylor);
@@ -333,7 +333,7 @@ describe('SHARING-117.1', () => {
     }
   });
 
-  test('[SHARING-117.1] answers a member device that cancels, and changes nothing', async () => {
+  test("[SHARING-117.2] refuses a member device that cancels under its group's active invite, and changes nothing", async () => {
     const [taylor, casey] = await brisbaneInvitesCasey();
     expectRequestAnswered(await sendRequest(casey, CODE_A, P), CODE_A);
 
@@ -341,8 +341,19 @@ describe('SHARING-117.1', () => {
       cancelRequest(taylor, CODE_A),
     );
 
-    expectRequestAnswered(answer, CODE_A);
+    expectRequestRefused(answer, ALREADY_A_MEMBER);
     expect(await timesStored(P)).toBe(1);
+  });
+
+  test('[SHARING-117.2] answers a member device that cancels under an invite that has expired', async () => {
+    const [taylor] = await brisbaneInvitesCasey();
+    setTime(T + WEEK);
+
+    const answer = await leavingGroupsAsTheyWere(() =>
+      cancelRequest(taylor, CODE_A),
+    );
+
+    expectRequestAnswered(answer, CODE_A);
   });
 });
 
@@ -579,13 +590,12 @@ describe('SHARING-121.1', () => {
   });
 });
 
-describe('SHARING-122.1', () => {
-  test('[SHARING-122.1] answers "not found" to every other method on the path, and changes no request', async () => {
+describe('SHARING-122.2', () => {
+  test('[SHARING-122.2] answers "not found" to every other method on the path, and changes no request', async () => {
     const [, casey] = await brisbaneInvitesCasey();
     expectRequestAnswered(await sendRequest(casey, CODE_A, P), CODE_A);
 
     const answers = await leavingGroupsAsTheyWere(async () => [
-      await call(casey, { method: 'GET', path: requestPath(CODE_A) }),
       await call(casey, { method: 'HEAD', path: requestPath(CODE_A) }),
       await call(casey, {
         method: 'POST',

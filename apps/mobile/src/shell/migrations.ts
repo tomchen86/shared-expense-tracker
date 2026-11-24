@@ -13,6 +13,8 @@ import {
   syncLoopMigration,
   syncMigration,
   syncOwnMoneyMigration,
+  unappliedChangesMigration,
+  syncUploadedEventsMigration,
 } from '../sync/migrations';
 
 /** Every capability's SQL migrations, in the order they run (ADR-0006). */
@@ -47,4 +49,6 @@ export const appMigrations: readonly string[] = [
   syncOwnMoneyMigration,
   inviteMigration,
   joinRequestMigration,
+  unappliedChangesMigration,
+  syncUploadedEventsMigration,
 ];

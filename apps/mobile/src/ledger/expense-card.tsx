@@ -6,12 +6,12 @@ import { SwipeAction, useSidewaysDragIsNoPress } from '../ui/swipe-action';
 import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
 import { formatExpenseDate } from './format-date';
-import { REPLACED, ReviewIcon } from './review-mark';
+import { POSSIBLE_DUPLICATE, REPLACED, ReviewIcon } from './review-mark';
 import type { ExpenseView } from './use-expenses';
 
 /** What an expense's details call the participant: by name as it is now, and yours with " (You)" (LEDGER-66.3). */
 export function participantName(
-  expense: ExpenseView,
+  expense: Pick<ExpenseView, 'members'>,
   participant: string,
   userId: string,
 ) {
@@ -51,11 +51,15 @@ export function ExpenseCard({
     trailing ??
     (expense.group &&
       `${expense.group.name}${expense.group.archived ? ' · Archived' : ''}`);
+  const marks = [
+    ...(expense.yours ? [REPLACED] : []),
+    ...(expense.duplicateOf ? [POSSIBLE_DUPLICATE] : []),
+  ];
   const metadata = [
     expense.categoryLabel,
     ...(right ? [right] : []),
     date,
-    ...(expense.yours ? [REPLACED] : []),
+    ...marks,
   ];
   const card = (
     <GroupedSection>
@@ -104,14 +108,14 @@ export function ExpenseCard({
             </FadeText>
           )}
         </View>
-        {expense.yours && (
-          <View style={styles.mark}>
+        {marks.map((mark) => (
+          <View key={mark} style={styles.mark}>
             <ReviewIcon size={16} />
             <Text style={[styles.markText, { color: colors.text }]}>
-              {REPLACED}
+              {mark}
             </Text>
           </View>
-        )}
+        ))}
       </Pressable>
     </GroupedSection>
   );

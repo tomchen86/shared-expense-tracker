@@ -371,6 +371,47 @@ export function otherPhoneUploadsUnderEpoch2(
   });
 }
 
+/** The group's last sequence number on the API: 0 while it has no event. */
+export const lastSequence = (group: string) =>
+  world().groups.get(group)!.events.at(-1)?.sequence ?? 0;
+
+/**
+ * Stores events in the API as `device` uploaded them under key epoch `epoch`, as the
+ * approval of a join request does (SHARING-173.1), and gives back their sequence numbers.
+ */
+export function apiStores(
+  group: string,
+  device: string,
+  epoch: number,
+  events: readonly { id: string; content: string }[],
+): number[] {
+  const stored = world().groups.get(group)!;
+  return events.map(({ id, content }) => {
+    const sequence = (stored.events.at(-1)?.sequence ?? 0) + 1;
+    stored.events.push({
+      id,
+      sequence,
+      deviceId: device,
+      epoch,
+      receivedAtMs: apiTime(),
+      content,
+    });
+    return sequence;
+  });
+}
+
+/**
+ * Makes the API relay the group's event `id` as received at `receivedAtMs`. The real API
+ * never changes when it received an event: this stands for one that the phones refuse.
+ */
+export function apiReceivedAt(group: string, id: string, receivedAtMs: number) {
+  const event = world()
+    .groups.get(group)
+    ?.events.find((stored) => stored.id === id);
+  if (!event) throw new Error('The API holds no such event');
+  event.receivedAtMs = receivedAtMs;
+}
+
 /** The API forgets the group's events, as if they had never been uploaded. */
 export function apiForgetsEvents(group: string) {
   world().groups.get(group)!.events = [];

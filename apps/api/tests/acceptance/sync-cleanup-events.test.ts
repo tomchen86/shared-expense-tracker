@@ -56,7 +56,7 @@ import {
 useSyncApi();
 
 describe('SYNC-134.1', () => {
-  test('[SYNC-134.1] deletes the events every member device has sent a cursor for; [SYNC-136.1] a cursor before them then needs a snapshot, and the one at their end gets a page', async () => {
+  test('[SYNC-134.1] deletes the events every member device has sent a cursor for; [SYNC-136.2] a cursor before them then needs a snapshot, and the one at their end gets a page', async () => {
     const [taylor, casey] = await bothInBrisbane();
     const sent = await store(taylor, 3);
     await reach(taylor, 3);
@@ -234,7 +234,7 @@ describe('SYNC-135.1', () => {
     await expectDeleted(a, b);
   });
 
-  test('[SYNC-135.1] deletes them under a phone that has not got them; [SYNC-136.1] that phone then needs a snapshot', async () => {
+  test('[SYNC-135.1] deletes them under a phone that has not got them; [SYNC-136.2] that phone then needs a snapshot', async () => {
     const [taylor, casey] = await bothInBrisbane();
     const sent = await store(taylor, 3);
     await reach(taylor, 3);
@@ -267,8 +267,8 @@ describe('SYNC-135.1', () => {
   );
 });
 
-describe('SYNC-136.1', () => {
-  test('[SYNC-136.1] answers a cursor before the deleted events with status 410 and snapshot-needed, no page, and marks the answer as not to be stored', async () => {
+describe('SYNC-136.2', () => {
+  test('[SYNC-136.2] answers a cursor before the deleted events with status 410 and snapshot-needed, no page, and marks the answer as not to be stored', async () => {
     const [taylor, casey] = await bothInBrisbane();
     await store(taylor, 5);
     await cleanUpAt(T + THIRTY_DAYS + 1);
@@ -283,7 +283,7 @@ describe('SYNC-136.1', () => {
     expect(headers.get('cache-control')).toBe('no-store');
   });
 
-  test('[SYNC-136.1] needs a snapshot for every cursor below the number the group is cleared to, and [SYNC-57.2] gives a page from that number on', async () => {
+  test('[SYNC-136.2] needs a snapshot for every cursor below the number the group is cleared to, and [SYNC-57.2] gives a page from that number on', async () => {
     const [taylor, casey] = await bothInBrisbane();
     const sent = await store(taylor, 5);
     const all = relayedFrom(1, sent, { by: taylor, at: T });
@@ -306,7 +306,7 @@ describe('SYNC-136.1', () => {
     expectRefused(await download(taylor, BRISBANE, 6), REQUEST);
   });
 
-  test('[SYNC-136.1] gives an empty page only to the cursor at the end of a group whose events are all deleted, and says the same however often it is asked', async () => {
+  test('[SYNC-136.2] gives an empty page only to the cursor at the end of a group whose events are all deleted, and says the same however often it is asked', async () => {
     const [taylor, casey] = await bothInBrisbane();
     await store(taylor, 5);
     await cleanUpAt(T + THIRTY_DAYS + 1);
@@ -318,7 +318,7 @@ describe('SYNC-136.1', () => {
     }
   });
 
-  test('[SYNC-136.1] records the cursor and the time as the progress of the phone it tells so, and [SYNC-134.1] keeps the events after that cursor for it', async () => {
+  test('[SYNC-136.2] records the cursor and the time as the progress of the phone it tells so, and [SYNC-134.1] keeps the events after that cursor for it', async () => {
     const [taylor, casey] = await bothInBrisbane();
     await store(taylor, 5);
     await reach(taylor, 5);
@@ -345,7 +345,7 @@ describe('SYNC-136.1', () => {
     });
   });
 
-  test('[SYNC-136.1] tells a device that is no member device nothing about what a group has deleted', async () => {
+  test('[SYNC-136.2] tells a device that is no member device nothing about what a group has deleted', async () => {
     const [taylor] = await bothInBrisbane();
     const stranger = await registered();
     await store(taylor, 3);
@@ -358,7 +358,7 @@ describe('SYNC-136.1', () => {
     expect(inBrisbane).toEqual(inNoGroup);
   });
 
-  test('[SYNC-136.1] refuses a download that is written wrongly as before, and records no progress for it', async () => {
+  test('[SYNC-136.2] refuses a download that is written wrongly as before, and records no progress for it', async () => {
     const [taylor, casey] = await bothInBrisbane();
     await store(taylor, 5);
     setTime(T + 1_000);

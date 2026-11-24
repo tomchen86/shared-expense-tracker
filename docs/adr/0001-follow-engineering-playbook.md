@@ -1,7 +1,7 @@
 # ADR-0001: Follow the engineering playbook
 
 - Date: 2026-10-23
-- Status: Accepted
+- Status: Accepted; parts are superseded by ADR-0044
 
 ## Context
 

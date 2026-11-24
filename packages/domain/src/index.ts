@@ -10,6 +10,7 @@ export {
   compareSyncStamps,
   MAX_SYNC_PLAINTEXT_BYTES,
   mergeSyncEvent,
+  moneyRefusal,
   nextSyncStamp,
   overridesSyncMoney,
   sameSyncUnitValue,
@@ -28,3 +29,4 @@ export {
   type SyncVerdict,
 } from './sync/sync';
 export * from './sync/snapshot';
+export * from './sync/duplicates';

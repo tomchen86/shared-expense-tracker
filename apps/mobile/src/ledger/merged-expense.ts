@@ -9,7 +9,7 @@ export async function restoreMergedExpenseCategories(
   tx: SqlExecutor,
   groupId: string,
   categoryId: string,
-  eventMs: number,
+  eventMs: number | null,
 ) {
   const restored = await tx.all<{ id: string }>(
     `UPDATE expenses AS e SET categoryId = ?,
@@ -34,19 +34,18 @@ export async function applyMergedExpense(
   groupId: string,
   record: Extract<SyncRecord, { type: 'expense' }>,
   previous: SyncRecord | undefined,
-  eventMs: number,
+  eventMs: number | null,
 ): Promise<boolean> {
   const { id } = record;
-  if (record.deleted) {
-    // Payments and shares cascade with their expense.
+  const values = syncRecordValues(record);
+  if (!values) {
+    // Payments, shares and this phone's own money change cascade with the expense.
     const { changes } = await tx.run(
       'DELETE FROM expenses WHERE id = ? AND spaceId = ?',
       [id, groupId],
     );
     return changes > 0;
   }
-  const values = syncRecordValues(record);
-  if (!values) return false;
   const changed = Object.keys(changedUnits(values, previous?.units ?? {}));
   if (changed.length === 0) return false;
 

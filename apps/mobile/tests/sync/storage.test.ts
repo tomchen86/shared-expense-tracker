@@ -8,6 +8,8 @@ import {
   type SyncStamp,
 } from '@shared-expense/domain';
 import {
+  createCategory,
+  deleteCategory,
   ensureDefaultCategories,
   listCategories,
   setCategoryArchived,
@@ -18,6 +20,7 @@ import {
   createGroup,
   listGroups,
   removeGroupMember,
+  setGroupArchived,
 } from '../../src/groups';
 import {
   ensureLocalIdentity,
@@ -33,7 +36,12 @@ import {
   shareGroup,
 } from '../../src/sync';
 import { importSnapshot } from '../../src/sync/snapshot-ledger';
+import {
+  markExpensesDistinct,
+  readDuplicateTargets,
+} from '../../src/sync/duplicates';
 import { latestStamp, readSyncRecord } from '../../src/sync/records';
+import { checkUnsentStamps, takeUploadedStamps } from '../../src/sync/stamps';
 import { moveExpenseToTrash } from '../../src/ledger/trash';
 import {
   listExpenses,
@@ -107,6 +115,190 @@ function received<Content extends { stamp: SyncStamp }>(content: Content) {
     content,
   };
 }
+
+test('an unreadable echo of a pending creation removes the expense from Trash but keeps a later trash unit', async () => {
+  await shareTrip();
+  const dinner = await save();
+  await moveExpenseToTrash(database, identity.personalSpaceId, dinner.id);
+  const [added, trashed] = await listUnsentSyncEvents(database);
+  const changed = jest.fn();
+  const unsubscribe = subscribeToExpenses(database, changed);
+
+  await applySyncEvents(database, split.groupId, [
+    { ...received(added.content), id: added.id, content: null },
+  ]);
+
+  expect(await listExpenses(database)).toEqual([]);
+  expect(changed).toHaveBeenCalledWith(new Set([dinner.id]), undefined);
+  expect(await listUnsentSyncEvents(database)).toEqual([trashed]);
+  expect(
+    await readSyncRecord(database, split.groupId, 'expense', dinner.id),
+  ).toEqual({
+    created: trashed.content.stamp,
+    seeded: false,
+    record: {
+      type: 'expense',
+      id: dinner.id,
+      units: { trashed: { value: true, stamp: trashed.content.stamp } },
+    },
+  });
+  unsubscribe();
+});
+
+test('undoing category deletions keeps default status and local authorship as well as the synced units', async () => {
+  const { groupId } = split;
+  const custom = await createCategory(database, {
+    name: 'Local category',
+    color: '#123456',
+    createdByUserId: identity.userId,
+    spaceId: groupId,
+  });
+  await shareTrip();
+  const before = await listCategories(database, groupId);
+  await deleteCategory(database, before[0].id);
+  await deleteCategory(database, custom.id);
+  const removed = await listUnsentSyncEvents(database);
+  await applySyncEvents(
+    database,
+    groupId,
+    removed.map(({ id, content }) => ({
+      ...received(content),
+      id,
+      receivedAtMs: 0,
+    })),
+  );
+  expect(await listCategories(database, groupId)).toEqual(before);
+});
+
+test('a checked stamp stays ahead of a received title hidden by the optimistic title', async () => {
+  const clock = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+  try {
+    const dinner = await save();
+    await shareTrip();
+    clock.mockReturnValue(4_600_000);
+    input.title = 'Supper';
+    await save(dinner);
+    const stamp = { ms: 1_120_000, counter: 0, device: 'remote' };
+    await applySyncEvents(database, split.groupId, [
+      received({
+        version: 1,
+        type: 'expense',
+        id: dinner.id,
+        stamp,
+        units: { title: { value: 'Brunch' } },
+      }),
+    ]);
+    clock.mockReturnValue(1_060_000);
+    await database.transaction(checkUnsentStamps);
+    const [checked] = await listUnsentSyncEvents(database);
+    expect(checked.content.stamp.ms).toBe(stamp.ms + 1);
+    await applySyncEvents(database, split.groupId, [
+      { ...received(checked.content), id: checked.id, receivedAtMs: 0 },
+    ]);
+    expect(await listExpensesForCards(database)).toEqual([
+      expect.objectContaining({ title: 'Brunch', changedAt: 4_600_000 }),
+    ]);
+    expect(await latestStamp(database)).toEqual(checked.content.stamp);
+  } finally {
+    clock.mockRestore();
+  }
+});
+
+test('a stale decision cannot settle the next pair or write after archival or trashing', async () => {
+  await shareTrip();
+  const { groupId } = split;
+  const first = await save();
+  const second = await save();
+  const [creation] = await listUnsentSyncEvents(database);
+  const stamp = {
+    ms: (await latestStamp(database))!.ms + 1,
+    counter: 0,
+    device: 'remote',
+  };
+  const id = 'remote-expense';
+  await applySyncEvents(database, groupId, [
+    received({ ...creation.content, id, stamp }),
+  ]);
+  const decide = (of: string) =>
+    markExpensesDistinct(database, groupId, id, of);
+  expect((await readDuplicateTargets(database)).get(id)).toBe(first.id);
+
+  const settlement = received({
+    version: 1,
+    type: 'distinct',
+    id: randomUUID(),
+    stamp,
+    units: { expenses: { value: [first.id, id] } },
+  });
+  // The remote decision gets the connection before the press from the old screen.
+  await Promise.all([
+    applySyncEvents(database, groupId, [settlement]),
+    decide(first.id),
+  ]);
+  expect((await readDuplicateTargets(database)).get(id)).toBe(second.id);
+  const outbox = await listUnsentSyncEvents(database);
+  expect(outbox).toHaveLength(2);
+  await setGroupArchived(database, groupId, true);
+  await decide(second.id);
+  expect(await listUnsentSyncEvents(database)).toEqual(outbox);
+  expect((await readDuplicateTargets(database)).get(id)).toBe(second.id);
+
+  await setGroupArchived(database, groupId, false);
+  await moveExpenseToTrash(database, identity.personalSpaceId, id);
+  const trashed = await listUnsentSyncEvents(database);
+  await decide(second.id);
+  expect(await listUnsentSyncEvents(database)).toEqual(trashed);
+  expect(
+    await database.all("SELECT id FROM sync_records WHERE type = 'distinct'"),
+  ).toEqual([{ id: settlement.content.id }]);
+});
+
+test('refreshes duplicate marks when only an expense creation stamp changes', async () => {
+  await shareTrip();
+  const { groupId } = split;
+  const local = await save();
+  const [creation] = await listUnsentSyncEvents(database);
+  const { ms } = creation.content.stamp;
+  const id = 'remote-expense';
+  const stamp = { ms: ms + 1, device: 'remote', counter: 0 };
+  await applySyncEvents(database, groupId, [
+    received({ ...creation.content, id, stamp }),
+  ]);
+  expect(await readDuplicateTargets(database)).toEqual(
+    new Map([[id, local.id]]),
+  );
+  const expenses = await listExpenses(database);
+  const changed = jest.fn();
+  const unsubscribe = subscribeToExpenses(database, changed);
+
+  await applySyncEvents(database, groupId, [
+    received({
+      version: 1,
+      type: 'expense',
+      id,
+      stamp: { ...stamp, ms: ms - 1 },
+      units: { title: { value: 'Earlier title' } },
+    }),
+  ]);
+  expect(changed).toHaveBeenCalledTimes(1);
+  expect(await readDuplicateTargets(database)).toEqual(
+    new Map([[local.id, id]]),
+  );
+
+  const moved = await database.transaction((tx) =>
+    takeUploadedStamps(
+      tx,
+      groupId,
+      new Map([[creation.id, { ...creation.content.stamp, ms: ms - 2 }]]),
+    ),
+  );
+  expect(moved).toEqual(new Set([groupId]));
+  expect(await readDuplicateTargets(database)).toEqual(
+    new Map([[id, local.id]]),
+  );
+  expect(await listExpenses(database)).toEqual(expenses);
+  unsubscribe();
+});
 
 test.each(['group', 'member', 'category'] as const)(
   'merges %s units out of order, retaining the creation stamp and the winning unit stamp',

@@ -9,9 +9,10 @@ export async function applyMergedCategory(
   groupId: string,
   record: Extract<SyncRecord, { type: 'category' }>,
   uncategorized: Pick<Category, 'id' | 'name' | 'color'>,
-  eventMs: number,
+  eventMs: number | null,
 ) {
-  if (record.deleted) {
+  const values = syncRecordValues(record);
+  if (!values) {
     // Repoint expense foreign keys first. Their sync units keep the real assignment.
     await moveExpensesToCategory(
       tx,
@@ -26,8 +27,6 @@ export async function applyMergedCategory(
     );
     return changes > 0;
   }
-  const values = syncRecordValues(record);
-  if (!values) return false;
   const { name, color, archived } = values;
   const [existing] = await tx.all<{
     name: string;
@@ -51,9 +50,11 @@ export async function applyMergedCategory(
     return true;
   }
   await tx.run(
-    `INSERT INTO categories (id, spaceId, name, color, isArchived, isDefault, position)
-     VALUES (?, ?, ?, ?, ?, 0, (SELECT COALESCE(MAX(position), 0) + 1 FROM categories))`,
-    [record.id, groupId, name, color, Number(archived)],
+    `INSERT INTO categories (id, spaceId, name, color, isArchived, position, isDefault, createdByUserId)
+     SELECT ?, ?, ?, ?, ?, slots.next, COALESCE(s.categoryDefault, 0), s.categoryCreator
+     FROM (SELECT COALESCE(MAX(position), 0) + 1 AS next FROM categories) slots
+     LEFT JOIN sync_received s ON s.groupId = ? AND s.type = 'category' AND s.id = ?`,
+    [record.id, groupId, name, color, Number(archived), groupId, record.id],
   );
   await restoreMergedExpenseCategories(tx, groupId, record.id, eventMs);
   return true;
