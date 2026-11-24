@@ -44,7 +44,7 @@ import {
 } from '../sync/loop';
 import { fetchKeysToJoin } from '../sync/key-rotation';
 import { deleteGroupData } from '../sync/read-only-copy';
-import { mergeRecordEvent, readSyncRecord, sharedGroup } from '../sync/records';
+import { mergeRecordEvent, readSyncRecord } from '../sync/records';
 import { readRoster } from '../sync/roster';
 import { makeSnapshot } from '../sync/snapshot-ledger';
 import {
@@ -405,7 +405,12 @@ async function prepareApproval(
   device: SigningDevice,
   addBack?: string,
 ): Promise<Prepared | { reason: CannotApprove } | undefined> {
-  const group = await sharedGroup(tx, groupId);
+  // A read-only copy approves nothing, and the sync before this may have made the ledger
+  // one (SYNC-302.1).
+  const [group] = await tx.all<{ device: string }>(
+    'SELECT device FROM sync_groups WHERE groupId = ? AND readOnly IS NULL',
+    [groupId],
+  );
   if (!group) return undefined;
   const { members, userId } = await readMembers(tx, groupId);
   const blocked = whyNotApprove(members, userId, request);
