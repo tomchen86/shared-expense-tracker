@@ -11,3 +11,21 @@ export {
   SEED_OPTIONS,
 } from './device-identity';
 export type { DeviceIdentity } from './device-identity';
+// Inviting, asking to join and answering a request, for callers outside this folder.
+export { prepareInvite, type InviteResult } from './invites';
+export {
+  sendJoinRequest,
+  listJoinRequests,
+  type JoinRequest,
+} from './join-requests';
+export {
+  approveJoinRequest,
+  askJoinResult,
+  listReceivedJoinRequests,
+  rejectJoinRequest,
+  type ApproveResult,
+  type CannotApprove,
+  type JoinResult,
+  type ReceivedJoinRequest,
+  type RejectResult,
+} from './join-decisions';

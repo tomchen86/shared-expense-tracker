@@ -84,12 +84,37 @@ interface Invite {
   cursor: number;
 }
 
+/** What the API hands a device that was approved (SHARING-183.1). */
+export interface Handover {
+  groupId: string;
+  /** The device that approved. */
+  deviceId: string;
+  senderKey: string;
+  epoch: number;
+  box: string;
+}
+
+/** A snapshot the API stores for whoever asks a group for one. */
+export interface StoredSnapshot {
+  snapshotId: string;
+  /** The device that uploaded it. */
+  deviceId: string;
+  epoch: number;
+  sequence: number;
+  /** Its chunks, in lowercase hexadecimal. */
+  chunks: string[];
+}
+
 interface Api {
   /** The member devices of each group. */
   groups: Map<string, Set<string>>;
   invites: Map<string, Invite>;
   /** The join requests of each invite, by its code: each device's content, in hexadecimal. */
   requests: Map<string, Map<string, string>>;
+  /** The handover of each approved device, by the invite's code and the device ID. */
+  handovers: Map<string, Handover>;
+  /** The snapshot each group stores, for the device that joins it. */
+  snapshots: Map<string, StoredSnapshot>;
 }
 
 const holder = globalThis as { inviteTestApi?: Api };
@@ -98,6 +123,8 @@ const api = (): Api =>
     groups: new Map(),
     invites: new Map(),
     requests: new Map(),
+    handovers: new Map(),
+    snapshots: new Map(),
   });
 
 const json = (status: number, body: unknown) => ({
@@ -255,7 +282,7 @@ function putRequest(request: Received, code: string) {
   return json(200, { code });
 }
 
-/** `DELETE /invites/<code>/request` (SHARING-117.1, 118.1). */
+/** `DELETE /invites/<code>/request` (SHARING-117.2, 118.1). */
 function deleteRequest(request: Received, code: string) {
   if (
     !CODE.test(code) ||
@@ -264,10 +291,60 @@ function deleteRequest(request: Received, code: string) {
   ) {
     return json(400, { error: 'request' });
   }
-  if (isActive(api().invites.get(code))) {
+  const invite = api().invites.get(code);
+  if (
+    api().handovers.has(`${code} ${request.deviceId}`) ||
+    (isActive(invite) &&
+      api().groups.get(invite!.groupId)?.has(request.deviceId!))
+  ) {
+    return json(409, { error: 'already-a-member' });
+  }
+  if (isActive(invite)) {
     api().requests.get(code)?.delete(request.deviceId!);
   }
   return json(200, { code });
+}
+
+/** `GET /invites/<code>/request` (SHARING-183.1): what became of the device's request. */
+function askResult(request: Received, code: string) {
+  if (!CODE.test(code) || request.path.includes('?')) {
+    return json(400, { error: 'request' });
+  }
+  const handover = api().handovers.get(`${code} ${request.deviceId}`);
+  if (handover) return json(200, { state: 'approved', ...handover });
+  const invite = api().invites.get(code);
+  if (!isActive(invite)) return json(404, { error: 'no-invite' });
+  if (api().groups.get(invite!.groupId)?.has(request.deviceId!)) {
+    return json(409, { error: 'already-a-member' });
+  }
+  return json(200, {
+    state: api().requests.get(code)?.has(request.deviceId!)
+      ? 'waiting'
+      : 'none',
+  });
+}
+
+/** What a group's member device gets of its snapshot and its events (sync), as far as joining needs them. */
+function joinedGroup(request: Received) {
+  const [, groupId, rest] =
+    /^\/groups\/([^/?]+)\/(snapshot|snapshots\/[^/]+\/chunks\/\d+|events)(\?|$)/.exec(
+      request.path,
+    ) ?? [];
+  if (!groupId || request.method !== 'GET') return undefined;
+  const snapshot = api().snapshots.get(groupId);
+  if (!api().groups.get(groupId)?.has(request.deviceId!)) {
+    return snapshot ? json(403, { error: 'not-a-member' }) : undefined;
+  }
+  if (rest === 'events') return json(200, { events: [], more: false });
+  if (!snapshot) return json(404, { error: 'no-snapshot' });
+  if (rest === 'snapshot') {
+    const { chunks, ...said } = snapshot;
+    return json(200, { ...said, count: chunks.length });
+  }
+  const content = snapshot.chunks[Number(rest.split('/').at(-1))];
+  return content === undefined
+    ? json(400, { error: 'request' })
+    : json(200, { content });
 }
 
 const GROUP_PATH = /^\/groups\/([^/?]+)$/;
@@ -292,6 +369,11 @@ function route(request: Received) {
   if (joining && request.method === 'DELETE') {
     return deleteRequest(request, joining[1]);
   }
+  if (joining && request.method === 'GET') {
+    return askResult(request, joining[1]);
+  }
+  const joined = joinedGroup(request);
+  if (joined) return joined;
   // Nothing else has a route here, the event API (SYNC-45.1 to 64.1) included, on purpose:
   // a sync that the app starts after a save in a shared ledger gets "not found" for its
   // download, keeps its unsent events, and changes nothing these tests look at. The tests
@@ -351,6 +433,40 @@ export function inviteWithCard(
   });
 }
 
+/** A member rejects the device's request: the API holds it no more (SHARING-172.1). */
+export function rejectedOnApi(code: string, deviceId: string) {
+  api().requests.get(code)?.delete(deviceId);
+}
+
+/**
+ * A member approves the device's request (SHARING-173.1): the device is a member device,
+ * its request is gone, and the API holds this handover for it and this snapshot of the
+ * group.
+ */
+export function approvedOnApi(
+  code: string,
+  deviceId: string,
+  handover: Handover,
+  snapshot?: StoredSnapshot,
+) {
+  const members = api().groups.get(handover.groupId) ?? new Set<string>();
+  members.add(deviceId);
+  api().groups.set(handover.groupId, members);
+  api().requests.get(code)?.delete(deviceId);
+  api().handovers.set(`${code} ${deviceId}`, handover);
+  if (snapshot) api().snapshots.set(handover.groupId, snapshot);
+}
+
+/** The API holds no handover for the device any more, as once it has downloaded events (SHARING-185.1). */
+export function handoverGoneOnApi(code: string, deviceId: string) {
+  api().handovers.delete(`${code} ${deviceId}`);
+}
+
+/** A new card for the invite, as a member's phone uploads one when the group changes. */
+export function cardOnApi(code: string, card: Uint8Array) {
+  api().invites.get(code)!.card = toHex(card);
+}
+
 /** The join requests the API holds for an invite: each device's content. */
 export const requestsOnApi = (code: string) =>
   [...(api().requests.get(code) ?? [])].map(([deviceId, content]) => ({
@@ -384,12 +500,20 @@ export const isRegistering = (request: Sent) =>
 const isEventApi = (request: Sent) =>
   /^\/groups\/[^/?]+\/events(\?|$)/.test(request.path);
 
+/** A member's phone listing its group's join requests, which it does after a sync (SHARING-190.2). */
+const isRequestList = (request: Sent) =>
+  request.method === 'GET' &&
+  /^\/groups\/[^/?]+\/requests(\?|$)/.test(request.path);
+
 /**
  * Every request the API received, registrations included, except the downloads and
- * uploads of events: whether and when the phone syncs is not these tests' to say.
+ * uploads of events and the lists of join requests: whether and when the phone syncs,
+ * and lists after it, is not these tests' to say.
  */
 export const apiRequests = () =>
-  received().filter((request) => !isEventApi(request));
+  received().filter(
+    (request) => !isEventApi(request) && !isRequestList(request),
+  );
 
 /** How many such requests the API has received. */
 export const asked = () => apiRequests().length;

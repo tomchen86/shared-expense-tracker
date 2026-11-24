@@ -2,6 +2,7 @@ import {
   GROUP_CONTENT_LIMIT,
   PAGE_CONTENT_LIMIT,
   PAGE_EVENT_LIMIT,
+  type ContinueResponse,
   type EventsPageResponse,
   type GroupRefusal,
   type SnapshotNeededResponse,
@@ -10,6 +11,7 @@ import {
 } from '@shared-expense/domain/api';
 import type { TransactionSql } from 'postgres';
 import type { Sql } from '../database/connect';
+import { membersWithSnapshots } from './snapshots';
 
 /** Why the event API refuses a request that passed the checks before routing. */
 export type EventApiRefusal = GroupRefusal | { error: 'request' };
@@ -79,81 +81,106 @@ export function storeEvents(
     now: number;
   },
 ): Promise<UploadEventsResponse | GroupRefusal> {
-  const { groupId, deviceId, now, epoch, events } = upload;
   return sql.begin<UploadEventsResponse | GroupRefusal>(
     'isolation level read committed',
     async (transaction) => {
-      const group = await lockMemberGroup(transaction, groupId, deviceId);
+      const group = await lockMemberGroup(
+        transaction,
+        upload.groupId,
+        upload.deviceId,
+      );
       if (!group) return { error: 'not-a-member' };
-
-      // The events the group has are answered with their numbers and otherwise ignored.
-      // The IDs go as one JSON text, and as an array they are looked up in the index of
-      // the group's event IDs, however many events the group has.
-      const sequences = new Map<string, number>();
-      const known = await transaction<{ id: string; sequence: string }[]>`
-        SELECT id, sequence FROM group_events
-        WHERE group_id = ${groupId}
-          AND id = ANY (ARRAY(
-            SELECT jsonb_array_elements_text(${JSON.stringify(
-              events.map(({ id }) => id),
-            )}::text::jsonb)::uuid
-          ))`;
-      for (const { id, sequence } of known) {
-        sequences.set(id, Number(sequence));
-      }
-
-      const fresh = events.filter(({ id }) => !sequences.has(id));
-      if (fresh.length > 0) {
-        if (epoch !== Number(group.epoch)) {
-          return { error: 'epoch', epoch: Number(group.epoch) };
-        }
-        // Two hexadecimal characters write one byte.
-        const bytes = fresh.reduce(
-          (sum, { content }) => sum + content.length / 2,
-          0,
-        );
-        if (Number(group.stored_bytes) + bytes > GROUP_CONTENT_LIMIT) {
-          return { error: 'group-full' };
-        }
-        // PostgreSQL takes the new events as one JSON text and decodes each content
-        // itself. What the group's row counts is what this statement stored.
-        await transaction`
-          WITH stored AS (
-            INSERT INTO group_events
-              (group_id, sequence, id, device_id, epoch, received_at_ms, content)
-            SELECT
-              ${groupId}::uuid,
-              ${group.last_sequence}::bigint + sent.position,
-              (sent.event->>'id')::uuid,
-              ${deviceId}::uuid,
-              ${epoch}::bigint,
-              ${now}::bigint,
-              decode(sent.event->>'content', 'hex')
-            FROM jsonb_array_elements(${JSON.stringify(fresh)}::text::jsonb)
-              WITH ORDINALITY AS sent (event, position)
-            RETURNING size
-          )
-          UPDATE groups
-          SET last_sequence = last_sequence + (SELECT count(*) FROM stored),
-              stored_bytes = stored_bytes + (SELECT sum(size) FROM stored)
-          WHERE id = ${groupId}`;
-        fresh.forEach(({ id }, index) =>
-          sequences.set(id, Number(group.last_sequence) + index + 1),
-        );
-      }
-      return {
-        events: events.map(({ id }) => ({ id, sequence: sequences.get(id)! })),
-      };
+      return storeLockedGroupEvents(transaction, group, upload);
     },
   ) as Promise<UploadEventsResponse | GroupRefusal>;
 }
 
+/**
+ * What `storeEvents` does once its transaction holds the group's lock, for an approval
+ * to store its events in a transaction of its own (SHARING-173.1).
+ */
+export async function storeLockedGroupEvents(
+  transaction: TransactionSql,
+  group: NonNullable<Awaited<ReturnType<typeof lockMemberGroup>>>,
+  upload: UploadEventsRequest & {
+    groupId: string;
+    deviceId: string;
+    now: number;
+  },
+): Promise<UploadEventsResponse | GroupRefusal> {
+  const { groupId, deviceId, now, epoch, events } = upload;
+  // The events the group has are answered with their numbers and otherwise ignored.
+  // The IDs go as one JSON text, and as an array they are looked up in the index of
+  // the group's event IDs, however many events the group has.
+  const sequences = new Map<string, number>();
+  const known = await transaction<{ id: string; sequence: string }[]>`
+    SELECT id, sequence FROM group_events
+    WHERE group_id = ${groupId}
+      AND id = ANY (ARRAY(
+        SELECT jsonb_array_elements_text(${JSON.stringify(
+          events.map(({ id }) => id),
+        )}::text::jsonb)::uuid
+      ))`;
+  for (const { id, sequence } of known) {
+    sequences.set(id, Number(sequence));
+  }
+
+  const fresh = events.filter(({ id }) => !sequences.has(id));
+  if (fresh.length > 0) {
+    if (epoch !== Number(group.epoch)) {
+      return { error: 'epoch', epoch: Number(group.epoch) };
+    }
+    // Two hexadecimal characters write one byte.
+    const bytes = fresh.reduce(
+      (sum, { content }) => sum + content.length / 2,
+      0,
+    );
+    if (Number(group.stored_bytes) + bytes > GROUP_CONTENT_LIMIT) {
+      return { error: 'group-full' };
+    }
+    // PostgreSQL takes the new events as one JSON text and decodes each content
+    // itself. What the group's row counts is what this statement stored.
+    await transaction`
+      WITH stored AS (
+        INSERT INTO group_events
+          (group_id, sequence, id, device_id, epoch, received_at_ms, content)
+        SELECT
+          ${groupId}::uuid,
+          ${group.last_sequence}::bigint + sent.position,
+          (sent.event->>'id')::uuid,
+          ${deviceId}::uuid,
+          ${epoch}::bigint,
+          ${now}::bigint,
+          decode(sent.event->>'content', 'hex')
+        FROM jsonb_array_elements(${JSON.stringify(fresh)}::text::jsonb)
+          WITH ORDINALITY AS sent (event, position)
+        RETURNING size
+      )
+      UPDATE groups
+      SET last_sequence = last_sequence + (SELECT count(*) FROM stored),
+          stored_bytes = stored_bytes + (SELECT sum(size) FROM stored)
+      WHERE id = ${groupId}`;
+    fresh.forEach(({ id }, index) =>
+      sequences.set(id, Number(group.last_sequence) + index + 1),
+    );
+  }
+  return {
+    events: events.map(({ id }) => ({ id, sequence: sequences.get(id)! })),
+  };
+}
+
 type DownloadResult =
-  EventsPageResponse | SnapshotNeededResponse | EventApiRefusal;
+  | { page: EventsPageResponse; snapshotNeededBy: string[] }
+  | SnapshotNeededResponse
+  | ContinueResponse
+  | EventApiRefusal;
+
+const SNAPSHOT_REQUEST_WINDOW_MS = 30 * 24 * 60 * 60 * 1_000;
 
 /**
- * Records the requested cursor for both a page and a snapshot-needed answer. Only a
- * page discards the recipient's snapshot when the cursor reaches its sequence.
+ * Records the requested cursor and whether the device is waiting for a snapshot.
+ * A page discards the recipient's snapshot when the cursor reaches its sequence, and the
+ * handover the device was approved with: it has its snapshot in by now (SHARING-185.1).
  */
 export function readPage(
   sql: Sql,
@@ -176,18 +203,35 @@ export function readPage(
 
       // The cleared prefix ends just before the first retained event, or at the last
       // assigned number when none remain. Read it after acquiring the group lock.
-      const [progress] = await tx<{ needs_snapshot: boolean }[]>`
-        UPDATE group_members SET progress_cursor = ${after}, progress_at_ms = ${now}
-        WHERE group_id = ${groupId} AND device_id = ${deviceId}
-        RETURNING progress_cursor < (
-          SELECT coalesce(min(sequence) - 1, ${member.last_sequence}::bigint)
+      const [progress] = await tx<{ cleared_to: string }[]>`
+        WITH cleared AS (
+          SELECT coalesce(min(sequence) - 1, ${member.last_sequence}::bigint) AS cleared_to
           FROM group_events WHERE group_id = ${groupId}
-        ) AS needs_snapshot`;
-      if (progress.needs_snapshot) return { error: 'snapshot-needed' };
+        )
+        UPDATE group_members SET progress_cursor = ${after}, progress_at_ms = ${now},
+          snapshot_needed_at_ms = CASE WHEN ${after}::bigint < cleared_to THEN ${now}::bigint END
+        FROM cleared
+        WHERE group_id = ${groupId} AND device_id = ${deviceId}
+        RETURNING cleared_to`;
+      const clearedTo = Number(progress.cleared_to);
+      const members = membersWithSnapshots(tx, groupId);
+      if (after < clearedTo) {
+        // Other downloads share the group lock. Check their marks, cursors and
+        // complete snapshots in one statement so all three see the same commits.
+        const [group] = await tx<{ can_continue: boolean }[]>`
+          SELECT NOT EXISTS (
+            SELECT FROM (${members}) m
+            WHERE m.sequence > ${after} OR (m.device_id <> ${deviceId}
+              AND (m.snapshot_needed_at_ms IS NULL OR m.progress_cursor > ${after}))
+          ) AS can_continue`;
+        return group.can_continue
+          ? { error: 'continue', after: clearedTo }
+          : { error: 'snapshot-needed' };
+      }
 
       // Read one event past a full page to tell whether more follow, and decode only
       // the contents the page returns (SYNC-57.2).
-      const page = await tx<
+      const events = await tx<
         {
           id: string;
           sequence: string;
@@ -201,6 +245,9 @@ export function readPage(
         WITH discarded AS (
           DELETE FROM group_snapshots
           WHERE group_id = ${groupId} AND recipient = ${deviceId} AND sequence <= ${after}
+        ), fetched AS (
+          DELETE FROM invite_handovers h USING group_invites i
+          WHERE h.code = i.code AND i.group_id = ${groupId} AND h.device_id = ${deviceId}
         )
         SELECT id, sequence, device_id, epoch, received_at_ms,
           encode(content, 'hex') AS content, following
@@ -219,8 +266,14 @@ export function readPage(
         ORDER BY sequence
         LIMIT ${PAGE_EVENT_LIMIT}`;
 
-      return {
-        events: page.map((event) => ({
+      const waiting = await tx<{ device_id: string }[]>`
+        SELECT m.device_id FROM (${members}) m
+        WHERE m.device_id <> ${deviceId}
+          AND m.snapshot_needed_at_ms >= ${now - SNAPSHOT_REQUEST_WINDOW_MS}
+          AND (m.sequence IS NULL OR m.sequence < ${clearedTo})
+        ORDER BY m.snapshot_needed_at_ms, m.device_id`;
+      const page: EventsPageResponse = {
+        events: events.map((event) => ({
           id: event.id,
           sequence: Number(event.sequence),
           deviceId: event.device_id,
@@ -230,8 +283,9 @@ export function readPage(
         })),
         // The largest event fits a page several times, so a page with no event has none
         // after it either.
-        more: page.length > 0 && page[0].following > page.length,
+        more: events.length > 0 && events[0].following > events.length,
       };
+      return { page, snapshotNeededBy: waiting.map((m) => m.device_id) };
     },
   ) as Promise<DownloadResult>;
 }

@@ -9,7 +9,8 @@ import { RequestCardsContext, useJoinGroup } from './use-join-group';
 
 /** The system's invite and a stored request open the same sheet over the current route. */
 export function InviteLinkSheet({ children }: { children: ReactNode }) {
-  const { page, close, cards, submit, retry, askToCancel } = useJoinGroup();
+  const { page, close, cards, submit, retry, forget, askToCancel } =
+    useJoinGroup();
   const { name } = useLocalIdentity();
   const colors = useThemeColors();
   const text = [styles.text, { color: colors.text }];
@@ -17,15 +18,51 @@ export function InviteLinkSheet({ children }: { children: ReactNode }) {
   function content() {
     if (!page) return null;
     switch (page.kind) {
-      case 'form':
+      case 'form': {
+        const { again } = page;
         return (
           <JoinForm
-            key={`${page.link.code}#${page.link.secret}`}
+            key={`${page.link.code}#${page.link.secret}#${again ? 'again' : ''}`}
             card={page.card}
-            initialName={name}
+            initialName={again ? again.name : name}
             preparing={page.preparing}
             onSend={submit}
+            onCancel={again && (() => askToCancel(again))}
           />
+        );
+      }
+      case 'approved':
+        return (
+          <View style={styles.content}>
+            <Text accessibilityRole="header" style={title}>
+              Approved
+            </Text>
+            <Text style={text}>{page.request.groupName}</Text>
+            <Text style={text}>
+              {page.reason ? unfinished[page.reason] : 'Finishing up…'}
+            </Text>
+            {/* A newer app is what finishes it: trying again would not. */}
+            {page.reason && page.reason !== 'update-needed' && (
+              <InviteAction label="Try Again" inline onPress={retry} />
+            )}
+          </View>
+        );
+      case 'ended':
+        return (
+          <View style={styles.content}>
+            <Text accessibilityRole="header" style={title}>
+              {page.request.outcome === 'declined'
+                ? 'Request Declined'
+                : 'Invite No Longer Valid'}
+            </Text>
+            <Text style={text}>{page.request.groupName}</Text>
+            <Text style={text}>
+              {page.request.outcome === 'declined'
+                ? 'A member of this group declined your request.'
+                : 'This invite has expired or was turned off. Ask a member for a new link.'}
+            </Text>
+            <InviteAction label="OK" inline onPress={forget} />
+          </View>
         );
       case 'loading':
         return <Text style={text}>Loading invite…</Text>;
@@ -80,6 +117,13 @@ export function InviteLinkSheet({ children }: { children: ReactNode }) {
     </RequestCardsContext.Provider>
   );
 }
+
+/** Why joining did not finish, as an approved request says it (SHARING-221.1). */
+const unfinished = {
+  'no-answer': 'Connect to the internet to finish joining.',
+  'update-needed': 'Update the app to finish joining this group.',
+  failed: 'Something went wrong. Try again later.',
+};
 
 const styles = StyleSheet.create({
   content: { gap: 16 },

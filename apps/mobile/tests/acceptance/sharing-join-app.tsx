@@ -63,6 +63,8 @@ export const NOT_SENT_OFFLINE = 'Connect to the internet and try again.';
 export const TOO_MANY =
   'Too many people are waiting to join this group. Try again later.';
 export const ALREADY_IN = 'This phone is already in this group.';
+export const HAS_A_COPY =
+  "This phone already has its own copy of this group, so it can't join it.";
 export const CANNOT_JOIN = "This phone can't join a group.";
 export const UNABLE_TO_SEND = 'Unable to Send Request';
 export const UNABLE_TO_CANCEL = 'Unable to Cancel Request';

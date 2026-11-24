@@ -51,7 +51,7 @@ test.each<[string, unknown]>([
     'a later change of its unit',
     distinct(['dinner', 'taxi'], { stamp: at(2000), base: CREATED }),
   ],
-])('[SYNC-200.1] [SYNC-4.3] accepts %s', (_case, content) => {
+])('[SYNC-200.1] [SYNC-4.4] accepts %s', (_case, content) => {
   expect(judge(content)).toEqual(VALID(content));
 });
 
@@ -96,7 +96,7 @@ test.each<[string, unknown]>([
       deleted: true,
     },
   ],
-])('[SYNC-200.1] [SYNC-4.3] refuses %s for its structure', (_case, content) => {
+])('[SYNC-200.1] [SYNC-4.4] refuses %s for its structure', (_case, content) => {
   expect(judge(distinct())).toEqual(VALID(distinct()));
 
   expect(judge(content)).toEqual(refused('structure'));
@@ -208,7 +208,7 @@ test.each<[string, unknown]>([
     ),
   ],
 ])(
-  '[SYNC-98.3] a snapshot with a "not a duplicate" record %s can be imported',
+  '[SYNC-98.4] a snapshot with a "not a duplicate" record %s can be imported',
   (_case, content) => {
     expect(checkSyncSnapshot(content)).toEqual({
       status: 'valid',
@@ -238,7 +238,7 @@ test.each<[string, unknown]>([
     { ...heldDistinct(), units: {}, deleted: at(3000, 0, 'phone-b') },
   ],
 ])(
-  '[SYNC-98.3] a snapshot cannot be imported when its "not a duplicate" record %s',
+  '[SYNC-98.4] a snapshot cannot be imported when its "not a duplicate" record %s',
   (_case, record) => {
     // Otherwise the snapshot is refused for holding such a record at all.
     expect(checkSyncSnapshot(snapshotWith(heldDistinct())).status).toBe(

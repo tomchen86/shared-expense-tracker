@@ -66,7 +66,7 @@ export const inviteRoutes = new Hono<AppEnv>()
     const body = new Uint8Array(await c.req.arrayBuffer());
     if (c.req.method === 'DELETE') {
       if (body.length) return answer({ error: 'request' });
-      return answer(await cancelJoinRequest(sql, code, c.var.deviceId, now()));
+      return answer(await cancelJoinRequest(sql, code, c.var.deviceId, now));
     }
     const put = jsonOf(body);
     if (!isJoinRequestBody(put)) return answer({ error: 'request' });

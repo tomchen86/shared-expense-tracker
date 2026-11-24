@@ -4,6 +4,7 @@ import {
   DEVICES_PATH,
   REFUSAL_STATUS,
   SIGNED_REQUEST_HEADERS,
+  SNAPSHOT_NEEDED_BY_HEADER,
   isRefusal,
   isRegisterDeviceResponse,
   signedRequestBytes,
@@ -54,7 +55,7 @@ export interface ApiRequest {
 /** What became of a request. */
 export type ApiResult =
   /** The API's answer, whatever its status. */
-  | { outcome: 'answered'; status: number; body: Uint8Array }
+  | ({ outcome: 'answered' } & Answer)
   /** Not sent: registering this device first got this answer. */
   | { outcome: 'not-registered'; status: number; body: Uint8Array }
   /** The registration or the request got no answer. */
@@ -79,6 +80,7 @@ interface Outgoing {
 interface Answer {
   status: number;
   body: Uint8Array;
+  snapshotNeededBy?: string;
 }
 
 /**
@@ -194,10 +196,16 @@ export async function fetchAnswer(
       fetch(url, {
         ...init,
         ...(givingUp && { signal: givingUp.signal }),
-      }).then(async (response) => ({
-        status: response.status,
-        body: new Uint8Array(await response.arrayBuffer()),
-      })),
+      }).then(async (response) => {
+        const snapshotNeededBy = response.headers.get(
+          SNAPSHOT_NEEDED_BY_HEADER,
+        );
+        return {
+          status: response.status,
+          body: new Uint8Array(await response.arrayBuffer()),
+          ...(snapshotNeededBy !== null && { snapshotNeededBy }),
+        };
+      }),
       limit,
     ]);
   } catch {
@@ -284,7 +292,11 @@ async function register(
     !isRegisterDeviceResponse(said) ||
     said.deviceId !== device.deviceId
   ) {
-    return { outcome: 'not-registered', ...answer };
+    return {
+      outcome: 'not-registered',
+      status: answer.status,
+      body: answer.body,
+    };
   }
   await saveRegistered(database, device.deviceId);
   return undefined;

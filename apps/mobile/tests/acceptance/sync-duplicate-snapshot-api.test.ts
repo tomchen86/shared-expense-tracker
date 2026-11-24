@@ -50,7 +50,7 @@ afterEach(endSnapshotWorld);
 const distinctIn = (snapshot: SyncSnapshot) =>
   snapshot.records.filter((record) => (record.type as string) === 'distinct');
 
-test('[SYNC-114.2] [SYNC-124.2] a snapshot holds a "not a duplicate" record with its stamp, a new phone stores it, also after a restart, and its own snapshot holds the same record', async () => {
+test('[SYNC-114.3] [SYNC-124.2] a snapshot holds a "not a duplicate" record with its stamp, a new phone stores it, also after a restart, and its own snapshot holds the same record', async () => {
   const setup = await twoPhones({ expenses: ['Dinner'] });
   const { a, b, key } = setup;
   const [dinner] = (await ledgerOf(a)).expenses;

@@ -298,7 +298,7 @@ test("[GROUPS-23.2] lets Members be swiped down, back on the group's screen", as
   expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups', 'Brisbane']);
 });
 
-test("[GROUPS-24.3] lists only you, as a button marked (You) with a chevron, in a new group's Members", async () => {
+test("[GROUPS-24.4] lists only you, as a button marked (You) with a chevron, in a new group's Members", async () => {
   await startInMembers();
 
   await expectMembers(['Taylor (You)', 'Add Member']);
@@ -307,7 +307,7 @@ test("[GROUPS-24.3] lists only you, as a button marked (You) with a chevron, in 
   ).toBeOnTheScreen();
 });
 
-test('[GROUPS-24.3] lists the members in the order they joined, each other member as a button named after them, with a chevron', async () => {
+test('[GROUPS-24.4] lists the members in the order they joined, each other member as a button named after them, with a chevron', async () => {
   // Not in alphabetical order, so a list sorted by name fails.
   await startInMembers(['Casey', 'Blake']);
 
@@ -316,7 +316,7 @@ test('[GROUPS-24.3] lists the members in the order they joined, each other membe
     expect(within(membersButton(name)).getByText('›')).toBeOnTheScreen();
 });
 
-test("[GROUPS-25.2] opens an action sheet titled with the member's name when their row is tapped", async () => {
+test("[GROUPS-25.3] opens an action sheet titled with the member's name when their row is tapped", async () => {
   await startInMembers(['Blake']);
 
   const menu = await tapMember('Blake');
@@ -332,7 +332,7 @@ test("[GROUPS-25.2] opens an action sheet titled with the member's name when the
   expect(alertsShown()).toEqual([]);
 });
 
-test('[GROUPS-25.2] opens your own action sheet, titled with your member name and offering only Rename, when your row is tapped', async () => {
+test('[GROUPS-25.3] opens your own action sheet, titled with your member name and offering only Rename, when your row is tapped', async () => {
   await startInMembers(['Blake']);
 
   const menu = await tapMember('Taylor (You)');
@@ -346,7 +346,7 @@ test('[GROUPS-25.2] opens your own action sheet, titled with your member name an
   expect(menu?.message ?? '').toBe('');
 });
 
-test("[GROUPS-25.2] changes nothing when Cancel is chosen in a member's menu", async () => {
+test("[GROUPS-25.3] changes nothing when Cancel is chosen in a member's menu", async () => {
   await startInMembers(['Blake']);
   const before = localData(file);
 

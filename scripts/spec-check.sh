@@ -6,9 +6,10 @@
 #   Run it in a checkout of the PR's head. The acceptance test paths are read from
 #   main's AGENTS.md ("- Acceptance tests: `path`, `path`"), never from the PR's copy.
 #
-# The approved version is the branch spec/<branch>, which only the owner can push
-# (.github/rulesets/spec-branches.json). A PR without one has nothing approved, so
-# it must leave these files exactly as main has them.
+# The approved version is the branch spec/<branch>, which only the owner's account can
+# push (.github/rulesets/spec-branches.json). In delegated mode a session pushes it with
+# that account (ADR-0044), so ok does not show that the owner has read it. A PR without
+# one has nothing approved, so it must leave these files exactly as main has them.
 #
 # The head must already contain main (main-integrity requires that before merging),
 # so what lands on main is the head's own tree. The approved result is main merged

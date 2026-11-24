@@ -162,7 +162,7 @@ test.each<[string, unknown]>([
     'a deletion with a negative counter',
     deletion('category', 'cat-fuel', at(1000, -1)),
   ],
-])('[SYNC-4.3] refuses %s for its structure', (_case, content) => {
+])('[SYNC-4.4] refuses %s for its structure', (_case, content) => {
   expect(judge(content)).toEqual(refused('structure'));
 });
 
@@ -178,7 +178,7 @@ test.each<[string, unknown]>([
       stamp: at(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, '!~'),
     },
   ],
-])('[SYNC-4.3] accepts %s', (_case, content) => {
+])('[SYNC-4.4] accepts %s', (_case, content) => {
   expect(judge(content)).toEqual(VALID(content));
 });
 

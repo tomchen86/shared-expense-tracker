@@ -7,24 +7,34 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Alert } from 'react-native';
+import { Alert, AppState } from 'react-native';
 import { router } from 'expo-router';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
 import type { InviteCredentials } from './invite-card';
 import { onInviteLink } from './invite-links';
+import { askJoinResult, type JoinResult } from './join-decisions';
 import {
   cannotUse,
   groupForLink,
+  offline,
   parseInviteLink,
   readJoinInvite,
   wentWrong,
+  type CardUnread,
   type InviteNotice,
   type JoinCard,
 } from './join-invite';
 import {
+  alreadyIn,
   cancelJoinRequest,
+  connectAgain,
+  endedRequestAt,
+  forgetEndedRequest,
+  listJoinRequests,
   requestByCode,
   sendJoinRequest,
+  type CancelResult,
+  type EndedJoinRequest,
   type JoinRequest,
   type SendResult,
 } from './join-requests';
@@ -37,17 +47,29 @@ type Page =
       card: JoinCard;
       link: InviteCredentials;
       preparing?: boolean;
+      /** The request whose choice no longer fits the card, when the form is to choose again. */
+      again?: JoinRequest;
     }
   | {
       kind: 'request';
       request: JoinRequest;
       reason?: string;
       link: InviteCredentials;
-    };
+      /** The request as the local data holds it, when `request` is a new choice for it. */
+      stored?: JoinRequest;
+    }
+  | {
+      kind: 'approved';
+      request: JoinRequest;
+      link: InviteCredentials;
+      /** Why joining did not finish; nothing while the phone is joining. */
+      reason?: 'no-answer' | 'update-needed' | 'failed';
+    }
+  | { kind: 'ended'; request: EndedJoinRequest; link: InviteCredentials };
 
 export const RequestCardsContext = createContext<{
   revision: number;
-  openRequest: (request: JoinRequest) => void;
+  openRequest: (request: JoinRequest | EndedJoinRequest) => void;
 } | null>(null);
 
 export function useRequestCards() {
@@ -70,9 +92,11 @@ export function useJoinGroup() {
   // A fresh object identifies each opening, even when the same link is reopened.
   const active = useRef<InviteCredentials | undefined>(undefined);
   const [sending] = useState(() => new Map<string, Promise<SendResult>>());
-  const [cancelling] = useState(
-    () => new Map<string, Promise<string | undefined>>(),
-  );
+  const [cancelling] = useState(() => new Map<string, Promise<CancelResult>>());
+  const [asking] = useState(() => new Map<string, Promise<JoinResult>>());
+  // The card each request's last question read, for the form that chooses again, or why
+  // it read none. In memory only (SHARING-212.1).
+  const [cards] = useState(() => new Map<string, JoinCard | CardUnread>());
   const close = useCallback(() => {
     active.current = undefined;
     setPage(null);
@@ -95,11 +119,122 @@ export function useJoinGroup() {
     [db, close],
   );
 
+  /**
+   * What Join Group shows for a request the local data holds (SHARING-225.1). `asked`
+   * is the answer to the question about it, once there is one.
+   */
+  const pageFor = useCallback(
+    (
+      request: JoinRequest,
+      link: InviteCredentials,
+      asked?: JoinResult,
+      afterSend = false,
+    ): Page => {
+      if (request.outcome === 'approved') {
+        const reason =
+          asked?.outcome === 'approved'
+            ? asked.reason
+            : asked?.outcome === 'no-answer' || asked?.outcome === 'failed'
+              ? asked.outcome
+              : undefined;
+        return { kind: 'approved', request, link, reason };
+      }
+      if (request.outcome === 'choose-again') {
+        const card = cards.get(request.code);
+        if (typeof card === 'object')
+          return { kind: 'form', card, link, again: request };
+        // The form shows the card as it is now, which only the question reads.
+        if (!asked) return { kind: 'loading' };
+        const noAnswer =
+          asked.outcome === 'no-answer' ||
+          (asked.outcome !== 'failed' && card === 'no-answer');
+        return {
+          kind: 'notice',
+          message: noAnswer ? offline : wentWrong,
+          retry: true,
+          link,
+        };
+      }
+      // A question that follows a refusal as a member, and finds nothing out (SHARING-140.2).
+      const reason = !afterSend
+        ? undefined
+        : asked?.outcome === 'no-answer'
+          ? connectAgain
+          : wentWrong;
+      return { kind: 'request', request, link, reason };
+    },
+    [cards],
+  );
+
+  /**
+   * Asks once what became of the request under `code` (SHARING-210.1), unless it is on
+   * its way or being cancelled; a question that is on its way already is the one waited
+   * for. Then shows the answer, when Join Group shows that request.
+   */
+  const askAbout = useCallback(
+    async (code: string, afterSend = false) => {
+      if (sending.has(code) || cancelling.has(code)) return;
+      let job = asking.get(code);
+      if (!job) {
+        // Before the question: a request that ends keeps its place, and loses its code.
+        const before = requestByCode(db, code).catch(() => undefined);
+        job = askJoinResult(db, code, {
+          // A card that was read stays, whatever a later question reads.
+          onCard: (card) => {
+            if (typeof card === 'object' || typeof cards.get(code) !== 'object')
+              cards.set(code, card);
+          },
+          onApproved: () => {
+            changed();
+            void before.then((request) => {
+              const link = active.current;
+              if (request && link?.code === code)
+                setPage({
+                  kind: 'approved',
+                  request: { ...request, outcome: 'approved' },
+                  link,
+                });
+            });
+          },
+        })
+          .catch((): JoinResult => ({ outcome: 'failed' }))
+          .finally(() => {
+            asking.delete(code);
+            changed();
+          });
+        asking.set(code, job);
+        void job.then(async (asked) => {
+          const link = active.current;
+          if (link?.code !== code || sending.has(code) || cancelling.has(code))
+            return;
+          if (asked.outcome === 'joined') {
+            close();
+            navigateToGroup({ id: asked.groupId, archived: 0 });
+          } else if (asked.outcome === 'already-a-member')
+            setPage({ kind: 'notice', message: alreadyIn });
+          else {
+            const position = (await before)?.position;
+            const [saved, ended] = await Promise.all([
+              requestByCode(db, code),
+              position === undefined ? undefined : endedRequestAt(db, position),
+            ]).catch(() => []);
+            if (active.current !== link) return;
+            if (ended) setPage({ kind: 'ended', request: ended, link });
+            else if (saved) setPage(pageFor(saved, link, asked, afterSend));
+          }
+        });
+      }
+      await job;
+    },
+    [db, sending, cancelling, asking, cards, close, pageFor],
+  );
+
   const showSendResult = useCallback(
     async (
       link: InviteCredentials,
       job: Promise<SendResult>,
       previous?: Page,
+      stored?: JoinRequest,
     ) => {
       const next = await job;
       if (active.current !== link) return;
@@ -109,23 +244,32 @@ export function useJoinGroup() {
         else await read(link);
       } else if (next.kind === 'refused')
         setPage({ kind: 'notice', message: next.message });
-      else setPage({ ...next, link });
+      // The question that follows shows what it finds.
+      else if (next.kind === 'request')
+        setPage({
+          ...next,
+          link,
+          stored: next.request.sent ? undefined : stored,
+        });
     },
     [read],
   );
 
   const showCancelResult = useCallback(
-    async (link: InviteCredentials, job: Promise<string | undefined>) => {
-      const error = await job;
+    async (link: InviteCredentials, job: Promise<CancelResult>) => {
+      const result = await job;
       if (active.current !== link) return;
-      if (error) Alert.alert('Unable to Cancel Request', error);
-      else close();
+      if (result.kind === 'failed')
+        Alert.alert('Unable to Cancel Request', result.message);
+      else if (result.kind === 'cancelled') close();
     },
     [close],
   );
 
   const open = useCallback(
-    async (link: InviteCredentials | undefined, fromCard = false) => {
+    // `shown` is the request as its card shows it, when the opening comes from the card.
+    async (link: InviteCredentials | undefined, shown?: JoinRequest) => {
+      const fromCard = shown !== undefined;
       if (!link) {
         active.current = undefined;
         setPage({ kind: 'notice', message: cannotUse });
@@ -137,10 +281,16 @@ export function useJoinGroup() {
       )
         return;
       active.current = link;
-      setPage((previous) => previous && { kind: 'loading' });
       // Capture an operation before the local reads in case its answer arrives during them.
       const put = sending.get(link.code);
       const del = cancelling.get(link.code);
+      // A card opens on its request at once, as the card shows it; what the local data
+      // holds replaces it below.
+      setPage((previous) =>
+        shown && !put && !del
+          ? pageFor(shown, link)
+          : previous && { kind: 'loading' },
+      );
       try {
         if (!fromCard) {
           const group = await groupForLink(db, link);
@@ -164,15 +314,27 @@ export function useJoinGroup() {
         } else if (del) {
           if (stored) setPage(stored);
           await showCancelResult(link, del);
-        } else if (stored) setPage(stored);
-        else if (fromCard) close();
+        } else if (saved) {
+          setPage(pageFor(saved, link));
+          void askAbout(link.code);
+        } else if (fromCard) close();
         else await read(link);
       } catch {
         if (active.current === link)
           setPage({ kind: 'notice', message: wentWrong, retry: true, link });
       }
     },
-    [db, sending, cancelling, close, read, showSendResult, showCancelResult],
+    [
+      db,
+      sending,
+      cancelling,
+      close,
+      read,
+      pageFor,
+      askAbout,
+      showSendResult,
+      showCancelResult,
+    ],
   );
 
   useEffect(() => {
@@ -183,6 +345,29 @@ export function useJoinGroup() {
     };
   }, [open]);
 
+  // When the app opens, which is when it starts and when it comes back from the
+  // background, it asks about every request it holds that has not ended (SHARING-210.1).
+  useEffect(() => {
+    const askAll = () =>
+      void listJoinRequests(db).then(
+        (requests) =>
+          requests.forEach((request) => {
+            if (request.code !== null) void askAbout(request.code);
+          }),
+        () => undefined,
+      );
+    askAll();
+    let away = false;
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'background') away = true;
+      else if (state === 'active' && away) {
+        away = false;
+        askAll();
+      }
+    });
+    return () => appState.remove();
+  }, [db, askAbout]);
+
   function send(request: JoinRequest) {
     if (
       (page?.kind !== 'form' && page?.kind !== 'request') ||
@@ -192,9 +377,10 @@ export function useJoinGroup() {
     )
       return;
     const { link } = page;
-    const isNew = page.kind === 'form';
+    const stored = page.kind === 'form' ? page.again : page.stored;
+    const isNew = page.kind === 'form' && !stored;
     setPage(isNew ? { ...page, preparing: true } : { kind: 'sending' });
-    const job = sendJoinRequest(db, request, userId, isNew, changed)
+    const job = sendJoinRequest(db, request, userId, isNew, changed, stored)
       .then((result) => {
         if (
           result.kind === 'refused' ||
@@ -207,12 +393,16 @@ export function useJoinGroup() {
         sending.delete(request.code);
       });
     sending.set(request.code, job);
-    void showSendResult(link, job, page);
+    // The API will not take it from a member device: it may have been approved meanwhile.
+    void job.then((result) => {
+      if (result.kind === 'member') void askAbout(request.code, true);
+    });
+    void showSendResult(link, job, page, stored);
   }
 
   function askToCancel(request: JoinRequest) {
     if (
-      page?.kind !== 'request' ||
+      (page?.kind !== 'request' && page?.kind !== 'form') ||
       page.link !== active.current ||
       cancelling.has(request.code)
     )
@@ -234,14 +424,18 @@ export function useJoinGroup() {
             )
               return;
             const job = cancelJoinRequest(db, request)
-              .then((error) => {
-                if (!error) changed();
-                return error;
+              .then((result) => {
+                if (result.kind === 'cancelled') changed();
+                return result;
               })
               .finally(() => {
                 cancelling.delete(request.code);
               });
             cancelling.set(request.code, job);
+            // A member approved it first: the phone asks, and joins (SHARING-143.2).
+            void job.then((result) => {
+              if (result.kind === 'member') void askAbout(request.code);
+            });
             void showCancelResult(link, job);
           },
         },
@@ -256,22 +450,38 @@ export function useJoinGroup() {
     askToCancel,
     cards: {
       revision,
-      openRequest: ({ code, secret }: JoinRequest) =>
-        void open({ code, secret }, true),
+      openRequest: (request: JoinRequest | EndedJoinRequest) => {
+        if (request.code !== null) {
+          void open({ code: request.code, secret: request.secret }, request);
+          return;
+        }
+        // What is left of it has no link: its own object stands for this opening.
+        const link = { code: '', secret: '' };
+        active.current = link;
+        setPage({ kind: 'ended', request, link });
+      },
     },
     submit(name: string, memberId: string | null) {
-      if (page?.kind === 'form')
-        send({
-          ...page.link,
-          name,
-          memberId,
-          groupName: page.card.name,
-          sent: 0,
-        });
+      if (page?.kind !== 'form') return;
+      send(
+        page.again
+          ? { ...page.again, name, memberId, sent: 0, outcome: null }
+          : {
+              ...page.link,
+              name,
+              memberId,
+              groupName: page.card.name,
+              sent: 0,
+            },
+      );
     },
     retry() {
       if (page?.kind === 'request') send(page.request);
-      else if (
+      else if (page?.kind === 'approved' && active.current === page.link) {
+        // Asks and joins again (SHARING-221.1).
+        setPage({ ...page, reason: undefined });
+        void askAbout(page.request.code);
+      } else if (
         page?.kind === 'notice' &&
         page.link &&
         active.current === page.link
@@ -280,6 +490,17 @@ export function useJoinGroup() {
         active.current = undefined;
         void open(link);
       }
+    },
+    /** Forgets a request that has ended, once the person has seen what became of it. */
+    forget() {
+      if (page?.kind !== 'ended' || active.current !== page.link) return;
+      void forgetEndedRequest(db, page.request.position).then(
+        () => {
+          changed();
+          close();
+        },
+        () => undefined,
+      );
     },
   };
 }

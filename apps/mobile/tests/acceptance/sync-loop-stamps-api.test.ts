@@ -273,9 +273,11 @@ describe('SYNC-85.1', () => {
   test('[SYNC-85.1] gives events stamped an hour ahead new stamps from the corrected time on, a millisecond apart, with the bases that name them', async () => {
     const { a, A, brisbane, key, written, from } = await afterAnHourAhead();
 
-    // The download is refused for the clock first, and accepted at the API's time.
+    // The download is refused for the clock first, and accepted at the API's time; the
+    // download after the upload follows at that time too (SYNC-160.1).
     expect(await attempts(a, from, 'GET')).toEqual([
       [String(FAST), 401],
+      [String(NOW), 200],
       [String(NOW), 200],
     ]);
     expect(await a.sharing.readClockOffsetMs(a.database)).toBe(-HOUR);
