@@ -1752,3 +1752,33 @@ describe('SYNC-305.1', () => {
     expect(secureStoreEntry(dana, keyEntry(brisbane, 3))).toBeDefined();
   });
 });
+
+describe('SYNC-306.1', () => {
+  test('[SYNC-306.1] deletes the keys above its key epoch too when a phone whose local data went back becomes a read-only copy', async () => {
+    const world = await danaIn();
+    const { invite, taylor, brisbane, ids } = world;
+    // Dana's phone at key epoch 1.
+    const copy = await copyOfData(world.dana);
+    await joins(invite, 'Evan', { memberId: ids.Casey });
+    await sync(world.dana);
+    expect(await remove(world, ids.Casey)).toEqual({ outcome: 'removed' });
+    await sync(taylor);
+    await sync(world.dana);
+    expect(secureStoreEntry(world.dana, keyEntry(brisbane, 2))).toBeDefined();
+    // Its local data goes back to key epoch 1, and the secure store keeps both keys.
+    // Taylor's phone removes it before it syncs again.
+    const dana = await restoreData(world.dana, copy);
+    expect(await remove(world, ids.Dana)).toEqual({ outcome: 'removed' });
+
+    await sync(dana);
+
+    expect(await copyOn(dana, brisbane)).toMatchObject({
+      reason: 'not-a-member',
+    });
+    expect(
+      [1, 2, 3].map((epoch) =>
+        secureStoreEntry(dana, keyEntry(brisbane, epoch)),
+      ),
+    ).toEqual([undefined, undefined, undefined]);
+  });
+});
