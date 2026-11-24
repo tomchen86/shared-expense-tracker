@@ -1,16 +1,23 @@
-import { Button, View } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { Button, DeviceEventEmitter, StatusBar, View } from 'react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import {
   BasicAlertDialog,
+  RNHostView,
+  Spacer,
+  Surface,
   Text,
   TextButton,
   TextField,
   type TextFieldProps,
 } from '@expo/ui/jetpack-compose';
+import { height } from '@expo/ui/jetpack-compose/modifiers';
 import { useFilterNamePrompt } from '../../src/ui/use-filter-name-prompt';
 import { componentsIn } from '../acceptance/shell-tabs-app';
 
 const suggestion = 'Shopping, Paid by Me';
+
+const components = (component: unknown) =>
+  componentsIn(screen.getByTestId('prompt'), (type) => type === component);
 
 function Prompt({ onSave }: { onSave: (name: string) => void }) {
   const { prompt, dialog } = useFilterNamePrompt(onSave);
@@ -27,8 +34,6 @@ test('focuses the suggested name at its end on each opening and preserves a move
   await render(<Prompt onSave={save} />);
   const open = () =>
     fireEvent.press(screen.getByRole('button', { name: /name filter/i }));
-  const components = (component: unknown) =>
-    componentsIn(screen.getByTestId('prompt'), (type) => type === component);
   const field = () => components(TextField)[0].props as TextFieldProps;
   await open();
   const initial = field();
@@ -67,4 +72,36 @@ test('focuses the suggested name at its end on each opening and preserves a move
   await fireEvent(saveLabel!.view!, 'buttonPressed');
   expect(save).toHaveBeenCalledWith('Mine');
   expect(screen.queryByText('Save Filter')).toBeNull();
+});
+
+test('splits spare height between the gaps only while the keyboard is open and the dialog fits', async () => {
+  await render(<Prompt onSave={jest.fn()} />);
+  await fireEvent.press(screen.getByRole('button', { name: /name filter/i }));
+  const measureDialog = (surfaceHeight: number) =>
+    fireEvent(components(Surface)[0].view!, 'globalEvent', {
+      nativeEvent: {
+        payload: ['onSizeChanged', { width: 320, height: surfaceHeight }],
+      },
+    });
+  const expectGaps = (size: number) => {
+    for (const component of [RNHostView, Spacer]) {
+      expect(components(component)[0].props.modifiers).toContainEqual(
+        height(size),
+      );
+    }
+  };
+
+  await act(async () => {
+    DeviceEventEmitter.emit('keyboardDidShow', {
+      endCoordinates: { screenY: (StatusBar.currentHeight ?? 0) + 300 },
+    });
+  });
+  await measureDialog(320);
+  expectGaps(0);
+  await measureDialog(220);
+  expectGaps(40);
+  await act(async () => {
+    DeviceEventEmitter.emit('keyboardDidHide');
+  });
+  expectGaps(0);
 });

@@ -1,9 +1,10 @@
 import { useState, useSyncExternalStore } from 'react';
-import { Keyboard, StatusBar, StyleSheet } from 'react-native';
+import { Keyboard, Pressable, StatusBar, StyleSheet } from 'react-native';
 import {
   BasicAlertDialog,
   Column,
   FlowRow,
+  RNHostView,
   Spacer,
   Surface,
   Text,
@@ -13,7 +14,6 @@ import {
 import {
   align,
   clip,
-  clickable,
   fillMaxWidth,
   height,
   onSizeChanged,
@@ -70,8 +70,9 @@ function FilterNameDialog({
   const [canSave, setCanSave] = useState(!!suggestion.trim());
   const keyboardY = useSyncExternalStore(subscribeToKeyboard, keyboardTop);
   const [dialogHeight, setDialogHeight] = useState(0);
-  // Only reserve space around a full-height surface. In a shorter window Android pans
-  // to the focused field, and Back reveals the buttons.
+  // Equal gaps size the dialog window to the space between the status bar and keyboard,
+  // centering the surface there. When it won't fit, Android pans to the focused field
+  // and Back reveals the buttons.
   const spareHeight =
     (keyboardY ?? 0) - (StatusBar.currentHeight ?? 0) - dialogHeight;
   const gap = dialogHeight > 0 ? Math.max(0, spareHeight / 2) : 0;
@@ -83,18 +84,15 @@ function FilterNameDialog({
     <MaterialHost style={StyleSheet.absoluteFill} pointerEvents="none">
       <BasicAlertDialog onDismissRequest={onClose}>
         <Column>
-          <Spacer
-            modifiers={[
-              fillMaxWidth(),
-              height(gap),
-              ...(gap > 0
-                ? [
-                    clickable(onClose, { indication: false }),
-                    semantics({ contentDescription: 'Close' }),
-                  ]
-                : []),
-            ]}
-          />
+          <RNHostView modifiers={[fillMaxWidth(), height(gap)]}>
+            <Pressable
+              accessible={false}
+              focusable={false}
+              importantForAccessibility="no-hide-descendants"
+              onPress={onClose}
+              style={{ flex: 1 }}
+            />
+          </RNHostView>
           <Surface
             modifiers={[
               clip(Shapes.RoundedCorner(28)),
