@@ -940,6 +940,66 @@ describe('SHARING-200.2', () => {
     expect(await requestOnApi(code, D)).toBeDefined();
   });
 
+  test("[SHARING-200.2] goes on to approve when the download after the second sync's upload is answered with no page: the API calls it behind, and it syncs and sends again", async () => {
+    const { invite, taylor, brisbane, D, request } = await danaListed();
+    goOffline();
+    await addExpense(taylor, { title: 'Lunch' });
+    goOnline();
+    // A change is saved while the first sync downloads again, so the second sync uploads
+    // as well. The API confirms that upload, and the download that follows it is answered
+    // with an error: the sync ends there, with the cursor short of the phone's own event.
+    whenAnswered('POST', async () =>
+      whenAnswered('GET', async () => {
+        await addExpense(taylor, { title: 'Supper' });
+        whenAnswered('POST', async () => answerNext('GET', 500, {}));
+      }),
+    );
+    const from = mark();
+
+    expect(await approve(invite, request)).toEqual(APPROVED);
+
+    const approvals = await approvalsBy(taylor, from);
+    expect(approvals).toHaveLength(2);
+    expect(approvals[1].cursor).toBeGreaterThan(approvals[0].cursor);
+    expect(approvals[1].snapshotId).toBe(approvals[0].snapshotId);
+    expect(await isMemberDevice(brisbane, D)).toBe(true);
+  });
+
+  test('[SHARING-200.2] says it failed, not that there is no answer, when a later upload of the second sync got none and the download after it was answered', async () => {
+    const { invite, taylor, code, D, request } = await danaListed();
+    goOffline();
+    await addExpense(taylor, { title: 'Lunch' });
+    goOnline();
+    // 101 changes are saved while the first sync downloads again, so the second sync
+    // uploads them in two requests (SYNC-76.1). The API confirms the first; the second
+    // gets no answer, and the download that follows the uploads is answered.
+    whenAnswered('POST', async () =>
+      whenAnswered('GET', async () => {
+        for (let each = 0; each < 101; each += 1) {
+          await addExpense(taylor, { title: `Snack ${each}` });
+        }
+        whenAnswered('POST', async () => noAnswerTo('POST'));
+      }),
+    );
+    const from = mark();
+
+    expect(await approve(invite, request)).toEqual({ outcome: 'failed' });
+
+    const sent = await sentBy(taylor, from);
+    expect(sent.map(({ method, reached }) => [method, reached])).toEqual([
+      ['GET', true],
+      ['POST', true],
+      ['GET', true],
+      ['GET', true],
+      ['POST', true],
+      ['POST', false],
+      ['GET', true],
+    ]);
+    expect(await approvalsBy(taylor, from)).toEqual([]);
+    expect(await unsent(taylor)).toHaveLength(1);
+    expect(await requestOnApi(code, D)).toBeDefined();
+  });
+
   test('[SHARING-200.2] approves though the snapshot it uploads for another member device at the end of the sync gets no answer', async () => {
     const { invite, taylor, dana, brisbane } = await danaApproved();
     expect((await ask(dana, invite)).outcome).toBe('joined');
