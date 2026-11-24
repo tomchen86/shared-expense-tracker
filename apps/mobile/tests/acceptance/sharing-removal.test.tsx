@@ -1,4 +1,6 @@
+import { Buffer } from 'node:buffer';
 import { act, waitFor } from '@testing-library/react-native';
+import { decrypt } from '@shared-expense/domain/crypto';
 import {
   alertsShown,
   expectClosed,
@@ -50,10 +52,12 @@ import {
   revocations,
   rotations,
   startRemovalApi,
+  type SentRotation,
 } from './sharing-removal-app';
 import {
   LATER,
   YOU,
+  changed,
   eachTestGetsAPhone,
   groupId,
   groupNamed,
@@ -72,6 +76,7 @@ import {
   lunchCreated,
   mark,
   otherPhoneUploads,
+  otherStamp,
   startEventApi,
   startSynced,
 } from './sync-screens-app';
@@ -282,6 +287,90 @@ describe('SHARING-270.1', () => {
     expect(rotation.boxes.map(({ deviceId: to }) => to).sort()).toEqual(
       [device, third].sort(),
     );
+  });
+});
+
+describe('SHARING-271.1', () => {
+  const bytes = (hex: string) => new Uint8Array(Buffer.from(hex, 'hex'));
+
+  /**
+   * What the events of a rotation that `device` sent hold, in order: each opened with the
+   * group key the phone saved for the rotation's key epoch.
+   */
+  async function eventsIn(
+    group: string,
+    device: string,
+    { epoch, events }: SentRotation,
+  ) {
+    const entry = `group-key.${group}.${epoch}`;
+    await waitFor(() => expect(keyEntries(group)).toContain(entry));
+    const key = secureStoreEntries().find((each) => each.key === entry)!.value;
+    return events.map(({ id, content }) => {
+      const opened = decrypt({
+        key: bytes(key),
+        ciphertext: bytes(content),
+        associatedData: new Uint8Array(
+          Buffer.from(
+            ['shared-expense/event/v1', group, id, device, epoch].join('\n'),
+            'utf8',
+          ),
+        ),
+      });
+      if (!opened.ok) throw new Error('An event of the rotation does not open');
+      return JSON.parse(Buffer.from(opened.plaintext).toString('utf8')) as {
+        type: string;
+        id: string;
+        units: Record<string, { value: unknown }>;
+      };
+    });
+  }
+
+  test('[SHARING-271.1] writes only the roster event of a phone that left while another phone still represents its member', async () => {
+    const { brisbane, device } = await inMembersWithDana();
+    const other = 'c0ffee00-0000-4000-8000-00000000000e';
+    await receive(
+      brisbane,
+      represents(other, DANA_MEMBER, 'user-e', LATER + 3_000),
+    );
+    // Dana's phone D has left: the API's member devices are this phone and her other one.
+    groupNeedsRotation(brisbane, [device, other]);
+    const from = mark();
+
+    await syncs();
+
+    await waitFor(() => expect(rotations(from)).toHaveLength(1));
+    const [rotation] = rotations(from);
+    expect(rotation.remove).toEqual([]);
+    expect(rotation.boxes.map(({ deviceId: to }) => to).sort()).toEqual(
+      [device, other].sort(),
+    );
+    const sent = await eventsIn(brisbane, device, rotation);
+    expect(sent.map(({ type, id }) => [type, id])).toEqual([['device', D]]);
+    expect(sent[0].units).toMatchObject({ member: { value: null } });
+    await expectMembers(WITH_DANA);
+  });
+
+  test('[SHARING-271.1] writes no member event for a member another phone has marked as removed already', async () => {
+    const { brisbane, device } = await inMembersWithDana();
+    // Her phone represents her still, so she is a member all the same (SYNC-36.4).
+    await receive(
+      brisbane,
+      changed('member', DANA_MEMBER, otherStamp(LATER + 3_000), {
+        removed: true,
+      }),
+    );
+    await expectMembers(WITH_DANA);
+    await askToRemoveDana();
+    const from = mark();
+
+    await pressAlertButton(REMOVE);
+
+    await waitFor(() => expect(rotations(from)).toHaveLength(1));
+    const [rotation] = rotations(from);
+    expect(rotation.remove).toEqual([D]);
+    const sent = await eventsIn(brisbane, device, rotation);
+    expect(sent.map(({ type, id }) => [type, id])).toEqual([['device', D]]);
+    await expectMembers(WITHOUT_DANA);
   });
 });
 
@@ -626,6 +715,39 @@ describe('SHARING-284.1', () => {
     await syncs();
     await waitFor(() => expect(apiEventIds(brisbane)).toContain(deletion.id));
     await waitFor(async () => expect(await unsent()).toEqual([]));
+  });
+
+  test('[SHARING-284.1] deletes the invite and writes its deletion when the API refuses the revocation because there is no such invite', async () => {
+    const { brisbane } = await startWithInvite();
+    await danaJoined();
+    await showMembers('Brisbane');
+    await expectMembers(WITH_DANA);
+    await askToRemoveDana();
+    // As in the test above, the answer is kept back until the group is full.
+    holdRemovals('revoke');
+    apiAnswersRemoval('revoke', 404, { error: 'no-invite' });
+    const from = mark();
+
+    await pressAlertButton(REMOVE);
+
+    const revoked = [`/groups/${brisbane}/invites/${CODE_A}`];
+    await waitFor(() => expect(revocations(from)).toEqual(revoked));
+    groupIsFull(brisbane, true);
+    await releaseRemovals();
+    await waitFor(async () =>
+      expect(await unsent()).toMatchObject([
+        {
+          groupId: brisbane,
+          content: { type: 'invite', id: CODE_A, deleted: true },
+        },
+      ]),
+    );
+
+    // The phone holds the invite no more: the next sync asks to revoke nothing.
+    groupIsFull(brisbane, false);
+    await syncs();
+    await waitFor(async () => expect(await unsent()).toEqual([]));
+    expect(revocations(from)).toEqual(revoked);
   });
 
   test('[SHARING-284.1] revokes no invite while no phone has left', async () => {
