@@ -133,13 +133,13 @@ describe('SHARING-291.1', () => {
     const before = await waitingOpen();
     memberApproves();
 
-    await secondsPass(2);
+    await secondsPass(2.5);
 
     expect(asked()).toHaveLength(before);
 
     await secondsPass(1);
 
-    await waitFor(() => expect(asked()).toHaveLength(before + 1));
+    expect(asked()).toHaveLength(before + 1);
     expect(asked().at(-1)!.path).toBe(`/invites/${CODE_A}/request`);
     await expectJoined();
   });
@@ -148,7 +148,7 @@ describe('SHARING-291.1', () => {
     await waitingOpen();
     memberRejects();
 
-    await secondsPass(3);
+    await secondsPass(3.5);
 
     await expectJoinLines(DECLINED);
   });
@@ -157,7 +157,7 @@ describe('SHARING-291.1', () => {
     await waitingOpen();
     revokedByAnotherPhone(CODE_A);
 
-    await secondsPass(3);
+    await secondsPass(3.5);
 
     await expectJoinLines(INVALID);
   });
@@ -165,51 +165,64 @@ describe('SHARING-291.1', () => {
   test('[SHARING-291.1] asks every 3 seconds at first', async () => {
     const before = await waitingOpen();
 
-    await secondsPass(9);
+    await secondsPass(8);
+
+    expect(asked()).toHaveLength(before + 2);
+
+    await secondsPass(2);
 
     expect(asked()).toHaveLength(before + 3);
     expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
   });
 
   test('[SHARING-291.1] asks every 30 seconds once Join Group has shown the waiting request for 2 minutes', async () => {
-    await waitingOpen();
-    // Without a network the API receives none of the first 2 minutes' questions.
-    goOffline();
-    await secondsPass(120);
-    goOnline();
-    const before = asked().length;
+    const before = await waitingOpen();
 
-    await secondsPass(25);
+    // 3 seconds apart up to the end of the 2 minutes: 39 by 119 seconds, the 40th at 120.
+    await secondsPass(119);
 
-    expect(asked()).toHaveLength(before);
+    expect(asked()).toHaveLength(before + 39);
 
-    await secondsPass(5);
+    await secondsPass(1.5);
 
-    expect(asked()).toHaveLength(before + 1);
+    expect(asked()).toHaveLength(before + 40);
 
-    await secondsPass(30);
+    // Then 30 seconds apart: the next ones at 150 and at 180 seconds.
+    await secondsPass(28);
 
-    expect(asked()).toHaveLength(before + 2);
+    expect(asked()).toHaveLength(before + 40);
+
+    await secondsPass(3);
+
+    expect(asked()).toHaveLength(before + 41);
+
+    await secondsPass(27);
+
+    expect(asked()).toHaveLength(before + 41);
+
+    await secondsPass(3);
+
+    expect(asked()).toHaveLength(before + 42);
   });
 
   test('[SHARING-291.1] asks no second time while a question has no answer, and the next time 3 seconds after the answer', async () => {
     const before = await waitingOpen();
     const answer = keepAnswersBack(isAsking);
-    await secondsPass(3);
-    await waitFor(() => expect(asked()).toHaveLength(before + 1));
+    await secondsPass(3.5);
+    expect(asked()).toHaveLength(before + 1);
 
     await secondsPass(31);
 
     expect(asked()).toHaveLength(before + 1);
 
     await answer();
-    await secondsPass(2);
+    await secondsPass(2.5);
 
     expect(asked()).toHaveLength(before + 1);
 
     await secondsPass(1);
 
-    await waitFor(() => expect(asked()).toHaveLength(before + 2));
+    expect(asked()).toHaveLength(before + 2);
   });
 
   test('[SHARING-291.1] says nothing and shows the same when a question gets no answer, and asks again the next time', async () => {
@@ -224,7 +237,7 @@ describe('SHARING-291.1', () => {
 
     goOnline();
     memberApproves();
-    await secondsPass(3);
+    await secondsPass(3.5);
 
     await expectJoined();
   });
@@ -260,29 +273,31 @@ describe('SHARING-291.1', () => {
     await comesToForeground();
     // The question the app asks as it comes back (SHARING-210.1).
     await waitFor(() => expect(asked()).toHaveLength(before + 1));
-    await secondsPass(2);
+    await secondsPass(2.5);
 
     expect(asked()).toHaveLength(before + 1);
 
     await secondsPass(1);
 
-    await waitFor(() => expect(asked()).toHaveLength(before + 2));
+    expect(asked()).toHaveLength(before + 2);
   });
 
   test('[SHARING-291.1] counts the 2 minutes anew when the app comes back', async () => {
     await waitingOpen();
-    // As above: the API receives none of the questions of these 2 minutes, nor the one
-    // the app asks as it comes back.
-    goOffline();
-    await secondsPass(120);
+    await secondsPass(125);
     await goesToBackground();
-    await comesToForeground();
-    goOnline();
     const before = asked().length;
+    await comesToForeground();
+    // The question the app asks as it comes back (SHARING-210.1).
+    await waitFor(() => expect(asked()).toHaveLength(before + 1));
 
-    await secondsPass(9);
+    await secondsPass(8);
 
     expect(asked()).toHaveLength(before + 3);
+
+    await secondsPass(2);
+
+    expect(asked()).toHaveLength(before + 4);
   });
 
   test('[SHARING-291.1] does not ask while the request is being cancelled', async () => {

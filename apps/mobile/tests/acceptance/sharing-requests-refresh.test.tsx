@@ -169,13 +169,13 @@ describe('SHARING-290.1', () => {
     await asks();
     const from = received().length;
 
-    await secondsPass(2);
+    await secondsPass(2.5);
 
     expect(lists(from)).toEqual([]);
 
     await secondsPass(1);
 
-    await waitFor(() => expect(lists(from)).toHaveLength(1));
+    expect(lists(from)).toHaveLength(1);
     await expectJoinCount('Brisbane', 1);
     expect(groupRequests(from)).toEqual([`GET /groups/${brisbane}/requests`]);
   });
@@ -184,7 +184,7 @@ describe('SHARING-290.1', () => {
     const { brisbane } = await inMembers();
     await asks();
 
-    await secondsPass(3);
+    await secondsPass(3.5);
 
     await expectMembers([DANA_ROW, ...MEMBERS]);
 
@@ -201,9 +201,9 @@ describe('SHARING-290.1', () => {
     await asks();
     const from = received().length;
 
-    await secondsPass(3);
+    await secondsPass(3.5);
 
-    await waitFor(() => expect(lists(from)).toHaveLength(1));
+    expect(lists(from)).toHaveLength(1);
     await closeInvite();
     expect(membersShown()).toEqual([DANA_ROW, ...MEMBERS]);
   });
@@ -211,52 +211,64 @@ describe('SHARING-290.1', () => {
   test('[SHARING-290.1] lists every 3 seconds at first', async () => {
     const { from } = await inMembers();
 
-    await secondsPass(9);
+    await secondsPass(8);
+
+    expect(lists(from)).toHaveLength(2);
+
+    await secondsPass(2);
 
     expect(lists(from)).toHaveLength(3);
   });
 
   test('[SHARING-290.1] lists every 30 seconds once the screen has been shown for 2 minutes', async () => {
-    await inMembers();
-    // Without a network the API receives none of the first 2 minutes' lists, which keeps
-    // this phone's requests under the API's limit for a minute.
-    goOffline();
-    await secondsPass(120);
-    goOnline();
-    const from = received().length;
+    const { from } = await inMembers();
 
-    await secondsPass(25);
+    // 3 seconds apart up to the end of the 2 minutes: 39 by 119 seconds, the 40th at 120.
+    await secondsPass(119);
 
-    expect(lists(from)).toEqual([]);
+    expect(lists(from)).toHaveLength(39);
 
-    await secondsPass(5);
+    await secondsPass(1.5);
 
-    expect(lists(from)).toHaveLength(1);
+    expect(lists(from)).toHaveLength(40);
 
-    await secondsPass(30);
+    // Then 30 seconds apart: the next ones at 150 and at 180 seconds.
+    await secondsPass(28);
 
-    expect(lists(from)).toHaveLength(2);
+    expect(lists(from)).toHaveLength(40);
+
+    await secondsPass(3);
+
+    expect(lists(from)).toHaveLength(41);
+
+    await secondsPass(27);
+
+    expect(lists(from)).toHaveLength(41);
+
+    await secondsPass(3);
+
+    expect(lists(from)).toHaveLength(42);
   });
 
   test('[SHARING-290.1] sends no second list while one of its own has no answer, and the next one 3 seconds after the answer', async () => {
     await onBrisbane();
     holdDecisions('list');
     const from = received().length;
-    await secondsPass(3);
-    await waitFor(() => expect(lists(from)).toHaveLength(1));
+    await secondsPass(3.5);
+    expect(lists(from)).toHaveLength(1);
 
     await secondsPass(31);
 
     expect(lists(from)).toHaveLength(1);
 
     await releaseDecisions();
-    await secondsPass(2);
+    await secondsPass(2.5);
 
     expect(lists(from)).toHaveLength(1);
 
     await secondsPass(1);
 
-    await waitFor(() => expect(lists(from)).toHaveLength(2));
+    expect(lists(from)).toHaveLength(2);
   });
 
   test('[SHARING-290.1] sends no list while the one Members sent as it opened has no answer', async () => {
@@ -362,7 +374,7 @@ describe('SHARING-290.1', () => {
 
     goOnline();
     await asks({ name: 'Evan', deviceId: E, userId: EVAN_USER });
-    await secondsPass(3);
+    await secondsPass(3.5);
 
     await expectMembers([DANA_ROW, EVAN_ROW, ...MEMBERS]);
     expect(alertsShown()).toEqual([]);
@@ -402,13 +414,13 @@ describe('SHARING-290.1', () => {
       await comeBack();
       await expectOpen('Brisbane');
       const back = received().length;
-      await secondsPass(2);
+      await secondsPass(2.5);
 
       expect(lists(back)).toEqual([]);
 
       await secondsPass(1);
 
-      await waitFor(() => expect(lists(back)).toHaveLength(1));
+      expect(lists(back)).toHaveLength(1);
       await expectJoinCount('Brisbane', 1);
     },
   );
@@ -426,28 +438,29 @@ describe('SHARING-290.1', () => {
     await pressOnBar('Rename Member', 'Cancel');
     await expectClosed('Rename Member');
     const back = received().length;
-    await secondsPass(2);
+    await secondsPass(2.5);
 
     expect(lists(back)).toEqual([]);
 
     await secondsPass(1);
 
-    await waitFor(() => expect(lists(back)).toHaveLength(1));
+    expect(lists(back)).toHaveLength(1);
     await expectMembers([DANA_ROW, ...MEMBERS]);
   });
 
   test("[SHARING-290.1] counts the 2 minutes anew when the group's screen is shown again", async () => {
     await onBrisbane();
-    // As above: the API receives none of the lists of these 2 minutes.
-    goOffline();
-    await secondsPass(120);
+    await secondsPass(125);
     await tapTab('Expenses');
     await tapTab('Groups');
     await expectOpen('Brisbane');
-    goOnline();
     const back = received().length;
 
-    await secondsPass(9);
+    await secondsPass(8);
+
+    expect(lists(back)).toHaveLength(2);
+
+    await secondsPass(2);
 
     expect(lists(back)).toHaveLength(3);
   });
@@ -464,12 +477,12 @@ describe('SHARING-290.1', () => {
     await comesToForeground();
     // The sync that the app starts as it comes back lists once when it ends (SHARING-190.2).
     await waitFor(() => expect(lists(away)).toHaveLength(1));
-    await secondsPass(2);
+    await secondsPass(2.5);
 
     expect(lists(away)).toHaveLength(1);
 
     await secondsPass(1);
 
-    await waitFor(() => expect(lists(away)).toHaveLength(2));
+    expect(lists(away)).toHaveLength(2);
   });
 });
