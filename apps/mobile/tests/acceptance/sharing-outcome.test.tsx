@@ -111,6 +111,7 @@ import {
   comesBack,
   memberApproves,
   memberRejects,
+  memberRemovesThePhone,
   phoneDevice,
 } from './sharing-outcome-app';
 import { allowWrites, failWrites, settle } from './shell-appearance-app';
@@ -1284,12 +1285,14 @@ describe('SHARING-289.1', () => {
     memberApproves();
     await comesBack();
     await waitFor(() => expect(hasBrisbane()).toBe(true));
-    // Evan is added while the phone has no network, and then the phone loses its access.
+    // Evan is added while the phone has no network, and then a member removes the phone:
+    // the API counts it as a member device no more, and the ledger is a read-only copy.
     goOffline();
     await showMembers('Brisbane');
     await addMember('Evan');
     await leaveMembers('Brisbane');
     goOnline();
+    memberRemovesThePhone();
     await act(async () => {
       await makeReadOnlyCopy(appDatabase(), BRISBANE_ID, 'not-a-member');
     });
@@ -1362,6 +1365,8 @@ describe('SHARING-289.1', () => {
     memberApproves();
     await comesBack();
     await waitFor(() => expect(hasBrisbane()).toBe(true));
+    // A member has removed the phone: the API takes a new request from it.
+    memberRemovesThePhone();
     await act(async () => {
       await makeReadOnlyCopy(appDatabase(), BRISBANE_ID, 'not-a-member');
     });

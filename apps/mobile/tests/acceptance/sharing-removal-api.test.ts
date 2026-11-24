@@ -559,6 +559,7 @@ describe('SHARING-275.1', () => {
     await sync(dana);
     expect(await leave(dana, brisbane)).toEqual({ outcome: 'left' });
     await addExpense(taylor, { title: 'Lunch' });
+    const [lunch] = await unsent(taylor);
     const from = mark();
 
     await sync(taylor);
@@ -567,7 +568,10 @@ describe('SHARING-275.1', () => {
     const sentUploads = await uploads(taylor, from);
     expect(sentUploads[0]).toMatchObject({ epoch: 1, status: 409 });
     expect(sentUploads.at(-1)).toMatchObject({ epoch: 2, status: 200 });
-    expect(await unsent(taylor)).toEqual([]);
+    // Lunch went up under the new key. What the phone has not sent yet is another event:
+    // the deletion of the invite Dana's phone knew, revoked as this sync ended (SHARING-284.1).
+    expect(sentUploads.at(-1)?.events.map(({ id }) => id)).toContain(lunch.id);
+    expect((await unsent(taylor)).map(({ id }) => id)).not.toContain(lunch.id);
     expect(await titles(taylor)).toEqual(
       expect.arrayContaining(['Lunch', 'Taxi']),
     );
@@ -688,6 +692,9 @@ describe('SHARING-277.1', () => {
   });
 });
 
+/** Who pays and shares an expense that is added once Casey has left: Taylor and Dana are members still. */
+const STILL_MEMBERS = { payer: 'Taylor', sharers: ['Taylor', 'Dana'] };
+
 /** Taylor, Dana and Evan in Brisbane; Taylor's phone then removes Evan's, who was Casey. Dana has not synced since. */
 async function evanRemoved() {
   const world = await danaIn();
@@ -758,7 +765,7 @@ describe('SHARING-278.1', () => {
 
   test('[SHARING-278.1] asks for the key of the snapshot it waits for, and takes that snapshot in at the sync that follows', async () => {
     const { taylor, dana, brisbane } = await evanRemoved();
-    await addExpense(taylor, { title: 'Lunch' });
+    await addExpense(taylor, { title: 'Lunch', ...STILL_MEMBERS });
     await sync(taylor);
     // 31 days on, the cleanup deletes what Dana's phone has not downloaded: it is behind,
     // and holds the key of epoch 1 only.
@@ -851,7 +858,7 @@ describe('SHARING-278.1', () => {
     expect(await remove(world, (await memberIds(taylor)).Gina)).toEqual({
       outcome: 'removed',
     });
-    await addExpense(taylor, { title: 'Lunch' });
+    await addExpense(taylor, { title: 'Lunch', ...STILL_MEMBERS });
     await sync(taylor);
     // 31 days on, the cleanup deletes what Dana's phone would download: it needs a snapshot,
     // and the one Taylor's phone uploads is under key epoch 4.
@@ -1409,7 +1416,8 @@ async function danaIsApprovedAgain() {
   await addExpense(taylor, { title: 'Lunch' });
   await sync(taylor);
   const invite = await invitesAgain(world);
-  await asks(dana, invite);
+  // Join Group finds the copy from the invite's card and hands it over (SHARING-226.2).
+  await asks(dana, invite, { copyGroupId: brisbane });
   const request = await listedFor(invite, D);
   const from = mark();
   expect(
@@ -1539,7 +1547,7 @@ describe('SYNC-305.1', () => {
     // Its local data goes back; the secure store keeps both keys.
     const dana = await restoreData(world.dana, copy);
     await sync(dana);
-    await addExpense(dana, { title: 'Lunch' });
+    await addExpense(dana, { title: 'Lunch', ...STILL_MEMBERS });
     const from = mark();
     await sync(dana);
 

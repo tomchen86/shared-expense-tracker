@@ -119,12 +119,18 @@ export async function phoneOf(name: string, invite: Inviting): Promise<Phone> {
 
 /**
  * The phone sends its request through the app, as Send Request does, and resolves with its
- * device ID. `memberId` is the member it picks; a new member unless given.
+ * device ID. `memberId` is the member it picks; a new member unless given. `copyGroupId`
+ * is the phone's copy of the invite's group, which Join Group finds from the card and hands
+ * over with the request (SHARING-226.2); none unless given.
  */
 export async function asks(
   phone: Phone,
   invite: Inviting,
-  { name = phone.identity.name, memberId = null as string | null } = {},
+  {
+    name = phone.identity.name,
+    memberId = null as string | null,
+    copyGroupId = null as string | null,
+  } = {},
 ): Promise<string> {
   const result = await on(phone, () =>
     phone.sharing.sendJoinRequest(
@@ -136,6 +142,7 @@ export async function asks(
         name,
         memberId,
         sent: 0,
+        copyGroupId,
       },
       phone.identity.userId,
       true,

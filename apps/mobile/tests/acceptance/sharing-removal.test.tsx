@@ -63,9 +63,11 @@ import {
   unsent,
 } from './sync-app';
 import {
+  apiEventIds,
   deviceId,
   download,
   eventRequests,
+  groupIsFull,
   groupNeedsRotation,
   lunchCreated,
   mark,
@@ -592,6 +594,9 @@ describe('SHARING-284.1', () => {
     await showMembers('Brisbane');
     await expectMembers(WITH_DANA);
     await askToRemoveDana();
+    // The app syncs as soon as it has written an event (SYNC-88.1). The API takes no new
+    // event for now, so that the deletion is still unsent when the test looks.
+    groupIsFull(brisbane, true);
     const from = mark();
     const before = alertsShown().length;
 
@@ -611,6 +616,13 @@ describe('SHARING-284.1', () => {
       ]),
     );
     expect(alertsShown().slice(before)).toEqual([]);
+
+    // The next sync uploads it.
+    const [deletion] = await unsent();
+    groupIsFull(brisbane, false);
+    await syncs();
+    await waitFor(() => expect(apiEventIds(brisbane)).toContain(deletion.id));
+    await waitFor(async () => expect(await unsent()).toEqual([]));
   });
 
   test('[SHARING-284.1] revokes no invite while no phone has left', async () => {

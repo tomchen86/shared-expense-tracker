@@ -32,6 +32,11 @@ export interface JoinRequest extends InviteCredentials {
    * request is unsent or waits.
    */
   outcome?: 'choose-again' | 'approved' | null;
+  /**
+   * The group ID of the copy of the invite's group this phone held when the request was
+   * first stored (SHARING-226.2): the only group an approval of it may replace.
+   */
+  copyGroupId?: string | null;
 }
 
 /**
