@@ -149,13 +149,10 @@ module.exports = {
     // got its paths on the screens: Members, the group a screen reads, the import's check,
     // and the categories of a copy.
     // Some branches left are cases the spec states and no acceptance test reaches: a
-    // revocation the API does not answer, or answers with no such invite (SHARING-284.1);
-    // a leave it refuses for a phone that is no member (SHARING-276.1); a rotation this
-    // phone lacks the key to seal (SHARING-272.1); a phone that leaves while another
-    // still represents its member, or whose member is a former member already, and a
-    // rotation nobody leaves in (SHARING-271.1); a third refusal for the key epoch
-    // (SHARING-274.1); a refusal for an epoch whose key the phone holds (SHARING-275.1);
-    // and a second page of boxes (SHARING-278.1).
+    // revocation the API does not answer (SHARING-284.1), a rotation nobody leaves in
+    // (SHARING-271.1), a third refusal for the key epoch (SHARING-274.1), a refusal for an
+    // epoch whose key the phone holds (SHARING-275.1), and a second page of boxes
+    // (SHARING-278.1).
     // The others are guards: an identity, an address, a group or a record that is gone in
     // the middle, a malformed answer, an event that fails its own check, a group that is
     // no copy handed to the deletion, a press while another action runs, a screen closed
@@ -163,9 +160,9 @@ module.exports = {
     './packages/domain/src/api/group-rotation.ts': { branches: 100 },
     './apps/api/src/sharing/removal.ts': { branches: 100 },
     './apps/api/src/sharing/removal-routes.ts': { branches: 100 },
-    './apps/mobile/src/sync/key-rotation.ts': { branches: 82.66 },
-    './apps/mobile/src/sync/read-only-copy.ts': { branches: 50 },
-    './apps/mobile/src/sharing/removal.ts': { branches: 78.12 },
+    './apps/mobile/src/sync/key-rotation.ts': { branches: 87.33 },
+    './apps/mobile/src/sync/read-only-copy.ts': { branches: 75 },
+    './apps/mobile/src/sharing/removal.ts': { branches: 87.5 },
     './apps/mobile/src/sharing/join-keys.ts': { branches: 100 },
     './apps/mobile/src/groups/copy-banner.tsx': { branches: 83.33 },
     './apps/mobile/src/groups/members-screen.tsx': { branches: 85.83 },
