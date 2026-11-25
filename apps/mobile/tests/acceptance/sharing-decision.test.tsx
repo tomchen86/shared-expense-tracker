@@ -1066,10 +1066,12 @@ describe('SHARING-204.1', () => {
     await waitFor(() => expect(lists(from)).toHaveLength(1));
 
     await secondsPass(65);
+    // The open Members may have listed again on its timer since (SHARING-290.2).
+    const sent = lists(from).length;
     await leaveMembers('Brisbane');
     await showMembers('Brisbane');
 
-    await waitFor(() => expect(lists(from)).toHaveLength(2));
+    await waitFor(() => expect(lists(from)).toHaveLength(sent + 1));
     expect(alertsShown()).toEqual([]);
     await releaseDecisions();
     await expectMembers([DANA_ROW, ...MEMBERS]);
