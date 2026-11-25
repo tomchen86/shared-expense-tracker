@@ -24,7 +24,7 @@ export async function lastSyncedAt(database: SqlExecutor, groupId: string) {
 }
 
 // A local calendar date, or no answer. Both are decided only when a sync ends and
-// forgotten on restart (SYNC-315.1, SYNC-316.1).
+// forgotten on restart (SYNC-315.1, SYNC-316.2).
 const noAnswer = Symbol('no answer');
 type EndNotice = string | typeof noAnswer;
 const endNotices = new WeakMap<SqlExecutor, Map<string, EndNotice>>();

@@ -246,7 +246,8 @@ async function openPage(
  * Stores a page in one transaction (SYNC-70.1, SYNC-84.1): the stamps the API holds for
  * unsent events of this phone, the check of the unsent events' stamps, the page's events
  * and the cursor, together with the phone's time of receipt. A page that does not start
- * right after the cursor ends the sync (SYNC-71.3).
+ * right after the cursor, or an empty one that answers a cursor the phone no longer holds,
+ * ends the sync (SYNC-71.4).
  * The phone's key epoch follows the events it could open (SYNC-305.1).
  */
 async function storePage(
