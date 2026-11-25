@@ -63,6 +63,7 @@ test(
       'group_invites',
       'group_key_boxes',
       'group_members',
+      'group_replaced_devices',
       'group_snapshots',
       'groups',
       'invite_handovers',

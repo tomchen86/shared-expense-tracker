@@ -160,6 +160,7 @@ module.exports = {
     // no copy handed to the deletion, a press while another action runs, a screen closed
     // before its read ends, and a button or a row held down.
     './packages/domain/src/api/group-rotation.ts': { branches: 100 },
+    './packages/domain/src/api/group-takeover.ts': { branches: 100 },
     './apps/api/src/sharing/removal.ts': { branches: 100 },
     './apps/api/src/sharing/removal-routes.ts': { branches: 100 },
     './apps/mobile/src/sync/key-rotation.ts': { branches: 87.33 },

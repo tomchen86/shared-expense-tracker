@@ -17,6 +17,8 @@ import type { Migration } from '../database/migrate';
  * - `group_key_boxes`: a box that holds the key of one key epoch for one member device
  *   (SHARING-263.1), with the box public key of the phone that made it. It goes when its
  *   device has saved that key or is no member device any more (SHARING-260.1).
+ * - `group_replaced_devices`: the devices a takeover removed from each group, until
+ *   they rejoin or the group is deleted (SHARING-305.1, SHARING-306.1).
  *
  * `groups.rotation_needed` says that a device left and no phone has rotated the key since
  * (SHARING-254.1). The code of an invite whose group was deleted stays, with no group, so
@@ -124,6 +126,29 @@ export const sharingMigrations: readonly Migration[] = [
       );
 
       ALTER TABLE group_invites ALTER COLUMN group_id DROP NOT NULL;
+    `,
+  },
+  {
+    name: 'sharing/0006-create-replaced-devices',
+    sql: `
+      CREATE TABLE group_replaced_devices (
+        group_id uuid NOT NULL REFERENCES groups (id) ON DELETE CASCADE,
+        device_id uuid NOT NULL REFERENCES devices (id),
+        PRIMARY KEY (group_id, device_id)
+      );
+
+      -- A plain approval by the previous Worker also readmits the device (ADR-0019).
+      CREATE FUNCTION forget_replacement_on_admission() RETURNS trigger
+        LANGUAGE plpgsql AS $$
+        BEGIN
+          DELETE FROM group_replaced_devices
+          WHERE group_id = NEW.group_id AND device_id = NEW.device_id;
+          RETURN NULL;
+        END;
+        $$;
+      CREATE TRIGGER forget_replacement_on_admission
+        AFTER INSERT ON group_members FOR EACH ROW
+        EXECUTE FUNCTION forget_replacement_on_admission();
     `,
   },
 ];

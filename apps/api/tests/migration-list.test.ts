@@ -15,5 +15,6 @@ test('the migrations that have merged keep their names and their order', () => {
     'sharing/0004-create-handovers',
     'sync/0004-add-snapshot-needed-time',
     'sharing/0005-create-key-boxes',
+    'sharing/0006-create-replaced-devices',
   ]);
 });

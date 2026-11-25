@@ -1,7 +1,7 @@
 import type { Migration } from '../database/migrate';
 
 /**
- * What the API keeps about a group (SYNC-61.4), and nothing else:
+ * What the API keeps about a group's events and snapshots (SYNC-61.5):
  *
  * - `groups`: a group under the ID it has on its phones, with its key epoch, the last
  *   sequence number it has given an event, and how many bytes the contents of the events

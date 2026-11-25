@@ -14,6 +14,7 @@ import {
   stillMember,
   storeLockedGroupEvents,
   type EventApiRefusal,
+  type LockedGroup,
 } from '../sync/groups';
 
 // Taking a device out of a group (ADR-0041): a member device rotates the group's key and
@@ -33,6 +34,7 @@ async function forgetDevices(
   tx: TransactionSql,
   groupId: string,
   deviceIds: readonly string[],
+  reason: 'rotation' | 'takeover' | 'leave',
 ) {
   // The IDs go as one JSON text, as an upload's event IDs do.
   const gone = tx`
@@ -41,6 +43,10 @@ async function forgetDevices(
     WITH members AS (
       DELETE FROM group_members
       WHERE group_id = ${groupId} AND device_id = ANY (ARRAY(${gone}))
+      RETURNING group_id, device_id
+    ), replaced AS (
+      INSERT INTO group_replaced_devices (group_id, device_id)
+      SELECT group_id, device_id FROM members WHERE ${reason === 'takeover'}
     ), snapshots AS (
       DELETE FROM group_snapshots
       WHERE group_id = ${groupId} AND recipient = ANY (ARRAY(${gone}))
@@ -51,6 +57,61 @@ async function forgetDevices(
     DELETE FROM invite_handovers h USING group_invites i
     WHERE h.code = i.code AND i.group_id = ${groupId}
       AND h.device_id = ANY (ARRAY(${gone}))`;
+}
+
+/** Both rotations and takeovers must name exactly the current devices and the next epoch. */
+export async function checkRotation(
+  tx: TransactionSql,
+  groupId: string,
+  deviceId: string,
+  group: LockedGroup,
+  { remove, boxes, epoch }: RotateKeyRequest,
+): Promise<
+  Extract<RemovalRefusal, { error: 'devices' | 'epoch' }> | undefined
+> {
+  const devices = await memberDevices(tx, groupId);
+  const staying = devices.filter((device) => !remove.includes(device));
+  if (
+    remove.includes(deviceId) ||
+    staying.length !== devices.length - remove.length ||
+    staying.length !== boxes.length ||
+    !boxes.every((box) => staying.includes(box.deviceId))
+  ) {
+    return { error: 'devices', devices };
+  }
+  if (epoch !== Number(group.epoch) + 1) {
+    return { error: 'epoch', epoch: Number(group.epoch) };
+  }
+}
+
+/** Store events first so a full group refuses the entire rotation before any write. */
+export async function storeRotation(
+  tx: TransactionSql,
+  groupId: string,
+  deviceId: string,
+  group: LockedGroup,
+  { epoch, events, remove, senderKey, boxes }: RotateKeyRequest,
+  now: number,
+  reason: 'rotation' | 'takeover',
+): Promise<RotateKeyResponse | EventApiRefusal> {
+  const stored = await storeLockedGroupEvents(
+    tx,
+    { ...group, epoch: String(epoch), rotation_needed: false },
+    { groupId, deviceId, epoch, events, now },
+  );
+  if ('error' in stored) return stored;
+
+  await forgetDevices(tx, groupId, remove, reason);
+  await tx`
+    WITH rotated AS (
+      UPDATE groups SET epoch = ${epoch}, rotation_needed = false
+      WHERE id = ${groupId}
+    )
+    INSERT INTO group_key_boxes (group_id, device_id, epoch, sender_key, box)
+    SELECT ${groupId}::uuid, (sent.box->>'deviceId')::uuid, ${epoch}::bigint,
+      decode(${senderKey}, 'hex'), decode(sent.box->>'box', 'hex')
+    FROM jsonb_array_elements(${JSON.stringify(boxes)}::text::jsonb) AS sent (box)`;
+  return { epoch, events: stored.events };
 }
 
 /**
@@ -66,53 +127,33 @@ export function rotateKey(
   rotation: RotateKeyRequest,
   now: () => number,
 ): Promise<RotateKeyResponse | RemovalRefusal> {
-  const { epoch, remove, senderKey, boxes, events } = rotation;
   return sql.begin<RotateKeyResponse | RemovalRefusal>(
     'isolation level read committed',
     async (tx) => {
       const group = await lockMemberGroup(tx, groupId, deviceId);
       if (!group) return { error: 'not-a-member' };
 
-      // The boxes name exactly the member devices that stay, the sender among them
-      // (SHARING-251.1). A device that was approved, left or was removed since the phone
-      // looked makes them differ.
-      const devices = await memberDevices(tx, groupId);
-      const staying = devices.filter((device) => !remove.includes(device));
-      if (
-        remove.includes(deviceId) ||
-        staying.length !== devices.length - remove.length ||
-        staying.length !== boxes.length ||
-        !boxes.every((box) => staying.includes(box.deviceId))
-      ) {
-        return { error: 'devices', devices };
-      }
-      if (epoch !== Number(group.epoch) + 1) {
-        return { error: 'epoch', epoch: Number(group.epoch) };
-      }
-      if (remove.length === 0 && !group.rotation_needed) {
+      const refusal = await checkRotation(
+        tx,
+        groupId,
+        deviceId,
+        group,
+        rotation,
+      );
+      if (refusal) return refusal;
+      if (rotation.remove.length === 0 && !group.rotation_needed) {
         return { error: 'rotation-not-needed' };
       }
 
-      // The events first: a full group refuses them before anything is written. They are
-      // stored as an upload under the new epoch, which the group has from this request on.
-      const stored = await storeLockedGroupEvents(
+      return storeRotation(
         tx,
-        { ...group, epoch: String(epoch), rotation_needed: false },
-        { groupId, deviceId, epoch, events, now: now() },
+        groupId,
+        deviceId,
+        group,
+        rotation,
+        now(),
+        'rotation',
       );
-      if ('error' in stored) return stored;
-
-      await forgetDevices(tx, groupId, remove);
-      await tx`
-        WITH rotated AS (
-          UPDATE groups SET epoch = ${epoch}, rotation_needed = false
-          WHERE id = ${groupId}
-        )
-        INSERT INTO group_key_boxes (group_id, device_id, epoch, sender_key, box)
-        SELECT ${groupId}::uuid, (sent.box->>'deviceId')::uuid, ${epoch}::bigint,
-          decode(${senderKey}, 'hex'), decode(sent.box->>'box', 'hex')
-        FROM jsonb_array_elements(${JSON.stringify(boxes)}::text::jsonb) AS sent (box)`;
-      return { epoch, events: stored.events };
     },
   ) as Promise<RotateKeyResponse | RemovalRefusal>;
 }
@@ -134,7 +175,7 @@ export function leaveGroup(
       if (!(await lockMemberGroup(tx, groupId, deviceId))) {
         return { error: 'not-a-member' };
       }
-      await forgetDevices(tx, groupId, [deviceId]);
+      await forgetDevices(tx, groupId, [deviceId], 'leave');
       const [marked] = await tx`
         UPDATE groups SET rotation_needed = true
         WHERE id = ${groupId}
