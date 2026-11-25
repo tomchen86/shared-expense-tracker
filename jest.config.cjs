@@ -115,7 +115,7 @@ module.exports = {
     './apps/api/src/sharing/decision-routes.ts': { branches: 100 },
     './apps/api/src/sharing/join-decisions.ts': { branches: 100 },
     './apps/mobile/src/sync/roster.ts': { branches: 100 },
-    './apps/mobile/src/sharing/join-decisions.ts': { branches: 94.8 },
+    './apps/mobile/src/sharing/join-decisions.ts': { branches: 94.98 },
     './apps/mobile/src/sharing/received-requests.ts': { branches: 94.59 },
     './apps/mobile/src/groups/join-requests.tsx': { branches: 95 },
     // The foreground timers that refresh join requests on a visible screen (ADR-0046).
