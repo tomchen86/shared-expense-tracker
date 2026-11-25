@@ -40,10 +40,12 @@ async function mountOverlappingRoots() {
 
 /** `router.canGoBack()` and the container ref both read the root that shows `route`. */
 function expectContainerOn(route: string) {
+  // The app declares no param list, so the ref types its routes as never.
+  const current = container.getCurrentRoute() as { name: string } | undefined;
   expect({
     bound: container.current !== null,
     canGoBack: router.canGoBack(),
-    route: container.getCurrentRoute()?.name,
+    route: current?.name,
   }).toEqual({ bound: true, canGoBack: true, route });
 }
 
