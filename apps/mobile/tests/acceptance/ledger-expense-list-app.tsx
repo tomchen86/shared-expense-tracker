@@ -3,7 +3,7 @@ import { act, fireEvent, waitFor, within } from '@testing-library/react-native';
 import { nameOf, phoneDatabase, setPhoneClock } from './ledger-expense-app';
 import { settle } from './shell-appearance-app';
 import { nativeViews, navigationBars, startApp, tab } from './shell-tabs-app';
-import type { Database, SqlValue } from '../../src/storage';
+import type { Database, SqlExecutor, SqlValue } from '../../src/storage';
 
 // The expense list tests start the app as the expense form tests do
 // (ledger-expense-app) and add expenses through New Expense. They read the expense
@@ -22,9 +22,11 @@ export const NO_EXPENSE_ID = '00000000-0000-4000-8000-000000000000';
 // The phone database
 
 let beforeRead: (sql: string) => Promise<void> = () => Promise.resolve();
+// Null while no test holds transactions: they then start at once, as they do on the phone.
+let transactionGate: Promise<void> | null = null;
 const damaged = () => new Error('database disk image is malformed');
 
-/** The phone database in `file`, as ledger-expense-app opens it, its reads behind a gate. */
+/** The phone database in `file`, as ledger-expense-app opens it, its reads and the start of its transactions behind gates. */
 export function phoneDatabaseWithReads(file: string): Database {
   const database = phoneDatabase(file);
   return {
@@ -33,11 +35,47 @@ export function phoneDatabaseWithReads(file: string): Database {
       await beforeRead(sql);
       return database.all<T>(sql, parameters);
     },
+    transaction: <T,>(work: (transaction: SqlExecutor) => Promise<T>) =>
+      transactionGate === null
+        ? database.transaction(work)
+        : transactionGate.then(() => database.transaction(work)),
   };
 }
 
 export function allowReads() {
   beforeRead = () => Promise.resolve();
+  transactionGate = null;
+}
+
+/**
+ * Holds every transaction that starts from now on, before it reads or writes anything,
+ * until the test lets them go on or fails them; a transaction that starts after that runs
+ * as usual.
+ */
+export function holdTransactions() {
+  let release!: () => void;
+  let fail!: () => void;
+  const held = new Promise<void>((resolve, reject) => {
+    release = resolve;
+    fail = () => reject(damaged());
+  });
+  held.catch(() => undefined);
+  transactionGate = held;
+  const done = () => {
+    transactionGate = null;
+  };
+  return {
+    release: () =>
+      act(async () => {
+        done();
+        release();
+      }),
+    fail: () =>
+      act(async () => {
+        done();
+        fail();
+      }),
+  };
 }
 
 /**
