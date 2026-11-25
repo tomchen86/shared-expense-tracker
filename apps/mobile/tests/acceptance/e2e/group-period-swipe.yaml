@@ -44,11 +44,15 @@ name: "[LEDGER-114.2] Opens no Insights and no Balances with a swipe to the left
 # The period row keeps no drag on Group Total: one to the right from the period's name is
 # iOS's back gesture, as from a closed card (GROUPS-80.1). It starts on the name, left of the
 # middle, since the gesture needs half the screen's width: under the large title, the period's
-# name of an iPhone 17 lies across 23% of the screen's height.
+# name of an iPhone 17 lies across 23% of the screen's height. The drag takes a second and a
+# half. The name is a button, and on a slow runner the app is busy for up to a quarter of a
+# second once the button gets the touch. A quick drag has left the name by then, and the back
+# gesture no longer begins; one of three seconds or more has moved so little that it counts as
+# a press, which opens the name's menu.
 - swipe:
-    start: 40%, 23%
-    end: 95%, 23%
-    duration: 300
+    start: 38%, 23%
+    end: 98%, 23%
+    duration: 1500
 - waitForAnimationToEnd
 - assertNotVisible: Group actions
 - tapOn: Open Brisbane

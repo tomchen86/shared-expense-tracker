@@ -1982,6 +1982,16 @@ IF 收到的事件被判定不套用（SYNC-31.2），而上傳它的裝置 ID �
 - **WHEN** 新增 Dinner，自己的事件不套用；之後套用 Lunch 的第一個事件
 - **THEN** 不套用之後，支出清單、Brisbane 的畫面和 Trash 都沒有 Dinner，存著的支出沒有它，沒有待上傳的事件；套用之後支出清單只有 Lunch
 
+#### Scenario: 新增支出之後移到垃圾桶
+
+- **WHEN** 在 Brisbane 新增 Dinner，再把它移到垃圾桶，兩個事件都還待上傳時，把新增 Dinner 的事件當成自己的事件不套用
+- **THEN** 支出清單和 Trash 都沒有 Dinner。紀錄只剩移到垃圾桶的單位，建立的時間戳記和這個單位的時間戳記相同，只有移到垃圾桶的事件仍待上傳
+
+#### Scenario: 新增分類之後永久刪除
+
+- **WHEN** 在 Brisbane 的 Group Categories 新增 Flights，再把它永久刪除，兩個事件都還待上傳時，把新增 Flights 的事件當成自己的事件不套用
+- **THEN** Group Categories 沒有 Flights。紀錄只留下永久刪除的時間戳記，建立的時間戳記也取自永久刪除的事件，只有這個事件仍待上傳
+
 #### Scenario: 移到垃圾桶
 
 - **WHEN** 有 Lunch；把 Lunch 移到垃圾桶，自己的事件不套用
