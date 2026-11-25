@@ -902,3 +902,44 @@ describe('SYNC-74.1', () => {
     expect(await titles(a, tokyo)).toEqual(['Sushi']);
   });
 });
+
+describe('SYNC-313.1', () => {
+  test('[SYNC-313.1] records the time of the last sync in the transaction of the page: whichever write fails, it is new exactly when the page was stored', async () => {
+    const setup = await twoPhones();
+    const { b, brisbane, key } = setup;
+    await uploadAs(b, key, [
+      await expenseOf(setup, 'Lunch'),
+      await expenseOf(setup, 'Taxi', 1),
+    ]);
+    const copy = await copyOfData(setup.a);
+    let phone = await restoreData(setup.a, copy);
+    const lastSynced = () => phone.sync.lastSyncedAt(phone.database, brisbane);
+    const before = await lastSynced();
+
+    let everyWriteFailedOnce = false;
+    for (let nth = 1; nth <= 500 && !everyWriteFailedOnce; nth += 1) {
+      // Each round is over a minute after the last, as in the test of SYNC-70.1.
+      const at = NOW + nth * 61_000;
+      setApiTime(at);
+      phone = await restoreData(phone, copy);
+      setClock(phone, at);
+      const failing = failingAtWrite(phone.database, nth);
+      await trySync(phone, failing.database);
+      if (!failing.failed()) {
+        everyWriteFailedOnce = true;
+        break;
+      }
+      const held = await lastSynced();
+      const from = mark();
+
+      await sync(phone);
+
+      // The cursor the next sync asks from says whether the page was stored.
+      const [cursor] = await downloads(phone, from);
+      expect([cursor, held]).toEqual(
+        cursor === 'after=0' ? ['after=0', before] : ['after=2', at],
+      );
+    }
+    expect(everyWriteFailedOnce).toBe(true);
+  });
+});
