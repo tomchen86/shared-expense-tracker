@@ -693,6 +693,7 @@ describe('SHARING-212.2', () => {
     });
     await expectJoinLines(WAITING_FOR_BRISBANE);
     // It waits, and is not asked to choose again for a member who has a phone.
+    await closeJoin();
     await comesBack();
     await expectCard(['Brisbane', WAITING_CARD]);
   });

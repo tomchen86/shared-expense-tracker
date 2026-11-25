@@ -811,7 +811,13 @@ describe('SHARING-322.1', () => {
     expect(upload).toMatchObject({ status: 200 });
     const snapshot = await contentFor(newer, key);
     expect(takeover.cursor).toBe(snapshot.sequence);
-    expect(await unsent(taylor)).toEqual([]);
+    // Nothing from before is left. What waits now is the invite's end, which the phone
+    // wrote after the takeover (SHARING-284.1) and sends with its next sync.
+    expect(
+      (await unsent(taylor)).filter(
+        ({ content }) => (content as { type?: string }).type !== 'invite',
+      ),
+    ).toEqual([]);
     expect(await ask(newer, invite)).toMatchObject({ outcome: 'joined' });
     expect(await titles(newer)).toContain('Supper');
   });

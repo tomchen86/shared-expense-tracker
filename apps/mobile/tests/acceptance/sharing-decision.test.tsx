@@ -1697,6 +1697,29 @@ describe('SHARING-326.1', () => {
     expect(alertsShown()).toHaveLength(1);
   });
 
+  test('[SHARING-326.1] says that the phone is still catching up, not that it has no network, when a takeover is approved offline while its ledger already waits for a snapshot', async () => {
+    const { brisbane } = await inMembersWithATakeover();
+    groupNeedsSnapshot(brisbane);
+    // The phone learns that it waits for a snapshot.
+    await syncs();
+    goOffline();
+    const from = received().length;
+
+    const menu = await tapMember(takeoverRow('Casey'));
+    await menu!.choose(APPROVE);
+
+    await waitFor(() =>
+      expect(alertsShown().at(-1)).toEqual([
+        UNABLE_TO_APPROVE,
+        CATCHING_UP('Casey'),
+      ]),
+    );
+    goOnline();
+    expect(chunks(from)).toEqual([]);
+    expect(takeovers(from)).toEqual([]);
+    expect(membersShown()[0]).toBe(takeoverRow('Casey'));
+  });
+
   test('[SHARING-326.1] says to connect to the internet when a takeover is approved with no network', async () => {
     const { brisbane } = await inMembersWithATakeover();
     goOffline();

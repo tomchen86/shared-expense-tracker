@@ -6194,7 +6194,7 @@ WHEN API 回答接手好了，the mobile app SHALL 照 SYNC-94.1 替這個共同
 
 ### Requirement: SHARING-326.1 接手沒成功時說明原因，申請還在
 
-IF 接手沒有做完，THEN the mobile app SHALL 不因此改本機資料，收到的申請還在，並照 SHARING-200.2 說明和處理——那一條說同意的請求的地方，在這裡是接手的請求，提示框的標題一樣是「Unable to Approve」——只有這幾點不同。同意之前最後那一次同步結束之後，這個共同帳本在等快照（SYNC-165.1）時，不上傳快照，也不送接手的請求，訊息是「This phone is still catching up with this group, so it can't approve this request yet. If <成員名稱>'s old phone is the only other phone in this group, remove <成員名稱> from the group and send a new invite link. When they ask to join as a new member named <成員名稱>, choose Add Back.」，成員名稱是選的成員的：等快照的手機做不出給新手機的快照；它把那位成員移除之後（SHARING-270.1，不必跟上）就能照從這裡接著的回答往下同步，回來的人再用新的邀請當新成員申請，名字要和那位前成員的名稱一樣，同意的成員才會被問要不要把他加回來（SHARING-288.1）：按「Add Back」之後他是原本那一位，成員 ID 不變，以前的付款和分攤都在他名下；名字不一樣時新增的是另一位成員。API 拒絕接手、原因是沒有跟上時，再同步，再在同一個 transaction 裡看一次：這個申請仍可以同意，要離開的手機、留下來的手機和這支手機的鑰匙世代也都和備請求時一樣，才用同一份快照、同樣的事件和同樣的 box 再送，`cursor` 是這次記下的；有一項不一樣就不再送，不能同意了時訊息是 SHARING-194.2 那個原因的那一句，否則是其他情況的那一句。一次接手這樣最多再送兩次。API 拒絕接手、原因是沒有快照時，也先再同步、再在同一個 transaction 裡照同樣的幾項看一次，都一樣才重新讀出並上傳一份快照，用同樣的事件和同樣的 box 再送一次，`snapshotId` 是新的那一份的，`cursor` 是這次記下的；有一項不一樣就照上面那樣不再送，再被拒絕就照其他情況。所以再送的快照、事件和 box 一直是照同一份名冊和同一把新鑰匙備的。API 拒絕接手、原因是成員手機不一樣或鑰匙世代時不再送，照其他情況，訊息是「Something went wrong. Try again later.」；使用者再按「Approve」時從頭再做。這支手機沒有現在的鑰匙世代的群組鑰匙時（SHARING-324.1）也照其他情況。接手不會因為成員手機滿了被拒絕（SHARING-302.1）。接手的請求送出 60 秒之後還沒有收完回應時，照 SHARING-204.1 放棄它，當成沒有得到回應。
+IF 接手沒有做完，THEN the mobile app SHALL 不因此改本機資料，收到的申請還在，並照 SHARING-200.2 說明和處理——那一條說同意的請求的地方，在這裡是接手的請求，提示框的標題一樣是「Unable to Approve」——只有這幾點不同。同意之前最後那一次同步結束之後，這個共同帳本在等快照（SYNC-165.1）時，不上傳快照，也不送接手的請求，訊息是「This phone is still catching up with this group, so it can't approve this request yet. If <成員名稱>'s old phone is the only other phone in this group, remove <成員名稱> from the group and send a new invite link. When they ask to join as a new member named <成員名稱>, choose Add Back.」，成員名稱是選的成員的：等快照的手機做不出給新手機的快照；那一次同步沒有得到回應、而這個共同帳本在那之前就在等快照時，也是這一句，不是沒有網路的那一句，因為有了網路它也同意不了；它把那位成員移除之後（SHARING-270.1，不必跟上）就能照從這裡接著的回答往下同步，回來的人再用新的邀請當新成員申請，名字要和那位前成員的名稱一樣，同意的成員才會被問要不要把他加回來（SHARING-288.1）：按「Add Back」之後他是原本那一位，成員 ID 不變，以前的付款和分攤都在他名下；名字不一樣時新增的是另一位成員。API 拒絕接手、原因是沒有跟上時，再同步，再在同一個 transaction 裡看一次：這個申請仍可以同意，要離開的手機、留下來的手機和這支手機的鑰匙世代也都和備請求時一樣，才用同一份快照、同樣的事件和同樣的 box 再送，`cursor` 是這次記下的；有一項不一樣就不再送，不能同意了時訊息是 SHARING-194.2 那個原因的那一句，否則是其他情況的那一句。一次接手這樣最多再送兩次。API 拒絕接手、原因是沒有快照時，也先再同步、再在同一個 transaction 裡照同樣的幾項看一次，都一樣才重新讀出並上傳一份快照，用同樣的事件和同樣的 box 再送一次，`snapshotId` 是新的那一份的，`cursor` 是這次記下的；有一項不一樣就照上面那樣不再送，再被拒絕就照其他情況。所以再送的快照、事件和 box 一直是照同一份名冊和同一把新鑰匙備的。API 拒絕接手、原因是成員手機不一樣或鑰匙世代時不再送，照其他情況，訊息是「Something went wrong. Try again later.」；使用者再按「Approve」時從頭再做。這支手機沒有現在的鑰匙世代的群組鑰匙時（SHARING-324.1）也照其他情況。接手不會因為成員手機滿了被拒絕（SHARING-302.1）。接手的請求送出 60 秒之後還沒有收完回應時，照 SHARING-204.1 放棄它，當成沒有得到回應。
 
 #### Scenario: 沒有網路
 
@@ -6205,6 +6205,11 @@ IF 接手沒有做完，THEN the mobile app SHALL 不因此改本機資料，收
 
 - **WHEN** Taylor 的手機落後了，Brisbane 在等快照；收到的申請有新手機要接手 Dana 的，在它的選單按「Approve」
 - **THEN** API 收到 Brisbane 的下載和問有沒有快照的請求，沒有收到快照的分塊和接手的請求；跳出「Unable to Approve」，訊息是「This phone is still catching up with this group, so it can't approve this request yet. If Dana's old phone is the only other phone in this group, remove Dana from the group and send a new invite link. When they ask to join as a new member named Dana, choose Add Back.」；那一列還在
+
+#### Scenario: 在等快照，又沒有網路
+
+- **WHEN** Brisbane 在等快照，之後手機沒有網路；在新手機要接手 Dana 的申請的選單按「Approve」
+- **THEN** 跳出「Unable to Approve」，訊息是在等快照的那一句，不是「Connect to the internet and try again.」；那一列還在
 
 #### Scenario: 別的成員已經處理過
 
