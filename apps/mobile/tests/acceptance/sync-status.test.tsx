@@ -228,7 +228,8 @@ describe('SYNC-313.1', () => {
     ],
     [
       'is answered with what is no page',
-      (brisbane) => apiAnswersNext(isDownloadOf(brisbane), 200, '{}'),
+      (brisbane) =>
+        apiAnswersNext(isDownloadOf(brisbane), 200, '{"events":"none"}'),
     ],
     [
       'is told the ledger needs a snapshot',
@@ -604,7 +605,7 @@ describe('SYNC-316.1', () => {
   test.each<[string, number, string]>([
     ['status 500', 500, ''],
     ['status 403 and no refusal the event API knows', 403, '{"error":"no"}'],
-    ['status 200 and what is no page', 200, '{}'],
+    ['status 200 and what is no page', 200, '{"events":"none"}'],
   ])(
     '[SYNC-316.1] does not say so when the download is answered with %s',
     async (_case, status, body) => {
