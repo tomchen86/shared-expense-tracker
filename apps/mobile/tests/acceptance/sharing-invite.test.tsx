@@ -532,6 +532,35 @@ test('[SHARING-93.1] keeps a key the secure store already has for the group', as
   expect(groupKeys()[0]).toMatchObject({ key: entry, value: key });
 });
 
+test.each([
+  [
+    'in capitals',
+    '000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F',
+  ],
+  ['a character short', '0'.repeat(63)],
+  ['a character long', '0'.repeat(65)],
+  ['not hexadecimal', 'g'.repeat(64)],
+  ['empty', ''],
+])(
+  '[SHARING-93.1] replaces what the secure store has for the group when it is %s, with 32 random bytes',
+  async (_, held) => {
+    await startAt(ALONE);
+    const entry = `group-key.${await groupId('Brisbane')}.1`;
+    addSecureStoreEntry(entry, held);
+
+    await invited('Brisbane');
+
+    expect(groupKeys()).toHaveLength(1);
+    const [{ key, value, options }] = groupKeys();
+    expect(key).toBe(entry);
+    expect(value).not.toBe(held);
+    expect(value).toMatch(/^[0-9a-f]{64}$/);
+    expect(drewFromTheRandomSource(fromHex(value))).toBe(true);
+    expect(forbiddenDraws()).toEqual([]);
+    expect(options).toEqual({ keychainAccessible: 1 });
+  },
+);
+
 test('[SHARING-93.1] does not make the group a shared ledger when the key cannot be stored, and does once it can', async () => {
   await startAt(TWO_GROUPS);
   await invitedAndLeft('Tokyo');

@@ -70,7 +70,7 @@ import { tapTab } from './shell-tabs-app';
 import type { Database } from '../../src/storage';
 
 // Runs on iOS, as ledger-list-filter.test.tsx does. A filter is named in a system prompt
-// (LEDGER-143.2): the tests answer it as the system reports the button pressed and the text in
+// (LEDGER-143.3): the tests answer it as the system reports the button pressed and the text in
 // its field (ledger-list-filter-app).
 
 let mockOpen: () => Promise<Database>;
@@ -171,7 +171,7 @@ async function saveBigShopping() {
 
 // Saving the filter a list has
 
-test('[LEDGER-143.2] asks for a name in a system prompt titled Save Filter, starting from the texts of the capsules that are on', async () => {
+test('[LEDGER-143.3] asks for a name in a system prompt titled Save Filter, starting from the texts of the capsules that are on', async () => {
   await startWithShopping();
   await choose('Expenses', 'Category', 'Shopping');
   await turnPaidByMe(true);
@@ -190,7 +190,7 @@ test('[LEDGER-143.2] asks for a name in a system prompt titled Save Filter, star
   expect(prompts.suggested()).toBe('Shopping, Paid by Me, 10 or more');
 });
 
-test('[LEDGER-143.2] [LEDGER-144.1] saves the conditions under the name given, without the spaces around it, and then reads Filter Saved', async () => {
+test('[LEDGER-143.3] [LEDGER-144.1] saves the conditions under the name given, without the spaces around it, and then reads Filter Saved', async () => {
   await startWithShopping();
   await choose('Expenses', 'Category', 'Shopping');
   await setAmounts('Expenses', '10');
@@ -207,7 +207,7 @@ test('[LEDGER-143.2] [LEDGER-144.1] saves the conditions under the name given, w
   expect(filtersButtonEnabled(FILTER_SAVED)).toBe(false);
 });
 
-test('[LEDGER-143.2] offers to save again once a condition differs from every saved filter', async () => {
+test('[LEDGER-143.3] offers to save again once a condition differs from every saved filter', async () => {
   await startWithShopping();
   await saveBigShopping();
   expect(filtersButton(FILTER_SAVED)).toBeDefined();
@@ -219,7 +219,7 @@ test('[LEDGER-143.2] offers to save again once a condition differs from every sa
   expect(savedFilters()).toEqual([['Big shopping', false]]);
 });
 
-test('[LEDGER-143.2] [LEDGER-144.1] takes an amount written another way for the same condition while its value is the same', async () => {
+test('[LEDGER-143.3] [LEDGER-144.1] takes an amount written another way for the same condition while its value is the same', async () => {
   await startWithShopping();
   await setAmounts('Expenses', '10');
   await openFilters('Expenses');
@@ -238,7 +238,7 @@ test('[LEDGER-143.2] [LEDGER-144.1] takes an amount written another way for the 
   expect(savedFilters()).toEqual([['Ten up', false]]);
 });
 
-test('[LEDGER-143.2] [LEDGER-144.1] replaces the saved filter of the same name, which then comes last', async () => {
+test('[LEDGER-143.3] [LEDGER-144.1] replaces the saved filter of the same name, which then comes last', async () => {
   await startWithShopping();
   await saveBigShopping();
   await pressInFilters(CLEAR_FILTERS);
@@ -259,7 +259,7 @@ test('[LEDGER-143.2] [LEDGER-144.1] replaces the saved filter of the same name, 
 });
 
 test.each(['', '   '])(
-  '[LEDGER-143.2] saves nothing under the name %p',
+  '[LEDGER-143.3] saves nothing under the name %p',
   async (name) => {
     await startWithShopping();
     await setAmounts('Expenses', '1');
@@ -273,7 +273,7 @@ test.each(['', '   '])(
   },
 );
 
-test('[LEDGER-143.2] saves nothing when the prompt is answered with Cancel', async () => {
+test('[LEDGER-143.3] saves nothing when the prompt is answered with Cancel', async () => {
   await startWithShopping();
   await setAmounts('Expenses', '1');
   await openFilters('Expenses');
@@ -285,7 +285,7 @@ test('[LEDGER-143.2] saves nothing when the prompt is answered with Cancel', asy
   expect(amountTexts()).toEqual(['1', '']);
 });
 
-test('[LEDGER-143.2] [LEDGER-140.1] says the settings could not be saved when a filter cannot be stored under a name, and saves nothing', async () => {
+test('[LEDGER-143.3] [LEDGER-140.1] says the settings could not be saved when a filter cannot be stored under a name, and saves nothing', async () => {
   const alerts = watchAlerts();
   await startWithShopping();
   await choose('Expenses', 'Category', 'Shopping');
@@ -307,7 +307,7 @@ test('[LEDGER-143.2] [LEDGER-140.1] says the settings could not be saved when a 
   expect(capsuleOf(expensesRoot(), 'Category')).toBe('Shopping');
 });
 
-test("[LEDGER-143.2] keeps the saved filters of the expense list and of each group's screen apart, and names a group's from its own capsules", async () => {
+test("[LEDGER-143.3] keeps the saved filters of the expense list and of each group's screen apart, and names a group's from its own capsules", async () => {
   await startWithGroups({ Brisbane: ['Casey', 'Blake'], Tokyo: ['Casey'] });
   await spend('Coffee run');
   for (const group of ['Brisbane', 'Tokyo'])
@@ -374,7 +374,7 @@ test('[LEDGER-144.1] shows no SAVED FILTERS while the list has no saved filter, 
   expect(rowView('Date')).toBeDefined();
 });
 
-test('[LEDGER-144.1] [LEDGER-143.2] applies a saved filter, closes Filters, and keeps the period and the order of the list', async () => {
+test('[LEDGER-144.1] [LEDGER-143.3] applies a saved filter, closes Filters, and keeps the period and the order of the list', async () => {
   await startExpenses();
   await spend('Shoes', {
     date: '2026-09-12',

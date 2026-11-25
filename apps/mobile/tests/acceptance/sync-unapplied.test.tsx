@@ -1,5 +1,6 @@
 import { fireEvent, waitFor } from '@testing-library/react-native';
 import {
+  addCategory,
   editExpense,
   inTreeOrder,
   restart,
@@ -23,6 +24,7 @@ import {
   openTrash,
   restoreFromTrash,
   trashLines,
+  trashTitles,
   undoButton,
 } from './ledger-trash-app';
 import {
@@ -49,6 +51,7 @@ import {
   allowWrites,
   failWrites,
   failWritesAfter,
+  holdWrites,
   settle,
 } from './shell-appearance-app';
 import {
@@ -65,8 +68,10 @@ import {
   PHONE,
   START,
   YOU,
+  appDatabase,
   at,
   baseOf,
+  categoriesLines,
   categoriesShown,
   categoryNames,
   categoryOf,
@@ -139,6 +144,7 @@ import {
   pressDismiss,
   receiveOwn,
   refuseOwn,
+  snapshotRecordFor,
   taxiCreated,
   unapplied,
   uploadedHere,
@@ -465,6 +471,45 @@ test('[SYNC-351.1] removes an expense whose first event is refused from every sc
 
   await tapTab('Expenses');
   await expectCards(['Lunch']);
+});
+
+test('[SYNC-351.1] keeps only the trash change when the expense addition is refused', async () => {
+  const { brisbane } = await start();
+  await addDinner();
+  await expectCards(['Dinner']);
+  await deleteByAction('Dinner');
+  await openTrash();
+  await waitFor(() => expect(trashTitles()).toEqual(['Dinner']));
+  const [added, trashed] = await unsent();
+
+  await refuseOwn(brisbane, added);
+
+  await waitFor(() => expect(trashLines()).toEqual([NO_DELETED]));
+  await tapTab('Expenses');
+  await expectCards([]);
+  expect(await unsent()).toEqual([trashed]);
+  const record = await snapshotRecordFor(added);
+  expect(record?.units).toEqual({
+    trashed: { value: true, stamp: trashed.content.stamp },
+  });
+  expect(record?.created).toEqual(trashed.content.stamp);
+});
+
+test('[SYNC-351.1] keeps the permanent deletion when the category addition is refused', async () => {
+  const { brisbane } = await start();
+  await addCategory('Flights', brisbane);
+  await openGroupCategories(brisbane);
+  await removeGroupCategory('Flights', 'Delete');
+  const [added, removed] = await unsent();
+
+  await refuseOwn(brisbane, added);
+
+  await waitFor(() => expect(categoriesLines()).not.toContain('Flights'));
+  expect(await unsent()).toEqual([removed]);
+  const record = await snapshotRecordFor(added);
+  expect(record?.deleted).toEqual(removed.content.stamp);
+  expect(record?.units).toEqual({});
+  expect(record?.created).toEqual(removed.content.stamp);
 });
 
 test('[SYNC-351.1] takes an expense back out of the trash, with no Undo notice left', async () => {
@@ -979,7 +1024,7 @@ test('[GROUPS-171.1] says the other sentence for a reason other than the clock',
   ]);
 });
 
-test('[GROUPS-171.1] dismisses a change once when Dismiss is pressed twice', async () => {
+test('[GROUPS-171.1] dismisses a change once when Dismiss is pressed twice before the save finishes', async () => {
   const { brisbane } = await start();
   await addDinner();
   await addDinner('Taxi');
@@ -989,12 +1034,23 @@ test('[GROUPS-171.1] dismisses a change once when Dismiss is pressed twice', asy
   await showSheet();
   await waitFor(() => expect(dismissButtons()).toHaveLength(2));
   const [first] = dismissButtons();
+  const writes = holdWrites();
+  const run = jest.spyOn(appDatabase(), 'run');
 
-  await fireEvent.press(first);
-  await fireEvent.press(first);
-  await settle();
+  try {
+    await fireEvent.press(first);
+    await fireEvent.press(first);
+    const dismissals = run.mock.calls.filter(([, args]) =>
+      args?.includes(dinner.id),
+    );
+    expect(dismissals).toHaveLength(1);
+  } finally {
+    await writes.release();
+  }
 
-  await waitFor(() => expect(blocks()).toHaveLength(1));
+  await waitFor(() =>
+    expect(blocks().map((block) => block[3])).toEqual(['Taxi']),
+  );
   expect((await unapplied()).map(({ id }) => id)).toEqual([taxi.id]);
 });
 

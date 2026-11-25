@@ -1,5 +1,6 @@
 import { fireEvent, waitFor, within } from '@testing-library/react-native';
 import { listUnappliedChanges, type ReceivedSyncEvent } from '../../src/sync';
+import { snapshotRecords } from '../../src/sync/records';
 import { nameOf } from './ledger-expense-app';
 import { asRead, linesIn } from './ledger-expense-list-app';
 import { showGroup } from './group-balances-app';
@@ -129,6 +130,14 @@ export async function lastUnsent(): Promise<Unsent> {
   const event = (await unsent()).at(-1);
   if (event === undefined) throw new Error('The phone has no unsent event');
   return event;
+}
+
+/** The merged record a snapshot would carry for the event's group, record type and ID. */
+export async function snapshotRecordFor({ groupId, content }: Unsent) {
+  const records = await snapshotRecords(appDatabase(), groupId);
+  return records.find(
+    ({ type, id }) => type === content.type && id === content.id,
+  );
 }
 
 /**
