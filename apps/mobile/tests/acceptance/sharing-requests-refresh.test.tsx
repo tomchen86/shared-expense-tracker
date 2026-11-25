@@ -1,6 +1,10 @@
 import { waitFor } from '@testing-library/react-native';
 import { makeReadOnlyCopy } from '../../src/sync';
-import { openArchivedGroup, openArchivedGroups } from './group-archive-app';
+import {
+  openArchivedGroup,
+  openArchivedGroups,
+  pressRestoreGroup,
+} from './group-archive-app';
 import {
   alertsShown,
   expectClosed,
@@ -163,8 +167,8 @@ async function inMembersWithDana() {
   return started;
 }
 
-describe('SHARING-290.1', () => {
-  test("[SHARING-290.1] lists the requests 3 seconds after the group's screen is shown, shows the one that came meanwhile, and starts no sync", async () => {
+describe('SHARING-290.2', () => {
+  test("[SHARING-290.2] lists the requests 3 seconds after the group's screen is shown, shows the one that came meanwhile, and starts no sync", async () => {
     const { brisbane } = await onBrisbane();
     await asks();
     const from = received().length;
@@ -180,7 +184,7 @@ describe('SHARING-290.1', () => {
     expect(groupRequests(from)).toEqual([`GET /groups/${brisbane}/requests`]);
   });
 
-  test('[SHARING-290.1] shows in the open Members a request that comes, and takes it away once it is withdrawn', async () => {
+  test('[SHARING-290.2] shows in the open Members a request that comes, and takes it away once it is withdrawn', async () => {
     const { brisbane } = await inMembers();
     await asks();
 
@@ -194,7 +198,7 @@ describe('SHARING-290.1', () => {
     await expectMembers(MEMBERS);
   });
 
-  test('[SHARING-290.1] goes on listing while Invite shows in Members', async () => {
+  test('[SHARING-290.2] goes on listing while Invite shows in Members', async () => {
     await inMembers();
     await pressInvite();
     expect(shownLink()).toBeDefined();
@@ -208,7 +212,7 @@ describe('SHARING-290.1', () => {
     expect(membersShown()).toEqual([DANA_ROW, ...MEMBERS]);
   });
 
-  test('[SHARING-290.1] lists every 3 seconds at first', async () => {
+  test('[SHARING-290.2] lists every 3 seconds at first', async () => {
     const { from } = await inMembers();
 
     await secondsPass(8);
@@ -220,7 +224,7 @@ describe('SHARING-290.1', () => {
     expect(lists(from)).toHaveLength(3);
   });
 
-  test('[SHARING-290.1] lists every 30 seconds once the screen has been shown for 2 minutes', async () => {
+  test('[SHARING-290.2] lists every 30 seconds once the screen has been shown for 2 minutes', async () => {
     const { from } = await inMembers();
 
     // 3 seconds apart up to the end of the 2 minutes: 39 by 119 seconds, the 40th at 120.
@@ -250,7 +254,7 @@ describe('SHARING-290.1', () => {
     expect(lists(from)).toHaveLength(42);
   });
 
-  test('[SHARING-290.1] sends no second list while one of its own has no answer, and the next one 3 seconds after the answer', async () => {
+  test('[SHARING-290.2] sends no second list while one of its own has no answer, and the next one 3 seconds after the answer', async () => {
     await onBrisbane();
     holdDecisions('list');
     const from = received().length;
@@ -271,7 +275,7 @@ describe('SHARING-290.1', () => {
     expect(lists(from)).toHaveLength(2);
   });
 
-  test('[SHARING-290.1] sends no list while the one Members sent as it opened has no answer', async () => {
+  test('[SHARING-290.2] sends no list while the one Members sent as it opened has no answer', async () => {
     await startWithInvite();
     holdDecisions('list');
     const from = received().length;
@@ -284,7 +288,7 @@ describe('SHARING-290.1', () => {
     await releaseDecisions();
   });
 
-  test('[SHARING-290.1] lists nothing for a shared ledger that never had an invite, however long its Members stays open', async () => {
+  test('[SHARING-290.2] lists nothing for a shared ledger that never had an invite, however long its Members stays open', async () => {
     await startSynced();
     await showMembers('Brisbane');
     const from = received().length;
@@ -294,7 +298,7 @@ describe('SHARING-290.1', () => {
     expect(lists(from)).toEqual([]);
   });
 
-  test('[SHARING-290.1] lists nothing once the invite has expired', async () => {
+  test('[SHARING-290.2] lists nothing once the invite has expired', async () => {
     await onBrisbane();
     setClock(LATER + WEEK);
     const from = received().length;
@@ -304,7 +308,7 @@ describe('SHARING-290.1', () => {
     expect(lists(from)).toEqual([]);
   });
 
-  test('[SHARING-290.1] lists nothing while the phone is approving a request', async () => {
+  test('[SHARING-290.2] lists nothing while the phone is approving a request', async () => {
     await inMembersWithDana();
     holdDecisions('approve');
     const pressed = received().length;
@@ -321,7 +325,7 @@ describe('SHARING-290.1', () => {
     );
   });
 
-  test("[SHARING-290.1] lists nothing while an archived shared ledger's screen or its Members is open", async () => {
+  test("[SHARING-290.2] lists nothing while an archived shared ledger's screen or its Members is open", async () => {
     await startWithInvite();
     await asks();
     await archiveGroup('Brisbane');
@@ -336,7 +340,7 @@ describe('SHARING-290.1', () => {
     expect(lists(from)).toEqual([]);
   });
 
-  test('[SHARING-290.1] lists nothing while the screen or the Members of a read-only copy is open', async () => {
+  test('[SHARING-290.2] lists nothing while the screen or the Members of a read-only copy is open', async () => {
     const { brisbane } = await startWithInvite();
     await makeReadOnlyCopy(appDatabase(), brisbane, 'not-a-member');
     await tapTab('Groups');
@@ -350,7 +354,7 @@ describe('SHARING-290.1', () => {
     expect(lists(from)).toEqual([]);
   });
 
-  test('[SHARING-290.1] sends nothing at all while the screen or the Members of a group that is not shared is open', async () => {
+  test('[SHARING-290.2] sends nothing at all while the screen or the Members of a group that is not shared is open', async () => {
     await startWithInvite({ Brisbane: ['Casey', 'Blake'], Tokyo: ['Alex'] });
     await tapTab('Groups');
     const from = received().length;
@@ -363,7 +367,7 @@ describe('SHARING-290.1', () => {
     expect(received().slice(from)).toEqual([]);
   });
 
-  test('[SHARING-290.1] says nothing and keeps its requests when a list fails, and lists again the next time', async () => {
+  test('[SHARING-290.2] says nothing and keeps its requests when a list fails, and lists again the next time', async () => {
     await inMembersWithDana();
     goOffline();
 
@@ -400,7 +404,7 @@ describe('SHARING-290.1', () => {
       },
     ],
   ])(
-    "[SHARING-290.1] stops listing when %s, and starts anew when the group's screen is shown again",
+    "[SHARING-290.2] stops listing when %s, and starts anew when the group's screen is shown again",
     async (_case, leave, comeBack) => {
       await onBrisbane();
       await leave();
@@ -425,7 +429,7 @@ describe('SHARING-290.1', () => {
     },
   );
 
-  test('[SHARING-290.1] stops listing while Rename Member covers Members, and starts anew when Members is shown again', async () => {
+  test('[SHARING-290.2] stops listing while Rename Member covers Members, and starts anew when Members is shown again', async () => {
     await inMembers();
     await openRenameMember('Casey');
     await asks();
@@ -448,7 +452,82 @@ describe('SHARING-290.1', () => {
     await expectMembers([DANA_ROW, ...MEMBERS]);
   });
 
-  test("[SHARING-290.1] counts the 2 minutes anew when the group's screen is shown again", async () => {
+  test('[SHARING-290.2] counts from the moment an archived shared ledger is restored on its screen', async () => {
+    await startWithInvite();
+    await archiveGroup('Brisbane');
+    await openArchivedGroups();
+    await openArchivedGroup('Brisbane');
+    await secondsPass(125);
+    await pressRestoreGroup('Brisbane');
+    const restored = received().length;
+
+    await secondsPass(8);
+
+    // Saving the restore starts a sync, which lists once more as it ends (SHARING-190.2).
+    expect(lists(restored).length).toBeGreaterThanOrEqual(2);
+    expect(lists(restored).length).toBeLessThanOrEqual(3);
+  });
+
+  test('[SHARING-290.2] counts the 2 minutes anew when Invite is opened in Members, and not when it is closed', async () => {
+    await inMembers();
+    await secondsPass(125);
+    await pressInvite();
+    expect(shownLink()).toBeDefined();
+    const opened = received().length;
+
+    await secondsPass(8);
+
+    expect(lists(opened)).toHaveLength(2);
+
+    await secondsPass(2);
+
+    expect(lists(opened)).toHaveLength(3);
+
+    // 125 seconds after Invite opened: the next list is due at 150.
+    await secondsPass(115);
+    await closeInvite();
+    const closed = received().length;
+    await secondsPass(8);
+
+    expect(lists(closed)).toEqual([]);
+  });
+
+  test("[SHARING-290.2] keeps to 3 seconds when the phone's clock is set 10 minutes ahead", async () => {
+    const { from } = await inMembers();
+    await secondsPass(60);
+    const before = lists(from).length;
+    jest.setSystemTime(Date.now() + 10 * 60_000);
+
+    await secondsPass(3.5);
+
+    expect(lists(from)).toHaveLength(before + 1);
+
+    await secondsPass(3);
+
+    expect(lists(from)).toHaveLength(before + 2);
+  });
+
+  test('[SHARING-290.2] keeps the answer that comes after the screen was left, and starts no timer with it', async () => {
+    await onBrisbane();
+    await asks();
+    holdDecisions('list');
+    const from = received().length;
+    await secondsPass(3.5);
+    expect(lists(from)).toHaveLength(1);
+    await tapTab('Expenses');
+
+    await releaseDecisions();
+    await secondsPass(60);
+
+    expect(lists(from)).toHaveLength(1);
+
+    await tapTab('Groups');
+
+    await expectJoinCount('Brisbane', 1);
+    expect(lists(from)).toHaveLength(1);
+  });
+
+  test("[SHARING-290.2] counts the 2 minutes anew when the group's screen is shown again", async () => {
     await onBrisbane();
     await secondsPass(125);
     await tapTab('Expenses');
@@ -465,7 +544,7 @@ describe('SHARING-290.1', () => {
     expect(lists(back)).toHaveLength(3);
   });
 
-  test('[SHARING-290.1] stops listing in the background, and starts anew when the app comes back', async () => {
+  test('[SHARING-290.2] stops listing in the background, and starts anew when the app comes back', async () => {
     await onBrisbane();
     await goesToBackground();
     const away = received().length;
