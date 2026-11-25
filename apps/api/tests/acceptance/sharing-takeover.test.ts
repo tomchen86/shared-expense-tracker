@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { SNAPSHOT_NEEDED_BY_HEADER } from '@shared-expense/domain/api';
 import {
+  NO_ROUTE,
   T,
   databaseContents,
   expectRefused,
@@ -23,8 +24,10 @@ import {
   askResult,
   expectApproved,
   expectHandover,
+  expectRejected,
   isMemberDevice,
   listRequests,
+  naming,
   reject,
   sha256Of,
 } from './sharing-decisions-api';
@@ -52,6 +55,7 @@ import {
   rotate,
   rotationNeeded,
   rotationOf,
+  rotationRequest,
 } from './sharing-removal-api';
 import {
   REPLACED,
@@ -1056,7 +1060,7 @@ describe('SHARING-305.1', () => {
     }
   });
 
-  test('[SHARING-305.1] refuses every request of a replaced device about the group, each with the header, and changes nothing', async () => {
+  test('[SHARING-305.1] refuses every request of a replaced device about the group and changes nothing, with the header on its upload, its download and its leave request only', async () => {
     const { taylor, dana, P } = await danaReplaced();
     const S = snapshotOf(dana, dana);
     const json = (body: unknown) => JSON.stringify(body);
@@ -1101,6 +1105,9 @@ describe('SHARING-305.1', () => {
       leaveRequest(BRISBANE),
     ];
     expect(requests).toHaveLength(14);
+    // The requests from which a phone learns that it is out: upload, download, leave.
+    const told = [0, 1, 13];
+    const marks: (string | null)[] = [];
 
     for (const request of requests) {
       const answer = await leavingGroupsAsTheyWere(() =>
@@ -1109,8 +1116,12 @@ describe('SHARING-305.1', () => {
 
       expect(answer.status).toBe(403);
       expect(answer.body).toEqual(NOT_A_MEMBER);
-      expect(answer.headers.get(REPLACED)).toBe(TAKEOVER);
+      marks.push(answer.headers.get(REPLACED));
     }
+
+    expect(marks).toEqual(
+      requests.map((_, index) => (told.includes(index) ? TAKEOVER : null)),
+    );
   });
 
   test('[SHARING-305.1] puts no such header on what it answers a device that was removed, or that left', async () => {
@@ -1213,7 +1224,7 @@ describe('SHARING-305.1', () => {
     expect(answer.headers.get(REPLACED)).toBeNull();
   });
 
-  test('[SHARING-305.1] lets a replaced device take its place back: the device that replaced it is then the one that is told', async () => {
+  test('[SHARING-305.1] lets a replaced device take its place back: the device that replaced it is then the one that is told, and the first is told nothing when it is removed later', async () => {
     const { taylor, casey, dana } = await danaReplaced();
     const again = joinRequest();
     expectRequestAnswered(await sendRequest(dana, CODE_A, again), CODE_A);
@@ -1239,6 +1250,15 @@ describe('SHARING-305.1', () => {
     const forDana = await callForHeaders(dana, downloadOf(BRISBANE, 1));
     expect(forDana.status).toBe(200);
     expect(forDana.headers.get(REPLACED)).toBeNull();
+
+    // Removed by a rotation this time: the API forgot the takeover when it came back.
+    const removal = rotationOf([taylor], { epoch: 4, remove: [DANA] });
+    expectRotated(await rotate(taylor, BRISBANE, removal), removal, [3]);
+    const removed = await callForHeaders(dana, downloadOf(BRISBANE));
+    expect(removed.status).toBe(403);
+    expect(removed.body).toEqual(NOT_A_MEMBER);
+    expect(removed.headers.get(REPLACED)).toBeNull();
+    expect(await replacedOn(casey, downloadOf(BRISBANE))).toBe(TAKEOVER);
   });
 
   test('[SHARING-305.1] forgets it with the group: no header once the group is deleted, nor for a new group of that ID', async () => {
@@ -1326,7 +1346,7 @@ describe('SHARING-306.1', () => {
     expect(await timesStored('Dana-Kim')).toBe(0);
   });
 
-  test('[SHARING-306.1] keeps one row for the device that was replaced, which names neither the device that replaced it nor the one that approved', async () => {
+  test('[SHARING-306.1] [SYNC-61.5] keeps one row for the device that was replaced, which names neither the device that replaced it nor the one that approved', async () => {
     const world = await caseyAsksWithDanaIn();
     const { taylor, casey, dana } = world;
     await reach(dana, 0);
@@ -1342,6 +1362,14 @@ describe('SHARING-306.1', () => {
     expect(await rowsHolding(BRISBANE, DANA)).toBe(1);
     expect(await rowsHolding(BRISBANE, DANA, casey.deviceId)).toBe(0);
     expect(await rowsHolding(BRISBANE, DANA, taylor.deviceId)).toBe(0);
+    // The group and the device, and no third value: not a time, not a count.
+    const rows = Object.values(await databaseContents())
+      .flat()
+      .map((row) => Object.values(JSON.parse(row) as Record<string, unknown>))
+      .filter((stored) => stored.includes(BRISBANE) && stored.includes(DANA));
+    expect(rows.map((stored) => [...stored].sort())).toEqual([
+      [BRISBANE, DANA].sort(),
+    ]);
   });
 
   test('[SHARING-306.1] stores nothing a refused takeover carried, and marks no device as replaced', async () => {
@@ -1370,7 +1398,7 @@ describe('SHARING-306.1', () => {
 });
 
 describe('SHARING-307.1', () => {
-  test('[SHARING-307.1] has no route for another method on the path of a takeover, which a POST takes', async () => {
+  test('[SHARING-307.1] [SHARING-300.1] answers another method on the path of a takeover as it answers a path with no route, and takes a POST', async () => {
     const world = await caseyAsksWithDanaIn();
     const { taylor, casey, dana, P } = world;
     const takeover = caseyForDana(world);
@@ -1384,8 +1412,9 @@ describe('SHARING-307.1', () => {
 
     for (const request of requests) {
       const answer = await leavingGroupsAsTheyWere(() => call(taylor, request));
-      expect(answer.status).toBe(404);
-      expect(answer.body).not.toEqual(NOT_A_MEMBER);
+      const noRoute = await call(taylor, { ...request, path: NO_ROUTE });
+      expect(noRoute.status).toBe(404);
+      expect(answer).toEqual(noRoute);
     }
     expect(await timesStored(P)).toBe(1);
     expect(await isMemberDevice(BRISBANE, dana)).toBe(true);
@@ -1617,6 +1646,215 @@ describe('SHARING-308.1', () => {
         expectTakeoverRefused(tookOver, rotationNeeded(first, second));
         expect(await isMemberDevice(groupId, applicant)).toBe(false);
         expect(await timesStored(content)).toBe(1);
+      }
+      aMinuteLater();
+    }
+  });
+  test('[SHARING-308.1] lets exactly one of two takeovers of the same request through, and tells the other that the request is gone', async () => {
+    const [first, second, third] = [
+      await registered(),
+      await registered(),
+      await registered(),
+    ];
+    const servers = [await ownServer(), await ownServer()];
+
+    for (let round = 0; round < 5; round += 1) {
+      const { groupId, code, asked } = await groupWithRequests(
+        [first, second, third],
+        1,
+      );
+      const [{ applicant, content, snapshot }] = asked;
+      const signers = [first, second];
+      const takeovers = signers.map(() =>
+        takeoverOf(content, snapshot, {
+          remove: [third],
+          staying: [first, second],
+        }),
+      );
+
+      const answers = await Promise.all(
+        signers.map((phone, index) =>
+          callOn(
+            servers[index],
+            phone,
+            takeoverRequest(groupId, applicant, takeovers[index]),
+          ),
+        ),
+      );
+
+      expect(answers.map(({ status }) => status).sort()).toEqual([200, 404]);
+      const won = answers.findIndex(({ status }) => status === 200);
+      expectTakenOver(answers[won], applicant, takeovers[won], [1]);
+      expectTakeoverRefused(answers[1 - won], NO_REQUEST);
+      expect(await stateOf(first, groupId)).toEqual(wrongEpoch(2));
+      expect(await isMemberDevice(groupId, third)).toBe(false);
+      expectHandover(
+        await askResult(applicant, code),
+        groupId,
+        signers[won],
+        takeovers[won],
+      );
+      expect((await everyEvent(first, groupId)).map(({ id }) => id)).toEqual([
+        takeovers[won].events[0].id,
+      ]);
+      for (const each of takeovers[1 - won].boxes) {
+        expect(await timesStored(bytesOf(each.box))).toBe(0);
+      }
+      aMinuteLater();
+    }
+  });
+
+  test('[SHARING-308.1] lets one of two member devices replace the other when each sends a takeover that removes the other, and refuses the other as no member device', async () => {
+    const [first, second] = [await registered(), await registered()];
+    const servers = [await ownServer(), await ownServer()];
+
+    for (let round = 0; round < 5; round += 1) {
+      const { groupId, asked } = await groupWithRequests([first, second], 2);
+      const signers = [first, second];
+      const takeovers = asked.map(({ content, snapshot }, index) =>
+        takeoverOf(content, snapshot, {
+          remove: [signers[1 - index]],
+          staying: [signers[index]],
+        }),
+      );
+
+      const answers = await Promise.all(
+        signers.map((phone, index) =>
+          callOn(
+            servers[index],
+            phone,
+            takeoverRequest(groupId, asked[index].applicant, takeovers[index]),
+          ),
+        ),
+      );
+
+      expect(answers.map(({ status }) => status).sort()).toEqual([200, 403]);
+      const won = answers.findIndex(({ status }) => status === 200);
+      expectTakenOver(answers[won], asked[won].applicant, takeovers[won], [1]);
+      expect(answers[1 - won]).toEqual({ status: 403, body: NOT_A_MEMBER });
+      expect(await isMemberDevice(groupId, signers[won])).toBe(true);
+      expect(await isMemberDevice(groupId, signers[1 - won])).toBe(false);
+      expect(await isMemberDevice(groupId, asked[won].applicant)).toBe(true);
+      expect(await isMemberDevice(groupId, asked[1 - won].applicant)).toBe(
+        false,
+      );
+      expect(await stateOf(signers[won], groupId)).toEqual(wrongEpoch(2));
+      // The header is for its uploads, downloads and leave request, not for this one.
+      const again = await callForHeaders(
+        signers[1 - won],
+        takeoverRequest(groupId, asked[1 - won].applicant, takeovers[1 - won]),
+      );
+      expect(again.status).toBe(403);
+      expect(again.headers.get(REPLACED)).toBeNull();
+      expect(await replacedOn(signers[1 - won], downloadOf(groupId))).toBe(
+        TAKEOVER,
+      );
+      aMinuteLater();
+    }
+  });
+
+  test('[SHARING-308.1] lets exactly one of a takeover and a rejection of the same request through', async () => {
+    const [first, second, third] = [
+      await registered(),
+      await registered(),
+      await registered(),
+    ];
+    const servers = [await ownServer(), await ownServer()];
+
+    for (let round = 0; round < 5; round += 1) {
+      const { groupId, asked } = await groupWithRequests(
+        [first, second, third],
+        1,
+      );
+      const [{ applicant, content, snapshot }] = asked;
+      const takeover = takeoverOf(content, snapshot, {
+        remove: [third],
+        staying: [first, second],
+      });
+
+      const [tookOver, rejected] = await Promise.all([
+        callOn(
+          servers[0],
+          first,
+          takeoverRequest(groupId, applicant, takeover),
+        ),
+        callOn(servers[1], second, {
+          method: 'DELETE',
+          path: `/groups/${groupId}/requests/${applicant.deviceId}${naming(content)}`,
+        }),
+      ]);
+
+      expect([tookOver.status, rejected.status].sort()).toEqual([200, 404]);
+      if (tookOver.status === 200) {
+        expectTakenOver(tookOver, applicant, takeover, [1]);
+        expect(rejected).toEqual({ status: 404, body: NO_REQUEST });
+        expect(await isMemberDevice(groupId, applicant)).toBe(true);
+        expect(await isMemberDevice(groupId, third)).toBe(false);
+        expect(await stateOf(first, groupId)).toEqual(wrongEpoch(2));
+      } else {
+        expectRejected(rejected, applicant);
+        expectTakeoverRefused(tookOver, NO_REQUEST);
+        expect(await isMemberDevice(groupId, applicant)).toBe(false);
+        expect(await isMemberDevice(groupId, third)).toBe(true);
+        expect(await stateOf(first, groupId)).toEqual(wrongEpoch(1));
+        expect(await everyEvent(first, groupId)).toEqual([]);
+      }
+      aMinuteLater();
+    }
+  });
+
+  test('[SHARING-308.1] lets exactly one of a takeover and a rotation that remove the same device through', async () => {
+    const [first, second, third] = [
+      await registered(),
+      await registered(),
+      await registered(),
+    ];
+    const servers = [await ownServer(), await ownServer()];
+
+    for (let round = 0; round < 5; round += 1) {
+      const { groupId, asked } = await groupWithRequests(
+        [first, second, third],
+        1,
+      );
+      const [{ applicant, content, snapshot }] = asked;
+      const takeover = takeoverOf(content, snapshot, {
+        remove: [third],
+        staying: [first, second],
+      });
+      const rotation = rotationOf([first, second], {
+        remove: [third.deviceId],
+      });
+
+      const [tookOver, rotated] = await Promise.all([
+        callOn(
+          servers[0],
+          first,
+          takeoverRequest(groupId, applicant, takeover),
+        ),
+        callOn(servers[1], second, rotationRequest(groupId, rotation)),
+      ]);
+
+      expect([tookOver.status, rotated.status].sort()).toEqual([200, 409]);
+      expect(await isMemberDevice(groupId, third)).toBe(false);
+      expect(await stateOf(first, groupId)).toEqual(wrongEpoch(2));
+      if (tookOver.status === 200) {
+        expectTakenOver(tookOver, applicant, takeover, [1]);
+        expect(rotated).toEqual({
+          status: 409,
+          body: otherDevices(first, second, applicant),
+        });
+        expect(await isMemberDevice(groupId, applicant)).toBe(true);
+        expect((await everyEvent(first, groupId)).map(({ id }) => id)).toEqual([
+          takeover.events[0].id,
+        ]);
+      } else {
+        expectRotated(rotated, rotation, [1]);
+        expectTakeoverRefused(tookOver, BEHIND);
+        expect(await isMemberDevice(groupId, applicant)).toBe(false);
+        expect(await timesStored(content)).toBe(1);
+        expect((await everyEvent(first, groupId)).map(({ id }) => id)).toEqual([
+          rotation.events[0].id,
+        ]);
       }
       aMinuteLater();
     }

@@ -102,7 +102,7 @@ export const BLAKE_ID = '3f2504e0-4f89-41d3-9a0c-0305e82c3301';
 
 /** The groups' IDs on the phone that made them, and so on the API. */
 export const BRISBANE_ID = '9b2f6c1e-8d47-4f3a-b1c5-2e7d90a4f6b8';
-const TOKYO_ID = 'c4a1e2d3-5b6f-4a7c-9d8e-0f1a2b3c4d5e';
+export const TOKYO_ID = 'c4a1e2d3-5b6f-4a7c-9d8e-0f1a2b3c4d5e';
 /** The phone that made the groups: their one member device on the API. */
 export const TAYLORS_PHONE = '0f8fad5b-d9cb-469f-a165-70867728950e';
 
@@ -152,7 +152,7 @@ const fromBase64Url = (text: string) =>
   new Uint8Array(Buffer.from(text, 'base64url'));
 
 /**
- * A card as a member's phone uploads it (SHARING-95.1): `content` as JSON, or as the text
+ * A card as a member's phone uploads it (SHARING-95.2): `content` as JSON, or as the text
  * it is, sealed with the card key of `secret` for the invite `code`.
  */
 export function sealedCard(code: string, secret: string, content: unknown) {

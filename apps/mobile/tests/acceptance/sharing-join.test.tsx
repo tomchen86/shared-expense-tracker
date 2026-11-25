@@ -20,6 +20,7 @@ import {
   removeFromGroup,
 } from './ledger-group-expense-app';
 import {
+  addSecureStoreEntry,
   API,
   T,
   apiAnswersNext,
@@ -96,6 +97,7 @@ import {
   TAYLORS_PHONE,
   TAYLOR_ID,
   TITLE,
+  TOKYO_ID,
   TOKYO_LINK,
   TOO_MANY,
   UNABLE_TO_CANCEL,
@@ -1326,8 +1328,8 @@ describe('SHARING-133.1', () => {
 
 // Sending the request
 
-describe('SHARING-134.1', () => {
-  test('[SHARING-134.1] makes the identity, registers and sends the request, in that order, on a new phone', async () => {
+describe('SHARING-134.2', () => {
+  test('[SHARING-134.2] makes the identity, registers and sends the request, in that order, on a new phone', async () => {
     brisbaneInvites();
     await startAs();
 
@@ -1351,7 +1353,7 @@ describe('SHARING-134.1', () => {
     ]);
   });
 
-  test('[SHARING-134.1] does not register again on a phone that has an identity', async () => {
+  test('[SHARING-134.2] does not register again on a phone that has an identity', async () => {
     brisbaneInvites();
     tokyoInvites();
     await startAs();
@@ -1367,7 +1369,7 @@ describe('SHARING-134.1', () => {
     ]);
   });
 
-  test('[SHARING-134.1] shows only Sending request…, with the request already in its local data, until the API has answered', async () => {
+  test('[SHARING-134.2] shows only Sending request…, with the request already in its local data, until the API has answered', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1384,7 +1386,7 @@ describe('SHARING-134.1', () => {
     expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
   });
 
-  test('[SHARING-134.1] stores the request with its secret, group, trimmed name and picked member: after a restart it sends the same one', async () => {
+  test('[SHARING-134.2] stores the request with its secret, group, trimmed name and picked member: after a restart it sends the same one', async () => {
     brisbaneInvites();
     let app = await startAs();
     await openLink(BRISBANE_LINK);
@@ -1412,7 +1414,7 @@ describe('SHARING-134.1', () => {
     expect(rowsWith(CODE_A)).toHaveLength(1);
   });
 
-  test('[SHARING-134.1] marks the request as sent, without opening Join Group again, when the answer comes after it was closed', async () => {
+  test('[SHARING-134.2] marks the request as sent, without opening Join Group again, when the answer comes after it was closed', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1431,7 +1433,7 @@ describe('SHARING-134.1', () => {
     expect(screen.queryByText('Not sent')).toBeNull();
   });
 
-  test("[SHARING-134.1] leaves Join Group on another group's form when the answer comes after its link arrived", async () => {
+  test("[SHARING-134.2] leaves Join Group on another group's form when the answer comes after its link arrived", async () => {
     brisbaneInvites();
     tokyoInvites();
     await startAs();
@@ -1509,22 +1511,27 @@ describe('SHARING-135.2', () => {
   });
 
   test.each([
-    [55, 256, false],
-    [56, 512, true],
+    ['55 letters', 'a'.repeat(55), 256, false],
+    ['56 letters', 'a'.repeat(56), 512, true],
+    // A quotation mark is two bytes in JSON: 55 and 56 bytes between the quotes.
+    ['27 quotation marks and a letter', `${'"'.repeat(27)}a`, 256, false],
+    ['28 quotation marks', '"'.repeat(28), 512, true],
   ])(
-    '[SHARING-135.2] pads a request that takes a member over, named with %i letters, to %i bytes',
-    async (letters, bytes, padded) => {
+    '[SHARING-135.2] pads a request that takes a member over, named with %s, to a multiple of 256 bytes',
+    async (_, name, bytes, padded) => {
       brisbaneInvitesWithTwoPhones();
       await startAs();
       await openLink(BRISBANE_LINK);
-      await typeName('a'.repeat(letters));
+      await typeName(name);
       await pressInJoin(joined('Taylor'));
 
       await send();
 
       const plaintext = openedRequest(sendings()[0], S)!;
       expect(lastRequest().takeover).toBe(true);
+      expect(lastRequest().name).toBe(name);
       expect(Buffer.byteLength(plaintext, 'utf8')).toBe(bytes);
+      expect(sentRequest(sendings()[0])).toHaveLength(bytes + 41);
       expect(plaintext.endsWith(' ')).toBe(padded);
       expect(plaintext.trimEnd().endsWith('"takeover":true}')).toBe(true);
     },
@@ -2211,7 +2218,7 @@ describe('SHARING-321.1', () => {
     return { app, lost, first };
   }
 
-  test('[SHARING-321.1] gives a phone that lost its authorization a new device identity when it sends a request, and registers it', async () => {
+  test('[SHARING-321.1] [SHARING-134.2] gives a phone that lost its authorization a new device identity when it sends a request, and registers it', async () => {
     const { lost } = await lostAfterAskingTokyo();
     await openLink(BRISBANE_LINK);
     const registered = registrationsReceived().length;
@@ -2271,6 +2278,42 @@ describe('SHARING-321.1', () => {
         .slice(from)
         .filter(({ path }) => path.includes(CODE_B)),
     ).toEqual([]);
+  });
+
+  test('[SHARING-321.1] deletes the group keys that an approved request of the old identity had put in the secure store', async () => {
+    await lostAfterAskingTokyo();
+    // What joining Tokyo saved before it could finish (SHARING-217.2): the group's key, and
+    // the entry that says whose it is. The seed is gone; these are not.
+    const TOKYO_KEY = `group-key.${TOKYO_ID}.1`;
+    addSecureStoreEntry(TOKYO_KEY, 'ab'.repeat(32));
+    addSecureStoreEntry(`join-keys.${CODE_B}`, `${TOKYO_ID}.1`);
+    await openLink(BRISBANE_LINK);
+
+    await send();
+
+    expect(rowsWith(CODE_B)).toEqual([]);
+    const names = secureStoreEntries().map(({ key }) => key);
+    expect(names).not.toContain(TOKYO_KEY);
+    expect(names).not.toContain(`join-keys.${CODE_B}`);
+    expect(names).toEqual([expect.stringContaining(deviceIdOnPhone()!)]);
+  });
+
+  test('[SHARING-321.1] [SHARING-141.2] leaves no new seed behind, and stays as it was, when the local data cannot take the new identity', async () => {
+    const { lost } = await lostAfterAskingTokyo();
+    await openLink(BRISBANE_LINK);
+    const sent = received().length;
+    failWrites();
+
+    await pressInJoin(SEND);
+
+    allowWrites();
+    expect(alertsShown().at(-1)).toEqual([UNABLE_TO_SEND, WENT_WRONG]);
+    expect(received()).toHaveLength(sent);
+    expect(deviceIdOnPhone()).toBe(lost);
+    expect(secureStoreEntries()).toEqual([]);
+    expect(rowsWith(CODE_B)).toHaveLength(1);
+    expect(rowsWith(CODE_A)).toEqual([]);
+    expect(joinLines()).toEqual(FORM);
   });
 
   test('[SHARING-321.1] makes a shared ledger that is no copy yet a read-only copy, for the lost authorization, before it takes the new identity', async () => {

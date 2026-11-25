@@ -18,12 +18,14 @@ import { editExpense, restart } from './ledger-expense-app';
 import { linesIn } from './ledger-expense-list-app';
 import { archiveGroup } from './ledger-group-expense-app';
 import {
+  apiAnswersNext,
   goOffline,
   goOnline,
   mistakes,
   received,
   removeWorld,
   resetWorld,
+  type Received,
 } from './sharing-app';
 import {
   ANSWERED,
@@ -88,6 +90,7 @@ import {
   changed,
   created,
   eachTestGetsAPhone,
+  everything,
   expenseTitled,
   leaveMembers,
   members,
@@ -203,6 +206,18 @@ const otherPhoneRepresents = (memberId: string) =>
   created('device' as never, OTHER_DEVICE, otherStamp(LATER + 1_000), {
     member: { memberId, userId: 'user-b', boxKey: someBoxKey() },
   });
+
+/** A request that revokes an invite (SHARING-82.1). */
+const isRevoke = ({ method, path }: Received) =>
+  method === 'DELETE' && /^\/groups\/[^/?]+\/invites\/[^/?]+$/.test(path);
+
+/** The API fails the phone's next request to revoke an invite, so the invite and its requests stay (SHARING-284.1). */
+const revokingFailsOnce = () => apiAnswersNext(isRevoke, 500, '{}');
+
+/** The user ID this phone's local data holds. */
+const ownUserId = () =>
+  (JSON.parse((everything().local_identity ?? [])[0]) as { userId: string })
+    .userId;
 
 /** The row of a request that takes a member over, under the name Dana K. */
 const takeoverRow = (member: string) => `Dana K., ${wantsToTakeOver(member)}`;
@@ -395,7 +410,9 @@ describe('GROUPS-131.2', () => {
       expect.arrayContaining(['Dana K.', wantsToTakeOver('Casey')]),
     );
 
-    // Casey's phone leaves, and Casey with it.
+    // Casey's phone leaves, and Casey with it. The invite is older than that, so this
+    // phone revokes it (SHARING-284.1); while that has not worked, the request is listed.
+    revokingFailsOnce();
     otherPhoneUploads(
       brisbane,
       changed('member', ids.Casey, otherStamp(LATER + 2_000), {
@@ -408,6 +425,28 @@ describe('GROUPS-131.2', () => {
     await syncs();
 
     await waitFor(() => expect(membersShown()[0]).toBe(`Dana K., ${LEFT}`));
+    expect(received().filter(isRevoke)).toHaveLength(1);
+  });
+
+  test('[GROUPS-131.2] [SHARING-194.2] lists a request that takes a member over no more once that member’s phone has left and the invite is revoked', async () => {
+    const { brisbane, ids } = await inMembersWithATakeover();
+    expect(membersShown()[0]).toBe(takeoverRow('Casey'));
+
+    otherPhoneUploads(
+      brisbane,
+      changed('member', ids.Casey, otherStamp(LATER + 2_000), {
+        removed: true,
+      }),
+      changed('device' as never, OTHER_DEVICE, otherStamp(LATER + 3_000), {
+        member: null,
+      }),
+    );
+    await syncs();
+
+    await waitFor(() => expect(received().filter(isRevoke)).toHaveLength(1));
+    await waitFor(() =>
+      expect(linesIn(screenOf('Members'))).not.toContain('Requests'),
+    );
   });
 
   test('[GROUPS-131.2] has no Requests while nobody has asked', async () => {
@@ -844,8 +883,49 @@ describe('SHARING-194.2', () => {
     });
   });
 
-  test('[SHARING-194.2] offers no Approve for a request that takes over a member who has left since, and says that the member is gone', async () => {
+  test('[SHARING-194.2] offers no Approve for a plain request for a member whose phone carries this phone’s own user ID, and offers it for a takeover of that member', async () => {
+    const { brisbane } = await startWithInvite();
+    const { Casey } = await members('Brisbane');
+    // A phone restored from this phone's export file represents Casey (ADR-0039).
+    otherPhoneUploads(
+      brisbane,
+      created('device' as never, OTHER_DEVICE, otherStamp(LATER + 1_000), {
+        member: {
+          memberId: Casey,
+          userId: ownUserId(),
+          boxKey: someBoxKey(),
+        },
+      }),
+    );
+    await asks({ memberId: Casey });
+    await asks({
+      name: 'Dana K.',
+      memberId: Casey,
+      takeover: true,
+      deviceId: E,
+      userId: EVAN_USER,
+    });
+    await syncs();
+    await showMembers('Brisbane');
+    // No "Joined" for Casey: the entry carries this phone's own user ID (SYNC-251.2).
+    await waitFor(() => expect(membersShown()).toContain('Casey'));
+    expect(membersShown()).not.toContain('Casey, Joined');
+
+    const plain = await tapMember(`Dana, ${wantsToBe('Casey')}`);
+
+    expect(plain).toMatchObject({
+      message: HAS_A_PHONE('Casey'),
+      items: [DECLINE, CANCEL],
+    });
+    await plain!.choose(CANCEL);
+    expect(await tapMember(takeoverRow('Casey'))).toMatchObject({
+      items: [APPROVE, DECLINE, CANCEL],
+    });
+  });
+
+  test('[SHARING-194.2] offers no Approve for a request that takes over a member who has left since, and says that the member is gone, while the invite is not revoked yet', async () => {
     const { brisbane, ids } = await inMembersWithATakeover();
+    revokingFailsOnce();
     otherPhoneUploads(
       brisbane,
       changed('member', ids.Casey, otherStamp(LATER + 2_000), {
@@ -867,8 +947,8 @@ describe('SHARING-194.2', () => {
   });
 });
 
-describe('SHARING-195.2', () => {
-  test('[SHARING-195.2] sends the cursor it checked at when the app synced meanwhile, and says why it cannot approve once the API calls it behind', async () => {
+describe('SHARING-195.3', () => {
+  test('[SHARING-195.3] sends the cursor it checked at when the app synced meanwhile, and says why it cannot approve once the API calls it behind', async () => {
     const { brisbane } = await startWithInvite();
     const { Casey } = await members('Brisbane');
     await asks({ memberId: Casey });
@@ -903,7 +983,7 @@ describe('SHARING-195.2', () => {
     expect(await unsent()).toEqual([]);
   });
 
-  test('[SHARING-195.2] approves the content its menu was opened for: a request replaced since is answered as gone, and the new one is shown', async () => {
+  test('[SHARING-195.3] approves the content its menu was opened for: a request replaced since is answered as gone, and the new one is shown', async () => {
     const { brisbane } = await inMembersWithDana();
     const { Casey } = await members('Brisbane');
     const menu = await tapMember(DANA_ROW);
@@ -1350,7 +1430,7 @@ describe('SHARING-288.1', () => {
 
 describe('SHARING-323.1', () => {
   test('[SHARING-323.1] writes its own roster entry too, before the others, when the roster has none for this phone yet', async () => {
-    await inMembersWithATakeover();
+    const { brisbane } = await inMembersWithATakeover();
     const from = received().length;
 
     const menu = await tapMember(takeoverRow('Casey'));
@@ -1358,7 +1438,14 @@ describe('SHARING-323.1', () => {
 
     await waitFor(() => expect(takeovers(from)).toHaveLength(1));
     // This phone's entry, the new phone's, and the old phone's, which names nobody from now on.
-    expect(takeoverOf(takeovers(from)[0]).events).toHaveLength(3);
+    const sent = takeoverOf(takeovers(from)[0]);
+    expect(sent.events).toHaveLength(3);
+    expect(new Set(sent.events.map(({ id }) => id)).size).toBe(3);
+    expect(sent.remove).toEqual([OTHER_DEVICE]);
+    // Stored in that order, and applied: this phone has an entry of its own from now on.
+    expect(apiEventIds(brisbane).slice(-3)).toEqual(
+      sent.events.map(({ id }) => id),
+    );
     await expectMembers([YOU, 'Casey, Joined', 'Blake', 'Add Member']);
   });
 });
@@ -1390,6 +1477,8 @@ describe('SHARING-322.1', () => {
     expect(sent.boxes).toHaveLength(1);
     // This phone's own entry, the new phone's, and one for each of the two phones that leave.
     expect(sent.events).toHaveLength(4);
+    expect(new Set(sent.events.map(({ id }) => id)).size).toBe(4);
+    expect(requestsOn(brisbane)).toEqual([]);
   });
 });
 
@@ -1412,6 +1501,26 @@ describe('SHARING-326.1', () => {
     expect(takeovers(from)).toEqual([]);
     expect(membersShown()[0]).toBe(takeoverRow('Casey'));
     expect(requestsOn(brisbane)).toEqual([D]);
+  });
+
+  test('[SHARING-326.1] gives a takeover up after 60 seconds without an answer, and shows Approving… until then', async () => {
+    await inMembersWithATakeover();
+    holdDecisions('takeover');
+    const from = received().length;
+    const menu = await tapMember(takeoverRow('Casey'));
+    await menu!.choose(APPROVE);
+    await waitFor(() => expect(takeovers(from)).toHaveLength(1));
+
+    await secondsPass(50);
+    expect(alertsShown()).toEqual([]);
+    expect(membersShown()[0]).toBe(`Dana K., ${APPROVING}`);
+    await secondsPass(15);
+
+    await waitFor(() =>
+      expect(alertsShown().at(-1)).toEqual([UNABLE_TO_APPROVE, OFFLINE]),
+    );
+    await releaseDecisions();
+    expect(alertsShown()).toHaveLength(1);
   });
 
   test('[SHARING-326.1] says to connect to the internet when a takeover is approved with no network', async () => {

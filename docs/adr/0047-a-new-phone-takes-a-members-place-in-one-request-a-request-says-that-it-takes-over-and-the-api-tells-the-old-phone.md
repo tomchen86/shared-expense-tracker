@@ -49,12 +49,12 @@ The request to join:
 
 A phone whose authorization lapsed:
 
-- When its user sends a request, the phone first makes a new device identity, as a phone with none does (ADR-0015): a new device ID and seed. In one transaction with the new device ID, every shared ledger it still holds that is no copy becomes a read-only copy for the reason "authorization lapsed" (ADR-0041), and the other requests it stored are deleted: they belong to an identity that can never ask about them or finish them.
+- When its user sends a request, the phone first makes a new device identity, as a phone with none does (ADR-0015): a new device ID and seed. In one transaction with the new device ID, every shared ledger it still holds that is no copy becomes a read-only copy for the reason "authorization lapsed" (ADR-0041), and the other requests it stored are deleted, with the group keys an approved one had put in the secure store: they belong to an identity that can never ask about them or finish them. If the change cannot be stored, the new seed is deleted again.
 - Nothing else brings such a phone an identity. An import still leaves it without one, and it still sends nothing for the copies it holds.
 
 Approving, on the member's phone:
 
-- A takeover can be approved while another device's roster entry names the chosen member, whatever user ID it carries, and the member is not the approving phone's own. A request to take over a member no other device represents cannot be approved, and neither can a plain request for a member who has a phone.
+- A member "has a phone" when they store a user ID or another device's roster entry names them, whatever user ID that entry carries: two phones restored from one export share a user ID and each stores none for the other's member (ADR-0039), and the card and the check of a plain request must still see that phone. A takeover can be approved while another device's roster entry names the chosen member, and the member is not the approving phone's own. A request to take over a member no other device represents cannot be approved, and neither can a plain request for a member who has a phone.
 - The phone does what an approval does (ADR-0039) up to the snapshot: it syncs, and in one transaction checks the request, takes its cursor, stamps the events and reads the snapshot. It then makes a new group key and the boxes, and sends one request.
 - The events are the approving phone's own roster entry where it has none, the applicant's entry, which names the chosen member, and for every other device that named that member an entry that names nobody (ADR-0041). No event touches the member: a device represents them before and after.
 - The boxes are those of a rotation (ADR-0041), one for every device that stays, the approving phone included. The applicant's box is the handover of ADR-0039, under the new epoch, with the key of every epoch from the snapshot's to the new one. The snapshot is under the epoch before, since the API takes a snapshot only under the current one (ADR-0028).
@@ -67,8 +67,8 @@ Taking over, on the API:
 
 The old phone:
 
-- The API remembers each device a takeover removed, by group and device ID, until that device is a member device of the group again or the group is deleted. While it does, every refusal "no member device" it gives that device for that group carries the header `x-replaced: takeover`. `packages/domain` holds the name and the value (ADR-0007).
-- A phone whose ledger becomes a read-only copy on such a refusal records, with the copy, that it was taken over. The copy's reason stays "no member device", and its banner says that another phone took the member's place. A header in any other form says nothing.
+- The API remembers each device a takeover removed, by group and device ID, until that device is a member device of the group again or the group is deleted. While it does, the refusals "no member device" it gives that device's uploads, downloads and leave request for that group carry the header `x-replaced: takeover`: those are the requests from which a phone learns that it is out. Its other requests are refused exactly as any other device's, so the requirements that make "no member device" and "no such group" one answer hold as they are for every route but those three. `packages/domain` holds the name and the value (ADR-0007).
+- A phone whose ledger becomes a read-only copy on such a refusal records, with the copy, that it was taken over. The copy's reason stays "no member device", and its banner says that another phone took the member's place. Any other value says nothing.
 
 The new phone:
 
@@ -85,6 +85,8 @@ A phone that was behind:
 - A takeover takes effect at once, also when the old phone is still in use. That phone learns it at its next sync; what it recorded meanwhile stays in its copy and is never sent (ADR-0041).
 - The API keeps one row for each replaced device for as long as the group exists, and learns which request replaced which devices. It could already infer that from a rotation that follows an approval.
 - A group in which only one member has a phone cannot be taken over once that phone is lost: nobody can approve, and nobody else holds the key. The form says so. Recovery without another member needs accounts, which the proposal leaves out.
+- A phone that lost its seed and tries a stored, unsent request again sends it under the new identity. If the old identity's attempt had reached the API, the group's members see two requests they cannot tell apart. Either can be handled: approving the old one admits an identity nobody holds, after which the new request is one for a member who has a phone, or follows a revoked invite, and the applicant takes that identity over. It costs a second approval, not access or data.
+- A phone that lost its seed while a request of its was approved and not joined cannot finish that request, and sees it when it opens the same link. Its way on is a new invite link: sending a request through it changes the identity and drops the old request and its keys. #234, which settles what an approved device that never joins leaves on the API, covers the member device the old identity still is there.
 - After a takeover every phone revokes the invites created before it (ADR-0041), since the old phone knows those links. Other requests under them are gone, and their applicants ask again.
 - A phone that waits for a snapshot only the lost phone could make needs two steps, a removal and an approval, and the person who comes back asks twice. Anything the lost phone alone held is gone either way (ADR-0034).
 - A phone that restored the old phone's backup gets a new device ID the first time it asks to join, and loses the requests the backup carried. Its copies stay copies until a snapshot replaces them, and their unsent changes are lost then, after the question ADR-0042 asks.

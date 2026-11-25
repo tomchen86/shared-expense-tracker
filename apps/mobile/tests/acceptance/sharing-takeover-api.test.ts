@@ -6,6 +6,7 @@ import {
   boxKeyOf,
   boxSecretOf,
   endApprovalWorld,
+  handoverSalt,
   hasGroup,
   isMemberDevice,
   membersOn,
@@ -29,6 +30,7 @@ import {
   copyOfData,
   deviceId,
   drewFromTheRandomSource,
+  failSecureStoreWrites,
   fromHex,
   goOffline,
   goOnline,
@@ -37,6 +39,7 @@ import {
   keyOf,
   ledgerOf,
   loseAnswerTo,
+  loseSeed,
   mark,
   memberIds,
   noAnswerTo,
@@ -92,6 +95,7 @@ beforeEach(startApprovalWorld);
 afterEach(endApprovalWorld);
 
 const ROTATION = 'shared-expense/group-key/rotation/v1';
+const REQUEST = 'shared-expense/invite/request/v1';
 const REPLACED = 'x-replaced';
 const LATER = NOW + MINUTE;
 const APPROVED = { outcome: 'approved' };
@@ -185,6 +189,15 @@ async function invitesAgain({ invite, taylor, brisbane }: Joined) {
   );
   if (typeof again === 'string') throw new Error(`No invite: ${again}`);
   return { ...invite, code: again.code, secret: again.secret };
+}
+
+/** The request the phone's local data holds for the invite of `code`. */
+async function storedRequest(phone: Phone, code: string) {
+  const request = (await phone.sharing.listJoinRequests(phone.database)).find(
+    (each) => each.code === code,
+  );
+  if (!request || request.code === null) throw new Error('No such request');
+  return request;
 }
 
 /** The user ID the phone's local data holds now. */
@@ -486,8 +499,153 @@ describe('SHARING-194.2', () => {
   });
 });
 
+describe('SHARING-194.2, two phones restored from one export file', () => {
+  test('[SHARING-194.2] does not approve a plain request for a member whose phone carries the approving phone’s own user ID, and approves a takeover of that member', async () => {
+    const invite = await taylorInvites();
+    const { taylor, brisbane } = invite;
+    setApiTime(LATER);
+    setClock(taylor, LATER);
+    // Dana's phone was restored from the export file of Taylor's: it has Taylor's user ID (ADR-0039).
+    const fresh = await phoneOf('Dana', invite);
+    await fresh.database.run('UPDATE local_identity SET userId = ?', [
+      taylor.identity.userId,
+    ]);
+    const dana = await restart(fresh);
+    expect(dana.identity.userId).toBe(taylor.identity.userId);
+    const D = await asks(dana, invite);
+    expect(await approve(invite, await listedFor(invite, D))).toEqual(APPROVED);
+    expect(await ask(dana, invite)).toMatchObject({ outcome: 'joined' });
+    await sync(dana);
+    await sync(taylor);
+    const ids = await memberIds(taylor);
+    // Taylor's phone stores no user ID for Dana: her entry carries its own (SYNC-251.2).
+    expect(await userOf(taylor, 'Dana')).toBeFalsy();
+    const evan = await phoneOf('Evan', invite);
+    const E = await asks(evan, invite, { memberId: ids.Dana });
+    const from = mark();
+
+    expect(await approve(invite, await listedFor(invite, E))).toMatchObject({
+      outcome: 'cannot-approve',
+    });
+
+    expect(await approvalsBy(taylor, from)).toEqual([]);
+    expect(await isMemberDevice(brisbane, E)).toBe(false);
+    expect(await isMemberDevice(brisbane, D)).toBe(true);
+    // Asked as a takeover, the same choice is approved, and Dana's old phone is out.
+    const newer = await phoneOf('Newer', invite);
+    expect(await sendsTakeover(newer, invite, ids.Dana)).toMatchObject({
+      kind: 'request',
+      request: { sent: 1 },
+    });
+    const N = await deviceId(newer);
+    expect(await approve(invite, await listedFor(invite, N))).toEqual(APPROVED);
+    const [takeover] = await takeoversBy(taylor, from);
+    expect(takeover.remove).toEqual([D]);
+    expect(await isMemberDevice(brisbane, D)).toBe(false);
+    expect(await isMemberDevice(brisbane, N)).toBe(true);
+  });
+});
+
+describe('SHARING-321.1', () => {
+  test('[SHARING-321.1] sends an unsent request again under a new identity once the seed is lost, and that identity ends as the member even when a member approves the old identity’s request first', async () => {
+    const world = await danaIn();
+    const { invite, taylor, brisbane, ids } = world;
+    const phone = await phoneOf('Cas', invite);
+    setClock(phone, LATER);
+    const chosen = {
+      code: invite.code,
+      secret: invite.secret,
+      groupName: 'Brisbane',
+      name: 'Cas',
+      memberId: ids.Casey,
+      sent: 0,
+      copyGroupId: null,
+    };
+    const userId = await userIdOf(phone);
+    // The API takes the request; its answer never reaches the phone.
+    loseAnswerTo('PUT');
+    expect(
+      await on(phone, () =>
+        phone.sharing.sendJoinRequest(
+          phone.database,
+          chosen,
+          userId,
+          true,
+          () => undefined,
+        ),
+      ),
+    ).toMatchObject({ kind: 'request', request: { sent: 0 } });
+    const X = await deviceId(phone);
+    expect(await requestOnApi(invite.code, X)).toBeDefined();
+    await loseSeed(phone);
+    const unsentRequest = await storedRequest(phone, invite.code);
+
+    // Try Again.
+    expect(
+      await on(phone, () =>
+        phone.sharing.sendJoinRequest(
+          phone.database,
+          unsentRequest,
+          userId,
+          false,
+          () => undefined,
+        ),
+      ),
+    ).toMatchObject({ kind: 'request', request: { sent: 1 } });
+
+    const N = await deviceId(phone);
+    expect(N).not.toBe(X);
+    expect(await requestOnApi(invite.code, X)).toBeDefined();
+    expect(await requestOnApi(invite.code, N)).toBeDefined();
+    // A member cannot tell the two apart, and approves the one nobody can finish.
+    const [old, current] = [
+      await listedFor(invite, X),
+      await listedFor(invite, N),
+    ];
+    expect({ name: old.name, memberId: old.memberId }).toEqual({
+      name: current.name,
+      memberId: current.memberId,
+    });
+    expect(await approve(invite, old)).toEqual(APPROVED);
+    expect(await isMemberDevice(brisbane, X)).toBe(true);
+    // The other is now a plain request for a member who has a phone.
+    expect(await approve(invite, await listedFor(invite, N))).toMatchObject({
+      outcome: 'cannot-approve',
+    });
+    await ask(phone, invite);
+    const again = await storedRequest(phone, invite.code);
+    expect(again).toMatchObject({ outcome: 'choose-again' });
+    // The person chooses "Casey, Already joined" and sends it.
+    expect(
+      await on(phone, () =>
+        phone.sharing.sendJoinRequest(
+          phone.database,
+          { ...again, takeover: true, sent: 0 },
+          userId,
+          false,
+          () => undefined,
+          again,
+        ),
+      ),
+    ).toMatchObject({ kind: 'request', request: { sent: 1 } });
+    const from = mark();
+
+    expect(await approve(invite, await listedFor(invite, N))).toEqual(APPROVED);
+
+    const [takeover] = await takeoversBy(taylor, from);
+    expect(takeover.remove).toEqual([X]);
+    expect(await isMemberDevice(brisbane, X)).toBe(false);
+    expect(await isMemberDevice(brisbane, N)).toBe(true);
+    expect(await ask(phone, invite)).toMatchObject({ outcome: 'joined' });
+    expect(secureStoreEntry(phone, keyEntry(brisbane, 2))).toBeDefined();
+    expect(
+      (await membersOn(phone)).find(({ name }) => name === 'Casey'),
+    ).toMatchObject({ id: ids.Casey, userId });
+  });
+});
+
 describe('SHARING-322.1', () => {
-  test('[SHARING-322.1] syncs, uploads the snapshot, and sends one takeover: no approval and no rotation', async () => {
+  test('[SHARING-322.1] [SHARING-195.3] syncs, uploads the snapshot, and sends one takeover: no approval and no rotation', async () => {
     const world = await newPhoneAsks();
     const { invite, taylor, brisbane, A, D, N, request } = world;
     const from = mark();
@@ -867,7 +1025,7 @@ describe('SHARING-325.1', () => {
     });
   });
 
-  test('[SHARING-325.1] finds the key in its own box, and the roster changed, after a takeover whose answer was lost', async () => {
+  test('[SHARING-325.1] [SHARING-326.1] finds the key in its own box, and the roster changed, after a takeover whose answer was lost and a restart', async () => {
     const world = await newPhoneAsks();
     const { invite, taylor, brisbane, D, N, newer, request } = world;
     expect(request.takeover).toBe(true);
@@ -878,10 +1036,37 @@ describe('SHARING-325.1', () => {
     expect(await isMemberDevice(brisbane, N)).toBe(true);
     expect(secureStoreEntry(taylor, keyEntry(brisbane, 2))).toBeUndefined();
 
-    await sync(taylor);
+    const again = await restart(taylor);
+    await sync(again);
 
-    expect(secureStoreEntry(taylor, keyEntry(brisbane, 2))).toBeDefined();
-    expect(await userOf(taylor, 'Dana')).toBe(newer.identity.userId);
+    expect(secureStoreEntry(again, keyEntry(brisbane, 2))).toBeDefined();
+    expect(await userOf(again, 'Dana')).toBe(newer.identity.userId);
+    expect(
+      (await list({ taylor: again, brisbane })).map(({ deviceId: by }) => by),
+    ).not.toContain(N);
+  });
+
+  test('[SHARING-325.1] gets the new key back from its own box when the secure store did not take it', async () => {
+    const world = await newPhoneAsks();
+    const { invite, taylor, brisbane, D, N, newer, request } = world;
+    failSecureStoreWrites(taylor, keyEntry(brisbane, 2));
+
+    await approve(invite, request);
+
+    expect(await isMemberDevice(brisbane, D)).toBe(false);
+    expect(await isMemberDevice(brisbane, N)).toBe(true);
+    failSecureStoreWrites(taylor, null);
+    const again = await restart(taylor);
+    await sync(again);
+    expect(secureStoreEntry(again, keyEntry(brisbane, 2))).toBeDefined();
+    expect(await userOf(again, 'Dana')).toBe(newer.identity.userId);
+    await addExpense(again, { title: 'Taxi' });
+    const from = mark();
+    await sync(again);
+    expect((await uploads(again, from))[0]).toMatchObject({
+      epoch: 2,
+      status: 200,
+    });
   });
 });
 
@@ -1003,6 +1188,37 @@ describe('SHARING-326.1', () => {
     expect(takeover.boxes.map(({ deviceId: to }) => to)).toContain(E);
   });
 
+  test('[SHARING-326.1] uploads another snapshot and sends the same takeover with it when the API says it holds no snapshot', async () => {
+    const world = await newPhoneAsks();
+    const { invite, taylor, brisbane, D, N, request } = world;
+    const from = mark();
+    answerNext('POST', 404, { error: 'no-snapshot' });
+
+    expect(await approve(invite, request)).toEqual(APPROVED);
+
+    const takeovers = await takeoversBy(taylor, from);
+    expect(takeovers).toHaveLength(2);
+    const [first, second] = takeovers;
+    expect(second.snapshotId).not.toBe(first.snapshotId);
+    expect({ ...second, snapshotId: first.snapshotId }).toEqual(first);
+    expect(await isMemberDevice(brisbane, D)).toBe(false);
+    expect(await isMemberDevice(brisbane, N)).toBe(true);
+  });
+
+  test('[SHARING-326.1] gives up when the API says a second time that it holds no snapshot', async () => {
+    const world = await newPhoneAsks();
+    const { invite, taylor, brisbane, D, request } = world;
+    expect(request.takeover).toBe(true);
+    const from = mark();
+    answerNext('POST', 404, { error: 'no-snapshot' });
+    answerNext('POST', 404, { error: 'no-snapshot' });
+
+    expect(await approve(invite, request)).toEqual({ outcome: 'failed' });
+
+    expect(await takeoversBy(taylor, from)).toHaveLength(2);
+    expect(await isMemberDevice(brisbane, D)).toBe(true);
+  });
+
   test('[SHARING-326.1] gives up after the API said three times that the phone is behind', async () => {
     const world = await newPhoneAsks();
     const { invite, taylor, brisbane, D, request } = world;
@@ -1079,6 +1295,13 @@ describe('SHARING-327.1', () => {
       toHex(deriveKey({ secret: key, purpose: ROTATION })),
       invite.secret,
       Buffer.from(invite.secret, 'base64url').toString('hex'),
+      toHex(
+        deriveKey({
+          secret: Buffer.from(invite.secret, 'base64url'),
+          purpose: REQUEST,
+        }),
+      ),
+      toHex(handoverSalt(invite.secret)),
     ];
     for (const request of sent()) {
       for (const secret of secrets) {
@@ -1150,9 +1373,20 @@ describe('SHARING-330.1', () => {
     const [upload] = await uploads(newer, from);
     expect(upload).toMatchObject({ epoch: 2, status: 200 });
     const stored = await storedEvents(brisbane);
-    expect(
-      stored.find(({ eventId }) => eventId === upload.events[0].id),
-    ).toMatchObject({ deviceId: N, epoch: 2 });
+    const lunch = stored.find(
+      ({ eventId }) => eventId === upload.events[0].id,
+    )!;
+    expect(lunch).toMatchObject({ deviceId: N, epoch: 2 });
+    const plaintext = opened(
+      keyOf(taylor, brisbane, 2),
+      { groupId: brisbane, eventId: lunch.eventId, deviceId: N, epoch: 2 },
+      lunch.content,
+    );
+    expect(JSON.parse(Buffer.from(plaintext!).toString('utf8'))).toMatchObject({
+      stamp: { device: N },
+    });
+    const [taxi] = await uploads(taylor, from);
+    expect(taxi).toMatchObject({ epoch: 2, status: 200 });
   });
 
   test('[SHARING-330.1] [SYNC-330.1] leaves the old phone a read-only copy that knows it was taken over, with no key', async () => {
@@ -1307,9 +1541,9 @@ describe('SYNC-330.1', () => {
   test.each([
     ['no header', undefined],
     ['Takeover', 'Takeover'],
-    ['takeover and a space', 'takeover '],
+    ['take over', 'take over'],
     ['1', '1'],
-    ['transfer', 'transfer'],
+    ['takeover-2', 'takeover-2'],
   ])(
     '[SYNC-330.1] records nothing of a takeover for a refusal with %s, and records it for takeover',
     async (_, value) => {
@@ -1332,6 +1566,18 @@ describe('SYNC-330.1', () => {
       expect(await copyOn(taylor, brisbane)).toMatchObject({ takenOver: true });
     },
   );
+
+  test('[SYNC-330.1] records it when a space follows the value: the phone reads the value without it', async () => {
+    const { dana, brisbane } = await danaIn();
+    answerNext('GET', 403, NOT_A_MEMBER, replacedHeader('takeover '));
+
+    await sync(dana);
+
+    expect(await copyOn(dana, brisbane)).toMatchObject({
+      reason: 'not-a-member',
+      takenOver: true,
+    });
+  });
 
   test('[SYNC-330.1] keeps what it recorded through a restart, and in an export file that is imported again', async () => {
     const { dana, brisbane } = await danaIn();

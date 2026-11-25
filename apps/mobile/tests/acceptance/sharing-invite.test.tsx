@@ -103,6 +103,7 @@ import {
   baseOf,
   created,
   eventsOf,
+  everything,
   groupId,
   leaveMembers,
   members,
@@ -582,7 +583,7 @@ test('[SHARING-94.1] gives every invite a code and a secret of its own', async (
   expect(new Set(links.map(({ secret }) => secret)).size).toBe(3);
 });
 
-test('[SHARING-95.1] sends the group name and the members, in order, as a card only the secret opens', async () => {
+test('[SHARING-95.2] sends the group name and the members, in order, as a card only the secret opens', async () => {
   await startAt(BRISBANE);
   const ids = await members('Brisbane');
 
@@ -608,7 +609,42 @@ test('[SHARING-95.1] sends the group name and the members, in order, as a card o
   expect(drewFromTheRandomSource(card.slice(1, 25))).toBe(true);
 });
 
-test('[SHARING-95.1] leaves a former member out of the card', async () => {
+test('[SHARING-95.2] says in the card that a member has a phone when another phone represents them under this phone’s own user ID', async () => {
+  await startAt(BRISBANE);
+  const ids = await members('Brisbane');
+  const link = await invitedAndLeft('Brisbane');
+  const { userId } = JSON.parse((everything().local_identity ?? [])[0]) as {
+    userId: string;
+  };
+
+  // A phone restored from this phone's export file represents Casey (ADR-0039): Casey
+  // stores no user ID here (SYNC-251.2), and has a phone all the same.
+  await receive(
+    await groupId('Brisbane'),
+    created(
+      'device' as never,
+      'c0000000-0000-4000-8000-0000000000b0',
+      at(T + 1_000),
+      {
+        member: {
+          memberId: ids.Casey,
+          userId,
+          boxKey:
+            'bc908a559c76aef30842db38b5e1844f63847c087cf94b793fe477da10d44e75',
+        },
+      },
+    ),
+  );
+  await waitForCards(2);
+
+  expect(lastCard(link).members).toEqual([
+    { id: ids.Taylor, name: 'Taylor', hasDevice: true },
+    { id: ids.Casey, name: 'Casey', hasDevice: true },
+    { id: ids.Blake, name: 'Blake', hasDevice: false },
+  ]);
+});
+
+test('[SHARING-95.2] leaves a former member out of the card', async () => {
   await startAt(BRISBANE);
   await showMembers('Brisbane');
   await removeMember('Blake');
@@ -621,7 +657,7 @@ test('[SHARING-95.1] leaves a former member out of the card', async () => {
   ]);
 });
 
-test('[SHARING-95.1] names you in the card as the group names you', async () => {
+test('[SHARING-95.2] names you in the card as the group names you', async () => {
   await startAt(BRISBANE);
   await showMembers('Brisbane');
   await openRenameMember('Taylor (You)', 'Taylor');

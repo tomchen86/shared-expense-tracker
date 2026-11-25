@@ -431,8 +431,8 @@ describe('SHARING-194.2', () => {
   );
 });
 
-describe('SHARING-195.2', () => {
-  test('[SHARING-195.2] syncs, uploads a snapshot for the device, and then sends one approval that names it', async () => {
+describe('SHARING-195.3', () => {
+  test('[SHARING-195.3] syncs, uploads a snapshot for the device, and then sends one approval that names it', async () => {
     const { invite, taylor, dana, brisbane, code, D, request } =
       await danaListed();
     const content = (await requestOnApi(code, D))!;
@@ -461,7 +461,7 @@ describe('SHARING-195.2', () => {
     expect(await requestOnApi(code, D)).toBeUndefined();
   });
 
-  test('[SHARING-195.2] uploads its own unsent changes before it approves, and the snapshot holds them', async () => {
+  test('[SHARING-195.3] uploads its own unsent changes before it approves, and the snapshot holds them', async () => {
     const { invite, taylor, dana, brisbane, key, request } = await danaListed();
     goOffline();
     await addExpense(taylor, { title: 'Lunch' });
@@ -477,7 +477,7 @@ describe('SHARING-195.2', () => {
     expect(titlesIn.sort()).toEqual(['Dinner', 'Lunch']);
   });
 
-  test('[SHARING-195.2] syncs once more though the download after its upload got no answer, and sends one approval', async () => {
+  test('[SHARING-195.3] syncs once more though the download after its upload got no answer, and sends one approval', async () => {
     const { invite, taylor, brisbane, request } = await danaListed();
     goOffline();
     await addExpense(taylor, { title: 'Lunch' });
@@ -509,7 +509,7 @@ describe('SHARING-195.2', () => {
     expect(await unsent(taylor)).toEqual([]);
   });
 
-  test('[SHARING-195.2] changes nothing on the phone until the API has approved', async () => {
+  test('[SHARING-195.3] changes nothing on the phone until the API has approved', async () => {
     const { invite, taylor, request } = await danaListed();
     const before = await ledgerOf(taylor);
     noAnswerTo('POST');
@@ -523,7 +523,7 @@ describe('SHARING-195.2', () => {
     );
   });
 
-  test('[SHARING-195.2] sends the cursor it checked at though a sync has moved on since, and does not approve what it could not have checked', async () => {
+  test('[SHARING-195.3] sends the cursor it checked at though a sync has moved on since, and does not approve what it could not have checked', async () => {
     const { invite, taylor, dana, brisbane, code, key, D, ids } =
       await danaApproved();
     expect((await ask(dana, invite)).outcome).toBe('joined');
@@ -569,7 +569,7 @@ describe('SHARING-195.2', () => {
     expect(await requestOnApi(code, E)).toBeDefined();
   });
 
-  test('[SHARING-195.2] names the content it listed: a request that was replaced since is answered as gone, and stays', async () => {
+  test('[SHARING-195.3] names the content it listed: a request that was replaced since is answered as gone, and stays', async () => {
     const { invite, taylor, dana, brisbane, code, D, ids, request } =
       await danaListed();
     const old = sha256Of((await requestOnApi(code, D))!);

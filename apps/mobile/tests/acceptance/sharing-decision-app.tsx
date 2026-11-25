@@ -76,7 +76,7 @@ export const NOTHING_TO_TAKE_OVER = (member: string) =>
   `${member} hasn't joined from a phone, so there is nothing to take over. ${CANNOT}`;
 /** What a phone that waits for a snapshot says when a takeover is approved on it (SHARING-326.1). */
 export const CATCHING_UP = (member: string) =>
-  `This phone is still catching up with this group, so it can't approve this request yet. If ${member}'s old phone is the only other phone in this group, remove ${member} from the group and send a new invite link.`;
+  `This phone is still catching up with this group, so it can't approve this request yet. If ${member}'s old phone is the only other phone in this group, remove ${member} from the group and send a new invite link. When they ask to join as a new member named ${member}, choose Add Back.`;
 
 // The API's requests, snapshots and approvals
 

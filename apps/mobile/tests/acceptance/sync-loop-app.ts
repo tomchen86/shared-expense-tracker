@@ -63,6 +63,8 @@ interface PhoneState {
   file: string;
   store: Map<string, StoreEntry>;
   storeReads: 'work' | 'fail';
+  /** Writes of entries whose name holds this fail; none while it is null. */
+  failingWrites: string | null;
   clockMs: number;
 }
 
@@ -150,6 +152,9 @@ function storeOf(state: PhoneState) {
   };
   const write = (key: string, value: unknown, options?: object) => {
     check(key);
+    if (state.failingWrites !== null && key.includes(state.failingWrites)) {
+      throw new Error('Could not write to SecureStore');
+    }
     if (typeof value !== 'string') {
       throw new Error('Invalid value provided to SecureStore.');
     }
@@ -430,6 +435,7 @@ function newState(name: string): PhoneState {
     file: path.join(directory, 'app.db'),
     store: new Map(),
     storeReads: 'work',
+    failingWrites: null,
     clockMs: T,
   };
 }
@@ -641,6 +647,11 @@ export function takeKey(phone: Phone, groupId: string, epoch: number) {
 /** From now on reading the phone's secure store reports an error, as before the first unlock. */
 export function failSecureStoreReads(phone: Phone) {
   phone.state.storeReads = 'fail';
+}
+
+/** From now on writing an entry whose name holds `part` reports an error; null lets every write through again. */
+export function failSecureStoreWrites(phone: Phone, part: string | null) {
+  phone.state.failingWrites = part;
 }
 
 export function secureStoreWorks(phone: Phone) {

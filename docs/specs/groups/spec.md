@@ -2102,12 +2102,12 @@ WHILE 未封存的共同帳本有收到的申請，the mobile app SHALL 在它�
 
 #### Scenario: 要接手的成員離開了
 
-- **WHEN** 之後 Dana 的手機離開，她成為前成員，這支手機同步到那些事件
-- **THEN** 那一列的第二行是「Wants to join as a member who left」
+- **WHEN** 之後 Dana 的手機離開，她成為前成員，這支手機同步到那些事件；那個邀請比這次離開早，這支手機撤回它（sharing 的 SHARING-284.1）
+- **THEN** 撤回的請求還沒有成功時，那一列的第二行是「Wants to join as a member who left」；撤回成功之後，那個申請跟著邀請不在了，Members 沒有「Requests」那一區
 
 ### Requirement: GROUPS-132.2 點申請那一列跳出同意或拒絕的選單
 
-WHEN 使用者在 Members 點一個申請的那一列，the mobile app SHALL 跳出標題是申請的名字的選單，iOS 上是動作表（action sheet），Android 上是對話框：可以同意的申請，內容是「They'll see this group's expenses and can add and change them.」，要接手的申請的內容則是「<申請的名字> wants to take over <成員名稱>. <成員名稱>'s current phone will lose access to this group right away.」，成員名稱是選的成員現在的名稱，兩種都依序是「Approve」、「Decline」和「Cancel」；不能同意的申請，內容是 sharing 的 SHARING-194.2 那個原因的那一句，依序是「Decline」和「Cancel」。iOS 上「Decline」是破壞性的樣式。按「Approve」，要接手的申請照 sharing 的 SHARING-322.1 接手，別的申請照 SHARING-195.2 同意；按「Decline」照 SHARING-201.1 拒絕，選單都先關閉；按「Cancel」關閉選單，什麼都不做，Android 上按返回鍵或點對話框外面也一樣。
+WHEN 使用者在 Members 點一個申請的那一列，the mobile app SHALL 跳出標題是申請的名字的選單，iOS 上是動作表（action sheet），Android 上是對話框：可以同意的申請，內容是「They'll see this group's expenses and can add and change them.」，要接手的申請的內容則是「<申請的名字> wants to take over <成員名稱>. <成員名稱>'s current phone will lose access to this group right away.」，成員名稱是選的成員現在的名稱，兩種都依序是「Approve」、「Decline」和「Cancel」；不能同意的申請，內容是 sharing 的 SHARING-194.2 那個原因的那一句，依序是「Decline」和「Cancel」。iOS 上「Decline」是破壞性的樣式。按「Approve」，要接手的申請照 sharing 的 SHARING-322.1 接手，別的申請照 SHARING-195.3 同意；按「Decline」照 SHARING-201.1 拒絕，選單都先關閉；按「Cancel」關閉選單，什麼都不做，Android 上按返回鍵或點對話框外面也一樣。
 
 #### Scenario: iOS
 
