@@ -468,7 +468,7 @@ describe('SHARING-290.2', () => {
     expect(lists(restored).length).toBeLessThanOrEqual(3);
   });
 
-  test('[SHARING-290.2] counts the 2 minutes anew when Invite is opened in Members', async () => {
+  test('[SHARING-290.2] counts the 2 minutes anew when Invite is opened in Members, and not when it is closed', async () => {
     await inMembers();
     await secondsPass(125);
     await pressInvite();
@@ -482,6 +482,14 @@ describe('SHARING-290.2', () => {
     await secondsPass(2);
 
     expect(lists(opened)).toHaveLength(3);
+
+    // 125 seconds after Invite opened: the next list is due at 150.
+    await secondsPass(115);
+    await closeInvite();
+    const closed = received().length;
+    await secondsPass(8);
+
+    expect(lists(closed)).toEqual([]);
   });
 
   test("[SHARING-290.2] keeps to 3 seconds when the phone's clock is set 10 minutes ahead", async () => {
