@@ -72,7 +72,7 @@ export function MembersScreen({
 
   const locale = useDisplayLocale();
   const [group, setGroup] = useGroup(id, { startFromLatest: true });
-  useRefreshReceivedRequests(database, id, group);
+  const restartRequestTimer = useRefreshReceivedRequests(database, id, group);
   // An archived group and a read-only copy only list their members (GROUPS-156.1).
   const editable = group && !isReadOnlyGroup(group);
   const canAdd = group && canAddGroupMember(group.shared, group.members.length);
@@ -387,6 +387,7 @@ export function MembersScreen({
               accessibilityLabel="Invite with Link"
               disabled={busy}
               onPress={() => {
+                restartRequestTimer();
                 field.current?.blur();
                 setInviteOpen(true);
               }}
