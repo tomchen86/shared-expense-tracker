@@ -1,10 +1,17 @@
+import { useEffect } from 'react';
 import { Text } from 'react-native';
 import { act, fireEvent } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
-import { router, useRouter } from 'expo-router';
+import { router, useNavigationContainerRef, useRouter } from 'expo-router';
+
+let container: ReturnType<typeof useNavigationContainerRef>;
 
 function Expenses() {
   const scoped = useRouter();
+  const ref = useNavigationContainerRef();
+  useEffect(() => {
+    container = ref;
+  }, [ref]);
   return <Text onPress={() => scoped.push('/insights')}>Open insights</Text>;
 }
 
@@ -31,6 +38,15 @@ async function mountOverlappingRoots() {
   return { older, newer };
 }
 
+/** `router.canGoBack()` and the container ref both read the root that shows `route`. */
+function expectContainerOn(route: string) {
+  expect({
+    bound: container.current !== null,
+    canGoBack: router.canGoBack(),
+    route: container.getCurrentRoute()?.name,
+  }).toEqual({ bound: true, canGoBack: true, route });
+}
+
 test('the recreated root can navigate with both routers after the old root unmounts', async () => {
   const { older, newer } = await mountOverlappingRoots();
   await older.unmount();
@@ -39,8 +55,10 @@ test('the recreated root can navigate with both routers after the old root unmou
   expect(newer.getByText('Insights')).toBeOnTheScreen();
   await act(() => router.push('/groups'));
   expect(newer.getByText('Brisbane')).toBeOnTheScreen();
+  expectContainerOn('groups');
 
   await newer.unmount();
+  expect(container.current).toBeNull();
   expect(() => router.push('/')).toThrow(/imperative router is unavailable/);
 });
 
@@ -49,8 +67,16 @@ test('the shared router follows the newest mounted root and returns to the older
   await act(() => router.push('/insights'));
   expect(newer.getByText('Insights')).toBeOnTheScreen();
   expect(older.queryByText('Insights')).toBeNull();
+  expectContainerOn('insights');
 
   await newer.unmount();
   await act(() => router.push('/groups'));
   expect(older.queryByText('Brisbane')).not.toBeNull();
+  expectContainerOn('groups');
+});
+
+test('a single root exposes its stack after an imperative push', async () => {
+  await renderRouter(routes);
+  await act(() => router.push('/insights'));
+  expectContainerOn('insights');
 });

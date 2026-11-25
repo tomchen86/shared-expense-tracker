@@ -1,3 +1,35 @@
+diff --git a/build/ExpoRoot.js b/build/ExpoRoot.js
+index 16d2be77b70c22a06a881853092ffaf80d0aed07..acd00758ea2b3c6c73d3d2a37e0778f42f517c88 100644
+--- a/build/ExpoRoot.js
++++ b/build/ExpoRoot.js
+@@ -105,6 +105,18 @@ const INITIAL_METRICS = _reactnative().Platform.OS === 'web' || isTestEnv ? {
+         bottom: 0
+     }
+ } : undefined;
++// A replacement root can mount before the old root's cleanup runs, so each container
++// removes only its own binding, and the shared ref follows the newest one still mounted.
++const boundNavigations = [];
++function bindNavigation(navigation) {
++    if (navigation == null) return;
++    boundNavigations.push(navigation);
++    _navigationRef.navigationRef.current = navigation;
++    return ()=>{
++        boundNavigations.splice(boundNavigations.indexOf(navigation), 1);
++        _navigationRef.navigationRef.current = boundNavigations[boundNavigations.length - 1] ?? null;
++    };
++}
+ function ExpoRoot({ wrapper: ParentWrapper = _react().Fragment, ...props }) {
+     (0, _screensFeatureFlags.initScreensFeatureFlags)();
+     // On the server, the parent wrapper renders the HTML document and `<div id="root">`. It stays
+@@ -160,7 +172,7 @@ function ContextNavigator({ context, location: initialLocation = initialUrl, wra
+         value: routerConfig,
+         children: /*#__PURE__*/ (0, _jsxruntime().jsx)(_removalPrevention.RemovalPreventionProvider, {
+             children: /*#__PURE__*/ (0, _jsxruntime().jsx)(_NavigationContainer.NavigationContainer, {
+-                ref: _navigationRef.navigationRef,
++                ref: bindNavigation,
+                 linking: linkingConfig,
+                 children: /*#__PURE__*/ (0, _jsxruntime().jsx)(WrapperComponent, {
+                     children: /*#__PURE__*/ (0, _jsxruntime().jsx)(Content, {
 diff --git a/build/global-state/routingQueueContext.js b/build/global-state/routingQueueContext.js
 index 54629aaf6eb7a8fd169c94405ff167884217106f..38eef071f6e5a6c5d3f03437cfda2f36088f10bc 100644
 --- a/build/global-state/routingQueueContext.js
