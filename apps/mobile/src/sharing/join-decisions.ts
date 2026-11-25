@@ -735,17 +735,21 @@ export async function approveJoinRequest(
     );
     if ('outcome' in prepared) return prepared;
     const { made, takeover, invite } = prepared;
-    const upload = (snapshot: MadeSnapshot) =>
-      uploadSnapshot(
+    /** Uploads a snapshot, or says how the approval ends when it cannot. */
+    const upload = async (snapshot: MadeSnapshot) => {
+      const uploaded = await uploadSnapshot(
         database,
         { ...ledger, deviceId: request.deviceId },
         snapshot,
       );
+      return uploaded.outcome === 'uploaded'
+        ? uploaded
+        : ({
+            outcome: uploaded.outcome === 'no-answer' ? 'no-answer' : 'failed',
+          } as const);
+    };
     const snapshot = await upload(made);
-    if (snapshot.outcome !== 'uploaded')
-      return {
-        outcome: snapshot.outcome === 'no-answer' ? 'no-answer' : 'failed',
-      };
+    if (snapshot.outcome !== 'uploaded') return snapshot;
 
     // The snapshot uses the current key. Only after it is stored do we generate the next
     // key. It stays in memory until the API confirms this particular takeover.
@@ -780,22 +784,19 @@ export async function approveJoinRequest(
     for (let behind = 0, again = false; ;) {
       const answer = await send(database, 'POST', path, body);
       if (!answer) return { outcome: 'no-answer' };
-      if (answer.status === 200) {
-        const said = answer.said;
-        if (rotation) {
-          if (!confirmsTakeover(said, request.deviceId, body))
-            return { outcome: 'failed' };
-          // A failed write is recoverable from our own box in the following sync.
-          await saveGroupKey(database, {
-            groupId,
-            epoch: said.epoch,
-            key,
-          }).catch(() => undefined);
-        } else if (
-          !isApproveJoinRequestResponse(said) ||
-          said.deviceId !== request.deviceId
-        )
-          return { outcome: 'failed' };
+      // Any other answer with status 200 is no refusal either, and ends in a failure.
+      if (
+        answer.status === 200 &&
+        (rotation
+          ? confirmsTakeover(answer.said, request.deviceId, body)
+          : isApproveJoinRequestResponse(answer.said) &&
+            answer.said.deviceId === request.deviceId)
+      ) {
+        // A failed write is recoverable from our own box in the following sync.
+        if (rotation)
+          await saveGroupKey(database, { groupId, epoch, key }).catch(
+            () => undefined,
+          );
         break;
       }
       if (takeover && again) return { outcome: 'failed' };
@@ -829,11 +830,7 @@ export async function approveJoinRequest(
       if (checked.made) {
         again = true;
         const replacement = await upload(checked.made);
-        if (replacement.outcome !== 'uploaded')
-          return {
-            outcome:
-              replacement.outcome === 'no-answer' ? 'no-answer' : 'failed',
-          };
+        if (replacement.outcome !== 'uploaded') return replacement;
         body.snapshotId = replacement.snapshotId;
       }
     }
