@@ -105,7 +105,7 @@ module.exports = {
     './apps/mobile/src/sharing/join-invite.ts': { branches: 100 },
     './apps/mobile/src/sharing/join-requests.ts': { branches: 92.98 },
     './apps/mobile/src/sharing/refresh-invite-card.ts': { branches: 96.77 },
-    './apps/mobile/src/sharing/use-join-group.ts': { branches: 88.26 },
+    './apps/mobile/src/sharing/use-join-group.ts': { branches: 88.94 },
     './apps/mobile/src/sync/invites.ts': { branches: 75 },
     // Admitting a phone (ADR-0039): the roster, the API's four requests about a join request,
     // and what the member's phone and the applicant's phone do with them. No acceptance test
@@ -115,9 +115,11 @@ module.exports = {
     './apps/api/src/sharing/decision-routes.ts': { branches: 100 },
     './apps/api/src/sharing/join-decisions.ts': { branches: 100 },
     './apps/mobile/src/sync/roster.ts': { branches: 100 },
-    './apps/mobile/src/sharing/join-decisions.ts': { branches: 94.4 },
-    './apps/mobile/src/sharing/received-requests.ts': { branches: 93.33 },
+    './apps/mobile/src/sharing/join-decisions.ts': { branches: 94.8 },
+    './apps/mobile/src/sharing/received-requests.ts': { branches: 94.59 },
     './apps/mobile/src/groups/join-requests.tsx': { branches: 93.47 },
+    // The foreground timers that refresh join requests on a visible screen (ADR-0046).
+    './apps/mobile/src/sharing/request-refresh.ts': { branches: 86.66 },
     // The event API: what stores a shared ledger's events, numbers them and hands them
     // out, and the checks of its bodies that the phone and the API share (ADR-0016,
     // ADR-0024).
@@ -140,9 +142,9 @@ module.exports = {
     // A phone's own event that no phone applies (ADR-0043): what keeps the result of what
     // it has received, takes the refused event back and keeps the notices, and the sheet
     // that lists them. No acceptance test dismisses a notice that is gone already.
-    './apps/mobile/src/sync/undo-refused.ts': { branches: 85.48 },
+    './apps/mobile/src/sync/undo-refused.ts': { branches: 93.54 },
     './apps/mobile/src/sync/unapplied.ts': { branches: 50 },
-    './apps/mobile/src/groups/unapplied-screen.tsx': { branches: 92.75 },
+    './apps/mobile/src/groups/unapplied-screen.tsx': { branches: 94.2 },
     // Taking a device out of a group (ADR-0041, ADR-0042): the API's rotation, leave and
     // key boxes, the phone's rotation and the keys it fetches, removing and leaving, the
     // read-only copy with its deletion, the keys of a join that has not finished, and what

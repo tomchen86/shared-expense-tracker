@@ -6,9 +6,9 @@ import { syncGroup } from './loop';
 import { UNSENT_EVENTS, subscribeToUnsentEvents } from './records';
 
 /**
- * Starts every sync the app starts by itself (ADR-0027): each shared ledger once when the
+ * Starts syncs of ledgers the phone holds (ADR-0027): each shared ledger once when the
  * app opens, which is when it starts and when it comes back from the background
- * (SYNC-89.1), and a ledger once this phone has saved an unsent event of it (SYNC-88.1).
+ * (SYNC-89.2), and a ledger once this phone has saved an unsent event of it (SYNC-88.1).
  * Nothing waits for a sync, and nothing is shown when one does not finish. A build that
  * names no API starts none, and reads nothing for one (SYNC-93.1).
  */
