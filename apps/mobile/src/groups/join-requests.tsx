@@ -74,6 +74,8 @@ export function JoinRequests({
     request: ReceivedJoinRequest,
     action: 'approve' | 'reject',
     addBack?: string,
+    /** The chosen member's name as the menu showed it (SHARING-326.1). */
+    memberName?: string,
   ) {
     const result = await answerJoinRequest(
       database,
@@ -98,20 +100,10 @@ export function JoinRequests({
       case 'members-full':
         message = `This group is full. A shared group can have up to ${MAX_SHARED_GROUP_MEMBERS} members.`;
         break;
-      case 'waiting-for-snapshot': {
-        const latest = await joinRequestDecision(
-          database,
-          groupId,
-          request,
-        ).catch(() => undefined);
-        const name =
-          latest?.member?.name ??
-          members.find((member) => member.id === request.memberId)?.name;
-        message = name
-          ? `This phone is still catching up with this group, so it can't approve this request yet. If ${name}'s old phone is the only other phone in this group, remove ${name} from the group and send a new invite link. When they ask to join as a new member named ${name}, choose Add Back.`
-          : WENT_WRONG;
+      // Only a takeover waits, and its menu named the member it takes over.
+      case 'waiting-for-snapshot':
+        message = `This phone is still catching up with this group, so it can't approve this request yet. If ${memberName}'s old phone is the only other phone in this group, remove ${memberName} from the group and send a new invite link. When they ask to join as a new member named ${memberName}, choose Add Back.`;
         break;
-      }
       case 'cannot-approve': {
         const decision = await joinRequestDecision(
           database,
@@ -139,14 +131,14 @@ export function JoinRequests({
    * former member has: someone who left can only ask as a new member, and a member says
    * whether it is the same person (SHARING-288.1).
    */
-  function approve(request: ReceivedJoinRequest) {
+  function approve(request: ReceivedJoinRequest, memberName?: string) {
     const former =
       request.memberId === null
         ? formerMembers.find(
             ({ name }) => memberNameKey(name) === memberNameKey(request.name),
           )
         : undefined;
-    if (!former) return void answer(request, 'approve');
+    if (!former) return void answer(request, 'approve', undefined, memberName);
     Alert.alert(
       `Add ${former.name} Back?`,
       `${former.name} was in this group before. Adding them back reconnects their past payments and shares.`,
@@ -186,7 +178,7 @@ export function JoinRequests({
           : [
               {
                 label: 'Approve',
-                onPress: () => approve(request),
+                onPress: () => approve(request, name),
               },
             ]),
         {
