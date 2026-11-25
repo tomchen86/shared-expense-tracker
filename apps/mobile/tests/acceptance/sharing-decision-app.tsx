@@ -395,7 +395,7 @@ export const inviteEvent = (
 ) =>
   created('invite', code, otherStamp(LATER), { link: { secret, expiresAtMs } });
 
-/** The app is left and opened again, which syncs every shared ledger (SYNC-89.1), and the app comes to rest. */
+/** The app is left and opened again, which syncs every shared ledger (SYNC-89.2), and the app comes to rest. */
 export async function syncs() {
   await leaveAndComeBack();
   await settle();

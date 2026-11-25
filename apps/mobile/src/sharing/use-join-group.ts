@@ -26,6 +26,7 @@ import {
   type JoinCopy,
 } from './join-invite';
 import { readDeviceIdentity } from './device-identity';
+import { refreshWhileShown } from './request-refresh';
 import {
   alreadyIn,
   cancelJoinRequest,
@@ -232,6 +233,22 @@ export function useJoinGroup() {
     },
     [db, sending, cancelling, asking, cards, close, pageFor],
   );
+
+  const waiting =
+    page?.kind === 'request' &&
+    page.request.sent &&
+    !page.reason &&
+    !page.request.outcome
+      ? page.link
+      : undefined;
+  useEffect(() => {
+    if (!waiting) return;
+    return refreshWhileShown(async () => {
+      // An existing question belongs to its own trigger. This timer skips that turn.
+      if (active.current === waiting && !asking.has(waiting.code))
+        await askAbout(waiting.code);
+    });
+  }, [waiting, asking, askAbout]);
 
   const showSendResult = useCallback(
     async (
