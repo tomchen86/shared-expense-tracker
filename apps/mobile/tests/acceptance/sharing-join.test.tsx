@@ -27,6 +27,7 @@ import {
   apiLosesNextAnswer,
   apiRefusesNext,
   drewFromTheRandomSource,
+  failSecureStoreDeletes,
   failSecureStoreReads,
   failSecureStoreWrites,
   fetchCalls,
@@ -2296,6 +2297,39 @@ describe('SHARING-321.1', () => {
     expect(names).not.toContain(TOKYO_KEY);
     expect(names).not.toContain(`join-keys.${CODE_B}`);
     expect(names).toEqual([expect.stringContaining(deviceIdOnPhone()!)]);
+  });
+
+  test('[SHARING-321.1] takes no new identity while a key of an old request cannot be deleted, and deletes it the next time', async () => {
+    const { lost } = await lostAfterAskingTokyo();
+    const TOKYO_KEY = `group-key.${TOKYO_ID}.1`;
+    addSecureStoreEntry(TOKYO_KEY, 'ab'.repeat(32));
+    addSecureStoreEntry(`join-keys.${CODE_B}`, `${TOKYO_ID}.1`);
+    await openLink(BRISBANE_LINK);
+    const sent = received().length;
+    failSecureStoreDeletes();
+
+    await pressInJoin(SEND);
+
+    expect(alertsShown().at(-1)).toEqual([UNABLE_TO_SEND, WENT_WRONG]);
+    expect(received()).toHaveLength(sent);
+    expect(deviceIdOnPhone()).toBe(lost);
+    expect(rowsWith(CODE_B)).toHaveLength(1);
+    expect(
+      secureStoreEntries()
+        .map(({ key }) => key)
+        .sort(),
+    ).toEqual([TOKYO_KEY, `join-keys.${CODE_B}`].sort());
+
+    // Once the secure store deletes again, the same press cleans up and sends.
+    secureStoreWorks();
+    await send();
+
+    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+    expect(deviceIdOnPhone()).not.toBe(lost);
+    expect(rowsWith(CODE_B)).toEqual([]);
+    expect(secureStoreEntries().map(({ key }) => key)).toEqual([
+      expect.stringContaining(deviceIdOnPhone()!),
+    ]);
   });
 
   test('[SHARING-321.1] [SHARING-141.2] leaves no new seed behind, and stays as it was, when the local data cannot take the new identity', async () => {

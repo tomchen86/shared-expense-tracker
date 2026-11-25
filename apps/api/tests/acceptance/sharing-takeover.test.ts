@@ -1870,4 +1870,91 @@ describe('SHARING-308.1', () => {
       }
     },
   );
+  test('[SHARING-308.1] takes a device over while it sends an event the group already has again: the upload is answered with the number it had, or refused', async () => {
+    const [first, second] = [await registered(), await registered()];
+    const servers = [await ownServer(), await ownServer()];
+
+    for (let round = 0; round < 5; round += 1) {
+      const { groupId, asked } = await groupWithRequests([first, second], 1);
+      const [{ applicant, content, snapshot }] = asked;
+      const sent = [event()];
+      expectUploaded(await upload(second, groupId, sent), sent, [1]);
+      const takeover = takeoverOf(
+        content,
+        snapshot,
+        { remove: [second], staying: [first] },
+        { cursor: 1 },
+      );
+
+      const [tookOver, uploaded] = await Promise.all([
+        callOn(
+          servers[0],
+          first,
+          takeoverRequest(groupId, applicant, takeover),
+        ),
+        callOn(servers[1], second, uploadOf(groupId, sent)),
+      ]);
+
+      // The upload adds no number, so the takeover's cursor holds in either order.
+      expectTakenOver(tookOver, applicant, takeover, [2]);
+      if (uploaded.status === 200) expectUploaded(uploaded, sent, [1]);
+      else expect(uploaded).toEqual({ status: 403, body: NOT_A_MEMBER });
+      expect((await everyEvent(first, groupId)).map(({ id }) => id)).toEqual([
+        sent[0].id,
+        takeover.events[0].id,
+      ]);
+      expect(await isMemberDevice(groupId, second)).toBe(false);
+      aMinuteLater();
+    }
+  });
+
+  test('[SHARING-308.1] refuses the approval of a device that the takeover of the same request has just removed as no member device', async () => {
+    const [first, second] = [await registered(), await registered()];
+    const servers = [await ownServer(), await ownServer()];
+
+    for (let round = 0; round < 5; round += 1) {
+      const { groupId, code, asked } = await groupWithRequests(
+        [first, second],
+        1,
+      );
+      const [{ applicant, content, snapshot }] = asked;
+      const takeover = takeoverOf(content, snapshot, {
+        remove: [second],
+        staying: [first],
+      });
+      const approval = approvalOf(content, snapshot);
+
+      const [tookOver, approved] = await Promise.all([
+        callOn(
+          servers[0],
+          first,
+          takeoverRequest(groupId, applicant, takeover),
+        ),
+        callOn(
+          servers[1],
+          second,
+          approvalRequest(groupId, applicant, approval),
+        ),
+      ]);
+
+      expect(await isMemberDevice(groupId, applicant)).toBe(true);
+      if (tookOver.status === 200) {
+        expectTakenOver(tookOver, applicant, takeover, [1]);
+        expect(approved).toEqual({ status: 403, body: NOT_A_MEMBER });
+        expect(await isMemberDevice(groupId, second)).toBe(false);
+        expectHandover(
+          await askResult(applicant, code),
+          groupId,
+          first,
+          takeover,
+        );
+      } else {
+        expectApproved(approved, applicant, approval, [1]);
+        expectTakeoverRefused(tookOver, NO_REQUEST);
+        expect(await isMemberDevice(groupId, second)).toBe(true);
+        expect(await stateOf(first, groupId)).toEqual(wrongEpoch(1));
+      }
+      aMinuteLater();
+    }
+  });
 });

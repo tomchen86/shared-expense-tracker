@@ -1596,6 +1596,31 @@ describe('SHARING-326.1, a member who left while the menu was open', () => {
 });
 
 describe('SHARING-194.2, an invite that is due to be revoked', () => {
+  test('[SHARING-194.2] does not approve a plain request once another phone has left and the invite is not revoked yet, and says that the invite is no longer valid', async () => {
+    const { brisbane } = await inMembersWithDana();
+    const { Casey } = await members('Brisbane');
+    const menu = await tapMember(DANA_ROW);
+    // Another member's phone was in the group and has left since: the invite is older than that.
+    revokingFails(3);
+    otherPhoneUploads(
+      brisbane,
+      otherPhoneRepresents(Casey),
+      changed('device' as never, OTHER_DEVICE, otherStamp(LATER + 3_000), {
+        member: null,
+      }),
+    );
+    const from = received().length;
+
+    await menu!.choose(APPROVE);
+
+    await waitFor(() =>
+      expect(alertsShown().at(-1)).toEqual([UNABLE_TO_APPROVE, INVITE_ENDING]),
+    );
+    expect(chunks(from)).toEqual([]);
+    expect(approvals(from)).toEqual([]);
+    expect(requestsOn(brisbane)).toEqual([D]);
+  });
+
   test('[SHARING-194.2] offers no Approve for another request under the invite once a takeover has made a phone leave and the invite is not revoked yet', async () => {
     const { brisbane, ids } = await inMembersWithATakeover();
     // A second phone asks to take Casey over too.
