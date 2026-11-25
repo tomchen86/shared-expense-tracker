@@ -425,6 +425,8 @@ export interface Phone {
   identity: LocalIdentity;
   sync: typeof import('../../src/sync');
   sharing: typeof import('../../src/sharing');
+  /** What the app's shell runs when a ledger's members change (SHARING-109.2); nothing here starts its watcher. */
+  cards: typeof import('../../src/sharing/refresh-invite-card');
   groups: typeof import('../../src/groups');
   expenses: typeof import('../../src/ledger/expenses');
   trash: typeof import('../../src/ledger/trash');
@@ -493,6 +495,9 @@ async function startOn(
     file: state.file,
     sync: actual<typeof import('../../src/sync')>('../../src/sync'),
     sharing: actual<typeof import('../../src/sharing')>('../../src/sharing'),
+    cards: actual<typeof import('../../src/sharing/refresh-invite-card')>(
+      '../../src/sharing/refresh-invite-card',
+    ),
     groups: actual<typeof import('../../src/groups')>('../../src/groups'),
     expenses: actual<typeof import('../../src/ledger/expenses')>(
       '../../src/ledger/expenses',
