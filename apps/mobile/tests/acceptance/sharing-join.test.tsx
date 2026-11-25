@@ -2363,6 +2363,8 @@ describe('SHARING-321.1', () => {
     brisbaneInvites();
     await tapTab('Expenses');
     await openLink(BRISBANE_LINK);
+    // This phone's name is Taylor, and the card has a Taylor: it asks as Casey (SHARING-128.1).
+    await pressInJoin('Casey');
     const from = received().length;
 
     await send();
@@ -2401,6 +2403,8 @@ describe('SHARING-321.1', () => {
     expect(registrationsReceived()).toHaveLength(1);
 
     await openLink(BRISBANE_LINK);
+    // This phone's name is Taylor, and the card has a Taylor: it asks as Casey (SHARING-128.1).
+    await pressInJoin('Casey');
     await send();
 
     expect(deviceIdOnPhone()).not.toBe(lost);
@@ -2429,8 +2433,9 @@ describe('SHARING-321.1', () => {
 
     await pressInJoin(SEND);
 
+    // Two changes were never sent: the invite this phone made, and Dana.
     expect(alertsShown().slice(shown)).toEqual([
-      [REPLACE_THIS_COPY, replaceThisCopy(1)],
+      [REPLACE_THIS_COPY, replaceThisCopy(2)],
     ]);
 
     await pressAlertButton('Cancel');

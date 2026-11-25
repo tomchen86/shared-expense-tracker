@@ -192,6 +192,29 @@ async function invitesAgain({ invite, taylor, brisbane }: Joined) {
   return { ...invite, code: again.code, secret: again.secret };
 }
 
+/**
+ * Taylor's phone sends its invite's card again, as the app does when a ledger's members
+ * change (SHARING-109.2): the app's shell watches for that, and no shell runs here.
+ * Resolves once the API has taken the card.
+ */
+async function sendsCardAgain({
+  taylor,
+  brisbane,
+}: Pick<Inviting, 'taylor' | 'brisbane'>) {
+  const from = mark();
+  await on(taylor, async () =>
+    taylor.cards.refreshInviteCard(taylor.database, brisbane),
+  );
+  for (let turns = 0; turns < 5_000; turns += 1) {
+    const cards = (await sentBy(taylor, from)).filter(
+      ({ method, path }) => method === 'PUT' && path.includes('/invites/'),
+    );
+    if (cards.some(({ status }) => status === 200)) return;
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  throw new Error('Taylor’s phone sent no new card');
+}
+
 /** The request the phone's local data holds for the invite of `code`. */
 async function storedRequest(phone: Phone, code: string) {
   const request = (await phone.sharing.listJoinRequests(phone.database)).find(
@@ -613,6 +636,8 @@ describe('SHARING-321.1', () => {
     expect(await approve(invite, await listedFor(invite, N))).toMatchObject({
       outcome: 'cannot-approve',
     });
+    // The card says so once Taylor's phone has sent it again.
+    await sendsCardAgain(invite);
     await ask(phone, invite);
     const again = await storedRequest(phone, invite.code);
     expect(again).toMatchObject({ outcome: 'choose-again' });
