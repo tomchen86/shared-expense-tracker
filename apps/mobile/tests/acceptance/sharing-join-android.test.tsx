@@ -62,7 +62,7 @@ jest.mock('expo-symbols', () => ({
 
 eachTestGetsAJoiningPhone('sharing-join-android-');
 
-test('[SHARING-125.1] marks the picked row with the Material check symbol on Android, and only that row', async () => {
+test('[SHARING-125.2] marks the picked row with the Material check symbol on Android, and only that row', async () => {
   brisbaneInvites();
   await startAs();
   await openLink(BRISBANE_LINK);

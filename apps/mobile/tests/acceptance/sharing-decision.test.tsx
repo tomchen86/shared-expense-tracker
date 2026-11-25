@@ -30,6 +30,7 @@ import {
   APPROVE,
   APPROVING,
   CANCEL,
+  CATCHING_UP,
   CODE_A,
   D,
   DECLINE,
@@ -43,9 +44,11 @@ import {
   LEFT,
   MAY_SEE,
   NEW_MEMBER,
+  NOTHING_TO_TAKE_OVER,
   NO_MEMBER,
   OFFLINE,
   SAME_NAME,
+  TAKES_OVER,
   UNABLE_TO_APPROVE,
   UNABLE_TO_DECLINE,
   WEEK,
@@ -71,7 +74,10 @@ import {
   startDecisionApi,
   startWithInvite,
   syncs,
+  takeoverOf,
+  takeovers,
   wantsToBe,
+  wantsToTakeOver,
   withdraws,
 } from './sharing-decision-app';
 import { settle } from './shell-appearance-app';
@@ -94,6 +100,7 @@ import {
   OTHER_DEVICE,
   apiEventIds,
   apiReceivedAt,
+  groupNeedsSnapshot,
   holdAnswers,
   lastSequence,
   otherPhoneUploads,
@@ -196,6 +203,30 @@ const otherPhoneRepresents = (memberId: string) =>
   created('device' as never, OTHER_DEVICE, otherStamp(LATER + 1_000), {
     member: { memberId, userId: 'user-b', boxKey: someBoxKey() },
   });
+
+/** The row of a request that takes a member over, under the name Dana K. */
+const takeoverRow = (member: string) => `Dana K., ${wantsToTakeOver(member)}`;
+
+/**
+ * Another phone represents Casey, Dana's new phone has asked to take Casey over, the app
+ * has synced since, and Brisbane's Members is open and shows that request.
+ */
+async function inMembersWithATakeover() {
+  const started = await startWithInvite();
+  const ids = await members('Brisbane');
+  otherPhoneUploads(started.brisbane, otherPhoneRepresents(ids.Casey));
+  await asks({ name: 'Dana K.', memberId: ids.Casey, takeover: true });
+  await syncs();
+  await showMembers('Brisbane');
+  await expectMembers([
+    takeoverRow('Casey'),
+    YOU,
+    'Casey, Joined',
+    'Blake',
+    'Add Member',
+  ]);
+  return { ...started, ids };
+}
 
 describe('GROUPS-130.1', () => {
   test('[GROUPS-130.1] counts the requests to join under the title of a shared ledger, as a button that says where it leads', async () => {
@@ -309,8 +340,8 @@ test('[GROUPS-170.2] counts the changes that were not applied above the requests
   );
 });
 
-describe('GROUPS-131.1', () => {
-  test('[GROUPS-131.1] lists each request above the members, with who asks and as whom', async () => {
+describe('GROUPS-131.2', () => {
+  test('[GROUPS-131.2] lists each request above the members, with who asks and as whom', async () => {
     await startWithInvite();
     const { Casey } = await members('Brisbane');
     await asks();
@@ -333,7 +364,7 @@ describe('GROUPS-131.1', () => {
     expect(lines.indexOf('Requests')).toBeLessThan(lines.indexOf('Dana'));
   });
 
-  test('[GROUPS-131.1] follows the member a request picked when they are renamed, and when they are removed', async () => {
+  test('[GROUPS-131.2] follows the member a request picked when they are renamed, and when they are removed', async () => {
     await startWithInvite();
     const { Casey } = await members('Brisbane');
     await asks({
@@ -357,7 +388,29 @@ describe('GROUPS-131.1', () => {
     await waitFor(() => expect(membersShown()[0]).toBe(`Evan, ${LEFT}`));
   });
 
-  test('[GROUPS-131.1] has no Requests while nobody has asked', async () => {
+  test('[GROUPS-131.2] says of a request that takes a member over whom it takes over, and that the member left once they have', async () => {
+    const { brisbane, ids } = await inMembersWithATakeover();
+
+    expect(linesIn(screenOf('Members'))).toEqual(
+      expect.arrayContaining(['Dana K.', wantsToTakeOver('Casey')]),
+    );
+
+    // Casey's phone leaves, and Casey with it.
+    otherPhoneUploads(
+      brisbane,
+      changed('member', ids.Casey, otherStamp(LATER + 2_000), {
+        removed: true,
+      }),
+      changed('device' as never, OTHER_DEVICE, otherStamp(LATER + 3_000), {
+        member: null,
+      }),
+    );
+    await syncs();
+
+    await waitFor(() => expect(membersShown()[0]).toBe(`Dana K., ${LEFT}`));
+  });
+
+  test('[GROUPS-131.2] has no Requests while nobody has asked', async () => {
     await startWithInvite();
 
     await showMembers('Brisbane');
@@ -367,8 +420,8 @@ describe('GROUPS-131.1', () => {
   });
 });
 
-describe('GROUPS-132.1', () => {
-  test("[GROUPS-132.1] opens an action sheet titled with the applicant's name, with Approve, Decline and Cancel", async () => {
+describe('GROUPS-132.2', () => {
+  test("[GROUPS-132.2] opens an action sheet titled with the applicant's name, with Approve, Decline and Cancel", async () => {
     await inMembersWithDana();
 
     const menu = await tapMember(DANA_ROW);
@@ -383,7 +436,7 @@ describe('GROUPS-132.1', () => {
     expect(alertsShown()).toEqual([]);
   });
 
-  test('[GROUPS-132.1] does nothing when Cancel is chosen', async () => {
+  test('[GROUPS-132.2] does nothing when Cancel is chosen', async () => {
     await inMembersWithDana();
     const from = received().length;
 
@@ -393,6 +446,66 @@ describe('GROUPS-132.1', () => {
     await expectMembers([DANA_ROW, ...MEMBERS]);
     expect(approvals(from)).toEqual([]);
     expect(rejections(from)).toEqual([]);
+  });
+
+  test('[GROUPS-132.2] [SHARING-194.2] says in the menu of a request that takes a member over whose phone loses access, with Approve, Decline and Cancel', async () => {
+    await inMembersWithATakeover();
+
+    const menu = await tapMember(takeoverRow('Casey'));
+
+    expect(menu).toMatchObject({
+      title: 'Dana K.',
+      message: TAKES_OVER('Dana K.', 'Casey'),
+      items: [APPROVE, DECLINE, CANCEL],
+      destructive: [DECLINE],
+      cancel: CANCEL,
+    });
+    expect(alertsShown()).toEqual([]);
+  });
+
+  test('[GROUPS-132.2] [SHARING-322.1] sends a takeover, and no approval, when Approve is chosen for such a request, and shows Approving… meanwhile', async () => {
+    const { brisbane } = await inMembersWithATakeover();
+    const shown = requestHash(brisbane);
+    holdDecisions('takeover');
+    const from = received().length;
+
+    const menu = await tapMember(takeoverRow('Casey'));
+    await menu!.choose(APPROVE);
+
+    await waitFor(() => expect(takeovers(from)).toHaveLength(1));
+    expect(approvals(from)).toEqual([]);
+    expect(membersShown()[0]).toBe(`Dana K., ${APPROVING}`);
+    const sent = takeoverOf(takeovers(from)[0]);
+    expect(sent).toMatchObject({
+      request: shown,
+      epoch: 2,
+      remove: [OTHER_DEVICE],
+    });
+    expect(sent.boxes).toHaveLength(1);
+    expect(chunks(from).length).toBeGreaterThanOrEqual(1);
+
+    await releaseDecisions();
+
+    await expectMembers([YOU, 'Casey, Joined', 'Blake', 'Add Member']);
+    expect(requestsOn(brisbane)).toEqual([]);
+    expect(alertsShown()).toEqual([]);
+  });
+
+  test('[GROUPS-132.2] offers only Decline and Cancel for a request that takes over your own member', async () => {
+    await startWithInvite();
+    const { Taylor } = await members('Brisbane');
+    await asks({ name: 'Dana K.', memberId: Taylor, takeover: true });
+    await syncs();
+    await showMembers('Brisbane');
+    await expectMembers([takeoverRow('Taylor'), ...MEMBERS]);
+
+    const menu = await tapMember(takeoverRow('Taylor'));
+
+    expect(menu).toMatchObject({
+      title: 'Dana K.',
+      message: IS_YOU('Taylor'),
+      items: [DECLINE, CANCEL],
+    });
   });
 });
 
@@ -608,8 +721,8 @@ describe('SHARING-193.1', () => {
   });
 });
 
-describe('SHARING-194.1', () => {
-  test('[SHARING-194.1] offers no Approve for a request whose member has a phone by now, and says why', async () => {
+describe('SHARING-194.2', () => {
+  test('[SHARING-194.2] offers no Approve for a request whose member has a phone by now, and says why', async () => {
     const { brisbane } = await startWithInvite();
     const { Casey } = await members('Brisbane');
     await asks({ memberId: Casey });
@@ -633,7 +746,7 @@ describe('SHARING-194.1', () => {
     });
   });
 
-  test('[SHARING-194.1] offers no Approve for a request that picked your own member, which no roster entry names yet', async () => {
+  test('[SHARING-194.2] offers no Approve for a request that picked your own member, which no roster entry names yet', async () => {
     await startWithInvite();
     const { Taylor } = await members('Brisbane');
     await asks({ memberId: Taylor });
@@ -650,7 +763,7 @@ describe('SHARING-194.1', () => {
     });
   });
 
-  test('[SHARING-194.1] offers no Approve for a request whose member was removed', async () => {
+  test('[SHARING-194.2] offers no Approve for a request whose member was removed', async () => {
     await startWithInvite();
     const { Blake } = await members('Brisbane');
     await asks({ memberId: Blake });
@@ -667,7 +780,7 @@ describe('SHARING-194.1', () => {
     });
   });
 
-  test("[SHARING-194.1] offers no Approve for a new member whose name is a member's", async () => {
+  test("[SHARING-194.2] offers no Approve for a new member whose name is a member's", async () => {
     await inMembersWithDana({ name: ' casey ' });
 
     const menu = await tapMember(`casey, ${NEW_MEMBER}`);
@@ -678,7 +791,7 @@ describe('SHARING-194.1', () => {
     });
   });
 
-  test('[SHARING-194.1] offers no Approve for a new member of a group of 20, and offers it for one of its members', async () => {
+  test('[SHARING-194.2] offers no Approve for a new member of a group of 20, and offers it for one of its members', async () => {
     const others = Array.from(
       { length: 19 },
       (_, index) => `Member ${index + 1}`,
@@ -711,6 +824,45 @@ describe('SHARING-194.1', () => {
     expect(member).toMatchObject({
       message: MAY_SEE,
       items: [APPROVE, DECLINE, CANCEL],
+    });
+  });
+
+  test('[SHARING-194.2] offers no Approve for a request that takes over a member no phone represents, and says why', async () => {
+    await startWithInvite();
+    const { Casey } = await members('Brisbane');
+    await asks({ name: 'Dana K.', memberId: Casey, takeover: true });
+    await syncs();
+    await showMembers('Brisbane');
+    await expectMembers([takeoverRow('Casey'), ...MEMBERS]);
+
+    const menu = await tapMember(takeoverRow('Casey'));
+
+    expect(menu).toMatchObject({
+      title: 'Dana K.',
+      message: NOTHING_TO_TAKE_OVER('Casey'),
+      items: [DECLINE, CANCEL],
+    });
+  });
+
+  test('[SHARING-194.2] offers no Approve for a request that takes over a member who has left since, and says that the member is gone', async () => {
+    const { brisbane, ids } = await inMembersWithATakeover();
+    otherPhoneUploads(
+      brisbane,
+      changed('member', ids.Casey, otherStamp(LATER + 2_000), {
+        removed: true,
+      }),
+      changed('device' as never, OTHER_DEVICE, otherStamp(LATER + 3_000), {
+        member: null,
+      }),
+    );
+    await syncs();
+    await waitFor(() => expect(membersShown()[0]).toBe(`Dana K., ${LEFT}`));
+
+    const menu = await tapMember(`Dana K., ${LEFT}`);
+
+    expect(menu).toMatchObject({
+      message: NO_MEMBER,
+      items: [DECLINE, CANCEL],
     });
   });
 });
@@ -1193,5 +1345,117 @@ describe('SHARING-288.1', () => {
       ]),
     );
     expect(approvals(from)).toEqual([]);
+  });
+});
+
+describe('SHARING-323.1', () => {
+  test('[SHARING-323.1] writes its own roster entry too, before the others, when the roster has none for this phone yet', async () => {
+    await inMembersWithATakeover();
+    const from = received().length;
+
+    const menu = await tapMember(takeoverRow('Casey'));
+    await menu!.choose(APPROVE);
+
+    await waitFor(() => expect(takeovers(from)).toHaveLength(1));
+    // This phone's entry, the new phone's, and the old phone's, which names nobody from now on.
+    expect(takeoverOf(takeovers(from)[0]).events).toHaveLength(3);
+    await expectMembers([YOU, 'Casey, Joined', 'Blake', 'Add Member']);
+  });
+});
+
+describe('SHARING-322.1', () => {
+  test('[SHARING-322.1] [SHARING-323.1] removes every other phone that represents the member, and writes for each that it represents nobody', async () => {
+    const { brisbane, ids } = await inMembersWithATakeover();
+    // A second phone represents Casey too, as two approvals that crossed would leave it.
+    const SECOND = '5e0a1b2c-3d4e-4f5a-8b6c-7d8e9f0a1b2c';
+    otherPhoneUploads(
+      brisbane,
+      created('device' as never, SECOND, otherStamp(LATER + 4_000), {
+        member: {
+          memberId: ids.Casey,
+          userId: 'user-c',
+          boxKey: someBoxKey(),
+        },
+      }),
+    );
+    await syncs();
+    const from = received().length;
+
+    const menu = await tapMember(takeoverRow('Casey'));
+    await menu!.choose(APPROVE);
+
+    await waitFor(() => expect(takeovers(from)).toHaveLength(1));
+    const sent = takeoverOf(takeovers(from)[0]);
+    expect([...sent.remove].sort()).toEqual([OTHER_DEVICE, SECOND].sort());
+    expect(sent.boxes).toHaveLength(1);
+    // This phone's own entry, the new phone's, and one for each of the two phones that leave.
+    expect(sent.events).toHaveLength(4);
+  });
+});
+
+describe('SHARING-326.1', () => {
+  test('[SHARING-326.1] says that the phone is still catching up, and what to do, when a takeover is approved while its ledger waits for a snapshot', async () => {
+    const { brisbane } = await inMembersWithATakeover();
+    groupNeedsSnapshot(brisbane);
+    const from = received().length;
+
+    const menu = await tapMember(takeoverRow('Casey'));
+    await menu!.choose(APPROVE);
+
+    await waitFor(() =>
+      expect(alertsShown().at(-1)).toEqual([
+        UNABLE_TO_APPROVE,
+        CATCHING_UP('Casey'),
+      ]),
+    );
+    expect(chunks(from)).toEqual([]);
+    expect(takeovers(from)).toEqual([]);
+    expect(membersShown()[0]).toBe(takeoverRow('Casey'));
+    expect(requestsOn(brisbane)).toEqual([D]);
+  });
+
+  test('[SHARING-326.1] says to connect to the internet when a takeover is approved with no network', async () => {
+    const { brisbane } = await inMembersWithATakeover();
+    goOffline();
+
+    const menu = await tapMember(takeoverRow('Casey'));
+    await menu!.choose(APPROVE);
+
+    await waitFor(() =>
+      expect(alertsShown().at(-1)).toEqual([UNABLE_TO_APPROVE, OFFLINE]),
+    );
+    goOnline();
+    expect(membersShown()[0]).toBe(takeoverRow('Casey'));
+    expect(requestsOn(brisbane)).toEqual([D]);
+    expect(await unsent()).toEqual([]);
+  });
+
+  test('[SHARING-326.1] says that the request was answered when the API holds it no more, and lists the requests again', async () => {
+    const { brisbane } = await inMembersWithATakeover();
+    const menu = await tapMember(takeoverRow('Casey'));
+    withdraws(brisbane);
+
+    await menu!.choose(APPROVE);
+
+    await waitFor(() =>
+      expect(alertsShown().at(-1)).toEqual([UNABLE_TO_APPROVE, ANSWERED]),
+    );
+    await expectMembers([YOU, 'Casey, Joined', 'Blake', 'Add Member']);
+  });
+
+  test('[SHARING-326.1] says that something went wrong when the API answers a takeover with an error of its own', async () => {
+    const { brisbane } = await inMembersWithATakeover();
+    apiAnswersDecision('takeover', 500, {});
+    const from = received().length;
+
+    const menu = await tapMember(takeoverRow('Casey'));
+    await menu!.choose(APPROVE);
+
+    await waitFor(() =>
+      expect(alertsShown().at(-1)).toEqual([UNABLE_TO_APPROVE, WENT_WRONG]),
+    );
+    expect(takeovers(from)).toHaveLength(1);
+    expect(membersShown()[0]).toBe(takeoverRow('Casey'));
+    expect(requestsOn(brisbane)).toEqual([D]);
   });
 });

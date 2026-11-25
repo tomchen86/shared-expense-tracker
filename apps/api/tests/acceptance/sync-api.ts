@@ -112,6 +112,29 @@ export function call(
   return send({ ...request, headers: { ...headers, ...request.headers } });
 }
 
+/** The API's answer to a request `phone` signs, with the headers of that answer. */
+export async function callForHeaders(
+  phone: Phone,
+  input: RequestInput,
+): Promise<Answer & { headers: Headers }> {
+  const request = signedBy(phone, input);
+  sentNonces.push(fieldOf(request, 'nonce'));
+  const sent = request.body ?? new Uint8Array(0);
+  const response = await fetch(`${serverUrl()}${request.path}`, {
+    method: request.method,
+    headers: request.headers,
+    ...(sent.length > 0 ? { body: sent } : {}),
+  });
+  const text = await response.text();
+  let body: unknown = text;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    // Not JSON: the text is the body.
+  }
+  return { status: response.status, body, headers: response.headers };
+}
+
 const groupPath = (groupId: string) => `/groups/${groupId}`;
 export const eventsPath = (groupId: string) => `/groups/${groupId}/events`;
 

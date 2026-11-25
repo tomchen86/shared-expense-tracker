@@ -390,7 +390,7 @@ IF 使用者選了一個可以匯入的匯出檔，而這支手機在裡面的�
 
 ### Requirement: BACKUP-29.1 匯入之後授權失效的手機上，匯出檔裡的共同帳本是唯讀副本
 
-WHEN 使用者在確認框按「Replace」，而匯入之後這支手機授權失效，也就是匯出檔有裝置身分的紀錄，它的裝置 ID 在這支手機的 secure store 裡沒有 seed（SHARING-29.1），the mobile app SHALL 在寫入匯出檔內容的同一個 transaction 裡，把匯出檔裡每個共同帳本記成唯讀副本，原因是授權失效（sync 的 SYNC-301.1、SYNC-302.1）；匯出檔裡已經是唯讀副本的，原因不變。所以匯入一完成，它們就只能看（groups 的 GROUPS-155.1、GROUPS-156.1），不等下一次同步：別支手機的匯出檔在這支手機上同步不了，中間寫下的變更永遠送不出去。它們待上傳的事件照匯出檔留著，不上傳。IF 這時 secure store 讀不了（SHARING-30.1），THEN the mobile app SHALL 照常匯入，不把共同帳本記成唯讀副本；之後的同步照 SYNC-301.1。WHILE 匯入之後這支手機不是授權失效——匯出檔沒有裝置身分的紀錄，或它的 seed 在這支手機的 secure store 裡——匯出檔裡的共同帳本 SHALL 照匯出檔，不因為匯入而成為唯讀副本：這支手機自己的匯出檔是這樣，它接著同步（SYNC-92.2），API 說它不是成員時才成為唯讀副本（SYNC-300.1）。
+WHEN 使用者在確認框按「Replace」，而匯入之後這支手機授權失效，也就是匯出檔有裝置身分的紀錄，它的裝置 ID 在這支手機的 secure store 裡沒有 seed（SHARING-29.1），the mobile app SHALL 在寫入匯出檔內容的同一個 transaction 裡，把匯出檔裡每個共同帳本記成唯讀副本，原因是授權失效（sync 的 SYNC-301.1、SYNC-302.1）；匯出檔裡已經是唯讀副本的，原因不變。所以匯入一完成，它們就只能看（groups 的 GROUPS-155.2、GROUPS-156.1），不等下一次同步：別支手機的匯出檔在這支手機上同步不了，中間寫下的變更永遠送不出去。它們待上傳的事件照匯出檔留著，不上傳。IF 這時 secure store 讀不了（SHARING-30.1），THEN the mobile app SHALL 照常匯入，不把共同帳本記成唯讀副本；之後的同步照 SYNC-301.1。WHILE 匯入之後這支手機不是授權失效——匯出檔沒有裝置身分的紀錄，或它的 seed 在這支手機的 secure store 裡——匯出檔裡的共同帳本 SHALL 照匯出檔，不因為匯入而成為唯讀副本：這支手機自己的匯出檔是這樣，它接著同步（SYNC-92.2），API 說它不是成員時才成為唯讀副本（SYNC-300.1）。
 
 #### Scenario: 別支手機的匯出檔
 

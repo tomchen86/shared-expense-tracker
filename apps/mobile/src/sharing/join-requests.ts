@@ -25,6 +25,8 @@ export interface JoinRequest extends InviteCredentials {
   groupName: string;
   name: string;
   memberId: string | null;
+  /** Whether the request asks to take over the member, who has a phone (SHARING-320.1). */
+  takeover?: boolean;
   sent: number;
   /**
    * What asking the API has found since (SHARING-210.1): that the person has to choose

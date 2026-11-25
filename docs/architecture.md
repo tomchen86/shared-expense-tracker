@@ -42,6 +42,7 @@ Name top-level directories only. File paths go stale.
 - The app contacts no server until the phone first creates or joins a shared ledger (ADR-0015).
 - A device leaves a shared ledger in one request, and a phone that stays gives the group a new key before the API stores anything else for it. A phone that lost access keeps what it held as a read-only copy (ADR-0041).
 - A phone that lost access comes back through an invite: the snapshot replaces the copy it held, and a member adds a returning person back as the member they were. An import is refused while it would leave a member device without its ledger, and a shared ledger from a file syncs only where the phone holds its seed (ADR-0042).
+- A member who lost their phone gets their place back from a new one: a member's phone approves, removes the old device, rotates the key and admits the new device in one request, and the roster then names the new device for the same member. A request says in its content that it takes a member over, and the API tells a device that was replaced so with a header on its refusals (ADR-0047).
 - Ledger content reaches the server only end-to-end encrypted; the API never holds a key that opens it (ADR-0015).
 - Every phone merges sync events with pure functions in `packages/domain` and reaches the same result, whatever order the events arrive in (ADR-0016).
 - A phone takes back its own event that every phone refuses, from the result of what it has received, and lists it for its user until dismissed (ADR-0043).

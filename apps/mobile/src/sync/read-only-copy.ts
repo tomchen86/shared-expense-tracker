@@ -16,6 +16,8 @@ export type ReadOnlyCopyReason = 'not-a-member' | 'left' | 'lapsed';
 export interface ReadOnlyCopy {
   reason: ReadOnlyCopyReason;
   unsent: number;
+  /** Whether the API said that another phone took this phone's place (SYNC-330.1). */
+  takenOver?: boolean;
 }
 
 /** What makes the group a read-only copy on this phone; undefined when it is none. */

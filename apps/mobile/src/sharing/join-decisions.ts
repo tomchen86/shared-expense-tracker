@@ -80,6 +80,8 @@ export interface ReceivedJoinRequest {
   name: string;
   /** The member the applicant picked, or null for a new member. */
   memberId: string | null;
+  /** Whether the applicant asks to take over the member, who has a phone (SHARING-191.2). */
+  takeover?: boolean;
   /**
    * The SHA-256 of the content the API listed, in lowercase hexadecimal. An approval and a
    * rejection name the request by it (SHARING-172.1, SHARING-173.2).

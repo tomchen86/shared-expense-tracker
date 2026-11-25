@@ -231,7 +231,7 @@ export async function boxFor(
   );
 }
 
-/** A join request as a phone running other code would seal it for the invite (SHARING-135.1). */
+/** A join request as a phone running other code would seal it for the invite (SHARING-135.2). */
 export function sealedRequest(
   invite: Pick<Inviting, 'code' | 'secret'>,
   device: string,

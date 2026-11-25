@@ -165,8 +165,8 @@ async function danaApproved(choice: { name?: string; memberId?: string } = {}) {
   return { ...world, approval };
 }
 
-describe('SHARING-191.1', () => {
-  test("[SHARING-191.1] reads a request made with the invite's secret: the name and the choice", async () => {
+describe('SHARING-191.2', () => {
+  test("[SHARING-191.2] reads a request made with the invite's secret: the name and the choice", async () => {
     const { invite, code, D } = await danaAsked();
 
     expect(await list(invite)).toEqual([
@@ -180,7 +180,7 @@ describe('SHARING-191.1', () => {
     ]);
   });
 
-  test('[SHARING-191.1] reads the member a request picks, trims its name, and ignores other fields', async () => {
+  test('[SHARING-191.2] reads the member a request picks, trims its name, and ignores other fields', async () => {
     const invite = await taylorInvites();
     const dana = await phoneOf('Dana', invite);
     const { Casey } = await memberIds(invite.taylor);
@@ -355,8 +355,8 @@ describe('SHARING-193.1', () => {
   });
 });
 
-describe('SHARING-194.1', () => {
-  test('[SHARING-194.1] does not approve a request for a member that has a phone by now', async () => {
+describe('SHARING-194.2', () => {
+  test('[SHARING-194.2] does not approve a request for a member that has a phone by now', async () => {
     const { invite, taylor } = await danaApproved({ memberId: 'Casey' });
     const evan = await phoneOf('Evan', invite);
     const { Casey } = await memberIds(taylor);
@@ -373,7 +373,7 @@ describe('SHARING-194.1', () => {
     expect(await requestOnApi(invite.code, E)).toBeDefined();
   });
 
-  test('[SHARING-194.1] does not approve a request for its own member, which no roster entry names yet', async () => {
+  test('[SHARING-194.2] does not approve a request for its own member, which no roster entry names yet', async () => {
     const invite = await taylorInvites();
     const { taylor, brisbane } = invite;
     const { Taylor } = await memberIds(taylor);
@@ -401,7 +401,7 @@ describe('SHARING-194.1', () => {
     ["a new member whose name is a member's", undefined, 'same-name'],
     ['a member that was removed', 'Blake', 'not-a-member'],
   ])(
-    '[SHARING-194.1] does not approve a request for %s',
+    '[SHARING-194.2] does not approve a request for %s',
     async (_case, member, reason) => {
       const invite = await taylorInvites();
       const { taylor, brisbane } = invite;
