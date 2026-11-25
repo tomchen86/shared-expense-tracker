@@ -27,6 +27,7 @@ import { listExpenses } from '../ledger/expenses';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { InviteContent } from '../sharing/invite-sheet';
 import { leaveSharedGroup, removeMemberDevices } from '../sharing/removal';
+import { useRefreshReceivedRequests } from '../sharing/request-refresh';
 import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
 import { HeaderActions } from '../ui/header-actions';
@@ -71,6 +72,7 @@ export function MembersScreen({
 
   const locale = useDisplayLocale();
   const [group, setGroup] = useGroup(id, { startFromLatest: true });
+  useRefreshReceivedRequests(database, id, group);
   // An archived group and a read-only copy only list their members (GROUPS-156.1).
   const editable = group && !isReadOnlyGroup(group);
   const canAdd = group && canAddGroupMember(group.shared, group.members.length);

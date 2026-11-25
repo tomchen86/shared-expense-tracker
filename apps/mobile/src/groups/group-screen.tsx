@@ -13,6 +13,7 @@ import { PeriodList, useListPeriod } from '../ledger/list-period-ui';
 import { useTrashActions } from '../ledger/trash-provider';
 import { useReadExpenses } from '../ledger/use-expenses';
 import { useReceivedRequests } from '../sharing/received-requests';
+import { useRefreshReceivedRequests } from '../sharing/request-refresh';
 import { deleteReadOnlyCopy, type ReadOnlyCopy } from '../sync/read-only-copy';
 import { useSyncNotices } from '../sync/use-sync-notices';
 import { groupTotals, yourBalanceLines } from './format-balance';
@@ -33,6 +34,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const colors = useThemeColors();
   const [group, setGroup, pendingRead] = useGroup(id);
   const database = useLocalDatabase();
+  useRefreshReceivedRequests(database, id, group);
   const notices = useSyncNotices(database, group?.shared ? id : undefined);
   // Only an unarchived shared ledger has any (SHARING-190.2).
   const asking = useReceivedRequests(database, id).requests.length;
