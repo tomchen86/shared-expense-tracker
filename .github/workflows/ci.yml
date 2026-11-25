@@ -55,11 +55,9 @@ jobs:
           restore-keys: |
             jest-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
             jest-${{ runner.os }}-
+      # Two Jest workers, as `pnpm test` sets them: with four, the whole run here was 12%
+      # shorter, but each test took 1.8 times as long and first tests went past the timeout (#260).
       - name: Lint, format check, typecheck, tests, requirement trace
-        # The runner has four CPUs. `pnpm test` keeps two workers wherever this is not set,
-        # since a developer's machine runs other things too.
-        env:
-          JEST_MAX_WORKERS: 4
         run: bash scripts/check.sh
       - name: Save Jest's cache
         if: ${{ !cancelled() && steps.jest-cache.outputs.cache-hit != 'true' }}
