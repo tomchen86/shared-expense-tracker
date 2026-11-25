@@ -48,7 +48,7 @@ import type { Database } from '../../src/storage';
 // filters, so ledger-list-filter.test.tsx and ledger-list-filter-saved.test.tsx check them on
 // iOS; this file checks what Android shows differently: the lists of Filters are sheets, and the
 // Filters action is a header icon. The capsules and their Material menus (LEDGER-136.2), the
-// sheet of the Amount capsule (LEDGER-150.1) and the dialog that names a filter (LEDGER-143.2)
+// sheet of the Amount capsule (LEDGER-150.1) and the dialog that names a filter (LEDGER-143.3)
 // are native views, which only the E2E flows tagged android open.
 
 let mockOpen: () => Promise<Database>;
