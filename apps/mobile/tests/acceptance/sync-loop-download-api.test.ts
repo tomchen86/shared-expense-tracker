@@ -503,8 +503,8 @@ describe('SYNC-70.1', () => {
   });
 });
 
-describe('SYNC-71.3', () => {
-  test('[SYNC-71.3] without a network it uploads nothing and keeps what is unsent', async () => {
+describe('SYNC-71.4', () => {
+  test('[SYNC-71.4] without a network it uploads nothing and keeps what is unsent', async () => {
     const { a, brisbane } = await twoPhones();
     await addExpense(a);
     const ledger = await ledgerOf(a);
@@ -534,7 +534,7 @@ describe('SYNC-71.3', () => {
     ['status 500', 500, ''],
     ['status 404', 404, 'not found'],
   ])(
-    '[SYNC-71.3] applies nothing and uploads nothing when the answer to a download is %s',
+    '[SYNC-71.4] applies nothing and uploads nothing when the answer to a download is %s',
     async (_case, status, body) => {
       const setup = await twoPhones();
       const { a, b, key } = setup;
@@ -557,7 +557,7 @@ describe('SYNC-71.3', () => {
     },
   );
 
-  test('[SYNC-71.3] with [SYNC-300.1] uploads nothing when a download is refused as no member device, and sends nothing for the ledger after that', async () => {
+  test('[SYNC-71.4] with [SYNC-300.1] uploads nothing when a download is refused as no member device, and sends nothing for the ledger after that', async () => {
     const { a } = await twoPhones();
     await addExpense(a);
     const before = await unsent(a);
@@ -598,7 +598,7 @@ describe('SYNC-71.3', () => {
     };
   }
 
-  test('[SYNC-71.3] applies nothing of a page that does not start right after its cursor', async () => {
+  test('[SYNC-71.4] applies nothing of a page that does not start right after its cursor', async () => {
     const setup = await twoPhones();
     const { a, B, brisbane, key } = setup;
     const page = await pageOf(setup, [{ sequence: 2, content: '' }]);
@@ -617,7 +617,7 @@ describe('SYNC-71.3', () => {
     expect(await downloads(a, from)).toEqual(['after=0']);
   });
 
-  test('[SYNC-71.3] applies nothing of an answer that holds an event over 65,536 bytes', async () => {
+  test('[SYNC-71.4] applies nothing of an answer that holds an event over 65,536 bytes', async () => {
     const setup = await twoPhones();
     const { a, B, brisbane, key } = setup;
     const page = await pageOf(setup, [
@@ -900,5 +900,46 @@ describe('SYNC-74.1', () => {
     await sync(a, tokyo);
 
     expect(await titles(a, tokyo)).toEqual(['Sushi']);
+  });
+});
+
+describe('SYNC-313.1', () => {
+  test('[SYNC-313.1] records the time of the last sync in the transaction of the page: whichever write fails, it is new exactly when the page was stored', async () => {
+    const setup = await twoPhones();
+    const { b, brisbane, key } = setup;
+    await uploadAs(b, key, [
+      await expenseOf(setup, 'Lunch'),
+      await expenseOf(setup, 'Taxi', 1),
+    ]);
+    const copy = await copyOfData(setup.a);
+    let phone = await restoreData(setup.a, copy);
+    const lastSynced = () => phone.sync.lastSyncedAt(phone.database, brisbane);
+    const before = await lastSynced();
+
+    let everyWriteFailedOnce = false;
+    for (let nth = 1; nth <= 500 && !everyWriteFailedOnce; nth += 1) {
+      // Each round is over a minute after the last, as in the test of SYNC-70.1.
+      const at = NOW + nth * 61_000;
+      setApiTime(at);
+      phone = await restoreData(phone, copy);
+      setClock(phone, at);
+      const failing = failingAtWrite(phone.database, nth);
+      await trySync(phone, failing.database);
+      if (!failing.failed()) {
+        everyWriteFailedOnce = true;
+        break;
+      }
+      const held = await lastSynced();
+      const from = mark();
+
+      await sync(phone);
+
+      // The cursor the next sync asks from says whether the page was stored.
+      const [cursor] = await downloads(phone, from);
+      expect([cursor, held]).toEqual(
+        cursor === 'after=0' ? ['after=0', before] : ['after=2', at],
+      );
+    }
+    expect(everyWriteFailedOnce).toBe(true);
   });
 });

@@ -23,7 +23,7 @@ type HostView = ReturnType<typeof screenOf>;
 
 export const DAY = 86_400_000;
 
-/** The line of a shared ledger whose last sync got no answer (SYNC-316.1). */
+/** The line of a shared ledger whose last sync got no answer (SYNC-316.2). */
 export const OFFLINE_NOTICE =
   'Connect to the internet to sync this group. New changes stay on this phone until then.';
 /** The line of a shared ledger that waits for a snapshot (SYNC-314.1). */

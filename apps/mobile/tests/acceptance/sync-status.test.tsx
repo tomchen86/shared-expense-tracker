@@ -530,8 +530,8 @@ describe('SYNC-315.1', () => {
   });
 });
 
-describe('SYNC-316.1', () => {
-  test('[SYNC-316.1] says to connect once a sync after a save got no answer, on the screen that is open, with no alert', async () => {
+describe('SYNC-316.2', () => {
+  test('[SYNC-316.2] says to connect once a sync after a save got no answer, on the screen that is open, with no alert', async () => {
     await synced();
     await showGroup('Brisbane');
     goOffline();
@@ -549,7 +549,7 @@ describe('SYNC-316.1', () => {
     );
   });
 
-  test('[SYNC-316.1] stops saying so once a sync is answered, on the screen that is open', async () => {
+  test('[SYNC-316.2] stops saying so once a sync is answered, on the screen that is open', async () => {
     await synced();
     await showGroup('Brisbane');
     goOffline();
@@ -564,7 +564,7 @@ describe('SYNC-316.1', () => {
     await waitFor(() => expect(statusLines('Brisbane')).toEqual([]));
   });
 
-  test('[SYNC-316.1] says so when the download is answered and the answer to the upload is lost', async () => {
+  test('[SYNC-316.2] says so when the download is answered and the answer to the upload is lost', async () => {
     const { brisbane } = await synced();
     await showGroup('Brisbane');
     apiLosesNextAnswer(isUploadOf(brisbane));
@@ -584,7 +584,7 @@ describe('SYNC-316.1', () => {
     );
   });
 
-  test('[SYNC-316.1] says so once a request is given up after 60 seconds, and not before', async () => {
+  test('[SYNC-316.2] says so once a request is given up after 60 seconds, and not before', async () => {
     await synced();
     await showGroup('Brisbane');
     holdAnswers('GET');
@@ -607,7 +607,7 @@ describe('SYNC-316.1', () => {
     ['status 403 and no refusal the event API knows', 403, '{"error":"no"}'],
     ['status 200 and what is no page', 200, '{"events":"none"}'],
   ])(
-    '[SYNC-316.1] does not say so when the download is answered with %s',
+    '[SYNC-316.2] does not say so when the download is answered with %s',
     async (_case, status, body) => {
       const { brisbane } = await synced();
       await showGroup('Brisbane');
@@ -623,7 +623,7 @@ describe('SYNC-316.1', () => {
     },
   );
 
-  test('[SYNC-316.1] says so only on the screen of the ledger whose sync got no answer', async () => {
+  test('[SYNC-316.2] says so only on the screen of the ledger whose sync got no answer', async () => {
     const { brisbane } = await synced(WITH_TOKYO, BOTH);
     apiLosesNextAnswer(isDownloadOf(brisbane));
 
@@ -638,7 +638,7 @@ describe('SYNC-316.1', () => {
     expect(statusLines('Tokyo')).toEqual([]);
   });
 
-  test('[SYNC-316.1] says so again after a restart with no network, once the sync that opens the app has ended', async () => {
+  test('[SYNC-316.2] says so again after a restart with no network, once the sync that opens the app has ended', async () => {
     const { app } = await synced();
     goOffline();
 
