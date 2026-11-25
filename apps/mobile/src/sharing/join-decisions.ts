@@ -12,6 +12,7 @@ import {
   JOIN_DECISION_REFUSAL_STATUS,
   JOIN_REQUEST_REFUSAL_STATUS,
   SNAPSHOT_REFUSAL_STATUS,
+  confirmsTakeover,
   isApproveJoinRequestResponse,
   isGroupId,
   isGroupRefusal,
@@ -24,7 +25,7 @@ import {
   type ApproveJoinRequestBody,
   type JoinResultResponse,
   type ListedJoinRequest,
-  type UploadedEvent,
+  type TakeoverRequestBody,
 } from '@shared-expense/domain/api';
 import {
   decrypt,
@@ -42,10 +43,19 @@ import {
   jsonIn,
   syncGroup,
 } from '../sync/loop';
-import { fetchKeysToJoin } from '../sync/key-rotation';
+import { isWaitingForSnapshot } from '../sync';
+import {
+  departingEntries,
+  fetchKeysToJoin,
+  inviteDueForRevocation,
+  latestDeparture,
+  rotationDevices,
+  saveGroupKey,
+  sealRotation,
+} from '../sync/key-rotation';
 import { deleteGroupData } from '../sync/read-only-copy';
 import { mergeRecordEvent, readSyncRecord } from '../sync/records';
-import { readRoster } from '../sync/roster';
+import { readRoster, type Roster } from '../sync/roster';
 import { makeSnapshot } from '../sync/snapshot-ledger';
 import {
   fetchSnapshot,
@@ -91,7 +101,13 @@ export interface ReceivedJoinRequest {
 
 /** Why a request cannot be approved as it is (SHARING-194.2). */
 export type CannotApprove =
-  'not-a-member' | 'is-you' | 'has-a-phone' | 'group-full' | 'same-name';
+  | 'not-a-member'
+  | 'is-you'
+  | 'has-a-phone'
+  | 'no-phone'
+  | 'group-full'
+  | 'same-name'
+  | 'revoking';
 
 /** How approving a request ended (SHARING-195.3 to 200.2). */
 export type ApproveResult =
@@ -102,6 +118,7 @@ export type ApproveResult =
   | { outcome: 'answered' }
   /** The group has its 20 member devices. */
   | { outcome: 'members-full' }
+  | { outcome: 'waiting-for-snapshot' }
   | { outcome: 'cannot-approve'; reason: CannotApprove }
   | { outcome: 'failed' };
 
@@ -234,11 +251,15 @@ function readRequest(
   // The padding is spaces, which JSON allows after a value.
   const said = jsonIn(opened.plaintext);
   if (typeof said !== 'object' || said === null) return undefined;
-  const { name, memberId, userId, boxKey } = said as Record<string, unknown>;
+  const { name, memberId, userId, boxKey, takeover } = said as Record<
+    string,
+    unknown
+  >;
   if (
     typeof name !== 'string' ||
     name.trim() === '' ||
     (memberId !== null && !isGroupId(memberId)) ||
+    (takeover !== undefined && (takeover !== true || memberId === null)) ||
     !isGroupId(userId) ||
     typeof boxKey !== 'string' ||
     !BOX_KEY.test(boxKey) ||
@@ -250,6 +271,7 @@ function readRequest(
     deviceId,
     name: name.trim(),
     memberId,
+    ...(takeover === true && { takeover }),
     request: bytesToHex(sha256(content)),
   };
   applicants.set(received, { userId, boxKey });
@@ -340,33 +362,58 @@ export async function rejectJoinRequest(
 
 // Approving
 
-/**
- * Why the request cannot be approved as the group is now, with the member the reason is
- * about, or nothing when it can (SHARING-194.2). `members` are the group's members, and
- * `userId` is this phone's own.
- */
-export function whyNotApprove(
+export interface JoinDecision {
+  member?: GroupMember;
+  reason?: CannotApprove;
+}
+
+/** Checks the member and roster rules in their order of precedence (SHARING-194.2). */
+function memberDecision(
   members: readonly GroupMember[],
   userId: string,
-  request: Pick<ReceivedJoinRequest, 'name' | 'memberId'>,
-): { reason: CannotApprove; member?: GroupMember } | undefined {
+  request: ReceivedJoinRequest,
+  represented: boolean,
+): JoinDecision {
   if (request.memberId !== null) {
     const member = members.find(({ id }) => id === request.memberId);
     if (!member) return { reason: 'not-a-member' };
     if (member.userId === userId) return { reason: 'is-you', member };
-    if (member.userId !== null) return { reason: 'has-a-phone', member };
-    return undefined;
+    if (request.takeover) {
+      if (!represented) return { reason: 'no-phone', member };
+    } else if (member.userId !== null || represented)
+      return { reason: 'has-a-phone', member };
+    return { member };
   }
   if (members.length >= MAX_SHARED_GROUP_MEMBERS)
     return { reason: 'group-full' };
   const member = members.find(
     ({ name }) => memberNameKey(name) === memberNameKey(request.name),
   );
-  return member && { reason: 'same-name', member };
+  return member ? { reason: 'same-name', member } : {};
 }
 
-/** The group's members and this phone's user ID, as `whyNotApprove` takes them. */
-async function readMembers(tx: SqlExecutor, groupId: string) {
+interface TakeoverDevices {
+  remove: string[];
+  staying: string[];
+  roster: Roster;
+}
+
+/** Reads the same local facts for the menu, the preparation and each permitted retry. */
+async function readDecision(
+  tx: SqlExecutor,
+  groupId: string,
+  request: ReceivedJoinRequest,
+) {
+  const [group] = await tx.all<{
+    device: string;
+    cursor: number;
+    epoch: number;
+    waitsForSnapshot: number;
+  }>(
+    'SELECT device, cursor, epoch, waitsForSnapshot FROM sync_groups WHERE groupId = ? AND readOnly IS NULL',
+    [groupId],
+  );
+  if (!group) return undefined;
   const members = await tx.all<GroupMember>(
     `SELECT id, userId, name FROM group_members
      WHERE groupId = ? AND removed = 0 ORDER BY position`,
@@ -375,7 +422,72 @@ async function readMembers(tx: SqlExecutor, groupId: string) {
   const [{ userId }] = await tx.all<{ userId: string }>(
     'SELECT userId FROM local_identity',
   );
-  return { members, userId };
+  const roster = await readRoster(tx, groupId);
+  const devices =
+    request.memberId === null
+      ? undefined
+      : rotationDevices(
+          roster,
+          group.device,
+          { memberId: request.memberId },
+          request.takeover ? request.deviceId : undefined,
+        );
+  const decision = memberDecision(
+    members,
+    userId,
+    request,
+    !!devices?.remove.length,
+  );
+  if (
+    !decision.reason &&
+    (await inviteDueForRevocation(
+      tx,
+      groupId,
+      request.code,
+      latestDeparture(roster),
+    ))
+  )
+    decision.reason = 'revoking';
+  const takeover: TakeoverDevices | undefined =
+    request.takeover && devices
+      ? { remove: devices.remove, staying: devices.staying, roster }
+      : undefined;
+  return { group, members, userId, roster, decision, takeover };
+}
+
+export async function joinRequestDecision(
+  database: Database,
+  groupId: string,
+  request: ReceivedJoinRequest,
+) {
+  const state = await database.transaction((tx) =>
+    readDecision(tx, groupId, request),
+  );
+  return state?.decision;
+}
+
+async function checkApproval(
+  tx: SqlExecutor,
+  groupId: string,
+  request: ReceivedJoinRequest,
+) {
+  const [invite] = await tx.all<InviteCredentials>(
+    `SELECT id AS code, secret FROM group_invites
+     WHERE groupId = ? AND id = ? AND expiresAtMs > ?`,
+    [groupId, request.code, await readCorrectedTime(tx)],
+  );
+  // An expired or revoked invite no longer has a request at the API (SHARING-200.2).
+  if (!invite) return { outcome: 'answered' } as const;
+  const state = await readDecision(tx, groupId, request);
+  if (!state) return { outcome: 'failed' } as const;
+  if (request.takeover && state.group.waitsForSnapshot)
+    return { outcome: 'waiting-for-snapshot' } as const;
+  if (state.decision.reason)
+    return {
+      outcome: 'cannot-approve',
+      reason: state.decision.reason,
+    } as const;
+  return { ...state, invite };
 }
 
 interface Applicant {
@@ -384,6 +496,8 @@ interface Applicant {
 }
 
 interface Prepared {
+  invite: InviteCredentials;
+  takeover?: TakeoverDevices;
   /** The snapshot for the applicant, which holds the approval's records too. */
   made: MadeSnapshot;
   /** The approval's records, for a snapshot that has to be made again. */
@@ -393,11 +507,10 @@ interface Prepared {
 }
 
 /**
- * In one transaction (SHARING-195.3): checks that the request can be approved, writes the
- * approval's events without storing them (SHARING-196.2), and reads the snapshot that
- * holds their records beside the ledger's own (SHARING-197.1), whose sequence number is
- * the cursor the approval carries. Only the phone's latest stamp is stored. `addBack` is
- * the former member the applicant becomes in place of a new one (SHARING-288.1).
+ * Checks the request, stamps the approval or takeover events, and reads their snapshot
+ * and cursor in this transaction (SHARING-195.3, SHARING-322.1). Only the phone's
+ * latest stamp is stored. `addBack` is the former member the applicant becomes in
+ * place of a new one (SHARING-288.1).
  */
 async function prepareApproval(
   tx: SqlExecutor,
@@ -406,22 +519,14 @@ async function prepareApproval(
   applicant: Applicant,
   device: SigningDevice,
   addBack?: string,
-): Promise<Prepared | { reason: CannotApprove } | undefined> {
-  // A read-only copy approves nothing, and the sync before this may have made the ledger
-  // one (SYNC-302.1).
-  const [group] = await tx.all<{ device: string }>(
-    'SELECT device FROM sync_groups WHERE groupId = ? AND readOnly IS NULL',
-    [groupId],
-  );
-  if (!group) return undefined;
-  const { members, userId } = await readMembers(tx, groupId);
-  const blocked = whyNotApprove(members, userId, request);
-  if (blocked) return { reason: blocked.reason };
+): Promise<Prepared | ApproveResult> {
+  const state = await checkApproval(tx, groupId, request);
+  if (state.outcome) return state;
+  const { group, members, userId, roster, takeover, invite } = state;
 
   const changes: object[] = [];
   // This phone's own entry goes with the first approval it gives.
   const you = members.find((member) => member.userId === userId);
-  const roster = await readRoster(tx, groupId);
   if (you && !roster.has(group.device))
     changes.push({
       type: 'device',
@@ -432,8 +537,8 @@ async function prepareApproval(
         },
       },
     });
-  const memberId = addBack ?? request.memberId ?? (await createUuid(tx));
-  if (addBack !== undefined) {
+  const memberId = request.memberId ?? addBack ?? (await createUuid(tx));
+  if (request.memberId === null && addBack !== undefined) {
     // Only while he is still a former member: someone may have added him back since.
     const [former] = await tx.all<{ removedAt: string }>(
       `SELECT json_extract(r.record, '$.units.removed.stamp') AS removedAt
@@ -442,7 +547,7 @@ async function prepareApproval(
        WHERE m.groupId = ? AND m.id = ? AND m.removed = 1`,
       [groupId, addBack],
     );
-    if (!former) return undefined;
+    if (!former) return { outcome: 'failed' };
     changes.push({
       type: 'member',
       id: addBack,
@@ -468,6 +573,7 @@ async function prepareApproval(
       },
     },
   });
+  if (takeover) changes.push(...departingEntries(roster, takeover.remove));
 
   const stamps = await takeCheckedStamps(tx, group.device, changes.length);
   const events: Prepared['events'] = [];
@@ -477,11 +583,11 @@ async function prepareApproval(
     const verdict = checkSyncEvent({ version: 1, stamp, ...change }, null);
     // The applicant's name is the only part that can be too long for an event.
     if (verdict.status !== 'valid' || 'deleted' in verdict.event)
-      return undefined;
+      return { outcome: 'failed' };
     const { event } = verdict;
     const content = JSON.stringify(event);
     if (utf8ToBytes(content).length > MAX_SYNC_PLAINTEXT_BYTES)
-      return undefined;
+      return { outcome: 'failed' };
     events.push({ id: await createUuid(tx), content });
     // The record as the event leaves it: a new one, or the one the ledger holds with
     // this change merged in, as every phone will merge it.
@@ -496,7 +602,9 @@ async function prepareApproval(
     } as SyncSnapshotRecord);
   }
   const made = await makeSnapshot(tx, groupId, records);
-  return made.outcome === 'made' ? { made, records, events } : undefined;
+  return made.outcome === 'made'
+    ? { made, records, events, invite, takeover }
+    : { outcome: 'failed' };
 }
 
 /** The box that hands the group's keys to the applicant (SHARING-198.1), in hexadecimal. */
@@ -505,8 +613,13 @@ function handoverBox(
   applicant: Applicant,
   invite: InviteCredentials,
   groupId: string,
-  { epoch, key }: MadeSnapshot,
+  snapshot: MadeSnapshot,
+  next?: { epoch: number; key: Uint8Array },
 ): string {
+  const keys = (next ? [snapshot, next] : [snapshot]).map(({ epoch, key }) => ({
+    epoch,
+    key: bytesToHex(key),
+  }));
   return bytesToHex(
     sealBox({
       senderSecretKey: device.boxSecretKey,
@@ -515,11 +628,13 @@ function handoverBox(
         secret: secretBytes(invite.secret),
         purpose: HANDOVER,
       }),
-      context: handoverContext(invite.code, groupId, epoch),
-      nonce: getRandomValues(new Uint8Array(NONCE_LENGTH)),
-      plaintext: utf8ToBytes(
-        JSON.stringify({ keys: [{ epoch, key: bytesToHex(key) }] }),
+      context: handoverContext(
+        invite.code,
+        groupId,
+        next?.epoch ?? snapshot.epoch,
       ),
+      nonce: getRandomValues(new Uint8Array(NONCE_LENGTH)),
+      plaintext: utf8ToBytes(JSON.stringify({ keys })),
     }),
   );
 }
@@ -533,9 +648,57 @@ const signingDevice = (database: Database) =>
     throw new Error('Cannot read the secure store', { cause });
   }).catch(() => 'lost' as const);
 
+/** Both lists have a stable order. A box must still address the same public key as well. */
+function sameTakeoverDevices(
+  before: TakeoverDevices,
+  now: TakeoverDevices,
+  own: string,
+) {
+  return (
+    before.remove.length === now.remove.length &&
+    before.remove.every((id, at) => id === now.remove[at]) &&
+    before.staying.length === now.staying.length &&
+    before.staying.every(
+      (id, at) =>
+        id === now.staying[at] &&
+        (id === own ||
+          before.roster.get(id)!.value!.boxKey ===
+            now.roster.get(id)!.value!.boxKey),
+    )
+  );
+}
+
+/** Read the cursor with the decision that justifies retrying at that cursor. */
+async function recheckApproval(
+  tx: SqlExecutor,
+  groupId: string,
+  request: ReceivedJoinRequest,
+  prepared: Prepared,
+  remake: boolean,
+): Promise<{ cursor: number; made?: MadeSnapshot } | ApproveResult> {
+  const state = await checkApproval(tx, groupId, request);
+  if (state.outcome) return state;
+  if (
+    prepared.takeover &&
+    (state.group.epoch !== prepared.made.epoch ||
+      !state.takeover ||
+      !sameTakeoverDevices(
+        prepared.takeover,
+        state.takeover,
+        state.group.device,
+      ))
+  )
+    return { outcome: 'failed' } as const;
+  const made = remake
+    ? await makeSnapshot(tx, groupId, prepared.records)
+    : undefined;
+  if (made && made.outcome !== 'made') return { outcome: 'failed' } as const;
+  return { cursor: state.group.cursor, made };
+}
+
 /**
  * Approves `request`, as pressing Approve in the menu that was opened for it does
- * (SHARING-195.3): the approval names the content the request held when it was listed.
+ * (SHARING-195.3, SHARING-322.1): the approval names the content the request held when it was listed.
  * Other syncs of the ledger go on meanwhile.
  * `addBack` is the former member the user chose to add back in place of a new member
  * (SHARING-288.1, issue 143): the approval then carries no new member (SHARING-196.2).
@@ -555,6 +718,8 @@ export async function approveJoinRequest(
     let end = await syncGroup(database, ledger);
     // Once more, so that the cursor is past what this phone has just uploaded.
     if (end.uploaded) end = await syncGroup(database, ledger);
+    if (request.takeover && (await isWaitingForSnapshot(database, groupId)))
+      return { outcome: 'waiting-for-snapshot' };
     if (end.noAnswer) return { outcome: 'no-answer' };
     return end.downloaded ? undefined : { outcome: 'failed' };
   };
@@ -563,66 +728,81 @@ export async function approveJoinRequest(
     const stopped = await sync();
     if (stopped) return stopped;
     const device = await signingDevice(database);
-    const [invite] = await database.all<InviteCredentials>(
-      `SELECT id AS code, secret FROM group_invites
-       WHERE groupId = ? AND id = ? AND expiresAtMs > ?`,
-      [groupId, request.code, await readCorrectedTime(database)],
-    );
-    // The sync brought its revocation, or it has expired: the API holds none of its
-    // requests any more (SHARING-200.2).
-    if (!invite) return { outcome: 'answered' };
     if (device === 'lost') return { outcome: 'failed' };
 
     const prepared = await database.transaction((tx) =>
       prepareApproval(tx, groupId, request, applicant, device, addBack),
     );
-    if (!prepared) return { outcome: 'failed' };
-    if ('reason' in prepared) return { outcome: 'cannot-approve', ...prepared };
-    const { records } = prepared;
-    let { made } = prepared;
-    let cursor = made.content.sequence;
-    const events: UploadedEvent[] = encryptEvents(
-      groupId,
-      device.deviceId,
-      made.epoch,
-      made.key,
-      prepared.events,
-    );
-    const box = handoverBox(device, applicant, invite, groupId, made);
-    const upload = () =>
-      uploadSnapshot(database, { ...ledger, deviceId: request.deviceId }, made);
-
-    let snapshot = await upload();
-    for (let behind = 0, again = false; ;) {
-      if (snapshot.outcome !== 'uploaded')
-        return {
-          outcome: snapshot.outcome === 'no-answer' ? 'no-answer' : 'failed',
-        };
-      const approval: ApproveJoinRequestBody = {
-        request: request.request,
-        cursor,
-        snapshotId: snapshot.snapshotId,
-        senderKey: device.boxKey,
-        epoch: made.epoch,
-        box,
-        events,
-      };
-      const answer = await send(
+    if ('outcome' in prepared) return prepared;
+    const { made, takeover, invite } = prepared;
+    const upload = (snapshot: MadeSnapshot) =>
+      uploadSnapshot(
         database,
-        'POST',
-        `${decisionPath(groupId, request.deviceId)}/approval`,
-        approval,
+        { ...ledger, deviceId: request.deviceId },
+        snapshot,
       );
+    const snapshot = await upload(made);
+    if (snapshot.outcome !== 'uploaded')
+      return {
+        outcome: snapshot.outcome === 'no-answer' ? 'no-answer' : 'failed',
+      };
+
+    // The snapshot uses the current key. Only after it is stored do we generate the next
+    // key. It stays in memory until the API confirms this particular takeover.
+    const rotation =
+      takeover &&
+      sealRotation(groupId, device, takeover.roster, takeover.staying, made);
+    const { epoch, key } = rotation ?? made;
+    const approval: ApproveJoinRequestBody = {
+      request: request.request,
+      cursor: made.content.sequence,
+      snapshotId: snapshot.snapshotId,
+      senderKey: device.boxKey,
+      epoch,
+      box: handoverBox(device, applicant, invite, groupId, made, rotation),
+      events: encryptEvents(
+        groupId,
+        device.deviceId,
+        epoch,
+        key,
+        prepared.events,
+      ),
+    };
+    const body =
+      rotation && takeover
+        ? ({
+            ...approval,
+            remove: takeover.remove,
+            boxes: rotation.boxes,
+          } satisfies TakeoverRequestBody)
+        : approval;
+    const path = `${decisionPath(groupId, request.deviceId)}/${takeover ? 'takeover' : 'approval'}`;
+    for (let behind = 0, again = false; ;) {
+      const answer = await send(database, 'POST', path, body);
       if (!answer) return { outcome: 'no-answer' };
-      if (
-        answer.status === 200 &&
-        isApproveJoinRequestResponse(answer.said) &&
-        answer.said.deviceId === request.deviceId
-      )
+      if (answer.status === 200) {
+        const said = answer.said;
+        if (rotation) {
+          if (!confirmsTakeover(said, request.deviceId, body))
+            return { outcome: 'failed' };
+          // A failed write is recoverable from our own box in the following sync.
+          await saveGroupKey(database, {
+            groupId,
+            epoch: said.epoch,
+            key,
+          }).catch(() => undefined);
+        } else if (
+          !isApproveJoinRequestResponse(said) ||
+          said.deviceId !== request.deviceId
+        )
+          return { outcome: 'failed' };
         break;
+      }
+      if (takeover && again) return { outcome: 'failed' };
       const refusal = refusalIn(answer);
       if (refusal === 'no-request') return { outcome: 'answered' };
-      if (refusal === 'members-full') return { outcome: 'members-full' };
+      if (!takeover && refusal === 'members-full')
+        return { outcome: 'members-full' };
       const retry =
         (refusal === 'behind' && (behind += 1) <= 2) ||
         (refusal === 'no-snapshot' && !again);
@@ -631,34 +811,30 @@ export async function approveJoinRequest(
       // Behind: this phone has not checked the request against the group's last events
       // (SHARING-200.2). It syncs and looks again, and sends the same snapshot and
       // events with the cursor it has then. Without a snapshot it uploads another.
-      if (refusal === 'behind') {
+      if (takeover || refusal === 'behind') {
         const unsynced = await sync();
         if (unsynced) return unsynced;
       }
-      const checked = await database.transaction(async (tx) => {
-        const { members, userId } = await readMembers(tx, groupId);
-        const blocked = whyNotApprove(members, userId, request);
-        const [{ cursor: now }] = await tx.all<{ cursor: number }>(
-          'SELECT cursor FROM sync_groups WHERE groupId = ?',
-          [groupId],
-        );
-        return {
-          reason: blocked?.reason,
-          cursor: now,
-          remade:
-            refusal === 'no-snapshot' && !blocked
-              ? await makeSnapshot(tx, groupId, records)
-              : undefined,
-        };
-      });
-      if (checked.reason)
-        return { outcome: 'cannot-approve', reason: checked.reason };
-      cursor = checked.cursor;
-      if (refusal === 'no-snapshot') {
-        if (checked.remade?.outcome !== 'made') return { outcome: 'failed' };
+      const checked = await database.transaction((tx) =>
+        recheckApproval(
+          tx,
+          groupId,
+          request,
+          prepared,
+          refusal === 'no-snapshot',
+        ),
+      );
+      if ('outcome' in checked) return checked;
+      body.cursor = checked.cursor;
+      if (checked.made) {
         again = true;
-        made = checked.remade;
-        snapshot = await upload();
+        const replacement = await upload(checked.made);
+        if (replacement.outcome !== 'uploaded')
+          return {
+            outcome:
+              replacement.outcome === 'no-answer' ? 'no-answer' : 'failed',
+          };
+        body.snapshotId = replacement.snapshotId;
       }
     }
   } catch {
@@ -679,10 +855,22 @@ const ended = (outcome: 'declined' | 'invalid') =>
 /** Whether the request still fits the invite's card, so that a member can approve it (SHARING-212.2). */
 function fitsCard(
   { members }: JoinCard,
-  { name, memberId }: Pick<JoinRequest, 'name' | 'memberId'>,
+  {
+    name,
+    memberId,
+    takeover,
+  }: Pick<JoinRequest, 'name' | 'memberId' | 'takeover'>,
 ): boolean {
-  if (memberId !== null)
-    return members.some(({ id, hasDevice }) => id === memberId && !hasDevice);
+  if (memberId !== null) {
+    const member = members.find(({ id }) => id === memberId);
+    return (
+      !!member &&
+      (takeover
+        ? member.hasDevice &&
+          members.some((other) => other.id !== memberId && other.hasDevice)
+        : !member.hasDevice)
+    );
+  }
   return (
     members.length < MAX_SHARED_GROUP_MEMBERS &&
     !members.some(

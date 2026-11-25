@@ -35,7 +35,7 @@ import { createUuid, type Database, type SqlExecutor } from '../storage';
 import { notifyApplied } from './apply';
 import { recordRevokedInvite } from './invites';
 import { readSyncRecord, sharedGroup } from './records';
-import { readRoster } from './roster';
+import { readRoster, type Roster } from './roster';
 import { takeCheckedStamps } from './stamps';
 import {
   GIVE_UP_AFTER_MS,
@@ -282,6 +282,73 @@ interface Prepared {
   key: Uint8Array;
 }
 
+/** The applicant gets the handover, so it is outside both sets of a takeover's rotation. */
+export function rotationDevices(
+  roster: Roster,
+  own: string,
+  plan: RotationPlan,
+  applicant?: string,
+) {
+  const represented = [...roster.keys()]
+    .filter(
+      (id) => id !== own && id !== applicant && roster.get(id)!.value !== null,
+    )
+    .sort();
+  const listed = plan.devices;
+  const remove = represented.filter(
+    (id) =>
+      roster.get(id)!.value!.memberId === plan.memberId &&
+      (listed?.includes(id) ?? true),
+  );
+  const staying = listed
+    ? listed.filter((id) => !remove.includes(id))
+    : [own, ...represented.filter((id) => !remove.includes(id))];
+  return { represented, remove, staying };
+}
+
+/** Each departing device's entry is based on the version that represented its member. */
+export function departingEntries(roster: Roster, leaving: readonly string[]) {
+  return leaving.map((id) => ({
+    type: 'device',
+    id,
+    units: { member: { value: null, base: roster.get(id)!.stamp } },
+  }));
+}
+
+/** Makes one fresh key and seals that same key for each device that stays (SHARING-272.1, SHARING-324.1). */
+export function sealRotation(
+  groupId: string,
+  device: SigningDevice,
+  roster: Roster,
+  staying: readonly string[],
+  previous: { epoch: number; key: Uint8Array },
+) {
+  const epoch = previous.epoch + 1;
+  const key = getRandomValues(new Uint8Array(KEY_LENGTH));
+  const salt = rotationSalt(previous.key);
+  const plaintext = utf8ToBytes(
+    JSON.stringify({ keys: [{ epoch, key: bytesToHex(key) }] }),
+  );
+  const boxes = staying.map((deviceId) => ({
+    deviceId,
+    box: bytesToHex(
+      sealBox({
+        senderSecretKey: device.boxSecretKey,
+        recipientPublicKey: hexToBytes(
+          deviceId === device.deviceId
+            ? device.boxKey
+            : roster.get(deviceId)!.value!.boxKey,
+        ),
+        salt,
+        context: rotationContext(groupId, deviceId, epoch),
+        nonce: getRandomValues(new Uint8Array(NONCE_LENGTH)),
+        plaintext,
+      }),
+    ),
+  }));
+  return { epoch, key, boxes };
+}
+
 /**
  * In one transaction (SHARING-270.1 to SHARING-272.1): finds the devices that leave and
  * those that stay as the local data has them, writes the events that say who left without
@@ -301,20 +368,10 @@ async function prepareRotation(
   if (!group || epoch === undefined) return 'cannot';
   const own = group.device;
   const roster = await readRoster(tx, groupId);
-  /** The other devices that represent a member, the smallest device ID first. */
-  const represented = [...roster.keys()]
-    .filter((id) => id !== own && roster.get(id)!.value !== null)
-    .sort();
+  const { represented, remove, staying } = rotationDevices(roster, own, plan);
   const memberOf = (id: string) => roster.get(id)!.value!.memberId;
-  const listed = plan.devices;
-  const remove = represented.filter(
-    (id) => memberOf(id) === plan.memberId && (listed?.includes(id) ?? true),
-  );
-  if (plan.memberId !== undefined && !listed && remove.length === 0)
+  if (plan.memberId !== undefined && !plan.devices && remove.length === 0)
     return 'nobody';
-  const staying = listed
-    ? listed.filter((id) => !remove.includes(id))
-    : [own, ...represented.filter((id) => !remove.includes(id))];
   if (
     !staying.includes(own) ||
     staying.some((id) => id !== own && !represented.includes(id))
@@ -351,12 +408,7 @@ async function prepareRotation(
         units: { removed: { value: true, base: removed.stamp } },
       });
   }
-  for (const id of leaving)
-    changes.push({
-      type: 'device',
-      id,
-      units: { member: { value: null, base: roster.get(id)!.stamp } },
-    });
+  changes.push(...departingEntries(roster, leaving));
 
   const stamps: SyncStamp[] =
     changes.length > 0 ? await takeCheckedStamps(tx, own, changes.length) : [];
@@ -373,33 +425,19 @@ async function prepareRotation(
     });
   }
 
-  const next = epoch + 1;
-  const key = getRandomValues(new Uint8Array(KEY_LENGTH));
-  const salt = rotationSalt(currentKey);
-  const plaintext = utf8ToBytes(
-    JSON.stringify({ keys: [{ epoch: next, key: bytesToHex(key) }] }),
-  );
+  const {
+    epoch: next,
+    key,
+    boxes,
+  } = sealRotation(groupId, device, roster, staying, {
+    epoch,
+    key: currentKey,
+  });
   const request: RotateKeyRequest = {
     epoch: next,
     remove,
     senderKey: device.boxKey,
-    boxes: staying.map((deviceId) => ({
-      deviceId,
-      box: bytesToHex(
-        sealBox({
-          senderSecretKey: device.boxSecretKey,
-          recipientPublicKey: hexToBytes(
-            deviceId === own
-              ? device.boxKey
-              : roster.get(deviceId)!.value!.boxKey,
-          ),
-          salt,
-          context: rotationContext(groupId, deviceId, next),
-          nonce: getRandomValues(new Uint8Array(NONCE_LENGTH)),
-          plaintext,
-        }),
-      ),
-    })),
+    boxes,
     events: encryptEvents(groupId, device.deviceId, next, key, events),
   };
   return { request, key };
@@ -495,6 +533,26 @@ export async function rotateForGroup(
 
 // Invites a device that left knows
 
+/** A link created before the latest departure is known to a device that left (SHARING-284.1). */
+export function latestDeparture(roster: Roster) {
+  let left: SyncStamp | undefined;
+  for (const { value, stamp } of roster.values())
+    if (value === null && (!left || compareSyncStamps(stamp, left) > 0))
+      left = stamp;
+  return left;
+}
+
+export async function inviteDueForRevocation(
+  tx: SqlExecutor,
+  groupId: string,
+  code: string,
+  left: SyncStamp | undefined,
+): Promise<boolean> {
+  if (!left) return false;
+  const invite = await readSyncRecord(tx, groupId, 'invite', code);
+  return !!invite && compareSyncStamps(invite.created, left) < 0;
+}
+
 /**
  * Revokes every invite of the ledger this phone holds that has not expired and was
  * created before a roster entry came to represent nobody (SHARING-284.1): the device that
@@ -508,21 +566,16 @@ export async function revokeInvitesOfThoseWhoLeft(
 ): Promise<void> {
   const due = await database.transaction(async (tx) => {
     if ((await recordedEpoch(tx, groupId)) === undefined) return [];
-    let left: SyncStamp | undefined;
-    for (const { value, stamp } of (await readRoster(tx, groupId)).values())
-      if (value === null && (!left || compareSyncStamps(stamp, left) > 0))
-        left = stamp;
+    const left = latestDeparture(await readRoster(tx, groupId));
     if (!left) return [];
     const invites = await tx.all<{ code: string }>(
       'SELECT id AS code FROM group_invites WHERE groupId = ? AND expiresAtMs > ? ORDER BY id',
       [groupId, await readCorrectedTime(tx)],
     );
     const codes: string[] = [];
-    for (const { code } of invites) {
-      const stored = await readSyncRecord(tx, groupId, 'invite', code);
-      if (stored && compareSyncStamps(stored.created, left) < 0)
+    for (const { code } of invites)
+      if (await inviteDueForRevocation(tx, groupId, code, left))
         codes.push(code);
-    }
     return codes;
   });
   for (const code of due) {

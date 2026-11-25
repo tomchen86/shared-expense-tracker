@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MAX_SHARED_GROUP_MEMBERS } from '@shared-expense/domain';
-import { useLocalDatabase, useLocalIdentity } from '../shell';
+import { useLocalDatabase } from '../shell';
 import {
-  whyNotApprove,
+  joinRequestDecision,
+  type JoinDecision,
   type ReceivedJoinRequest,
 } from '../sharing/join-decisions';
 import {
@@ -14,16 +15,13 @@ import {
 import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
 import { useThemeColors } from '../ui/theme';
-import { listGroups, memberNameKey, type GroupMember } from './index';
+import { memberNameKey, type GroupMember } from './index';
 
 const CANNOT = "This request can't be approved.";
 const WENT_WRONG = 'Something went wrong. Try again later.';
 
-/** The sentence a request's menu shows in place of Approve (SHARING-194.1). */
-function cannotApproveText({
-  reason,
-  member,
-}: NonNullable<ReturnType<typeof whyNotApprove>>) {
+/** The sentence a request's menu shows in place of Approve (SHARING-194.2). */
+function cannotApproveText({ reason, member }: JoinDecision) {
   switch (reason) {
     case 'not-a-member':
       return `The member this request chose is no longer in this group. ${CANNOT}`;
@@ -31,17 +29,23 @@ function cannotApproveText({
       return `You're already in this group as ${member?.name}. ${CANNOT}`;
     case 'has-a-phone':
       return `${member?.name} has already joined from another phone. ${CANNOT}`;
+    case 'no-phone':
+      return `${member?.name} hasn't joined from a phone, so there is nothing to take over. ${CANNOT}`;
+    case 'revoking':
+      return `This invite is no longer valid. Ask them to request again with a new link. ${CANNOT}`;
     case 'group-full':
       return `A shared group can have up to ${MAX_SHARED_GROUP_MEMBERS} members. ${CANNOT}`;
     case 'same-name':
       return `This group already has a member named ${member?.name}. ${CANNOT}`;
+    default:
+      return WENT_WRONG;
   }
 }
 
 /**
- * The Requests section of an unarchived shared ledger's Members (GROUPS-131.1): the join
+ * The Requests section of an unarchived shared ledger's Members (GROUPS-131.2): the join
  * requests the phone has listed, each with the menu that approves or declines it
- * (GROUPS-132.1). It lists them again as Members opens (SHARING-190.2).
+ * (GROUPS-132.2). It lists them again as Members opens (SHARING-190.2).
  */
 export function JoinRequests({
   groupId,
@@ -54,10 +58,10 @@ export function JoinRequests({
   formerMembers: readonly GroupMember[];
 }) {
   const database = useLocalDatabase();
-  const { userId } = useLocalIdentity();
   const colors = useThemeColors();
   const { requests, processing } = useReceivedRequests(database, groupId);
   const open = useRef(true);
+  const openingMenu = useRef(false);
   useEffect(() => {
     open.current = true;
     void refreshReceivedRequests(database, groupId);
@@ -94,13 +98,30 @@ export function JoinRequests({
       case 'members-full':
         message = `This group is full. A shared group can have up to ${MAX_SHARED_GROUP_MEMBERS} members.`;
         break;
+      case 'waiting-for-snapshot': {
+        const latest = await joinRequestDecision(
+          database,
+          groupId,
+          request,
+        ).catch(() => undefined);
+        const name =
+          latest?.member?.name ??
+          members.find((member) => member.id === request.memberId)?.name;
+        message = name
+          ? `This phone is still catching up with this group, so it can't approve this request yet. If ${name}'s old phone is the only other phone in this group, remove ${name} from the group and send a new invite link. When they ask to join as a new member named ${name}, choose Add Back.`
+          : WENT_WRONG;
+        break;
+      }
       case 'cannot-approve': {
-        // Against the group as it is now, which is what the phone looked at.
-        const group = (await listGroups(database).catch(() => [])).find(
-          ({ id }) => id === groupId,
-        );
-        const blocked = group && whyNotApprove(group.members, userId, request);
-        message = blocked ? cannotApproveText(blocked) : WENT_WRONG;
+        const decision = await joinRequestDecision(
+          database,
+          groupId,
+          request,
+        ).catch(() => undefined);
+        message =
+          decision?.reason === result.reason
+            ? cannotApproveText(decision)
+            : WENT_WRONG;
         break;
       }
       default:
@@ -140,13 +161,25 @@ export function JoinRequests({
     );
   }
 
-  function openMenu(request: ReceivedJoinRequest) {
-    const blocked = whyNotApprove(members, userId, request);
+  async function openMenu(request: ReceivedJoinRequest) {
+    if (openingMenu.current) return;
+    openingMenu.current = true;
+    const decision = await joinRequestDecision(
+      database,
+      groupId,
+      request,
+    ).catch(() => undefined);
+    openingMenu.current = false;
+    if (!open.current) return;
+    const blocked = !decision || !!decision.reason;
+    const name = decision?.member?.name;
     showActionMenu({
       title: request.name,
       message: blocked
-        ? cannotApproveText(blocked)
-        : "They'll see this group's expenses and can add and change them.",
+        ? cannotApproveText(decision ?? {})
+        : request.takeover
+          ? `${request.name} wants to take over ${name}. ${name}'s current phone will lose access to this group right away.`
+          : "They'll see this group's expenses and can add and change them.",
       actions: [
         ...(blocked
           ? []
@@ -180,7 +213,9 @@ export function JoinRequests({
               : request.memberId === null
                 ? 'Wants to join as a new member'
                 : member
-                  ? `Wants to join as ${member.name}`
+                  ? request.takeover
+                    ? `Wants to take over ${member.name}`
+                    : `Wants to join as ${member.name}`
                   : 'Wants to join as a member who left';
           return (
             <Pressable
@@ -189,7 +224,7 @@ export function JoinRequests({
               accessibilityLabel={`${request.name}, ${line}`}
               // One request at a time: no row answers while one is being answered.
               onPress={() => {
-                if (!processing) openMenu(request);
+                if (!processing) void openMenu(request);
               }}
               style={({ pressed }) => [
                 styles.row,

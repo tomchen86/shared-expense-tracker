@@ -175,7 +175,10 @@ export async function createDevice(
     );
     await saveId(deviceId);
   } catch (error) {
-    await SecureStore.deleteItemAsync(seedEntry(deviceId), SEED_OPTIONS);
+    // The failed write explains why this identity is unusable, even if cleanup also fails.
+    await SecureStore.deleteItemAsync(seedEntry(deviceId), SEED_OPTIONS).catch(
+      () => undefined,
+    );
     throw error;
   }
   return signingDevice(deviceId, seed, false);

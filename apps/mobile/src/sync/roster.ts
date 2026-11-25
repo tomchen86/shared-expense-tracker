@@ -7,6 +7,7 @@ import {
 import type { SqlExecutor } from '../storage';
 
 type Entry = { value: SyncUnits['device']['member']; stamp: SyncStamp };
+export type Roster = Map<string, Entry>;
 
 /**
  * A shared ledger's roster entries by device ID: which member each device represents, or
@@ -15,7 +16,7 @@ type Entry = { value: SyncUnits['device']['member']; stamp: SyncStamp };
 export async function readRoster(
   tx: SqlExecutor,
   groupId: string,
-): Promise<Map<string, Entry>> {
+): Promise<Roster> {
   const rows = await tx.all<{ id: string; record: string }>(
     "SELECT id, record FROM sync_records WHERE groupId = ? AND type = 'device'",
     [groupId],
