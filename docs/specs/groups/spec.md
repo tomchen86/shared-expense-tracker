@@ -2144,6 +2144,25 @@ WHEN 使用者在 Members 點一個申請的那一列，the mobile app SHALL 跳
 - **WHEN** 收到的申請要接手的是你自己的成員 Taylor；點那一列
 - **THEN** 選單的內容是「You're already in this group as Taylor. This request can't be approved.」，依序是「Decline」和「Cancel」，沒有「Approve」
 
+### Requirement: GROUPS-133.1 點申請那一列之後，選單照那一刻的本機資料跳出一次
+
+WHEN 使用者在 Members 點一個申請的那一列，the mobile app SHALL 照那一刻的本機資料判斷這個申請能不能同意（sharing 的 SHARING-194.2），判斷有了結果才跳出那一列的選單（GROUPS-132.2）。判斷還沒有結果時，Members 照常顯示，那一列的文字不變；這時再點那一列，或別的申請的那一列，都不再跳出選單：點一次最多跳出一個選單。IF 判斷有結果之前 Members 已經關閉，THEN the mobile app SHALL 不跳出選單。IF 判斷時讀不到本機資料，THEN the mobile app SHALL 照樣跳出選單，標題是申請的名字，內容是「Something went wrong. Try again later.」，依序是「Decline」和「Cancel」，沒有「Approve」：拒絕不必讀本機資料（sharing 的 SHARING-201.1）。
+
+#### Scenario: 判斷還沒有結果時再點一次
+
+- **WHEN** 讀本機資料還沒有結果時，在 Members 點 Dana 那一列兩次；之後讀到了
+- **THEN** 讀到之前沒有選單，Dana 那一列仍是「Dana」和「Wants to join as a new member」；讀到之後跳出一個選單，標題是「Dana」
+
+#### Scenario: 選單跳出之前關閉 Members
+
+- **WHEN** 讀本機資料還沒有結果時點 Dana 那一列，接著關閉 Members；之後讀到了
+- **THEN** 沒有跳出選單
+
+#### Scenario: 讀不到本機資料
+
+- **WHEN** 點 Dana 那一列時讀不到本機資料；之後讀得到了，再點一次
+- **THEN** 第一次的選單標題是「Dana」，內容是「Something went wrong. Try again later.」，依序是「Decline」和「Cancel」；第二次的選單有「Approve」
+
 ### Requirement: GROUPS-150.1 移除別支手機代表的成員之前先確認
 
 WHEN 使用者在未封存的共同帳本的 Members，在別支手機代表的成員的選單選「Remove from Group」，the mobile app SHALL 先跳出提示框：標題「Remove <成員名稱>?」，訊息「<成員名稱>'s phone will lose access to this group right away. Their past payments and shares will be kept.」，按鈕是「Cancel」和破壞性的「Remove」。按「Remove」才照 sharing 的 SHARING-270.1 移除，這要連上線；按「Cancel」關閉提示框，什麼都不做，Android 上按返回鍵或點提示框外面也一樣。

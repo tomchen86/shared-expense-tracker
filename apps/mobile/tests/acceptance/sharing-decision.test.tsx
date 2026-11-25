@@ -1,12 +1,16 @@
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
+import { ActionSheetIOS } from 'react-native';
 import {
   addBackAlert,
   alertsShown,
+  expectClosed,
   expectMembers,
   lastAlertButtons,
+  membersButton,
   membersShown,
   openGroup,
   pressAlertButton,
+  pressOnBar,
   removeMember,
   renameMember,
   screenOf,
@@ -15,7 +19,7 @@ import {
 } from './group-details-app';
 import { showGroup } from './group-balances-app';
 import { editExpense, restart } from './ledger-expense-app';
-import { linesIn } from './ledger-expense-list-app';
+import { holdTransactions, linesIn } from './ledger-expense-list-app';
 import { archiveGroup } from './ledger-group-expense-app';
 import {
   apiAnswersNext,
@@ -479,6 +483,63 @@ describe('GROUPS-131.2', () => {
 
     await expectMembers(MEMBERS);
     expect(linesIn(screenOf('Members'))).not.toContain('Requests');
+  });
+});
+
+describe('GROUPS-133.1', () => {
+  const sheets = () =>
+    jest.mocked(ActionSheetIOS.showActionSheetWithOptions).mock.calls;
+
+  test('[GROUPS-133.1] opens one menu when a request is tapped twice before the phone has read its data', async () => {
+    await inMembersWithDana();
+    const before = sheets().length;
+    const reads = holdTransactions();
+
+    await fireEvent.press(membersButton(DANA_ROW));
+    await fireEvent.press(membersButton(DANA_ROW));
+    await settle();
+
+    expect(sheets()).toHaveLength(before);
+    expect(membersShown()[0]).toBe(DANA_ROW);
+    await reads.release();
+    await settle();
+    expect(sheets()).toHaveLength(before + 1);
+    expect(sheets().at(-1)![0]).toMatchObject({ title: 'Dana' });
+  });
+
+  test('[GROUPS-133.1] opens no menu when Members is closed before the phone has read its data', async () => {
+    await inMembersWithDana();
+    const before = sheets().length;
+    const reads = holdTransactions();
+
+    await fireEvent.press(membersButton(DANA_ROW));
+    await pressOnBar('Members', 'Close');
+    await expectClosed('Members');
+    await reads.release();
+    await settle();
+
+    expect(sheets()).toHaveLength(before);
+  });
+
+  test('[GROUPS-133.1] says that something went wrong, with Decline and Cancel only, when the phone cannot read its data as a request is tapped', async () => {
+    await inMembersWithDana();
+    const before = sheets().length;
+    const reads = holdTransactions();
+
+    await fireEvent.press(membersButton(DANA_ROW));
+    await reads.fail();
+    await settle();
+
+    expect(sheets()).toHaveLength(before + 1);
+    expect(sheets().at(-1)![0]).toMatchObject({
+      title: 'Dana',
+      message: WENT_WRONG,
+      options: [DECLINE, CANCEL],
+    });
+    // The control: once it can read again, the menu has Approve.
+    const menu = await tapMember(DANA_ROW);
+    await menu!.dismiss();
+    expect(menu).toMatchObject({ items: [APPROVE, DECLINE, CANCEL] });
   });
 });
 
