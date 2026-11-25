@@ -1,17 +1,43 @@
-import { useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { useState, useSyncExternalStore } from 'react';
+import { Keyboard, Pressable, StatusBar, StyleSheet } from 'react-native';
 import {
-  AlertDialog,
+  BasicAlertDialog,
+  Column,
+  FlowRow,
+  RNHostView,
+  Spacer,
+  Surface,
   Text,
   TextButton,
   TextField,
 } from '@expo/ui/jetpack-compose';
-import { fillMaxWidth, semantics } from '@expo/ui/jetpack-compose/modifiers';
+import {
+  align,
+  clip,
+  fillMaxWidth,
+  height,
+  onSizeChanged,
+  padding,
+  paddingAll,
+  semantics,
+  Shapes,
+} from '@expo/ui/jetpack-compose/modifiers';
 import {
   MaterialHost,
   MaterialLabel,
   useTextWithCaretAtEnd,
 } from './material.android';
+
+function subscribeToKeyboard(onChange: () => void) {
+  const shown = Keyboard.addListener('keyboardDidShow', onChange);
+  const hidden = Keyboard.addListener('keyboardDidHide', onChange);
+  return () => {
+    shown.remove();
+    hidden.remove();
+  };
+}
+
+const keyboardTop = () => Keyboard.metrics()?.screenY;
 
 export function useFilterNamePrompt(onSave: (name: string) => void) {
   const [suggestion, setSuggestion] = useState<string>();
@@ -42,58 +68,90 @@ function FilterNameDialog({
 }) {
   const field = useTextWithCaretAtEnd(suggestion);
   const [canSave, setCanSave] = useState(!!suggestion.trim());
+  const keyboardY = useSyncExternalStore(subscribeToKeyboard, keyboardTop);
+  const [dialogHeight, setDialogHeight] = useState(0);
+  // Equal gaps size the dialog window to the space between the status bar and keyboard,
+  // centering the surface there. When it won't fit, Android pans to the focused field
+  // and Back reveals the buttons.
+  const spareHeight =
+    (keyboardY ?? 0) - (StatusBar.currentHeight ?? 0) - dialogHeight;
+  const gap = dialogHeight > 0 ? Math.max(0, spareHeight / 2) : 0;
   function save() {
     const name = field.value.get();
     if (name.trim()) onSave(name);
   }
   return (
     <MaterialHost style={StyleSheet.absoluteFill} pointerEvents="none">
-      <AlertDialog onDismissRequest={onClose}>
-        <AlertDialog.Title>
-          <Text style={{ typography: 'headlineSmall' }}>Save Filter</Text>
-        </AlertDialog.Title>
-        <AlertDialog.Text>
-          <TextField
-            {...field}
-            autoFocus
-            singleLine
-            onValueChange={(text) => setCanSave(!!text.trim())}
+      <BasicAlertDialog onDismissRequest={onClose}>
+        <Column>
+          <RNHostView modifiers={[fillMaxWidth(), height(gap)]}>
+            <Pressable
+              accessible={false}
+              focusable={false}
+              importantForAccessibility="no-hide-descendants"
+              onPress={onClose}
+              style={{ flex: 1 }}
+            />
+          </RNHostView>
+          <Surface
             modifiers={[
-              fillMaxWidth(),
-              semantics({ contentDescription: 'Filter name' }),
+              clip(Shapes.RoundedCorner(28)),
+              onSizeChanged(({ height }) => setDialogHeight(height)),
             ]}
           >
-            <TextField.Label>
-              <Text>Filter name</Text>
-            </TextField.Label>
-          </TextField>
-        </AlertDialog.Text>
-        <AlertDialog.DismissButton>
-          <TextButton onClick={onClose}>
-            <Text style={{ typography: 'labelLarge' }}>Cancel</Text>
-          </TextButton>
-        </AlertDialog.DismissButton>
-        <AlertDialog.ConfirmButton>
-          <TextButton
-            enabled={canSave}
-            onClick={save}
-            modifiers={[semantics({ contentDescription: 'Save' })]}
-          >
-            {canSave ? (
-              <Text style={{ typography: 'labelLarge' }}>Save</Text>
-            ) : (
-              // Expose the disabled state on the named text, as well as on the button.
-              <MaterialLabel
-                accessibilityRole="button"
-                accessibilityState={{ disabled: true }}
-                color="onSurface"
+            <Column modifiers={[paddingAll(24)]}>
+              <Text
+                style={{ typography: 'headlineSmall' }}
+                modifiers={[padding(0, 0, 0, 16)]}
               >
-                Save
-              </MaterialLabel>
-            )}
-          </TextButton>
-        </AlertDialog.ConfirmButton>
-      </AlertDialog>
+                Save Filter
+              </Text>
+              <TextField
+                {...field}
+                autoFocus
+                singleLine
+                onValueChange={(text) => setCanSave(!!text.trim())}
+                modifiers={[
+                  fillMaxWidth(),
+                  semantics({ contentDescription: 'Filter name' }),
+                ]}
+              >
+                <TextField.Label>
+                  <Text>Filter name</Text>
+                </TextField.Label>
+              </TextField>
+              <FlowRow
+                modifiers={[align('end'), padding(0, 24, 0, 0)]}
+                horizontalArrangement={{ spacedBy: 8 }}
+                verticalArrangement={{ spacedBy: 12 }}
+              >
+                <TextButton onClick={onClose}>
+                  <Text style={{ typography: 'labelLarge' }}>Cancel</Text>
+                </TextButton>
+                <TextButton
+                  enabled={canSave}
+                  onClick={save}
+                  modifiers={[semantics({ contentDescription: 'Save' })]}
+                >
+                  {canSave ? (
+                    <Text style={{ typography: 'labelLarge' }}>Save</Text>
+                  ) : (
+                    // Expose the disabled state on the named text, as well as on the button.
+                    <MaterialLabel
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: true }}
+                      color="onSurface"
+                    >
+                      Save
+                    </MaterialLabel>
+                  )}
+                </TextButton>
+              </FlowRow>
+            </Column>
+          </Surface>
+          <Spacer modifiers={[height(gap)]} />
+        </Column>
+      </BasicAlertDialog>
     </MaterialHost>
   );
 }

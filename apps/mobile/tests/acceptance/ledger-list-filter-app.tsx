@@ -627,7 +627,7 @@ export async function applySavedFrom(barTitle: string, name: string) {
 export const pressDeleteSaved = (name: string) =>
   pressInFilters(`${DELETE}${name}`);
 
-// Naming a filter to save it: a system prompt on iOS, a sheet on Android (LEDGER-143.2)
+// Naming a filter to save it: a system prompt on iOS, a sheet on Android (LEDGER-143.3)
 
 interface PromptButton {
   text?: string;
