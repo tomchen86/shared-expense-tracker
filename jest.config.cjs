@@ -30,7 +30,7 @@ module.exports = {
     './apps/mobile/src/backup/import.ts': { branches: 100 },
     './apps/mobile/src/groups/group-card.tsx': { branches: 85.71 },
     './apps/mobile/src/groups/join-request-cards.tsx': { branches: 86.36 },
-    './apps/mobile/src/groups/group-screen.tsx': { branches: 97.59 },
+    './apps/mobile/src/groups/group-screen.tsx': { branches: 97.7 },
     './apps/mobile/src/groups/group-summary.tsx': { branches: 50 },
     './apps/mobile/src/groups/groups-screen.tsx': { branches: 100 },
     './apps/mobile/src/groups/balances-screen.tsx': { branches: 100 },
