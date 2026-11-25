@@ -852,7 +852,7 @@ test("[LEDGER-124.1] writes no event when the order of a shared ledger's screen 
   expect(await unsent()).toEqual(before);
 });
 
-test("[LEDGER-140.1] [LEDGER-143.2] writes no event when the filter of a shared ledger's screen is changed, saved or deleted", async () => {
+test("[LEDGER-140.1] [LEDGER-143.3] writes no event when the filter of a shared ledger's screen is changed, saved or deleted", async () => {
   await startShared();
   await addDinner();
   const before = await unsent();
