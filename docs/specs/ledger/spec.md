@@ -4364,7 +4364,7 @@ The mobile app SHALL 把支出清單的篩選和每個群組的畫面的篩選�
 
 ### Requirement: LEDGER-141.2 丟掉已經不存在的分類，其他的選擇都留著
 
-IF 支出清單或群組的畫面的篩選裡，或它的一個存起來的篩選裡，Category 選著的一個名稱已經不存在，THEN the mobile app SHALL 在這個畫面讀完本機資料時把那個選擇丟掉，其他的選擇和條件不變；丟掉之後這個名稱再出現，也不會自己回到篩選裡。一個名稱不存在，是指這個畫面的帳本裡沒有任何分類叫這個名稱，封存的分類也算有：支出清單的帳本是個人空間和這支手機上的每個群組，封存的群組也算；群組的畫面的帳本是那個群組。所以分類改了名（CATEGORIES-31.1）或被永久刪除（CATEGORIES-34.1、SYNC-40.1），而這個畫面的帳本裡沒有別的分類叫這個名稱時，舊的名稱被丟掉。支出不再用到一個選擇時，the mobile app SHALL 不丟掉它：把用到它的支出移到垃圾桶、改成別的分類、帳本、付款人或幣別，或把分類的支出搬走再封存（CATEGORIES-40.1）之後，選擇都還在，按「Undo」或把支出改回來，畫面就和之前一樣；沒有支出通過篩選時顯示 LEDGER-138.1 的提示，選著的那一項仍列在它的清單裡讓使用者取消（LEDGER-130.1）。Ledger、Paid by 和 Currency 的選擇不會不存在，所以不丟掉：群組只會封存，被移出群組的人仍是前成員，幣別是代碼；Ledger 和 Paid by 的選擇是那個群組和那個人，改了名稱仍是同一個選擇，膠囊和清單顯示新的名稱。Paid by Me 和 Amount 沒有選項。存起來的篩選 SHALL 不因為這一條而被刪掉：它的條件都被丟掉之後仍列在 SAVED FILTERS，套用它之後這個畫面沒有篩選（LEDGER-144.1）。IF 丟掉之後的篩選或存起來的篩選寫不進本機資料（例如手機的儲存空間滿了），THEN the mobile app SHALL 照樣顯示這個畫面和丟掉之後的篩選，不跳出提示框（LEDGER-140.1 的提示框是使用者改篩選時的），也不顯示 SHELL-60.1 的錯誤；本機資料保持丟掉之前的樣子，這個畫面之後每一次讀完本機資料時再丟掉、再寫一次。所以寫進去之前這個名稱又出現時——例如空間空出來之後、這個畫面再讀完本機資料之前，就把分類改回原來的名稱——那個選擇回到篩選裡：這是「丟掉之後這個名稱再出現，也不會自己回到篩選裡」唯一的例外。
+IF 支出清單或群組的畫面的篩選裡，或它的一個存起來的篩選裡，Category 選著的一個名稱已經不存在，THEN the mobile app SHALL 在這個畫面讀完本機資料時把那個選擇丟掉，其他的選擇和條件不變；丟掉之後這個名稱再出現，也不會自己回到篩選裡。一個名稱不存在，是指這個畫面的帳本裡沒有任何分類叫這個名稱，封存的分類也算有：支出清單的帳本是個人空間和這支手機上的每個群組，封存的群組也算；群組的畫面的帳本是那個群組。所以分類改了名（CATEGORIES-31.1）或被永久刪除（CATEGORIES-34.1、SYNC-40.1），而這個畫面的帳本裡沒有別的分類叫這個名稱時，舊的名稱被丟掉。支出不再用到一個選擇時，the mobile app SHALL 不丟掉它：把用到它的支出移到垃圾桶、改成別的分類、帳本、付款人或幣別，或把分類的支出搬走再封存（CATEGORIES-40.1）之後，選擇都還在，按「Undo」或把支出改回來，畫面就和之前一樣；沒有支出通過篩選時顯示 LEDGER-138.1 的提示，選著的那一項仍列在它的清單裡讓使用者取消（LEDGER-130.1）。Ledger、Paid by 和 Currency 的選擇不會不存在，所以不丟掉：群組只會封存，被移出群組的人仍是前成員，幣別是代碼；Ledger 和 Paid by 的選擇是那個群組和那個人，改了名稱仍是同一個選擇，膠囊和清單顯示新的名稱。Paid by Me 和 Amount 沒有選項。存起來的篩選 SHALL 不因為這一條而被刪掉：它的條件都被丟掉之後仍列在 SAVED FILTERS，套用它之後這個畫面沒有篩選（LEDGER-144.1）。IF 丟掉之後的篩選或存起來的篩選寫不進本機資料（例如手機的儲存空間滿了），THEN the mobile app SHALL 照樣顯示這個畫面，篩選和存起來的篩選都是丟掉之後的樣子，所以 SAVED FILTERS 標示的那一個和按鈕是不是「Filter Saved」也照丟掉之後的條件比對（LEDGER-143.3、LEDGER-144.1）；不跳出提示框（LEDGER-140.1 的提示框是使用者改篩選時的），也不顯示 SHELL-60.1 的錯誤；本機資料保持丟掉之前的樣子，這個畫面之後每一次讀完本機資料時再丟掉、再寫一次。所以寫進去之前這個名稱又出現時——例如空間空出來之後、這個畫面再讀完本機資料之前，就把分類改回原來的名稱——那個選擇回到篩選裡：這是「丟掉之後這個名稱再出現，也不會自己回到篩選裡」唯一的例外。
 
 #### Scenario: 分類改了名
 
@@ -4455,6 +4455,11 @@ IF 支出清單或群組的畫面的篩選裡，或它的一個存起來的篩�
 
 - **WHEN** Brisbane 的畫面沒有篩選，存起來的篩選「Only shopping」只有 Category 的 Shopping；返回之後在 Brisbane 的 Group Categories 把 Shopping 改名為「Groceries」，本機資料寫不進去時打開 Brisbane 的畫面，打開 Filters
 - **THEN** 沒有跳出提示框，也沒有「Unable to Load Local Data」；SAVED FILTERS 仍有「Only shopping」；本機資料寫得進去之後套用它，沒有篩選
+
+#### Scenario: 寫不進去時比對存起來的篩選
+
+- **WHEN** 群組 Brisbane 有 Shopping 的「Shoes」，Brisbane 的畫面的 Category 選了 Shopping、Min 是「10」，存成「Big shopping」；返回之後在 Brisbane 的 Group Categories 把 Shopping 改名為「Groceries」，本機資料寫不進去時打開 Brisbane 的畫面，打開 Filters
+- **THEN** 沒有跳出提示框，也沒有「Unable to Load Local Data」；篩選只有 Amount「10 or more」；SAVED FILTERS 的「Big shopping」標示為已選取，按鈕是停用的「Filter Saved」
 
 ### Requirement: LEDGER-142.1 新增或還原的支出被篩選擋住時拿掉篩選
 

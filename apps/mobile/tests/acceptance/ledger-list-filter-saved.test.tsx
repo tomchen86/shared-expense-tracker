@@ -678,3 +678,42 @@ test("[LEDGER-141.2] shows a group's screen and its saved filters when the saved
   expect(groupCardTitles('Brisbane')).toEqual(['Dinner', 'Shoes']);
   expect(alerts.shown()).toEqual([]);
 });
+
+test('[LEDGER-141.2] [LEDGER-143.3] [LEDGER-144.1] marks the saved filter that matches once both drop the category, though the drop cannot be written', async () => {
+  await startWithGroups(BRISBANE);
+  await addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Taylor (You)',
+    sharers: ['Taylor (You)', 'Casey'],
+    title: 'Shoes',
+    category: 'Shopping',
+  });
+  await showGroup('Brisbane');
+  await choose('Brisbane', 'Category', 'Shopping');
+  await openFilters('Brisbane');
+  await typeAmount('Lowest amount', '10');
+  await saveAs('Big shopping');
+  await closeFilters();
+  await goBackFrom('Brisbane');
+  // Renamed while Brisbane's screen is closed, so nothing has read its filters since.
+  const [{ id }] = await storedGroups(path.join(directory, 'app.db'));
+  await editCategory('Shopping', 'Groceries', undefined, id);
+  failWrites();
+
+  await tapTab('Groups');
+  await fireEvent.press(
+    within(groupsRoot()).getByRole('button', { name: 'Open Brisbane' }),
+  );
+  await settle();
+  expect(screen.queryByText('Unable to Load Local Data')).toBeNull();
+  await expectOpen('Brisbane');
+  expect(capsuleOf(screenOf('Brisbane'), 'Category')).toBe('Category');
+  expect(capsuleOf(screenOf('Brisbane'), 'Amount')).toBe('10 or more');
+  await openFilters('Brisbane');
+
+  // As stored, Big shopping still has Shopping; only as dropped does it equal the filter.
+  expect(savedFilters()).toEqual([['Big shopping', true]]);
+  expect(filtersButton(FILTER_SAVED)).toBeDefined();
+  expect(filtersButtonEnabled(FILTER_SAVED)).toBe(false);
+  expect(alerts.shown()).toEqual([]);
+});
