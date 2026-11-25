@@ -26,6 +26,8 @@ const NONE: ReceivedRequests = { requests: [] };
 
 interface Store {
   ledgers: Map<string, ReceivedRequests>;
+  /** Lists in progress per ledger, including overlapping lists on opening Members and after sync. */
+  listing: Map<string, number>;
   listeners: Set<() => void>;
 }
 const stores = new WeakMap<Database, Store>();
@@ -33,7 +35,7 @@ const stores = new WeakMap<Database, Store>();
 function storeOf(database: Database): Store {
   let store = stores.get(database);
   if (!store) {
-    store = { ledgers: new Map(), listeners: new Set() };
+    store = { ledgers: new Map(), listing: new Map(), listeners: new Set() };
     stores.set(database, store);
   }
   return store;
@@ -56,8 +58,13 @@ function hold(database: Database, groupId: string, next: ReceivedRequests) {
 export async function refreshReceivedRequests(
   database: Database,
   groupId: string,
+  source?: 'timer',
 ): Promise<void> {
-  if (held(database, groupId).processing) return;
+  const { listing } = storeOf(database);
+  const count = listing.get(groupId) ?? 0;
+  if (held(database, groupId).processing || (source === 'timer' && count > 0))
+    return;
+  listing.set(groupId, count + 1);
   let requests: ReceivedJoinRequest[];
   try {
     // A read-only copy lists none: nothing is sent for it (SYNC-302.1).
@@ -72,6 +79,10 @@ export async function refreshReceivedRequests(
         : [];
   } catch {
     return;
+  } finally {
+    const remaining = listing.get(groupId)! - 1;
+    if (remaining === 0) listing.delete(groupId);
+    else listing.set(groupId, remaining);
   }
   const now = held(database, groupId);
   // A request that started to be answered meanwhile is the one its row showed.

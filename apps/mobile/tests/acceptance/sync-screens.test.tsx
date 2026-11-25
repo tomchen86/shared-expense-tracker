@@ -265,8 +265,8 @@ describe('SYNC-88.1', () => {
   });
 });
 
-describe('SYNC-89.1', () => {
-  test('[SYNC-89.1] syncs each shared ledger once when the app starts, and no other group', async () => {
+describe('SYNC-89.2', () => {
+  test('[SYNC-89.2] syncs each shared ledger once when the app starts, and no other group', async () => {
     const app = await startSynced({ ...WITH_TOKYO, Osaka: [] }, [
       'Brisbane',
       'Tokyo',
@@ -282,7 +282,7 @@ describe('SYNC-89.1', () => {
     expect(eventRequests(from)).toHaveLength(2);
   });
 
-  test('[SYNC-89.1] syncs each shared ledger once when the app comes back from the background', async () => {
+  test('[SYNC-89.2] syncs each shared ledger once when the app comes back from the background', async () => {
     const app = await startSynced(WITH_TOKYO, ['Brisbane', 'Tokyo']);
     const brisbane = await groupId('Brisbane');
     const tokyo = await groupId('Tokyo');
@@ -296,7 +296,7 @@ describe('SYNC-89.1', () => {
     await expectRequests(from, [download(brisbane), download(tokyo)]);
   });
 
-  test("[SYNC-89.1] shows another phone's change after coming back to the app, with no restart", async () => {
+  test("[SYNC-89.2] shows another phone's change after coming back to the app, with no restart", async () => {
     await startSynced();
     const brisbane = await groupId('Brisbane');
     otherPhoneUploads(brisbane, await lunchCreated());
@@ -307,7 +307,7 @@ describe('SYNC-89.1', () => {
     await expectCards(['Lunch']);
   });
 
-  test('[SYNC-89.1] uploads a change saved offline when the app is next opened', async () => {
+  test('[SYNC-89.2] uploads a change saved offline when the app is next opened', async () => {
     await startSynced();
     const brisbane = await groupId('Brisbane');
     goOffline();
@@ -321,7 +321,7 @@ describe('SYNC-89.1', () => {
     expect(apiEventIds(brisbane)).toHaveLength(1);
   });
 
-  test('[SYNC-89.1] syncs an archived shared ledger too', async () => {
+  test('[SYNC-89.2] syncs an archived shared ledger too', async () => {
     const app = await startSynced();
     const brisbane = await groupId('Brisbane');
     await archiveGroup('Brisbane');
@@ -332,7 +332,7 @@ describe('SYNC-89.1', () => {
     await expectRequests(from, [download(brisbane)]);
   });
 
-  test('[SYNC-89.1] does not ask the API again while the app stays open', async () => {
+  test('[SYNC-89.2] does not ask the API again while the app stays open', async () => {
     const app = await startSynced();
     const brisbane = await groupId('Brisbane');
     const from = mark();
@@ -348,7 +348,7 @@ describe('SYNC-89.1', () => {
     expect(fetchCalls()).toBe(calls);
   });
 
-  test('[SYNC-89.1] does not sync when the app is active again without having been in the background', async () => {
+  test('[SYNC-89.2] does not sync when the app is active again without having been in the background', async () => {
     const app = await startSynced();
     const brisbane = await groupId('Brisbane');
     const from = mark();
@@ -367,7 +367,7 @@ describe('SYNC-89.1', () => {
     await expectRequests(from, [download(brisbane), download(brisbane)]);
   });
 
-  test('[SYNC-89.1] sends nothing, and makes no device identity, on a phone with no shared ledger', async () => {
+  test('[SYNC-89.2] sends nothing, and makes no device identity, on a phone with no shared ledger', async () => {
     const app = await startSynced(WITH_TOKYO, []);
 
     const again = await restart(app);
