@@ -32,6 +32,7 @@ import {
   revokeInvitesOfThoseWhoLeft,
   rotateForGroup,
 } from './key-rotation';
+import { recordSyncEnd } from './notices';
 import { becomeReadOnlyCopy, type ReadOnlyCopyReason } from './read-only-copy';
 import {
   CONFIRMED_EVENT_IDS,
@@ -47,8 +48,8 @@ import {
   jsonIn,
   readGroupKey,
 } from './transport';
-import { countGroupUnapplied } from './unapplied';
 
+export { readSyncNotices } from './notices';
 export {
   GIVE_UP_AFTER_MS,
   encryptEvents,
@@ -68,11 +69,6 @@ const BODY_LIMIT = 1_048_576;
 const KEY_LENGTH = 32;
 /** Stands in for a key the phone lacks, where only a ciphertext's format version is asked. */
 const NO_KEY = new Uint8Array(KEY_LENGTH);
-/** The lines a shared ledger's screen shows under its title (SYNC-75.1, SYNC-83.1). */
-const UPDATE_NOTICE =
-  'This group has changes from a newer version of the app. Update the app to see them.';
-const FULL_NOTICE =
-  'This group has reached its storage limit. New changes stay on this phone until there is room.';
 
 const eventsPath = (groupId: string) => `/groups/${groupId}/events`;
 
@@ -249,7 +245,8 @@ async function openPage(
 /**
  * Stores a page in one transaction (SYNC-70.1, SYNC-84.1): the stamps the API holds for
  * unsent events of this phone, the check of the unsent events' stamps, the page's events
- * and the cursor. A page that does not start right after the cursor ends the sync (SYNC-71.3).
+ * and the cursor, together with the phone's time of receipt. A page that does not start
+ * right after the cursor ends the sync (SYNC-71.3).
  * The phone's key epoch follows the events it could open (SYNC-305.1).
  */
 async function storePage(
@@ -257,18 +254,19 @@ async function storePage(
   groupId: string,
   page: EventsPageResponse,
   { events, stamps, stopped, maxEpoch, openedEpoch }: OpenedPage,
+  receipt: { after: number; receivedAt: number },
 ): Promise<'next page' | 'downloaded' | 'end'> {
   // An empty page ends the download whatever it says: the cursor would not move.
   const ended = !page.more || page.events.length === 0;
+  // An empty page has no sequence of its own. It answers the cursor sent in its request.
+  const after = page.events.length
+    ? page.events[0].sequence - 1
+    : receipt.after;
   const stored = await database.transaction(async (tx) => {
     const ledger = await readLedger(tx, groupId);
     // Against the cursor the database holds now: an import can have taken it back while
     // the page was on its way.
-    if (
-      !ledger ||
-      (page.events.length > 0 && page.events[0].sequence !== ledger.cursor + 1)
-    )
-      return undefined;
+    if (!ledger || ledger.cursor !== after) return undefined;
     const moved = await takeUploadedStamps(
       tx,
       groupId,
@@ -295,12 +293,11 @@ async function storePage(
       stopped === 'version' ? 1 : stopped || !ended ? ledger.waitsForUpdate : 0;
     const waitChanged =
       waitsForUpdate !== ledger.waitsForUpdate || ledger.waitsForSnapshot === 1;
-    if (cursor !== ledger.cursor || waitChanged)
-      await tx.run(
-        `UPDATE sync_groups SET cursor = ?, waitsForUpdate = ?,
-         waitsForSnapshot = 0, snapshotNeedingUpdate = NULL WHERE groupId = ?`,
-        [cursor, waitsForUpdate, groupId],
-      );
+    await tx.run(
+      `UPDATE sync_groups SET lastSyncedAt = ?, cursor = ?, waitsForUpdate = ?,
+       waitsForSnapshot = 0, snapshotNeedingUpdate = NULL WHERE groupId = ?`,
+      [receipt.receivedAt, cursor, waitsForUpdate, groupId],
+    );
     await tx.run(
       `UPDATE sync_groups SET maxEpoch = MAX(maxEpoch, ?), epoch = MAX(epoch, ?)
        WHERE groupId = ? AND (maxEpoch < ? OR epoch < ?)`,
@@ -357,6 +354,7 @@ async function download(
       path: `${eventsPath(groupId)}?after=${ledger.cursor}`,
       giveUpAfterMs: GIVE_UP_AFTER_MS,
     });
+    const receivedAt = Date.now();
     end.noAnswer = answer.outcome === 'no-answer';
     // Nothing was sent: the phone holds a device ID whose seed is gone (SYNC-301.1).
     if (answer.outcome === 'authorization-lost') follow.copy = 'lapsed';
@@ -371,10 +369,11 @@ async function download(
         answer.status === SNAPSHOT_NEEDED_STATUS &&
         isSnapshotNeededResponse(body)
       ) {
-        await database.run(
-          'UPDATE sync_groups SET waitsForSnapshot = 1 WHERE groupId = ? AND waitsForSnapshot = 0',
+        const { changes } = await database.run(
+          'UPDATE sync_groups SET waitsForSnapshot = 1 WHERE groupId = ? AND readOnly IS NULL AND waitsForSnapshot = 0',
           [groupId],
         );
+        if (changes) notifyApplied(database, groupId);
         if (tookSnapshot) return;
         const snapshot = await fetchSnapshot(database, {
           ...target,
@@ -396,7 +395,10 @@ async function download(
     }
     if (answer.status !== 200 || !isEventsPageResponse(body)) return;
     const opened = await openPage(groupId, body, keys, ledger.maxEpoch);
-    const next = await storePage(database, groupId, body, opened);
+    const next = await storePage(database, groupId, body, opened, {
+      after: ledger.cursor,
+      receivedAt,
+    });
     if (next === 'end') return;
     if (opened.stopped === 'key')
       follow.keyMissing = { stoppedAt: opened.stoppedAt };
@@ -638,10 +640,9 @@ async function syncAndFollow(
     const follow: Follow = {};
     const end = await syncOnce(database, ledger, follow);
     first ??= end;
-    if (follow.copy) {
-      await becomeReadOnlyCopy(database, groupId, follow.copy);
-      break;
-    }
+    if (follow.copy) await becomeReadOnlyCopy(database, groupId, follow.copy);
+    await recordSyncEnd(database, groupId, end.noAnswer);
+    if (follow.copy) break;
     if (follow.keyMissing && !fetched) {
       fetched = true;
       const saved = await fetchGroupKeys(
@@ -718,23 +719,4 @@ export function syncGroup(
   };
   byGroup.set(groupId, turn);
   return turn.running;
-}
-
-/** The lines the screen of the group shows under its title about its sync, top to bottom. */
-export async function readSyncNotices(database: SqlExecutor, groupId: string) {
-  const [ledgers, unapplied] = await Promise.all([
-    database.all<{ waitsForUpdate: number; groupFull: number }>(
-      `SELECT waitsForUpdate OR (waitsForSnapshot AND snapshotNeedingUpdate IS NOT NULL) AS waitsForUpdate,
-              groupFull FROM sync_groups WHERE groupId = ?`,
-      [groupId],
-    ),
-    countGroupUnapplied(database, groupId),
-  ]);
-  return {
-    lines: ledgers.flatMap(({ waitsForUpdate, groupFull }) => [
-      ...(waitsForUpdate ? [UPDATE_NOTICE] : []),
-      ...(groupFull ? [FULL_NOTICE] : []),
-    ]),
-    unapplied,
-  };
 }

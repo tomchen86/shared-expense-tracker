@@ -66,6 +66,7 @@ module.exports = {
     // tables, the check of unsent stamps, and what starts a sync and shows its notices.
     // Measured with the tests against the API (`*-api.test.*`), which need Docker.
     './apps/mobile/src/sync/loop.ts': { branches: 100 },
+    './apps/mobile/src/sync/notices.ts': { branches: 100 },
     './apps/mobile/src/sync/transport.ts': { branches: 100 },
     './apps/mobile/src/sync/migrations.ts': { branches: 100 },
     './apps/mobile/src/sync/stamps.ts': { branches: 96.42 },
