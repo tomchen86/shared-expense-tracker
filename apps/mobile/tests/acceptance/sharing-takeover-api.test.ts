@@ -55,6 +55,7 @@ import {
   setClock,
   sync,
   takeKey,
+  trySync,
   titles,
   toHex,
   unsent,
@@ -571,6 +572,47 @@ describe('SHARING-194.2, two phones restored from one export file', () => {
 });
 
 describe('SHARING-321.1', () => {
+  test('[SHARING-321.1] sends nothing more under the old device ID, not even a request the old identity was about to send again for the clock', async () => {
+    const world = await danaIn();
+    const { dana, brisbane, ids } = world;
+    const again = await invitesAgain(world);
+    const old = await deviceId(dana);
+    // Ten minutes ahead: the API refuses Dana's next request for the clock (SHARING-35.1).
+    setClock(dana, LATER + 10 * MINUTE);
+    // Before her phone sends it again (SHARING-27.2), the seed is gone and a request is sent:
+    // the phone takes a new identity.
+    let taken: string | undefined;
+    whenAnswered('GET', async () => {
+      await loseSeed(dana);
+      expect(
+        await sendsTakeover(dana, again, ids.Dana, {
+          name: 'Dana',
+          copyGroupId: brisbane,
+        }),
+      ).toMatchObject({ kind: 'request' });
+      taken = await deviceId(dana);
+    });
+    const from = mark();
+
+    await trySync(dana);
+
+    expect(taken).toBeDefined();
+    expect(taken).not.toBe(old);
+    // Every request since, whichever identity signed it (sentBy reads the phone's current one).
+    const since = sent().slice(from);
+    // Under the old identity only the download the API refused for the clock.
+    expect(
+      since
+        .filter(({ deviceId: by }) => by === old)
+        .map(({ method, path, status }) => [
+          method,
+          path.split('?')[0],
+          status,
+        ]),
+    ).toEqual([['GET', `/groups/${brisbane}/events`, 401]]);
+    expect(since.some(({ deviceId: by }) => by === taken)).toBe(true);
+  });
+
   test('[SHARING-321.1] sends an unsent request again under a new identity once the seed is lost, and that identity ends as the member even when a member approves the old identity’s request first', async () => {
     const world = await danaIn();
     const { invite, taylor, brisbane, ids } = world;
