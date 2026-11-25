@@ -2168,7 +2168,7 @@ The mobile app SHALL 不把 `#` 後面的字串和名片金鑰放進任何請求
 
 #### Scenario: 建立、更新名片和撤回
 
-- **WHEN** Brisbane 有成員 Casey，建立邀請，把 Brisbane 改名為「Brissie」（SHARING-109.1），再撤回邀請
+- **WHEN** Brisbane 有成員 Casey，建立邀請，把 Brisbane 改名為「Brissie」（SHARING-109.2），再撤回邀請
 - **THEN** API 收到的每個請求裡都找不到 `#` 後面的字串和名片金鑰，也找不到「Brisbane」、「Brissie」和「Casey」
 
 ### Requirement: SHARING-97.1 邀請建立好了之後，存下它並寫下它的事件
@@ -2404,9 +2404,9 @@ IF 準備邀請時要建立邀請（SHARING-92.1、SHARING-101.1），而名片�
 - **WHEN** 存著有效的邀請的共同帳本，群組名稱和成員名稱後來長到名片會超過 65,536 bytes，按「Invite with Link」
 - **THEN** Invite 照常顯示存著的邀請（SHARING-100.1），不顯示這句話
 
-### Requirement: SHARING-109.1 群組名稱或成員變動時更新名片
+### Requirement: SHARING-109.2 群組名稱或成員變動時更新名片
 
-WHEN 群組名稱，或群組成員的名單、順序、名稱、有沒有使用者 ID，在這支手機上變了——在這支手機上改的，或套用收到的事件改的——而這支手機存著這個群組有效的邀請，the mobile app SHALL 用新的名片替 SHARING-100.1 會顯示的那個邀請再送一次建立邀請的請求（SHARING-78.1、SHARING-95.2），不必等使用者打開 Invite，也不顯示任何提示。IF 這個請求沒有得到邀請建立好了的回答，THEN 下次這些資料再變，或下次準備這個群組的邀請時再送。這些資料沒有變時不送；新的名片會超過 65,536 bytes（SHARING-108.1）時也不送，等它不超過了再送。
+WHEN 群組名稱，或群組成員的名單、順序、名稱、有沒有手機（SHARING-95.2 的 `hasDevice`），在這支手機上變了——在這支手機上改的，或套用收到的事件改的——而這支手機存著這個群組有效的邀請，the mobile app SHALL 用新的名片替 SHARING-100.1 會顯示的那個邀請再送一次建立邀請的請求（SHARING-78.1、SHARING-95.2），不必等使用者打開 Invite，也不顯示任何提示。IF 這個請求沒有得到邀請建立好了的回答，THEN 下次這些資料再變，或下次準備這個群組的邀請時再送。這些資料沒有變時不送；新的名片會超過 65,536 bytes（SHARING-108.1）時也不送，等它不超過了再送。
 
 #### Scenario: 改群組名稱
 
@@ -2448,6 +2448,11 @@ WHEN 群組名稱，或群組成員的名單、順序、名稱、有沒有使用
 - **WHEN** Brisbane 的邀請建立好了之後，把群組名稱改成 40,000 個字元，再把你的成員名稱改成 40,000 個字元，之後把成員名稱改回「Tay」
 - **THEN** 改群組名稱之後 API 收到新的名片；改成員名稱之後 API 沒有多收到建立邀請的請求，也沒有跳出提示框；改回「Tay」之後 API 收到新的名片，裡面是 40,000 個字元的群組名稱和「Tay」
 
+#### Scenario: 別支手機用你的使用者 ID 代表一位成員
+
+- **WHEN** 這支手機存著 Brisbane 有效的邀請；套用名冊紀錄 `phone-b` 的第一個事件，代表的是 Casey 和這支手機的使用者 ID，所以 Casey 沒有存著使用者 ID（sync 的 SYNC-251.2）
+- **THEN** 這支手機再送一次建立邀請的請求，新的名片裡 Casey 的 `hasDevice` 是 `true`
+
 ### Requirement: SHARING-110.1 (manual) 掃 QR code 和分享連結
 
 WHEN 使用者在真的手機上把邀請交給別人，the mobile app SHALL 讓系統的分享畫面送出完整的邀請連結，並讓別支手機的相機掃 Invite 上的 QR code 時打開同一條連結。
@@ -2459,7 +2464,7 @@ WHEN 使用者在真的手機上把邀請交給別人，the mobile app SHALL 讓
 
 ### Requirement: SHARING-111.1 邀請的請求等不到回應時在 60 秒後放棄
 
-IF 準備邀請、撤回邀請或更新名片時送出的一個請求——註冊這支手機的請求也算——送出 60 秒之後還沒有收完回應，THEN the mobile app SHALL 放棄這個請求，把它當成沒有得到回應：準備邀請照 SHARING-104.1 和 SHARING-105.1，撤回照 SHARING-103.1，更新名片照 SHARING-109.1。放棄之後才到的回應不算數：不存邀請，不寫事件，Invite 顯示的也不變。這支手機之後送的請求不等被放棄的那一個。每個送出的請求各自算 60 秒：API 要求等待的時間（SHARING-28.1）不算在內，等過之後或校正時鐘之後再送的那一次重新算。
+IF 準備邀請、撤回邀請或更新名片時送出的一個請求——註冊這支手機的請求也算——送出 60 秒之後還沒有收完回應，THEN the mobile app SHALL 放棄這個請求，把它當成沒有得到回應：準備邀請照 SHARING-104.1 和 SHARING-105.1，撤回照 SHARING-103.1，更新名片照 SHARING-109.2。放棄之後才到的回應不算數：不存邀請，不寫事件，Invite 顯示的也不變。這支手機之後送的請求不等被放棄的那一個。每個送出的請求各自算 60 秒：API 要求等待的時間（SHARING-28.1）不算在內，等過之後或校正時鐘之後再送的那一次重新算。
 
 #### Scenario: 註冊一直沒有回應
 
@@ -3070,7 +3075,7 @@ WHEN 使用者在表單按「Send Request」，而它沒有被 SHARING-127.1、S
 
 ### Requirement: SHARING-135.2 申請的內容用從連結的字串導出的金鑰加密
 
-WHEN 送送出申請的請求，the mobile app SHALL 讓申請的內容是申請的明文用申請金鑰加密的密文（SHARING-1.1）：申請金鑰從連結的字串那 32 bytes 導出，用途是 `shared-expense/invite/request/v1`，不給 salt（SHARING-12.1）；nonce 是 `expo-crypto` 給的 24 bytes，每次加密都是新的；附加資料是 `shared-expense/invite/request/v1`、一個換行（`0x0A`）、連結的代號、一個換行和這支手機的裝置 ID，以 UTF-8 編碼。申請的明文是一個 JSON 物件（JavaScript 的 `JSON.stringify`，沒有多餘的空白，以 UTF-8 編碼），依序有四個欄位：`name` 是申請的名字；`memberId` 是選的成員的成員 ID，選「New Member」時是 `null`；`userId` 是你的使用者 ID；`boxKey` 是 box 私鑰的公開金鑰（SHARING-7.1、SHARING-136.1），寫成 64 個小寫十六進位字元；要接手的申請（SHARING-320.1）在這四個欄位之後多第五個欄位 `takeover`，值是 `true`，別的申請沒有這個欄位。JSON 物件後面 SHALL 補上空格（`0x20`），補到明文的 bytes 數是 256 的倍數，已經是 256 的倍數就不補：這樣 API 從密文的長度只看得出明文有幾個 256 bytes。名字寫成 JSON 字串之後，也就是引號裡面的部分（`"` 和 `\` 各寫成兩個 bytes，控制字元寫成六個），在 71 bytes 以內時，看不出名字有多長，也看不出選的是新成員還是一位成員；在 55 bytes 以內時，也看不出是不是要接手。更長的名字，要接手的申請多的那 16 bytes 可能讓明文多一個 256 bytes：API 仍分不出那是名字長，還是要接手。
+WHEN 送送出申請的請求，the mobile app SHALL 讓申請的內容是申請的明文用申請金鑰加密的密文（SHARING-1.1）：申請金鑰從連結的字串那 32 bytes 導出，用途是 `shared-expense/invite/request/v1`，不給 salt（SHARING-12.1）；nonce 是 `expo-crypto` 給的 24 bytes，每次加密都是新的；附加資料是 `shared-expense/invite/request/v1`、一個換行（`0x0A`）、連結的代號、一個換行和這支手機的裝置 ID，以 UTF-8 編碼。申請的明文是一個 JSON 物件（JavaScript 的 `JSON.stringify`，沒有多餘的空白，以 UTF-8 編碼），依序有四個欄位：`name` 是申請的名字；`memberId` 是選的成員的成員 ID，選「New Member」時是 `null`；`userId` 是你的使用者 ID；`boxKey` 是 box 私鑰的公開金鑰（SHARING-7.1、SHARING-136.1），寫成 64 個小寫十六進位字元；要接手的申請（SHARING-320.1）在這四個欄位之後多第五個欄位 `takeover`，值是 `true`，別的申請沒有這個欄位。JSON 物件後面 SHALL 補上空格（`0x20`），補到明文的 bytes 數是 256 的倍數，已經是 256 的倍數就不補：這樣 API 從密文的長度只看得出明文有幾個 256 bytes。下面說的名字的長度，是 `JSON.stringify` 把名字寫成字串之後引號裡面的 bytes 數：`"` 和 `\` 各是兩個 bytes，換行這一類有簡寫的控制字元也是兩個，其他的控制字元是六個，別的字元是它的 UTF-8。不是要接手的申請，名字在 71 bytes 以內時明文都是 256 bytes，看不出名字有多長，也看不出選的是新成員還是一位成員。要接手的申請多 16 bytes：名字在 55 bytes 以內時，它的明文也是 256 bytes，API 看不出它要接手；名字是 56 到 71 bytes 時，它的明文是 512 bytes，別的申請要名字超過 71 bytes 才這麼長，所以 API 只知道這個申請要接手，或名字很長。
 
 #### Scenario: 當新成員
 
@@ -3986,7 +3991,7 @@ The mobile app SHALL 不把收到的申請寫進本機資料：申請的名字�
 
 ### Requirement: SHARING-194.2 不能同意的申請
 
-WHILE 收到的申請是下面任何一種，the mobile app SHALL 不讓它被同意：它的選單沒有「Approve」，內容是那個原因的那一句（GROUPS-132.2），照本機資料現在的樣子判斷，依序看最前面符合的。選的成員不是這個共同帳本的成員，例如被移出了：「The member this request chose is no longer in this group. This request can't be approved.」。選的成員是你自己，要接手的申請也一樣：「You're already in this group as <成員名稱>. This request can't be approved.」。不是要接手的申請，而選的成員已經有手機，也就是存著使用者 ID，或名冊裡有別支手機的紀錄代表他，不看那筆紀錄的使用者 ID（SYNC-251.2，和名片的 `hasDevice` 同一個定義，SHARING-95.2）：「<成員名稱> has already joined from another phone. This request can't be approved.」。要接手的申請，而名冊裡沒有別支手機的紀錄代表選的成員（SYNC-251.2，不看那筆紀錄的使用者 ID）：「<成員名稱> hasn't joined from a phone, so there is nothing to take over. This request can't be approved.」。要當新成員，而共同帳本已經有 20 位以上的成員（GROUPS-105.1）：「A shared group can have up to 20 members. This request can't be approved.」。要當新成員，而申請的名字和一位成員同名（groups），有沒有手機的都算：「This group already has a member named <成員名稱>. This request can't be approved.」。要接手的申請，選的成員是別支手機代表的成員、又不是你自己時可以同意，同意它是接手（SHARING-322.1）。你自己的成員從建立群組或加入起就存著你的使用者 ID，名冊裡還沒有這支手機的紀錄時也一樣，所以選了一位有手機的成員、卻不是要接手的申請，在每一支成員手機上都不能同意；要接手你的申請，要別的成員的手機才能同意。同意的人不能替它改選，也不能把它改成接手或改成不是接手：申請的手機問結果時會發現，並請使用者重選（SHARING-212.2）。
+WHILE 收到的申請是下面任何一種，the mobile app SHALL 不讓它被同意：它的選單沒有「Approve」，內容是那個原因的那一句（GROUPS-132.2），照本機資料現在的樣子判斷，依序看最前面符合的。選的成員不是這個共同帳本的成員，例如被移出了：「The member this request chose is no longer in this group. This request can't be approved.」。選的成員是你自己，要接手的申請也一樣：「You're already in this group as <成員名稱>. This request can't be approved.」。不是要接手的申請，而選的成員已經有手機，也就是存著使用者 ID，或名冊裡有別支手機的紀錄代表他，不看那筆紀錄的使用者 ID（SYNC-251.2，和名片的 `hasDevice` 同一個定義，SHARING-95.2）：「<成員名稱> has already joined from another phone. This request can't be approved.」。要接手的申請，而名冊裡沒有別支手機的紀錄代表選的成員（SYNC-251.2，不看那筆紀錄的使用者 ID）：「<成員名稱> hasn't joined from a phone, so there is nothing to take over. This request can't be approved.」。要當新成員，而共同帳本已經有 20 位以上的成員（GROUPS-105.1）：「A shared group can have up to 20 members. This request can't be approved.」。要當新成員，而申請的名字和一位成員同名（groups），有沒有手機的都算：「This group already has a member named <成員名稱>. This request can't be approved.」。那個申請的邀請是這支手機要撤回、還沒有撤回成的，也就是它建立的時間戳記比名冊裡某一筆不代表任何人的紀錄的「代表」的時間戳記早（SHARING-284.1）：「This invite is no longer valid. Ask them to request again with a new link. This request can't be approved.」；離開的手機知道那條連結，那次離開之前送來的申請也不再算數，不管是不是要接手。要接手的申請，選的成員是別支手機代表的成員、又不是你自己，邀請也不是要撤回的，才可以同意，同意它是接手（SHARING-322.1）。你自己的成員從建立群組或加入起就存著你的使用者 ID，名冊裡還沒有這支手機的紀錄時也一樣，所以選了一位有手機的成員、卻不是要接手的申請，在每一支成員手機上都不能同意；要接手你的申請，要別的成員的手機才能同意。同意的人不能替它改選，也不能把它改成接手或改成不是接手：申請的手機問結果時會發現，並請使用者重選（SHARING-212.2）。
 
 #### Scenario: 選的成員已經有手機
 
@@ -4052,6 +4057,11 @@ WHILE 收到的申請是下面任何一種，the mobile app SHALL 不讓它被�
 
 - **WHEN** 新手機申請接手 Dana；之後這支手機下載到 Dana 的手機退出、Dana 被移出群組的事件，同步結束時撤回了那個邀請（SHARING-284.1）
 - **THEN** Members 沒有申請那一區：那個申請跟著邀請不在了（SHARING-190.2）
+
+#### Scenario: 邀請等著被撤回
+
+- **WHEN** 兩支新手機 N 和 X 都申請接手 Dana；這支手機同意了 N 的，接手好了，名冊裡 Dana 的舊手機不代表任何人；之後撤回那個邀請的請求一直沒有成功，X 的申請還列著，點它那一列
+- **THEN** 選單的內容是「This invite is no longer valid. Ask them to request again with a new link. This request can't be approved.」，按鈕只有「Decline」和「Cancel」；N 仍是代表 Dana 的手機
 
 ### Requirement: SHARING-195.3 按 Approve 時同步、上傳快照，再送同意
 
@@ -4156,7 +4166,7 @@ WHEN 送同意的請求，the mobile app SHALL 讓 `box` 是這樣裝的 box（S
 
 ### Requirement: SHARING-199.1 API 回答同意好了之後同步，新成員才進到本機資料
 
-WHEN API 回答同意好了，the mobile app SHALL 同步這個共同帳本一次，下載到自己剛才送出的事件並照常套用（SYNC-28.3），新成員和名冊紀錄是這時才存進本機資料的；再列出申請（SHARING-190.2）。之後 Members 列出新成員，有手機的成員顯示「Joined」（GROUPS-24.4），名片也照新的成員更新（SHARING-109.1）。
+WHEN API 回答同意好了，the mobile app SHALL 同步這個共同帳本一次，下載到自己剛才送出的事件並照常套用（SYNC-28.3），新成員和名冊紀錄是這時才存進本機資料的；再列出申請（SHARING-190.2）。之後 Members 列出新成員，有手機的成員顯示「Joined」（GROUPS-24.4），名片也照新的成員更新（SHARING-109.2）。
 
 #### Scenario: 同意 Dana 之後
 
@@ -5737,7 +5747,7 @@ IF 接手的請求的 `remove` 有一項不是這個群組的成員手機，或�
 
 ### Requirement: SHARING-302.1 接手的請求照同意和換鑰匙的請求一樣檢查
 
-IF 接手的請求有下面任何一種情況，THEN the API SHALL 拒絕，原因是那一種的，什麼都不改（SHARING-304.1）：申請的手機不是成員手機，`remove` 列出的手機仍是成員手機，鑰匙世代不變，請求到之前還在的申請還在。路徑裡的那支手機在這個群組沒有申請，或請求帶的 `request` 不是那個申請現在的內容的 SHA-256：沒有這個申請（SHARING-174.1）。`cursor` 比群組最新的序號小：沒有跟上（SHARING-176.1）。群組需要換鑰匙：需要換鑰匙，回應帶著群組現在的成員手機（SHARING-256.1），留下來的成員手機先替它換過（SHARING-275.1），才收接手。`epoch` 不是群組現在的鑰匙世代加 1：鑰匙世代，回應帶著群組現在的鑰匙世代（SHARING-252.1）。`snapshotId` 不是這個群組替申請的那支手機存著的完整快照的快照 ID，或那份快照涵蓋的序號比群組清到的序號小：沒有快照（SHARING-177.1）。請求帶的事件存下之後，群組存著的事件的大小會超過上限：群組滿了（SYNC-56.1）。接手不看群組有幾支成員手機（SHARING-178.1）：它至少移除一支，成員手機不會變多。
+IF 接手的請求有下面任何一種情況，THEN the API SHALL 拒絕，原因是那一種的，什麼都不改（SHARING-304.1）：群組的成員手機、鑰匙世代、事件和申請都和這個請求到之前一樣。路徑裡的那支手機在這個群組沒有申請，或請求帶的 `request` 不是那個申請現在的內容的 SHA-256：沒有這個申請（SHARING-174.1）。`cursor` 比群組最新的序號小：沒有跟上（SHARING-176.1）。群組需要換鑰匙：需要換鑰匙，回應帶著群組現在的成員手機（SHARING-256.1），留下來的成員手機先替它換過（SHARING-275.1），才收接手。`epoch` 不是群組現在的鑰匙世代加 1：鑰匙世代，回應帶著群組現在的鑰匙世代（SHARING-252.1）。`snapshotId` 不是這個群組替申請的那支手機存著的完整快照的快照 ID，或那份快照涵蓋的序號比群組清到的序號小：沒有快照（SHARING-177.1）。請求帶的事件存下之後，群組存著的事件的大小會超過上限：群組滿了（SYNC-56.1）。接手不看群組有幾支成員手機（SHARING-178.1）：它至少移除一支，成員手機不會變多。
 
 #### Scenario: 沒有這個申請
 
@@ -5834,7 +5844,7 @@ IF 接手的請求有不只一個會讓它被拒絕的問題，THEN the API SHAL
 
 ### Requirement: SHARING-305.1 被接手的手機對這個群組的請求都被拒絕，回應說它被接手了
 
-WHEN 接手的請求移除了一支手機（SHARING-300.1），the API SHALL 從那個 transaction 起拒絕它對這個群組的每個請求，原因是不是成員，狀態碼和內容和從來不是成員手機的手機得到的一模一樣（SHARING-257.1）：上傳、下載、快照的三個請求、建立和撤回邀請、列出、同意和拒絕申請、接手、換鑰匙、拿鑰匙和退出；並記著它是這個群組被接手的手機：它的上傳、下載（sync 的 SYNC-49.2）和退出（SHARING-254.1）這樣被拒絕時，回應另外帶著標頭 `x-replaced`，值是 `takeover`，手機就是從這三種請求得知自己不再是成員的（sync 的 SYNC-330.1）；它別的請求被這樣拒絕時不帶這個標頭，回應和別的不是成員手機的手機得到的一模一樣（SHARING-85.1、SHARING-180.1、sync 的 SYNC-110.1）。所以只有它自己，從它本來就知道的群組，多知道一件事：那個群組還在，而它是被接手的；群組被刪除之後標頭不再出現。API 記到這兩件事之一發生為止：那支手機又成為這個群組的成員手機（SHARING-173.2、SHARING-300.1），或這個群組被刪除（SHARING-255.1）；清除不刪它（SYNC-141.3），不管過了多久。被換鑰匙的請求移除的手機（SHARING-250.1）、退出的手機（SHARING-254.1）和從來不是成員手機的手機，得到的回應都不帶這個標頭，那三種請求也一樣；被接手的手機對別的群組的請求、和不是因為「不是成員」而得到的回應也不帶。它的裝置身分、它在別的群組的成員手機資格都不變；它仍可以讀邀請、送申請，被同意或接手別人之後又是這個群組的成員手機。
+WHEN 接手的請求移除了一支手機（SHARING-300.1），the API SHALL 從那個 transaction 起拒絕它對這個群組的每個請求，原因是不是成員，狀態碼和內容和從來不是成員手機的手機得到的一模一樣（SHARING-257.1）：上傳、下載、快照的三個請求、建立和撤回邀請、列出、同意和拒絕申請、接手、換鑰匙、拿鑰匙和退出；並記著它是這個群組被接手的手機：它的上傳和下載（sync 的 SYNC-49.2）這樣被拒絕時，回應另外帶著標頭 `x-replaced`，值是 `takeover`，手機就是從同步的這兩種請求得知自己不再是成員的（sync 的 SYNC-300.1、SYNC-330.1）；它別的請求被這樣拒絕時不帶這個標頭，退出也一樣，回應和別的不是成員手機的手機得到的一模一樣（SHARING-85.1、SHARING-180.1、SHARING-262.1、sync 的 SYNC-110.1）。所以只有它自己，從它本來就知道的群組，多知道一件事：那個群組還在，而它是被接手的；群組被刪除之後標頭不再出現。API 記到這兩件事之一發生為止：那支手機又成為這個群組的成員手機（SHARING-173.2、SHARING-300.1），或這個群組被刪除（SHARING-255.1）；清除不刪它（SYNC-141.3），不管過了多久。被換鑰匙的請求移除的手機（SHARING-250.1）、退出的手機（SHARING-254.1）和從來不是成員手機的手機，得到的回應都不帶這個標頭，上傳和下載也一樣；被接手的手機對別的群組的請求、和不是因為「不是成員」而得到的回應也不帶。它的裝置身分、它在別的群組的成員手機資格都不變；它仍可以讀邀請、送申請，被同意或接手別人之後又是這個群組的成員手機。
 
 #### Scenario: 被接手之後上傳和下載
 
@@ -5844,7 +5854,7 @@ WHEN 接手的請求移除了一支手機（SHARING-300.1），the API SHALL 從
 #### Scenario: 每個請求
 
 - **WHEN** 「Casey 接手 Dana」之後，Dana 的手機對 Brisbane 送：上傳、下載、問有沒有快照、上傳一塊快照、下載一塊快照、建立邀請、撤回邀請、列出申請、同意、拒絕、接手、換鑰匙、拿鑰匙和退出
-- **THEN** 十四個請求都被拒絕，原因是不是成員（403），內容都是 `{"error":"not-a-member"}`；上傳、下載和退出的回應有 `x-replaced: takeover`，其餘十一個沒有這個標頭；資料庫除了這些請求的紀錄都不變
+- **THEN** 十四個請求都被拒絕，原因是不是成員（403），內容都是 `{"error":"not-a-member"}`；上傳和下載的回應有 `x-replaced: takeover`，其餘十二個沒有這個標頭，退出也沒有；資料庫除了這些請求的紀錄都不變
 
 #### Scenario: 被移除和退出的手機沒有這個標頭
 
@@ -5911,7 +5921,7 @@ IF 簽名的請求打 `/groups/<群組 ID>/requests/<裝置 ID>/takeover` 而方
 
 ### Requirement: SHARING-308.1 同時到的接手和別的請求，結果和一個接一個到的一樣
 
-WHEN 同一個群組的接手的請求，和另一個接手、同意、拒絕、換鑰匙、退出或上傳的請求同時送到，the API SHALL 讓結果和它們一個接一個處理的某一種順序一樣：照同一個 cursor 送的兩個接手只有一個成功，另一個被拒絕，原因照 SHARING-304.1 的順序、看它排在後面時群組的樣子：送它的手機被成功的那一個移除了，是不是成員；送它的手機還是成員手機、兩個接手的是同一個申請，是沒有這個申請；送它的手機還是成員手機、兩個接手的是不同的申請，是沒有跟上，因為成功的那一個帶的事件讓群組最新的序號變大。同一個申請的接手和同意或拒絕只有一個成功，另一個被拒絕，原因是沒有這個申請。接手和換鑰匙的請求同時到時也只有一個成功：換鑰匙排在前面，接手被拒絕，原因是沒有跟上，因為換鑰匙帶的事件也讓序號變大；接手排在前面，換鑰匙被拒絕，原因照 SHARING-262.1 的順序，送它的手機被接手移除了是不是成員，否則是成員手機不一樣或鑰匙世代。被接手的手機同時上傳的事件，不是在接手之前存下、接手因此被拒絕、原因是沒有跟上，就是被拒絕、原因是不是成員；被接手的手機同時退出時，不是退出好了、接手被拒絕、原因是需要換鑰匙，就是接手好了、退出被拒絕、原因是不是成員。所以群組裡不會有被接手的手機在接手之後存下的事件，不會有兩支手機都接手了同一支，也不會有成員手機少了它那個鑰匙世代的 box 或交接。
+WHEN 同一個群組的接手的請求，和另一個接手、同意、拒絕、換鑰匙、退出或上傳的請求同時送到，the API SHALL 讓結果和它們一個接一個處理的某一種順序一樣：排在後面的那一個照它到的時候群組的樣子檢查，被拒絕的原因照 SHARING-304.1 的順序，換鑰匙和退出的照 SHARING-262.1 的。所以：兩個接手只有一個成功；另一個，送它的手機被成功的那一個移除了，是不是成員；送它的手機還是成員手機、兩個接手的是同一個申請，是沒有這個申請；兩個接手的是不同的申請、送它的手機還是成員手機，是沒有跟上，因為接手一定帶事件，群組最新的序號變大了。同一個申請的接手和同意或拒絕只有一個成功，另一個被拒絕，原因是沒有這個申請。接手和移除同一支手機的換鑰匙只有一個成功：接手排在前面，換鑰匙被拒絕，送它的手機被接手移除了是不是成員，否則是成員手機不一樣；換鑰匙排在前面，接手被拒絕，送它的手機被移除了是不是成員，否則換鑰匙帶了事件時是沒有跟上，沒有帶事件時（SHARING-261.1）是成員手機不一樣。被接手的手機同時上傳的事件，不是在接手之前存下、接手因此被拒絕、原因是沒有跟上，就是被拒絕、原因是不是成員；被接手的手機同時退出時，不是退出好了、接手被拒絕、原因是需要換鑰匙，就是接手好了、退出被拒絕、原因是不是成員。所以群組裡不會有被接手的手機在接手之後存下的事件，不會有兩支手機都接手了同一支，也不會有成員手機少了它那個鑰匙世代的 box 或交接。
 
 #### Scenario: 兩支成員手機同時讓兩支新手機接手同一支
 
@@ -5941,7 +5951,7 @@ WHEN 同一個群組的接手的請求，和另一個接手、同意、拒絕、
 #### Scenario: 被接手的手機同時送接手
 
 - **WHEN** 五個群組各有兩支成員手機和兩個申請，各有給申請的手機的完整快照；兩支成員手機用同一個 cursor 和 `epoch` 2，同時各送一個接手的請求，各接手一個申請，`remove` 都是對方
-- **THEN** 每個群組都剛好一個請求得到接手好了，另一個被拒絕，原因是不是成員，回應不帶 `x-replaced`（SHARING-305.1）；成員手機是成功的那一支和它接手的申請的手機
+- **THEN** 每個群組都剛好一個請求得到接手好了，另一個被拒絕，原因是不是成員，回應不帶 `x-replaced`（SHARING-305.1：只有上傳和下載帶）；成員手機是成功的那一支和它接手的申請的手機
 
 #### Scenario: 同一個申請的接手和拒絕同時
 
@@ -5952,6 +5962,11 @@ WHEN 同一個群組的接手的請求，和另一個接手、同意、拒絕、
 
 - **WHEN** 五個群組各有三支成員手機、一個申請和它的完整快照；一支成員手機送接手的請求，`remove` 是第三支，`epoch` 是 2；另一支同時送換鑰匙的請求，`remove` 也是第三支，`epoch` 是 2
 - **THEN** 每個群組的鑰匙世代都是 2，第三支都不是成員手機，都是這兩種之一：接手好了，換鑰匙被拒絕，原因是成員手機不一樣，申請的手機是成員手機；或換鑰匙好了，接手被拒絕，原因是沒有跟上，申請還在，申請的手機不是成員手機
+
+#### Scenario: 接手和不帶事件的換鑰匙同時
+
+- **WHEN** 同上，換鑰匙的請求不帶事件
+- **THEN** 每個群組都是這兩種之一：接手好了，換鑰匙被拒絕，原因是成員手機不一樣；或換鑰匙好了，接手被拒絕，原因是成員手機不一樣，回應的 `devices` 是留下來的那兩支，申請還在
 
 ### Requirement: SHARING-320.1 選有手機的成員是要接手，沒有別的手機能同意時不能送出
 
@@ -5989,7 +6004,7 @@ WHILE 表單選著一位有手機的成員，the mobile app SHALL 在「A member
 
 ### Requirement: SHARING-321.1 授權失效的手機送出申請時，先換一個新的裝置身分
 
-WHEN 使用者在表單按「Send Request」而它沒有被 SHARING-127.1、SHARING-128.1 或 SHARING-320.1 擋下，或替還沒送出的申請按「Try Again」，而這支手機授權失效（SHARING-29.1），the mobile app SHALL 先替這支手機換一個新的裝置身分，再照常繼續（SHARING-226.2、SHARING-134.2）：新的裝置 ID 和 seed 照 SHARING-20.1 產生和存放，seed 先存進 secure store；然後在同一個 SQLite transaction 裡，把這支手機上還不是唯讀副本的每個共同帳本記成唯讀副本，原因是授權失效（sync 的 SYNC-301.1、SYNC-302.1），刪掉本機資料存著的每個申請，正要再送的那一個除外，並把本機資料的裝置 ID 換成新的、把註冊好了的記號拿掉，時間差不變。那些申請屬於舊的裝置身分：這支手機問不到它們的結果，也取消不了，同意了還沒加入好的那些也打不開給舊身分的交接；transaction 存好之後，替它們存進 secure store 的群組鑰匙照 SHARING-282.1 的做法刪掉，刪不掉不影響換好的身分。API 上舊的裝置身分可能還是哪個群組的成員手機、還存著它的申請：那裡的成員照常移除它（SHARING-270.1）或同意別人接手它。換好之後這支手機有裝置身分，不再是授權失效：接著的請求先註冊（SHARING-22.1），用新的裝置 ID 和新的公開金鑰簽名，申請帶的 `boxKey` 也是從新的 seed 導出的（SHARING-136.1）。舊的裝置 ID 不再出現在這支手機送的任何請求裡；secure store 裡別的裝置 ID 的項目不動。唯讀副本、它們的原因和待上傳的事件都不因為換裝置身分而變（SYNC-302.1）；這支手機之後被同意加入時，匯入的快照照 SHARING-289.1 取代那個群組的副本。除了這兩個時候，授權失效的手機不換裝置身分：打開 app、打開邀請連結、匯入匯出檔，和別的功能要送請求時都不換（SHARING-29.1、SHARING-106.1）。IF seed 存不進 secure store，或那個 transaction 存不進去，THEN the mobile app SHALL 讓這支手機和之前一樣是授權失效，裝置 ID、共同帳本和申請都不變，已經存進 secure store 的新 seed 刪掉，照 SHARING-141.2 提示。替還沒送出的申請按「Try Again」時，舊的裝置身分之前送的那一次可能其實到了 API（SHARING-139.2）：再送的用新的裝置 ID，API 上就有兩個申請（SHARING-112.1），成員的手機兩列都列出來，名字和選的成員一樣，分不出哪一個是舊的。兩個都可以照常處理，最後代表那位成員的都是新的裝置身分：成員同意了舊的那一個時，加入的是沒有 seed 的舊身分，沒有手機能替它加入好；新的那一個這時選的是一位有手機的成員——要當新成員的則和他同名——所以不是要接手的不能同意（SHARING-194.2），申請的手機問結果時請使用者重選（SHARING-212.2），改選「<名稱>, Already joined」接手他；本來就要接手的，那次接手之後邀請被撤回（SHARING-284.1），申請的手機問結果時得知邀請不再有效，用新的邀請再申請接手。
+WHEN 使用者在表單按「Send Request」而它沒有被 SHARING-127.1、SHARING-128.1 或 SHARING-320.1 擋下，或替還沒送出的申請按「Try Again」，而這支手機授權失效（SHARING-29.1），the mobile app SHALL 先替這支手機換一個新的裝置身分，再照常繼續（SHARING-226.2、SHARING-134.2）：新的裝置 ID 和 seed 照 SHARING-20.1 產生和存放，seed 先存進 secure store；然後在同一個 SQLite transaction 裡，把這支手機上還不是唯讀副本的每個共同帳本記成唯讀副本，原因是授權失效（sync 的 SYNC-301.1、SYNC-302.1），刪掉本機資料存著的每個申請，正要再送的那一個除外，並把本機資料的裝置 ID 換成新的、把註冊好了的記號拿掉，時間差不變。那些申請屬於舊的裝置身分：這支手機問不到它們的結果，也取消不了，同意了還沒加入好的那些也打不開給舊身分的交接。那個 transaction 之前，先替要刪的每一個申請，照 SHARING-282.1 的做法刪掉 secure store 裡記在它的代號底下的東西——`join-keys.<代號>` 和它說的那些群組鑰匙——不管那個申請現在是哪一種；刪不掉不擋換身分。先刪鑰匙再刪申請，所以中途停下來時，留下的是少了鑰匙的舊申請，不是沒有申請指著的鑰匙：那些申請本來就做不完。API 上舊的裝置身分可能還是哪個群組的成員手機、還存著它的申請：那裡的成員照常移除它（SHARING-270.1）或同意別人接手它。換好之後這支手機有裝置身分，不再是授權失效：接著的請求先註冊（SHARING-22.1），用新的裝置 ID 和新的公開金鑰簽名，申請帶的 `boxKey` 也是從新的 seed 導出的（SHARING-136.1）。舊的裝置 ID 不再出現在這支手機送的任何請求裡；secure store 裡別的裝置 ID 的項目不動。唯讀副本、它們的原因和待上傳的事件都不因為換裝置身分而變（SYNC-302.1）；這支手機之後被同意加入時，匯入的快照照 SHARING-289.1 取代那個群組的副本。除了這兩個時候，授權失效的手機不換裝置身分：打開 app、打開邀請連結、匯入匯出檔，和別的功能要送請求時都不換（SHARING-29.1、SHARING-106.1）。IF seed 存不進 secure store，或那個 transaction 存不進去，THEN the mobile app SHALL 讓這支手機和之前一樣是授權失效，裝置 ID、共同帳本和申請都不變，已經存進 secure store 的新 seed 刪掉，照 SHARING-141.2 提示。替還沒送出的申請按「Try Again」時，舊的裝置身分之前送的那一次可能其實到了 API（SHARING-139.2）：再送的用新的裝置 ID，API 上就有兩個申請（SHARING-112.1），成員的手機兩列都列出來，名字和選的成員一樣，分不出哪一個是舊的。兩個都可以照常處理，最後代表那位成員的都是新的裝置身分：成員同意了舊的那一個時，加入的是舊身分：這支手機沒有它的 seed，不能替它加入好（匯出檔來自的那支手機還在、還有 seed 的話，是那支手機加入）；新的那一個這時選的是一位有手機的成員——要當新成員的則和他同名——所以不是要接手的不能同意（SHARING-194.2），申請的手機問結果時請使用者重選（SHARING-212.2），改選「<名稱>, Already joined」接手他；本來就要接手的，那次接手之後另一個申請不能再同意（SHARING-194.2：它的邀請等著被撤回），邀請撤回之後（SHARING-284.1）申請的手機問結果時得知邀請不再有效，用新的邀請再申請接手。所以兩個都要接手時，成員先同意哪一個，就是哪一個裝置身分代表那位成員，另一個不會再把它換掉。
 
 #### Scenario: 匯入舊手機的匯出檔之後申請
 
@@ -6023,7 +6038,7 @@ WHEN 使用者在表單按「Send Request」而它沒有被 SHARING-127.1、SHAR
 
 #### Scenario: 同意了還沒加入好的舊申請
 
-- **WHEN** 這支手機的 secure store 沒有了 seed；本機資料存著代號 B 的申請，是同意了還沒加入好的，secure store 裡有替它存的 Tokyo 鑰匙世代 1 的群組鑰匙和 `join-keys.<代號 B>`；它打開 Brisbane 的連結，按「Send Request」
+- **WHEN** 這支手機的 secure store 沒有了 seed；本機資料存著代號 B 的申請，secure store 裡有 `join-keys.<代號 B>` 和它說的 Tokyo 鑰匙世代 1 的群組鑰匙，是同意了的申請加入到一半留下的（SHARING-217.2）；它打開 Brisbane 的連結，按「Send Request」
 - **THEN** 本機資料只有 Brisbane 的申請；secure store 裡沒有 Tokyo 的群組鑰匙，也沒有 `join-keys.<代號 B>`；從按下去起，API 沒有收到代號 B 的任何請求
 
 #### Scenario: 存不進去時不留下新的 seed
@@ -6034,7 +6049,12 @@ WHEN 使用者在表單按「Send Request」而它沒有被 SHARING-127.1、SHAR
 #### Scenario: 舊的身分送的那一次其實到了
 
 - **WHEN** 一支手機申請當沒有手機的 Casey，API 收下了，回應沒有送到手機，所以申請仍是還沒送出的；之後它的 secure store 沒有了 seed；它替那個申請按「Try Again」。Taylor 的手機列出申請，同意舊裝置 ID 的那一個；新的那一個的手機問結果，使用者改選「Casey, Already joined」再送；Taylor 的手機同意它
-- **THEN** Taylor 的手機先列出兩個申請，名字和選的成員都一樣，裝置 ID 不同；同意舊的那一個之後，新的那一個的選單的內容是「Casey has already joined from another phone. This request can't be approved.」；最後那次同意是接手：`remove` 是舊的裝置 ID，Brisbane 的成員手機是 Taylor 的手機和新的裝置 ID，這支手機加入好了，它是 Casey，有 Brisbane 現在的鑰匙世代的群組鑰匙
+- **THEN** Taylor 的手機先列出兩個申請，名字和選的成員都一樣，裝置 ID 不同；同意舊的那一個之後，新的那一個的選單的內容是「Casey has already joined from another phone. This request can't be approved.」；最後那次同意是接手：`remove` 是舊的裝置 ID，Brisbane 的成員手機是原本的那幾支和新的裝置 ID，沒有舊的裝置 ID；這支手機加入好了，它是 Casey，它存著的 Brisbane 現在的鑰匙世代的群組鑰匙和 Taylor 的手機的一樣
+
+#### Scenario: 兩個都要接手，先同意新的那一個
+
+- **WHEN** 舊的裝置身分 X 要接手 Dana 的申請其實到了 API；這支手機沒有了 seed，按「Try Again」，新的裝置身分 N 也送出要接手 Dana 的申請；Taylor 的手機同意 N 的，之後它撤回那個邀請的請求沒有成功，X 的申請還列著，再同意 X 的
+- **THEN** N 的接手好了；X 的不能同意，沒有送出接手的請求；代表 Dana 的仍是 N
 
 ### Requirement: SHARING-322.1 按 Approve 同意要接手的申請時，備好接手的請求再送出
 
@@ -6125,7 +6145,7 @@ WHEN 備接手的請求，the mobile app SHALL 用 `expo-crypto` 給的 32 bytes
 
 ### Requirement: SHARING-325.1 API 回答接手好了之後存下新的群組鑰匙，再同步
 
-WHEN API 回答接手好了，the mobile app SHALL 照 SYNC-94.1 替這個共同帳本存下新的群組鑰匙，鑰匙世代是回應的 `epoch`，再同步這個共同帳本一次：下載到自己剛才送出的事件並照常套用（SYNC-28.3），名冊是這時才改進本機資料的；再列出申請（SHARING-190.2）。之後選的成員仍是群組的成員，不是前成員，Members 照常列出他和「Joined」（GROUPS-24.4），他的名稱、付款和分攤都不變（GROUPS-66.1）；名冊裡代表他的是申請的手機，要離開的手機不代表任何人；比這次接手早的邀請被撤回（SHARING-284.1），名片照常更新（SHARING-109.1）。IF 新的群組鑰匙存不進 secure store，THEN the mobile app SHALL 照常同步：它用給自己的那個 box 拿回這把鑰匙（SHARING-278.1）。
+WHEN API 回答接手好了，the mobile app SHALL 照 SYNC-94.1 替這個共同帳本存下新的群組鑰匙，鑰匙世代是回應的 `epoch`，再同步這個共同帳本一次：下載到自己剛才送出的事件並照常套用（SYNC-28.3），名冊是這時才改進本機資料的；再列出申請（SHARING-190.2）。之後選的成員仍是群組的成員，不是前成員，Members 照常列出他，他那一列有沒有「Joined」照 GROUPS-24.4：有，除非申請的手機的使用者 ID 和這支手機的一樣（sync 的 SYNC-251.2），他的名稱、付款和分攤都不變（GROUPS-66.1）；名冊裡代表他的是申請的手機，要離開的手機不代表任何人；比這次接手早的邀請被撤回（SHARING-284.1），名片照常更新（SHARING-109.2）。IF 新的群組鑰匙存不進 secure store，THEN the mobile app SHALL 照常同步：它用給自己的那個 box 拿回這把鑰匙（SHARING-278.1）。
 
 #### Scenario: 接手好了之後
 
@@ -6218,7 +6238,7 @@ IF 接手沒有做完，THEN the mobile app SHALL 不因此改本機資料，收
 
 ### Requirement: SHARING-327.1 接手的鑰匙和成員只以密文離開手機
 
-The mobile app SHALL 不把新的群組鑰匙、用來算 salt 的上一把群組鑰匙和那個 salt、選的成員的成員 ID 和名稱、申請的名字、申請的使用者 ID 和 box 公開金鑰、邀請的字串、申請金鑰和交接的 salt 以明文放進任何請求：網址、簽名的欄位和內容裡都沒有，不論是原始的 bytes、十六進位還是 Base64。API 只從路徑、`remove` 和 `boxes` 得知哪一支手機加入、哪些離開、哪些留下；一個要接手的申請，名字不長時密文和別的申請一樣長，名字長時 API 也分不出多出來的長度是名字還是要接手（SHARING-135.2）。
+The mobile app SHALL 不把新的群組鑰匙、用來算 salt 的上一把群組鑰匙和那個 salt、選的成員的成員 ID 和名稱、申請的名字、申請的使用者 ID 和 box 公開金鑰、邀請的字串、申請金鑰和交接的 salt 以明文放進任何請求：網址、簽名的欄位和內容裡都沒有，不論是原始的 bytes、十六進位還是 Base64。API 只從路徑、`remove` 和 `boxes` 得知哪一支手機加入、哪些離開、哪些留下；一個要接手的申請，名字寫成 JSON 之後在 55 bytes 以內時，密文和別的申請一樣長；更長時 API 從長度只知道它要接手或名字很長（SHARING-135.2）。
 
 #### Scenario: 申請接手和同意接手
 

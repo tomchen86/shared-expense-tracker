@@ -38,6 +38,7 @@ import {
   keyEntry,
   keyOf,
   ledgerOf,
+  loseAnswerOn,
   loseAnswerTo,
   loseSeed,
   mark,
@@ -563,7 +564,7 @@ describe('SHARING-321.1', () => {
     };
     const userId = await userIdOf(phone);
     // The API takes the request; its answer never reaches the phone.
-    loseAnswerTo('PUT');
+    loseAnswerOn('PUT', '/invites/');
     expect(
       await on(phone, () =>
         phone.sharing.sendJoinRequest(
@@ -635,12 +636,62 @@ describe('SHARING-321.1', () => {
     const [takeover] = await takeoversBy(taylor, from);
     expect(takeover.remove).toEqual([X]);
     expect(await isMemberDevice(brisbane, X)).toBe(false);
-    expect(await isMemberDevice(brisbane, N)).toBe(true);
+    for (const member of [world.A, world.D, N]) {
+      expect(await isMemberDevice(brisbane, member)).toBe(true);
+    }
     expect(await ask(phone, invite)).toMatchObject({ outcome: 'joined' });
-    expect(secureStoreEntry(phone, keyEntry(brisbane, 2))).toBeDefined();
+    expect(secureStoreEntry(phone, keyEntry(brisbane, 2))?.value).toBe(
+      secureStoreEntry(taylor, keyEntry(brisbane, 2))!.value,
+    );
     expect(
       (await membersOn(phone)).find(({ name }) => name === 'Casey'),
     ).toMatchObject({ id: ids.Casey, userId });
+  });
+});
+
+describe('SHARING-321.1 and SHARING-194.2, two requests to take the same member over', () => {
+  test('[SHARING-321.1] [SHARING-194.2] keeps the identity a member approved first: the request of the other, under an invite that is due to be revoked, cannot be approved', async () => {
+    const world = await danaIn();
+    const { invite, taylor, brisbane, ids, D } = world;
+    const phone = await phoneOf('Dana K.', invite);
+    setClock(phone, LATER);
+    const userId = await userIdOf(phone);
+    loseAnswerOn('PUT', '/invites/');
+    expect(await sendsTakeover(phone, invite, ids.Dana)).toMatchObject({
+      kind: 'request',
+      request: { sent: 0 },
+    });
+    const X = await deviceId(phone);
+    expect(await requestOnApi(invite.code, X)).toBeDefined();
+    await loseSeed(phone);
+    const unsentRequest = await storedRequest(phone, invite.code);
+    expect(
+      await on(phone, () =>
+        phone.sharing.sendJoinRequest(
+          phone.database,
+          unsentRequest,
+          userId,
+          false,
+          () => undefined,
+        ),
+      ),
+    ).toMatchObject({ kind: 'request', request: { sent: 1 } });
+    const N = await deviceId(phone);
+    expect(N).not.toBe(X);
+    // Taylor's phone cannot revoke the invite for now.
+    for (let times = 0; times < 8; times += 1) answerNext('DELETE', 500, {});
+    const from = mark();
+
+    expect(await approve(invite, await listedFor(invite, N))).toEqual(APPROVED);
+    expect(await isMemberDevice(brisbane, D)).toBe(false);
+    const old = await listedFor(invite, X);
+    expect(await approve(invite, old)).toMatchObject({
+      outcome: 'cannot-approve',
+    });
+
+    expect(await takeoversBy(taylor, from)).toHaveLength(1);
+    expect(await isMemberDevice(brisbane, N)).toBe(true);
+    expect(await isMemberDevice(brisbane, X)).toBe(false);
   });
 });
 
@@ -852,13 +903,37 @@ describe('SHARING-323.1', () => {
     const [takeover] = await takeoversBy(taylor, from);
     expect(takeover.epoch).toBe(3);
     const [entry] = eventsOf(takeover, world, keyOf(taylor, brisbane, 3));
+    // The event with which Taylor's phone wrote, under key epoch 2, that Evan's phone represents nobody.
+    const left = (await storedEvents(brisbane))
+      .filter(({ epoch }) => epoch === 2)
+      .map(({ eventId, deviceId: by, content }) =>
+        opened(
+          keyOf(taylor, brisbane, 2),
+          { groupId: brisbane, eventId, deviceId: by, epoch: 2 },
+          content,
+        ),
+      )
+      .map(
+        (plaintext) =>
+          JSON.parse(Buffer.from(plaintext!).toString('utf8')) as {
+            type: string;
+            id: string;
+            stamp: unknown;
+            units: Record<string, { value: unknown }>;
+          },
+      )
+      .find(
+        ({ type, id, units }) =>
+          type === 'device' && id === E && units.member?.value === null,
+      )!;
+    expect(left).toBeDefined();
     expect(entry).toMatchObject({
       type: 'device',
       id: E,
       units: {
         member: {
           value: { memberId: ids.Dana },
-          base: expect.anything(),
+          base: left.stamp,
         },
       },
     });
@@ -1201,8 +1276,65 @@ describe('SHARING-326.1', () => {
     const [first, second] = takeovers;
     expect(second.snapshotId).not.toBe(first.snapshotId);
     expect({ ...second, snapshotId: first.snapshotId }).toEqual(first);
+    // Between the two: a download, to look again, and then the chunks of the other snapshot.
+    const all = await lines(taylor, from);
+    const posts = all.flatMap((line, at) =>
+      line.startsWith('POST ') && line.endsWith('/takeover') ? [at] : [],
+    );
+    const between = all.slice(posts[0] + 1, posts[1]);
+    const download = between.findIndex(
+      (line) => line.startsWith('GET ') && line.endsWith('/events'),
+    );
+    const chunk = between.findIndex(
+      (line) => line.startsWith('PUT ') && line.includes('/snapshots/'),
+    );
+    expect(download).toBeGreaterThanOrEqual(0);
+    expect(chunk).toBeGreaterThan(download);
     expect(await isMemberDevice(brisbane, D)).toBe(false);
     expect(await isMemberDevice(brisbane, N)).toBe(true);
+  });
+
+  test('[SHARING-326.1] uploads no other snapshot and sends no takeover again when the phones that stay changed before the API said it holds no snapshot', async () => {
+    const world = await danaIn();
+    const { invite, taylor, dana, brisbane, D, ids } = world;
+    const evan = await phoneOf('Evan', invite);
+    const E = await asks(evan, invite, { memberId: ids.Casey });
+    const asked = await newPhoneAsks(world);
+    const from = mark();
+    // While Taylor's phone uploads the snapshot, Dana's phone approves Evan's as Casey.
+    whenAnswered('PUT', async () => {
+      await sync(dana);
+      const evans = (
+        await on(dana, () =>
+          dana.sharing.listReceivedJoinRequests(dana.database, brisbane),
+        )
+      ).find(({ deviceId: by }) => by === E)!;
+      expect(
+        await on(dana, () =>
+          dana.sharing.approveJoinRequest(dana.database, brisbane, evans),
+        ),
+      ).toEqual(APPROVED);
+      answerNext('POST', 404, { error: 'no-snapshot' });
+    });
+
+    expect(await approve(invite, asked.request)).toMatchObject({
+      outcome: 'failed',
+    });
+
+    expect(await takeoversBy(taylor, from)).toHaveLength(1);
+    const all = await lines(taylor, from);
+    const post = all.findIndex(
+      (line) => line.startsWith('POST ') && line.endsWith('/takeover'),
+    );
+    expect(
+      all
+        .slice(post + 1)
+        .filter(
+          (line) => line.startsWith('PUT ') && line.includes('/snapshots/'),
+        ),
+    ).toEqual([]);
+    expect(await isMemberDevice(brisbane, D)).toBe(true);
+    expect(await isMemberDevice(brisbane, asked.N)).toBe(false);
   });
 
   test('[SHARING-326.1] gives up when the API says a second time that it holds no snapshot', async () => {
@@ -1278,35 +1410,60 @@ describe('SHARING-326.1', () => {
 });
 
 describe('SHARING-327.1', () => {
+  /** Whether a request holds these bytes: as they are in its body, or written in hexadecimal or Base64 anywhere in it. */
+  const holdsBytes = (request: Sent, bytes: Uint8Array) => {
+    const buffer = Buffer.from(bytes);
+    return (
+      Buffer.from(request.body).includes(buffer) ||
+      [
+        buffer.toString('hex'),
+        buffer.toString('base64').replace(/=+$/, ''),
+        buffer.toString('base64url'),
+      ].some((writing) => requestHolds(request, writing))
+    );
+  };
+
   test('[SHARING-327.1] puts neither the keys, the member nor the applicant in the clear in any request', async () => {
-    const world = await newPhoneAsks();
-    const { invite, taylor, brisbane, key, ids, newer, request } = world;
+    const invite = await taylorInvites();
+    const { taylor, brisbane, key } = invite;
+    setApiTime(LATER);
+    setClock(taylor, LATER);
+    // A name long enough that random bytes do not spell it.
+    const MEMBER = 'Danielle Montgomery';
+    await joins(invite, MEMBER);
+    const ids = await memberIds(taylor);
+    const newer = await phoneOf('Newer', invite);
+    setClock(newer, LATER);
+    expect(await sendsTakeover(newer, invite, ids[MEMBER])).toMatchObject({
+      kind: 'request',
+      request: { sent: 1 },
+    });
+    const request = await listedFor(invite, await deviceId(newer));
 
     expect(await approve(invite, request)).toEqual(APPROVED);
 
     const newKey = keyOf(taylor, brisbane, 2);
-    const secrets = [
+    const texts = [
       'Dana K.',
-      ids.Dana,
+      MEMBER,
+      ids[MEMBER],
       newer.identity.userId,
       await boxKeyOf(newer),
-      toHex(key),
-      toHex(newKey),
-      toHex(deriveKey({ secret: key, purpose: ROTATION })),
       invite.secret,
-      Buffer.from(invite.secret, 'base64url').toString('hex'),
-      toHex(
-        deriveKey({
-          secret: Buffer.from(invite.secret, 'base64url'),
-          purpose: REQUEST,
-        }),
-      ),
-      toHex(handoverSalt(invite.secret)),
     ];
-    for (const request of sent()) {
-      for (const secret of secrets) {
-        expect(requestHolds(request, secret)).toBe(false);
-      }
+    const secret = Buffer.from(invite.secret, 'base64url');
+    const binary = [
+      key,
+      newKey,
+      deriveKey({ secret: key, purpose: ROTATION }),
+      secret,
+      deriveKey({ secret, purpose: REQUEST }),
+      handoverSalt(invite.secret),
+      fromHex(await boxKeyOf(newer)),
+    ];
+    for (const each of sent()) {
+      for (const text of texts) expect(requestHolds(each, text)).toBe(false);
+      for (const bytes of binary) expect(holdsBytes(each, bytes)).toBe(false);
     }
   });
 });
@@ -1523,19 +1680,23 @@ describe('SYNC-330.1', () => {
     expect(await titles(dana)).toContain('Lunch');
   });
 
-  test('[SYNC-330.1] records it when the refusal of its leave says so', async () => {
-    const { dana, brisbane } = await danaIn();
+  test('[SYNC-330.1] records nothing of a takeover when its leave is refused, and records it for the refusal of a download', async () => {
+    const { dana, taylor, brisbane } = await danaIn();
     noAnswerTo('GET');
+    // The API puts no header on this refusal (SHARING-305.1); one that is there is not read.
     answerNext('POST', 403, NOT_A_MEMBER, replacedHeader('takeover'));
 
     await on(dana, () =>
       dana.sharing.leaveSharedGroup(dana.database, brisbane),
     );
 
-    expect(await copyOn(dana, brisbane)).toMatchObject({
-      reason: 'not-a-member',
-      takenOver: true,
-    });
+    const copy = await copyOn(dana, brisbane);
+    expect(copy).toMatchObject({ reason: 'not-a-member' });
+    expect(copy!.takenOver ?? false).toBe(false);
+    // The control, on the other phone: the refusal of a download.
+    answerNext('GET', 403, NOT_A_MEMBER, replacedHeader('takeover'));
+    await sync(taylor);
+    expect(await copyOn(taylor, brisbane)).toMatchObject({ takenOver: true });
   });
 
   test.each([

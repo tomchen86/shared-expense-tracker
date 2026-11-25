@@ -1060,7 +1060,7 @@ describe('SHARING-305.1', () => {
     }
   });
 
-  test('[SHARING-305.1] refuses every request of a replaced device about the group and changes nothing, with the header on its upload, its download and its leave request only', async () => {
+  test('[SHARING-305.1] refuses every request of a replaced device about the group and changes nothing, with the header on its upload and its download only', async () => {
     const { taylor, dana, P } = await danaReplaced();
     const S = snapshotOf(dana, dana);
     const json = (body: unknown) => JSON.stringify(body);
@@ -1105,8 +1105,8 @@ describe('SHARING-305.1', () => {
       leaveRequest(BRISBANE),
     ];
     expect(requests).toHaveLength(14);
-    // The requests from which a phone learns that it is out: upload, download, leave.
-    const told = [0, 1, 13];
+    // The requests of a sync, from which a phone learns that it is out: upload and download.
+    const told = [0, 1];
     const marks: (string | null)[] = [];
 
     for (const request of requests) {
@@ -1739,7 +1739,7 @@ describe('SHARING-308.1', () => {
         false,
       );
       expect(await stateOf(signers[won], groupId)).toEqual(wrongEpoch(2));
-      // The header is for its uploads, downloads and leave request, not for this one.
+      // The header is for its uploads and downloads, not for this request.
       const again = await callForHeaders(
         signers[1 - won],
         takeoverRequest(groupId, asked[1 - won].applicant, takeovers[1 - won]),
@@ -1803,60 +1803,71 @@ describe('SHARING-308.1', () => {
     }
   });
 
-  test('[SHARING-308.1] lets exactly one of a takeover and a rotation that remove the same device through', async () => {
-    const [first, second, third] = [
-      await registered(),
-      await registered(),
-      await registered(),
-    ];
-    const servers = [await ownServer(), await ownServer()];
+  test.each([
+    ['one event', 1],
+    ['no event', 0],
+  ])(
+    '[SHARING-308.1] lets exactly one of a takeover and a rotation with %s that remove the same device through',
+    async (_, events) => {
+      const [first, second, third] = [
+        await registered(),
+        await registered(),
+        await registered(),
+      ];
+      const servers = [await ownServer(), await ownServer()];
 
-    for (let round = 0; round < 5; round += 1) {
-      const { groupId, asked } = await groupWithRequests(
-        [first, second, third],
-        1,
-      );
-      const [{ applicant, content, snapshot }] = asked;
-      const takeover = takeoverOf(content, snapshot, {
-        remove: [third],
-        staying: [first, second],
-      });
-      const rotation = rotationOf([first, second], {
-        remove: [third.deviceId],
-      });
-
-      const [tookOver, rotated] = await Promise.all([
-        callOn(
-          servers[0],
-          first,
-          takeoverRequest(groupId, applicant, takeover),
-        ),
-        callOn(servers[1], second, rotationRequest(groupId, rotation)),
-      ]);
-
-      expect([tookOver.status, rotated.status].sort()).toEqual([200, 409]);
-      expect(await isMemberDevice(groupId, third)).toBe(false);
-      expect(await stateOf(first, groupId)).toEqual(wrongEpoch(2));
-      if (tookOver.status === 200) {
-        expectTakenOver(tookOver, applicant, takeover, [1]);
-        expect(rotated).toEqual({
-          status: 409,
-          body: otherDevices(first, second, applicant),
+      for (let round = 0; round < 5; round += 1) {
+        const { groupId, asked } = await groupWithRequests(
+          [first, second, third],
+          1,
+        );
+        const [{ applicant, content, snapshot }] = asked;
+        const takeover = takeoverOf(content, snapshot, {
+          remove: [third],
+          staying: [first, second],
         });
-        expect(await isMemberDevice(groupId, applicant)).toBe(true);
-        expect((await everyEvent(first, groupId)).map(({ id }) => id)).toEqual([
-          takeover.events[0].id,
+        const rotation = rotationOf([first, second], {
+          remove: [third.deviceId],
+          ...(events === 0 ? { events: [] } : {}),
+        });
+
+        const [tookOver, rotated] = await Promise.all([
+          callOn(
+            servers[0],
+            first,
+            takeoverRequest(groupId, applicant, takeover),
+          ),
+          callOn(servers[1], second, rotationRequest(groupId, rotation)),
         ]);
-      } else {
-        expectRotated(rotated, rotation, [1]);
-        expectTakeoverRefused(tookOver, BEHIND);
-        expect(await isMemberDevice(groupId, applicant)).toBe(false);
-        expect(await timesStored(content)).toBe(1);
-        expect((await everyEvent(first, groupId)).map(({ id }) => id)).toEqual([
-          rotation.events[0].id,
-        ]);
+
+        expect([tookOver.status, rotated.status].sort()).toEqual([200, 409]);
+        expect(await isMemberDevice(groupId, third)).toBe(false);
+        expect(await stateOf(first, groupId)).toEqual(wrongEpoch(2));
+        if (tookOver.status === 200) {
+          expectTakenOver(tookOver, applicant, takeover, [1]);
+          expect(rotated).toEqual({
+            status: 409,
+            body: otherDevices(first, second, applicant),
+          });
+          expect(await isMemberDevice(groupId, applicant)).toBe(true);
+          expect(
+            (await everyEvent(first, groupId)).map(({ id }) => id),
+          ).toEqual([takeover.events[0].id]);
+        } else {
+          expectRotated(rotated, rotation, events === 0 ? [] : [1]);
+          // With an event the takeover's cursor is behind; with none, its devices are not the group's.
+          expectTakeoverRefused(
+            tookOver,
+            events === 0 ? otherDevices(first, second) : BEHIND,
+          );
+          expect(await isMemberDevice(groupId, applicant)).toBe(false);
+          expect(await timesStored(content)).toBe(1);
+          expect(
+            (await everyEvent(first, groupId)).map(({ id }) => id),
+          ).toEqual(rotation.events.map(({ id }) => id));
+        }
+        aMinuteLater();
       }
-      aMinuteLater();
-    }
-  });
+    },
+  );
 });

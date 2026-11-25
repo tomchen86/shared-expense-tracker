@@ -3,7 +3,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { act } from '@testing-library/react-native';
 import { AppState, type AppStateStatus } from 'react-native';
 import type { SyncStamp } from '@shared-expense/domain';
-import { encrypt } from '@shared-expense/domain/crypto';
+import { decrypt, encrypt } from '@shared-expense/domain/crypto';
 import { readDeviceIdentity, sendApiRequest } from '../../src/sharing';
 import { shareGroup } from '../../src/sync';
 import { startWithGroups } from './ledger-group-expense-app';
@@ -511,6 +511,35 @@ export const newerEvent = (stamp = otherStamp(LATER)) => ({
 // Starting with shared ledgers
 
 /** The device ID of the phone's device identity. */
+/**
+ * What an event this phone sent holds, opened with the group key its secure store keeps
+ * for `epoch`; undefined while the store has no such key, or when the event does not open.
+ */
+export async function openedByThisPhone(
+  group: string,
+  epoch: number,
+  event: { id: string; content: string },
+): Promise<
+  | {
+      type: string;
+      id: string;
+      stamp: unknown;
+      units: Record<string, { value: unknown; base?: unknown }>;
+    }
+  | undefined
+> {
+  const key = await secureStore.getItemAsync(`group-key.${group}.${epoch}`);
+  if (!key) return undefined;
+  const result = decrypt({
+    key: new Uint8Array(Buffer.from(key, 'hex')),
+    ciphertext: new Uint8Array(Buffer.from(event.content, 'hex')),
+    associatedData: associatedData(group, event.id, await deviceId(), epoch),
+  });
+  return result.ok
+    ? (JSON.parse(Buffer.from(result.plaintext).toString('utf8')) as never)
+    : undefined;
+}
+
 export async function deviceId(): Promise<string> {
   const identity = await settled(readDeviceIdentity(appDatabase()));
   if (identity.status === 'none') throw new Error('No device identity yet');

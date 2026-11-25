@@ -66,6 +66,7 @@ export const DEVICES_FULL =
 const CANNOT = "This request can't be approved.";
 export const HAS_A_PHONE = (member: string) =>
   `${member} has already joined from another phone. ${CANNOT}`;
+export const INVITE_ENDING = `This invite is no longer valid. Ask them to request again with a new link. ${CANNOT}`;
 export const IS_YOU = (member: string) =>
   `You're already in this group as ${member}. ${CANNOT}`;
 export const NO_MEMBER = `The member this request chose is no longer in this group. ${CANNOT}`;

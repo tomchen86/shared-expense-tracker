@@ -100,6 +100,8 @@ type Act =
 interface Rule {
   method: string;
   act: Act;
+  /** Where the request's path starts; the event API's `/groups/` unless given. */
+  path?: string;
 }
 
 interface Draw {
@@ -325,10 +327,12 @@ async function fetchThroughTheTests(
   state.mostInFlight = Math.max(state.mostInFlight, state.inFlight);
   try {
     if (!state.online || url.origin !== apiUrl()) throw noNetwork();
-    // A rule is for a request of the event API, never for a registration.
-    const index = url.pathname.startsWith('/groups/')
-      ? state.rules.findIndex((rule) => rule.method === request.method)
-      : -1;
+    // A rule is for a request of the event API, never for a registration, unless it names another path.
+    const index = state.rules.findIndex(
+      (rule) =>
+        rule.method === request.method &&
+        url.pathname.startsWith(rule.path ?? '/groups/'),
+    );
     const act = index < 0 ? undefined : state.rules.splice(index, 1)[0].act;
     if (act?.kind === 'no-answer') throw noNetwork();
     if (act?.kind === 'answer') {
@@ -361,7 +365,7 @@ export function goOnline() {
   world().online = true;
 }
 
-type Method = 'GET' | 'POST' | 'PUT';
+type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 const rule = (method: Method, act: Act, times = 1) => {
   for (let count = 0; count < times; count += 1) {
@@ -393,6 +397,11 @@ export const answerNext = (
     body: typeof body === 'string' ? body : JSON.stringify(body),
     headers,
   });
+
+/** The API handles the next such request whose path starts with `path`, and its answer never reaches the phone. */
+export const loseAnswerOn = (method: Method, path: string) => {
+  world().rules.push({ method, act: { kind: 'lose-answer' }, path });
+};
 
 /** Once the API has answered the next such request, `hook` runs before the phone gets the answer. */
 export const whenAnswered = (method: Method, hook: () => Promise<void>) =>
