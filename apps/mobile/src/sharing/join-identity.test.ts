@@ -82,32 +82,47 @@ test('a successful renewal keeps the clock offset and unrelated seed and clears 
   );
 });
 
-test.each([second, manifest])(
-  'restores earlier deletions when %s cannot be deleted, before drawing a seed',
-  async (blocked) => {
-    const original = entries();
+test.each([
+  { blocked: second, deleted: [first] },
+  { blocked: manifest, deleted: [first, second] },
+])(
+  'keeps earlier deletions when $blocked cannot be deleted and retries from the manifest',
+  async ({ blocked, deleted }) => {
+    const remaining = entries();
+    for (const key of deleted) remaining.delete(key);
     const remove = SecureStore.deleteItemAsync;
-    jest
+    const failDelete = jest
       .spyOn(SecureStore, 'deleteItemAsync')
       .mockImplementation(async (key, options) => {
         if (key === blocked) throw new Error('Cannot delete');
         await remove(key, options);
       });
+    const write = jest.spyOn(SecureStore, 'setItemAsync');
 
     await expect(renewBeforeCopyConfirmation(db)).rejects.toThrow(
       'Cannot delete',
     );
 
-    expect(entries()).toEqual(original);
+    expect(entries()).toEqual(remaining);
+    expect(write).not.toHaveBeenCalled();
     expect(draws()).toEqual([]);
     expect(await db.all('SELECT code FROM join_requests')).toEqual([
       { code: 'pending' },
     ]);
+
+    failDelete.mockRestore();
+    await expect(renewBeforeCopyConfirmation(db)).resolves.toBe(true);
+    const [{ deviceId }] = await db.all<{ deviceId: string }>(
+      'SELECT deviceId FROM device_identity',
+    );
+    expect([...entries().keys()].sort()).toEqual(
+      [foreignSeed, `device-seed.${deviceId}`].sort(),
+    );
+    expect(await db.all('SELECT code FROM join_requests')).toEqual([]);
   },
 );
 
-test('a failed SQLite commit removes the saved seed and restores the pending keys, ledger, requests and identity', async () => {
-  const original = entries();
+test('a failed SQLite commit removes the new seed, keeps pending keys deleted and rolls back the ledger, requests and identity', async () => {
   // A deferred foreign key fails at COMMIT, after the ledger, requests and identity have changed.
   await db.exec(`CREATE TABLE commit_guard (
     deviceId TEXT REFERENCES groups(id) DEFERRABLE INITIALLY DEFERRED
@@ -129,7 +144,7 @@ test('a failed SQLite commit removes the saved seed and restores the pending key
   await expect(renewBeforeCopyConfirmation(db)).rejects.toThrow(/FOREIGN KEY/);
 
   expect(stagedSeed).toBeDefined();
-  expect(entries()).toEqual(original);
+  expect(entries()).toEqual(new Map([[foreignSeed, 'ef'.repeat(32)]]));
   expect(
     await db.all(
       'SELECT deviceId, registered, clockOffsetMs FROM device_identity',

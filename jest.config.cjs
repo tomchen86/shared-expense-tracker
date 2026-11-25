@@ -103,9 +103,9 @@ module.exports = {
     './apps/mobile/src/sharing/invites.ts': { branches: 94.73 },
     './apps/mobile/src/sharing/join-form.tsx': { branches: 92.85 },
     './apps/mobile/src/sharing/join-invite.ts': { branches: 100 },
-    './apps/mobile/src/sharing/join-requests.ts': { branches: 92.98 },
+    './apps/mobile/src/sharing/join-requests.ts': { branches: 93.33 },
     './apps/mobile/src/sharing/refresh-invite-card.ts': { branches: 96.77 },
-    './apps/mobile/src/sharing/use-join-group.ts': { branches: 88.94 },
+    './apps/mobile/src/sharing/use-join-group.ts': { branches: 89.84 },
     './apps/mobile/src/sync/invites.ts': { branches: 75 },
     // Admitting a phone (ADR-0039): the roster, the API's four requests about a join request,
     // and what the member's phone and the applicant's phone do with them. No acceptance test

@@ -26,8 +26,10 @@ export function InviteLinkSheet({ children }: { children: ReactNode }) {
             card={page.card}
             initialName={again ? again.name : name}
             preparing={page.preparing}
-            onSend={submit}
-            onCancel={again && (() => askToCancel(again))}
+            onSend={(name, memberId, takeover) =>
+              submit(page, name, memberId, takeover)
+            }
+            onCancel={again && (() => askToCancel(page.link, again))}
           />
         );
       }
@@ -103,7 +105,7 @@ export function InviteLinkSheet({ children }: { children: ReactNode }) {
             <InviteAction
               label="Cancel Request"
               destructive
-              onPress={() => askToCancel(page.request)}
+              onPress={() => askToCancel(page.link, page.request)}
             />
           </View>
         );

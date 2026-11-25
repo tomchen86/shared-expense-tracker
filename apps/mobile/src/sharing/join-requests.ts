@@ -212,30 +212,29 @@ async function replaceLapsedJoinDevice(
     [retryCode],
   );
   const codes = discarded.map(({ code }) => code);
+  await discardJoinKeysForIdentityChange(codes);
   let copies: { groupId: string; epoch: number }[] = [];
-  const device = await discardJoinKeysForIdentityChange(codes, () =>
-    createDevice((deviceId) =>
-      db.transaction(async (tx) => {
-        copies = await tx.all(
-          'SELECT groupId, epoch FROM sync_groups WHERE readOnly IS NULL',
-        );
-        await tx.run(
-          "UPDATE sync_groups SET readOnly = 'lapsed' WHERE readOnly IS NULL",
-        );
-        await tx.run(
-          'DELETE FROM join_requests WHERE code IS NULL OR code IN (SELECT value FROM json_each(?))',
-          [JSON.stringify(codes)],
-        );
-        // An import or a new request since the secure-store cleanup invalidates this change.
-        const saved = await tx.run(
-          `UPDATE device_identity SET deviceId = ?, registered = 0 WHERE deviceId = ?
+  const device = await createDevice((deviceId) =>
+    db.transaction(async (tx) => {
+      copies = await tx.all(
+        'SELECT groupId, epoch FROM sync_groups WHERE readOnly IS NULL',
+      );
+      await tx.run(
+        "UPDATE sync_groups SET readOnly = 'lapsed' WHERE readOnly IS NULL",
+      );
+      await tx.run(
+        'DELETE FROM join_requests WHERE code IS NULL OR code IN (SELECT value FROM json_each(?))',
+        [JSON.stringify(codes)],
+      );
+      // An import or a new request since the secure-store cleanup invalidates this change.
+      const saved = await tx.run(
+        `UPDATE device_identity SET deviceId = ?, registered = 0 WHERE deviceId = ?
          AND NOT EXISTS (SELECT 1 FROM join_requests WHERE code IS NOT ?)`,
-          [deviceId, previousId, retryCode],
-        );
-        if (!saved.changes)
-          throw new Error('The device or its join requests changed');
-      }),
-    ),
+        [deviceId, previousId, retryCode],
+      );
+      if (!saved.changes)
+        throw new Error('The device or its join requests changed');
+    }),
   );
   for (const { groupId, epoch } of copies) {
     await deleteGroupKeys(groupId, epoch);
