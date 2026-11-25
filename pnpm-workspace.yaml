@@ -14,4 +14,6 @@ enableGlobalVirtualStore: false
 
 patchedDependencies:
   '@testing-library/react-native@14.1.0': patches/@testing-library__react-native@14.1.0.patch
+  # Drop when Expo Router keeps the shared router bound to the newest mounted bridge on cleanup.
+  expo-router@58.0.30: patches/expo-router@58.0.30.patch
   react-native-screens@4.30.1: patches/react-native-screens@4.30.1.patch
