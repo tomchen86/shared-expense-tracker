@@ -51,12 +51,10 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
     locale,
   );
   const url = group?.shared ? apiUrl() : undefined;
-  const [pull, setPull] = useState<{ groupId: string }>();
+  const [pulling, setPulling] = useState<string>();
   function refresh(url: string) {
-    const pending = { groupId: id };
-    setPull(pending);
-    const done = () =>
-      setPull((current) => (current === pending ? undefined : current));
+    setPulling(id);
+    const done = () => setPulling(undefined);
     void syncGroup(database, { groupId: id, apiUrl: url }).then(done, done);
   }
   // Only an unarchived shared ledger has any (SHARING-190.2).
@@ -188,7 +186,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
           refreshControl={
             url ? (
               <RefreshControl
-                refreshing={pull?.groupId === id}
+                refreshing={pulling === id}
                 onRefresh={() => refresh(url)}
               />
             ) : undefined
