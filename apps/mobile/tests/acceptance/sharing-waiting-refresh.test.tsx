@@ -300,6 +300,53 @@ describe('SHARING-291.1', () => {
     expect(asked()).toHaveLength(before + 4);
   });
 
+  test("[SHARING-291.1] keeps to 3 seconds when the phone's clock is set 10 minutes ahead", async () => {
+    await waitingOpen();
+    await secondsPass(60);
+    const before = asked().length;
+    jest.setSystemTime(Date.now() + 10 * 60_000);
+
+    await secondsPass(3.5);
+
+    expect(asked()).toHaveLength(before + 1);
+
+    await secondsPass(3);
+
+    expect(asked()).toHaveLength(before + 2);
+  });
+
+  test('[SHARING-291.1] starts no timer with an answer that comes after Join Group was closed', async () => {
+    const before = await waitingOpen();
+    const answer = keepAnswersBack(isAsking);
+    await secondsPass(3.5);
+    expect(asked()).toHaveLength(before + 1);
+    await closeJoin();
+    await tapTab('Groups');
+
+    await answer();
+    await secondsPass(60);
+
+    expect(asked()).toHaveLength(before + 1);
+    expect(linesIn(requestCard('Brisbane')!)).toContain(WAITING_CARD);
+  });
+
+  test('[SHARING-291.1] joins on an approval that comes after Join Group was closed, and opens no screen', async () => {
+    const before = await waitingOpen();
+    memberApproves();
+    const answer = keepAnswersBack(isAsking);
+    await secondsPass(3.5);
+    expect(asked()).toHaveLength(before + 1);
+    await closeJoin();
+    await tapTab('Groups');
+
+    await answer();
+
+    await waitFor(() => expect(hasBrisbane()).toBe(true));
+    expect(isOpen(TITLE)).toBe(false);
+    expect(navigationBarTitles(tab('Groups'))).toEqual(['Groups']);
+    expect(requestCard('Brisbane')).toBeUndefined();
+  });
+
   test('[SHARING-291.1] does not ask while the request is being cancelled', async () => {
     await waitingOpen();
     keepAnswersBack(isCancelling);
