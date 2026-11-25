@@ -65,7 +65,12 @@ export function refreshInviteCard(
 export function watchInviteCards(database: Database) {
   const changed = (groupId: string) => refreshInviteCard(database, groupId);
   const local = subscribeToUnsentEvents((groupId, _position, type) => {
-    if (type === 'group' || type === 'member' || type === 'invite')
+    if (
+      type === 'group' ||
+      type === 'member' ||
+      type === 'invite' ||
+      type === 'device'
+    )
       changed(groupId);
   });
   const remote = subscribeToAppliedEvents(database, changed);

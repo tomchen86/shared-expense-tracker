@@ -11,7 +11,7 @@ const COPY_BANNERS: Record<ReadOnlyCopy['reason'], string> = {
     "This phone can't sync this group anymore. This copy is read-only and won't update.",
 };
 
-/** What a read-only copy's screen shows under its title: why it is one, what it never sent, and Delete Copy (GROUPS-155.1, GROUPS-157.1). */
+/** What a read-only copy's screen shows under its title: why it is one, what it never sent, and Delete Copy (GROUPS-155.2, GROUPS-157.1). */
 export function CopyBanner({
   copy,
   deleting,
@@ -25,7 +25,9 @@ export function CopyBanner({
   return (
     <GroupedSection style={styles.banner}>
       <Text style={{ color: colors.text, fontSize: 16 }}>
-        {COPY_BANNERS[copy.reason]}
+        {copy.takenOver
+          ? "Another phone took over your place in this group. This copy is read-only and won't update."
+          : COPY_BANNERS[copy.reason]}
       </Text>
       {copy.unsent > 0 && (
         <Text style={[styles.unsent, { color: colors.textMuted }]}>

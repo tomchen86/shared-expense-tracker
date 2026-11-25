@@ -70,7 +70,7 @@ import {
 // the phone that asked (docs/specs/sharing/spec.md, SHARING-190.2 to 229.1; ADR-0039).
 // Nothing here shows anything: the screens of `groups` and Join Group call these.
 
-/** A join request a member's phone listed and could read (SHARING-191.1). It is kept in memory only. */
+/** A join request a member's phone listed and could read (SHARING-191.2). It is kept in memory only. */
 export interface ReceivedJoinRequest {
   /** The code of the invite it was sent under. */
   code: string;
@@ -89,11 +89,11 @@ export interface ReceivedJoinRequest {
   request: string;
 }
 
-/** Why a request cannot be approved as it is (SHARING-194.1). */
+/** Why a request cannot be approved as it is (SHARING-194.2). */
 export type CannotApprove =
   'not-a-member' | 'is-you' | 'has-a-phone' | 'group-full' | 'same-name';
 
-/** How approving a request ended (SHARING-195.2 to 200.2). */
+/** How approving a request ended (SHARING-195.3 to 200.2). */
 export type ApproveResult =
   | { outcome: 'approved' }
   /** A request of the sync, the snapshot or the approval got no answer. */
@@ -211,7 +211,7 @@ function sealsFor(publicKey: Uint8Array): boolean {
 
 /**
  * What a listed request holds, opened with the secret of the invite it was sent under
- * (SHARING-191.1): nothing when it does not open or holds no request, and `newer` when
+ * (SHARING-191.2): nothing when it does not open or holds no request, and `newer` when
  * its ciphertext is in a format version this phone does not know.
  */
 function readRequest(
@@ -342,7 +342,7 @@ export async function rejectJoinRequest(
 
 /**
  * Why the request cannot be approved as the group is now, with the member the reason is
- * about, or nothing when it can (SHARING-194.1). `members` are the group's members, and
+ * about, or nothing when it can (SHARING-194.2). `members` are the group's members, and
  * `userId` is this phone's own.
  */
 export function whyNotApprove(
@@ -393,7 +393,7 @@ interface Prepared {
 }
 
 /**
- * In one transaction (SHARING-195.2): checks that the request can be approved, writes the
+ * In one transaction (SHARING-195.3): checks that the request can be approved, writes the
  * approval's events without storing them (SHARING-196.2), and reads the snapshot that
  * holds their records beside the ledger's own (SHARING-197.1), whose sequence number is
  * the cursor the approval carries. Only the phone's latest stamp is stored. `addBack` is
@@ -535,7 +535,7 @@ const signingDevice = (database: Database) =>
 
 /**
  * Approves `request`, as pressing Approve in the menu that was opened for it does
- * (SHARING-195.2): the approval names the content the request held when it was listed.
+ * (SHARING-195.3): the approval names the content the request held when it was listed.
  * Other syncs of the ledger go on meanwhile.
  * `addBack` is the former member the user chose to add back in place of a new member
  * (SHARING-288.1, issue 143): the approval then carries no new member (SHARING-196.2).
@@ -674,9 +674,9 @@ export async function approveJoinRequest(
 
 const ended = (outcome: 'declined' | 'invalid') =>
   `UPDATE join_requests SET code = NULL, secret = NULL, name = NULL, memberId = NULL,
-     copyGroupId = NULL, sent = 0, outcome = '${outcome}' WHERE code = ? AND secret = ?`;
+     takeover = NULL, copyGroupId = NULL, sent = 0, outcome = '${outcome}' WHERE code = ? AND secret = ?`;
 
-/** Whether the request still fits the invite's card, so that a member can approve it (SHARING-212.1). */
+/** Whether the request still fits the invite's card, so that a member can approve it (SHARING-212.2). */
 function fitsCard(
   { members }: JoinCard,
   { name, memberId }: Pick<JoinRequest, 'name' | 'memberId'>,

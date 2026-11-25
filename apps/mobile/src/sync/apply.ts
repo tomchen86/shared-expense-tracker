@@ -228,7 +228,10 @@ export async function applyReceivedEvents(
       if (previous && created !== previous.created) visibleChange = true;
       if (await markIfOverridden(tx, event)) visibleChange = true;
     }
-    if (record.type === 'distinct' && changes > 0) visibleChange = true;
+    // Invite cards and Members also read the roster itself, even when the member's
+    // stored user ID did not change (SHARING-109.2).
+    if ((record.type === 'distinct' || record.type === 'device') && changes > 0)
+      visibleChange = true;
     if (await project(record, previous?.record, event.stamp.ms))
       visibleChange = true;
   }

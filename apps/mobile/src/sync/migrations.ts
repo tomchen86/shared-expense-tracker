@@ -13,6 +13,7 @@ export const syncMigration = `
     waitsForSnapshot INTEGER NOT NULL DEFAULT 0 CHECK (waitsForSnapshot IN (0, 1)),
     snapshotNeedingUpdate TEXT,
     readOnly TEXT CHECK (readOnly IN ('not-a-member', 'left', 'lapsed')),
+    takenOver INTEGER CHECK (takenOver IS NULL OR (takenOver = 1 AND readOnly IS 'not-a-member')),
     maxEpoch INTEGER NOT NULL DEFAULT 0
   );
   CREATE TABLE sync_clock (

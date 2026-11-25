@@ -25,13 +25,19 @@ export async function readOnlyCopyOf(
   database: SqlExecutor,
   groupId: string,
 ): Promise<ReadOnlyCopy | undefined> {
-  const [copy] = await database.all<ReadOnlyCopy>(
-    `SELECT s.readOnly AS reason,
+  const [copy] = await database.all<{
+    reason: ReadOnlyCopyReason;
+    unsent: number;
+    takenOver: number | null;
+  }>(
+    `SELECT s.readOnly AS reason, s.takenOver,
        (SELECT COUNT(*) FROM ${UNSENT_EVENTS} o WHERE o.groupId = s.groupId) AS unsent
      FROM sync_groups s WHERE s.groupId = ? AND s.readOnly IS NOT NULL`,
     [groupId],
   );
-  return copy;
+  if (!copy) return undefined;
+  const { reason, unsent, takenOver } = copy;
+  return { reason, unsent, ...(takenOver === 1 && { takenOver: true }) };
 }
 
 /**
@@ -44,10 +50,11 @@ export async function makeReadOnlyCopy(
   database: SqlExecutor,
   groupId: string,
   reason: ReadOnlyCopyReason,
+  takenOver = false,
 ): Promise<void> {
   await database.run(
-    'UPDATE sync_groups SET readOnly = ? WHERE groupId = ? AND readOnly IS NULL',
-    [reason, groupId],
+    'UPDATE sync_groups SET readOnly = ?, takenOver = ? WHERE groupId = ? AND readOnly IS NULL',
+    [reason, takenOver ? 1 : null, groupId],
   );
 }
 
@@ -80,6 +87,7 @@ export async function becomeReadOnlyCopy(
   database: Database,
   groupId: string,
   reason: ReadOnlyCopyReason,
+  takenOver = false,
 ): Promise<void> {
   const epoch = await database.transaction(async (tx) => {
     // 0 for a group whose keys are not this change's to delete.
@@ -88,7 +96,7 @@ export async function becomeReadOnlyCopy(
          WHERE groupId = ? AND readOnly IS NULL), 0) AS epoch`,
       [groupId],
     );
-    await makeReadOnlyCopy(tx, groupId, reason);
+    await makeReadOnlyCopy(tx, groupId, reason, takenOver);
     return epoch;
   });
   await deleteGroupKeys(groupId, epoch);

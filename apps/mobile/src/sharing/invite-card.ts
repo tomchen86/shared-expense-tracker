@@ -8,6 +8,7 @@ import { deriveKey, encrypt } from '@shared-expense/domain/crypto';
 import { fromByteArray, toByteArray } from 'base64-js';
 import { getRandomValues } from 'expo-crypto';
 import type { SqlExecutor } from '../storage';
+import { membersWithPhones } from '../sync/roster';
 
 const PURPOSE = 'shared-expense/invite/card/v1';
 
@@ -45,13 +46,14 @@ export async function readCard(tx: SqlExecutor, groupId: string) {
     'SELECT id, name, userId FROM group_members WHERE groupId = ? AND removed = 0 ORDER BY position',
     [groupId],
   );
+  const represented = new Set(await membersWithPhones(tx, groupId));
   const bytes = utf8ToBytes(
     JSON.stringify({
       name: group.name,
       members: members.map(({ id, name, userId }) => ({
         id,
         name,
-        hasDevice: userId !== null,
+        hasDevice: userId !== null || represented.has(id),
       })),
     }),
   );

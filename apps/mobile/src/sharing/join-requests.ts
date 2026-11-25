@@ -12,12 +12,20 @@ import { deriveKey, encrypt } from '@shared-expense/domain/crypto';
 import { toByteArray } from 'base64-js';
 import { getRandomValues } from 'expo-crypto';
 import type { Database, SqlExecutor } from '../storage';
+import { notifyApplied } from '../sync/apply';
 import { GIVE_UP_AFTER_MS, jsonIn } from '../sync/loop';
+import { deleteGroupKeys } from '../sync/read-only-copy';
 import { apiUrl } from './api-address';
-import { prepareSigningDevice, sendApiRequest } from './api-request';
-import { readDeviceIdentity, type SigningDevice } from './device-identity';
+import { inDeviceTurn, sendApiRequest } from './api-request';
+import {
+  createDevice,
+  ensureDevice,
+  readDeviceIdentity,
+  type SigningDevice,
+} from './device-identity';
 import type { InviteCredentials } from './invite-card';
 import { cannotUse, wentWrong } from './join-invite';
+import { discardJoinKeysForIdentityChange } from './join-keys';
 
 export interface JoinRequest extends InviteCredentials {
   /** Its place among the phone's requests, once it is stored. */
@@ -54,16 +62,24 @@ export interface EndedJoinRequest {
 
 export const connectAgain = 'Connect to the internet and try again.';
 export const alreadyIn = 'This phone is already in this group.';
-const cannotJoin = "This phone can't join a group.";
 const purpose = 'shared-expense/invite/request/v1';
-/** What a join request's key is derived for, and what its associated data starts with (SHARING-135.1). */
+/** What a join request's key is derived for, and what its associated data starts with (SHARING-135.2). */
 export const REQUEST_PURPOSE = purpose;
 
+type StoredJoinRequest = Omit<JoinRequest, 'takeover'> & {
+  takeover: number | null;
+};
+
+function fromStored({ takeover, ...request }: StoredJoinRequest): JoinRequest {
+  return { ...request, ...(takeover === 1 && { takeover: true }) };
+}
+
 /** This phone's requests in the order they were stored, those that have ended too. */
-export function listJoinRequests(db: SqlExecutor) {
-  return db.all<JoinRequest | EndedJoinRequest>(
+export async function listJoinRequests(db: SqlExecutor) {
+  const rows = await db.all<StoredJoinRequest | EndedJoinRequest>(
     'SELECT * FROM join_requests ORDER BY position',
   );
+  return rows.map((row) => (row.code === null ? row : fromStored(row)));
 }
 
 /** What is left of a request at `position` that has ended, if it has. */
@@ -87,11 +103,11 @@ export async function requestByCode(
   db: SqlExecutor,
   code: string,
 ): Promise<JoinRequest | undefined> {
-  const [request] = await db.all<JoinRequest>(
+  const [request] = await db.all<StoredJoinRequest>(
     'SELECT * FROM join_requests WHERE code = ?',
     [code],
   );
-  return request;
+  return request && fromStored(request);
 }
 
 function encryptedBody(
@@ -101,7 +117,13 @@ function encryptedBody(
 ): JoinRequestBody {
   const { code, secret, name, memberId } = request;
   const bytes = utf8ToBytes(
-    JSON.stringify({ name, memberId, userId, boxKey: device.boxKey }),
+    JSON.stringify({
+      name,
+      memberId,
+      userId,
+      boxKey: device.boxKey,
+      ...(request.takeover && { takeover: true }),
+    }),
   );
   const plaintext = new Uint8Array(Math.ceil(bytes.length / 256) * 256);
   plaintext.set(bytes);
@@ -168,15 +190,69 @@ async function exchange(
 }
 
 // Bind late replies to the original application and device even if an import replaced local data.
-const sameRequest = `(code, secret, name, memberId) IS (?, ?, ?, ?)
+const sameRequest = `(code, secret, name, memberId, takeover) IS (?, ?, ?, ?, ?)
   AND EXISTS (SELECT 1 FROM device_identity WHERE deviceId = ?)`;
 const requestKey = (request: JoinRequest, deviceId: string) => [
   request.code,
   request.secret,
   request.name,
   request.memberId,
+  request.takeover ? 1 : null,
   deviceId,
 ];
+
+/** Replace a lapsed identity in its device turn, after clearing the discarded requests' keys. */
+async function replaceLapsedJoinDevice(
+  db: Database,
+  previousId: string,
+  retryCode: string | null,
+) {
+  const discarded = await db.all<{ code: string }>(
+    'SELECT code FROM join_requests WHERE code IS NOT NULL AND code IS NOT ? ORDER BY position',
+    [retryCode],
+  );
+  const codes = discarded.map(({ code }) => code);
+  let copies: { groupId: string; epoch: number }[] = [];
+  const device = await discardJoinKeysForIdentityChange(codes, () =>
+    createDevice((deviceId) =>
+      db.transaction(async (tx) => {
+        copies = await tx.all(
+          'SELECT groupId, epoch FROM sync_groups WHERE readOnly IS NULL',
+        );
+        await tx.run(
+          "UPDATE sync_groups SET readOnly = 'lapsed' WHERE readOnly IS NULL",
+        );
+        await tx.run(
+          'DELETE FROM join_requests WHERE code IS NULL OR code IN (SELECT value FROM json_each(?))',
+          [JSON.stringify(codes)],
+        );
+        // An import or a new request since the secure-store cleanup invalidates this change.
+        const saved = await tx.run(
+          `UPDATE device_identity SET deviceId = ?, registered = 0 WHERE deviceId = ?
+         AND NOT EXISTS (SELECT 1 FROM join_requests WHERE code IS NOT ?)`,
+          [deviceId, previousId, retryCode],
+        );
+        if (!saved.changes)
+          throw new Error('The device or its join requests changed');
+      }),
+    ),
+  );
+  for (const { groupId, epoch } of copies) {
+    await deleteGroupKeys(groupId, epoch);
+    notifyApplied(db, groupId);
+  }
+  return device;
+}
+
+/** Only a lapsed identity changes before the user confirms replacing a copy (SHARING-226.2). */
+export function renewBeforeCopyConfirmation(db: Database) {
+  return inDeviceTurn(async () => {
+    const identity = await readDeviceIdentity(db).catch(() => undefined);
+    if (identity?.status !== 'lost') return false;
+    await replaceLapsedJoinDevice(db, identity.deviceId, null);
+    return true;
+  });
+}
 
 class SeedReadError extends Error {}
 export type SendResult =
@@ -189,7 +265,7 @@ export type SendResult =
 /**
  * The local row commits before registration or upload. An ambiguous result always leaves
  * it retryable. `stored` is the request as the local data holds it, when `request` is to
- * replace what it chose (SHARING-212.1): the row changes once the API has the new content.
+ * replace what it chose (SHARING-212.2): the row changes once the API has the new content.
  */
 export async function sendJoinRequest(
   db: Database,
@@ -199,22 +275,28 @@ export async function sendJoinRequest(
   onStored: () => void,
   stored: JoinRequest = request,
 ): Promise<SendResult> {
-  let device: SigningDevice | 'lost' | undefined;
+  let device: SigningDevice | undefined;
   try {
-    device = await prepareSigningDevice(db, (cause) => {
-      throw new SeedReadError('Cannot read seed', { cause });
-    });
+    device = await inDeviceTurn(() =>
+      ensureDevice(
+        db,
+        (cause) => {
+          throw new SeedReadError('Cannot read seed', { cause });
+        },
+        (previousId) =>
+          replaceLapsedJoinDevice(db, previousId, isNew ? null : stored.code),
+      ),
+    );
   } catch (error) {
     // The ID exists even if the secure store is temporarily unreadable. Save the draft for retry.
     if (!(error instanceof SeedReadError))
       return { kind: 'blocked', message: wentWrong };
   }
-  if (device === 'lost') return { kind: 'blocked', message: cannotJoin };
   if (isNew) {
     try {
       const saved = await db.run(
-        `INSERT INTO join_requests (code, secret, groupName, name, memberId, copyGroupId)
-         SELECT ?, ?, ?, ?, ?, ? FROM local_identity, device_identity
+        `INSERT INTO join_requests (code, secret, groupName, name, memberId, takeover, copyGroupId)
+         SELECT ?, ?, ?, ?, ?, ?, ? FROM local_identity, device_identity
          WHERE userId = ? AND deviceId = COALESCE(?, deviceId)`,
         [
           request.code,
@@ -222,6 +304,7 @@ export async function sendJoinRequest(
           request.groupName,
           request.name,
           request.memberId,
+          request.takeover ? 1 : null,
           request.copyGroupId ?? null,
           userId,
           device?.deviceId ?? null,
@@ -245,9 +328,9 @@ export async function sendJoinRequest(
       const key = requestKey(stored, device.deviceId);
       if (result === 'confirmed') {
         await db.run(
-          `UPDATE join_requests SET name = ?, memberId = ?, sent = 1, outcome = NULL
+          `UPDATE join_requests SET name = ?, memberId = ?, takeover = ?, sent = 1, outcome = NULL
            WHERE ${sameRequest}`,
-          [request.name, request.memberId, ...key],
+          [request.name, request.memberId, request.takeover ? 1 : null, ...key],
         );
         return {
           kind: 'request',
