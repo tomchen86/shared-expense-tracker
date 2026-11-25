@@ -503,8 +503,8 @@ describe('SYNC-70.1', () => {
   });
 });
 
-describe('SYNC-71.3', () => {
-  test('[SYNC-71.3] without a network it uploads nothing and keeps what is unsent', async () => {
+describe('SYNC-71.4', () => {
+  test('[SYNC-71.4] without a network it uploads nothing and keeps what is unsent', async () => {
     const { a, brisbane } = await twoPhones();
     await addExpense(a);
     const ledger = await ledgerOf(a);
@@ -534,7 +534,7 @@ describe('SYNC-71.3', () => {
     ['status 500', 500, ''],
     ['status 404', 404, 'not found'],
   ])(
-    '[SYNC-71.3] applies nothing and uploads nothing when the answer to a download is %s',
+    '[SYNC-71.4] applies nothing and uploads nothing when the answer to a download is %s',
     async (_case, status, body) => {
       const setup = await twoPhones();
       const { a, b, key } = setup;
@@ -557,7 +557,7 @@ describe('SYNC-71.3', () => {
     },
   );
 
-  test('[SYNC-71.3] with [SYNC-300.1] uploads nothing when a download is refused as no member device, and sends nothing for the ledger after that', async () => {
+  test('[SYNC-71.4] with [SYNC-300.1] uploads nothing when a download is refused as no member device, and sends nothing for the ledger after that', async () => {
     const { a } = await twoPhones();
     await addExpense(a);
     const before = await unsent(a);
@@ -598,7 +598,7 @@ describe('SYNC-71.3', () => {
     };
   }
 
-  test('[SYNC-71.3] applies nothing of a page that does not start right after its cursor', async () => {
+  test('[SYNC-71.4] applies nothing of a page that does not start right after its cursor', async () => {
     const setup = await twoPhones();
     const { a, B, brisbane, key } = setup;
     const page = await pageOf(setup, [{ sequence: 2, content: '' }]);
@@ -617,7 +617,7 @@ describe('SYNC-71.3', () => {
     expect(await downloads(a, from)).toEqual(['after=0']);
   });
 
-  test('[SYNC-71.3] applies nothing of an answer that holds an event over 65,536 bytes', async () => {
+  test('[SYNC-71.4] applies nothing of an answer that holds an event over 65,536 bytes', async () => {
     const setup = await twoPhones();
     const { a, B, brisbane, key } = setup;
     const page = await pageOf(setup, [
