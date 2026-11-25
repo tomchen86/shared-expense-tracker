@@ -21,6 +21,7 @@ import { useTrashActions } from '../ledger/trash-provider';
 import { useReadExpenses } from '../ledger/use-expenses';
 import { apiUrl } from '../sharing/api-address';
 import { useReceivedRequests } from '../sharing/received-requests';
+import { useRefreshReceivedRequests } from '../sharing/request-refresh';
 import { syncGroup } from '../sync/loop';
 import { deleteReadOnlyCopy, type ReadOnlyCopy } from '../sync/read-only-copy';
 import { useSyncNotices } from '../sync/use-sync-notices';
@@ -42,6 +43,7 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const colors = useThemeColors();
   const [group, setGroup, pendingRead] = useGroup(id);
   const database = useLocalDatabase();
+  useRefreshReceivedRequests(database, id, group);
   const locale = useDisplayLocale();
   const notices = useSyncNotices(
     database,

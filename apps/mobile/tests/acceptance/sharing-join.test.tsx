@@ -2377,7 +2377,15 @@ describe('SHARING-145.1', () => {
     brisbaneInvites();
     await startAs();
     await requested();
-    keepAnswersBack(isCancelling);
+    // The API has taken the cancellation, so the question the open Join Group asks on
+    // its timer afterwards (SHARING-291.1) would find no request: its answer is kept
+    // back too, and what the phone does on giving the cancellation up is all that shows.
+    keepAnswersBack(
+      (request) =>
+        isCancelling(request) ||
+        (request.method === 'GET' &&
+          /^\/invites\/[^/?]+\/request$/.test(request.path)),
+    );
     await cancelRequest();
     await until(() => cancellations().length === 1, 'the cancellation');
     const shown = alertsShown().length;

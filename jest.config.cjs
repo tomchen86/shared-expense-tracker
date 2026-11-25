@@ -106,7 +106,7 @@ module.exports = {
     './apps/mobile/src/sharing/join-invite.ts': { branches: 100 },
     './apps/mobile/src/sharing/join-requests.ts': { branches: 92.98 },
     './apps/mobile/src/sharing/refresh-invite-card.ts': { branches: 96.77 },
-    './apps/mobile/src/sharing/use-join-group.ts': { branches: 88.26 },
+    './apps/mobile/src/sharing/use-join-group.ts': { branches: 88.94 },
     './apps/mobile/src/sync/invites.ts': { branches: 75 },
     // Admitting a phone (ADR-0039): the roster, the API's four requests about a join request,
     // and what the member's phone and the applicant's phone do with them. No acceptance test
@@ -117,8 +117,10 @@ module.exports = {
     './apps/api/src/sharing/join-decisions.ts': { branches: 100 },
     './apps/mobile/src/sync/roster.ts': { branches: 100 },
     './apps/mobile/src/sharing/join-decisions.ts': { branches: 94.4 },
-    './apps/mobile/src/sharing/received-requests.ts': { branches: 93.33 },
+    './apps/mobile/src/sharing/received-requests.ts': { branches: 94.59 },
     './apps/mobile/src/groups/join-requests.tsx': { branches: 93.47 },
+    // The foreground timers that refresh join requests on a visible screen (ADR-0046).
+    './apps/mobile/src/sharing/request-refresh.ts': { branches: 86.66 },
     // The event API: what stores a shared ledger's events, numbers them and hands them
     // out, and the checks of its bodies that the phone and the API share (ADR-0016,
     // ADR-0024).

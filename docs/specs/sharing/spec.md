@@ -3775,6 +3775,95 @@ WHEN 一個未封存的共同帳本的一次同步結束，而這次同步開頭
 - **WHEN** 收到的申請有 Dana 的；在她的選單按「Approve」，API 還沒回答同意的請求時，app 從背景回到前景並同步
 - **THEN** 從按下去到 API 回答之前，API 沒有收到列出申請的請求；回答同意好了之後才收到一個
 
+### Requirement: SHARING-290.2 群組的畫面或 Members 開著時，每隔一段時間再列出申請
+
+WHILE app 在前景，而使用者看到的是一個未封存的共同帳本的畫面，或它的 Members，the mobile app SHALL 每隔一段時間照 SHARING-190.2 再列出一次它的申請，不必同步，也不必關閉再打開：那個畫面成為使用者看到的畫面的 3 秒後是第一次；之後每一次在上一次結束的 3 秒後，那個畫面成為使用者看到的畫面滿 2 分鐘之後改成 30 秒後。這 3 秒和 2 分鐘還在兩個時候重新起算：畫面開著的時候群組才成為未封存的共同帳本（例如在它的畫面上按「Restore Group」還原它），從它成為的那一刻算起；使用者在 Members 按「Invite with Link」、Invite 開啟（SHARING-91.1）的時候，從按下去的那一刻算起，不等邀請準備好，也不管這個邀請是要新建立的還是本來就有的；關閉 Invite 的時候不重新起算。2 分鐘算的是經過的時間，使用者改手機的日期或時間不影響它。一次的結束，是它送的列出的請求都得到回應、被拒絕或被放棄（SHARING-204.1）的時候；沒有送請求的一次，到時候就結束。使用者看到的是群組的畫面，指選中的分頁的堆疊最上面是它，上面沒有蓋著別的畫面；使用者看到的是 Members，指 Members 蓋在群組的畫面上、上面沒有蓋著別的畫面，Invite（SHARING-98.1）顯示在 Members 裡的時候也算。Join Group 不屬於任何分頁，它開在這兩個畫面上面時，底下的畫面照樣算是使用者看到的。SHARING-190.2 不列出的時候，這裡到時候也不送請求：這支手機沒有存著這個共同帳本還沒到期的邀請，或它有申請正在處理（SHARING-202.1）；封存的共同帳本、唯讀副本（sync 的 SYNC-302.1）和還不是共同帳本的群組，它們的畫面和 Members 開著時都不送。IF 到時候這個共同帳本已經有一個列出的請求還沒有結束，例如打開 Members 時送的那一個，THEN the mobile app SHALL 這一次不送請求。列出沒有成功時照 SHARING-190.2：收到的申請不變，不顯示任何提示，下一次照常。WHEN 那個畫面不再是使用者看到的畫面——關閉 Members、回到 Groups 根畫面、換到別的分頁，或別的畫面蓋在它上面——或 app 進到背景，the mobile app SHALL 不再這樣列出；它再成為使用者看到的畫面，或 app 回到前景而它還是使用者看到的畫面時，從那一刻重新起算。那時已經送出、還沒有結束的列出的請求不放棄，它的結果照 SHARING-190.2 處理，但不讓停下的計時重新開始。這樣的列出不開始任何同步，不送事件 API 的請求；同步結束和打開 Members 時的列出（SHARING-190.2）照舊，不算在這裡的次數裡。
+
+#### Scenario: 群組的畫面開著時有人申請
+
+- **WHEN** Taylor 的手機存著 Brisbane 還沒到期的邀請，Brisbane 的畫面開著；Dana 申請當新成員；過了 2 秒，再過 1 秒
+- **THEN** 前 2 秒 API 沒有收到列出申請的請求；第 3 秒收到一個 `GET /groups/<Brisbane 的群組 ID>/requests`，畫面上出現「1 person wants to join」，這段時間 API 沒有收到事件 API 的請求
+
+#### Scenario: Members 開著時有人申請，後來又取消
+
+- **WHEN** Brisbane 的 Members 開著，沒有申請；Dana 申請當新成員，過了 3 秒；Dana 的手機取消申請，再過 3 秒
+- **THEN** 第一個 3 秒之後 Members 的「Requests」那一區有 Dana 那一列；第二個 3 秒之後沒有那一區；Members 一直開著
+
+#### Scenario: Invite 顯示在 Members 裡
+
+- **WHEN** 在 Brisbane 的 Members 按「Invite with Link」，Invite 顯示邀請的連結和 QR code；Dana 申請當新成員，過了 3 秒；按「Close」關閉 Invite
+- **THEN** 那 3 秒之後 API 多收到一個列出申請的請求；關閉 Invite 之後不必再等，Members 就有 Dana 那一列
+
+#### Scenario: 先每 3 秒，滿 2 分鐘之後每 30 秒
+
+- **WHEN** Brisbane 的 Members 開著 9 秒；另一次，Members 開著滿 2 分鐘之後再過 29 秒，再過 1 秒，再過 30 秒
+- **THEN** 那 9 秒裡 API 在打開時的那一個之外收到 3 個列出申請的請求；滿 2 分鐘之後的 29 秒裡沒有收到，再過 1 秒收到 1 個，再過 30 秒又收到 1 個
+
+#### Scenario: 上一次還沒有結束
+
+- **WHEN** Brisbane 的畫面開著，API 收下第 3 秒的那個列出的請求，一直不回答；過了 30 秒；API 回答了，再過 2 秒，再過 1 秒
+- **THEN** 那 30 秒裡 API 只收到那一個列出的請求；回答之後的 2 秒裡沒有收到，第 3 秒收到下一個
+
+#### Scenario: 打開 Members 時送的那一個還沒有結束
+
+- **WHEN** 打開 Brisbane 的 Members，API 收下打開時的那個列出的請求（SHARING-190.2），一直不回答；過了 30 秒
+- **THEN** API 只收到那一個列出的請求
+
+#### Scenario: 沒有還沒到期的邀請，或正在處理申請
+
+- **WHEN** Tokyo 是從來沒有邀請的共同帳本，它的 Members 開著 1 小時；另一次，Brisbane 的邀請過期之後，它的畫面開著 1 小時；另一次，在 Brisbane 的 Members 對 Dana 的申請按「Approve」，API 還沒回答同意的請求，過了 30 秒
+- **THEN** 三次 API 都沒有收到列出申請的請求
+
+#### Scenario: 封存的共同帳本、唯讀副本，和還不是共同帳本的群組
+
+- **WHEN** Brisbane 封存之後，在 Settings 的 Archived Groups 打開它的畫面和 Members，各開著 1 分鐘；另一次，Brisbane 成為唯讀副本之後，它的畫面和 Members 各開著 1 分鐘；另一次，還不是共同帳本的群組 Tokyo 的畫面和 Members 各開著 1 分鐘
+- **THEN** 前兩次 API 都沒有收到列出 Brisbane 的申請的請求；Tokyo 開著的時候手機沒有送出任何請求
+
+#### Scenario: 列出沒有成功
+
+- **WHEN** Brisbane 的 Members 開著，有 Dana 那一列；手機沒有網路，過了 6 秒；網路回來，Evan 也申請了，再過 3 秒
+- **THEN** 沒有網路的那 6 秒裡沒有跳出提示框，Members 仍有 Dana 那一列；網路回來 3 秒之後 Members 有 Dana 和 Evan 兩列
+
+#### Scenario: 離開畫面
+
+- **WHEN** Brisbane 的畫面開著；回到 Groups 根畫面，過了 1 分鐘；另一次，換到 Expenses 分頁，過了 1 分鐘；另一次，打開蓋在它上面的 Rename Group，過了 1 分鐘；之後各自回到 Brisbane 的畫面，過了 2 秒，再過 1 秒
+- **THEN** 離開的那 1 分鐘裡 API 都沒有收到列出申請的請求；回來之後的 2 秒裡沒有收到，第 3 秒收到一個
+
+#### Scenario: Members 被蓋住
+
+- **WHEN** Brisbane 的 Members 開著；打開蓋在它上面的 Rename Member，Dana 申請當新成員，過了 1 分鐘；按「Cancel」回到 Members，過了 2 秒，再過 1 秒
+- **THEN** 那 1 分鐘裡 API 沒有收到列出申請的請求；回到 Members 之後的 2 秒裡沒有收到，第 3 秒收到一個，Members 有 Dana 那一列
+
+#### Scenario: 畫面開著時才還原
+
+- **WHEN** Brisbane 封存之後，在 Settings 的 Archived Groups 打開它的畫面，開著 125 秒；在這個畫面上按「Restore Group」，過了 8 秒
+- **THEN** 還原之後的 8 秒裡 API 收到 2 個定時的列出申請的請求；存下還原之後開始的同步結束時自己列的那一個（SHARING-190.2）不算在內
+
+#### Scenario: 打開 Invite 時重新算
+
+- **WHEN** Brisbane 的 Members 開著 125 秒；按「Invite with Link」，Invite 開啟，顯示本來就有的邀請，過了 8 秒，再過 2 秒；Invite 開著滿 125 秒時按「Close」，過了 8 秒
+- **THEN** 開啟之後的 8 秒裡 API 收到 2 個列出申請的請求，再過 2 秒是 3 個；關閉之後的 8 秒裡沒有收到：下一個在開啟之後的第 150 秒
+
+#### Scenario: 改了手機的時間
+
+- **WHEN** Brisbane 的 Members 開著 1 分鐘；手機的時間被往後調 10 分鐘；過了 3.5 秒，再過 3 秒
+- **THEN** 這兩段各收到 1 個列出申請的請求：還是 3 秒一次
+
+#### Scenario: 離開之後才到的回應
+
+- **WHEN** Brisbane 的畫面開著，Dana 申請當新成員；API 收下第 3 秒的那個列出的請求，還沒回答時換到 Expenses 分頁；API 回答了，過了 1 分鐘；換回 Groups 分頁
+- **THEN** 那 1 分鐘裡 API 沒有再收到列出申請的請求；換回來時 Brisbane 的畫面上已經是「1 person wants to join」
+
+#### Scenario: 回來之後重新算 2 分鐘
+
+- **WHEN** Brisbane 的畫面開著滿 2 分鐘；換到 Expenses 分頁再換回來，過了 9 秒
+- **THEN** 那 9 秒裡 API 收到 3 個列出申請的請求
+
+#### Scenario: app 進到背景
+
+- **WHEN** Brisbane 的畫面開著，app 進到背景，過了 1 分鐘；app 回到前景，過了 2 秒，再過 1 秒
+- **THEN** 在背景的那 1 分鐘裡 API 沒有收到列出申請的請求；回到前景時開始的同步結束時列出一次（SHARING-190.2），之後的 2 秒裡沒有再收到，第 3 秒收到下一個
+
 ### Requirement: SHARING-191.1 用邀請的字串解開申請
 
 WHEN 列出申請，the mobile app SHALL 用這支手機替這個共同帳本存著的、代號和那個申請相同的邀請的字串解開它：申請金鑰和附加資料照 SHARING-135.1，附加資料裡的裝置 ID 是 API 說的那個申請的裝置 ID。解開的明文去掉結尾的空格之後是一個 JSON 物件，`name` 是去掉頭尾空白後不是空的字串，`memberId` 是 `null` 或小寫的第 4 版 UUID，`userId` 是小寫的第 4 版 UUID，`boxKey` 是 64 個小寫十六進位字元、不是低階的 box 公開金鑰（SHARING-11.1），多出來的欄位不看：這樣的是讀得懂的申請，成為收到的申請，申請的名字是 `name` 去掉頭尾空白後的文字。
@@ -3873,7 +3962,7 @@ WHILE 收到的申請是下面任何一種，the mobile app SHALL 不讓它被�
 
 ### Requirement: SHARING-195.2 按 Approve 時同步、上傳快照，再送同意
 
-WHEN 使用者在申請的選單按「Approve」，the mobile app SHALL 依序做這些事，前一步沒做成就不做下一步：同步這個共同帳本（SYNC-68.2），這次同步上傳了事件時再同步一次，讓這支手機的 cursor 到自己剛上傳的事件之後：第一次同步上傳之後的下載（SYNC-160.2）沒有得到回應時也照樣再同步，同步做成了沒有，只看最後這一次：它開頭的下載做完了，而且它不是停在一個沒有得到回應的請求，就是做成了（SHARING-200.2）；然後在同一個 SQLite transaction 裡，照那一刻的本機資料再看一次這個申請能不能同意（SHARING-194.1）、記下這支手機在這個共同帳本的 cursor、備好同意要寫下的事件（SHARING-196.2），並讀出快照的內容（SHARING-197.1、SYNC-114.3）；替申請的手機上傳那份快照；送同意的請求（SHARING-173.2），路徑帶著群組 ID 和申請的裝置 ID，`request` 是選單打開時那一列的申請的內容的 SHA-256，`cursor` 是那個 transaction 裡記下的 cursor，也就是那份快照涵蓋的序號，`snapshotId` 是剛上傳的那份快照的，`epoch` 是這支手機在這個共同帳本的鑰匙世代，`senderKey` 和 `box` 照 SHARING-198.1。所以檢查、事件、快照和 `cursor` 是同一刻的：這之後別的同步——app 回到前景，或存下變更——讓這支手機的 cursor 往前了，送出的仍是記下的那一個，API 就說沒有跟上（SHARING-176.1），這支手機照 SHARING-200.2 再看一次，不會照它沒有檢查過的資料同意。`request` 指名的是成員看到的那一份：申請的手機在選單打開之後換了內容，API 就說沒有這個申請（SHARING-174.1）。上傳快照和送同意的請求的這段時間，這個共同帳本照常同步（SYNC-88.1、SYNC-89.1），不等同意做完。API 回答同意好了之前，本機資料不因為這次同意而變：沒有多的成員、名冊紀錄和待上傳的事件。
+WHEN 使用者在申請的選單按「Approve」，the mobile app SHALL 依序做這些事，前一步沒做成就不做下一步：同步這個共同帳本（SYNC-68.2），這次同步上傳了事件時再同步一次，讓這支手機的 cursor 到自己剛上傳的事件之後：第一次同步上傳之後的下載（SYNC-160.2）沒有得到回應時也照樣再同步，同步做成了沒有，只看最後這一次：它開頭的下載做完了，而且它不是停在一個沒有得到回應的請求，就是做成了（SHARING-200.2）；然後在同一個 SQLite transaction 裡，照那一刻的本機資料再看一次這個申請能不能同意（SHARING-194.1）、記下這支手機在這個共同帳本的 cursor、備好同意要寫下的事件（SHARING-196.2），並讀出快照的內容（SHARING-197.1、SYNC-114.3）；替申請的手機上傳那份快照；送同意的請求（SHARING-173.2），路徑帶著群組 ID 和申請的裝置 ID，`request` 是選單打開時那一列的申請的內容的 SHA-256，`cursor` 是那個 transaction 裡記下的 cursor，也就是那份快照涵蓋的序號，`snapshotId` 是剛上傳的那份快照的，`epoch` 是這支手機在這個共同帳本的鑰匙世代，`senderKey` 和 `box` 照 SHARING-198.1。所以檢查、事件、快照和 `cursor` 是同一刻的：這之後別的同步——app 回到前景，或存下變更——讓這支手機的 cursor 往前了，送出的仍是記下的那一個，API 就說沒有跟上（SHARING-176.1），這支手機照 SHARING-200.2 再看一次，不會照它沒有檢查過的資料同意。`request` 指名的是成員看到的那一份：申請的手機在選單打開之後換了內容，API 就說沒有這個申請（SHARING-174.1）。上傳快照和送同意的請求的這段時間，這個共同帳本照常同步（SYNC-88.1、SYNC-89.2），不等同意做完。API 回答同意好了之前，本機資料不因為這次同意而變：沒有多的成員、名冊紀錄和待上傳的事件。
 
 #### Scenario: 同意 Dana
 
@@ -4169,6 +4258,75 @@ WHEN app 打開（sync：啟動，或從背景回到前景），the mobile app S
 
 - **WHEN** API 還沒回答問結果的請求時，關閉 Join Group 再打開那個申請
 - **THEN** API 沒有多收到問結果的請求
+
+### Requirement: SHARING-291.1 Join Group 顯示等待同意的申請時，每隔一段時間再問結果
+
+WHILE app 在前景，而 Join Group 顯示一個等待同意的申請（SHARING-138.1），the mobile app SHALL 每隔一段時間照 SHARING-210.1 替那個申請再問一次結果，並照問到的處理（SHARING-211.1 到 SHARING-221.1），不必關閉 Join Group 再打開，也不必離開 app 再回來：Join Group 開始顯示它在等待同意的 3 秒後是第一次；之後每一次在上一次結束的 3 秒後，Join Group 開始顯示它在等待同意滿 2 分鐘之後改成 30 秒後。2 分鐘算的是經過的時間，使用者改手機的日期或時間不影響它。一次的結束，是問結果的請求和它之後照 SHARING-211.1 讀邀請的請求都得到回應、被拒絕或被放棄（SHARING-204.1、SHARING-145.1）的時候；沒有送請求的一次，到時候就結束。SHARING-210.1 不問的時候，這裡到時候也不送請求：這支手機授權失效，app 建置時沒有給 API 的網址，那個申請正在送出或正在取消，或那個申請已經在問結果或加入中。Join Group 顯示的不是等待同意的申請時——表單、還沒送出的、要重選的、同意了還沒加入好的、被拒絕的或邀請不再有效的申請——不這樣問。問不到結果時照 SHARING-215.1：申請和 Join Group 顯示的都不變，不顯示任何提示，下一次照常。WHEN Join Group 關閉、不再顯示那個等待同意的申請，或 app 進到背景，the mobile app SHALL 不再這樣問；Join Group 再為它打開，或 app 回到前景而 Join Group 還顯示著它時，從那一刻重新起算。那時已經送出、還沒有結束的那一次問結果不放棄，它的結果照 SHARING-211.1 到 SHARING-221.1 處理，Join Group 關著時照 SHARING-220.1 不打開任何畫面，但不讓停下的計時重新開始。打開 Join Group 和 app 打開時的那一次（SHARING-210.1）照舊，不算在這裡的次數裡。
+
+#### Scenario: 等待的畫面開著時被同意
+
+- **WHEN** Dana 的手機送出加入 Brisbane 的申請，Join Group 顯示「Waiting for Approval」；Taylor 的手機同意了它；過了 2 秒，再過 1 秒
+- **THEN** 前 2 秒 API 沒有收到問結果的請求；第 3 秒收到一個 `GET /invites/3q2-7wEjRWeJq83vEjRWeA/request`，Dana 的手機加入 Brisbane，Join Group 關閉，打開 Brisbane 的畫面（SHARING-220.1）
+
+#### Scenario: 等待的畫面開著時被拒絕，或邀請被撤回
+
+- **WHEN** Join Group 顯示「Waiting for Approval」；Taylor 的手機拒絕了它，過了 3 秒；另一次，Taylor 的手機撤回了邀請，過了 3 秒
+- **THEN** 第一次 Join Group 換成「Request Declined」那一頁（SHARING-213.1）；第二次換成「Invite No Longer Valid」那一頁（SHARING-214.1）
+
+#### Scenario: 先每 3 秒，滿 2 分鐘之後每 30 秒
+
+- **WHEN** Join Group 顯示「Waiting for Approval」9 秒；另一次，顯示滿 2 分鐘之後再過 29 秒，再過 1 秒，再過 30 秒
+- **THEN** 那 9 秒裡 API 收到 3 個問結果的請求；滿 2 分鐘之後的 29 秒裡沒有收到，再過 1 秒收到 1 個，再過 30 秒又收到 1 個
+
+#### Scenario: 上一次還沒有結束
+
+- **WHEN** Join Group 顯示「Waiting for Approval」，API 收下第 3 秒的那個問結果的請求，一直不回答；過了 30 秒；API 回答了還在等，再過 2 秒，再過 1 秒
+- **THEN** 那 30 秒裡 API 只收到那一個問結果的請求；回答之後的 2 秒裡沒有收到，第 3 秒收到下一個
+
+#### Scenario: 問不到結果
+
+- **WHEN** Join Group 顯示「Waiting for Approval」；手機沒有網路，過了 6 秒；網路回來，Taylor 的手機同意了它，再過 3 秒
+- **THEN** 沒有網路的那 6 秒裡沒有跳出提示框，Join Group 仍是「Waiting for Approval」那一頁；網路回來 3 秒之後 Dana 的手機加入 Brisbane
+
+#### Scenario: 關閉 Join Group
+
+- **WHEN** Join Group 顯示「Waiting for Approval」，按「Close」；Taylor 的手機同意了它，過了 1 分鐘；再從 Groups 根畫面上申請的卡片打開它
+- **THEN** 那 1 分鐘裡 API 沒有收到問結果的請求，卡片仍是「Waiting for approval」；打開時問一次（SHARING-210.1），Dana 的手機加入 Brisbane
+
+#### Scenario: app 進到背景
+
+- **WHEN** Join Group 顯示「Waiting for Approval」，app 進到背景，過了 1 分鐘；app 回到前景，過了 2 秒，再過 1 秒
+- **THEN** 在背景的那 1 分鐘裡 API 沒有收到問結果的請求；回到前景時問一次（SHARING-210.1），之後的 2 秒裡沒有再收到，第 3 秒收到下一個
+
+#### Scenario: 回來之後重新算 2 分鐘
+
+- **WHEN** Join Group 顯示「Waiting for Approval」滿 2 分鐘；app 進到背景再回到前景，過了 9 秒
+- **THEN** 回到前景時的那一次之外，那 9 秒裡 API 收到 3 個問結果的請求
+
+#### Scenario: 改了手機的時間
+
+- **WHEN** Join Group 顯示「Waiting for Approval」1 分鐘；手機的時間被往後調 10 分鐘；過了 3.5 秒，再過 3 秒
+- **THEN** 這兩段各收到 1 個問結果的請求：還是 3 秒一次
+
+#### Scenario: 關閉之後才到的回應
+
+- **WHEN** Join Group 顯示「Waiting for Approval」，API 收下第 3 秒的那個問結果的請求，還沒回答時按「Close」；API 回答還在等，過了 1 分鐘；另一次，Taylor 的手機先同意了它，API 回答的是同意了
+- **THEN** 第一次那 1 分鐘裡 API 沒有再收到問結果的請求，卡片仍是「Waiting for approval」；第二次 Dana 的手機加入 Brisbane，沒有打開任何畫面，申請的卡片換成群組的卡片（SHARING-220.1）
+
+#### Scenario: 正在取消
+
+- **WHEN** Join Group 顯示「Waiting for Approval」；按「Cancel Request」並確認，API 收下取消的請求，一直不回答；過了 30 秒
+- **THEN** API 沒有收到問結果的請求
+
+#### Scenario: 不是等待同意的申請
+
+- **WHEN** Join Group 顯示還沒送出的申請，開著 1 分鐘；另一次，顯示同意了還沒加入好、加入沒有做完的申請，開著 1 分鐘；另一次，顯示 Brisbane 的表單，開著 1 分鐘
+- **THEN** 打開時的那一次（SHARING-210.1）之後，API 都沒有再收到問結果的請求
+
+#### Scenario: 授權失效
+
+- **WHEN** Dana 的手機送出申請之後，secure store 裡它的身分不見了；從卡片打開 Join Group，開著 1 分鐘
+- **THEN** API 沒有收到問結果的請求
 
 ### Requirement: SHARING-211.1 API 說還在等，或沒有這個申請
 

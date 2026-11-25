@@ -30,6 +30,7 @@ import { useLocalDatabase, useLocalIdentity } from '../shell';
 import { apiUrl } from '../sharing/api-address';
 import { InviteContent } from '../sharing/invite-sheet';
 import { leaveSharedGroup, removeMemberDevices } from '../sharing/removal';
+import { useRefreshReceivedRequests } from '../sharing/request-refresh';
 import { fetchDeviceSyncTimes } from '../sync/roster';
 import { showActionMenu } from '../ui/action-menu';
 import { GroupedSection } from '../ui/grouped-section';
@@ -89,6 +90,7 @@ export function MembersScreen({
   const [group, setGroup, pendingRead] = useGroup(id, {
     startFromLatest: true,
   });
+  const restartRequestTimer = useRefreshReceivedRequests(database, id, group);
   const [progress, setProgress] = useState<{
     groupId: string;
     times: Map<string, number | null>;
@@ -444,6 +446,7 @@ export function MembersScreen({
               accessibilityLabel="Invite with Link"
               disabled={busy}
               onPress={() => {
+                restartRequestTimer();
                 field.current?.blur();
                 setInviteOpen(true);
               }}
