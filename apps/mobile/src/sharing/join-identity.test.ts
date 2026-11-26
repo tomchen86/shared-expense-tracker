@@ -11,6 +11,7 @@ import {
   secureStoreEntries,
 } from '../../tests/acceptance/sharing-app';
 import { syncGroup } from '../sync/loop';
+import { fetchDeviceSyncTimes } from '../sync/roster';
 import { sendApiRequest } from './api-request';
 import { putInvite } from './invite-api';
 import { prepareInvite } from './invites';
@@ -339,6 +340,16 @@ describe('a request made from local data read before the identity changed', () =
     await expect(send.mock.results[0].value).rejects.toMatchObject({
       reason: 'identity-changed',
     });
+    expect(exchange).not.toHaveBeenCalled();
+    await unregistered();
+  });
+
+  test("asking for the phones' sync times sends nothing for a ledger Members read before the change made it a copy", async () => {
+    await renew();
+
+    await expect(
+      fetchDeviceSyncTimes(db, 'active', API_URL),
+    ).resolves.toBeUndefined();
     expect(exchange).not.toHaveBeenCalled();
     await unregistered();
   });

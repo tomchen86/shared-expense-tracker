@@ -3,6 +3,7 @@ import {
   AWAY,
   DAY,
   UPDATE_NOTICE,
+  WAITING_NOTICE,
   cleanUpAt,
   everyClockAt,
   noticesOf,
@@ -645,6 +646,47 @@ describe('SYNC-92.2', () => {
   });
 });
 
+describe('SYNC-314.1', () => {
+  test('[SYNC-314.1] says the ledger is out of date while it waits for a snapshot the group does not store, also after a restart with no network', async () => {
+    const { a } = await taylorBehind();
+
+    await sync(a);
+
+    expect(await waits(a)).toBe(true);
+    expect(await noticesOf(a)).toEqual([WAITING_NOTICE]);
+
+    goOffline();
+    const restarted = await restart(a);
+    expect(await noticesOf(restarted)).toEqual([WAITING_NOTICE]);
+  });
+
+  test('[SYNC-314.1] [SYNC-317.1] says only that the app needs an update while the snapshot it waits for is in a format version it does not know', async () => {
+    const setup = await taylorBehind();
+    const { a, b, key } = setup;
+    await sentSnapshot(b, a);
+    const content = await snapshotFor(setup);
+    await plant(b, a, key, { ...content, version: 2 }, { sequence: 1 });
+
+    await sync(a);
+
+    expect(await waits(a)).toBe(true);
+    expect(await noticesOf(a)).toEqual([UPDATE_NOTICE]);
+  });
+
+  test('[SYNC-314.1] says nothing once the phone has taken a snapshot in and got a page', async () => {
+    const { a, b } = await taylorBehind();
+    await sync(a);
+    expect(await noticesOf(a)).toEqual([WAITING_NOTICE]);
+    await sentSnapshot(b, a);
+
+    await sync(a);
+
+    expect(await titles(a)).toEqual(['Lunch']);
+    expect(await waits(a)).toBe(false);
+    expect(await noticesOf(a)).toEqual([]);
+  });
+});
+
 describe('SYNC-169.1', () => {
   test('[SYNC-169.1] shows the update line while the snapshot it waits for is in a format version it does not know, and not once it has taken one in', async () => {
     const setup = await taylorBehind();
@@ -725,7 +767,7 @@ describe('SYNC-169.1', () => {
     expect(await waits(a)).toBe(true);
   });
 
-  test('[SYNC-169.1] the line goes once the phone is told the group stores no snapshot for it, and the ledger still waits', async () => {
+  test('[SYNC-169.1] [SYNC-314.1] the line goes once the phone is told the group stores no snapshot for it: the ledger still waits, and says so', async () => {
     const setup = await lineShown();
     const { a } = setup;
     // Thirty-one days on, the cleanup takes that snapshot (SYNC-148.1).
@@ -738,11 +780,11 @@ describe('SYNC-169.1', () => {
     expect((await sentBy(a, from)).map(({ status }) => status)).toEqual([
       410, 404,
     ]);
-    expect(await noticesOf(a)).toEqual([]);
+    expect(await noticesOf(a)).toEqual([WAITING_NOTICE]);
     expect(await waits(a)).toBe(true);
   });
 
-  test('[SYNC-169.1] the line goes once the group stores another snapshot for the phone, before the phone has read it', async () => {
+  test('[SYNC-169.1] [SYNC-314.1] the line goes once the group stores another snapshot for the phone, before the phone has read it: the ledger still waits, and says so', async () => {
     const { a, b } = await lineShown();
     // Casey's phone uploads its snapshot again, in the format version this app knows.
     await sentSnapshot(b, a);
@@ -751,7 +793,7 @@ describe('SYNC-169.1', () => {
     await sync(a);
 
     expect(faultsLeft()).toBe(0);
-    expect(await noticesOf(a)).toEqual([]);
+    expect(await noticesOf(a)).toEqual([WAITING_NOTICE]);
     expect(await waits(a)).toBe(true);
     expect(await titles(a)).toEqual([]);
 

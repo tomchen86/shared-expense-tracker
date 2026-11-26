@@ -1102,9 +1102,10 @@ describe('SHARING-305.1', () => {
         body: json(rotationOf([dana], { epoch: 3 })),
       },
       { path: `/groups/${BRISBANE}/keys?after=1` },
+      { path: `/groups/${BRISBANE}/devices` },
       leaveRequest(BRISBANE),
     ];
-    expect(requests).toHaveLength(14);
+    expect(requests).toHaveLength(15);
     // The requests of a sync, from which a phone learns that it is out: upload and download.
     const told = [0, 1];
     const marks: (string | null)[] = [];

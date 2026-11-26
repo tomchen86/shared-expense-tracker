@@ -1,5 +1,6 @@
 import {
   isEventsPageResponse,
+  isGroupDevicesResponse,
   isUploadEventsRequest,
   isUploadEventsResponse,
 } from './group-events';
@@ -68,4 +69,31 @@ test('an array of one empty slot is no list of events', () => {
   expect(isEventsPageResponse({ events: new Array(1), more: false })).toBe(
     false,
   );
+});
+
+describe('a group devices response', () => {
+  const first = { deviceId: TAYLOR, syncedAtMs: 0 };
+  const second = {
+    deviceId: '6f2a9d1c-3b4e-4c7a-9e8f-1a2b3c4d5e6f',
+    syncedAtMs: null,
+  };
+
+  test('accepts a sorted list with a progress time or null for each device', () => {
+    expect(isGroupDevicesResponse({ devices: [first, second] })).toBe(true);
+  });
+
+  test.each([
+    {},
+    { devices: 'none' },
+    { devices: [] },
+    { devices: [first], extra: true },
+    { devices: [first, first] },
+    { devices: [second, first] },
+    { devices: [{ ...first, deviceId: 'invalid' }] },
+    { devices: [{ ...first, syncedAtMs: '0' }] },
+    { devices: [{ ...first, syncedAtMs: -1 }] },
+    { devices: [{ ...first, extra: true }] },
+  ])('rejects %j', (value) => {
+    expect(isGroupDevicesResponse(value)).toBe(false);
+  });
 });

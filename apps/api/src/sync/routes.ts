@@ -20,6 +20,7 @@ import type { AppEnv } from '../app';
 import { jsonOf } from '../sharing/signed-requests';
 import {
   createGroup,
+  readGroupDevices,
   readPage,
   storeEvents,
   type EventApiRefusal,
@@ -102,6 +103,17 @@ export const syncRoutes = new Hono<AppEnv>()
     }
     const answer: CreateGroupResponse = { groupId };
     return c.json(answer);
+  })
+  .get('/groups/:groupId/devices', async (c, next) => {
+    if (c.req.method !== 'GET') return next();
+    const groupId = c.req.param('groupId');
+    if (!isGroupId(groupId) || hasQuery(c.req.url)) {
+      return refuse({ error: 'request' });
+    }
+    const outcome = await readGroupDevices(c.env.sql, groupId, c.var.deviceId);
+    return 'error' in outcome
+      ? refuse(outcome)
+      : c.json(outcome, 200, NO_STORE);
   })
   .post('/groups/:groupId/events', async (c) => {
     const groupId = c.req.param('groupId');

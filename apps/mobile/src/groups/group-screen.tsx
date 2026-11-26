@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { groupAmounts } from '@shared-expense/domain';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
@@ -12,8 +19,10 @@ import { ExpenseCard, paidBy } from '../ledger/expense-card';
 import { PeriodList, useListPeriod } from '../ledger/list-period-ui';
 import { useTrashActions } from '../ledger/trash-provider';
 import { useReadExpenses } from '../ledger/use-expenses';
+import { apiUrl } from '../sharing/api-address';
 import { useReceivedRequests } from '../sharing/received-requests';
 import { useRefreshReceivedRequests } from '../sharing/request-refresh';
+import { syncGroup } from '../sync/loop';
 import { deleteReadOnlyCopy, type ReadOnlyCopy } from '../sync/read-only-copy';
 import { useSyncNotices } from '../sync/use-sync-notices';
 import { groupTotals, yourBalanceLines } from './format-balance';
@@ -35,7 +44,19 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const [group, setGroup, pendingRead] = useGroup(id);
   const database = useLocalDatabase();
   useRefreshReceivedRequests(database, id, group);
-  const notices = useSyncNotices(database, group?.shared ? id : undefined);
+  const locale = useDisplayLocale();
+  const notices = useSyncNotices(
+    database,
+    group?.shared ? id : undefined,
+    locale,
+  );
+  const url = group?.shared ? apiUrl() : undefined;
+  const [pulling, setPulling] = useState<string>();
+  function refresh(url: string) {
+    setPulling(id);
+    const done = () => setPulling(undefined);
+    void syncGroup(database, { groupId: id, apiUrl: url }).then(done, done);
+  }
   // Only an unarchived shared ledger has any (SHARING-190.2).
   const asking = useReceivedRequests(database, id).requests.length;
   /** Runs `go` if the group can be changed, once a read in progress has finished. */
@@ -92,7 +113,6 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
   const { pending, save } = useGroupArchive();
   const { move } = useTrashActions();
   const { userId } = useLocalIdentity();
-  const locale = useDisplayLocale();
   const titleScroll = useLargeTitleScroll();
   const base = inSettings ? '/settings/archived-groups' : '/groups';
   const read = useReadExpenses();
@@ -163,6 +183,14 @@ export function GroupScreen({ inSettings = false }: { inSettings?: boolean }) {
         <PeriodList
           backSwipe
           groupId={id}
+          refreshControl={
+            url ? (
+              <RefreshControl
+                refreshing={pulling === id}
+                onRefresh={() => refresh(url)}
+              />
+            ) : undefined
+          }
           periods={periods}
           searchExpenses={group ? expenses : undefined}
           scrollEventThrottle={16}
