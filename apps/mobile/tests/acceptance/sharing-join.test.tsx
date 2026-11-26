@@ -34,6 +34,7 @@ import {
   fromHex,
   goOffline,
   goOnline,
+  holdSecureStoreWrites,
   mistakes,
   nextSeedIs,
   received,
@@ -149,6 +150,7 @@ import {
   tokyoInvites,
   typeName,
 } from './sharing-join-app';
+import { comesToForeground, goesToBackground } from './sharing-refresh-app';
 import { iconNames } from './shell-actions-app';
 import { allowWrites, failWrites, settle } from './shell-appearance-app';
 import { selectedTab, tapTab } from './shell-tabs-app';
@@ -2379,6 +2381,49 @@ describe('SHARING-321.1', () => {
         .filter(({ path }) => path.includes(paris)),
     ).toEqual([]);
     expect(joinLines()).toContain(WAITING);
+  });
+
+  test('[SHARING-321.1] sends nothing for a sync that waited for the device identity while it was changing, and leaves the new identity unregistered', async () => {
+    await startAt({ Brisbane: ['Casey', 'Blake'], Paris: [] });
+    await invited('Paris');
+    await closeInvite();
+    await leaveMembers('Paris');
+    // Brisbane becomes a copy with a change it never sent, so the form asks before replacing it.
+    await invited('Brisbane');
+    await closeInvite();
+    goOffline();
+    await addMember('Dana');
+    await leaveMembers('Brisbane');
+    goOnline();
+    await becomesACopy('Brisbane');
+    const paris = await groupId('Paris');
+    const lost = deviceIdOnPhone();
+    expect(lost).toBeDefined();
+    loseTheSeed();
+    const link = await othersInvite();
+    await tapTab('Settings');
+    await openLink(link);
+    await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
+    await pressInJoin('Casey');
+    const from = received().length;
+    const shown = alertsShown().length;
+    const release = holdSecureStoreWrites();
+
+    // The new seed waits for the secure store. Meanwhile the user leaves the app and comes
+    // back, so the app starts a sync of Paris, which waits for the device identity.
+    await pressInJoin(SEND);
+    await goesToBackground();
+    await comesToForeground();
+    release();
+    await waitFor(() => expect(alertsShown().length).toBeGreaterThan(shown));
+    await pressAlertButton('Cancel');
+
+    expect(deviceIdOnPhone()).not.toBe(lost);
+    expect(await readOnlyCopyOf(appDatabase(), paris)).toMatchObject({
+      reason: 'lapsed',
+    });
+    // Nothing at all since the press: no request about Paris, and no registration.
+    expect(received().slice(from)).toEqual([]);
   });
 
   test('[SHARING-321.1] takes no new identity when the app starts or when a link is opened and closed: only when a request is sent', async () => {
