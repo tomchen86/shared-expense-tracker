@@ -318,6 +318,88 @@ test('[SYNC-23.2] bases a unit changed on the form on the stamp it had when the 
   ).toBe(true);
 });
 
+/**
+ * Brisbane is not shared yet and has Dinner, whose Edit Expense is open. Then Brisbane
+ * becomes a shared ledger, and phone-b's change of Dinner, `values`, stamped T+120000,
+ * arrives: the form is still open (issue 227).
+ */
+async function sharedWhileTheFormIsOpen(
+  values: (theirs: Money) => Record<string, unknown>,
+) {
+  await startWithGroups(BRISBANE);
+  await addDinner();
+  const dinner = await expenseTitled('Dinner');
+  await openEditExpense(dinner.id);
+  const brisbane = await share('Brisbane');
+  setClock(LATER);
+  const theirs = await moneyOf(9000);
+  await receive(
+    brisbane,
+    changed('expense', dinner.id, at(T120), values(theirs)),
+  );
+  return { dinner, theirs };
+}
+
+test('[SYNC-23.2] writes only the unit changed on a form that opened before the group became a shared ledger, with no base, and leaves what another phone changed since', async () => {
+  const { dinner, theirs } = await sharedWhileTheFormIsOpen((money) => ({
+    note: 'Window seat',
+    money,
+  }));
+
+  const events = await eventsOf(async () => {
+    await fillForm({ title: 'Supper' });
+    await press('Save');
+    await expectFormClosed();
+  });
+
+  expect(events).toEqual([
+    {
+      version: 1,
+      stamp: stamped(1, T120),
+      type: 'expense',
+      id: dinner.id,
+      units: { title: { value: 'Supper' } },
+    },
+  ]);
+  expect(await expenseTitled('Supper')).toMatchObject({
+    note: 'Window seat',
+    ...stored(theirs),
+  });
+});
+
+test('[SYNC-23.2] writes the amount changed on a form that opened before the group became a shared ledger with no base, so the phone that changed it meanwhile is told', async () => {
+  const { dinner, theirs } = await sharedWhileTheFormIsOpen((money) => ({
+    title: 'Brunch',
+    money,
+  }));
+
+  const events = await eventsOf(async () => {
+    await fillForm({ amount: '120.00' });
+    await press('Save');
+    await expectFormClosed();
+  });
+
+  const yours = await moneyOf(12000);
+  expect(events).toEqual([
+    {
+      version: 1,
+      stamp: stamped(1, T120),
+      type: 'expense',
+      id: dinner.id,
+      units: { money: { value: yours } },
+    },
+  ]);
+  expect(await expenseTitled('Brunch')).toMatchObject(stored(yours));
+  // phone-b had changed the amount at T+120000, and this event did not see that.
+  expect(
+    overridesSyncMoney(events[0], {
+      id: dinner.id,
+      stamp: at(T120),
+      money: theirs,
+    }),
+  ).toBe(true);
+});
+
 test('[SYNC-23.2] saves a change of the title though another phone deleted the category of the expense while the form was open', async () => {
   await startShared();
   const brisbane = await groupId('Brisbane');

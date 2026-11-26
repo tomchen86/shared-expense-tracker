@@ -14,7 +14,6 @@ import {
 import {
   goOffline,
   mistakes,
-  received,
   removeWorld,
   resetWorld,
   secureStoreEntries,
@@ -197,7 +196,9 @@ describe('GROUPS-150.1', () => {
       ['Cancel', 'cancel'],
       [REMOVE, 'destructive'],
     ]);
-    expect(received().slice(from)).toEqual([]);
+    // Nothing of the removal: opening Members may still be asking the API something else.
+    expect(rotations(from)).toEqual([]);
+    expect(leaves(from)).toEqual([]);
     await expectMembers(WITH_DANA);
   });
 

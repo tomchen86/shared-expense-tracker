@@ -410,6 +410,8 @@ export interface Phone {
   database: Database;
   identity: LocalIdentity;
   sync: typeof import('../../src/sync');
+  /** The phone's own sync loop, which keeps in memory what a sync's end decided (SYNC-315.1, SYNC-316.2). */
+  loop: typeof import('../../src/sync/loop');
   sharing: typeof import('../../src/sharing');
   groups: typeof import('../../src/groups');
   expenses: typeof import('../../src/ledger/expenses');
@@ -477,6 +479,7 @@ async function startOn(
     name: state.name,
     file: state.file,
     sync: actual<typeof import('../../src/sync')>('../../src/sync'),
+    loop: actual<typeof import('../../src/sync/loop')>('../../src/sync/loop'),
     sharing: actual<typeof import('../../src/sharing')>('../../src/sharing'),
     groups: actual<typeof import('../../src/groups')>('../../src/groups'),
     expenses: actual<typeof import('../../src/ledger/expenses')>(

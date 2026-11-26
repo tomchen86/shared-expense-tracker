@@ -30,15 +30,15 @@ module.exports = {
     './apps/mobile/src/backup/import.ts': { branches: 100 },
     './apps/mobile/src/groups/group-card.tsx': { branches: 85.71 },
     './apps/mobile/src/groups/join-request-cards.tsx': { branches: 86.36 },
-    './apps/mobile/src/groups/group-screen.tsx': { branches: 97.59 },
+    './apps/mobile/src/groups/group-screen.tsx': { branches: 97.7 },
     './apps/mobile/src/groups/group-summary.tsx': { branches: 50 },
     './apps/mobile/src/groups/groups-screen.tsx': { branches: 100 },
     './apps/mobile/src/groups/balances-screen.tsx': { branches: 100 },
     './apps/mobile/src/groups/format-balance.ts': { branches: 100 },
-    './apps/mobile/src/ledger/expenses.ts': { branches: 94.39 },
+    './apps/mobile/src/ledger/expenses.ts': { branches: 94.49 },
     './apps/mobile/src/ledger/list-filter.ts': { branches: 100 },
     './apps/mobile/src/ledger/expense-form-screen.tsx': { branches: 98 },
-    './apps/mobile/src/ledger/use-expense-form.ts': { branches: 92.48 },
+    './apps/mobile/src/ledger/use-expense-form.ts': { branches: 92.7 },
     './apps/mobile/src/ledger/use-expenses.ts': { branches: 92.3 },
     './apps/mobile/src/ledger/expense-screen.tsx': { branches: 100 },
     './apps/mobile/src/ledger/expenses-screen.tsx': { branches: 100 },
@@ -47,7 +47,7 @@ module.exports = {
     './apps/mobile/src/sync/apply.ts': { branches: 100 },
     './apps/mobile/src/sync/index.ts': { branches: 75 },
     './apps/mobile/src/sync/positions.ts': { branches: 75 },
-    './apps/mobile/src/sync/records.ts': { branches: 97.5 },
+    './apps/mobile/src/sync/records.ts': { branches: 97.61 },
     './apps/mobile/src/sync/use-synced-focus-effect.ts': { branches: 83.33 },
     // The mark of an expense whose money another phone replaced (ADR-0029): what keeps the
     // phone's own money change and raises the mark, what settles it, and what shows it.
@@ -61,11 +61,12 @@ module.exports = {
     // Possible duplicates (ADR-0035): the pairing rule, the ledger read and save, and the card.
     './packages/domain/src/sync/duplicates.ts': { branches: 91.66 },
     './apps/mobile/src/sync/duplicates.ts': { branches: 100 },
-    './apps/mobile/src/ledger/expense-card.tsx': { branches: 87.5 },
+    './apps/mobile/src/ledger/expense-card.tsx': { branches: 88.88 },
     // The phone's sync with the API (ADR-0027): the loop, what its requests share, its
     // tables, the check of unsent stamps, and what starts a sync and shows its notices.
     // Measured with the tests against the API (`*-api.test.*`), which need Docker.
     './apps/mobile/src/sync/loop.ts': { branches: 100 },
+    './apps/mobile/src/sync/notices.ts': { branches: 100 },
     './apps/mobile/src/sync/transport.ts': { branches: 100 },
     './apps/mobile/src/sync/migrations.ts': { branches: 100 },
     './apps/mobile/src/sync/stamps.ts': { branches: 96.42 },
@@ -167,7 +168,7 @@ module.exports = {
     './apps/mobile/src/sharing/removal.ts': { branches: 87.5 },
     './apps/mobile/src/sharing/join-keys.ts': { branches: 100 },
     './apps/mobile/src/groups/copy-banner.tsx': { branches: 83.33 },
-    './apps/mobile/src/groups/members-screen.tsx': { branches: 85.83 },
+    './apps/mobile/src/groups/members-screen.tsx': { branches: 88.59 },
     './apps/mobile/src/groups/use-group.ts': { branches: 82.6 },
     './apps/mobile/src/backup/use-backup.ts': { branches: 95 },
     './apps/mobile/src/categories/manage-categories-screen.tsx': {

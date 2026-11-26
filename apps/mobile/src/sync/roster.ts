@@ -4,7 +4,10 @@ import {
   type SyncStamp,
   type SyncUnits,
 } from '@shared-expense/domain';
-import type { SqlExecutor } from '../storage';
+import { isGroupDevicesResponse } from '@shared-expense/domain/api';
+import { sendApiRequest } from '../sharing/api-request';
+import type { Database, SqlExecutor } from '../storage';
+import { GIVE_UP_AFTER_MS, jsonIn } from './transport';
 
 type Entry = { value: SyncUnits['device']['member']; stamp: SyncStamp };
 
@@ -32,23 +35,46 @@ export async function readRoster(
   );
 }
 
-/**
- * The members of a shared ledger that another phone represents: those a roster entry of
- * another device names, whatever user ID that entry carries (SYNC-251.2). None for a group
- * that is no shared ledger.
- */
-export async function membersWithPhones(
+export interface MemberPhone {
+  deviceId: string;
+  memberId: string;
+  userId: string;
+}
+
+/** The other phones that currently represent someone in the ledger (SYNC-251.2). */
+export function otherMemberPhones(
   database: SqlExecutor,
   groupId: string,
-): Promise<string[]> {
-  const rows = await database.all<{ memberId: string }>(
-    `SELECT DISTINCT json_extract(r.record, '$.units.member.value.memberId') AS memberId
+): Promise<MemberPhone[]> {
+  return database.all<MemberPhone>(
+    `SELECT r.id AS deviceId,
+            json_extract(r.record, '$.units.member.value.memberId') AS memberId,
+            json_extract(r.record, '$.units.member.value.userId') AS userId
      FROM sync_records r JOIN sync_groups s ON s.groupId = r.groupId
      WHERE r.groupId = ? AND r.type = 'device' AND r.id <> s.device
        AND json_extract(r.record, '$.units.member.value.memberId') IS NOT NULL`,
     [groupId],
   );
-  return rows.map(({ memberId }) => memberId);
+}
+
+/** The API's answer for this opening of Members. Asking never changes the ledger. */
+export async function fetchDeviceSyncTimes(
+  database: Database,
+  groupId: string,
+  apiUrl: string,
+) {
+  const answer = await sendApiRequest(database, {
+    apiUrl,
+    method: 'GET',
+    path: `/groups/${groupId}/devices`,
+    giveUpAfterMs: GIVE_UP_AFTER_MS,
+  });
+  if (answer.outcome !== 'answered' || answer.status !== 200) return;
+  const body = jsonIn(answer.body);
+  if (isGroupDevicesResponse(body))
+    return new Map(
+      body.devices.map(({ deviceId, syncedAtMs }) => [deviceId, syncedAtMs]),
+    );
 }
 
 /**

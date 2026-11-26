@@ -371,7 +371,7 @@ const NO_EXPENSES: ExpenseView[] = [];
 
 interface PeriodListProps extends Pick<
   FlatListProps<ExpenseView>,
-  'onScroll' | 'scrollEventThrottle'
+  'onScroll' | 'scrollEventThrottle' | 'refreshControl'
 > {
   periods: ListPeriodState;
   /** Every expense this screen can search, across all dates. Omit when search is unavailable. */
@@ -419,6 +419,7 @@ function PeriodListBody({
   summary,
   message,
   card,
+  refreshControl,
   onScroll,
   scrollEventThrottle,
 }: Omit<PeriodListProps, 'backSwipe'>) {
@@ -781,6 +782,7 @@ function PeriodListBody({
       <TitleBarHeight into={titleBarHeight} />
       <SwipeFlatList
         listRef={list}
+        refreshControl={refreshControl}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         // Where the list rests under a see-through title bar is above its content, and iOS

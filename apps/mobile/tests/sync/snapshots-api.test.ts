@@ -6,6 +6,7 @@ import {
 } from '../../src/storage/expo-files';
 import {
   UPDATE_NOTICE,
+  WAITING_NOTICE,
   noticesOf,
   requestsOf,
   taylorBehind,
@@ -30,6 +31,7 @@ import {
   sealed,
   secureStoreWorks,
   sent,
+  setClock,
   setEpoch,
   sync,
   twoPhones,
@@ -87,6 +89,27 @@ jest.mock('../../src/storage/expo-files', () => ({
 
 beforeEach(startSnapshotWorld);
 afterEach(endSnapshotWorld);
+
+test('taking in a snapshot and then receiving a malformed events page keep the time of the last valid page', async () => {
+  const { a, b, brisbane } = await twoPhones();
+  const lastPage = () => a.sync.lastSyncedAt(a.database, brisbane);
+  await sync(a);
+  expect(await lastPage()).toBe(NOW);
+
+  await addExpense(b, { title: 'Lunch' });
+  await sync(b);
+  await sentSnapshot(b, a);
+  setClock(a, NOW + 1_000);
+  expect(await takeSnapshot(a)).toEqual({ outcome: 'imported' });
+  expect(await lastPage()).toBe(NOW);
+
+  answerEventRequest('GET', 200, '{}');
+  await sync(a);
+  expect(await lastPage()).toBe(NOW);
+
+  await sync(a);
+  expect(await lastPage()).toBe(NOW + 1_000);
+});
 
 test.each(['snapshot', 'continue'])(
   'a sync can use both recovery replies with %s first',
@@ -150,6 +173,26 @@ test('a backup restored while fetching a snapshot can already cover it', async (
   expect(await unsent(a)).toEqual(waiting);
 });
 
+test('an empty page for a superseded cursor preserves the last page time restored from backup', async () => {
+  const { a, b, brisbane } = await twoPhones();
+  await sync(a);
+  const before = await copyOfData(a);
+  await addExpense(b, { title: 'Lunch' });
+  await sync(b);
+  setClock(a, NOW + 1_000);
+  await sync(a);
+  expect(await a.sync.lastSyncedAt(a.database, brisbane)).toBe(NOW + 1_000);
+
+  // The empty answer is for cursor 1, but the backup puts the live cursor back at 0.
+  whenEventAnswered('GET', () => importCopy(a, before));
+  setClock(a, NOW + 2_000);
+  await sync(a);
+  expect(await a.sync.lastSyncedAt(a.database, brisbane)).toBe(NOW);
+
+  await sync(a);
+  expect(await a.sync.lastSyncedAt(a.database, brisbane)).toBe(NOW + 2_000);
+});
+
 test('an interrupted snapshot download keeps the update notice only for the same snapshot', async () => {
   const { a, b, key } = await taylorBehind();
   const { sequence } = await sentSnapshot(b, a);
@@ -167,7 +210,7 @@ test('an interrupted snapshot download keeps the update notice only for the same
   await sentSnapshot(b, a);
   noAnswerTo('GET', 0);
   await sync(a);
-  expect(await noticesOf(a)).toEqual([]);
+  expect(await noticesOf(a)).toEqual([WAITING_NOTICE]);
 });
 
 test('a backup restores a retained upload alongside a later unsent event', async () => {

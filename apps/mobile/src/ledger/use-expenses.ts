@@ -22,6 +22,7 @@ export type GroupWithFormerMembers = Group & { formerMembers: GroupMember[] };
 export interface ExpenseView extends Expense {
   addedOrder: number;
   changedAt: number | null;
+  unsent: boolean;
   /** The money the user entered, while the expense needs review (LEDGER-151.1). */
   yours?: SyncMoney;
   /** The earlier expense shown in the possible duplicate block, while this one is marked. */
