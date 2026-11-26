@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { readOnlyCopyOf, type ReadOnlyCopy } from '../sync/read-only-copy';
-import { membersWithPhones } from '../sync/roster';
+import { otherMemberPhones, type MemberPhone } from '../sync/roster';
 import { useSyncedFocusEffect } from '../sync/use-synced-focus-effect';
 import { useLocalDatabase } from '../shell';
 import {
@@ -14,8 +14,8 @@ type GroupDetails = Group & {
   formerMembers: GroupMember[];
   /** Why the group is a read-only copy, and how many of its changes were never sent. */
   copy?: ReadOnlyCopy;
-  /** The IDs of the members another phone represents (SYNC-251.2). */
-  phones?: readonly string[];
+  /** Other phones and the members they represent (SYNC-251.2). */
+  phones: readonly MemberPhone[];
 };
 type Database = ReturnType<typeof useLocalDatabase>;
 
@@ -28,7 +28,7 @@ export async function readGroupDetails(
     listGroups(database),
     listFormerMembers(database, id),
     readOnlyCopyOf(database, id),
-    membersWithPhones(database, id),
+    otherMemberPhones(database, id),
   ]);
   const found = groups.find((candidate) => candidate.id === id);
   return found ? { ...found, formerMembers, copy, phones } : null;

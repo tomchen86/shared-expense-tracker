@@ -98,20 +98,29 @@ export async function waits(
   return phone.sync.isWaitingForSnapshot(phone.database, groupId);
 }
 
-/** The lines the group's screen shows under its title about its sync, top to bottom. */
+/**
+ * The lines the group's screen shows under its title about its sync, top to bottom. They
+ * are read through the phone's own modules: a plain `requireActual` gives those of the
+ * phone started last, and what a sync's end decided is kept in memory (SYNC-315.1, SYNC-316.2).
+ */
 export async function noticesOf(
   phone: Phone,
   groupId = phone.brisbane,
 ): Promise<string[]> {
-  const { readSyncNotices } = jest.requireActual<
-    typeof import('../../src/sync/loop')
-  >('../../src/sync/loop');
-  return (await readSyncNotices(phone.database, groupId)).lines;
+  return (await phone.loop.readSyncNotices(phone.database, groupId)).lines;
 }
 
 /** The line a shared ledger's screen shows while it waits for an app update (SYNC-75.1). */
 export const UPDATE_NOTICE =
   'This group has changes from a newer version of the app. Update the app to see them.';
+
+/** The line a shared ledger's screen shows while it waits for a snapshot (SYNC-314.1). */
+export const WAITING_NOTICE =
+  'This group is out of date. It will catch up after another member opens the app.';
+
+/** The line of a shared ledger whose last sync stopped at a request that got no answer (SYNC-316.2). */
+export const OFFLINE_NOTICE =
+  'Connect to the internet to sync this group. New changes stay on this phone until then.';
 
 /** The group's expenses on the phone as its cards read them: each with `yours` while it needs review (LEDGER-151.1). */
 async function cardsOf(phone: Phone, groupId: string) {

@@ -22,7 +22,7 @@ jest.mock('../../src/sync/read-only-copy', () => ({
   readOnlyCopyOf: async () => undefined,
 }));
 jest.mock('../../src/sync/roster', () => ({
-  membersWithPhones: async () => [],
+  otherMemberPhones: async () => [],
 }));
 
 beforeEach(() => {
