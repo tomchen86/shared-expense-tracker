@@ -65,7 +65,11 @@ import {
 import { takeCheckedStamps } from '../sync/stamps';
 import { apiUrl } from './api-address';
 import { prepareSigningDevice, sendApiRequest } from './api-request';
-import { readCorrectedTime, type SigningDevice } from './device-identity';
+import {
+  readCorrectedTime,
+  storedDeviceId,
+  type SigningDevice,
+} from './device-identity';
 import { storeGroupKey } from './group-key';
 import type { InviteCredentials } from './invite-card';
 import { readInviteCard, type CardUnread, type JoinCard } from './join-invite';
@@ -173,7 +177,7 @@ async function send(
   method: string,
   path: string,
   body?: unknown,
-  deviceId?: string,
+  deviceId?: string | null,
 ): Promise<Answer | undefined> {
   const url = apiUrl();
   if (!url) return undefined;
@@ -292,11 +296,13 @@ const rejection = (
  * Lists the group's requests from the API, rejects the ones this phone cannot read, and
  * resolves with the ones it can, in the API's order (SHARING-190.2 to 192.1). It lists
  * none without an invite of the ledger that has not expired. Rejects when a request of
- * the list got no answer, or one that is no page.
+ * the list got no answer, or one that is no page. `deviceId` is the identity the ledger
+ * was read with (SHARING-321.1).
  */
 export async function listReceivedJoinRequests(
   database: Database,
   groupId: string,
+  deviceId?: string | null,
 ): Promise<ReceivedJoinRequest[]> {
   const invites = await database.all<InviteCredentials & { live: number }>(
     `SELECT id AS code, secret, expiresAtMs > ? AS live FROM group_invites
@@ -311,6 +317,8 @@ export async function listReceivedJoinRequests(
       database,
       'GET',
       `/groups/${groupId}/requests${query}`,
+      undefined,
+      deviceId,
     );
     if (answer?.status !== 200 || !isJoinRequestsPageResponse(answer.said))
       throw new Error('The join requests could not be listed');
@@ -338,6 +346,8 @@ export async function listReceivedJoinRequests(
           deviceId: each.deviceId,
           request: bytesToHex(sha256(hexToBytes(each.request))),
         }),
+        undefined,
+        deviceId,
       ).catch(() => undefined);
   }
   return received;
@@ -1062,9 +1072,19 @@ export async function askJoinResult(
   code: string,
   progress: JoinProgress = {},
 ): Promise<JoinResult> {
-  const request = await requestByCode(database, code);
+  // The request is asked about for the identity it was read with (SHARING-321.1).
+  const { request, signer } = await database.transaction(async (tx) => ({
+    request: await requestByCode(tx, code),
+    signer: await storedDeviceId(tx),
+  }));
   if (!request) return { outcome: 'no-answer' };
-  const answer = await send(database, 'GET', `/invites/${code}/request`);
+  const answer = await send(
+    database,
+    'GET',
+    `/invites/${code}/request`,
+    undefined,
+    signer,
+  );
   if (!answer) return { outcome: 'no-answer' };
   const mine = [code, request.secret];
   const refusal = refusalIn(answer);

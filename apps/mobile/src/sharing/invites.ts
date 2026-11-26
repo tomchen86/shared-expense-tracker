@@ -11,7 +11,7 @@ import {
 } from '../sync/invites';
 import { sharedGroup } from '../sync/records';
 import { apiUrl } from './api-address';
-import { readDeviceIdentity } from './device-identity';
+import { readDeviceIdentity, storedDeviceId } from './device-identity';
 import { ensureFirstGroupKey } from './group-key';
 import {
   createSharedGroup,
@@ -39,7 +39,7 @@ class InviteLimit extends Error {
 
 async function cardForNewInvite(tx: SqlExecutor, groupId: string) {
   const card = await readCard(tx, groupId);
-  if (card.archived) throw new InviteLimit('unavailable');
+  if (card.unavailable) throw new InviteLimit('unavailable');
   if (!card.shared && card.members > MAX_SHARED_GROUP_MEMBERS)
     throw new InviteLimit('members');
   if (card.tooLarge) throw new InviteLimit('size');
@@ -70,11 +70,13 @@ async function prepare(
     refreshInviteCard(database, groupId, true);
     return existing;
   }
-  const initial = await database.transaction((tx) =>
-    cardForNewInvite(tx, groupId),
-  );
+  // Each request is for the identity the ledger was read with (SHARING-321.1).
+  const initial = await database.transaction(async (tx) => ({
+    ...(await cardForNewInvite(tx, groupId)),
+    signer: await storedDeviceId(tx),
+  }));
   if (!initial.shared) {
-    await createSharedGroup(database, groupId);
+    await createSharedGroup(database, groupId, initial.signer);
     const identity = await readDeviceIdentity(database);
     if (identity.status !== 'ready') return 'unavailable';
     await shareGroup(
@@ -90,13 +92,22 @@ async function prepare(
   }
 
   for (let attempt = 0; attempt < 2; attempt++) {
-    const { card, credentials } = await database.transaction(async (tx) => ({
-      card: await cardForNewInvite(tx, groupId),
-      credentials: await pendingCredentials(tx, groupId),
-    }));
+    const { card, credentials, signer } = await database.transaction(
+      async (tx) => ({
+        card: await cardForNewInvite(tx, groupId),
+        credentials: await pendingCredentials(tx, groupId),
+        signer: await storedDeviceId(tx),
+      }),
+    );
     let expiresAtMs: number;
     try {
-      ({ expiresAtMs } = await putInvite(database, groupId, credentials, card));
+      ({ expiresAtMs } = await putInvite(
+        database,
+        groupId,
+        credentials,
+        card,
+        signer,
+      ));
     } catch (error) {
       if (error instanceof InviteRefused) {
         await discardPendingInvite(database, groupId, credentials);

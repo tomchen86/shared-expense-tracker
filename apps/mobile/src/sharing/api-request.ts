@@ -51,10 +51,11 @@ export interface ApiRequest {
   /** Lets a caller distinguish a secure-store read failure from other request errors. */
   onSeedReadError?: (cause: unknown) => never;
   /**
-   * The device identity the request was made for: the one stored when it is handed over,
-   * unless said. A phone holding another one by its device turn sends nothing (SHARING-321.1).
+   * The device identity the request was made for, read with what the request was made
+   * from: the one stored when it is handed over, unless said, null when none was stored.
+   * A phone holding another one by its device turn sends nothing (SHARING-321.1).
    */
-  deviceId?: string;
+  deviceId?: string | null;
 }
 
 /** What became of a request. */
@@ -66,7 +67,12 @@ export type ApiResult =
   /** The registration or the request got no answer. */
   | { outcome: 'no-answer' }
   /** Not sent: this phone's authorization is lost. */
-  | { outcome: 'authorization-lost' };
+  | { outcome: 'authorization-lost' }
+  /**
+   * Not sent: the phone holds another device identity than the one the request was made
+   * for, whose authorization need not be lost (SHARING-321.1, BACKUP-29.1).
+   */
+  | { outcome: 'identity-changed' };
 
 const NONCE_LENGTH = 16;
 /** The longest the API can make this phone wait before it sends again (SHARING-28.1). */
@@ -253,6 +259,8 @@ async function exchange(
       clockCorrected = true;
       // Asked for once, and only now that the new offset is saved.
       if (bodyAfterClockCorrection) {
+        // What it changes belongs to this identity: nothing changes once another holds it.
+        await readCorrectedTime(database, device.deviceId);
         outgoing = {
           ...outgoing,
           body: bytesToSend(await bodyAfterClockCorrection()),
@@ -351,9 +359,10 @@ export async function sendApiRequest(
   const device = await inDeviceTurn(
     async (): Promise<SigningDevice | ApiResult> => {
       const ready = await ensureDevice(database, request.onSeedReadError);
-      // The request's own identity has no seed: a new one is no stand-in for it.
-      if (ready === 'lost' || (owner !== undefined && ready.deviceId !== owner))
-        return { outcome: 'authorization-lost' };
+      if (ready === 'lost') return { outcome: 'authorization-lost' };
+      // A new identity is no stand-in for the request's own, lost or not.
+      if (owner !== undefined && ready.deviceId !== owner)
+        return { outcome: 'identity-changed' };
       if (ready.registered) return ready;
       return (await register(database, ready, request)) ?? ready;
     },

@@ -369,11 +369,12 @@ async function download(
       apiUrl,
       method: 'GET',
       path: `${eventsPath(groupId)}?after=${ledger.cursor}`,
-      deviceId: ledger.identity ?? undefined,
+      deviceId: ledger.identity,
       giveUpAfterMs: GIVE_UP_AFTER_MS,
     });
     end.noAnswer = answer.outcome === 'no-answer';
-    // Nothing was sent: the phone holds a device ID whose seed is gone (SYNC-301.1).
+    // Nothing was sent: the phone holds a device ID whose seed is gone (SYNC-301.1). It
+    // was not sent for another identity either, but that one may hold the ledger (BACKUP-29.1).
     if (answer.outcome === 'authorization-lost')
       follow.copy = { reason: 'lapsed' };
     if (answer.outcome !== 'answered') return;

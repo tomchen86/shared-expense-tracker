@@ -76,6 +76,17 @@ export async function readDeviceIdentity(
   return { status: seed ? 'ready' : 'lost', deviceId: device.deviceId };
 }
 
+/**
+ * The stored device ID, or null when none is stored. Read in the transaction that reads
+ * what a request is made from, it is the identity the request is for (SHARING-321.1).
+ */
+export async function storedDeviceId(tx: SqlExecutor): Promise<string | null> {
+  const [{ deviceId }] = await tx.all<{ deviceId: string | null }>(
+    'SELECT (SELECT deviceId FROM device_identity) AS deviceId',
+  );
+  return deviceId;
+}
+
 /** The API's time minus this phone's clock, in milliseconds: 0 until the API has told. */
 export async function readClockOffsetMs(
   database: SqlExecutor,

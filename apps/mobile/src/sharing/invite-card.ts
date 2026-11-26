@@ -30,12 +30,14 @@ export function newInviteCredentials(): InviteCredentials {
 
 /** Read in one transaction so the names, member order and cursor describe one ledger state. */
 export async function readCard(tx: SqlExecutor, groupId: string) {
+  // A read-only copy invites nobody: nothing is sent for it (SYNC-302.1, SHARING-321.1).
   const [group] = await tx.all<{
     name: string;
-    archived: number;
+    unavailable: number;
     cursor: number | null;
   }>(
-    'SELECT g.name, g.archived, s.cursor FROM groups g LEFT JOIN sync_groups s ON s.groupId = g.id WHERE g.id = ?',
+    `SELECT g.name, g.archived OR s.readOnly IS NOT NULL AS unavailable, s.cursor
+     FROM groups g LEFT JOIN sync_groups s ON s.groupId = g.id WHERE g.id = ?`,
     [groupId],
   );
   const members = await tx.all<{
@@ -62,7 +64,7 @@ export async function readCard(tx: SqlExecutor, groupId: string) {
     hash: bytesToHex(sha256(bytes)),
     cursor: group.cursor ?? 0,
     shared: group.cursor !== null,
-    archived: !!group.archived,
+    unavailable: !!group.unavailable,
     members: members.length,
     tooLarge: bytes.length + EVENT_CONTENT_MINIMUM > EVENT_CONTENT_LIMIT,
   };
