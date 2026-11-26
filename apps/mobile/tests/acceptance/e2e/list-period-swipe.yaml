@@ -25,11 +25,14 @@ tags:
     text: Next period
     enabled: false
 # Right on the period's name goes back a month, left comes forward again, and left on this
-# month does nothing.
+# month does nothing. Each swipe from the name or the total takes a second and a half: on a
+# slow runner the simulator's touches sometimes stop for half a second, and all of a quicker
+# swipe then reaches the app at once, which changes no period.
 - swipe:
     from:
       text: Choose period\..*
     direction: RIGHT
+    duration: 1500
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
 # The swipe pressed nothing: the name's menu is not open.
@@ -43,6 +46,7 @@ tags:
     from:
       text: Choose period\..*
     direction: LEFT
+    duration: 1500
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
 - assertVisible: Today, .*
@@ -50,6 +54,7 @@ tags:
     from:
       text: Choose period\..*
     direction: LEFT
+    duration: 1500
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
 - assertVisible:
@@ -60,18 +65,21 @@ tags:
     from:
       text: View expense insights\..*
     direction: RIGHT
+    duration: 1500
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.lastMonth} ${output.lastMonthsYear}
 - swipe:
     from:
       text: View expense insights\..*
     direction: LEFT
+    duration: 1500
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
 - swipe:
     from:
       text: View expense insights\..*
     direction: UP
+    duration: 1500
 - waitForAnimationToEnd
 - assertVisible: Choose period\. ${output.thisMonth} ${output.thisYear}
 # A swipe to the left on a card shows its Delete, and the period stays.
