@@ -104,7 +104,7 @@ module.exports = {
     './apps/mobile/src/sharing/invites.ts': { branches: 94.73 },
     './apps/mobile/src/sharing/join-form.tsx': { branches: 94.23 },
     './apps/mobile/src/sharing/join-invite.ts': { branches: 100 },
-    './apps/mobile/src/sharing/join-requests.ts': { branches: 93.33 },
+    './apps/mobile/src/sharing/join-requests.ts': { branches: 94.52 },
     './apps/mobile/src/sharing/refresh-invite-card.ts': { branches: 96.87 },
     './apps/mobile/src/sharing/use-join-group.ts': { branches: 89.84 },
     './apps/mobile/src/sync/invites.ts': { branches: 75 },
