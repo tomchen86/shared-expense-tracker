@@ -3,6 +3,7 @@ import { subscribeToAppliedEvents } from '../sync/apply';
 import { activeInvite } from '../sync/invites';
 import { subscribeToUnsentEvents } from '../sync/records';
 import { apiUrl } from './api-address';
+import { storedDeviceId } from './device-identity';
 import { putInvite } from './invite-api';
 import { readCard } from './invite-card';
 
@@ -30,7 +31,10 @@ export function refreshInviteCard(
       const update = await snapshot;
       if (!update) return;
       const { invite, card } = update;
+      // The card is sent for the identity the invite was read with (SHARING-321.1).
+      let signer: string | null = null;
       const send = await database.transaction(async (tx) => {
+        signer = await storedDeviceId(tx);
         const current = await activeInvite(tx, groupId);
         if (current?.code !== invite.code || current.secret !== invite.secret)
           return false;
@@ -48,7 +52,7 @@ export function refreshInviteCard(
         return !card.tooLarge;
       });
       if (!send) return;
-      await putInvite(database, groupId, invite, card);
+      await putInvite(database, groupId, invite, card, signer);
       await database.run(
         'UPDATE group_invites SET cardPending = 0 WHERE groupId = ? AND id = ? AND secret = ? AND cardHash = ?',
         [groupId, invite.code, invite.secret, card.hash],
@@ -65,7 +69,12 @@ export function refreshInviteCard(
 export function watchInviteCards(database: Database) {
   const changed = (groupId: string) => refreshInviteCard(database, groupId);
   const local = subscribeToUnsentEvents((groupId, _position, type) => {
-    if (type === 'group' || type === 'member' || type === 'invite')
+    if (
+      type === 'group' ||
+      type === 'member' ||
+      type === 'invite' ||
+      type === 'device'
+    )
       changed(groupId);
   });
   const remote = subscribeToAppliedEvents(database, changed);

@@ -48,6 +48,13 @@ export const JOIN_AS = 'Join as';
 export const NEW_MEMBER = 'New Member';
 export const ALREADY_JOINED = 'Already joined';
 export const APPROVAL = 'A member of this group has to approve your request.';
+/** The row of a member who has a phone, by its accessible name. */
+export const joined = (member: string) => `${member}, ${ALREADY_JOINED}`;
+/** What stands in APPROVAL's place while a member who has a phone is picked. */
+export const takeoverNote = (member: string) =>
+  `Another member of this group has to approve your request. When they do, ${member}'s current phone will lose access to this group right away.`;
+export const NOBODY_CAN_APPROVE =
+  'No other member has joined this group from a phone, so no one can approve this request.';
 export const SEND = 'Send Request';
 export const SAME_NAME = 'A member with this name already exists.';
 export const ONLY_MEMBERS =
@@ -95,7 +102,7 @@ export const BLAKE_ID = '3f2504e0-4f89-41d3-9a0c-0305e82c3301';
 
 /** The groups' IDs on the phone that made them, and so on the API. */
 export const BRISBANE_ID = '9b2f6c1e-8d47-4f3a-b1c5-2e7d90a4f6b8';
-const TOKYO_ID = 'c4a1e2d3-5b6f-4a7c-9d8e-0f1a2b3c4d5e';
+export const TOKYO_ID = 'c4a1e2d3-5b6f-4a7c-9d8e-0f1a2b3c4d5e';
 /** The phone that made the groups: their one member device on the API. */
 export const TAYLORS_PHONE = '0f8fad5b-d9cb-469f-a165-70867728950e';
 
@@ -145,7 +152,7 @@ const fromBase64Url = (text: string) =>
   new Uint8Array(Buffer.from(text, 'base64url'));
 
 /**
- * A card as a member's phone uploads it (SHARING-95.1): `content` as JSON, or as the text
+ * A card as a member's phone uploads it (SHARING-95.2): `content` as JSON, or as the text
  * it is, sealed with the card key of `secret` for the invite `code`.
  */
 export function sealedCard(code: string, secret: string, content: unknown) {
@@ -173,6 +180,20 @@ export function invites(
     sealedCard(code, secret, content),
   );
 }
+
+/** Brisbane's card with Casey on a phone too: somebody else could approve taking Taylor over. */
+export const TWO_PHONES_CARD = {
+  name: 'Brisbane',
+  members: [
+    { id: TAYLOR_ID, name: 'Taylor', hasDevice: true },
+    { id: CASEY_ID, name: 'Casey', hasDevice: true },
+    { id: BLAKE_ID, name: 'Blake', hasDevice: false },
+  ] as CardMember[],
+};
+
+/** Brisbane's invite under code A, sealed with S, with that card. */
+export const brisbaneInvitesWithTwoPhones = () =>
+  invites(CODE_A, S, TWO_PHONES_CARD);
 
 /** Brisbane's invite under code A, sealed with S: Taylor has a phone, Casey and Blake have none. */
 export const brisbaneInvites = () => invites(CODE_A, S, BRISBANE_CARD);
@@ -213,13 +234,13 @@ export function sentRequest(request: Received): Uint8Array {
   return fromHex(body.request);
 }
 
-/** The request key of a link's secret (SHARING-135.1). */
+/** The request key of a link's secret (SHARING-135.2). */
 export const requestKeyOf = (secret: string) =>
   deriveKey({ secret: fromBase64Url(secret), purpose: REQUEST_PURPOSE });
 
 /**
  * What a join request says, opened with the request key of `secret` and the associated
- * data of SHARING-135.1; undefined when it does not open. The code and the device ID are
+ * data of SHARING-135.2; undefined when it does not open. The code and the device ID are
  * the request's own unless given.
  */
 export function openedRequest(
@@ -245,6 +266,7 @@ export const lastRequest = (secret = S) =>
     memberId: string | null;
     userId: string;
     boxKey: string;
+    takeover?: unknown;
   };
 
 // The phone's local data

@@ -146,7 +146,7 @@ const BRISBANE = { Brisbane: ['Casey', 'Blake'] };
 const WITH_TOKYO = { ...BRISBANE, Tokyo: ['Dana'] };
 const BOTH = ['Brisbane', 'Tokyo'];
 
-/** The banner of a read-only copy this phone was removed from (GROUPS-155.1). */
+/** The banner of a read-only copy this phone was removed from (GROUPS-155.2). */
 const REMOVED_BANNER =
   "You're no longer a member of this group. This copy is read-only and won't update.";
 

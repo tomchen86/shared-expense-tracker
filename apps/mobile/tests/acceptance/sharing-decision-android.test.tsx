@@ -96,7 +96,7 @@ async function inMembersWithDana() {
   await expectMembers([DANA_ROW, YOU, 'Casey', 'Blake', 'Add Member']);
 }
 
-test("[GROUPS-132.1] opens a dialog titled with the applicant's name on Android, with Approve, Decline and Cancel", async () => {
+test("[GROUPS-132.2] opens a dialog titled with the applicant's name on Android, with Approve, Decline and Cancel", async () => {
   await inMembersWithDana();
 
   const menu = await tapMember(DANA_ROW);
@@ -112,7 +112,7 @@ test("[GROUPS-132.1] opens a dialog titled with the applicant's name on Android,
   expect(alertsShown().at(-1)).toEqual(['Dana', MAY_SEE]);
 });
 
-test('[GROUPS-132.1] does nothing when the dialog is closed with Back or a tap outside it on Android', async () => {
+test('[GROUPS-132.2] does nothing when the dialog is closed with Back or a tap outside it on Android', async () => {
   await inMembersWithDana();
 
   const menu = await tapMember(DANA_ROW);

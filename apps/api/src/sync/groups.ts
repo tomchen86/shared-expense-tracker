@@ -17,31 +17,76 @@ import { membersWithSnapshots } from './snapshots';
 /** Why the event API refuses a request that passed the checks before routing. */
 export type EventApiRefusal = GroupRefusal | { error: 'request' };
 
+export interface LockedGroup {
+  epoch: string;
+  last_sequence: string;
+  stored_bytes: string;
+  rotation_needed: boolean;
+}
+
+/** Only event uploads and downloads use the replacement mark in their response. */
+export type EventMembershipRefusal = {
+  error: 'not-a-member';
+  replaced: boolean;
+};
+
+async function lockGroupForDevice(
+  tx: TransactionSql,
+  groupId: string,
+  deviceId: string,
+  operation: 'member' | 'upload' | 'download',
+): Promise<LockedGroup | undefined> {
+  // For an event request, hold the group stable while deciding between membership
+  // and a takeover refusal. Devices with neither association take no group lock.
+  const [group] = await tx<LockedGroup[]>`
+    SELECT g.epoch, g.last_sequence, g.stored_bytes, g.rotation_needed
+    FROM groups g
+    WHERE g.id = ${groupId} AND (
+      EXISTS (SELECT FROM group_members WHERE group_id = g.id AND device_id = ${deviceId})
+      OR (${operation !== 'member'} AND EXISTS (
+        SELECT FROM group_replaced_devices WHERE group_id = g.id AND device_id = ${deviceId}
+      ))
+    )
+    ${operation === 'download' ? tx`FOR SHARE OF g` : tx`FOR UPDATE OF g`}`;
+  return group;
+}
+
 /**
- * Only a member device may lock the group for a write. A waiter sees the last writer's
- * cursor, but it would still see its own member row though that writer removed it
- * (SHARING-250.1): the rows a statement joins to the one it waited for are as old as the
- * statement. So a statement of its own looks again once the lock is held.
+ * A waiter sees the last writer's cursor, but its statement may have seen membership
+ * before that writer removed the device. Check again once the lock is held.
  */
 export async function lockMemberGroup(
   transaction: TransactionSql,
   groupId: string,
   deviceId: string,
 ) {
-  const rows = await transaction<
-    {
-      epoch: string;
-      last_sequence: string;
-      stored_bytes: string;
-      rotation_needed: boolean;
-    }[]
-  >`
-    SELECT g.epoch, g.last_sequence, g.stored_bytes, g.rotation_needed
-    FROM groups g
-    JOIN group_members m ON m.group_id = g.id
-    WHERE g.id = ${groupId} AND m.device_id = ${deviceId}
-    FOR UPDATE OF g`;
-  return stillMember(transaction, groupId, deviceId, rows.at(0));
+  const group = await lockGroupForDevice(
+    transaction,
+    groupId,
+    deviceId,
+    'member',
+  );
+  return stillMember(transaction, groupId, deviceId, group);
+}
+
+/** Judge membership and the reason for its loss in the same snapshot after any lock wait. */
+async function lockEventGroup(
+  tx: TransactionSql,
+  groupId: string,
+  deviceId: string,
+  operation: 'upload' | 'download',
+): Promise<LockedGroup | EventMembershipRefusal> {
+  const group = await lockGroupForDevice(tx, groupId, deviceId, operation);
+  if (!group) return { error: 'not-a-member', replaced: false };
+  const [access] = await tx<{ member: boolean; replaced: boolean }[]>`
+    SELECT EXISTS (
+      SELECT FROM group_members WHERE group_id = ${groupId} AND device_id = ${deviceId}
+    ) AS member, EXISTS (
+      SELECT FROM group_replaced_devices WHERE group_id = ${groupId} AND device_id = ${deviceId}
+    ) AS replaced`;
+  return access.member
+    ? group
+    : { error: 'not-a-member', replaced: access.replaced };
 }
 
 /**
@@ -152,7 +197,7 @@ export async function createGroup(
  * Stores the events of an upload that the group does not have yet, under the group's
  * next sequence numbers in the order of the request, and resolves with the number of
  * every event of the request (SYNC-50.1, 51.1), or with why none was stored
- * (SYNC-49.1, 55.1, 56.1, SHARING-256.1).
+ * (SYNC-49.2, 55.1, 56.1, SHARING-256.1).
  *
  * It is one transaction that holds the lock on the group's row from its first statement
  * to its commit, so the uploads of a group commit in the order of their sequence
@@ -166,19 +211,19 @@ export function storeEvents(
     /** The API's time, which is the receive time of every event stored. */
     now: number;
   },
-): Promise<UploadEventsResponse | GroupRefusal> {
-  return sql.begin<UploadEventsResponse | GroupRefusal>(
-    'isolation level read committed',
-    async (transaction) => {
-      const group = await lockMemberGroup(
-        transaction,
-        upload.groupId,
-        upload.deviceId,
-      );
-      if (!group) return { error: 'not-a-member' };
-      return storeLockedGroupEvents(transaction, group, upload);
-    },
-  ) as Promise<UploadEventsResponse | GroupRefusal>;
+): Promise<UploadEventsResponse | GroupRefusal | EventMembershipRefusal> {
+  return sql.begin<
+    UploadEventsResponse | GroupRefusal | EventMembershipRefusal
+  >('isolation level read committed', async (transaction) => {
+    const group = await lockEventGroup(
+      transaction,
+      upload.groupId,
+      upload.deviceId,
+      'upload',
+    );
+    if ('error' in group) return group;
+    return storeLockedGroupEvents(transaction, group, upload);
+  }) as Promise<UploadEventsResponse | GroupRefusal | EventMembershipRefusal>;
 }
 
 /**
@@ -188,7 +233,7 @@ export function storeEvents(
  */
 export async function storeLockedGroupEvents(
   transaction: TransactionSql,
-  group: NonNullable<Awaited<ReturnType<typeof lockMemberGroup>>>,
+  group: LockedGroup,
   upload: UploadEventsRequest & {
     groupId: string;
     deviceId: string;
@@ -262,6 +307,7 @@ type DownloadResult =
   | { page: EventsPageResponse; snapshotNeededBy: string[] }
   | SnapshotNeededResponse
   | ContinueResponse
+  | EventMembershipRefusal
   | EventApiRefusal;
 
 const SNAPSHOT_REQUEST_WINDOW_MS = 30 * 24 * 60 * 60 * 1_000;
@@ -281,17 +327,8 @@ export function readPage(
     async (tx) => {
       // Downloads share the lock. Uploads and cleanup wait until the page, progress
       // and any deletion of the recipient's snapshot have committed.
-      const [locked] = await tx<
-        { last_sequence: string; rotation_needed: boolean }[]
-      >`
-        SELECT g.last_sequence, g.rotation_needed
-        FROM groups g
-        JOIN group_members m ON m.group_id = g.id
-        WHERE g.id = ${groupId} AND m.device_id = ${deviceId}
-        FOR SHARE OF g`;
-      // While this holds the lock no device is taken out, so its member row stays.
-      const member = await stillMember(tx, groupId, deviceId, locked);
-      if (!member) return { error: 'not-a-member' };
+      const member = await lockEventGroup(tx, groupId, deviceId, 'download');
+      if ('error' in member) return member;
       if (after > Number(member.last_sequence)) return { error: 'request' };
       // A phone that has caught up is told to rotate, and no progress is recorded
       // (SYNC-57.3). One that is behind gets its page first.

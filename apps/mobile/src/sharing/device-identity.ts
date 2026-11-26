@@ -43,7 +43,7 @@ interface StoredDevice {
   clockOffsetMs: number;
 }
 
-async function readStoredDevice(
+export async function readStoredDevice(
   executor: SqlExecutor,
 ): Promise<StoredDevice | undefined> {
   const [device] = await executor.all<StoredDevice>(
@@ -76,6 +76,17 @@ export async function readDeviceIdentity(
   return { status: seed ? 'ready' : 'lost', deviceId: device.deviceId };
 }
 
+/**
+ * The stored device ID, or null when none is stored. Read in the transaction that reads
+ * what a request is made from, it is the identity the request is for (SHARING-321.1).
+ */
+export async function storedDeviceId(tx: SqlExecutor): Promise<string | null> {
+  const [{ deviceId }] = await tx.all<{ deviceId: string | null }>(
+    'SELECT (SELECT deviceId FROM device_identity) AS deviceId',
+  );
+  return deviceId;
+}
+
 /** The API's time minus this phone's clock, in milliseconds: 0 until the API has told. */
 export async function readClockOffsetMs(
   database: SqlExecutor,
@@ -86,10 +97,14 @@ export async function readClockOffsetMs(
 /** This phone's corrected time: its clock plus the offset, kept within what a time can be. */
 export async function readCorrectedTime(
   database: SqlExecutor,
+  signingDeviceId?: string,
 ): Promise<number> {
+  const device = await readStoredDevice(database);
+  if (signingDeviceId !== undefined && device?.deviceId !== signingDeviceId)
+    throw new Error('The device identity changed');
   return Math.min(
     Number.MAX_SAFE_INTEGER,
-    Math.max(0, Date.now() + (await readClockOffsetMs(database))),
+    Math.max(0, Date.now() + (device?.clockOffsetMs ?? 0)),
   );
 }
 
@@ -158,22 +173,20 @@ function signingDevice(
  * nothing reads, and never a device ID without its seed (ADR-0022). When the device ID
  * cannot be saved the phone still has no identity (SHARING-24.1).
  */
-async function createDevice(database: SqlExecutor): Promise<SigningDevice> {
+export async function createDevice(
+  saveId: (deviceId: string) => Promise<unknown>,
+): Promise<SigningDevice> {
   const deviceId = randomUUID();
   const seed = getRandomValues(new Uint8Array(SEED_LENGTH));
-  await SecureStore.setItemAsync(
-    seedEntry(deviceId),
-    bytesToHex(seed),
-    SEED_OPTIONS,
-  );
   try {
-    await database.run(
-      'INSERT INTO device_identity (singleton, deviceId) VALUES (1, ?)',
-      [deviceId],
+    await SecureStore.setItemAsync(
+      seedEntry(deviceId),
+      bytesToHex(seed),
+      SEED_OPTIONS,
     );
+    await saveId(deviceId);
   } catch (error) {
-    // Nothing names this entry now. Removing it is tidiness only, so a failure to is
-    // not what the caller hears about.
+    // The failed write explains why this identity is unusable, even if cleanup also fails.
     await SecureStore.deleteItemAsync(seedEntry(deviceId), SEED_OPTIONS).catch(
       () => undefined,
     );
@@ -184,17 +197,33 @@ async function createDevice(database: SqlExecutor): Promise<SigningDevice> {
 
 /**
  * This phone's device identity, ready to sign, made first when the phone has none.
- * Resolves with `lost` when the local data has a device ID whose seed the secure store
- * does not have (SHARING-29.1), and rejects when the identity cannot be read or saved.
+ * A missing seed resolves to `lost` (SHARING-29.1). Only a join submission supplies
+ * `onLost` to replace the identity (SHARING-321.1). A failed read or write rejects.
  */
+export function ensureDevice(
+  database: SqlExecutor,
+  onSeedReadError: ((cause: unknown) => never) | undefined,
+  onLost: (deviceId: string) => Promise<SigningDevice>,
+): Promise<SigningDevice>;
+export function ensureDevice(
+  database: SqlExecutor,
+  onSeedReadError?: (cause: unknown) => never,
+): Promise<SigningDevice | 'lost'>;
 export async function ensureDevice(
   database: SqlExecutor,
   onSeedReadError?: (cause: unknown) => never,
+  onLost: (deviceId: string) => Promise<SigningDevice> | 'lost' = () => 'lost',
 ): Promise<SigningDevice | 'lost'> {
   const device = await readStoredDevice(database);
-  if (!device) return createDevice(database);
+  if (!device)
+    return createDevice((deviceId) =>
+      database.run(
+        'INSERT INTO device_identity (singleton, deviceId) VALUES (1, ?)',
+        [deviceId],
+      ),
+    );
   const seed = await readSeed(device.deviceId).catch(onSeedReadError);
   return seed
     ? signingDevice(device.deviceId, seed, device.registered === 1)
-    : 'lost';
+    : onLost(device.deviceId);
 }

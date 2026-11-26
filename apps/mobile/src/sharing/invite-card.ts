@@ -8,6 +8,7 @@ import { deriveKey, encrypt } from '@shared-expense/domain/crypto';
 import { fromByteArray, toByteArray } from 'base64-js';
 import { getRandomValues } from 'expo-crypto';
 import type { SqlExecutor } from '../storage';
+import { otherMemberPhones } from '../sync/roster';
 
 const PURPOSE = 'shared-expense/invite/card/v1';
 
@@ -29,12 +30,14 @@ export function newInviteCredentials(): InviteCredentials {
 
 /** Read in one transaction so the names, member order and cursor describe one ledger state. */
 export async function readCard(tx: SqlExecutor, groupId: string) {
+  // A read-only copy invites nobody: nothing is sent for it (SYNC-302.1, SHARING-321.1).
   const [group] = await tx.all<{
     name: string;
-    archived: number;
+    unavailable: number;
     cursor: number | null;
   }>(
-    'SELECT g.name, g.archived, s.cursor FROM groups g LEFT JOIN sync_groups s ON s.groupId = g.id WHERE g.id = ?',
+    `SELECT g.name, g.archived OR s.readOnly IS NOT NULL AS unavailable, s.cursor
+     FROM groups g LEFT JOIN sync_groups s ON s.groupId = g.id WHERE g.id = ?`,
     [groupId],
   );
   const members = await tx.all<{
@@ -45,13 +48,16 @@ export async function readCard(tx: SqlExecutor, groupId: string) {
     'SELECT id, name, userId FROM group_members WHERE groupId = ? AND removed = 0 ORDER BY position',
     [groupId],
   );
+  const represented = new Set(
+    (await otherMemberPhones(tx, groupId)).map((phone) => phone.memberId),
+  );
   const bytes = utf8ToBytes(
     JSON.stringify({
       name: group.name,
       members: members.map(({ id, name, userId }) => ({
         id,
         name,
-        hasDevice: userId !== null,
+        hasDevice: userId !== null || represented.has(id),
       })),
     }),
   );
@@ -60,7 +66,7 @@ export async function readCard(tx: SqlExecutor, groupId: string) {
     hash: bytesToHex(sha256(bytes)),
     cursor: group.cursor ?? 0,
     shared: group.cursor !== null,
-    archived: !!group.archived,
+    unavailable: !!group.unavailable,
     members: members.length,
     tooLarge: bytes.length + EVENT_CONTENT_MINIMUM > EVENT_CONTENT_LIMIT,
   };

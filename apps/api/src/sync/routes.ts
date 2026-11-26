@@ -1,6 +1,8 @@
 import {
   CONTINUE_STATUS,
   GROUP_REFUSAL_STATUS,
+  REPLACED_BY_TAKEOVER,
+  REPLACED_HEADER,
   REFUSAL_STATUS,
   SNAPSHOT_NEEDED_BY_HEADER,
   SNAPSHOT_NEEDED_STATUS,
@@ -22,6 +24,7 @@ import {
   readPage,
   storeEvents,
   type EventApiRefusal,
+  type EventMembershipRefusal,
 } from './groups';
 import { readSnapshot, storeChunk } from './snapshots';
 
@@ -32,8 +35,23 @@ const STATUS = {
 };
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
-const refuse = (refusal: EventApiRefusal | SnapshotRefusal) =>
-  Response.json(refusal, { status: STATUS[refusal.error] });
+function refuse(
+  refusal: EventApiRefusal | SnapshotRefusal | EventMembershipRefusal,
+) {
+  const status = STATUS[refusal.error];
+  if ('replaced' in refusal) {
+    return Response.json(
+      { error: refusal.error },
+      {
+        status,
+        headers: refusal.replaced
+          ? { [REPLACED_HEADER]: REPLACED_BY_TAKEOVER }
+          : undefined,
+      },
+    );
+  }
+  return Response.json(refusal, { status });
+}
 
 /** Whether the text is a group ID, as the answer to creating the group carries it (SYNC-48.1). */
 const isGroupId = (groupId: string) => isCreateGroupResponse({ groupId });

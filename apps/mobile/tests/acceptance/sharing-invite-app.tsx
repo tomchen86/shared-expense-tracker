@@ -562,11 +562,11 @@ export function partsOf(link: string) {
   };
 }
 
-/** The key a card is encrypted with, derived from the secret after `#` (SHARING-95.1). */
+/** The key a card is encrypted with, derived from the secret after `#` (SHARING-95.2). */
 export const cardKeyOf = (secret: string) =>
   deriveKey({ secret: fromBase64Url(secret), purpose: CARD_PURPOSE });
 
-/** What a request's card says, opened with the key and the associated data of SHARING-95.1. */
+/** What a request's card says, opened with the key and the associated data of SHARING-95.2. */
 export function openedCard(request: Received, secret: string): string {
   const opened = decrypt({
     key: cardKeyOf(secret),

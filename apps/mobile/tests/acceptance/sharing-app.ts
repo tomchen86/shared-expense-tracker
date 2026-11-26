@@ -95,6 +95,9 @@ interface World {
   entries: Map<string, StoreEntry>;
   storeReads: 'work' | 'fail';
   storeWrites: 'work' | 'fail';
+  storeDeletes: 'work' | 'fail';
+  /** While a test holds the secure store's writes, they wait for this. */
+  writesHeld: Promise<void> | undefined;
   draws: Draw[];
   drawn: number;
   nextSeeds: Uint8Array[];
@@ -121,6 +124,8 @@ const newWorld = (): World => ({
   entries: new Map(),
   storeReads: 'work',
   storeWrites: 'work',
+  storeDeletes: 'work',
+  writesHeld: undefined,
   draws: [],
   drawn: 0,
   nextSeeds: [],
@@ -188,7 +193,7 @@ function storeGet(key: string, options?: object): string | null {
 
 function storeDelete(key: string, options?: object) {
   checkKey(key);
-  if (world().storeWrites === 'fail') {
+  if (world().storeWrites === 'fail' || world().storeDeletes === 'fail') {
     throw new Error('Could not delete the value from SecureStore');
   }
   world().entries.delete(entryId(key, options as Record<string, unknown>));
@@ -205,8 +210,12 @@ export const secureStore = {
   WHEN_UNLOCKED_THIS_DEVICE_ONLY: 6,
   isAvailableAsync: async () => true,
   canUseBiometricAuthentication: () => false,
-  setItemAsync: async (key: string, value: string, options?: object) =>
-    storeSet(key, value, options),
+  setItemAsync: async (key: string, value: string, options?: object) => {
+    // Undefined while no test holds the writes: the write then happens at once, as before.
+    const held = world().writesHeld;
+    if (held) await held;
+    storeSet(key, value, options);
+  },
   getItemAsync: async (key: string, options?: object) => storeGet(key, options),
   deleteItemAsync: async (key: string, options?: object) =>
     storeDelete(key, options),
@@ -236,9 +245,31 @@ export function failSecureStoreReads() {
   world().storeReads = 'fail';
 }
 
+/** From now on deleting from the secure store reports an error; writing still works. */
+export function failSecureStoreDeletes() {
+  world().storeDeletes = 'fail';
+}
+
+/**
+ * Holds every `setItemAsync` until the returned function is called, as a slow secure store
+ * would; reads and deletes go on. The world of the next test holds nothing.
+ */
+export function holdSecureStoreWrites(): () => void {
+  const state = world();
+  let release = () => {};
+  state.writesHeld = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return () => {
+    state.writesHeld = undefined;
+    release();
+  };
+}
+
 export function secureStoreWorks() {
   world().storeReads = 'work';
   world().storeWrites = 'work';
+  world().storeDeletes = 'work';
 }
 
 /** Takes the entry named `key` out of the secure store. */

@@ -5237,7 +5237,7 @@ The mobile app SHALL 在 Changes Not Applied（GROUPS-171.1）替事件指的是
 
 ### Requirement: LEDGER-240.1 還沒上傳的支出的卡片顯示時鐘
 
-WHILE 一筆共同帳本的支出還沒上傳，也就是這支手機有改這筆支出的待上傳的事件（sync 的 SYNC-21.1）——新增它、修改它、把它搬到別的分類（SYNC-25.1）、移到垃圾桶或還原它的事件——the mobile app SHALL 在它的每一張卡片上、標題的後面、卡片金額的前面顯示一個時鐘圖示：iOS 上是 SF Symbol `clock`，Android 上是 Material Symbol `schedule`；卡片的其他內容不變（LEDGER-33.3、LEDGER-65.4、GROUPS-61.6），螢幕閱讀器在日期之後、標記（LEDGER-151.1、LEDGER-156.1）之前讀出「Not sent yet」，不讀圖示。支出清單、群組的畫面、類別的支出（INSIGHTS-49.1）和 Trash 的卡片都一樣。它的事件上傳得到 API 確認、這支手機不再有改它的待上傳的事件時（sync 的 SYNC-77.1），不必重新打開畫面，圖示就消失；重新啟動 app 之後、還沒上傳之前仍顯示。只改別的紀錄的待上傳的事件——分類、群組、成員的——不讓支出的卡片顯示它。個人支出、不是共同帳本的群組的支出和唯讀副本的支出（LEDGER-220.1）都沒有這個圖示：唯讀副本沒送出的變更寫在它的橫幅上（GROUPS-155.1）。這個 build 沒有設定 API 的網址時（sync 的 SYNC-93.1）也沒有：它的事件不是還沒送出，是從不送出。
+WHILE 一筆共同帳本的支出還沒上傳，也就是這支手機有改這筆支出的待上傳的事件（sync 的 SYNC-21.1）——新增它、修改它、把它搬到別的分類（SYNC-25.1）、移到垃圾桶或還原它的事件——the mobile app SHALL 在它的每一張卡片上、標題的後面、卡片金額的前面顯示一個時鐘圖示：iOS 上是 SF Symbol `clock`，Android 上是 Material Symbol `schedule`；卡片的其他內容不變（LEDGER-33.3、LEDGER-65.4、GROUPS-61.6），螢幕閱讀器在日期之後、標記（LEDGER-151.1、LEDGER-156.1）之前讀出「Not sent yet」，不讀圖示。支出清單、群組的畫面、類別的支出（INSIGHTS-49.1）和 Trash 的卡片都一樣。它的事件上傳得到 API 確認、這支手機不再有改它的待上傳的事件時（sync 的 SYNC-77.1），不必重新打開畫面，圖示就消失；重新啟動 app 之後、還沒上傳之前仍顯示。只改別的紀錄的待上傳的事件——分類、群組、成員的——不讓支出的卡片顯示它。個人支出、不是共同帳本的群組的支出和唯讀副本的支出（LEDGER-220.1）都沒有這個圖示：唯讀副本沒送出的變更寫在它的橫幅上（GROUPS-155.2）。這個 build 沒有設定 API 的網址時（sync 的 SYNC-93.1）也沒有：它的事件不是還沒送出，是從不送出。
 
 #### Scenario: 群組的畫面和支出清單
 

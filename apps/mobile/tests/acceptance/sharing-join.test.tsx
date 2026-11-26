@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
-import { makeReadOnlyCopy } from '../../src/sync';
+import { makeReadOnlyCopy, readOnlyCopyOf } from '../../src/sync';
 import {
   addMember,
   alertsShown,
@@ -20,18 +20,21 @@ import {
   removeFromGroup,
 } from './ledger-group-expense-app';
 import {
+  addSecureStoreEntry,
   API,
   T,
   apiAnswersNext,
   apiLosesNextAnswer,
   apiRefusesNext,
   drewFromTheRandomSource,
+  failSecureStoreDeletes,
   failSecureStoreReads,
   failSecureStoreWrites,
   fetchCalls,
   fromHex,
   goOffline,
   goOnline,
+  holdSecureStoreWrites,
   mistakes,
   nextSeedIs,
   received,
@@ -73,7 +76,6 @@ import {
   BRISBANE_LINK,
   CANCEL,
   CANCEL_ALERT,
-  CANNOT_JOIN,
   CANNOT_USE,
   CASEY_ID,
   CODE_A,
@@ -82,6 +84,7 @@ import {
   JOIN_AS,
   LOADING,
   NEW_MEMBER,
+  NOBODY_CAN_APPROVE,
   NOT_SENT,
   NOT_SENT_OFFLINE,
   OFFLINE,
@@ -96,6 +99,7 @@ import {
   TAYLORS_PHONE,
   TAYLOR_ID,
   TITLE,
+  TOKYO_ID,
   TOKYO_LINK,
   TOO_MANY,
   UNABLE_TO_CANCEL,
@@ -106,6 +110,7 @@ import {
   WENT_WRONG,
   announcements,
   brisbaneInvites,
+  brisbaneInvitesWithTwoPhones,
   canSend,
   cancellations,
   cardOf,
@@ -121,6 +126,7 @@ import {
   joinButton,
   joinLines,
   joinSettles,
+  joined,
   lastRequest,
   linkOf,
   nameField,
@@ -140,9 +146,11 @@ import {
   sendings,
   sentRequest,
   startAs,
+  takeoverNote,
   tokyoInvites,
   typeName,
 } from './sharing-join-app';
+import { comesToForeground, goesToBackground } from './sharing-refresh-app';
 import { iconNames } from './shell-actions-app';
 import { allowWrites, failWrites, settle } from './shell-appearance-app';
 import { selectedTab, tapTab } from './shell-tabs-app';
@@ -238,6 +246,14 @@ function expectNothingLeft(before: ReturnType<typeof everything>) {
   expect(secureStoreEntries()).toEqual([]);
   expect(registrationsReceived()).toEqual([]);
   expect(everything()).toEqual(before);
+}
+
+/** The device ID the phone's local data holds; undefined while it has none. */
+function deviceIdOnPhone(): string | undefined {
+  const [row] = everything().device_identity ?? [];
+  return row === undefined
+    ? undefined
+    : (JSON.parse(row) as { deviceId: string }).deviceId;
 }
 
 /** Takes the seed of the phone's identity out of the secure store, so that the phone has lost its authorization. */
@@ -365,8 +381,8 @@ describe('SHARING-124.1', () => {
   });
 });
 
-describe('SHARING-125.1', () => {
-  test("[SHARING-125.1] shows the group's name, the name field, every member and Send Request, with New Member picked", async () => {
+describe('SHARING-125.2', () => {
+  test("[SHARING-125.2] shows the group's name, the name field, every member and Send Request, with New Member picked", async () => {
     brisbaneInvites();
     await startAs();
 
@@ -374,13 +390,13 @@ describe('SHARING-125.1', () => {
 
     expect(joinLines()).toEqual(FORM);
     expect(nameField().props.value).toBe('Dana');
-    expect(choices()).toEqual([NEW_MEMBER, 'Casey', 'Blake']);
+    expect(choices()).toEqual([NEW_MEMBER, joined('Taylor'), 'Casey', 'Blake']);
     expect(chosen()).toEqual([NEW_MEMBER]);
-    expect(joinButton('Taylor')).toBeUndefined();
+    expect(joinButton(joined('Taylor'))).toBeOnTheScreen();
     expect(joinButton(SEND)).toBeOnTheScreen();
   });
 
-  test('[SHARING-125.1] leaves the name field empty, with Enter your name, on a phone with no name', async () => {
+  test('[SHARING-125.2] leaves the name field empty, with Enter your name, on a phone with no name', async () => {
     brisbaneInvites();
     await startAs(null);
 
@@ -390,7 +406,7 @@ describe('SHARING-125.1', () => {
     expect(nameField().props.placeholder).toBe('Enter your name');
   });
 
-  test('[SHARING-125.1] lets nobody be picked when every member has a phone, only New Member', async () => {
+  test('[SHARING-125.2] offers New Member and the member with a phone, as a button, when every member has one', async () => {
     tokyoInvites();
     await startAs();
 
@@ -405,10 +421,26 @@ describe('SHARING-125.1', () => {
       APPROVAL,
       SEND,
     ]);
-    expect(choices()).toEqual([NEW_MEMBER]);
+    expect(choices()).toEqual([NEW_MEMBER, joined('Taylor')]);
+    expect(chosen()).toEqual([NEW_MEMBER]);
   });
 
-  test('[SHARING-125.1] picks the row that is pressed, and only that one', async () => {
+  test('[SHARING-125.2] picks a member who has a phone when their row is pressed, and only that row', async () => {
+    brisbaneInvites();
+    await startAs();
+    await openLink(BRISBANE_LINK);
+
+    await pressInJoin(joined('Taylor'));
+
+    expect(chosen()).toEqual([joined('Taylor')]);
+    expect(iconNames(joinButton(joined('Taylor'))!, 'ios')).toEqual([
+      'checkmark',
+    ]);
+    expect(iconNames(joinButton(NEW_MEMBER)!, 'ios')).toEqual([]);
+    expect(joinLines()).not.toContain(APPROVAL);
+  });
+
+  test('[SHARING-125.2] picks the row that is pressed, and only that one', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -428,7 +460,7 @@ describe('SHARING-125.1', () => {
     expect(marks()).toEqual([[], [], ['checkmark']]);
   });
 
-  test('[SHARING-125.1] does not change your name when the name field is changed and the request is sent', async () => {
+  test('[SHARING-125.2] does not change your name when the name field is changed and the request is sent', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -591,7 +623,7 @@ describe('SHARING-128.1', () => {
   });
 });
 
-describe('SHARING-129.1', () => {
+describe('SHARING-129.2', () => {
   /** 18 members with a phone, then Casey and Blake without one. */
   const TWENTY = {
     name: 'Brisbane',
@@ -602,13 +634,17 @@ describe('SHARING-129.1', () => {
     ],
   };
 
-  test('[SHARING-129.1] offers only the members without a phone when the card lists 20, with nobody picked', async () => {
+  test('[SHARING-129.2] offers no New Member when the card lists 20, with nobody picked, and says that one of the members can be joined as', async () => {
     invites(CODE_A, S, TWENTY);
     await startAs();
 
     await openLink(BRISBANE_LINK);
 
-    expect(choices()).toEqual(['Casey', 'Blake']);
+    expect(choices()).toEqual([
+      ...cardOf(18, 18).members.map(({ name }) => joined(name)),
+      'Casey',
+      'Blake',
+    ]);
     expect(chosen()).toEqual([]);
     expect(canSend()).toBe(false);
     const lines = joinLines();
@@ -625,7 +661,7 @@ describe('SHARING-129.1', () => {
     expect(lastRequest().memberId).toBe(CASEY_ID);
   });
 
-  test('[SHARING-129.1] picks the member without a phone whose name is yours, among 20', async () => {
+  test('[SHARING-129.2] picks the member without a phone whose name is yours, among 20', async () => {
     invites(CODE_A, S, TWENTY);
     await startAs('casey');
 
@@ -635,23 +671,48 @@ describe('SHARING-129.1', () => {
     expect(canSend()).toBe(true);
   });
 
-  test('[SHARING-129.1] says the group is full when all 20 members on the card have a phone', async () => {
+  test('[SHARING-129.2] says the group is full under its 20 members when all of them have a phone, and still lets one be picked', async () => {
     invites(CODE_A, S, cardOf(20, 20));
     await startAs();
 
     await openLink(BRISBANE_LINK);
 
-    expect(joinLines()).toEqual(['Brisbane', FULL]);
-    expect(screen.queryByLabelText('Your name')).toBeNull();
+    expect(nameField().props.value).toBe('Dana');
+    expect(choices()).toEqual(
+      cardOf(20, 20).members.map(({ name }) => joined(name)),
+    );
+    expect(chosen()).toEqual([]);
+    expect(canSend()).toBe(false);
+    const lines = joinLines();
+    expect(lines).not.toContain(NEW_MEMBER);
+    expect(lines.slice(lines.lastIndexOf(ALREADY_JOINED) + 1)).toEqual([
+      FULL,
+      APPROVAL,
+      SEND,
+    ]);
+
+    await pressInJoin(joined('Member 3'));
+
+    expect(chosen()).toEqual([joined('Member 3')]);
+    expect(canSend()).toBe(true);
+    const picked = joinLines();
+    expect(picked.slice(picked.lastIndexOf(ALREADY_JOINED) + 1)).toEqual([
+      FULL,
+      takeoverNote('Member 3'),
+      SEND,
+    ]);
   });
 
-  test('[SHARING-129.1] offers New Member while the card lists 19 members', async () => {
+  test('[SHARING-129.2] offers New Member while the card lists 19 members', async () => {
     invites(CODE_A, S, cardOf(19, 19));
     await startAs();
 
     await openLink(BRISBANE_LINK);
 
-    expect(choices()).toEqual([NEW_MEMBER]);
+    expect(choices()).toEqual([
+      NEW_MEMBER,
+      ...cardOf(19, 19).members.map(({ name }) => joined(name)),
+    ]);
     expect(chosen()).toEqual([NEW_MEMBER]);
     expect(joinLines()).not.toContain(ONLY_MEMBERS);
     expect(joinLines()).not.toContain(FULL);
@@ -841,7 +902,11 @@ describe('SHARING-130.2', () => {
     await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
     expect(isOpen(TITLE)).toBe(true);
     expect(selectedTab()).toBe('Settings');
-    expect(choices()).toEqual([NEW_MEMBER, 'Casey', 'Blake']);
+    expect(choices().filter((row) => !row.endsWith(ALREADY_JOINED))).toEqual([
+      NEW_MEMBER,
+      'Casey',
+      'Blake',
+    ]);
   });
 
   test('[SHARING-130.2] reads the invite, as for any link, when the invite the phone holds belongs to a read-only copy', async () => {
@@ -1266,8 +1331,8 @@ describe('SHARING-133.1', () => {
 
 // Sending the request
 
-describe('SHARING-134.1', () => {
-  test('[SHARING-134.1] makes the identity, registers and sends the request, in that order, on a new phone', async () => {
+describe('SHARING-134.2', () => {
+  test('[SHARING-134.2] makes the identity, registers and sends the request, in that order, on a new phone', async () => {
     brisbaneInvites();
     await startAs();
 
@@ -1291,7 +1356,7 @@ describe('SHARING-134.1', () => {
     ]);
   });
 
-  test('[SHARING-134.1] does not register again on a phone that has an identity', async () => {
+  test('[SHARING-134.2] does not register again on a phone that has an identity', async () => {
     brisbaneInvites();
     tokyoInvites();
     await startAs();
@@ -1307,7 +1372,7 @@ describe('SHARING-134.1', () => {
     ]);
   });
 
-  test('[SHARING-134.1] shows only Sending request…, with the request already in its local data, until the API has answered', async () => {
+  test('[SHARING-134.2] shows only Sending request…, with the request already in its local data, until the API has answered', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1324,7 +1389,7 @@ describe('SHARING-134.1', () => {
     expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
   });
 
-  test('[SHARING-134.1] stores the request with its secret, group, trimmed name and picked member: after a restart it sends the same one', async () => {
+  test('[SHARING-134.2] stores the request with its secret, group, trimmed name and picked member: after a restart it sends the same one', async () => {
     brisbaneInvites();
     let app = await startAs();
     await openLink(BRISBANE_LINK);
@@ -1352,7 +1417,7 @@ describe('SHARING-134.1', () => {
     expect(rowsWith(CODE_A)).toHaveLength(1);
   });
 
-  test('[SHARING-134.1] marks the request as sent, without opening Join Group again, when the answer comes after it was closed', async () => {
+  test('[SHARING-134.2] marks the request as sent, without opening Join Group again, when the answer comes after it was closed', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1371,7 +1436,7 @@ describe('SHARING-134.1', () => {
     expect(screen.queryByText('Not sent')).toBeNull();
   });
 
-  test("[SHARING-134.1] leaves Join Group on another group's form when the answer comes after its link arrived", async () => {
+  test("[SHARING-134.2] leaves Join Group on another group's form when the answer comes after its link arrived", async () => {
     brisbaneInvites();
     tokyoInvites();
     await startAs();
@@ -1394,8 +1459,8 @@ describe('SHARING-134.1', () => {
   });
 });
 
-describe('SHARING-135.1', () => {
-  test('[SHARING-135.1] sends the name, no member, the user ID and the box key, encrypted with the key of the secret and a nonce from expo-crypto', async () => {
+describe('SHARING-135.2', () => {
+  test('[SHARING-135.2] sends the name, no member, the user ID and the box key, encrypted with the key of the secret and a nonce from expo-crypto', async () => {
     brisbaneInvites();
     await startAs();
 
@@ -1420,7 +1485,7 @@ describe('SHARING-135.1', () => {
     expect(drewFromTheRandomSource(ciphertext.subarray(1, 25))).toBe(true);
   });
 
-  test("[SHARING-135.1] names the picked member by its ID, under the applicant's name", async () => {
+  test("[SHARING-135.2] names the picked member by its ID, under the applicant's name", async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1429,15 +1494,58 @@ describe('SHARING-135.1', () => {
     await send();
 
     expect(lastRequest()).toMatchObject({ name: 'Dana', memberId: CASEY_ID });
+    expect(lastRequest()).not.toHaveProperty('takeover');
     expect(sentRequest(sendings()[0])).toHaveLength(297);
   });
+
+  test('[SHARING-135.2] adds takeover, as the fifth field, to a request that takes a member over, in a ciphertext of the same length', async () => {
+    brisbaneInvitesWithTwoPhones();
+    await startAs();
+    await openLink(BRISBANE_LINK);
+    await pressInJoin(joined('Taylor'));
+
+    await send();
+
+    const [sending] = sendings();
+    const said = lastRequest();
+    const object = `{"name":"Dana","memberId":"${TAYLOR_ID}","userId":"${said.userId}","boxKey":"${said.boxKey}","takeover":true}`;
+    expect(openedRequest(sending, S)).toBe(object.padEnd(256, ' '));
+    expect(sentRequest(sending)).toHaveLength(297);
+  });
+
+  test.each([
+    ['55 letters', 'a'.repeat(55), 256, false],
+    ['56 letters', 'a'.repeat(56), 512, true],
+    // A quotation mark is two bytes in JSON: 55 and 56 bytes between the quotes.
+    ['27 quotation marks and a letter', `${'"'.repeat(27)}a`, 256, false],
+    ['28 quotation marks', '"'.repeat(28), 512, true],
+  ])(
+    '[SHARING-135.2] pads a request that takes a member over, named with %s, to a multiple of 256 bytes',
+    async (_, name, bytes, padded) => {
+      brisbaneInvitesWithTwoPhones();
+      await startAs();
+      await openLink(BRISBANE_LINK);
+      await typeName(name);
+      await pressInJoin(joined('Taylor'));
+
+      await send();
+
+      const plaintext = openedRequest(sendings()[0], S)!;
+      expect(lastRequest().takeover).toBe(true);
+      expect(lastRequest().name).toBe(name);
+      expect(Buffer.byteLength(plaintext, 'utf8')).toBe(bytes);
+      expect(sentRequest(sendings()[0])).toHaveLength(bytes + 41);
+      expect(plaintext.endsWith(' ')).toBe(padded);
+      expect(plaintext.trimEnd().endsWith('"takeover":true}')).toBe(true);
+    },
+  );
 
   test.each([
     [105, 256, false],
     [106, 512, true],
     [500, 768, true],
   ])(
-    '[SHARING-135.1] pads the request for a new member named with %i letters to %i bytes',
+    '[SHARING-135.2] pads the request for a new member named with %i letters to %i bytes',
     async (letters, bytes, padded) => {
       brisbaneInvites();
       await startAs();
@@ -1457,7 +1565,7 @@ describe('SHARING-135.1', () => {
     },
   );
 
-  test('[SHARING-135.1] binds the request to the invite and to the device: it opens for no other code or device ID', async () => {
+  test('[SHARING-135.2] binds the request to the invite and to the device: it opens for no other code or device ID', async () => {
     brisbaneInvites();
     await startAs();
 
@@ -1474,7 +1582,7 @@ describe('SHARING-135.1', () => {
     expect(openedRequest(sending, S2)).toBeUndefined();
   });
 
-  test('[SHARING-135.1] encrypts the same request again with a new nonce when it is sent again', async () => {
+  test('[SHARING-135.2] encrypts the same request again with a new nonce when it is sent again', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1828,8 +1936,8 @@ describe('SHARING-140.2', () => {
   );
 });
 
-describe('SHARING-141.1', () => {
-  test('[SHARING-141.1] stays on the form and says the phone cannot join when it has lost its authorization', async () => {
+describe('SHARING-141.2', () => {
+  test('[SHARING-141.2] sends the request of a phone that has lost its authorization, with no alert', async () => {
     brisbaneInvites();
     tokyoInvites();
     await startAs();
@@ -1837,17 +1945,46 @@ describe('SHARING-141.1', () => {
     await closeJoin();
     loseTheSeed();
     await openLink(BRISBANE_LINK);
+    const registered = registrationsReceived().length;
+
+    await send();
+
+    expect(alertsShown()).toEqual([]);
+    expect(registrationsReceived()).toHaveLength(registered + 1);
+    expect(sendings().at(-1)!.path).toBe(`/invites/${CODE_A}/request`);
+    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+  });
+
+  test('[SHARING-141.2] stays on the form of a phone that has lost its authorization when it cannot get a new identity', async () => {
+    brisbaneInvites();
+    tokyoInvites();
+    await startAs();
+    await requested(TOKYO_LINK);
+    await closeJoin();
+    loseTheSeed();
+    const lost = deviceIdOnPhone();
+    await openLink(BRISBANE_LINK);
     const sent = received().length;
+    failSecureStoreWrites();
 
     await pressInJoin(SEND);
 
-    expect(alertsShown().at(-1)).toEqual([UNABLE_TO_SEND, CANNOT_JOIN]);
+    expect(alertsShown().at(-1)).toEqual([UNABLE_TO_SEND, WENT_WRONG]);
     expect(received()).toHaveLength(sent);
     expect(rowsWith(CODE_A)).toEqual([]);
     expect(joinLines()).toEqual(FORM);
+    expect(deviceIdOnPhone()).toBe(lost);
+    expect(secureStoreEntries()).toEqual([]);
+
+    // Once the secure store takes it, the same press sends the request.
+    secureStoreWorks();
+    await send();
+
+    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+    expect(deviceIdOnPhone()).not.toBe(lost);
   });
 
-  test('[SHARING-141.1] stays on the form, as it was filled in, when the secure store cannot take the identity', async () => {
+  test('[SHARING-141.2] stays on the form, as it was filled in, when the secure store cannot take the identity', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
@@ -1874,29 +2011,62 @@ describe('SHARING-141.1', () => {
     });
   });
 
-  test('[SHARING-141.1] keeps a request that was not sent, and says the phone cannot join, when Try Again finds the authorization lost', async () => {
+  test('[SHARING-141.2] sends a request that was not sent under a new identity when Try Again finds the authorization lost', async () => {
     brisbaneInvites();
     await startAs();
     await openLink(BRISBANE_LINK);
     goOffline();
     await send();
     await closeJoin();
+    const lost = deviceIdOnPhone();
     loseTheSeed();
     goOnline();
     await openLink(BRISBANE_LINK);
     expect(joinLines()).toEqual(UNSENT);
+    const registered = registrationsReceived().length;
+
+    await send('Try Again');
+
+    expect(alertsShown()).toEqual([]);
+    expect(registrationsReceived()).toHaveLength(registered + 1);
+    expect(sendings().at(-1)!.deviceId).toBe(deviceIdOnPhone());
+    expect(deviceIdOnPhone()).not.toBe(lost);
+    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+    expect(rowsWith(CODE_A)).toHaveLength(1);
+  });
+
+  test('[SHARING-141.2] keeps a request that was not sent, and says that something went wrong, when Try Again cannot get a new identity', async () => {
+    brisbaneInvites();
+    await startAs();
+    await openLink(BRISBANE_LINK);
+    goOffline();
+    await send();
+    await closeJoin();
+    const lost = deviceIdOnPhone();
+    loseTheSeed();
+    goOnline();
+    await openLink(BRISBANE_LINK);
     const sent = received().length;
+    failSecureStoreWrites();
 
     await pressInJoin('Try Again');
     await joinSettles();
 
-    expect(alertsShown().at(-1)).toEqual([UNABLE_TO_SEND, CANNOT_JOIN]);
+    expect(alertsShown().at(-1)).toEqual([UNABLE_TO_SEND, WENT_WRONG]);
     expect(received()).toHaveLength(sent);
     expect(joinLines()).toEqual(UNSENT);
     expect(rowsWith(CODE_A)).toHaveLength(1);
+    expect(deviceIdOnPhone()).toBe(lost);
+
+    // The control: with a secure store that works, the same press sends it under a new identity.
+    secureStoreWorks();
+    await send('Try Again');
+
+    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+    expect(deviceIdOnPhone()).not.toBe(lost);
   });
 
-  test('[SHARING-141.1] stays on the form when the request cannot be stored on the phone', async () => {
+  test('[SHARING-141.2] stays on the form when the request cannot be stored on the phone', async () => {
     brisbaneInvites();
     tokyoInvites();
     await startAs();
@@ -1912,6 +2082,416 @@ describe('SHARING-141.1', () => {
     expect(sendings()).toHaveLength(1);
     expect(rowsWith(CODE_A)).toEqual([]);
     expect(joinLines()).toEqual(FORM);
+  });
+});
+
+// Taking a member over
+
+describe('SHARING-320.1', () => {
+  test('[SHARING-320.1] says, in place of the line about approval, that the member’s current phone will lose access, while a member who has a phone is picked', async () => {
+    brisbaneInvitesWithTwoPhones();
+    await startAs();
+    await openLink(BRISBANE_LINK);
+    expect(joinLines()).toContain(APPROVAL);
+
+    await pressInJoin(joined('Taylor'));
+
+    const lines = joinLines();
+    expect(lines.at(-2)).toBe(takeoverNote('Taylor'));
+    expect(lines.at(-1)).toBe(SEND);
+    expect(lines).not.toContain(APPROVAL);
+    expect(canSend()).toBe(true);
+  });
+
+  test('[SHARING-320.1] sends a request that takes the member over, and waits', async () => {
+    brisbaneInvitesWithTwoPhones();
+    await startAs();
+    await openLink(BRISBANE_LINK);
+    await pressInJoin(joined('Taylor'));
+
+    await send();
+
+    expect(sendings()).toHaveLength(1);
+    expect(lastRequest()).toMatchObject({
+      name: 'Dana',
+      memberId: TAYLOR_ID,
+      takeover: true,
+    });
+    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+  });
+
+  test('[SHARING-320.1] says that nobody can approve, and sends nothing, when no other member has a phone', async () => {
+    brisbaneInvites();
+    await startAs();
+    await openLink(BRISBANE_LINK);
+    const before = everything();
+
+    await pressInJoin(joined('Taylor'));
+
+    expect(chosen()).toEqual([joined('Taylor')]);
+    const lines = joinLines();
+    expect(lines.at(-2)).toBe(NOBODY_CAN_APPROVE);
+    expect(lines).not.toContain(APPROVAL);
+    expect(canSend()).toBe(false);
+
+    await pressInJoin(SEND);
+
+    expect(received()).toHaveLength(1);
+    expectNothingLeft(before);
+    expect(joinLines().at(-2)).toBe(NOBODY_CAN_APPROVE);
+  });
+
+  test('[SHARING-320.1] goes back to the line about approval, and to a request that takes nobody over, when another row is picked', async () => {
+    brisbaneInvites();
+    await startAs();
+    await openLink(BRISBANE_LINK);
+    await pressInJoin(joined('Taylor'));
+    expect(joinLines()).toContain(NOBODY_CAN_APPROVE);
+
+    await pressInJoin('Casey');
+
+    expect(joinLines()).toContain(APPROVAL);
+    expect(joinLines()).not.toContain(NOBODY_CAN_APPROVE);
+    expect(canSend()).toBe(true);
+
+    await send();
+
+    expect(lastRequest().memberId).toBe(CASEY_ID);
+    expect(lastRequest()).not.toHaveProperty('takeover');
+  });
+
+  test('[SHARING-320.1] takes over a member whose name is the name in the field, which a new member could not have', async () => {
+    brisbaneInvitesWithTwoPhones();
+    await startAs('Taylor');
+    await openLink(BRISBANE_LINK);
+    expect(chosen()).toEqual([NEW_MEMBER]);
+
+    await pressInJoin(SEND);
+
+    expect(joinLines()).toContain(SAME_NAME);
+    expect(sendings()).toEqual([]);
+
+    await pressInJoin(joined('Taylor'));
+    expect(joinLines()).not.toContain(SAME_NAME);
+    await send();
+
+    expect(lastRequest()).toMatchObject({
+      name: 'Taylor',
+      memberId: TAYLOR_ID,
+      takeover: true,
+    });
+  });
+
+  test('[SHARING-320.1] still knows after a restart that a request it could not send takes a member over', async () => {
+    brisbaneInvitesWithTwoPhones();
+    let app = await startAs();
+    await openLink(BRISBANE_LINK);
+    await pressInJoin(joined('Taylor'));
+    goOffline();
+    await send();
+    await closeJoin();
+
+    app = await restart(app);
+    setClock(T);
+    expect(app).toBeDefined();
+    goOnline();
+    await tapTab('Groups');
+    await openRequest('Brisbane');
+    await send('Try Again');
+
+    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+    expect(lastRequest()).toMatchObject({
+      memberId: TAYLOR_ID,
+      takeover: true,
+    });
+  });
+});
+
+describe('SHARING-321.1', () => {
+  /** Dana's phone has asked to join Tokyo, so it has a device identity, and has then lost its seed. */
+  async function lostAfterAskingTokyo() {
+    brisbaneInvites();
+    tokyoInvites();
+    const app = await startAs();
+    await requested(TOKYO_LINK);
+    await closeJoin();
+    const lost = deviceIdOnPhone()!;
+    const [first] = sendings();
+    loseTheSeed();
+    return { app, lost, first };
+  }
+
+  test('[SHARING-321.1] [SHARING-134.2] gives a phone that lost its authorization a new device identity when it sends a request, and registers it', async () => {
+    const { lost } = await lostAfterAskingTokyo();
+    await openLink(BRISBANE_LINK);
+    const registered = registrationsReceived().length;
+
+    await send();
+
+    const now = deviceIdOnPhone()!;
+    expect(now).not.toBe(lost);
+    expect(now).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(registrationsReceived()).toHaveLength(registered + 1);
+    const sending = sendings().at(-1)!;
+    expect(sending.path).toBe(`/invites/${CODE_A}/request`);
+    expect(sending.deviceId).toBe(now);
+    expect(secureStoreEntries().map(({ key }) => key)).toEqual([
+      expect.stringContaining(now),
+    ]);
+    expect(received().filter(({ deviceId }) => deviceId === lost)).toHaveLength(
+      received().filter(
+        ({ deviceId, path }) => deviceId === lost && !path.includes(CODE_A),
+      ).length,
+    );
+    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+  });
+
+  test('[SHARING-321.1] seals the request with the box key of the new seed, bound to the new device ID', async () => {
+    const { first } = await lostAfterAskingTokyo();
+    const before = JSON.parse(openedRequest(first, S2)!) as { boxKey: string };
+    await openLink(BRISBANE_LINK);
+
+    await send();
+
+    const sending = sendings().at(-1)!;
+    expect(openedRequest(sending, S)).toBeDefined();
+    expect(lastRequest().boxKey).toMatch(/^[0-9a-f]{64}$/);
+    expect(lastRequest().boxKey).not.toBe(before.boxKey);
+    expect(sending.deviceId).toBe(deviceIdOnPhone());
+  });
+
+  test('[SHARING-321.1] deletes the requests the old identity had stored, and asks nothing about them', async () => {
+    await lostAfterAskingTokyo();
+    await openLink(BRISBANE_LINK);
+    expect(rowsWith(CODE_B)).toHaveLength(1);
+    const from = received().length;
+
+    await send();
+    await closeJoin();
+    await tapTab('Groups');
+
+    expect(rowsWith(CODE_B)).toEqual([]);
+    expect(rowsWith(CODE_A)).toHaveLength(1);
+    expect(requestCard('Tokyo')).toBeUndefined();
+    expect(requestCard('Brisbane')).toBeDefined();
+    expect(
+      received()
+        .slice(from)
+        .filter(({ path }) => path.includes(CODE_B)),
+    ).toEqual([]);
+  });
+
+  test('[SHARING-321.1] deletes the group keys that an approved request of the old identity had put in the secure store', async () => {
+    await lostAfterAskingTokyo();
+    // What joining Tokyo saved before it could finish (SHARING-217.2): the group's key, and
+    // the entry that says whose it is. The seed is gone; these are not.
+    const TOKYO_KEY = `group-key.${TOKYO_ID}.1`;
+    addSecureStoreEntry(TOKYO_KEY, 'ab'.repeat(32));
+    addSecureStoreEntry(`join-keys.${CODE_B}`, `${TOKYO_ID}.1`);
+    await openLink(BRISBANE_LINK);
+
+    await send();
+
+    expect(rowsWith(CODE_B)).toEqual([]);
+    const names = secureStoreEntries().map(({ key }) => key);
+    expect(names).not.toContain(TOKYO_KEY);
+    expect(names).not.toContain(`join-keys.${CODE_B}`);
+    expect(names).toEqual([expect.stringContaining(deviceIdOnPhone()!)]);
+  });
+
+  test('[SHARING-321.1] takes no new identity while a key of an old request cannot be deleted, and deletes it the next time', async () => {
+    const { lost } = await lostAfterAskingTokyo();
+    const TOKYO_KEY = `group-key.${TOKYO_ID}.1`;
+    addSecureStoreEntry(TOKYO_KEY, 'ab'.repeat(32));
+    addSecureStoreEntry(`join-keys.${CODE_B}`, `${TOKYO_ID}.1`);
+    await openLink(BRISBANE_LINK);
+    const sent = received().length;
+    failSecureStoreDeletes();
+
+    await pressInJoin(SEND);
+
+    expect(alertsShown().at(-1)).toEqual([UNABLE_TO_SEND, WENT_WRONG]);
+    expect(received()).toHaveLength(sent);
+    expect(deviceIdOnPhone()).toBe(lost);
+    expect(rowsWith(CODE_B)).toHaveLength(1);
+    expect(
+      secureStoreEntries()
+        .map(({ key }) => key)
+        .sort(),
+    ).toEqual([TOKYO_KEY, `join-keys.${CODE_B}`].sort());
+
+    // Once the secure store deletes again, the same press cleans up and sends.
+    secureStoreWorks();
+    await send();
+
+    expect(joinLines()).toEqual(WAITING_FOR_BRISBANE);
+    expect(deviceIdOnPhone()).not.toBe(lost);
+    expect(rowsWith(CODE_B)).toEqual([]);
+    expect(secureStoreEntries().map(({ key }) => key)).toEqual([
+      expect.stringContaining(deviceIdOnPhone()!),
+    ]);
+  });
+
+  test('[SHARING-321.1] [SHARING-141.2] leaves no new seed behind, and stays as it was, when the local data cannot take the new identity', async () => {
+    const { lost } = await lostAfterAskingTokyo();
+    await openLink(BRISBANE_LINK);
+    const sent = received().length;
+    failWrites();
+
+    await pressInJoin(SEND);
+
+    allowWrites();
+    expect(alertsShown().at(-1)).toEqual([UNABLE_TO_SEND, WENT_WRONG]);
+    expect(received()).toHaveLength(sent);
+    expect(deviceIdOnPhone()).toBe(lost);
+    expect(secureStoreEntries()).toEqual([]);
+    expect(rowsWith(CODE_B)).toHaveLength(1);
+    expect(rowsWith(CODE_A)).toEqual([]);
+    expect(joinLines()).toEqual(FORM);
+  });
+
+  test('[SHARING-321.1] makes a shared ledger that is no copy yet a read-only copy, for the lost authorization, before it takes the new identity', async () => {
+    await startAt({ Paris: [] });
+    // The first Invite makes Paris a shared ledger and gives the phone its identity.
+    await invited('Paris');
+    await closeInvite();
+    await leaveMembers('Paris');
+    const paris = await groupId('Paris');
+    const lost = deviceIdOnPhone();
+    expect(lost).toBeDefined();
+    loseTheSeed();
+    brisbaneInvites();
+    await tapTab('Expenses');
+    await openLink(BRISBANE_LINK);
+    // This phone's name is Taylor, and the card has a Taylor: it asks as Casey (SHARING-128.1).
+    await pressInJoin('Casey');
+    const from = received().length;
+
+    await send();
+
+    expect(deviceIdOnPhone()).not.toBe(lost);
+    expect(await readOnlyCopyOf(appDatabase(), paris)).toMatchObject({
+      reason: 'lapsed',
+    });
+    expect(
+      received()
+        .slice(from)
+        .filter(({ path }) => path.includes(paris)),
+    ).toEqual([]);
+    expect(joinLines()).toContain(WAITING);
+  });
+
+  test('[SHARING-321.1] sends nothing for a sync that waited for the device identity while it was changing, and leaves the new identity unregistered', async () => {
+    await startAt({ Brisbane: ['Casey', 'Blake'], Paris: [] });
+    await invited('Paris');
+    await closeInvite();
+    await leaveMembers('Paris');
+    // Brisbane becomes a copy with a change it never sent, so the form asks before replacing it.
+    await invited('Brisbane');
+    await closeInvite();
+    goOffline();
+    await addMember('Dana');
+    await leaveMembers('Brisbane');
+    goOnline();
+    await becomesACopy('Brisbane');
+    const paris = await groupId('Paris');
+    const lost = deviceIdOnPhone();
+    expect(lost).toBeDefined();
+    loseTheSeed();
+    const link = await othersInvite();
+    await tapTab('Settings');
+    await openLink(link);
+    await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
+    await pressInJoin('Casey');
+    const from = received().length;
+    const shown = alertsShown().length;
+    const release = holdSecureStoreWrites();
+
+    // The new seed waits for the secure store. Meanwhile the user leaves the app and comes
+    // back, so the app starts a sync of Paris, which waits for the device identity.
+    await pressInJoin(SEND);
+    await goesToBackground();
+    await comesToForeground();
+    release();
+    await waitFor(() => expect(alertsShown().length).toBeGreaterThan(shown));
+    await pressAlertButton('Cancel');
+
+    expect(deviceIdOnPhone()).not.toBe(lost);
+    expect(await readOnlyCopyOf(appDatabase(), paris)).toMatchObject({
+      reason: 'lapsed',
+    });
+    // Nothing at all since the press: no request about Paris, and no registration.
+    expect(received().slice(from)).toEqual([]);
+  });
+
+  test('[SHARING-321.1] takes no new identity when the app starts or when a link is opened and closed: only when a request is sent', async () => {
+    let app = await startAt({ Paris: [] });
+    await invited('Paris');
+    await closeInvite();
+    await leaveMembers('Paris');
+    const lost = deviceIdOnPhone();
+    expect(lost).toBeDefined();
+    loseTheSeed();
+    brisbaneInvites();
+
+    app = await restart(app);
+    setClock(T);
+    expect(app).toBeDefined();
+    await tapTab('Expenses');
+    await openLink(BRISBANE_LINK);
+    await closeJoin();
+
+    expect(deviceIdOnPhone()).toBe(lost);
+    expect(secureStoreEntries()).toEqual([]);
+    expect(registrationsReceived()).toHaveLength(1);
+
+    await openLink(BRISBANE_LINK);
+    // This phone's name is Taylor, and the card has a Taylor: it asks as Casey (SHARING-128.1).
+    await pressInJoin('Casey');
+    await send();
+
+    expect(deviceIdOnPhone()).not.toBe(lost);
+    expect(registrationsReceived()).toHaveLength(2);
+  });
+
+  test('[SHARING-321.1] asks about the read-only copy only after the new identity is in place, and keeps that identity when Cancel is pressed', async () => {
+    await startAt({ Brisbane: ['Casey', 'Blake'] });
+    await invited('Brisbane');
+    await closeInvite();
+    goOffline();
+    await addMember('Dana');
+    await leaveMembers('Brisbane');
+    goOnline();
+    await becomesACopy('Brisbane');
+    const lost = deviceIdOnPhone();
+    expect(lost).toBeDefined();
+    loseTheSeed();
+    const link = await othersInvite();
+    await tapTab('Settings');
+    await openLink(link);
+    await waitFor(() => expect(joinLines()).toContain(JOIN_AS));
+    await pressInJoin('Casey');
+    const shown = alertsShown().length;
+    const registered = registrationsReceived().length;
+
+    await pressInJoin(SEND);
+
+    // Two changes were never sent: the invite this phone made, and Dana.
+    expect(alertsShown().slice(shown)).toEqual([
+      [REPLACE_THIS_COPY, replaceThisCopy(2)],
+    ]);
+
+    await pressAlertButton('Cancel');
+
+    expect(sendings()).toEqual([]);
+    expect(registrationsReceived()).toHaveLength(registered);
+    expect(rowsWith(CODE_B)).toEqual([]);
+    expect(deviceIdOnPhone()).not.toBe(lost);
+    expect(secureStoreEntries().map(({ key }) => key)).toEqual([
+      expect.stringContaining(deviceIdOnPhone()!),
+    ]);
   });
 });
 

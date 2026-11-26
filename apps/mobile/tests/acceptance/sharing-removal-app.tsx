@@ -30,6 +30,8 @@ export const UNABLE_TO_LEAVE = 'Unable to Leave Group';
 export const READ_ONLY_COPY = 'Read-only copy';
 export const NO_MEMBER_BANNER =
   "You're no longer a member of this group. This copy is read-only and won't update.";
+export const TAKEN_OVER_BANNER =
+  "Another phone took over your place in this group. This copy is read-only and won't update.";
 export const LEFT_BANNER =
   "You left this group. This copy is read-only and won't update.";
 export const LAPSED_BANNER =
@@ -291,5 +293,17 @@ export async function danaJoined() {
  */
 export async function thisPhoneIsRemoved(group = 'Brisbane') {
   apiDropsThisPhone(await groupId(group));
+  await syncs();
+}
+
+/**
+ * The same, after another phone took this one's place: the API's refusals say so with the
+ * header `x-replaced`, whose value is `takeover` unless a test gives another (SHARING-305.1).
+ */
+export async function thisPhoneIsTakenOver(
+  group = 'Brisbane',
+  header = 'takeover',
+) {
+  apiDropsThisPhone(await groupId(group), header);
   await syncs();
 }

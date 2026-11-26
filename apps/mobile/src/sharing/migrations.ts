@@ -28,6 +28,7 @@ export const joinRequestMigration = `
     groupName TEXT NOT NULL,
     name TEXT,
     memberId TEXT,
+    takeover INTEGER CHECK (takeover IS NULL OR (takeover = 1 AND memberId IS NOT NULL)),
     sent INTEGER NOT NULL DEFAULT 0 CHECK (sent IN (0, 1)),
     outcome TEXT CHECK (outcome IN ('choose-again', 'approved', 'declined', 'invalid')),
     copyGroupId TEXT,

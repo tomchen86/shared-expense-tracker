@@ -63,6 +63,8 @@ interface PhoneState {
   file: string;
   store: Map<string, StoreEntry>;
   storeReads: 'work' | 'fail';
+  /** Writes of entries whose name holds this fail; none while it is null. */
+  failingWrites: string | null;
   clockMs: number;
 }
 
@@ -98,6 +100,8 @@ type Act =
 interface Rule {
   method: string;
   act: Act;
+  /** Where the request's path starts; the event API's `/groups/` unless given. */
+  path?: string;
 }
 
 interface Draw {
@@ -150,6 +154,9 @@ function storeOf(state: PhoneState) {
   };
   const write = (key: string, value: unknown, options?: object) => {
     check(key);
+    if (state.failingWrites !== null && key.includes(state.failingWrites)) {
+      throw new Error('Could not write to SecureStore');
+    }
     if (typeof value !== 'string') {
       throw new Error('Invalid value provided to SecureStore.');
     }
@@ -320,10 +327,12 @@ async function fetchThroughTheTests(
   state.mostInFlight = Math.max(state.mostInFlight, state.inFlight);
   try {
     if (!state.online || url.origin !== apiUrl()) throw noNetwork();
-    // A rule is for a request of the event API, never for a registration.
-    const index = url.pathname.startsWith('/groups/')
-      ? state.rules.findIndex((rule) => rule.method === request.method)
-      : -1;
+    // A rule is for a request of the event API, never for a registration, unless it names another path.
+    const index = state.rules.findIndex(
+      (rule) =>
+        rule.method === request.method &&
+        url.pathname.startsWith(rule.path ?? '/groups/'),
+    );
     const act = index < 0 ? undefined : state.rules.splice(index, 1)[0].act;
     if (act?.kind === 'no-answer') throw noNetwork();
     if (act?.kind === 'answer') {
@@ -356,7 +365,7 @@ export function goOnline() {
   world().online = true;
 }
 
-type Method = 'GET' | 'POST' | 'PUT';
+type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 const rule = (method: Method, act: Act, times = 1) => {
   for (let count = 0; count < times; count += 1) {
@@ -389,6 +398,11 @@ export const answerNext = (
     headers,
   });
 
+/** The API handles the next such request whose path starts with `path`, and its answer never reaches the phone. */
+export const loseAnswerOn = (method: Method, path: string) => {
+  world().rules.push({ method, act: { kind: 'lose-answer' }, path });
+};
+
 /** Once the API has answered the next such request, `hook` runs before the phone gets the answer. */
 export const whenAnswered = (method: Method, hook: () => Promise<void>) =>
   rule(method, { kind: 'then', hook });
@@ -413,6 +427,8 @@ export interface Phone {
   /** The phone's own sync loop, which keeps in memory what a sync's end decided (SYNC-315.1, SYNC-316.2). */
   loop: typeof import('../../src/sync/loop');
   sharing: typeof import('../../src/sharing');
+  /** What the app's shell runs when a ledger's members change (SHARING-109.2); nothing here starts its watcher. */
+  cards: typeof import('../../src/sharing/refresh-invite-card');
   groups: typeof import('../../src/groups');
   expenses: typeof import('../../src/ledger/expenses');
   trash: typeof import('../../src/ledger/trash');
@@ -432,6 +448,7 @@ function newState(name: string): PhoneState {
     file: path.join(directory, 'app.db'),
     store: new Map(),
     storeReads: 'work',
+    failingWrites: null,
     clockMs: T,
   };
 }
@@ -481,6 +498,9 @@ async function startOn(
     sync: actual<typeof import('../../src/sync')>('../../src/sync'),
     loop: actual<typeof import('../../src/sync/loop')>('../../src/sync/loop'),
     sharing: actual<typeof import('../../src/sharing')>('../../src/sharing'),
+    cards: actual<typeof import('../../src/sharing/refresh-invite-card')>(
+      '../../src/sharing/refresh-invite-card',
+    ),
     groups: actual<typeof import('../../src/groups')>('../../src/groups'),
     expenses: actual<typeof import('../../src/ledger/expenses')>(
       '../../src/ledger/expenses',
@@ -644,6 +664,11 @@ export function takeKey(phone: Phone, groupId: string, epoch: number) {
 /** From now on reading the phone's secure store reports an error, as before the first unlock. */
 export function failSecureStoreReads(phone: Phone) {
   phone.state.storeReads = 'fail';
+}
+
+/** From now on writing an entry whose name holds `part` reports an error; null lets every write through again. */
+export function failSecureStoreWrites(phone: Phone, part: string | null) {
+  phone.state.failingWrites = part;
 }
 
 export function secureStoreWorks(phone: Phone) {

@@ -70,9 +70,11 @@ import {
   LAPSED_BANNER,
   NO_MEMBER_BANNER,
   READ_ONLY_COPY,
+  TAKEN_OVER_BANNER,
   neverSent,
   startRemovalApi,
   thisPhoneIsRemoved,
+  thisPhoneIsTakenOver,
 } from './sharing-removal-app';
 import { expenseScreen, openTrash, openTrashed } from './ledger-trash-app';
 import {
@@ -419,8 +421,8 @@ describe('GROUPS-153.1', () => {
   });
 });
 
-describe('GROUPS-155.1', () => {
-  test('[GROUPS-155.1] says under the title why the group is a read-only copy, with no Restore Group', async () => {
+describe('GROUPS-155.2', () => {
+  test('[GROUPS-155.2] says under the title why the group is a read-only copy, with no Restore Group', async () => {
     await startSynced(GROUPS);
     await thisPhoneIsRemoved();
     await tapTab('Groups');
@@ -437,7 +439,44 @@ describe('GROUPS-155.1', () => {
     expect(textsOn('Brisbane')).not.toContain(READ_ONLY);
   });
 
-  test('[GROUPS-155.1] shows no button for the changes that were not applied, which the copy keeps', async () => {
+  test('[GROUPS-155.2] [SYNC-330.1] says that another phone took the place of this one, when the API said so as it refused the phone', async () => {
+    await startSynced(GROUPS);
+    await thisPhoneIsTakenOver();
+    await tapTab('Groups');
+
+    await openGroup('Brisbane');
+
+    await waitFor(() =>
+      expect(textsOn('Brisbane')).toEqual([
+        TAKEN_OVER_BANNER,
+        DELETE_COPY,
+        NO_EXPENSES,
+      ]),
+    );
+    expect(textsOn('Brisbane')).not.toContain(NO_MEMBER_BANNER);
+  });
+
+  test('[GROUPS-155.2] [SYNC-330.1] keeps the banner of a removed phone when the header says anything else, and still says after a restart that a phone was taken over', async () => {
+    let app = await startSynced(GROUPS, ['Brisbane', 'Tokyo']);
+    await thisPhoneIsTakenOver('Brisbane', 'transfer');
+    await thisPhoneIsTakenOver('Tokyo');
+    await tapTab('Groups');
+
+    await openGroup('Brisbane');
+    await waitFor(() =>
+      expect(textsOn('Brisbane')).toContain(NO_MEMBER_BANNER),
+    );
+    expect(textsOn('Brisbane')).not.toContain(TAKEN_OVER_BANNER);
+
+    app = await restart(app);
+    expect(app).toBeDefined();
+    await tapTab('Groups');
+    await openGroup('Tokyo');
+
+    await waitFor(() => expect(textsOn('Tokyo')).toContain(TAKEN_OVER_BANNER));
+  });
+
+  test('[GROUPS-155.2] shows no button for the changes that were not applied, which the copy keeps', async () => {
     await startSynced(GROUPS);
     await aChangeWasNotApplied(await groupId('Brisbane'));
     await tapTab('Groups');
@@ -462,7 +501,7 @@ describe('GROUPS-155.1', () => {
     [1, ['Dana']],
     [3, ['Dana', 'Evan', 'Finn']],
   ])(
-    '[GROUPS-155.1] says how many changes were never sent: %s',
+    '[GROUPS-155.2] says how many changes were never sent: %s',
     async (count, added) => {
       await startSynced(GROUPS);
       goOffline();
@@ -486,7 +525,7 @@ describe('GROUPS-155.1', () => {
     },
   );
 
-  test('[GROUPS-155.1] shows the banner of the copy, not the notice of an archived group, on an archived read-only copy', async () => {
+  test('[GROUPS-155.2] shows the banner of the copy, not the notice of an archived group, on an archived read-only copy', async () => {
     await startSynced(GROUPS);
     await thisPhoneIsRemoved();
     await archiveGroup('Brisbane');

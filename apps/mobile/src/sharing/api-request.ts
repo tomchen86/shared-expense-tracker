@@ -2,6 +2,7 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 import {
   DEVICES_PATH,
+  REPLACED_HEADER,
   REFUSAL_STATUS,
   SIGNED_REQUEST_HEADERS,
   SNAPSHOT_NEEDED_BY_HEADER,
@@ -16,6 +17,7 @@ import type { Database } from '../storage';
 import {
   ensureDevice,
   readCorrectedTime,
+  readStoredDevice,
   saveClockOffsetMs,
   saveRegistered,
   type SigningDevice,
@@ -48,8 +50,12 @@ export interface ApiRequest {
   giveUpAfterMs?: number;
   /** Lets a caller distinguish a secure-store read failure from other request errors. */
   onSeedReadError?: (cause: unknown) => never;
-  /** Check that the identity is still the one an operation belongs to before registering or signing. */
-  checkDevice?: (deviceId: string) => void;
+  /**
+   * The device identity the request was made for, read with what the request was made
+   * from: the one stored when it is handed over, unless said, null when none was stored.
+   * A phone holding another one by its device turn sends nothing (SHARING-321.1).
+   */
+  deviceId?: string | null;
 }
 
 /** What became of a request. */
@@ -61,7 +67,12 @@ export type ApiResult =
   /** The registration or the request got no answer. */
   | { outcome: 'no-answer' }
   /** Not sent: this phone's authorization is lost. */
-  | { outcome: 'authorization-lost' };
+  | { outcome: 'authorization-lost' }
+  /**
+   * Not sent: the phone holds another device identity than the one the request was made
+   * for, whose authorization need not be lost (SHARING-321.1, BACKUP-29.1).
+   */
+  | { outcome: 'identity-changed' };
 
 const NONCE_LENGTH = 16;
 /** The longest the API can make this phone wait before it sends again (SHARING-28.1). */
@@ -81,6 +92,7 @@ interface Answer {
   status: number;
   body: Uint8Array;
   snapshotNeededBy?: string;
+  replacedBy?: string;
 }
 
 /**
@@ -141,7 +153,8 @@ async function sendSigned(
   { apiUrl, method, path, body, contentType }: Outgoing,
   giveUpAfterMs: number | undefined,
 ): Promise<Answer | undefined> {
-  const timestampMs = await readCorrectedTime(database);
+  // A retry can wake after a join replaced this device. Check the ID again before signing.
+  const timestampMs = await readCorrectedTime(database, device.deviceId);
   const nonce = bytesToHex(getRandomValues(new Uint8Array(NONCE_LENGTH)));
   const signature = device.sign(
     signedRequestBytes({
@@ -200,10 +213,12 @@ export async function fetchAnswer(
         const snapshotNeededBy = response.headers.get(
           SNAPSHOT_NEEDED_BY_HEADER,
         );
+        const replacedBy = response.headers.get(REPLACED_HEADER);
         return {
           status: response.status,
           body: new Uint8Array(await response.arrayBuffer()),
           ...(snapshotNeededBy !== null && { snapshotNeededBy }),
+          ...(replacedBy !== null && { replacedBy }),
         };
       }),
       limit,
@@ -244,6 +259,8 @@ async function exchange(
       clockCorrected = true;
       // Asked for once, and only now that the new offset is saved.
       if (bodyAfterClockCorrection) {
+        // What it changes belongs to this identity: nothing changes once another holds it.
+        await readCorrectedTime(database, device.deviceId);
         outgoing = {
           ...outgoing,
           body: bytesToSend(await bodyAfterClockCorrection()),
@@ -306,7 +323,7 @@ async function register(
 // that start together make one device identity and register it once (SHARING-20.1).
 let lastTurn: Promise<unknown> = Promise.resolve();
 
-function inTurn<T>(work: () => Promise<T>): Promise<T> {
+export function inDeviceTurn<T>(work: () => Promise<T>): Promise<T> {
   const turn = lastTurn.then(work);
   lastTurn = turn.catch(() => undefined);
   return turn;
@@ -317,7 +334,7 @@ export function prepareSigningDevice(
   database: Database,
   onSeedReadError: (cause: unknown) => never,
 ) {
-  return inTurn(() => ensureDevice(database, onSeedReadError));
+  return inDeviceTurn(() => ensureDevice(database, onSeedReadError));
 }
 
 /**
@@ -336,13 +353,20 @@ export async function sendApiRequest(
     throw new Error(`A ${method} request cannot carry a body`);
   }
 
-  const device = await inTurn(async (): Promise<SigningDevice | ApiResult> => {
-    const ready = await ensureDevice(database, request.onSeedReadError);
-    if (ready === 'lost') return { outcome: 'authorization-lost' };
-    request.checkDevice?.(ready.deviceId);
-    if (ready.registered) return ready;
-    return (await register(database, ready, request)) ?? ready;
-  });
+  // Read before waiting for the turn, which may be the one that replaces the identity.
+  const owner =
+    request.deviceId ?? (await readStoredDevice(database))?.deviceId;
+  const device = await inDeviceTurn(
+    async (): Promise<SigningDevice | ApiResult> => {
+      const ready = await ensureDevice(database, request.onSeedReadError);
+      if (ready === 'lost') return { outcome: 'authorization-lost' };
+      // A new identity is no stand-in for the request's own, lost or not.
+      if (owner !== undefined && ready.deviceId !== owner)
+        return { outcome: 'identity-changed' };
+      if (ready.registered) return ready;
+      return (await register(database, ready, request)) ?? ready;
+    },
+  );
   if ('outcome' in device) return device;
 
   const answer = await exchange(

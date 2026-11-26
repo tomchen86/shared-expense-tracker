@@ -58,6 +58,10 @@ import {
   TAYLORS_PHONE,
   TAYLOR_ID,
   TITLE,
+  TWO_PHONES_CARD,
+  brisbaneInvitesWithTwoPhones,
+  canSend,
+  joined,
   TOKYO_LINK,
   WAITING,
   WAITING_TEXT,
@@ -456,8 +460,8 @@ const taken = (id: string) =>
     member.id === id ? { ...member, hasDevice: true } : member,
   );
 
-describe('SHARING-212.1', () => {
-  test('[SHARING-212.1] asks the person to choose again when the member they picked has a phone by now', async () => {
+describe('SHARING-212.2', () => {
+  test('[SHARING-212.2] asks the person to choose again when the member they picked has a phone by now', async () => {
     await waiting('Casey');
     cardBecomes(taken(CASEY_ID));
 
@@ -483,7 +487,7 @@ describe('SHARING-212.1', () => {
     expect(chosen()).toEqual([NEW_MEMBER]);
   });
 
-  test('[SHARING-212.1] sends the request again with the new choice, under the same path, and waits', async () => {
+  test('[SHARING-212.2] sends the request again with the new choice, under the same path, and waits', async () => {
     await waiting('Casey');
     cardBecomes(taken(CASEY_ID));
     await comesBack();
@@ -502,7 +506,7 @@ describe('SHARING-212.1', () => {
     expect(requestsOnApi(CODE_A)).toHaveLength(1);
   });
 
-  test("[SHARING-212.1] asks a new member to choose again when the name is a member's by now, and picks that member", async () => {
+  test("[SHARING-212.2] asks a new member to choose again when the name is a member's by now, and picks that member", async () => {
     await waiting();
     cardBecomes([
       ...BRISBANE_CARD.members,
@@ -521,7 +525,7 @@ describe('SHARING-212.1', () => {
     expect(chosen()).toEqual(['dana']);
   });
 
-  test('[SHARING-212.1] asks a new member to choose again when the group has its 20 members by now, and offers only its members', async () => {
+  test('[SHARING-212.2] asks a new member to choose again when the group has its 20 members by now, and offers only its members', async () => {
     await waiting();
     cardBecomes(cardOf(20, 18).members);
 
@@ -535,7 +539,7 @@ describe('SHARING-212.1', () => {
     expect(joinLines()).toContain('Member 20');
   });
 
-  test('[SHARING-212.1] has no card to draw the form with after a restart without a network, and shows the form once Try Again reaches the API', async () => {
+  test('[SHARING-212.2] has no card to draw the form with after a restart without a network, and shows the form once Try Again reaches the API', async () => {
     const app = await waiting('Casey');
     cardBecomes(taken(CASEY_ID));
     await comesBack();
@@ -558,7 +562,7 @@ describe('SHARING-212.1', () => {
     await expectCard(['Brisbane', CHOOSE_CARD]);
   });
 
-  test('[SHARING-212.1] keeps the request as it was when the new choice cannot be sent, and sends that choice on Try Again', async () => {
+  test('[SHARING-212.2] keeps the request as it was when the new choice cannot be sent, and sends that choice on Try Again', async () => {
     await waiting('Casey');
     cardBecomes(taken(CASEY_ID));
     await comesBack();
@@ -587,7 +591,7 @@ describe('SHARING-212.1', () => {
     await expectCard(['Brisbane', WAITING_CARD]);
   });
 
-  test('[SHARING-212.1] shows the form again, under the card that still says Choose again, when a new choice that was not sent is closed and opened', async () => {
+  test('[SHARING-212.2] shows the form again, under the card that still says Choose again, when a new choice that was not sent is closed and opened', async () => {
     await waiting('Casey');
     cardBecomes(taken(CASEY_ID));
     await comesBack();
@@ -608,7 +612,7 @@ describe('SHARING-212.1', () => {
     expect(joinLines()).toContain(SEND);
   });
 
-  test('[SHARING-212.1] goes back to waiting when the request fits the card again', async () => {
+  test('[SHARING-212.2] goes back to waiting when the request fits the card again', async () => {
     await waiting('Casey');
     cardBecomes(taken(CASEY_ID));
     await comesBack();
@@ -617,6 +621,80 @@ describe('SHARING-212.1', () => {
 
     await comesBack();
 
+    await expectCard(['Brisbane', WAITING_CARD]);
+  });
+
+  /** Dana's phone has sent a request to take Taylor over, while Casey has a phone too, and Join Group is closed. */
+  async function waitingToTakeOverTaylor() {
+    brisbaneInvitesWithTwoPhones();
+    const app = await startAs();
+    await openLink(BRISBANE_LINK);
+    await pressInJoin(joined('Taylor'));
+    await send();
+    await closeJoin();
+    expect(lastRequest()).toMatchObject({ memberId: TAYLOR_ID });
+    return app;
+  }
+
+  test('[SHARING-212.2] leaves a request that takes a member over waiting while that member has a phone and another member has one too', async () => {
+    await waitingToTakeOverTaylor();
+    expect(lastRequest().takeover).toBe(true);
+
+    await comesBack();
+
+    await expectCard(['Brisbane', WAITING_CARD]);
+  });
+
+  test('[SHARING-212.2] asks the person to choose again when the member they wanted to take over has no phone any more', async () => {
+    await waitingToTakeOverTaylor();
+    expect(lastRequest().takeover).toBe(true);
+    cardBecomes(
+      TWO_PHONES_CARD.members.map((member) =>
+        member.id === TAYLOR_ID ? { ...member, hasDevice: false } : member,
+      ),
+    );
+
+    await comesBack();
+
+    await expectCard(['Brisbane', CHOOSE_CARD]);
+  });
+
+  test('[SHARING-212.2] asks the person to choose again when no other member has a phone any more, and lets nobody send a takeover then', async () => {
+    await waitingToTakeOverTaylor();
+    expect(lastRequest().takeover).toBe(true);
+    cardBecomes(BRISBANE_CARD.members);
+
+    await comesBack();
+
+    await expectCard(['Brisbane', CHOOSE_CARD]);
+    await openRequest('Brisbane');
+    await waitFor(() => expect(joinLines()[0]).toBe(CHOOSE_AGAIN));
+    await pressInJoin(joined('Taylor'));
+    expect(canSend()).toBe(false);
+  });
+
+  test('[SHARING-212.2] sends a takeover when the person chooses again a member who has a phone by now', async () => {
+    await waiting('Casey');
+    cardBecomes(TWO_PHONES_CARD.members);
+    await comesBack();
+    await tapTab('Groups');
+    await openRequest('Brisbane');
+    const first = sendings()[0].path;
+    await waitFor(() => expect(joinLines()[0]).toBe(CHOOSE_AGAIN));
+
+    await pressInJoin(joined('Casey'));
+    await send();
+
+    expect(sendings()).toHaveLength(2);
+    expect(sendings()[1].path).toBe(first);
+    expect(lastRequest()).toMatchObject({
+      memberId: CASEY_ID,
+      takeover: true,
+    });
+    await expectJoinLines(WAITING_FOR_BRISBANE);
+    // It waits, and is not asked to choose again for a member who has a phone.
+    await closeJoin();
+    await comesBack();
     await expectCard(['Brisbane', WAITING_CARD]);
   });
 });

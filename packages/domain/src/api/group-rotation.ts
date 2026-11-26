@@ -94,15 +94,13 @@ const isKey = (value: unknown) => isHexContent(value, 32, 32);
 const isBox = (value: unknown) =>
   isHexContent(value, KEY_BOX_MINIMUM, KEY_BOX_LIMIT);
 
-/** Whether `value` is exactly the body of a rotation (SHARING-261.1). */
-export function isRotateKeyRequest(value: unknown): value is RotateKeyRequest {
-  if (!hasExactly(value, ['epoch', 'remove', 'senderKey', 'boxes', 'events'])) {
-    return false;
-  }
-  const { epoch, remove, senderKey, boxes, events } = value;
+/** The devices removed and the boxes for those that stay, shared by rotations and takeovers. */
+export function hasRotationRecipients(value: {
+  remove: unknown;
+  boxes: unknown;
+}): value is Pick<RotateKeyRequest, 'remove' | 'boxes'> {
+  const { remove, boxes } = value;
   if (
-    !isWhole(epoch, 2) ||
-    !isKey(senderKey) ||
     !Array.isArray(remove) ||
     remove.length >= MEMBER_DEVICE_LIMIT ||
     // `every` skips an empty slot; a copy has `undefined` there, which is no device ID.
@@ -110,8 +108,7 @@ export function isRotateKeyRequest(value: unknown): value is RotateKeyRequest {
     new Set(remove).size !== remove.length ||
     !Array.isArray(boxes) ||
     boxes.length < 1 ||
-    boxes.length > MEMBER_DEVICE_LIMIT ||
-    !Array.isArray(events)
+    boxes.length > MEMBER_DEVICE_LIMIT
   ) {
     return false;
   }
@@ -128,8 +125,23 @@ export function isRotateKeyRequest(value: unknown): value is RotateKeyRequest {
     }
     receivers.add(item.deviceId);
   }
+  return true;
+}
+
+/** Whether `value` is exactly the body of a rotation (SHARING-261.1). */
+export function isRotateKeyRequest(value: unknown): value is RotateKeyRequest {
+  if (!hasExactly(value, ['epoch', 'remove', 'senderKey', 'boxes', 'events'])) {
+    return false;
+  }
+  const { epoch, senderKey, events } = value;
   // As an upload's events (SYNC-53.1), except that there may be none.
-  return events.length === 0 || isUploadEventsRequest({ epoch, events });
+  return (
+    isWhole(epoch, 2) &&
+    isKey(senderKey) &&
+    hasRotationRecipients(value) &&
+    Array.isArray(events) &&
+    (events.length === 0 || isUploadEventsRequest({ epoch, events }))
+  );
 }
 
 /** Whether `value` is exactly what the API answers once it has rotated a key. */

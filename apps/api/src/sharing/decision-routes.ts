@@ -2,13 +2,17 @@ import {
   GROUP_REFUSAL_STATUS,
   JOIN_DECISION_REFUSAL_STATUS,
   JOIN_REQUEST_REFUSAL_STATUS,
+  ROTATION_REFUSAL_STATUS,
   SNAPSHOT_REFUSAL_STATUS,
   isApproveJoinRequestBody,
   isGroupId as isId,
   isInviteCode,
   isRequestHash,
+  isTakeoverRequestBody,
+  type ApproveJoinRequestBody,
+  type TakeoverRequestBody,
 } from '@shared-expense/domain/api';
-import { Hono } from 'hono';
+import { Hono, type Handler } from 'hono';
 import type { AppEnv } from '../app';
 import {
   approveJoinRequest,
@@ -23,6 +27,7 @@ const STATUS = {
   ...SNAPSHOT_REFUSAL_STATUS,
   ...JOIN_REQUEST_REFUSAL_STATUS,
   ...JOIN_DECISION_REFUSAL_STATUS,
+  devices: ROTATION_REFUSAL_STATUS.devices,
 };
 
 /** A refusal under its status, and anything else under 200. */
@@ -48,6 +53,35 @@ function queryValue(url: string, field: string): string | undefined {
   return url.includes('?') && query.startsWith(`${field}=`)
     ? query.slice(field.length + 1)
     : undefined;
+}
+
+function approveWith(
+  isBody: (
+    value: unknown,
+  ) => value is ApproveJoinRequestBody | TakeoverRequestBody,
+): Handler<AppEnv, '/groups/:groupId/requests/:deviceId'> {
+  return async (c) => {
+    const { groupId, deviceId: applicant } = c.req.param();
+    const approval = jsonOf(new Uint8Array(await c.req.arrayBuffer()));
+    if (
+      !isId(groupId) ||
+      !isId(applicant) ||
+      c.req.url.includes('?') ||
+      !isBody(approval)
+    ) {
+      return answer({ error: 'request' });
+    }
+    return answer(
+      await approveJoinRequest(
+        c.env.sql,
+        groupId,
+        c.var.deviceId,
+        applicant,
+        approval,
+        c.env.now,
+      ),
+    );
+  };
 }
 
 /**
@@ -96,28 +130,14 @@ export const decisionRoutes = new Hono<AppEnv>()
       ),
     );
   })
-  .post('/groups/:groupId/requests/:deviceId/approval', async (c) => {
-    const { groupId, deviceId: applicant } = c.req.param();
-    const approval = jsonOf(new Uint8Array(await c.req.arrayBuffer()));
-    if (
-      !isId(groupId) ||
-      !isId(applicant) ||
-      c.req.url.includes('?') ||
-      !isApproveJoinRequestBody(approval)
-    ) {
-      return answer({ error: 'request' });
-    }
-    return answer(
-      await approveJoinRequest(
-        c.env.sql,
-        groupId,
-        c.var.deviceId,
-        applicant,
-        approval,
-        c.env.now,
-      ),
-    );
-  })
+  .post(
+    '/groups/:groupId/requests/:deviceId/approval',
+    approveWith(isApproveJoinRequestBody),
+  )
+  .post(
+    '/groups/:groupId/requests/:deviceId/takeover',
+    approveWith(isTakeoverRequestBody),
+  )
   .get('/invites/:code/request', async (c, next) => {
     if (c.req.method !== 'GET') return next();
     const code = c.req.param('code');

@@ -8,7 +8,10 @@ import {
   type JoinRequestsPageResponse,
   type JoinResultResponse,
   type RejectJoinRequestResponse,
+  type RotationRefusal,
   type SnapshotRefusal,
+  type TakeoverRequestBody,
+  type TakeoverResponse,
 } from '@shared-expense/domain/api';
 import type { Sql } from '../database/connect';
 import {
@@ -17,11 +20,17 @@ import {
   storeLockedGroupEvents,
   type EventApiRefusal,
 } from '../sync/groups';
+import { checkRotation, storeRotation } from './removal';
 
 // Answering join requests (ADR-0039): a member device lists its group's requests, rejects
 // one, or approves one, and the device that asked learns what became of its request.
 
 type DecisionRefusal = EventApiRefusal | JoinDecisionRefusal | SnapshotRefusal;
+type ApprovalResult =
+  | ApproveJoinRequestResponse
+  | TakeoverResponse
+  | DecisionRefusal
+  | Extract<RotationRefusal, { error: 'devices' }>;
 
 /** A page of the requests under the group's active invite, in the order of their device IDs. */
 export async function listJoinRequests(
@@ -105,19 +114,21 @@ export function rejectJoinRequest(
  * Approves a request in one transaction under the group's lock (SHARING-173.2): it
  * stores the approval's events, makes the device a member device whose progress is what
  * its snapshot covers, keeps the handover and deletes the request, or does none of it
- * and resolves with the first reason of SHARING-182.2.
+ * and resolves with the first reason of SHARING-182.2. A takeover rotates the key and
+ * replaces the named devices in this same transaction (SHARING-300.1, SHARING-304.1).
  */
 export function approveJoinRequest(
   sql: Sql,
   groupId: string,
   deviceId: string,
   applicant: string,
-  approval: ApproveJoinRequestBody,
+  approval: ApproveJoinRequestBody | TakeoverRequestBody,
   now: () => number,
-): Promise<ApproveJoinRequestResponse | DecisionRefusal> {
+): Promise<ApprovalResult> {
   const { request, cursor, snapshotId, senderKey, epoch, box, events } =
     approval;
-  return sql.begin<ApproveJoinRequestResponse | DecisionRefusal>(
+  const takeover = 'remove' in approval ? approval : undefined;
+  return sql.begin<ApprovalResult>(
     'isolation level read committed',
     async (tx) => {
       const group = await lockMemberGroup(tx, groupId, deviceId);
@@ -136,7 +147,7 @@ export function approveJoinRequest(
         return { error: 'no-request' };
       }
       const [found] = await tx<
-        { asked: boolean; snapshot: string | null; members: number }[]
+        { asked: boolean; snapshot: string | null; members_full: boolean }[]
       >`
         SELECT
           EXISTS (
@@ -159,29 +170,48 @@ export function approveJoinRequest(
                 FROM group_events WHERE group_id = ${groupId}
               )
           ) AS snapshot,
-          (
+          ${!takeover} AND (
             SELECT count(*)::int FROM group_members WHERE group_id = ${groupId}
-          ) AS members`;
+          ) >= ${MEMBER_DEVICE_LIMIT} AS members_full`;
       if (!found.asked) return { error: 'no-request' };
       if (cursor < Number(group.last_sequence)) return { error: 'behind' };
       // No device joins under the key a device that left knows (SHARING-256.1).
       if (group.rotation_needed) return rotationNeeded(tx, groupId);
-      if (epoch !== Number(group.epoch)) {
+      if (takeover) {
+        const refusal = await checkRotation(
+          tx,
+          groupId,
+          deviceId,
+          group,
+          takeover,
+        );
+        if (refusal) return refusal;
+      } else if (epoch !== Number(group.epoch)) {
         return { error: 'epoch', epoch: Number(group.epoch) };
       }
       if (found.snapshot === null) return { error: 'no-snapshot' };
-      if (found.members >= MEMBER_DEVICE_LIMIT) {
+      if (found.members_full) {
         return { error: 'members-full' };
       }
 
       // Nothing is written before this: a refusal leaves the database as it was.
-      const stored = await storeLockedGroupEvents(tx, group, {
-        groupId,
-        deviceId,
-        epoch,
-        events,
-        now: nowMs,
-      });
+      const stored = takeover
+        ? await storeRotation(
+            tx,
+            groupId,
+            deviceId,
+            group,
+            takeover,
+            nowMs,
+            'takeover',
+          )
+        : await storeLockedGroupEvents(tx, group, {
+            groupId,
+            deviceId,
+            epoch,
+            events,
+            now: nowMs,
+          });
       if ('error' in stored) return stored;
       await tx`
         WITH admitted AS (
@@ -196,9 +226,9 @@ export function approveJoinRequest(
         )
         DELETE FROM invite_join_requests
         WHERE code = ${invite.code} AND device_id = ${applicant}`;
-      return { deviceId: applicant, events: stored.events };
+      return { deviceId: applicant, ...stored };
     },
-  ) as Promise<ApproveJoinRequestResponse | DecisionRefusal>;
+  ) as Promise<ApprovalResult>;
 }
 
 /** What became of the device's request under the code, in the order of SHARING-183.1. */
