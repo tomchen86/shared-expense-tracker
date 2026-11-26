@@ -6036,6 +6036,11 @@ WHEN 使用者在表單按「Send Request」而它沒有被 SHARING-127.1、SHAR
 - **WHEN** 這支手機邀請過人加入自己的群組 Paris，所以 Paris 是共同帳本；之後 secure store 裡沒有了它的 seed，app 還沒有再為 Paris 同步過；打開 Brisbane 的連結，按「Send Request」
 - **THEN** 這支手機的裝置 ID 是新的；Paris 是唯讀副本，原因是授權失效；從按下去起，API 沒有收到 Paris 的任何請求
 
+#### Scenario: 換身分的途中開始的同步
+
+- **WHEN** 授權失效的手機上，Paris 還不是唯讀副本，Brisbane 是唯讀副本；它打開 Brisbane 的新邀請的連結，按「Send Request」；新的 seed 還沒存進 secure store 時，使用者離開 app 又回來，app 開始同步 Paris（SYNC-89.2）；之後在提示框按「Cancel」
+- **THEN** 這支手機的裝置 ID 是新的，還沒有註冊；Paris 是唯讀副本，原因是授權失效；從按下去起，API 沒有收到任何請求
+
 #### Scenario: 舊的申請刪掉
 
 - **WHEN** 授權失效的手機的本機資料存著一個等待同意的 Tokyo 的申請；它打開 Brisbane 的連結，按「Send Request」
