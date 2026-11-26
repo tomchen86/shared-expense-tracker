@@ -29,6 +29,11 @@ export interface CreateGroupResponse {
   groupId: string;
 }
 
+/** The group's current member devices, ordered by ID, with their stored progress times. */
+export interface GroupDevicesResponse {
+  devices: { deviceId: string; syncedAtMs: number | null }[];
+}
+
 /** An event as a phone uploads it. */
 export interface UploadedEvent {
   /** The event's own ID, the same every time it is uploaded: a lowercase version-4 UUID. */
@@ -132,6 +137,25 @@ export function isMemberDeviceList(value: unknown): value is string[] {
         isId(device) && (index === 0 || (value[index - 1] as string) < device),
     )
   );
+}
+
+export function isGroupDevicesResponse(
+  value: unknown,
+): value is GroupDevicesResponse {
+  if (!hasExactly(value, ['devices']) || !Array.isArray(value.devices)) {
+    return false;
+  }
+  const deviceIds: unknown[] = [];
+  for (const device of value.devices) {
+    if (
+      !hasExactly(device, ['deviceId', 'syncedAtMs']) ||
+      (device.syncedAtMs !== null && !isWhole(device.syncedAtMs, 0))
+    ) {
+      return false;
+    }
+    deviceIds.push(device.deviceId);
+  }
+  return isMemberDeviceList(deviceIds);
 }
 
 const isContent = (value: unknown) =>

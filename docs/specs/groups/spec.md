@@ -408,9 +408,9 @@ WHEN 使用者在 Group actions 選「Members」，the mobile app SHALL 開啟�
 - **WHEN** 在 iOS 上把 Members 往下滑，或在 Android 上按返回鍵
 - **THEN** Members 關閉，顯示 Brisbane 的畫面
 
-### Requirement: GROUPS-24.4 未封存群組的 Members 列出成員
+### Requirement: GROUPS-24.5 未封存群組的 Members 列出成員
 
-The mobile app SHALL 在未封存群組的 Members 依加入的先後，由上而下列出群組的每位成員，被移出後再加回來的排在最後；每位成員那一列都是角色為 button 的按鈕，右邊有「›」：你那一列是你的成員名稱加上「 (You)」，無障礙名稱也是這樣；別人那一列是他的名稱，無障礙名稱是他的名稱；共同帳本裡有手機的別人，那一列另外顯示「Joined」，無障礙名稱是他的名稱、逗號、空格和「Joined」，例如「Casey, Joined」，所以每位成員都看得出誰已經用自己的手機加入；最後一列是角色為 button、名稱為「Add Member」的按鈕，共同帳本有 20 位以上的成員時沒有這一列（GROUPS-105.1）。
+The mobile app SHALL 在未封存群組的 Members 依加入的先後，由上而下列出群組的每位成員，被移出後再加回來的排在最後；每位成員那一列都是角色為 button 的按鈕，右邊有「›」：你那一列是你的成員名稱加上「 (You)」，無障礙名稱也是這樣；別人那一列是他的名稱，無障礙名稱是他的名稱；共同帳本裡有手機的別人，那一列另外顯示第二行，無障礙名稱是他的名稱、逗號、空格和第二行，例如「Casey, Joined」，所以每位成員都看得出誰已經用自己的手機加入：不知道他上次同步的時間時（sync 的 SYNC-320.1）第二行是「Joined」；知道時，那個時間在手機時區的日期不比今天早就是「Last synced today」，比今天早就是「Last synced 」加上那個日期，用手機地區的日期格式（LEDGER-30.2），例如「Casey, Last synced Oct 27, 2026」，所以也看得出誰的手機很久沒有同步；你那一列和沒有手機的成員那一列都沒有第二行；最後一列是角色為 button、名稱為「Add Member」的按鈕，共同帳本有 20 位以上的成員時沒有這一列（GROUPS-105.1）。
 
 #### Scenario: 只有你
 
@@ -426,6 +426,26 @@ The mobile app SHALL 在未封存群組的 Members 依加入的先後，由上�
 
 - **WHEN** Brisbane 是共同帳本，名冊裡有別支手機代表 Casey 的紀錄（sync 的 SYNC-251.2），開啟它的 Members
 - **THEN** Casey 那一列顯示「Casey」和「Joined」，是名稱為「Casey, Joined」的按鈕；Blake 那一列沒有「Joined」；你那一列仍是「Taylor (You)」，沒有「Joined」
+
+#### Scenario: 知道上次同步的時間
+
+- **WHEN** 手機在台北，今天是 `2026-10-30`；Brisbane 的 Members 開著，得知 Casey 上次同步的時間是 `2026-10-27T04:00:00Z`（sync 的 SYNC-320.1）
+- **THEN** Casey 那一列顯示「Casey」和「Last synced Oct 27, 2026」，是名稱為「Casey, Last synced Oct 27, 2026」的按鈕，右邊仍有「›」，點了仍跳出他的選單（GROUPS-25.4）
+
+#### Scenario: 今天
+
+- **WHEN** Casey 上次同步的時間是 `2026-10-30T04:00:00Z`；或 `2026-10-29T16:00:00Z`，在台北是今天的 0 點；或 `2026-10-30T16:30:00Z`，在台北已經是明天
+- **THEN** Casey 那一列都顯示「Last synced today」，名稱是「Casey, Last synced today」
+
+#### Scenario: 昨天的最後一毫秒
+
+- **WHEN** Casey 上次同步的時間是 `2026-10-29T15:59:59.999Z`
+- **THEN** Casey 那一列顯示「Last synced Oct 29, 2026」
+
+#### Scenario: 你和沒有手機的成員
+
+- **WHEN** 得知 Casey 上次同步的時間之後
+- **THEN** 你那一列仍是「Taylor (You)」，Blake 那一列仍是「Blake」，都沒有第二行
 
 ### Requirement: GROUPS-25.4 在未封存群組的 Members 點成員那一列跳出他的選單
 
@@ -1113,7 +1133,7 @@ WHILE 群組已封存，the mobile app SHALL 在它的 Members 依加入的先�
 #### Scenario: 還原之後
 
 - **WHEN** 還原 Brisbane 之後打開它的 Members
-- **THEN** 成員列又是按鈕，最後一列是「Add Member」（GROUPS-24.4）
+- **THEN** 成員列又是按鈕，最後一列是「Add Member」（GROUPS-24.5）
 
 ### Requirement: GROUPS-57.1 按 Restore 或 Restore Group 時還原群組
 
@@ -1533,7 +1553,7 @@ WHEN 使用者按群組的畫面上你的淨額（GROUPS-69.4），the mobile ap
 
 ### Requirement: GROUPS-71.1 Balances 列出每個人的已付、份額和淨額
 
-The mobile app SHALL 在 Balances 依幣別代碼排序，為群組不在垃圾桶裡的支出用到的每個幣別各放一個區塊，用到兩個以上幣別時每個區塊的標題是幣別代碼，只有一個幣別時沒有標題，區塊裡由上而下先依 GROUPS-24.4 的順序列出群組的每位成員，再依被移出的先後列出這個幣別不在垃圾桶裡的支出的付款或分攤裡的前成員；每個人一列，依序是他的名稱（你的成員是你的成員名稱加上「 (You)」，前成員是他存著的名稱）、淨額大於 0 時的「Is Owed <淨額>」、小於 0 時的「Owes <淨額的絕對值>」或等於 0 時的「Settled up」，以及「Paid <已付> · Share <份額>」，所以每個幣別所有人的淨額加總是 0。
+The mobile app SHALL 在 Balances 依幣別代碼排序，為群組不在垃圾桶裡的支出用到的每個幣別各放一個區塊，用到兩個以上幣別時每個區塊的標題是幣別代碼，只有一個幣別時沒有標題，區塊裡由上而下先依 GROUPS-24.5 的順序列出群組的每位成員，再依被移出的先後列出這個幣別不在垃圾桶裡的支出的付款或分攤裡的前成員；每個人一列，依序是他的名稱（你的成員是你的成員名稱加上「 (You)」，前成員是他存著的名稱）、淨額大於 0 時的「Is Owed <淨額>」、小於 0 時的「Owes <淨額的絕對值>」或等於 0 時的「Settled up」，以及「Paid <已付> · Share <份額>」，所以每個幣別所有人的淨額加總是 0。
 
 #### Scenario: 一個人付了全部
 

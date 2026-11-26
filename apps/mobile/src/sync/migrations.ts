@@ -10,6 +10,7 @@ export const syncMigration = `
     groupId TEXT PRIMARY KEY NOT NULL REFERENCES groups(id),
     device TEXT NOT NULL,
     ownMemberId TEXT,
+    lastSyncedAt INTEGER,
     waitsForSnapshot INTEGER NOT NULL DEFAULT 0 CHECK (waitsForSnapshot IN (0, 1)),
     snapshotNeedingUpdate TEXT,
     readOnly TEXT CHECK (readOnly IN ('not-a-member', 'left', 'lapsed')),

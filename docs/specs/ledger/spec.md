@@ -1271,7 +1271,7 @@ WHILE「Split with others」開著，the mobile app SHALL 在開關下面放名�
 
 ### Requirement: LEDGER-48.2 選付款人
 
-WHEN 使用者按「Paid by」，the mobile app SHALL 打開 Who Paid? 清單，依 GROUPS-24.4 的順序列出選的群組的每位成員，你那一項是你的成員名稱加上「 (You)」，別人那一項是他現在的名稱，付款人標示為已選取；按一位成員就選他為付款人並回到表單，關閉清單就回到表單、付款人不變。
+WHEN 使用者按「Paid by」，the mobile app SHALL 打開 Who Paid? 清單，依 GROUPS-24.5 的順序列出選的群組的每位成員，你那一項是你的成員名稱加上「 (You)」，別人那一項是他現在的名稱，付款人標示為已選取；按一位成員就選他為付款人並回到表單，關閉清單就回到表單、付款人不變。
 
 #### Scenario: 列出成員
 
@@ -1295,7 +1295,7 @@ WHEN 使用者按「Paid by」，the mobile app SHALL 打開 Who Paid? 清單，
 
 ### Requirement: LEDGER-49.2 選分攤的人
 
-WHEN 使用者按「Split between」，the mobile app SHALL 打開 Split Between 清單，依 GROUPS-24.4 的順序列出選的群組的每位成員，名稱同 LEDGER-48.2，分攤的人標示為已選取；按一位還不是分攤的人的成員，就把他加在分攤的順序的最後，按一位分攤的人就把他拿掉，兩種情況清單都不關閉；關閉清單就回到表單。
+WHEN 使用者按「Split between」，the mobile app SHALL 打開 Split Between 清單，依 GROUPS-24.5 的順序列出選的群組的每位成員，名稱同 LEDGER-48.2，分攤的人標示為已選取；按一位還不是分攤的人的成員，就把他加在分攤的順序的最後，按一位分攤的人就把他拿掉，兩種情況清單都不關閉；關閉清單就回到表單。
 
 #### Scenario: 選兩位
 
@@ -5259,3 +5259,67 @@ The mobile app SHALL 在 Changes Not Applied（GROUPS-171.1）替事件指的是
 
 - **WHEN** 有 Lunch；套用一個上傳的裝置 ID 是 `phone-a`、時間戳記比收到時間晚一小時、永久刪除 Lunch 的事件
 - **THEN** 區塊由上而下是「Expense change not applied」、時鐘的說明、「EXPENSE」、「Lunch」和「Dismiss」；Lunch 還在支出清單
+
+### Requirement: LEDGER-240.1 還沒上傳的支出的卡片顯示時鐘
+
+WHILE 一筆共同帳本的支出還沒上傳，也就是這支手機有改這筆支出的待上傳的事件（sync 的 SYNC-21.1）——新增它、修改它、把它搬到別的分類（SYNC-25.1）、移到垃圾桶或還原它的事件——the mobile app SHALL 在它的每一張卡片上、標題的後面、卡片金額的前面顯示一個時鐘圖示：iOS 上是 SF Symbol `clock`，Android 上是 Material Symbol `schedule`；卡片的其他內容不變（LEDGER-33.3、LEDGER-65.4、GROUPS-61.6），螢幕閱讀器在日期之後、標記（LEDGER-151.1、LEDGER-156.1）之前讀出「Not sent yet」，不讀圖示。支出清單、群組的畫面、類別的支出（INSIGHTS-49.1）和 Trash 的卡片都一樣。它的事件上傳得到 API 確認、這支手機不再有改它的待上傳的事件時（sync 的 SYNC-77.1），不必重新打開畫面，圖示就消失；重新啟動 app 之後、還沒上傳之前仍顯示。只改別的紀錄的待上傳的事件——分類、群組、成員的——不讓支出的卡片顯示它。個人支出、不是共同帳本的群組的支出和唯讀副本的支出（LEDGER-220.1）都沒有這個圖示：唯讀副本沒送出的變更寫在它的橫幅上（GROUPS-155.1）。這個 build 沒有設定 API 的網址時（sync 的 SYNC-93.1）也沒有：它的事件不是還沒送出，是從不送出。
+
+#### Scenario: 群組的畫面和支出清單
+
+- **WHEN** 名字是「Taylor」，Brisbane 是共同帳本；沒有網路時新增 Dinner
+- **THEN** Brisbane 的畫面上 Dinner 的卡片依序顯示「Dinner」、時鐘、「$100.01」、「Food & Dining」、「Paid by Casey」，螢幕閱讀器讀出一個按鈕，依序是「Dinner」、「$100.01」、「Food & Dining」、「Paid by Casey」、「Oct 30, 2026」和「Not sent yet」；支出清單上它的卡片依序顯示「Dinner」、時鐘、「$33.34」、「Food & Dining」、「Brisbane」，螢幕閱讀器在「Oct 30, 2026」之後讀出「Not sent yet」
+
+#### Scenario: 圖示
+
+- **WHEN** 在 iOS 和 Android 上看這張卡片
+- **THEN** 標題和卡片金額之間的圖示，iOS 上是 `clock`，Android 上是 `schedule`；螢幕閱讀器讀出的內容裡沒有圖示的名稱
+
+#### Scenario: 上傳之後
+
+- **WHEN** Brisbane 的畫面開著，新增 Dinner，API 還沒有回答它的上傳；之後 API 回答
+- **THEN** 回答之前 Dinner 的卡片有時鐘；回答之後不必重新打開，時鐘就消失，螢幕閱讀器不再讀出「Not sent yet」
+
+#### Scenario: 修改
+
+- **WHEN** Dinner 已經上傳，卡片沒有時鐘；沒有網路時把它的標題改成「Supper」；之後網路恢復，把 app 留在背景再回來
+- **THEN** 改了之後卡片有時鐘；回來之後沒有
+
+#### Scenario: 垃圾桶
+
+- **WHEN** Dinner 已經上傳；沒有網路時把它移到垃圾桶，看 Trash；再把它還原，看支出清單
+- **THEN** Trash 上 Dinner 的卡片有時鐘；還原之後支出清單上它的卡片也有
+
+#### Scenario: 類別的支出
+
+- **WHEN** 沒有網路時新增 Dinner；在 Brisbane 的 Insights 按 Food & Dining 那一列，或在個人的 Insights 按 Food & Dining 那一列
+- **THEN** 類別的支出上 Dinner 的卡片都有時鐘，螢幕閱讀器都讀出「Not sent yet」
+
+#### Scenario: 和標記一起
+
+- **WHEN** Supper 是可能重複的支出（LEDGER-156.1），已經上傳；沒有網路時替它加上備註
+- **THEN** 卡片有時鐘和「Possible duplicate」那一行；螢幕閱讀器在「Oct 30, 2026」之後依序讀出「Not sent yet」和「Possible duplicate」
+
+#### Scenario: 別的紀錄的事件
+
+- **WHEN** Dinner 已經上傳；沒有網路時把 Brisbane 改名為「Brissie」，在它的 Members 加入 Dana
+- **THEN** Dinner 的卡片沒有時鐘
+
+#### Scenario: 個人支出和不是共同帳本的群組
+
+- **WHEN** 沒有網路時新增個人支出 Coffee run，在不是共同帳本的 Tokyo 新增 Sushi
+- **THEN** 兩張卡片都沒有時鐘，螢幕閱讀器都不讀出「Not sent yet」
+
+#### Scenario: 沒有設定 API 的網址
+
+- **WHEN** build 沒有設定 API 的網址，Brisbane 是共同帳本，新增 Dinner
+- **THEN** Dinner 的事件待上傳；它的卡片沒有時鐘，螢幕閱讀器不讀出「Not sent yet」
+
+#### Scenario: 唯讀副本
+
+- **WHEN** Casey 的手機沒有網路時新增 Lunch；之後 Brisbane 成為唯讀副本
+- **THEN** Lunch 的卡片沒有時鐘；Brisbane 的畫面寫著「1 change made on this phone was never sent to the group.」
+
+#### Scenario: 重新啟動
+
+- **WHEN** 沒有網路時新增 Dinner，重新啟動 app
+- **THEN** 支出清單和 Brisbane 的畫面上，Dinner 的卡片仍有時鐘

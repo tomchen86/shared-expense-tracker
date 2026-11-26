@@ -2132,7 +2132,7 @@ WHEN 建立邀請，the mobile app SHALL 用 `expo-crypto` 的 `getRandomValues`
 
 ### Requirement: SHARING-95.1 建立邀請的請求帶著加密的名片
 
-WHEN 建立邀請，the mobile app SHALL 送建立邀請的請求（SHARING-77.1）：路徑帶著群組 ID 和代號，內容是名片的 cursor 和名片。名片是名片內容用名片金鑰加密的密文（SHARING-1.1）：名片金鑰從 `#` 後面的那 32 bytes 導出，用途是 `shared-expense/invite/card/v1`，不給 salt（SHARING-12.1）；nonce 是 `expo-crypto` 給的 24 bytes，每次加密都是新的；附加資料是 `shared-expense/invite/card/v1`、一個換行（`0x0A`）和代號，以 UTF-8 編碼。名片內容是一個 JSON 物件（JavaScript 的 `JSON.stringify`，沒有多餘的空白，以 UTF-8 編碼），依序有兩個欄位：`name` 是群組名稱；`members` 依 Members 的順序（GROUPS-24.4）列出群組的每位成員，每位依序是 `id`（成員 ID）、`name`（成員名稱）和 `hasDevice`（這位成員有使用者 ID 時是 `true`，否則是 `false`）。前成員不在名片裡。名片的 cursor 是這支手機在這個群組的 cursor（sync），還沒下載過這個群組的事件時是 0。
+WHEN 建立邀請，the mobile app SHALL 送建立邀請的請求（SHARING-77.1）：路徑帶著群組 ID 和代號，內容是名片的 cursor 和名片。名片是名片內容用名片金鑰加密的密文（SHARING-1.1）：名片金鑰從 `#` 後面的那 32 bytes 導出，用途是 `shared-expense/invite/card/v1`，不給 salt（SHARING-12.1）；nonce 是 `expo-crypto` 給的 24 bytes，每次加密都是新的；附加資料是 `shared-expense/invite/card/v1`、一個換行（`0x0A`）和代號，以 UTF-8 編碼。名片內容是一個 JSON 物件（JavaScript 的 `JSON.stringify`，沒有多餘的空白，以 UTF-8 編碼），依序有兩個欄位：`name` 是群組名稱；`members` 依 Members 的順序（GROUPS-24.5）列出群組的每位成員，每位依序是 `id`（成員 ID）、`name`（成員名稱）和 `hasDevice`（這位成員有使用者 ID 時是 `true`，否則是 `false`）。前成員不在名片裡。名片的 cursor 是這支手機在這個群組的 cursor（sync），還沒下載過這個群組的事件時是 0。
 
 #### Scenario: Brisbane 的名片
 
@@ -4063,7 +4063,7 @@ WHEN 送同意的請求，the mobile app SHALL 讓 `box` 是這樣裝的 box（S
 
 ### Requirement: SHARING-199.1 API 回答同意好了之後同步，新成員才進到本機資料
 
-WHEN API 回答同意好了，the mobile app SHALL 同步這個共同帳本一次，下載到自己剛才送出的事件並照常套用（SYNC-28.3），新成員和名冊紀錄是這時才存進本機資料的；再列出申請（SHARING-190.2）。之後 Members 列出新成員，有手機的成員顯示「Joined」（GROUPS-24.4），名片也照新的成員更新（SHARING-109.1）。
+WHEN API 回答同意好了，the mobile app SHALL 同步這個共同帳本一次，下載到自己剛才送出的事件並照常套用（SYNC-28.3），新成員和名冊紀錄是這時才存進本機資料的；再列出申請（SHARING-190.2）。之後 Members 列出新成員，有手機的成員顯示「Joined」（GROUPS-24.5），名片也照新的成員更新（SHARING-109.1）。
 
 #### Scenario: 同意 Dana 之後
 
@@ -5132,7 +5132,7 @@ WHEN 備換鑰匙的請求，the mobile app SHALL 用 `expo-crypto` 給的 32 by
 
 ### Requirement: SHARING-273.1 換好了之後存下新的群組鑰匙，再同步
 
-WHEN API 回答換好了，the mobile app SHALL 照 SYNC-94.1 替這個共同帳本存下新的群組鑰匙，鑰匙世代是回應的 `epoch`，再同步這個共同帳本：下載到自己剛才送出的事件並照常套用（SYNC-28.3），離開的成員和名冊紀錄是這時才改進本機資料的。之後被移除的成員是前成員，Members 不再列出他（GROUPS-24.4），他的付款和分攤都不變（GROUPS-66.1），比這次離開早的邀請被撤回（SHARING-284.1）。IF 新的群組鑰匙存不進 secure store，THEN the mobile app SHALL 照常同步：它用給自己的那個 box 拿回這把鑰匙（SHARING-278.1）。
+WHEN API 回答換好了，the mobile app SHALL 照 SYNC-94.1 替這個共同帳本存下新的群組鑰匙，鑰匙世代是回應的 `epoch`，再同步這個共同帳本：下載到自己剛才送出的事件並照常套用（SYNC-28.3），離開的成員和名冊紀錄是這時才改進本機資料的。之後被移除的成員是前成員，Members 不再列出他（GROUPS-24.5），他的付款和分攤都不變（GROUPS-66.1），比這次離開早的邀請被撤回（SHARING-284.1）。IF 新的群組鑰匙存不進 secure store，THEN the mobile app SHALL 照常同步：它用給自己的那個 box 拿回這把鑰匙（SHARING-278.1）。
 
 #### Scenario: 移除 Dana 之後
 
@@ -5205,7 +5205,7 @@ IF API 拒絕移除時送的換鑰匙的請求，THEN the mobile app SHALL 照�
 
 ### Requirement: SHARING-275.1 API 說需要換鑰匙時，替群組換鑰匙
 
-WHEN 一個共同帳本的一次同步結束，而它的下載或上傳被拒絕，原因是需要換鑰匙（SHARING-256.1；sync 的 SYNC-62.2 判定的拒絕，寫得不對的照 SYNC-71.3、SYNC-78.2 當成別的回應），the mobile app SHALL 替群組換鑰匙：在同一個 SQLite transaction 裡，把回應的 `devices` 當成留下來的手機，照 SHARING-271.1 和 SHARING-272.1 備請求，送換鑰匙的請求，`epoch` 是這支手機在這個共同帳本的鑰匙世代加 1，`remove` 是空的。API 回答換好了之後照 SHARING-273.1 存下新的群組鑰匙，再同步這個共同帳本一次：它從 cursor 下載，再用新的鑰匙世代上傳。IF `devices` 裡有一支手機在這支手機的名冊裡沒有代表某位成員的紀錄，或這支手機沒有現在的鑰匙世代的群組鑰匙，THEN the mobile app SHALL 不送，也不再同步：別支成員手機會換。IF 換鑰匙的請求被拒絕，原因是鑰匙世代或不必換鑰匙，THEN the mobile app SHALL 再同步這個共同帳本一次，原因是鑰匙世代而它沒有那把鑰匙時先拿（SHARING-278.1）：別支手機已經換了；其他的拒絕和沒有得到回應時不再同步，待上傳的事件都留著，下一次同步時再換。這樣換了一次之後的那次同步又被拒絕、原因是需要換鑰匙時，不再換，等下一次同步；都不顯示任何提示。
+WHEN 一個共同帳本的一次同步結束，而它的下載或上傳被拒絕，原因是需要換鑰匙（SHARING-256.1；sync 的 SYNC-62.2 判定的拒絕，寫得不對的照 SYNC-71.4、SYNC-78.2 當成別的回應），the mobile app SHALL 替群組換鑰匙：在同一個 SQLite transaction 裡，把回應的 `devices` 當成留下來的手機，照 SHARING-271.1 和 SHARING-272.1 備請求，送換鑰匙的請求，`epoch` 是這支手機在這個共同帳本的鑰匙世代加 1，`remove` 是空的。API 回答換好了之後照 SHARING-273.1 存下新的群組鑰匙，再同步這個共同帳本一次：它從 cursor 下載，再用新的鑰匙世代上傳。IF `devices` 裡有一支手機在這支手機的名冊裡沒有代表某位成員的紀錄，或這支手機沒有現在的鑰匙世代的群組鑰匙，THEN the mobile app SHALL 不送，也不再同步：別支成員手機會換。IF 換鑰匙的請求被拒絕，原因是鑰匙世代或不必換鑰匙，THEN the mobile app SHALL 再同步這個共同帳本一次，原因是鑰匙世代而它沒有那把鑰匙時先拿（SHARING-278.1）：別支手機已經換了；其他的拒絕和沒有得到回應時不再同步，待上傳的事件都留著，下一次同步時再換。這樣換了一次之後的那次同步又被拒絕、原因是需要換鑰匙時，不再換，等下一次同步；都不顯示任何提示。
 
 #### Scenario: 打開 app 的手機替群組換
 

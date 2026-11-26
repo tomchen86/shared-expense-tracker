@@ -349,8 +349,8 @@ describe('SYNC-92.2', () => {
   });
 });
 
-describe('SYNC-71.3', () => {
-  test('[SYNC-71.3] does not store a page when an import took the cursor back while the page was on its way', async () => {
+describe('SYNC-71.4', () => {
+  test('[SYNC-71.4] does not store a page when an import took the cursor back while the page was on its way', async () => {
     const { a, b, key } = await twoPhones();
     const copy = await copyOfData(a);
     await uploadAs(b, key, [await created(b, 'Lunch', await stampOf(b, NOW))]);
@@ -373,6 +373,30 @@ describe('SYNC-71.3', () => {
 
     expect((await downloads(a, next))[0]).toBe('after=0');
     expect(await titles(a)).toEqual(['Lunch', 'Taxi']);
+  });
+
+  test('[SYNC-71.4] [SYNC-313.1] takes an empty page for no answer when an import took the cursor back while it was on its way: the sync uploads nothing and the time of the last sync stays the imported one', async () => {
+    const { a } = await twoPhones();
+    await addExpense(a);
+    const imported = await a.sync.lastSyncedAt(a.database, a.brisbane);
+    const copy = await copyOfData(a);
+    await sync(a);
+    expect(await unsent(a)).toEqual([]);
+    // As the empty page that answers cursor 1 arrives, the local data goes back to cursor 0,
+    // with Dinner's event unsent again.
+    whenAnswered('GET', () => importData(a, copy));
+    const from = mark();
+
+    await trySync(a);
+
+    expect(await downloads(a, from)).toEqual(['after=1']);
+    expect(await uploads(a, from)).toEqual([]);
+    expect(await unsent(a)).toHaveLength(1);
+    expect(await a.sync.lastSyncedAt(a.database, a.brisbane)).toBe(imported);
+    const next = mark();
+    await sync(a);
+
+    expect((await downloads(a, next))[0]).toBe('after=0');
   });
 });
 

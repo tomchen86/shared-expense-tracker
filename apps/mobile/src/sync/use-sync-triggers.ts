@@ -9,8 +9,8 @@ import { UNSENT_EVENTS, subscribeToUnsentEvents } from './records';
  * Starts syncs of ledgers the phone holds (ADR-0027): each shared ledger once when the
  * app opens, which is when it starts and when it comes back from the background
  * (SYNC-89.2), and a ledger once this phone has saved an unsent event of it (SYNC-88.1).
- * Nothing waits for a sync, and nothing is shown when one does not finish. A build that
- * names no API starts none, and reads nothing for one (SYNC-93.1).
+ * Opening the app and saving do not wait for a sync. A build that names no API starts
+ * none, and reads nothing for one (SYNC-93.1).
  */
 export function useSyncTriggers(database: Database | undefined) {
   useEffect(() => {

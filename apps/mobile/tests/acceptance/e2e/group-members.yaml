@@ -1,5 +1,5 @@
 appId: com.tomchen.sharedexpensetracker
-name: '[GROUPS-20.2] [GROUPS-22.3] [GROUPS-23.2] [GROUPS-24.4] [GROUPS-29.2] [GROUPS-31.3] Opens Members from the Group actions menu, adds two members in its name field, and swipes Members down'
+name: '[GROUPS-20.2] [GROUPS-22.3] [GROUPS-23.2] [GROUPS-24.5] [GROUPS-29.2] [GROUPS-31.3] Opens Members from the Group actions menu, adds two members in its name field, and swipes Members down'
 ---
 - runFlow:
     file: common/launch-with-seed.yaml
