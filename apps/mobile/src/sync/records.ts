@@ -183,23 +183,34 @@ export function expenseSyncValues(expense: Expense): SyncUnits['expense'] {
   };
 }
 
+/** Values to compare a change with. An expense opened before sharing has no stamps yet. */
+export type UnitBaseline<Values = Record<string, unknown>> = {
+  [Name in keyof Values]?: { value: Values[Name]; stamp?: SyncStamp };
+};
+
+export function unstampedExpenseUnits(
+  expense: Expense,
+): UnitBaseline<SyncUnits['expense']> {
+  return Object.fromEntries(
+    Object.entries(expenseSyncValues(expense)).map(([name, value]) => [
+      name,
+      { value },
+    ]),
+  );
+}
+
 /**
  * The units among `values` whose value differs from the one in `stored`, each with the
  * stamp it has there as its base, and with no base where `stored` has none. `stored` is
  * what the record holds, or what it held when the form that made the change opened
  * (SYNC-23.2).
  */
-export function changedUnits(values: object, stored: SyncRecord['units']) {
-  const current: Record<
-    string,
-    { value: unknown; stamp: SyncStamp } | undefined
-  > = stored;
+export function changedUnits(values: object, stored: UnitBaseline) {
   const changes: Record<string, { value: unknown; base?: SyncStamp }> = {};
   for (const [name, value] of Object.entries(values)) {
-    const unit = current[name];
-    if (!unit) changes[name] = { value };
-    else if (!sameSyncUnitValue(name, value, unit.value))
-      changes[name] = { value, base: unit.stamp };
+    const unit = stored[name];
+    if (!unit || !sameSyncUnitValue(name, value, unit.value))
+      changes[name] = unit?.stamp ? { value, base: unit.stamp } : { value };
   }
   return changes;
 }
@@ -240,7 +251,7 @@ export async function requeueConfirmedEvents(tx: SqlExecutor, groupId: string) {
   );
   // A backup imported during an upload can leave an older unsent row. Cap the resend
   // positions just before the current queue. The original positions break any ties.
-  await tx.run(
+  return tx.run(
     `WITH head AS MATERIALIZED (
        SELECT MIN(sendPosition) - 1 AS beforeFirst FROM ${UNSENT_EVENTS} WHERE groupId = ?
      )
@@ -315,7 +326,7 @@ export async function writeLocalChange<T extends SyncRecordType>(
   type: T,
   id: string,
   values: Partial<SyncUnits[T]>,
-  opened?: SyncRecord['units'],
+  opened?: UnitBaseline,
 ) {
   const previous = await readSyncRecord(tx, group.groupId, type, id);
   const units = changedUnits(values, opened ?? previous?.record.units ?? {});

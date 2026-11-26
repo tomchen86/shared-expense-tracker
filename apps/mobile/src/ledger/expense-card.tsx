@@ -1,7 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SymbolView } from 'expo-symbols';
 import { formatCurrency } from '@shared-expense/domain';
 import { FadeText } from '../ui/fade-text';
 import { GroupedSection } from '../ui/grouped-section';
+import { materialSymbolFrame } from '../ui/material-symbol-frame';
 import { SwipeAction, useSidewaysDragIsNoPress } from '../ui/swipe-action';
 import { useThemeColors } from '../ui/theme';
 import { useDisplayLocale } from '../ui/use-display-locale';
@@ -59,6 +61,7 @@ export function ExpenseCard({
     expense.categoryLabel,
     ...(right ? [right] : []),
     date,
+    ...(expense.unsent ? ['Not sent yet'] : []),
     ...marks,
   ];
   const card = (
@@ -79,12 +82,24 @@ export function ExpenseCard({
         ]}
       >
         <View style={styles.main}>
-          <FadeText
-            containerStyle={styles.titleBox}
-            style={[styles.title, { color: colors.text }]}
-          >
-            {expense.title}
-          </FadeText>
+          <View style={styles.titleBox}>
+            <FadeText
+              containerStyle={styles.shrinks}
+              style={[styles.title, { color: colors.text }]}
+            >
+              {expense.title}
+            </FadeText>
+            {expense.unsent && (
+              <SymbolView
+                name={{ ios: 'clock', android: 'schedule' }}
+                size={16}
+                tintColor={colors.textMuted}
+                style={materialSymbolFrame}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              />
+            )}
+          </View>
           <Text style={[styles.amount, { color: colors.text }]}>{amount}</Text>
         </View>
         <View style={styles.category}>
@@ -141,7 +156,7 @@ const styles = StyleSheet.create({
   card: { marginBottom: 12 },
   content: { padding: 16 },
   main: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  titleBox: { flex: 1 },
+  titleBox: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   title: { fontSize: 18, fontWeight: '700' },
   amount: { fontSize: 16, fontWeight: '600' },
   category: {

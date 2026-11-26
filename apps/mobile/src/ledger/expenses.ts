@@ -6,14 +6,17 @@ import {
 } from '@shared-expense/domain';
 import { createUuid, type Database, type SqlExecutor } from '../storage';
 import type { LocalIdentity } from '../shell';
+import { apiUrl } from '../sharing/api-address';
 import { moneyToReview } from '../sync/own-money';
 import {
+  UNSENT_EVENTS,
   changedUnits,
   expenseSyncValues,
   readSyncRecord,
   sharedGroup,
   writeLocalChange,
   type SharedGroup,
+  type UnitBaseline,
 } from '../sync/records';
 import { revealPlacedExpense } from './list-filter-storage';
 
@@ -160,17 +163,29 @@ export async function readExpenseToEdit(
 }
 
 /**
- * The same expenses with the local sort keys their cards use and, for each one that needs
- * review, `yours`: the money the user entered (LEDGER-151.1).
+ * The same expenses with their card sort keys, unsent clock and money to review.
  */
 export async function listExpensesForCards(database: SqlExecutor) {
-  const rows = await readExpenseRows(database, '', []);
+  const unsent = apiUrl()
+    ? `(e.spaceId, e.id) IN (
+         SELECT o.groupId, json_extract(o.content, '$.id') FROM ${UNSENT_EVENTS} o
+         JOIN sync_groups g ON g.groupId = o.groupId
+         WHERE g.readOnly IS NULL AND json_extract(o.content, '$.type') = 'expense'
+       )`
+    : '0';
+  const rows = await readExpenseRows<{ unsent: number }>(
+    database,
+    '',
+    [],
+    `${unsent} AS unsent,`,
+  );
   return rows.map((row) => {
     const expense = expenseOf(row);
     return {
       ...expense,
       addedOrder: row.addedOrder,
       changedAt: row.changedAt,
+      unsent: row.unsent === 1,
       yours: moneyToReview(expense, row.overriddenMoney),
     };
   });
@@ -325,7 +340,7 @@ export async function writeExpenseRows(
 /**
  * Save the expense and its ordered allocations together, or leave all of them unchanged.
  * An edit of a shared ledger's expense saves only the units that differ from `opened`,
- * the units its record held when its form opened, and leaves the others as they are
+ * the values and any stamps its form opened with, and leaves the others as they are
  * stored, whatever was applied meanwhile (SYNC-23.2). Without `opened`, the edit is taken
  * as made on what the record holds now.
  */
@@ -335,7 +350,7 @@ export async function saveExpense(
   input: ExpenseInput,
   original?: Expense,
   split?: GroupSplit,
-  opened?: ExpenseUnits,
+  opened?: UnitBaseline<SyncUnits['expense']>,
 ): Promise<void> {
   const id = await database.transaction(async (transaction) => {
     const spaceId = split?.groupId ?? identity.personalSpaceId;

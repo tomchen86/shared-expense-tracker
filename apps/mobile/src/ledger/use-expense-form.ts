@@ -25,7 +25,7 @@ import {
   type GroupMember,
 } from '../groups';
 import { useLocalDatabase, useLocalIdentity } from '../shell';
-import { SyncEventTooLargeError } from '../sync/records';
+import { SyncEventTooLargeError, unstampedExpenseUnits } from '../sync/records';
 import {
   ArchivedExpenseError,
   ReadOnlyCopyError,
@@ -152,7 +152,10 @@ export function useExpenseForm({
   });
   // What the form opened with: a save writes what differs from it (SYNC-23.2). The form
   // reads the expense again each time it comes back into focus, and keeps this.
-  const [opened] = useState({ expense, units });
+  const [opened] = useState(() => ({
+    expense,
+    units: units ?? (groupLocked ? unstampedExpenseUnits(expense) : undefined),
+  }));
   type Draft = typeof initial;
   const [form, setForm] = useState(initial);
   // What the form holds now, which Add and Save save. `form` can be older: when the

@@ -26,6 +26,7 @@ export {
 
 export { saveGroupKey } from './key-rotation';
 export { syncGroup } from './loop';
+export { lastSyncedAt } from './notices';
 export { listUnappliedChanges, type UnappliedChange } from './unapplied';
 export {
   deleteReadOnlyCopy,
@@ -34,7 +35,6 @@ export {
   type ReadOnlyCopy,
   type ReadOnlyCopyReason,
 } from './read-only-copy';
-export { membersWithPhones } from './roster';
 export {
   sendSnapshot,
   takeSnapshot,

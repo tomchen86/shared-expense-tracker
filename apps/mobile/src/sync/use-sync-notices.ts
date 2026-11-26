@@ -12,6 +12,7 @@ const empty = { lines: [] as string[], unapplied: 0 };
 export function useSyncNotices(
   database: Database,
   groupId: string | undefined,
+  locale: string,
 ) {
   const [last, setLast] = useState<{
     groupId: string;
@@ -23,7 +24,7 @@ export function useSyncNotices(
     useCallback(() => {
       let active = true;
       if (groupId !== undefined)
-        void readSyncNotices(database, groupId).then(
+        void readSyncNotices(database, groupId, locale).then(
           (notices) => {
             if (active) setLast({ groupId, notices });
           },
@@ -33,7 +34,7 @@ export function useSyncNotices(
       return () => {
         active = false;
       };
-    }, [database, groupId]),
+    }, [database, groupId, locale]),
   );
   return last && last.groupId === groupId ? last.notices : empty;
 }

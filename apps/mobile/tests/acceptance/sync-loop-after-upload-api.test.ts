@@ -1,4 +1,11 @@
-import { AWAY, cleanUpAt, everyClockAt, requestsOf } from './sync-catch-up-app';
+import {
+  AWAY,
+  OFFLINE_NOTICE,
+  cleanUpAt,
+  everyClockAt,
+  noticesOf,
+  requestsOf,
+} from './sync-catch-up-app';
 import {
   NOW,
   addExpense,
@@ -395,5 +402,59 @@ describe('SYNC-160.2', () => {
       path: `/groups/${brisbane}/events?after=0`,
       status: 410,
     });
+  });
+});
+
+describe('SYNC-316.2', () => {
+  /** Taylor's phone with 101 unsent events, which a sync uploads in two requests (SYNC-76.1). */
+  async function hundredAndOneUnsent() {
+    const setup = await twoPhones();
+    for (let index = 0; index < 101; index += 1) {
+      await renameGroup(setup.a, `Trip ${index + 1}`);
+    }
+    return setup;
+  }
+
+  test('[SYNC-316.2] does not say to connect when a later upload got no answer and the download after the uploads was answered', async () => {
+    const { a } = await hundredAndOneUnsent();
+    // The second upload, once the first has been answered.
+    whenAnswered('POST', async () => noAnswerTo('POST'));
+    const from = mark();
+
+    await sync(a);
+
+    expect(await requestsOf(a, from)).toEqual([
+      'download after=0',
+      'upload',
+      'upload',
+      'download after=0',
+    ]);
+    expect(
+      (await sentBy(a, from)).map(({ reached }) => reached).slice(-2),
+    ).toEqual([false, true]);
+    expect(await unsent(a)).toHaveLength(1);
+    expect(await noticesOf(a)).toEqual([]);
+  });
+
+  test('[SYNC-316.2] says to connect when the download after the uploads got no answer either', async () => {
+    const { a } = await hundredAndOneUnsent();
+    whenAnswered('POST', async () => {
+      noAnswerTo('POST');
+      noAnswerTo('GET');
+    });
+    const from = mark();
+
+    await sync(a);
+
+    expect(await requestsOf(a, from)).toEqual([
+      'download after=0',
+      'upload',
+      'upload',
+      'download after=0',
+    ]);
+    expect(
+      (await sentBy(a, from)).map(({ reached }) => reached).slice(-2),
+    ).toEqual([false, false]);
+    expect(await noticesOf(a)).toEqual([OFFLINE_NOTICE]);
   });
 });

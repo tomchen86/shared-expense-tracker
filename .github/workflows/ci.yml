@@ -43,8 +43,28 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      # Jest keeps every file as it transformed and instrumented it in /tmp/jest_<uid>, so
+      # with the last run's cache the first test of each platform need not transform the
+      # whole app again. A file whose content changed misses and is transformed anew.
+      - name: Restore Jest's cache
+        id: jest-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/jest_*
+          key: jest-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.run_id }}
+          restore-keys: |
+            jest-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+            jest-${{ runner.os }}-
+      # Two Jest workers, as `pnpm test` sets them: with four, the whole run here was 12%
+      # shorter, but each test took 1.8 times as long and first tests went past the timeout (#260).
       - name: Lint, format check, typecheck, tests, requirement trace
         run: bash scripts/check.sh
+      - name: Save Jest's cache
+        if: ${{ !cancelled() && steps.jest-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/jest_*
+          key: ${{ steps.jest-cache.outputs.cache-primary-key }}
       - name: Test reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
