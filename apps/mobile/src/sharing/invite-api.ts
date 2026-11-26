@@ -17,7 +17,11 @@ import {
 } from './invite-card';
 
 export type InviteFailure =
-  InviteRefusal['error'] | 'no-answer' | 'authorization-lost' | 'unexpected';
+  | InviteRefusal['error']
+  | 'no-answer'
+  | 'authorization-lost'
+  | 'identity-changed'
+  | 'unexpected';
 
 export class InviteRequestError extends Error {
   constructor(readonly reason: InviteFailure) {
@@ -33,6 +37,7 @@ async function request(
   method: string,
   path: string,
   body?: string,
+  deviceId?: string | null,
 ) {
   const url = apiUrl();
   if (!url) throw new InviteRequestError('no-answer');
@@ -41,6 +46,7 @@ async function request(
     method,
     path,
     body,
+    deviceId,
     giveUpAfterMs: GIVE_UP_AFTER_MS,
   });
   if (result.outcome !== 'answered')
@@ -60,14 +66,23 @@ async function request(
 const pathFor = (groupId: string, code: string) =>
   `/groups/${groupId}/invites/${code}`;
 
-export async function createSharedGroup(database: Database, groupId: string) {
-  const said = await request(database, 'PUT', `/groups/${groupId}`).catch(
-    (error: unknown) => {
-      if (error instanceof InviteRefused && error.reason !== 'not-a-member')
-        throw new InviteRequestError('unexpected');
-      throw error;
-    },
-  );
+/** `deviceId` is the identity the group was read with (SHARING-321.1), as for an invite. */
+export async function createSharedGroup(
+  database: Database,
+  groupId: string,
+  deviceId?: string | null,
+) {
+  const said = await request(
+    database,
+    'PUT',
+    `/groups/${groupId}`,
+    undefined,
+    deviceId,
+  ).catch((error: unknown) => {
+    if (error instanceof InviteRefused && error.reason !== 'not-a-member')
+      throw new InviteRequestError('unexpected');
+    throw error;
+  });
   if (!isCreateGroupResponse(said) || said.groupId !== groupId)
     throw new InviteRequestError('unexpected');
 }
@@ -77,6 +92,7 @@ export async function putInvite(
   groupId: string,
   credentials: InviteCredentials,
   card: InviteCard,
+  deviceId?: string | null,
 ) {
   const said = await request(
     database,
@@ -86,6 +102,7 @@ export async function putInvite(
       cursor: card.cursor,
       card: encryptedCard(credentials, card),
     }),
+    deviceId,
   );
   if (
     !isPutInviteResponse(said) ||

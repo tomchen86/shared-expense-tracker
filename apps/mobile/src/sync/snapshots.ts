@@ -150,6 +150,7 @@ async function uploadChunks(
       path: chunkPath(envelope, index),
       method: 'PUT',
       body: JSON.stringify(chunk),
+      deviceId: envelope.deviceId,
     });
     if (!answer) return { outcome: 'no-answer' };
     const { status, body } = answer;

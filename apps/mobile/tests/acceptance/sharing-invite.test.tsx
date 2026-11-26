@@ -103,6 +103,7 @@ import {
   baseOf,
   created,
   eventsOf,
+  everything,
   groupId,
   leaveMembers,
   members,
@@ -611,7 +612,7 @@ test('[SHARING-94.1] gives every invite a code and a secret of its own', async (
   expect(new Set(links.map(({ secret }) => secret)).size).toBe(3);
 });
 
-test('[SHARING-95.1] sends the group name and the members, in order, as a card only the secret opens', async () => {
+test('[SHARING-95.2] sends the group name and the members, in order, as a card only the secret opens', async () => {
   await startAt(BRISBANE);
   const ids = await members('Brisbane');
 
@@ -637,7 +638,42 @@ test('[SHARING-95.1] sends the group name and the members, in order, as a card o
   expect(drewFromTheRandomSource(card.slice(1, 25))).toBe(true);
 });
 
-test('[SHARING-95.1] leaves a former member out of the card', async () => {
+test('[SHARING-95.2] [SHARING-109.2] sends a new card, which says that a member has a phone, when another phone comes to represent them under this phone’s own user ID', async () => {
+  await startAt(BRISBANE);
+  const ids = await members('Brisbane');
+  const link = await invitedAndLeft('Brisbane');
+  const { userId } = JSON.parse((everything().local_identity ?? [])[0]) as {
+    userId: string;
+  };
+
+  // A phone restored from this phone's export file represents Casey (ADR-0039): Casey
+  // stores no user ID here (SYNC-251.2), and has a phone all the same.
+  await receive(
+    await groupId('Brisbane'),
+    created(
+      'device' as never,
+      'c0000000-0000-4000-8000-0000000000b0',
+      at(T + 1_000),
+      {
+        member: {
+          memberId: ids.Casey,
+          userId,
+          boxKey:
+            'bc908a559c76aef30842db38b5e1844f63847c087cf94b793fe477da10d44e75',
+        },
+      },
+    ),
+  );
+  await waitForCards(2);
+
+  expect(lastCard(link).members).toEqual([
+    { id: ids.Taylor, name: 'Taylor', hasDevice: true },
+    { id: ids.Casey, name: 'Casey', hasDevice: true },
+    { id: ids.Blake, name: 'Blake', hasDevice: false },
+  ]);
+});
+
+test('[SHARING-95.2] leaves a former member out of the card', async () => {
   await startAt(BRISBANE);
   await showMembers('Brisbane');
   await removeMember('Blake');
@@ -650,7 +686,7 @@ test('[SHARING-95.1] leaves a former member out of the card', async () => {
   ]);
 });
 
-test('[SHARING-95.1] names you in the card as the group names you', async () => {
+test('[SHARING-95.2] names you in the card as the group names you', async () => {
   await startAt(BRISBANE);
   await showMembers('Brisbane');
   await openRenameMember('Taylor (You)', 'Taylor');
@@ -1449,7 +1485,7 @@ test('[SHARING-108.1] still shows the invite it has when the names have grown pa
 
 // Keeping the card up to date
 
-test('[SHARING-109.1] sends a new card for the same invite when the group is renamed, without a word', async () => {
+test('[SHARING-109.2] sends a new card for the same invite when the group is renamed, without a word', async () => {
   await startAt(ALONE);
   const link = await invitedAndLeft('Brisbane');
 
@@ -1465,7 +1501,7 @@ test('[SHARING-109.1] sends a new card for the same invite when the group is ren
   expect(alertsShown()).toEqual([]);
 });
 
-test('[SHARING-109.1] sends a new card when a member is added, renamed or removed', async () => {
+test('[SHARING-109.2] sends a new card when a member is added, renamed or removed', async () => {
   await startAt(BRISBANE);
   const link = await invited('Brisbane');
   await closeInvite();
@@ -1484,7 +1520,7 @@ test('[SHARING-109.1] sends a new card when a member is added, renamed or remove
   ]);
 });
 
-test("[SHARING-109.1] sends a new card when another phone's event adds a member", async () => {
+test("[SHARING-109.2] sends a new card when another phone's event adds a member", async () => {
   await startAt(ALONE);
   const link = await invitedAndLeft('Brisbane');
   const evan = 'c0000000-0000-4000-8000-000000000001';
@@ -1502,7 +1538,7 @@ test("[SHARING-109.1] sends a new card when another phone's event adds a member"
   });
 });
 
-test('[SHARING-109.1] sends the card of a change made with no network the next time the invite is prepared', async () => {
+test('[SHARING-109.2] sends the card of a change made with no network the next time the invite is prepared', async () => {
   await startAt(ALONE);
   const link = await invitedAndLeft('Brisbane');
   goOffline();
@@ -1517,7 +1553,7 @@ test('[SHARING-109.1] sends the card of a change made with no network the next t
   expect(lastCard(link).name).toBe('Bris');
 });
 
-test('[SHARING-109.1] sends no card when neither the name nor the members changed', async () => {
+test('[SHARING-109.2] sends no card when neither the name nor the members changed', async () => {
   await startAt(BRISBANE);
   await invitedAndLeft('Brisbane');
   const sent = asked();
@@ -1538,7 +1574,7 @@ test('[SHARING-109.1] sends no card when neither the name nor the members change
   expect(asked()).toBe(sent);
 });
 
-test('[SHARING-109.1] sends no card for a group whose invite was revoked, or has expired', async () => {
+test('[SHARING-109.2] sends no card for a group whose invite was revoked, or has expired', async () => {
   await startAt(TWO_GROUPS);
   await invited('Brisbane');
   await pressInInvite('Revoke Link');
@@ -1558,7 +1594,7 @@ test('[SHARING-109.1] sends no card for a group whose invite was revoked, or has
   expect(asked()).toBe(sent);
 });
 
-test('[SHARING-109.1] says nothing and keeps the invite when the API refuses the new card', async () => {
+test('[SHARING-109.2] says nothing and keeps the invite when the API refuses the new card', async () => {
   await startAt(ALONE);
   const link = await invitedAndLeft('Brisbane');
   apiAnswersNext(isPutInvite, 404, JSON.stringify({ error: 'no-invite' }));
@@ -1575,7 +1611,7 @@ test('[SHARING-109.1] says nothing and keeps the invite when the API refuses the
   expect(await invited('Brissie')).toBe(link);
 });
 
-test('[SHARING-109.1] sends no card that would be past the limit, and sends one again once it fits', async () => {
+test('[SHARING-109.2] sends no card that would be past the limit, and sends one again once it fits', async () => {
   await startAt(ALONE);
   const link = await invitedAndLeft('Brisbane');
   const group = 'g'.repeat(40_000);

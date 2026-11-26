@@ -48,7 +48,12 @@ export const MAY_SEE =
   "They'll see this group's expenses and can add and change them.";
 export const NEW_MEMBER = 'Wants to join as a new member';
 export const wantsToBe = (member: string) => `Wants to join as ${member}`;
+export const wantsToTakeOver = (member: string) =>
+  `Wants to take over ${member}`;
 export const LEFT = 'Wants to join as a member who left';
+/** What the menu of a request that can take a member over says (GROUPS-132.2). */
+export const TAKES_OVER = (applicant: string, member: string) =>
+  `${applicant} wants to take over ${member}. ${member}'s current phone will lose access to this group right away.`;
 export const APPROVING = 'Approving…';
 export const DECLINING = 'Declining…';
 export const UNABLE_TO_APPROVE = 'Unable to Approve';
@@ -61,12 +66,18 @@ export const DEVICES_FULL =
 const CANNOT = "This request can't be approved.";
 export const HAS_A_PHONE = (member: string) =>
   `${member} has already joined from another phone. ${CANNOT}`;
+export const INVITE_ENDING = `This invite is no longer valid. Ask them to request again with a new link. ${CANNOT}`;
 export const IS_YOU = (member: string) =>
   `You're already in this group as ${member}. ${CANNOT}`;
 export const NO_MEMBER = `The member this request chose is no longer in this group. ${CANNOT}`;
 export const GROUP_FULL = `A shared group can have up to 20 members. ${CANNOT}`;
 export const SAME_NAME = (member: string) =>
   `This group already has a member named ${member}. ${CANNOT}`;
+export const NOTHING_TO_TAKE_OVER = (member: string) =>
+  `${member} hasn't joined from a phone, so there is nothing to take over. ${CANNOT}`;
+/** What a phone that waits for a snapshot says when a takeover is approved on it (SHARING-326.1). */
+export const CATCHING_UP = (member: string) =>
+  `This phone is still catching up with this group, so it can't approve this request yet. If ${member}'s old phone is the only other phone in this group, remove ${member} from the group and send a new invite link. When they ask to join as a new member named ${member}, choose Add Back.`;
 
 // The API's requests, snapshots and approvals
 
@@ -77,7 +88,7 @@ interface Asked {
   request: string;
 }
 
-type Kind = 'list' | 'reject' | 'approve' | 'chunk';
+type Kind = 'list' | 'reject' | 'approve' | 'takeover' | 'chunk';
 
 interface World {
   requests: Map<string, Asked[]>;
@@ -104,7 +115,7 @@ const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status });
 
 const PATH =
-  /^\/groups\/([^/]+)\/(?:requests(?:\/([^/]+)(\/approval)?)?|snapshots\/([^/]+)\/chunks\/(\d+))$/;
+  /^\/groups\/([^/]+)\/(?:requests(?:\/([^/]+)(\/approval|\/takeover)?)?|snapshots\/([^/]+)\/chunks\/(\d+))$/;
 
 const sha256 = (hex: string) =>
   createHash('sha256').update(Buffer.from(hex, 'hex')).digest('hex');
@@ -153,6 +164,7 @@ function answerOf(
     request: string;
     cursor: number;
     epoch: number;
+    remove?: string[];
     events: { id: string; content: string }[];
   };
   if (index < 0 || sha256(requests[index].request) !== approval.request) {
@@ -162,13 +174,20 @@ function answerOf(
     return json(409, { error: 'behind' });
   }
   const members = state.memberDevices.get(group) ?? new Set<string>();
-  if (members.size >= 20) return json(409, { error: 'members-full' });
+  // A takeover removes the devices it names and lets the applicant in under the next
+  // epoch, in one answer (SHARING-300.1); it has no limit of member devices to meet.
+  if (kind === 'takeover') {
+    for (const gone of approval.remove ?? []) members.delete(gone);
+  } else if (members.size >= 20) {
+    return json(409, { error: 'members-full' });
+  }
   members.add(applicant!);
   state.memberDevices.set(group, members);
   requests.splice(index, 1);
   const sequences = apiStores(group, device, approval.epoch, approval.events);
   return json(200, {
     deviceId: applicant,
+    ...(kind === 'takeover' ? { epoch: approval.epoch } : {}),
     events: approval.events.map(({ id }, at) => ({
       id,
       sequence: sequences[at],
@@ -203,13 +222,16 @@ async function fetchWithDecisions(
       ? 'chunk'
       : applicant === undefined
         ? 'list'
-        : approval
-          ? 'approve'
-          : 'reject';
+        : approval === '/takeover'
+          ? 'takeover'
+          : approval
+            ? 'approve'
+            : 'reject';
   const methods = {
     list: 'GET',
     reject: 'DELETE',
     approve: 'POST',
+    takeover: 'POST',
     chunk: 'PUT',
   };
   if (request.method !== methods[kind]) return state.inner!(request);
@@ -320,7 +342,7 @@ const utf8 = (text: string) => new Uint8Array(Buffer.from(text, 'utf8'));
 export const someBoxKey = () =>
   Buffer.from(boxPublicKey(new Uint8Array(randomBytes(32)))).toString('hex');
 
-/** A join request sealed for the invite as SHARING-135.1 says, or with whatever a test changes. */
+/** A join request sealed for the invite as SHARING-135.2 says, or with whatever a test changes. */
 export function sealedRequest(
   device: string,
   content: unknown,
@@ -367,11 +389,19 @@ export async function asks({
   memberId = null as string | null,
   deviceId = D,
   userId = DANA_USER,
+  takeover = false,
 } = {}) {
   apiHolds(
     await groupId('Brisbane'),
     deviceId,
-    sealedRequest(deviceId, { name, memberId, userId, boxKey: someBoxKey() }),
+    sealedRequest(deviceId, {
+      name,
+      memberId,
+      userId,
+      boxKey: someBoxKey(),
+      // A request that takes a member over says so in a fifth field (SHARING-135.2).
+      ...(takeover ? { takeover: true } : {}),
+    }),
   );
 }
 
@@ -426,6 +456,8 @@ const isApproval = ({ method, path }: Received) =>
   method === 'POST' && /\/requests\/[^/]+\/approval$/.test(path);
 const isChunk = ({ method, path }: Received) =>
   method === 'PUT' && /\/snapshots\/[^/]+\/chunks\/\d+$/.test(path);
+const isTakeover = ({ method, path }: Received) =>
+  method === 'POST' && /\/requests\/[^/]+\/takeover$/.test(path);
 
 export const lists = (from = 0) => received().slice(from).filter(isList);
 export const rejections = (from = 0) =>
@@ -433,6 +465,20 @@ export const rejections = (from = 0) =>
 export const approvals = (from = 0) =>
   received().slice(from).filter(isApproval);
 export const chunks = (from = 0) => received().slice(from).filter(isChunk);
+export const takeovers = (from = 0) =>
+  received().slice(from).filter(isTakeover);
+
+/** What a takeover the app sent says, as its body reads. */
+export const takeoverOf = ({ body }: Received) =>
+  JSON.parse(Buffer.from(body).toString('utf8')) as {
+    request: string;
+    cursor: number;
+    snapshotId: string;
+    epoch: number;
+    remove: string[];
+    boxes: { deviceId: string; box: string }[];
+    events: { id: string; content: string }[];
+  };
 
 /** The method and path of every request for the group's requests, snapshots and events since `from`. */
 export const groupRequests = (from = 0) =>

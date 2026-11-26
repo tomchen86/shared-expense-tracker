@@ -25,7 +25,6 @@ import {
   type JoinCard,
   type JoinCopy,
 } from './join-invite';
-import { readDeviceIdentity } from './device-identity';
 import { refreshWhileShown } from './request-refresh';
 import {
   alreadyIn,
@@ -34,6 +33,7 @@ import {
   endedRequestAt,
   forgetEndedRequest,
   listJoinRequests,
+  renewBeforeCopyConfirmation,
   requestByCode,
   sendJoinRequest,
   type CancelResult,
@@ -100,7 +100,7 @@ export function useJoinGroup() {
   const [cancelling] = useState(() => new Map<string, Promise<CancelResult>>());
   const [asking] = useState(() => new Map<string, Promise<JoinResult>>());
   // The card each request's last question read, for the form that chooses again, or why
-  // it read none. In memory only (SHARING-212.1).
+  // it read none. In memory only (SHARING-212.2).
   const [cards] = useState(() => new Map<string, JoinCard | CardUnread>());
   const close = useCallback(() => {
     active.current = undefined;
@@ -389,46 +389,44 @@ export function useJoinGroup() {
     return () => appState.remove();
   }, [db, askAbout]);
 
-  function send(request: JoinRequest) {
+  function send(
+    from: Extract<Page, { kind: 'form' | 'request' }>,
+    request: JoinRequest,
+  ) {
     if (
-      (page?.kind !== 'form' && page?.kind !== 'request') ||
-      active.current !== page.link ||
+      active.current !== from.link ||
       sending.has(request.code) ||
       cancelling.has(request.code)
     )
       return;
-    const { link } = page;
-    const stored = page.kind === 'form' ? page.again : page.stored;
-    const isNew = page.kind === 'form' && !stored;
-    setPage(isNew ? { ...page, preparing: true } : { kind: 'sending' });
-    const job = sendJoinRequest(db, request, userId, isNew, changed, stored)
-      .then((result) => {
-        if (
-          result.kind === 'refused' ||
-          (result.kind === 'request' && result.request.sent)
-        )
-          changed();
-        return result;
-      })
-      .finally(() => {
-        sending.delete(request.code);
-      });
+    const { link } = from;
+    const stored = from.kind === 'form' ? from.again : from.stored;
+    const isNew = from.kind === 'form' && !stored;
+    setPage(
+      from.kind === 'form' ? { ...from, preparing: true } : { kind: 'sending' },
+    );
+    const job = sendJoinRequest(
+      db,
+      request,
+      userId,
+      isNew,
+      changed,
+      stored,
+    ).finally(() => {
+      sending.delete(request.code);
+      // Renewal can remove other request cards even when this draft could not be sent.
+      changed();
+    });
     sending.set(request.code, job);
     // The API will not take it from a member device: it may have been approved meanwhile.
     void job.then((result) => {
       if (result.kind === 'member') void askAbout(request.code, true);
     });
-    void showSendResult(link, job, page, stored);
+    void showSendResult(link, job, from, stored);
   }
 
-  function askToCancel(request: JoinRequest) {
-    if (
-      (page?.kind !== 'request' && page?.kind !== 'form') ||
-      page.link !== active.current ||
-      cancelling.has(request.code)
-    )
-      return;
-    const { link } = page;
+  function askToCancel(link: InviteCredentials, request: JoinRequest) {
+    if (active.current !== link || cancelling.has(request.code)) return;
     Alert.alert(
       'Cancel Request?',
       "You'll need the invite link to ask again.",
@@ -482,17 +480,29 @@ export function useJoinGroup() {
         setPage({ kind: 'ended', request, link });
       },
     },
-    submit(name: string, memberId: string | null) {
-      if (page?.kind !== 'form') return;
-      if (page.again) {
-        send({ ...page.again, name, memberId, sent: 0, outcome: null });
+    submit(
+      form: Extract<Page, { kind: 'form' }>,
+      name: string,
+      memberId: string | null,
+      takeover: boolean,
+    ) {
+      if (form.again) {
+        send(form, {
+          ...form.again,
+          name,
+          memberId,
+          takeover,
+          sent: 0,
+          outcome: null,
+        });
         return;
       }
-      const { copy, card, link } = page;
+      const { copy, card, link } = form;
       const request: JoinRequest = {
         ...link,
         name,
         memberId,
+        takeover,
         groupName: card.name,
         sent: 0,
         // The one group an approval of this request may replace.
@@ -502,37 +512,36 @@ export function useJoinGroup() {
       // copy, and for a read-only copy that has changes it never sent (SHARING-226.2).
       const ask = copy && (copy.own || copy.unsent > 0);
       if (!ask) {
-        send(request);
+        send(form, request);
         return;
       }
-      void readDeviceIdentity(db)
-        .catch(() => undefined)
-        .then((identity) => {
-          if (active.current !== link) return;
-          // A phone whose authorization has lapsed is told that it cannot join instead.
-          if (identity?.status === 'lost') {
-            send(request);
-            return;
-          }
+      function alertIfOpen(...args: Parameters<typeof Alert.alert>) {
+        if (active.current === link) Alert.alert(...args);
+      }
+      void renewBeforeCopyConfirmation(db).then(
+        (renewed) => {
+          if (renewed) changed();
           const lost =
             copy.unsent === 1
               ? '1 change made on this phone was never sent to the group and will be lost.'
               : `${copy.unsent} changes made on this phone were never sent to the group and will be lost.`;
-          Alert.alert(
+          alertIfOpen(
             copy.own ? 'Replace Your Copy?' : 'Replace This Copy?',
             copy.own
               ? `This phone has its own copy of ${card.name}. If your request is approved, the group's version replaces it, and anything changed only in your copy will be lost. To keep it, export your data first.`
               : `If your request is approved, the group's version replaces the read-only copy on this phone. ${lost}`,
             [
               { text: 'Cancel', style: 'cancel' },
-              { text: 'Send Request', onPress: () => send(request) },
+              { text: 'Send Request', onPress: () => send(form, request) },
             ],
             { cancelable: true },
           );
-        });
+        },
+        () => alertIfOpen('Unable to Send Request', wentWrong),
+      );
     },
     retry() {
-      if (page?.kind === 'request') send(page.request);
+      if (page?.kind === 'request') send(page, page.request);
       else if (page?.kind === 'approved' && active.current === page.link) {
         // Asks and joins again (SHARING-221.1).
         setPage({ ...page, reason: undefined });

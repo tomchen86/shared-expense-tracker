@@ -3,7 +3,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { act } from '@testing-library/react-native';
 import { AppState, type AppStateStatus } from 'react-native';
 import type { SyncStamp } from '@shared-expense/domain';
-import { encrypt } from '@shared-expense/domain/crypto';
+import { decrypt, encrypt } from '@shared-expense/domain/crypto';
 import { readDeviceIdentity, sendApiRequest } from '../../src/sharing';
 import { shareGroup } from '../../src/sync';
 import { startWithGroups } from './ledger-group-expense-app';
@@ -61,10 +61,14 @@ interface FakeGroup {
   full: boolean;
   /** The member devices the API lists while the group needs a rotation (SHARING-256.1). */
   rotationNeededBy?: string[];
+  /** Whether the API answers this phone's downloads that it needs a snapshot (SYNC-136.2). */
+  snapshotNeeded?: boolean;
 }
 
 interface World {
   groups: Map<string, FakeGroup>;
+  /** What the header `x-replaced` says on the refusals of a group this phone was dropped from (SHARING-305.1). */
+  replaced: Map<string, string>;
   keys: Map<string, Uint8Array>;
   gate: Promise<void>;
   /** The method whose answers the gate keeps back; every method when undefined. */
@@ -110,10 +114,17 @@ function answerOf(
     return json(200, { groupId: groupIdOf });
   }
   const group = state.groups.get(groupIdOf);
-  if (!group || !events) return json(403, { error: 'not-a-member' });
+  if (!group || !events) {
+    const replaced = state.replaced.get(groupIdOf);
+    return new Response(JSON.stringify({ error: 'not-a-member' }), {
+      status: 403,
+      headers: replaced === undefined ? {} : { 'x-replaced': replaced },
+    });
+  }
   const rotationNeeded = () =>
     json(409, { error: 'rotation-needed', devices: group.rotationNeededBy });
   if (method === 'GET') {
+    if (group.snapshotNeeded) return json(410, { error: 'snapshot-needed' });
     const after = Number(url.searchParams.get('after'));
     const last = group.events.at(-1)?.sequence ?? 0;
     if (group.rotationNeededBy && after === last) return rotationNeeded();
@@ -214,6 +225,7 @@ async function fetchWithEvents(
 export function startEventApi() {
   holder.syncScreensWorld = {
     groups: new Map(),
+    replaced: new Map(),
     keys: new Map(),
     gate: Promise.resolve(),
     inFlight: new Map(),
@@ -278,10 +290,13 @@ export function groupIsFull(group: string, full: boolean) {
 /**
  * From now on the API counts this phone as no member device of the group: it refuses the
  * phone's requests for its events, as it does once the phone was removed or has left
- * (SHARING-257.1).
+ * (SHARING-257.1). With `replaced`, its refusals carry the header that says another phone
+ * took this one's place, with that value (SHARING-305.1).
  */
-export function apiDropsThisPhone(group: string) {
+export function apiDropsThisPhone(group: string, replaced?: string) {
   world().groups.delete(group);
+  if (replaced === undefined) world().replaced.delete(group);
+  else world().replaced.set(group, replaced);
 }
 
 /**
@@ -292,6 +307,15 @@ export function apiDropsThisPhone(group: string) {
  */
 export function groupNeedsRotation(group: string, devices?: string[]) {
   world().groups.get(group)!.rotationNeededBy = devices && [...devices].sort();
+}
+
+/**
+ * From now on the API answers this phone's downloads of the group that it needs a
+ * snapshot, as it does once it cleared events the phone lacks (SYNC-136.2), or answers
+ * with pages again. It stores no snapshot for the phone, so the ledger goes on waiting.
+ */
+export function groupNeedsSnapshot(group: string, needed = true) {
+  world().groups.get(group)!.snapshotNeeded = needed;
 }
 
 /** The most requests for a group that were ever on their way at one moment. */
@@ -487,6 +511,35 @@ export const newerEvent = (stamp = otherStamp(LATER)) => ({
 // Starting with shared ledgers
 
 /** The device ID of the phone's device identity. */
+/**
+ * What an event this phone sent holds, opened with the group key its secure store keeps
+ * for `epoch`; undefined while the store has no such key, or when the event does not open.
+ */
+export async function openedByThisPhone(
+  group: string,
+  epoch: number,
+  event: { id: string; content: string },
+): Promise<
+  | {
+      type: string;
+      id: string;
+      stamp: unknown;
+      units: Record<string, { value: unknown; base?: unknown }>;
+    }
+  | undefined
+> {
+  const key = await secureStore.getItemAsync(`group-key.${group}.${epoch}`);
+  if (!key) return undefined;
+  const result = decrypt({
+    key: new Uint8Array(Buffer.from(key, 'hex')),
+    ciphertext: new Uint8Array(Buffer.from(event.content, 'hex')),
+    associatedData: associatedData(group, event.id, await deviceId(), epoch),
+  });
+  return result.ok
+    ? (JSON.parse(Buffer.from(result.plaintext).toString('utf8')) as never)
+    : undefined;
+}
+
 export async function deviceId(): Promise<string> {
   const identity = await settled(readDeviceIdentity(appDatabase()));
   if (identity.status === 'none') throw new Error('No device identity yet');

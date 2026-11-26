@@ -29,8 +29,8 @@ export function JoinForm({
   card: JoinCard;
   initialName: string;
   preparing?: boolean;
-  onSend: (name: string, memberId: string | null) => void;
-  /** Given when the form chooses again for a request that was sent (SHARING-212.1). */
+  onSend: (name: string, memberId: string | null, takeover: boolean) => void;
+  /** Given when the form chooses again for a request that was sent (SHARING-212.2). */
   onCancel?: () => void;
 }) {
   const colors = useThemeColors();
@@ -53,13 +53,19 @@ export function JoinForm({
       <Text style={[text, { textAlign: 'center' }]}>Sending request…</Text>
     );
 
-  function row(label: string, index: number) {
+  const member = selected === undefined ? undefined : card.members[selected];
+  const takeover = member?.hasDevice === true;
+  const noApprover =
+    takeover &&
+    !card.members.some((other) => other.hasDevice && other.id !== member.id);
+  const disabled = !name.trim() || selected === undefined || noApprover;
+  function row(label: string, index: number, hasDevice = false) {
     const checked = selected === index;
     return (
       <Pressable
         key={index}
         accessibilityRole="button"
-        accessibilityLabel={label}
+        accessibilityLabel={hasDevice ? `${label}, Already joined` : label}
         accessibilityState={{ selected: checked }}
         style={({ pressed }) => [
           styles.row,
@@ -71,6 +77,7 @@ export function JoinForm({
         }}
       >
         <Text style={[text, styles.label]}>{label}</Text>
+        {hasDevice && <Text style={secondary}>Already joined</Text>}
         {checked && (
           <SymbolView
             name={{ ios: 'checkmark', android: 'check' }}
@@ -83,7 +90,7 @@ export function JoinForm({
     );
   }
   function submit() {
-    if (!name.trim() || selected === undefined) return;
+    if (disabled) return;
     if (
       selected === newMember &&
       card.members.some(
@@ -94,10 +101,7 @@ export function JoinForm({
       AccessibilityInfo.announceForAccessibility(duplicateName);
       return;
     }
-    onSend(
-      name.trim(),
-      selected === newMember ? null : card.members[selected].id,
-    );
+    onSend(name.trim(), member?.id ?? null, takeover);
   }
   return (
     <View style={styles.content}>
@@ -112,65 +116,51 @@ export function JoinForm({
       >
         {card.name}
       </Text>
-      {atLimit && card.members.every((member) => member.hasDevice) ? (
-        <Text style={secondary}>
-          This group is full. A shared group can have up to 20 members.
+      <GroupedSection>
+        <TextInput
+          accessibilityLabel="Your name"
+          autoCapitalize="words"
+          autoCorrect={false}
+          returnKeyType="done"
+          placeholder="Enter your name"
+          placeholderTextColor={colors.placeholder}
+          value={name}
+          onChangeText={(value) => {
+            setDuplicate(false);
+            setName(value);
+          }}
+          style={[styles.input, text]}
+        />
+      </GroupedSection>
+      {duplicate && (
+        <Text style={[styles.text, { color: colors.error }]}>
+          {duplicateName}
         </Text>
-      ) : (
-        <>
-          <GroupedSection>
-            <TextInput
-              accessibilityLabel="Your name"
-              autoCapitalize="words"
-              autoCorrect={false}
-              returnKeyType="done"
-              placeholder="Enter your name"
-              placeholderTextColor={colors.placeholder}
-              value={name}
-              onChangeText={(value) => {
-                setDuplicate(false);
-                setName(value);
-              }}
-              style={[styles.input, text]}
-            />
-          </GroupedSection>
-          {duplicate && (
-            <Text style={[styles.text, { color: colors.error }]}>
-              {duplicateName}
-            </Text>
-          )}
-          <Text accessibilityRole="header" style={text}>
-            Join as
-          </Text>
-          <GroupedSection>
-            {!atLimit && row('New Member', newMember)}
-            {card.members.map((member, index) =>
-              member.hasDevice ? (
-                <View key={index} style={[styles.row, styles.joinedRow]}>
-                  <Text style={text}>{member.name}</Text>
-                  <Text style={secondary}>Already joined</Text>
-                </View>
-              ) : (
-                row(member.name, index)
-              ),
-            )}
-          </GroupedSection>
-          {atLimit && (
-            <Text style={secondary}>
-              A shared group can have up to 20 members. You can join as one of
-              the members above.
-            </Text>
-          )}
-          <Text style={secondary}>
-            A member of this group has to approve your request.
-          </Text>
-          <InviteAction
-            label="Send Request"
-            disabled={!name.trim() || selected === undefined}
-            onPress={submit}
-          />
-        </>
       )}
+      <Text accessibilityRole="header" style={text}>
+        Join as
+      </Text>
+      <GroupedSection>
+        {!atLimit && row('New Member', newMember)}
+        {card.members.map((member, index) =>
+          row(member.name, index, member.hasDevice),
+        )}
+      </GroupedSection>
+      {atLimit && (
+        <Text style={secondary}>
+          {card.members.every((each) => each.hasDevice)
+            ? 'This group is full. A shared group can have up to 20 members.'
+            : 'A shared group can have up to 20 members. You can join as one of the members above.'}
+        </Text>
+      )}
+      <Text style={secondary}>
+        {noApprover
+          ? 'No other member has joined this group from a phone, so no one can approve this request.'
+          : takeover
+            ? `Another member of this group has to approve your request. When they do, ${member.name}'s current phone will lose access to this group right away.`
+            : 'A member of this group has to approve your request.'}
+      </Text>
+      <InviteAction label="Send Request" disabled={disabled} onPress={submit} />
       {onCancel && (
         <InviteAction label="Cancel Request" destructive onPress={onCancel} />
       )}
@@ -190,6 +180,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  joinedRow: { flexWrap: 'wrap', justifyContent: 'space-between' },
   label: { flex: 1 },
 });

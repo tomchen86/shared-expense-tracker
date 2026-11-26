@@ -68,14 +68,18 @@ export async function refreshReceivedRequests(
   let requests: ReceivedJoinRequest[];
   try {
     // A read-only copy lists none: nothing is sent for it (SYNC-302.1).
-    const [ledger] = await database.all<{ archived: number }>(
-      `SELECT g.archived FROM sync_groups s JOIN groups g ON g.id = s.groupId
+    const [ledger] = await database.all<{
+      archived: number;
+      signer: string | null;
+    }>(
+      `SELECT g.archived, (SELECT deviceId FROM device_identity) AS signer
+       FROM sync_groups s JOIN groups g ON g.id = s.groupId
        WHERE s.groupId = ? AND s.readOnly IS NULL`,
       [groupId],
     );
     requests =
       ledger && !ledger.archived
-        ? await listReceivedJoinRequests(database, groupId)
+        ? await listReceivedJoinRequests(database, groupId, ledger.signer)
         : [];
   } catch {
     return;

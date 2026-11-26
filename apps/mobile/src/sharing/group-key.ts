@@ -3,18 +3,18 @@ import { getRandomValues } from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { SEED_OPTIONS } from './device-identity';
 
-const entry = (groupId: string, epoch: number) =>
+export const groupKeyEntry = (groupId: string, epoch: number) =>
   `group-key.${groupId}.${epoch}`;
 export const GROUP_KEY_HEX = /^[0-9a-f]{64}$/;
 
 /** A failed read throws: it must never cause a replacement key to be generated. */
 export function readGroupKeyEntry(groupId: string, epoch: number) {
-  return SecureStore.getItemAsync(entry(groupId, epoch), SEED_OPTIONS);
+  return SecureStore.getItemAsync(groupKeyEntry(groupId, epoch), SEED_OPTIONS);
 }
 
 export function storeGroupKey(groupId: string, epoch: number, key: Uint8Array) {
   return SecureStore.setItemAsync(
-    entry(groupId, epoch),
+    groupKeyEntry(groupId, epoch),
     bytesToHex(key),
     SEED_OPTIONS,
   );
@@ -22,7 +22,10 @@ export function storeGroupKey(groupId: string, epoch: number, key: Uint8Array) {
 
 /** Deletes the entry of one key epoch; an entry that is not there is no error. */
 export function deleteGroupKey(groupId: string, epoch: number) {
-  return SecureStore.deleteItemAsync(entry(groupId, epoch), SEED_OPTIONS);
+  return SecureStore.deleteItemAsync(
+    groupKeyEntry(groupId, epoch),
+    SEED_OPTIONS,
+  );
 }
 
 export async function ensureFirstGroupKey(groupId: string) {

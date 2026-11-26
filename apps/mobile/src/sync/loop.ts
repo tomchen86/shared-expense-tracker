@@ -4,6 +4,7 @@ import {
   CONTINUE_STATUS,
   EVENT_CONTENT_MINIMUM,
   GROUP_REFUSAL_STATUS,
+  REPLACED_BY_TAKEOVER,
   SNAPSHOT_NEEDED_STATUS,
   UPLOAD_EVENT_LIMIT,
   isContinueResponse,
@@ -72,18 +73,32 @@ const NO_KEY = new Uint8Array(KEY_LENGTH);
 
 const eventsPath = (groupId: string) => `/groups/${groupId}/events`;
 
-/** The event API's own refusal that an answer is, when its status and its body both say so. */
-function groupRefusalIn(answer: ApiResult): GroupRefusal | undefined {
+/** Reads an upload or download refusal and remembers what to do once the sync ends. */
+function groupRefusalIn(
+  answer: ApiResult,
+  follow: Follow,
+): GroupRefusal | undefined {
   if (answer.outcome !== 'answered') return undefined;
   const said = jsonIn(answer.body);
-  return isGroupRefusal(said) &&
-    GROUP_REFUSAL_STATUS[said.error] === answer.status
-    ? said
-    : undefined;
+  if (
+    !isGroupRefusal(said) ||
+    GROUP_REFUSAL_STATUS[said.error] !== answer.status
+  )
+    return undefined;
+  if (said.error === 'not-a-member') {
+    follow.copy = {
+      reason: 'not-a-member',
+      takenOver: answer.replacedBy === REPLACED_BY_TAKEOVER,
+    };
+  } else if (said.error === 'rotation-needed')
+    follow.rotationFor = said.devices;
+  return said;
 }
 
 interface Ledger {
   device: string;
+  /** The device identity stored as the ledger was read, if any (SHARING-321.1). */
+  identity: string | null;
   cursor: number;
   /** The highest key epoch among the events of the pages stored so far (SYNC-304.1). */
   maxEpoch: number;
@@ -102,7 +117,8 @@ async function readLedger(
 ): Promise<Ledger | undefined> {
   // A read-only copy is no shared ledger: nothing is sent or stored for it (SYNC-302.1).
   const [ledger] = await database.all<Ledger>(
-    `SELECT device, cursor, maxEpoch, waitsForUpdate, waitsForSnapshot FROM sync_groups
+    `SELECT device, cursor, maxEpoch, waitsForUpdate, waitsForSnapshot,
+       (SELECT deviceId FROM device_identity) AS identity FROM sync_groups
      WHERE groupId = ? AND readOnly IS NULL`,
     [groupId],
   );
@@ -115,7 +131,7 @@ async function readLedger(
  */
 interface Follow {
   /** Why the ledger becomes a read-only copy (SYNC-300.1, SYNC-301.1). */
-  copy?: ReadOnlyCopyReason;
+  copy?: { reason: ReadOnlyCopyReason; takenOver?: boolean };
   /** The member devices the API listed when it said the group needs a rotation (SHARING-275.1). */
   rotationFor?: string[];
   /**
@@ -353,17 +369,17 @@ async function download(
       apiUrl,
       method: 'GET',
       path: `${eventsPath(groupId)}?after=${ledger.cursor}`,
+      deviceId: ledger.identity,
       giveUpAfterMs: GIVE_UP_AFTER_MS,
     });
     const receivedAt = Date.now();
     end.noAnswer = answer.outcome === 'no-answer';
-    // Nothing was sent: the phone holds a device ID whose seed is gone (SYNC-301.1).
-    if (answer.outcome === 'authorization-lost') follow.copy = 'lapsed';
+    // Nothing was sent: the phone holds a device ID whose seed is gone (SYNC-301.1). It
+    // was not sent for another identity either, but that one may hold the ledger (BACKUP-29.1).
+    if (answer.outcome === 'authorization-lost')
+      follow.copy = { reason: 'lapsed' };
     if (answer.outcome !== 'answered') return;
-    const refusal = groupRefusalIn(answer);
-    if (refusal?.error === 'not-a-member') follow.copy = 'not-a-member';
-    if (refusal?.error === 'rotation-needed')
-      follow.rotationFor = refusal.devices;
+    groupRefusalIn(answer, follow);
     const body = jsonIn(answer.body);
     if (phase === 'before upload') {
       if (
@@ -532,6 +548,7 @@ async function upload(
         method: 'POST',
         path: eventsPath(groupId),
         body: uploadBody(groupId, deviceId, underEpoch, underKey, events),
+        deviceId,
         giveUpAfterMs: GIVE_UP_AFTER_MS,
         // The stamps were checked against a clock the API has just corrected (SYNC-87.1).
         bodyAfterClockCorrection: async () => {
@@ -550,7 +567,7 @@ async function upload(
       });
 
     let answer = await send(epoch, key);
-    let refusal = groupRefusalIn(answer);
+    let refusal = groupRefusalIn(answer, follow);
     if (refusal?.error === 'epoch') {
       // Once for a request, and only with the key of the epoch the API names (SYNC-79.1).
       const named = await readGroupKey(groupId, refusal.epoch);
@@ -559,13 +576,10 @@ async function upload(
         break;
       }
       answer = await send(refusal.epoch, named);
-      refusal = groupRefusalIn(answer);
+      refusal = groupRefusalIn(answer, follow);
     }
     end.noAnswer = answer.outcome === 'no-answer';
     // The unsent events stay, and what follows the sync is not another try (SYNC-78.2).
-    if (refusal?.error === 'not-a-member') follow.copy = 'not-a-member';
-    if (refusal?.error === 'rotation-needed')
-      follow.rotationFor = refusal.devices;
     const full = refusal?.error === 'group-full';
     const confirmed = confirmedEvents(answer, events);
     if (!confirmed && !full) break;
@@ -641,7 +655,13 @@ async function syncAndFollow(
     const follow: Follow = {};
     const end = await syncOnce(database, ledger, follow);
     first ??= end;
-    if (follow.copy) await becomeReadOnlyCopy(database, groupId, follow.copy);
+    if (follow.copy)
+      await becomeReadOnlyCopy(
+        database,
+        groupId,
+        follow.copy.reason,
+        follow.copy.takenOver,
+      );
     await recordSyncEnd(database, groupId, end.noAnswer);
     if (follow.copy) break;
     if (follow.keyMissing && !fetched) {

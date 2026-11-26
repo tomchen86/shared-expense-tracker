@@ -277,8 +277,8 @@ describe('SYNC-48.1', () => {
   });
 });
 
-describe('SYNC-49.1', () => {
-  test('[SYNC-49.1] refuses an upload and a download from a phone that is no member device of the group', async () => {
+describe('SYNC-49.2', () => {
+  test('[SYNC-49.2] refuses an upload and a download from a phone that is no member device of the group', async () => {
     const taylor = await registered(TAYLOR);
     const casey = await registered(CASEY);
     const stored = events(2);
@@ -299,7 +299,7 @@ describe('SYNC-49.1', () => {
     );
   });
 
-  test('[SYNC-49.1] answers a phone the same whether the group exists or not', async () => {
+  test('[SYNC-49.2] answers a phone the same whether the group exists or not', async () => {
     const taylor = await registered(TAYLOR);
     const casey = await registered(CASEY);
     const stored = events(3);
@@ -330,7 +330,7 @@ describe('SYNC-49.1', () => {
     expect(answers[0]).toEqual(answers[1]);
   });
 
-  test('[SYNC-49.1] a member device of one group is none of another', async () => {
+  test('[SYNC-49.2] a member device of one group is none of another', async () => {
     const taylor = await registered(TAYLOR);
     const casey = await registered(CASEY);
     expectCreated(await createGroup(taylor, BRISBANE), BRISBANE);
@@ -341,7 +341,7 @@ describe('SYNC-49.1', () => {
     expectGroupRefused(await download(taylor, TOKYO, 0), NOT_A_MEMBER);
   });
 
-  test('[SYNC-49.1] takes an upload and a download from a phone once it is a member device', async () => {
+  test('[SYNC-49.2] takes an upload and a download from a phone once it is a member device', async () => {
     const taylor = await registered(TAYLOR);
     const casey = await registered(CASEY);
     const fromTaylor = events(1);
@@ -362,7 +362,7 @@ describe('SYNC-49.1', () => {
     });
   });
 
-  test('[SYNC-49.1] refuses a body it would otherwise take, when the phone is no member device', async () => {
+  test('[SYNC-49.2] refuses a body it would otherwise take, when the phone is no member device', async () => {
     const taylor = await registered(TAYLOR);
     const casey = await registered(CASEY);
     const sent = events(1);

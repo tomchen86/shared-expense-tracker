@@ -12,6 +12,13 @@ import { deleteGroupKey } from './group-key';
 
 const entry = (code: string) => `join-keys.${code}`;
 
+async function readJoinKeys(code: string) {
+  const value = await SecureStore.getItemAsync(entry(code), SEED_OPTIONS);
+  if (value === null) return;
+  const [groupId, epoch] = value.split('.');
+  return { groupId, epoch: Number(epoch) };
+}
+
 /** Remembers that joining through the invite `code` saved the group's keys up to `epoch`. */
 export function rememberJoinKeys(code: string, groupId: string, epoch: number) {
   return SecureStore.setItemAsync(
@@ -33,14 +40,29 @@ export function forgetJoinKeys(code: string) {
  * under its group ID is one that joining saved.
  */
 export async function dropJoinKeys(database: SqlExecutor, code: string) {
-  const saved = await SecureStore.getItemAsync(entry(code), SEED_OPTIONS);
-  const [groupId, epoch] = (saved ?? '').split('.');
+  const saved = await readJoinKeys(code);
+  if (!saved) return;
+  const { groupId, epoch } = saved;
   const held = await database.all(
     'SELECT 1 FROM sync_groups WHERE groupId = ? AND readOnly IS NULL',
     [groupId],
   );
-  // No entry leaves no epoch to count to.
-  for (let each = 1; held.length === 0 && each <= Number(epoch); each += 1)
+  for (let each = 1; held.length === 0 && each <= epoch; each += 1)
     await deleteGroupKey(groupId, each).catch(() => undefined);
   await forgetJoinKeys(code);
+}
+
+/**
+ * Delete the manifest last so a retry can find every key that remains (SHARING-321.1).
+ */
+export async function discardJoinKeysForIdentityChange(
+  codes: readonly string[],
+) {
+  for (const code of codes) {
+    const saved = await readJoinKeys(code);
+    if (!saved) continue;
+    for (let epoch = 1; epoch <= saved.epoch; epoch++)
+      await deleteGroupKey(saved.groupId, epoch);
+    await forgetJoinKeys(code);
+  }
 }

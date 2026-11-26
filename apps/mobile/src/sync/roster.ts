@@ -10,6 +10,7 @@ import type { Database, SqlExecutor } from '../storage';
 import { GIVE_UP_AFTER_MS, jsonIn } from './transport';
 
 type Entry = { value: SyncUnits['device']['member']; stamp: SyncStamp };
+export type Roster = Map<string, Entry>;
 
 /**
  * A shared ledger's roster entries by device ID: which member each device represents, or
@@ -18,7 +19,7 @@ type Entry = { value: SyncUnits['device']['member']; stamp: SyncStamp };
 export async function readRoster(
   tx: SqlExecutor,
   groupId: string,
-): Promise<Map<string, Entry>> {
+): Promise<Roster> {
   const rows = await tx.all<{ id: string; record: string }>(
     "SELECT id, record FROM sync_records WHERE groupId = ? AND type = 'device'",
     [groupId],
@@ -63,10 +64,19 @@ export async function fetchDeviceSyncTimes(
   groupId: string,
   apiUrl: string,
 ) {
+  // Members read the ledger as shared, perhaps before a new identity replaced the one
+  // that held it: only the identity that holds the ledger now asks (SHARING-321.1). A
+  // copy has none, and '' is no stored identity, so nothing is sent for it.
+  const [{ signer }] = await database.all<{ signer: string }>(
+    `SELECT COALESCE((SELECT d.deviceId FROM device_identity d, sync_groups s
+       WHERE s.groupId = ? AND s.readOnly IS NULL), '') AS signer`,
+    [groupId],
+  );
   const answer = await sendApiRequest(database, {
     apiUrl,
     method: 'GET',
     path: `/groups/${groupId}/devices`,
+    deviceId: signer,
     giveUpAfterMs: GIVE_UP_AFTER_MS,
   });
   if (answer.outcome !== 'answered' || answer.status !== 200) return;
