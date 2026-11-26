@@ -100,6 +100,8 @@ function groupRefusalIn(
 
 interface Ledger {
   device: string;
+  /** The device identity stored as the ledger was read, if any (SHARING-321.1). */
+  identity: string | null;
   cursor: number;
   /** The highest key epoch among the events of the pages stored so far (SYNC-304.1). */
   maxEpoch: number;
@@ -118,7 +120,8 @@ async function readLedger(
 ): Promise<Ledger | undefined> {
   // A read-only copy is no shared ledger: nothing is sent or stored for it (SYNC-302.1).
   const [ledger] = await database.all<Ledger>(
-    `SELECT device, cursor, maxEpoch, waitsForUpdate, waitsForSnapshot FROM sync_groups
+    `SELECT device, cursor, maxEpoch, waitsForUpdate, waitsForSnapshot,
+       (SELECT deviceId FROM device_identity) AS identity FROM sync_groups
      WHERE groupId = ? AND readOnly IS NULL`,
     [groupId],
   );
@@ -366,6 +369,7 @@ async function download(
       apiUrl,
       method: 'GET',
       path: `${eventsPath(groupId)}?after=${ledger.cursor}`,
+      deviceId: ledger.identity ?? undefined,
       giveUpAfterMs: GIVE_UP_AFTER_MS,
     });
     end.noAnswer = answer.outcome === 'no-answer';
@@ -538,6 +542,7 @@ async function upload(
         method: 'POST',
         path: eventsPath(groupId),
         body: uploadBody(groupId, deviceId, underEpoch, underKey, events),
+        deviceId,
         giveUpAfterMs: GIVE_UP_AFTER_MS,
         // The stamps were checked against a clock the API has just corrected (SYNC-87.1).
         bodyAfterClockCorrection: async () => {

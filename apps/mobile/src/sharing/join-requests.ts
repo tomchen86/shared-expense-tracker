@@ -162,9 +162,7 @@ async function exchange(
     path: `/invites/${encodeURIComponent(code)}/request`,
     method,
     body: JSON.stringify(body),
-    checkDevice: (signer) => {
-      if (signer !== deviceId) throw new Error('The device identity changed');
-    },
+    deviceId,
     giveUpAfterMs: GIVE_UP_AFTER_MS,
   });
   if (answer.outcome !== 'answered') return answer.outcome;

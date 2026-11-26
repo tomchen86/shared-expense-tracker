@@ -174,6 +174,7 @@ async function fetchBoxes(
       apiUrl,
       method: 'GET',
       path: `/groups/${groupId}/keys?after=${epoch}`,
+      deviceId: device.deviceId,
       giveUpAfterMs: GIVE_UP_AFTER_MS,
     });
     if (answer.outcome !== 'answered' || answer.status !== 200) return saved;
@@ -483,6 +484,7 @@ export async function rotateGroupKey(
     method: 'POST',
     path: `/groups/${groupId}/rotation`,
     body: JSON.stringify(request),
+    deviceId: device.deviceId,
     giveUpAfterMs: GIVE_UP_AFTER_MS,
   });
   if (answer.outcome === 'no-answer') return { outcome: 'no-answer' };

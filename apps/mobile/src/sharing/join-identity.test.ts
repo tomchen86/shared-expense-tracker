@@ -182,3 +182,22 @@ test('a signed request awaiting a rate-limit retry cannot send again under the r
   ).rejects.toThrow('The device identity changed');
   expect(exchange).toHaveBeenCalledTimes(1);
 });
+
+test('a request made for the replaced device ID sends nothing and leaves the new identity unregistered', async () => {
+  const exchange = jest.spyOn(globalThis, 'fetch');
+  await renewBeforeCopyConfirmation(db);
+
+  await expect(
+    sendApiRequest(db, {
+      apiUrl: 'https://api.example.test',
+      method: 'POST',
+      path: '/groups/active/events',
+      body: 'made under lost-phone',
+      deviceId: 'lost-phone',
+    }),
+  ).resolves.toEqual({ outcome: 'authorization-lost' });
+  expect(exchange).not.toHaveBeenCalled();
+  expect(await db.all('SELECT registered FROM device_identity')).toEqual([
+    { registered: 0 },
+  ]);
+});

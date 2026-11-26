@@ -17,6 +17,7 @@ import type { Database } from '../storage';
 import {
   ensureDevice,
   readCorrectedTime,
+  readStoredDevice,
   saveClockOffsetMs,
   saveRegistered,
   type SigningDevice,
@@ -49,8 +50,11 @@ export interface ApiRequest {
   giveUpAfterMs?: number;
   /** Lets a caller distinguish a secure-store read failure from other request errors. */
   onSeedReadError?: (cause: unknown) => never;
-  /** Check that the identity is still the one an operation belongs to before registering or signing. */
-  checkDevice?: (deviceId: string) => void;
+  /**
+   * The device identity the request was made for: the one stored when it is handed over,
+   * unless said. A phone holding another one by its device turn sends nothing (SHARING-321.1).
+   */
+  deviceId?: string;
 }
 
 /** What became of a request. */
@@ -341,11 +345,15 @@ export async function sendApiRequest(
     throw new Error(`A ${method} request cannot carry a body`);
   }
 
+  // Read before waiting for the turn, which may be the one that replaces the identity.
+  const owner =
+    request.deviceId ?? (await readStoredDevice(database))?.deviceId;
   const device = await inDeviceTurn(
     async (): Promise<SigningDevice | ApiResult> => {
       const ready = await ensureDevice(database, request.onSeedReadError);
-      if (ready === 'lost') return { outcome: 'authorization-lost' };
-      request.checkDevice?.(ready.deviceId);
+      // The request's own identity has no seed: a new one is no stand-in for it.
+      if (ready === 'lost' || (owner !== undefined && ready.deviceId !== owner))
+        return { outcome: 'authorization-lost' };
       if (ready.registered) return ready;
       return (await register(database, ready, request)) ?? ready;
     },

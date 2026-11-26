@@ -43,7 +43,7 @@ interface StoredDevice {
   clockOffsetMs: number;
 }
 
-async function readStoredDevice(
+export async function readStoredDevice(
   executor: SqlExecutor,
 ): Promise<StoredDevice | undefined> {
   const [device] = await executor.all<StoredDevice>(

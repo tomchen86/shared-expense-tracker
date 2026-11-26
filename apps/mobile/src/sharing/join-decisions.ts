@@ -173,6 +173,7 @@ async function send(
   method: string,
   path: string,
   body?: unknown,
+  deviceId?: string,
 ): Promise<Answer | undefined> {
   const url = apiUrl();
   if (!url) return undefined;
@@ -181,6 +182,7 @@ async function send(
     method,
     path,
     ...(body !== undefined && { body: JSON.stringify(body) }),
+    deviceId,
     giveUpAfterMs: GIVE_UP_AFTER_MS,
   });
   if (result.outcome !== 'answered') return undefined;
@@ -782,7 +784,7 @@ export async function approveJoinRequest(
         : approval;
     const path = `${decisionPath(groupId, request.deviceId)}/${takeover ? 'takeover' : 'approval'}`;
     for (let behind = 0, again = false; ;) {
-      const answer = await send(database, 'POST', path, body);
+      const answer = await send(database, 'POST', path, body, device.deviceId);
       if (!answer) return { outcome: 'no-answer' };
       // Any other answer with status 200 is no refusal either, and ends in a failure.
       if (
