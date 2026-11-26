@@ -15,7 +15,7 @@ const clearCurrent = (tx: SqlExecutor, spaceId: string) =>
     [spaceId],
   );
 
-/** Check all selected names against this list's categories, including archived ones (LEDGER-141.1). */
+/** Check all selected names against this list's categories, including archived ones (LEDGER-141.2). */
 async function pruneCategories(
   tx: SqlExecutor,
   spaceId: string,
@@ -37,10 +37,14 @@ async function pruneCategories(
   }));
 }
 
-/** Read in a transaction: a category name that no longer exists is forgotten for good. */
+/**
+ * Read in a transaction: a category name that no longer exists is forgotten for good, unless
+ * `writeDrop` is false, which drops it only from what is returned (LEDGER-141.2).
+ */
 export async function readListFilter(
   tx: SqlExecutor,
   spaceId: string,
+  writeDrop = true,
 ): Promise<ListFilter> {
   const [row] = await tx.all<{ currentFilter: string }>(
     'SELECT currentFilter FROM expense_list_orders WHERE spaceId = ? AND currentFilter IS NOT NULL',
@@ -49,7 +53,8 @@ export async function readListFilter(
   if (!row) return NO_FILTER;
   const filter: ListFilter = JSON.parse(row.currentFilter);
   const [pruned] = await pruneCategories(tx, spaceId, [filter]);
-  if (pruned !== filter) await writeListFilter(tx, spaceId, pruned);
+  if (writeDrop && pruned !== filter)
+    await writeListFilter(tx, spaceId, pruned);
   return pruned;
 }
 
@@ -69,7 +74,12 @@ export async function writeListFilter(
   );
 }
 
-export async function readSavedFilters(tx: SqlExecutor, spaceId: string) {
+/** Like `readListFilter`, for the saved filters. */
+export async function readSavedFilters(
+  tx: SqlExecutor,
+  spaceId: string,
+  writeDrop = true,
+) {
   const [row] = await tx.all<{ savedFilters: string }>(
     'SELECT savedFilters FROM expense_list_orders WHERE spaceId = ?',
     [spaceId],
@@ -79,7 +89,7 @@ export async function readSavedFilters(tx: SqlExecutor, spaceId: string) {
   const pruned = await pruneCategories(tx, spaceId, conditions);
   if (pruned === conditions) return saved;
   const next = saved.map(({ name }, i) => ({ name, filter: pruned[i] }));
-  await writeSavedFilters(tx, spaceId, next);
+  if (writeDrop) await writeSavedFilters(tx, spaceId, next);
   return next;
 }
 
