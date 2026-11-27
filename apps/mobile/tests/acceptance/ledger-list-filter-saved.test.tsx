@@ -2,7 +2,12 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { ActionSheetIOS } from 'react-native';
-import { waitFor } from '@testing-library/react-native';
+import {
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import {
   addExpense,
   editCategory,
@@ -62,10 +67,11 @@ import {
   groupCardTitles,
   startWithGroups,
 } from './ledger-group-expense-app';
-import { goBackFrom, screenOf } from './group-details-app';
+import { expectOpen, goBackFrom, screenOf } from './group-details-app';
+import { groupsRoot, storedGroups } from './groups-app';
 import { showGroup } from './group-balances-app';
 import { deleteByAction } from './ledger-trash-app';
-import { allowWrites, failWrites } from './shell-appearance-app';
+import { allowWrites, failWrites, settle } from './shell-appearance-app';
 import { tapTab } from './shell-tabs-app';
 import type { Database } from '../../src/storage';
 
@@ -565,7 +571,7 @@ test("[LEDGER-144.1] applies a saved filter of a group's screen to that screen o
 
 // A saved filter with a category that no longer exists
 
-test('[LEDGER-141.1] [LEDGER-144.1] drops from a saved filter a category that no longer exists, and keeps a saved filter left with no condition, which takes every condition off', async () => {
+test('[LEDGER-141.2] [LEDGER-144.1] drops from a saved filter a category that no longer exists, and keeps a saved filter left with no condition, which takes every condition off', async () => {
   await startWithShopping();
   await saveBigShopping();
   await pressInFilters(CLEAR_FILTERS);
@@ -597,7 +603,7 @@ test('[LEDGER-141.1] [LEDGER-144.1] drops from a saved filter a category that no
   expect(cardTitles()).toEqual(['Coffee run', 'Train', 'Hat', 'Shoes']);
 });
 
-test('[LEDGER-141.1] keeps the category of a saved filter once its last expenses are in the Trash', async () => {
+test('[LEDGER-141.2] keeps the category of a saved filter once its last expenses are in the Trash', async () => {
   await startExpenses();
   await spend('Shoes', { amount: '20.00', category: 'Shopping' });
   await spend('Coffee run');
@@ -614,7 +620,7 @@ test('[LEDGER-141.1] keeps the category of a saved filter once its last expenses
   expect(cardTitles()).toEqual([]);
 });
 
-test('[LEDGER-141.1] does not bring the category back into a saved filter when the name returns', async () => {
+test('[LEDGER-141.2] does not bring the category back into a saved filter when the name returns', async () => {
   await startWithShopping();
   await saveBigShopping();
   await clearInFilters('Expenses');
@@ -625,4 +631,89 @@ test('[LEDGER-141.1] does not bring the category back into a saved filter when t
 
   expect(capsuleOf(expensesRoot(), 'Category')).toBe('Category');
   expect(capsuleOf(expensesRoot(), 'Amount')).toBe('10 or more');
+});
+
+test("[LEDGER-141.2] shows a group's screen and its saved filters when the saved filter left without its category cannot be written", async () => {
+  await startWithGroups(BRISBANE);
+  for (const [title, category] of [
+    ['Shoes', 'Shopping'],
+    ['Dinner', FOOD],
+  ])
+    await addGroupExpense({
+      group: 'Brisbane',
+      payer: 'Taylor (You)',
+      sharers: ['Taylor (You)', 'Casey'],
+      title,
+      category,
+    });
+  await showGroup('Brisbane');
+  await choose('Brisbane', 'Category', 'Shopping');
+  await openFilters('Brisbane');
+  await saveAs('Only shopping');
+  await pressInFilters(CLEAR_FILTERS);
+  await closeFilters();
+  await goBackFrom('Brisbane');
+  // Renamed while Brisbane's screen is closed, so nothing has read its saved filters since.
+  const [{ id }] = await storedGroups(path.join(directory, 'app.db'));
+  await editCategory('Shopping', 'Groceries', undefined, id);
+  failWrites();
+
+  // Checks for the error first: in its place the title would be Group Details (SHELL-60.1).
+  await tapTab('Groups');
+  await fireEvent.press(
+    within(groupsRoot()).getByRole('button', { name: 'Open Brisbane' }),
+  );
+  await settle();
+  expect(screen.queryByText('Unable to Load Local Data')).toBeNull();
+  await expectOpen('Brisbane');
+  await openFilters('Brisbane');
+
+  expect(savedFilterNames()).toEqual(['Only shopping']);
+  expect(alerts.shown()).toEqual([]);
+
+  allowWrites();
+  await applySaved('Only shopping');
+
+  expect(capsuleRow(screenOf('Brisbane'))).toBeUndefined();
+  expect(groupCardTitles('Brisbane')).toEqual(['Dinner', 'Shoes']);
+  expect(alerts.shown()).toEqual([]);
+});
+
+test('[LEDGER-141.2] [LEDGER-143.3] [LEDGER-144.1] marks the saved filter that matches once both drop the category, though the drop cannot be written', async () => {
+  await startWithGroups(BRISBANE);
+  await addGroupExpense({
+    group: 'Brisbane',
+    payer: 'Taylor (You)',
+    sharers: ['Taylor (You)', 'Casey'],
+    title: 'Shoes',
+    category: 'Shopping',
+  });
+  await showGroup('Brisbane');
+  await choose('Brisbane', 'Category', 'Shopping');
+  await openFilters('Brisbane');
+  await typeAmount('Lowest amount', '10');
+  await saveAs('Big shopping');
+  await closeFilters();
+  await goBackFrom('Brisbane');
+  // Renamed while Brisbane's screen is closed, so nothing has read its filters since.
+  const [{ id }] = await storedGroups(path.join(directory, 'app.db'));
+  await editCategory('Shopping', 'Groceries', undefined, id);
+  failWrites();
+
+  await tapTab('Groups');
+  await fireEvent.press(
+    within(groupsRoot()).getByRole('button', { name: 'Open Brisbane' }),
+  );
+  await settle();
+  expect(screen.queryByText('Unable to Load Local Data')).toBeNull();
+  await expectOpen('Brisbane');
+  expect(capsuleOf(screenOf('Brisbane'), 'Category')).toBe('Category');
+  expect(capsuleOf(screenOf('Brisbane'), 'Amount')).toBe('10 or more');
+  await openFilters('Brisbane');
+
+  // As stored, Big shopping still has Shopping; only as dropped does it equal the filter.
+  expect(savedFilters()).toEqual([['Big shopping', true]]);
+  expect(filtersButton(FILTER_SAVED)).toBeDefined();
+  expect(filtersButtonEnabled(FILTER_SAVED)).toBe(false);
+  expect(alerts.shown()).toEqual([]);
 });

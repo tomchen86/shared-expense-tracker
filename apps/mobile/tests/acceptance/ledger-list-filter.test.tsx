@@ -2,7 +2,13 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { ActionSheetIOS } from 'react-native';
-import { fireEvent, renderHook, waitFor } from '@testing-library/react-native';
+import {
+  fireEvent,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import {
   addCategory,
   addExpense,
@@ -126,6 +132,7 @@ import {
 import {
   NO_EXPENSES,
   expectClosed,
+  expectOpen,
   goBackFrom,
   groupNameField,
   openGroup,
@@ -133,6 +140,7 @@ import {
   pressOnBar,
   screenOf,
 } from './group-details-app';
+import { groupsRoot, storedGroups } from './groups-app';
 import {
   balanceButtons,
   balanceLines,
@@ -566,9 +574,9 @@ test("[GROUPS-61.6] takes an expense off a group's screen once an edit makes it 
   expect(capsuleTexts(brisbane())).toContain('Paid by Casey');
 });
 
-// An edit that leaves a choice of the filter without an expense: the choice stays (LEDGER-141.1)
+// An edit that leaves a choice of the filter without an expense: the choice stays (LEDGER-141.2)
 
-test('[LEDGER-31.5] [LEDGER-141.1] keeps the category chosen when an edit leaves no expense under it, and says that no expense matches', async () => {
+test('[LEDGER-31.5] [LEDGER-141.2] keeps the category chosen when an edit leaves no expense under it, and says that no expense matches', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await spend('Coffee run');
@@ -585,7 +593,7 @@ test('[LEDGER-31.5] [LEDGER-141.1] keeps the category chosen when an edit leaves
   expect(cardTitles()).toEqual(['Coffee run', 'Shoes']);
 });
 
-test('[LEDGER-141.1] [LEDGER-31.5] keeps both categories chosen when an edit leaves one of them without an expense', async () => {
+test('[LEDGER-141.2] [LEDGER-31.5] keeps both categories chosen when an edit leaves one of them without an expense', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await spend('Train', { category: 'Travel' });
@@ -601,7 +609,7 @@ test('[LEDGER-141.1] [LEDGER-31.5] keeps both categories chosen when an edit lea
   expect(cardTitles()).toEqual(['Train']);
 });
 
-test('[LEDGER-64.5] [LEDGER-141.1] keeps the ledger chosen when an edit leaves you no part in its only expense, and says that no expense matches', async () => {
+test('[LEDGER-64.5] [LEDGER-141.2] keeps the ledger chosen when an edit leaves you no part in its only expense, and says that no expense matches', async () => {
   await startWithGroups(BRISBANE);
   await spend('Coffee run');
   await brisbaneSpends('Dinner');
@@ -619,7 +627,7 @@ test('[LEDGER-64.5] [LEDGER-141.1] keeps the ledger chosen when an edit leaves y
   expect(noMatchesTitle(expensesRoot())).toBe(NO_MATCHES_TITLE);
 });
 
-test("[GROUPS-61.6] [LEDGER-141.1] keeps the payer chosen when an edit leaves them no expense paid, and says that no expense matches on the group's screen", async () => {
+test("[GROUPS-61.6] [LEDGER-141.2] keeps the payer chosen when an edit leaves them no expense paid, and says that no expense matches on the group's screen", async () => {
   await startWithGroups(BRISBANE);
   await brisbaneSpends('Dinner');
   await brisbaneSpends('Taxi', { payer: 'Casey' });
@@ -785,7 +793,7 @@ test("[LEDGER-130.1] has no Currency condition while the list's expenses use few
   expect(conditionRow('Currency')).toBeUndefined();
 });
 
-test('[LEDGER-130.1] [LEDGER-141.1] keeps a category that is chosen on its list, marked, once no expense uses it, until it is taken off', async () => {
+test('[LEDGER-130.1] [LEDGER-141.2] keeps a category that is chosen on its list, marked, once no expense uses it, until it is taken off', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await spend('Coffee run');
@@ -806,7 +814,7 @@ test('[LEDGER-130.1] [LEDGER-141.1] keeps a category that is chosen on its list,
   expect(await rowOptions('Category')).toEqual([[FOOD, false]]);
 });
 
-test('[LEDGER-130.1] [LEDGER-141.1] keeps the Currency condition, with the currency chosen on its list, once the list is left with one other currency, and has none once All is chosen', async () => {
+test('[LEDGER-130.1] [LEDGER-141.2] keeps the Currency condition, with the currency chosen on its list, once the list is left with one other currency, and has none once All is chosen', async () => {
   await startExpenses();
   await spendIn('USD', 'Coffee run', '8.75');
   await spendIn('JPY', 'Ramen', '500');
@@ -1973,7 +1981,7 @@ test("[LEDGER-140.1] keeps the filter of a group's screen when it is opened agai
 
 // A category that no longer exists is dropped; a choice that no expense uses any more stays
 
-test('[LEDGER-141.1] drops a category from the filter once it is renamed, and does not bring it back when the name returns', async () => {
+test('[LEDGER-141.2] drops a category from the filter once it is renamed, and does not bring it back when the name returns', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await spend('Coffee run');
@@ -1998,7 +2006,7 @@ test('[LEDGER-141.1] drops a category from the filter once it is renamed, and do
   expect(cardTitles()).toEqual(['Coffee run', 'Shoes']);
 });
 
-test('[LEDGER-141.1] keeps the other choices and conditions when one choice is dropped', async () => {
+test('[LEDGER-141.2] keeps the other choices and conditions when one choice is dropped', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await spend('Train', { category: 'Travel' });
@@ -2020,7 +2028,7 @@ test('[LEDGER-141.1] keeps the other choices and conditions when one choice is d
   expect(cardTitles()).toEqual(['Coffee run', 'Train', 'Shoes']);
 });
 
-test('[LEDGER-141.1] keeps a category in the filter while another ledger still has an expense under that name', async () => {
+test('[LEDGER-141.2] keeps a category in the filter while another ledger still has an expense under that name', async () => {
   await startWithGroups(BRISBANE);
   await spend('Coffee run');
   await brisbaneSpends('Dinner');
@@ -2033,7 +2041,7 @@ test('[LEDGER-141.1] keeps a category in the filter while another ledger still h
   expect(cardTitles()).toEqual(['Dinner']);
 });
 
-test('[LEDGER-141.1] keeps a category in the filter while a group still has a category of that name, though no expense uses it', async () => {
+test('[LEDGER-141.2] keeps a category in the filter while a group still has a category of that name, though no expense uses it', async () => {
   await startWithGroups(BRISBANE);
   await spend('Shoes', { category: 'Shopping' });
   await spend('Coffee run');
@@ -2046,7 +2054,7 @@ test('[LEDGER-141.1] keeps a category in the filter while a group still has a ca
   expect(noMatchesTitle(expensesRoot())).toBe(NO_MATCHES_TITLE);
 });
 
-test('[LEDGER-141.1] drops a category from the filter once it is deleted for good', async () => {
+test('[LEDGER-141.2] drops a category from the filter once it is deleted for good', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await spend('Coffee run');
@@ -2060,7 +2068,7 @@ test('[LEDGER-141.1] drops a category from the filter once it is deleted for goo
   expect(cardTitles()).toEqual(['Coffee run', 'Shoes']);
 });
 
-test('[LEDGER-141.1] keeps a category in the filter once its expenses are moved to another category, which archives it', async () => {
+test('[LEDGER-141.2] keeps a category in the filter once its expenses are moved to another category, which archives it', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await spend('Coffee run');
@@ -2078,7 +2086,7 @@ test('[LEDGER-141.1] keeps a category in the filter once its expenses are moved 
   expect(linesIn(card('Shoes'))).toContain('Other');
 });
 
-test('[LEDGER-141.1] keeps a category in the filter once its last expense is in the Trash, and Undo shows the list as it was', async () => {
+test('[LEDGER-141.2] keeps a category in the filter once its last expense is in the Trash, and Undo shows the list as it was', async () => {
   await startExpenses();
   await spend('Shoes', { category: 'Shopping' });
   await spend('Coffee run');
@@ -2097,7 +2105,7 @@ test('[LEDGER-141.1] keeps a category in the filter once its last expense is in 
   expect(capsuleName(expensesRoot(), 'Category')).toBe('Category, Shopping');
 });
 
-test('[LEDGER-141.1] keeps the currency chosen once the list is left with one other currency, and Undo shows the list as it was', async () => {
+test('[LEDGER-141.2] keeps the currency chosen once the list is left with one other currency, and Undo shows the list as it was', async () => {
   await startExpenses();
   await spendIn('USD', 'Coffee run', '8.75');
   await spendIn('JPY', 'Ramen', '500');
@@ -2116,7 +2124,7 @@ test('[LEDGER-141.1] keeps the currency chosen once the list is left with one ot
   expect(capsuleName(expensesRoot(), 'Currency')).toBe('Currency, USD');
 });
 
-test('[LEDGER-141.1] keeps a payer and a ledger that are renamed, under their new names', async () => {
+test('[LEDGER-141.2] keeps a payer and a ledger that are renamed, under their new names', async () => {
   await startWithGroups(BRISBANE);
   await spend('Coffee run');
   await brisbaneSpends('Dinner');
@@ -2135,6 +2143,80 @@ test('[LEDGER-141.1] keeps a payer and a ledger that are renamed, under their ne
   await tapTab('Expenses');
   expect(capsuleName(expensesRoot(), 'Ledger')).toBe('Ledger, Sydney');
   expect(cardTitles()).toEqual(['Taxi', 'Dinner']);
+});
+
+// The dropped category cannot be written: the screen shows the filter without it all the same
+
+/**
+ * Brisbane with Shoes in its Shopping and Dinner, Shopping chosen on Brisbane's screen, and
+ * Brisbane's Shopping renamed Groceries while that screen is closed, so nothing has read its
+ * filter since. Returns Brisbane's ID.
+ */
+async function renameShoppingOfClosedBrisbane() {
+  await startWithGroups(BRISBANE);
+  await brisbaneSpends('Shoes', { category: 'Shopping' });
+  await brisbaneSpends('Dinner');
+  await showGroup('Brisbane');
+  await choose('Brisbane', 'Category', 'Shopping');
+  expect(groupCardTitles('Brisbane')).toEqual(['Shoes']);
+  await goBackFrom('Brisbane');
+  const [{ id }] = await storedGroups(path.join(directory, 'app.db'));
+  await editCategory('Shopping', 'Groceries', undefined, id);
+  return id;
+}
+
+/**
+ * Opens Brisbane's screen from the Groups root. It checks for the error first: in its place the
+ * title would be Group Details (SHELL-60.1), and waiting for Brisbane would hide why.
+ */
+async function openBrisbane() {
+  await tapTab('Groups');
+  await fireEvent.press(
+    within(groupsRoot()).getByRole('button', { name: 'Open Brisbane' }),
+  );
+  await settle();
+  expect(screen.queryByText('Unable to Load Local Data')).toBeNull();
+  await expectOpen('Brisbane');
+}
+
+test("[LEDGER-141.2] shows a group's screen without the dropped category when the filter cannot be written, and writes it at a later read", async () => {
+  const alerts = watchAlerts();
+  const id = await renameShoppingOfClosedBrisbane();
+  failWrites();
+
+  await openBrisbane();
+
+  expect(capsuleRow(brisbane())).toBeUndefined();
+  expect(groupCardTitles('Brisbane')).toEqual(['Dinner', 'Shoes']);
+  expect(alerts.shown()).toEqual([]);
+
+  // Once local data can be written, the next read writes the drop, so the name coming back
+  // later does not bring the choice back.
+  await goBackFrom('Brisbane');
+  allowWrites();
+  await openBrisbane();
+  await goBackFrom('Brisbane');
+  await editCategory('Groceries', 'Shopping', undefined, id);
+  await openBrisbane();
+
+  expect(capsuleRow(brisbane())).toBeUndefined();
+  expect(groupCardTitles('Brisbane')).toEqual(['Dinner', 'Shoes']);
+  expect(alerts.shown()).toEqual([]);
+});
+
+test('[LEDGER-141.2] brings the choice back when the name returns before any read could write the drop', async () => {
+  const id = await renameShoppingOfClosedBrisbane();
+  failWrites();
+  await openBrisbane();
+  expect(capsuleRow(brisbane())).toBeUndefined();
+  await goBackFrom('Brisbane');
+  allowWrites();
+
+  await editCategory('Groceries', 'Shopping', undefined, id);
+  await openBrisbane();
+
+  expect(capsuleName(brisbane(), 'Category')).toBe('Category, Shopping');
+  expect(groupCardTitles('Brisbane')).toEqual(['Shoes']);
 });
 
 // An expense added while a filter would hide it

@@ -57,12 +57,15 @@ function useRememberedFilter(spaceId: string) {
   const [error, setError] = useState<unknown>();
   useEffect(() => {
     let active = true;
+    const read = (writeDrop: boolean) =>
+      database.transaction(async (tx) => ({
+        filter: await readListFilter(tx, spaceId, writeDrop),
+        savedFilters: await readSavedFilters(tx, spaceId, writeDrop),
+      }));
     function refresh() {
-      void database
-        .transaction(async (tx) => ({
-          filter: await readListFilter(tx, spaceId),
-          savedFilters: await readSavedFilters(tx, spaceId),
-        }))
+      // A drop that cannot be written shows all the same, and the next read writes it (LEDGER-141.2).
+      void read(true)
+        .catch(() => read(false))
         .then(
           (saved) => {
             if (active) setSettings(saved);
